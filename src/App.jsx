@@ -5103,7 +5103,7 @@ export default function App(){
         alignItems:'center',justifyContent:'center',gap:20,padding:24,position:'relative'}}>
         <RitmoWordmark size={28}/>
         <div style={{color:T.t2,fontSize:15,textAlign:'center',marginTop:8,maxWidth:300,lineHeight:1.5}}>
-          QR Remote-Eingabe — Figma-Design schicken!
+          Turniere per QR Code beitreten — Bald verfügbar!
         </div>
         <button onClick={goHome}
           style={{marginTop:20,padding:'12px 28px',background:T.o,color:T.bg,

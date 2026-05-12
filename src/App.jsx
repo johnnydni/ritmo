@@ -1,0 +1,5116 @@
+import { useState, useEffect, useReducer, useCallback, useRef, Fragment } from "react";
+
+/* ═══════════════════════════════════════════════════════════════
+   DESIGN TOKENS — CSS variables; values per theme defined in CSS below
+═══════════════════════════════════════════════════════════════ */
+const T = {
+  bg:       'var(--bg)',
+  card:     'var(--card)',
+  card2:    'var(--card2)',
+  border:   'var(--border)',
+  sep:      'var(--sep)',
+  t1:       'var(--t1)',
+  t2:       'var(--t2)',
+  t3:       'var(--t3)',
+  t4:       'var(--t4)',
+  o:        'var(--o)',
+  oSoft:    'var(--oSoft)',
+  oGlow:    'var(--oGlow)',     // Stronger alpha of brand for glows
+  oFlash:   'var(--oFlash)',    // Subtle flash background
+  g:        'var(--g)',
+  r:        'var(--r)',
+  blue:     'var(--blue)',
+  blueSoft: 'var(--blueSoft)',
+  blueGlow: 'var(--blueGlow)',
+  gold:     'var(--gold)',
+};
+
+const CSS = `
+:root, :root[data-theme="dark"] {
+  --bg: #000000;
+  --card: #141414;
+  --card2: #1C1C1C;
+  --border: rgba(255,255,255,0.08);
+  --sep: rgba(255,255,255,0.06);
+  --t1: #FFFFFF;
+  --t2: rgba(255,255,255,0.6);
+  --t3: rgba(255,255,255,0.35);
+  --t4: rgba(255,255,255,0.18);
+  --o: #FF7A1A;
+  --oSoft: rgba(255,122,26,0.12);
+  --oGlow: rgba(255,122,26,0.5);
+  --oFlash: rgba(255,122,26,0.14);
+  --g: #1A8754;
+  --r: #E84545;
+  --blue: #0A84FF;
+  --blueSoft: rgba(10,132,255,0.18);
+  --blueGlow: rgba(10,132,255,0.5);
+  --gold: #C8A878;
+}
+:root[data-theme="light"] {
+  --bg: #FFFFFF;
+  --card: #F5F5F7;
+  --card2: #EBEBEF;
+  --border: rgba(0,0,0,0.10);
+  --sep: rgba(0,0,0,0.06);
+  --t1: #000000;
+  --t2: rgba(0,0,0,0.65);
+  --t3: rgba(0,0,0,0.42);
+  --t4: rgba(0,0,0,0.22);
+  --o: #007AFF;
+  --oSoft: rgba(0,122,255,0.12);
+  --oGlow: rgba(0,122,255,0.5);
+  --oFlash: rgba(0,122,255,0.14);
+  --g: #34C759;
+  --r: #FF3B30;
+  --blue: #FF9500;
+  --blueSoft: rgba(255,149,0,0.18);
+  --blueGlow: rgba(255,149,0,0.5);
+  --gold: #B8945A;
+}
+:root[data-theme="padel"] {
+  --bg: #0018F9;
+  --card: #1F2FFA;
+  --card2: #3548FB;
+  --border: rgba(255,255,255,0.14);
+  --sep: rgba(255,255,255,0.08);
+  --t1: #FFFFFF;
+  --t2: rgba(255,255,255,0.72);
+  --t3: rgba(255,255,255,0.48);
+  --t4: rgba(255,255,255,0.25);
+  --o: #FFD60A;
+  --oSoft: rgba(255,214,10,0.15);
+  --oGlow: rgba(255,214,10,0.55);
+  --oFlash: rgba(255,214,10,0.18);
+  --g: #34C759;
+  --r: #FF6B6B;
+  --blue: #FF9500;
+  --blueSoft: rgba(255,149,0,0.18);
+  --blueGlow: rgba(255,149,0,0.5);
+  --gold: #FFD60A;
+}
+:root[data-theme="wimbledon"] {
+  --bg: #006039;
+  --card: #0A6E45;
+  --card2: #137A50;
+  --border: rgba(244,239,227,0.14);
+  --sep: rgba(244,239,227,0.08);
+  --t1: #F4EFE3;
+  --t2: rgba(244,239,227,0.72);
+  --t3: rgba(244,239,227,0.50);
+  --t4: rgba(244,239,227,0.25);
+  --o: #D4B98F;
+  --oSoft: rgba(212,185,143,0.16);
+  --oGlow: rgba(212,185,143,0.55);
+  --oFlash: rgba(212,185,143,0.18);
+  --g: #5BC48E;
+  --r: #C46B5E;
+  --blue: #EDE5D0;
+  --blueSoft: rgba(237,229,208,0.20);
+  --blueGlow: rgba(237,229,208,0.55);
+  --gold: #D4B98F;
+}
+
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body,#root{background:var(--bg);height:100%;min-height:100dvh;overflow:hidden;
+  font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','SF Pro Text','Helvetica Neue',sans-serif;
+  -webkit-font-smoothing:antialiased;color:var(--t1);}
+button,input{font-family:inherit;color:inherit;}
+input{outline:none;border:none;background:none;}
+::-webkit-scrollbar{display:none;}
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
+
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes scaleIn{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes flashOrange{0%,100%{background:var(--card)}40%{background:var(--oFlash)}}
+.fu{animation:fadeUp .4s ease both;}
+.fi{animation:fadeIn .25s ease both;}
+.si{animation:scaleIn .2s ease both;}
+.flash{animation:flashOrange .42s ease;}
+`;
+
+/* ═══════════════════════════════════════════════════════════════
+   GAME LOGIC – BO3
+═══════════════════════════════════════════════════════════════ */
+const B0 = {pA:0,pB:0,gA:0,gB:0,sA:0,sB:0,tb:false,tA:0,tB:0,winner:null,sets:[],hist:[],deuces:0};
+const PL = ['0','15','30','40'];
+function ptD(a,b,gpFlag){
+  if(a<3||b<3) return [PL[Math.min(a,3)],PL[Math.min(b,3)]];
+  if(a===b) return gpFlag?['Golden Point','Golden Point']:['Einstand','Einstand'];
+  return a>b ? ['Vorteil','—'] : ['—','Vorteil'];
+}
+function wG(s,t){
+  const nA=s.gA+(t==='A'?1:0), nB=s.gB+(t==='B'?1:0);
+  const sw=(nA>=6&&nA-nB>=2)||nA===7?'A':(nB>=6&&nB-nA>=2)||nB===7?'B':null;
+  if(sw){
+    const sA=s.sA+(sw==='A'?1:0), sB=s.sB+(sw==='B'?1:0);
+    return {...s,pA:0,pB:0,gA:0,gB:0,sA,sB,tb:false,tA:0,tB:0,deuces:0,
+      sets:[...s.sets,{gA:nA,gB:nB,w:sw}],winner:sA===2?'A':sB===2?'B':null};
+  }
+  if(nA===6&&nB===6) return {...s,pA:0,pB:0,gA:nA,gB:nB,tb:true,deuces:0};
+  return {...s,pA:0,pB:0,gA:nA,gB:nB,deuces:0};
+}
+function bo3R(s,a){
+  if(a.type==='_R') return a.s;
+  if(a.type==='UNDO'){if(!s.hist.length)return s; return {...s.hist[s.hist.length-1],hist:s.hist.slice(0,-1)};}
+  if(a.type==='RESET') return B0;
+  if(s.winner) return s;
+  const {hist,...snap}=s; const h=[...hist,{...snap,_t:a.t}];
+  if(a.type==='PT'){
+    if(s.tb){
+      const nA=s.tA+(a.t==='A'?1:0), nB=s.tB+(a.t==='B'?1:0);
+      const w=nA>=7&&nA-nB>=2?'A':nB>=7&&nB-nA>=2?'B':null;
+      if(w) return {...wG({...s,tA:nA,tB:nB},w),hist:h};
+      return {...s,tA:nA,tB:nB,hist:h};
+    }
+    let pA=s.pA+(a.t==='A'?1:0), pB=s.pB+(a.t==='B'?1:0), gw=null;
+    const wasDeuce=s.pA>=3&&s.pB>=3&&s.pA===s.pB;
+    const newIsDeuce=pA>=3&&pB>=3&&pA===pB;
+    let deuces=s.deuces||0;
+    if(newIsDeuce&&!wasDeuce) deuces++;
+    // Golden Point: active when deuces > goldenPointAfter (null/undefined = disabled)
+    const gpActive=a.goldenPointAfter!=null&&a.goldenPointAfter>=0
+      &&deuces>a.goldenPointAfter;
+    if(pA>=3&&pB>=3){
+      if(gpActive&&wasDeuce){
+        // GP: first scorer from deuce wins immediately
+        if(pA>pB) gw='A'; else if(pB>pA) gw='B';
+      } else {
+        if(pA-pB>=2) gw='A'; else if(pB-pA>=2) gw='B';
+      }
+    } else if(pA>=4) gw='A'; else if(pB>=4) gw='B';
+    if(gw) return {...wG(s,gw),hist:h};
+    return {...s,pA,pB,deuces,hist:h};
+  }
+  return s;
+}
+
+/* ═══ AMERICANO ═══════════════════════════════════════════════ */
+const A0 = {pA:0,pB:0,winner:null,limit:21,hist:[]};
+function amR(s,a){
+  if(a.type==='_R') return a.s;
+  if(a.type==='UNDO'){if(!s.hist.length)return s; return {...s.hist[s.hist.length-1],hist:s.hist.slice(0,-1)};}
+  if(a.type==='RESET') return {...A0,limit:a.limit??21};
+  if(a.type==='TIME_UP'){
+    if(s.winner) return s;
+    if(s.pA===s.pB) return {...s,winner:'draw'};
+    return {...s,winner:s.pA>s.pB?'A':'B'};
+  }
+  if(s.winner) return s;
+  const h=[...s.hist,{pA:s.pA,pB:s.pB,winner:null,_t:a.t}];
+  if(a.type==='PT'){
+    const pA=s.pA+(a.t==='A'?1:0), pB=s.pB+(a.t==='B'?1:0);
+    const lim=s.limit??21;
+    let winner=null;
+    if(lim>0&&pA+pB>=lim) winner=pA>pB?'A':pB>pA?'B':'draw';
+    return {...s,pA,pB,winner,hist:h};
+  }
+  return s;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TOURNAMENT LOGIC
+═══════════════════════════════════════════════════════════════ */
+const PCOLS=['#FF7A1A','#0A84FF','#30D158','#BF5AF2','#FF375F','#FFD60A','#64D2FF','#5E5CE6','#FF9500','#AC8E68','#32D74B','#5AC8FA'];
+const shuffle=arr=>{const a=[...arr];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
+
+function genAmericanoRound(playerIds,history=[],maxCourts=null){
+  const used=new Set(history.flatMap(r=>r.courts.flatMap(m=>[
+    `${Math.min(...m.t1)}_${Math.max(...m.t1)}`,
+    `${Math.min(...m.t2)}_${Math.max(...m.t2)}`])));
+  const maxByPlayers=Math.floor(playerIds.length/4);
+  const numCourts=maxCourts?Math.min(maxCourts,maxByPlayers):maxByPlayers;
+  const playingCount=numCourts*4;
+  const numSit=playerIds.length-playingCount;
+
+  // Fair sit-out: players with FEWEST prior sit-outs sit out next
+  // (those with more sit-outs deserve to play; random tie-break)
+  const sitOut=numSit>0
+    ? playerIds
+        .map(id=>({id,c:history.filter(r=>r.sitOut?.includes(id)).length,r:Math.random()}))
+        .sort((a,b)=>a.c-b.c||a.r-b.r)
+        .slice(0,numSit)
+        .map(x=>x.id)
+    : [];
+  const playing=playerIds.filter(id=>!sitOut.includes(id));
+
+  for(let attempt=0;attempt<60;attempt++){
+    const s=shuffle(playing);const courts=[];let ok=true;
+    for(let i=0;i<playingCount;i+=4){
+      const p1=[s[i],s[i+1]].sort((a,b)=>a-b),p2=[s[i+2],s[i+3]].sort((a,b)=>a-b);
+      const k1=`${p1[0]}_${p1[1]}`,k2=`${p2[0]}_${p2[1]}`;
+      if(used.has(k1)||used.has(k2)){ok=false;break;}
+      courts.push({id:`c${i/4}`,t1:[s[i],s[i+1]],t2:[s[i+2],s[i+3]],s1:0,s2:0,done:false});
+    }
+    if(ok) return {courts,sitOut};
+  }
+  // Fallback: accept partner repeats if no clean config found
+  const s=shuffle(playing);
+  const courts=[];
+  for(let i=0;i<playingCount;i+=4){
+    courts.push({id:`c${i/4}`,t1:[s[i],s[i+1]],t2:[s[i+2],s[i+3]],s1:0,s2:0,done:false});
+  }
+  return {courts,sitOut};
+}
+
+function genMexicanoRound(playerIds,leaderboard,maxCourts=null,history=[]){
+  const maxByPlayers=Math.floor(playerIds.length/4);
+  const numCourts=maxCourts?Math.min(maxCourts,maxByPlayers):maxByPlayers;
+  const playingCount=numCourts*4;
+  const numSit=playerIds.length-playingCount;
+
+  // Fair sit-out (same as americano)
+  const sitOut=numSit>0
+    ? playerIds
+        .map(id=>({id,c:history.filter(r=>r.sitOut?.includes(id)).length,r:Math.random()}))
+        .sort((a,b)=>a.c-b.c||a.r-b.r)
+        .slice(0,numSit)
+        .map(x=>x.id)
+    : [];
+  const playing=playerIds.filter(id=>!sitOut.includes(id));
+
+  // Among playing players: sort by leaderboard for 1+4 vs 2+3 pairing
+  const sorted=playing.sort((a,b)=>{
+    const la=leaderboard.find(x=>x.id===a),lb=leaderboard.find(x=>x.id===b);
+    return (lb?.pts??0)-(la?.pts??0);
+  });
+  const courts=[];
+  for(let i=0;i<playingCount;i+=4){
+    const g=sorted.slice(i,i+4);
+    courts.push({id:`c${i/4}`,t1:[g[0],g[3]],t2:[g[1],g[2]],s1:0,s2:0,done:false});
+  }
+  return {courts,sitOut};
+}
+
+function calcLeaderboard(players,rounds,winMode='points'){
+  const stats={};
+  players.forEach(p=>{stats[p.id]={id:p.id,name:p.name,color:p.color,
+    pts:0,wins:0,losses:0,played:0,sitOut:0,bonusPts:0,bonusWins:0};});
+  // Phase 1: actual match stats + sit-out counts
+  rounds.forEach(round=>{
+    round.courts.forEach(m=>{
+      if(!m.done) return;
+      m.t1.forEach(pid=>{
+        if(!stats[pid])return;
+        stats[pid].pts+=(m.s1??0);
+        if(m.s1>m.s2) stats[pid].wins++; else stats[pid].losses++;
+        stats[pid].played++;
+      });
+      m.t2.forEach(pid=>{
+        if(!stats[pid])return;
+        stats[pid].pts+=(m.s2??0);
+        if(m.s2>m.s1) stats[pid].wins++; else stats[pid].losses++;
+        stats[pid].played++;
+      });
+    });
+    (round.sitOut||[]).forEach(pid=>{if(stats[pid]) stats[pid].sitOut++;});
+  });
+  // Phase 2: compute bonuses (kept SEPARATE from real stats)
+  if(winMode==='points'){
+    // Median per-round bonus for sit-outs
+    rounds.forEach(round=>{
+      if(!round.sitOut||round.sitOut.length===0)return;
+      const scores=[];
+      round.courts.forEach(m=>{
+        if(!m.done)return;
+        m.t1.forEach(()=>scores.push(m.s1??0));
+        m.t2.forEach(()=>scores.push(m.s2??0));
+      });
+      if(scores.length===0)return;
+      scores.sort((a,b)=>a-b);
+      const median=scores.length%2===0
+        ?(scores[scores.length/2-1]+scores[scores.length/2])/2
+        :scores[Math.floor(scores.length/2)];
+      round.sitOut.forEach(pid=>{if(stats[pid]) stats[pid].bonusPts+=median;});
+    });
+  } else {
+    // Wins mode: +1 win per sit-out, only for lower-half players (by actual wins)
+    const arr=Object.values(stats);
+    const ranked=[...arr].sort((a,b)=>b.wins-a.wins||b.pts-a.pts);
+    const lowerStart=Math.ceil(ranked.length/2);
+    const lowerIds=new Set(ranked.slice(lowerStart).map(s=>s.id));
+    arr.forEach(s=>{
+      if(lowerIds.has(s.id)&&s.sitOut>0) s.bonusWins=s.sitOut;
+    });
+  }
+  // Convenience: total values for ranking
+  Object.values(stats).forEach(s=>{
+    s.totalPts=s.pts+s.bonusPts;
+    s.totalWins=s.wins+s.bonusWins;
+  });
+  return Object.values(stats);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SOUND ENGINE (Web Audio)
+═══════════════════════════════════════════════════════════════ */
+const RINGS=[
+  {id:'soft',label:'Sanft',desc:'Weiche Glockentöne'},
+  {id:'alarm',label:'Alarm',desc:'Klassischer Wecker'},
+  {id:'double',label:'Doppelton',desc:'Zwei absteigende Töne'},
+  {id:'rising',label:'Aufsteigend',desc:'Vier steigende Töne'},
+  {id:'whistle',label:'Schiedsrichter',desc:'Pfiff – lang kurz kurz'},
+];
+function playRing(id){
+  try{
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    const master=ctx.createGain();master.gain.value=0.65;master.connect(ctx.destination);
+    const beep=(f,start,dur,vol=0.5,type='sine')=>{
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.type=type;o.frequency.value=f;o.connect(g);g.connect(master);
+      g.gain.setValueAtTime(0,start);
+      g.gain.linearRampToValueAtTime(vol,start+0.015);
+      g.gain.setValueAtTime(vol,start+dur-0.03);
+      g.gain.linearRampToValueAtTime(0,start+dur);
+      o.start(start);o.stop(start+dur+0.05);
+    };
+    if(id==='alarm') for(let i=0;i<6;i++) beep(880,i*0.18,0.12,0.5,'square');
+    else if(id==='double') for(let i=0;i<3;i++){beep(880,i*0.4,0.16);beep(660,i*0.4+0.2,0.16);}
+    else if(id==='rising') [523,659,784,1047].forEach((f,i)=>beep(f,i*0.2,0.18,0.5));
+    else if(id==='whistle'){beep(1100,0,0.45,0.55);beep(1100,0.6,0.18,0.55);beep(1100,0.88,0.18,0.55);}
+    else if(id==='soft') [0,0.65,1.3].forEach(t=>{
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.type='sine';o.frequency.value=528;o.connect(g);g.connect(master);
+      g.gain.setValueAtTime(0,t);
+      g.gain.linearRampToValueAtTime(0.4,t+0.02);
+      g.gain.exponentialRampToValueAtTime(0.001,t+0.6);
+      o.start(t);o.stop(t+0.65);
+    });
+    setTimeout(()=>ctx.close(),4000);
+  }catch(e){console.warn('Audio:',e);}
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   LOCAL STORAGE
+═══════════════════════════════════════════════════════════════ */
+const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}};
+const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}};
+
+/* ═══════════════════════════════════════════════════════════════
+   ICONS / LOGOS
+═══════════════════════════════════════════════════════════════ */
+
+// RITMO Wortmarke (klein, für Header)
+// RITMO Wortmarke (klein) — Mini-R-Icon mit Schläger-Kopf + RITMO Text in Italic
+function RitmoWordmark({size=22}){
+  const G=T.gold;
+  const iconSize=size*1.2;
+  return (
+    <div style={{display:'flex',alignItems:'center',gap:7}}>
+      <svg width={iconSize} height={iconSize} viewBox="0 0 30 30" fill="none" style={{display:'block'}}>
+        {/* Speed-Linien links - gold */}
+        <line x1="0" y1="8"  x2="3" y2="8"  stroke={G} strokeWidth="1.2" strokeLinecap="round"/>
+        <line x1="0" y1="14" x2="3" y2="14" stroke={G} strokeWidth="1.2" strokeLinecap="round"/>
+        <line x1="0" y1="20" x2="3" y2="20" stroke={G} strokeWidth="1.2" strokeLinecap="round"/>
+
+        {/* R - mit dickem Strich gezeichnet */}
+        <g stroke="var(--t1)" fill="none" strokeLinecap="square">
+          <line x1="6" y1="2" x2="6" y2="26" strokeWidth="3.5"/>
+          <path d="M7.5 2 L14 2 Q21 2 21 8 Q21 14 14 14 L7.5 14"
+            strokeWidth="3.5" strokeLinejoin="miter"/>
+          <line x1="11.5" y1="14" x2="22" y2="26" strokeWidth="3.5"/>
+        </g>
+
+        {/* Mini Tennis-Ball - gold */}
+        <circle cx="24" cy="27" r="1.9" fill={G}/>
+      </svg>
+
+      <span style={{
+        color:T.t1,
+        fontSize:size,
+        fontWeight:900,
+        letterSpacing:0.6,
+        fontStyle:'italic',
+        fontFamily:'-apple-system,sans-serif',
+        lineHeight:1
+      }}>RITMO</span>
+    </div>
+  );
+}
+
+// RITMO PADEL CLUB Splash Logo (groß) — offizielles Markenlogo
+function RitmoSplashLogo({size=260}){
+  const G=T.gold;
+  return(
+    <svg width={size} height={size} viewBox="0 0 280 280" fill="none">
+
+      {/* PADEL Schriftzug oben */}
+      <text x="140" y="44" textAnchor="middle" fill="var(--t1)" fontSize="14"
+        fontWeight="700" letterSpacing="8"
+        fontFamily="-apple-system,sans-serif">PADEL</text>
+
+      {/* Hauptlogo: R mit integriertem Padel-Schläger + Speed-Lines + Ball */}
+      <g transform="translate(86,62)">
+
+        {/* Goldene Speed-Linien links vom R */}
+        <line x1="-50" y1="22" x2="-2" y2="22" stroke={G} strokeWidth="3" strokeLinecap="round"/>
+        <line x1="-65" y1="42" x2="-2" y2="42" stroke={G} strokeWidth="3" strokeLinecap="round"/>
+        <line x1="-72" y1="62" x2="-2" y2="62" stroke={G} strokeWidth="3" strokeLinecap="round"/>
+        <line x1="-50" y1="82" x2="-2" y2="82" stroke={G} strokeWidth="3" strokeLinecap="round"/>
+
+        {/* R — als drei dicke Linien gezeichnet */}
+        <g stroke="var(--t1)" fill="none" strokeLinecap="square">
+          {/* Vertikaler Spine */}
+          <line x1="10" y1="0" x2="10" y2="118" strokeWidth="20"/>
+          {/* Top-Loop (Schläger-Kopf-Form) */}
+          <path d="M18 0 L55 0 Q90 0 90 30 Q90 60 55 60 L18 60"
+            strokeWidth="20" strokeLinejoin="miter"/>
+          {/* Diagonale Schräge */}
+          <line x1="44" y1="60" x2="92" y2="118" strokeWidth="20"/>
+        </g>
+
+        {/* Saiten-Punktraster im Loop (Padel-Schläger-Strings) */}
+        <g fill="var(--t1)">
+          {[0,1,2,3].map(r=>
+            [0,1,2,3].map(c=>(
+              <circle key={`${r}-${c}`}
+                cx={32+c*11} cy={18+r*11} r="1.7"/>
+            ))
+          )}
+        </g>
+
+        {/* Tennisball am Ende der Diagonale */}
+        <circle cx="100" cy="124" r="9" fill={G}/>
+        <path d="M92 124 Q100 118 108 124" stroke="var(--t1)" strokeWidth=".5" fill="none" opacity=".6"/>
+        <path d="M92 124 Q100 130 108 124" stroke="var(--t1)" strokeWidth=".5" fill="none" opacity=".6"/>
+      </g>
+
+      {/* RITMO — italic, fett */}
+      <text x="140" y="220" textAnchor="middle" fill="var(--t1)" fontSize="42"
+        fontWeight="900" letterSpacing="5"
+        fontStyle="italic"
+        fontFamily="-apple-system,sans-serif">RITMO</text>
+
+      {/* Goldene Trennstriche um CLUB */}
+      <line x1="50" y1="237" x2="115" y2="237" stroke={G} strokeWidth="1.5"/>
+      <line x1="165" y1="237" x2="230" y2="237" stroke={G} strokeWidth="1.5"/>
+
+      {/* CLUB */}
+      <text x="140" y="251" textAnchor="middle" fill={G} fontSize="12"
+        fontWeight="700" letterSpacing="11"
+        fontFamily="-apple-system,sans-serif">CLUB</text>
+    </svg>
+  );
+}
+
+// Padel Court Icon (zwei vertikale Linien + Ball oben rechts)
+function CourtIcon({size=36}){
+  return(
+    <svg width={size} height={size} viewBox="0 0 36 36" fill="none">
+      <line x1="11" y1="6"  x2="11" y2="30" stroke="var(--t1)" strokeWidth="2" strokeLinecap="round"/>
+      <line x1="25" y1="6"  x2="25" y2="30" stroke="var(--t1)" strokeWidth="2" strokeLinecap="round"/>
+      <line x1="6"  y1="18" x2="30" y2="18" stroke="var(--t1)" strokeWidth="1" strokeLinecap="round" opacity=".4"/>
+      <circle cx="29" cy="9" r="3.4" fill={T.o}/>
+      <path d="M26.3 9 Q29 7.5 31.7 9" stroke="var(--t1)" strokeWidth=".7" fill="none" opacity=".7"/>
+    </svg>
+  );
+}
+
+// Padel-Schläger Mini (für Toggle)
+function RacketMini({size=24,color=T.t1}){
+  return(
+    <svg width={size} height={size} viewBox="0 0 28 28" fill="none">
+      <ellipse cx="14" cy="11" rx="8.5" ry="9" fill="none" stroke={color} strokeWidth="1.7"/>
+      {[10,14,18].map(x=><line key={x} x1={x} y1="4" x2={x} y2="18" stroke={color} strokeWidth=".5" opacity=".5"/>)}
+      {[7,11,15].map(y=><line key={y} x1="6.5" y1={y} x2="21.5" y2={y} stroke={color} strokeWidth=".5" opacity=".5"/>)}
+      <line x1="14" y1="20" x2="14" y2="26" stroke={color} strokeWidth="2" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+// Trophy (für Turnier-Card)
+function TrophyIcon({size=42}){
+  return(
+    <svg width={size} height={size} viewBox="0 0 42 42" fill="none">
+      <path d="M13 9 L29 9 L28 22 Q28 26 21 26 Q14 26 14 22 Z"
+        fill="none" stroke={T.o} strokeWidth="1.8"/>
+      <path d="M13 11 Q6 11 6 16 Q6 21 13 21" stroke={T.o} strokeWidth="1.6" fill="none"/>
+      <path d="M29 11 Q36 11 36 16 Q36 21 29 21" stroke={T.o} strokeWidth="1.6" fill="none"/>
+      <line x1="21" y1="26" x2="21" y2="33" stroke={T.o} strokeWidth="1.8"/>
+      <rect x="15" y="33" width="12" height="2.5" rx="1" fill={T.o}/>
+    </svg>
+  );
+}
+
+// Person mit Pfeil (Beitreten)
+function JoinIcon({size=32}){
+  return(
+    <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
+      <circle cx="14" cy="11" r="4.5" stroke="var(--t1)" strokeWidth="1.6" fill="none"/>
+      <path d="M5 26 Q5 18 14 18 Q19 18 21.5 20" stroke="var(--t1)" strokeWidth="1.6" fill="none" strokeLinecap="round"/>
+      <circle cx="24" cy="22" r="6.5" fill={T.bg} stroke="var(--t1)" strokeWidth="1.4"/>
+      <path d="M21 22 L24 19 M21 22 L24 25 M21 22 L27.5 22" stroke="var(--t1)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+    </svg>
+  );
+}
+
+// Tab-Bar Icons
+function HomeIcon({active,size=22}){
+  return(<svg width={size} height={size} viewBox="0 0 22 22" fill="none">
+    <path d="M3 10 L11 3 L19 10 L19 19 L13.5 19 L13.5 13 L8.5 13 L8.5 19 L3 19 Z"
+      stroke={active?T.blue:T.t1} strokeWidth="1.7" strokeLinejoin="round"
+      fill={active?T.blueSoft:'none'}/>
+  </svg>);
+}
+function LiveIcon({active,size=22}){
+  return(<svg width={size} height={size} viewBox="0 0 22 22" fill="none">
+    <ellipse cx="11" cy="9" rx="6.5" ry="7" stroke={active?T.blue:T.t1} strokeWidth="1.6" fill="none"/>
+    <line x1="6" y1="6" x2="9" y2="9" stroke={active?T.blue:T.t1} strokeWidth=".8" opacity=".6"/>
+    <line x1="11" y1="16" x2="11" y2="20" stroke={active?T.blue:T.t1} strokeWidth="1.8" strokeLinecap="round"/>
+  </svg>);
+}
+function GearIcon({active,size=22}){
+  return(<svg width={size} height={size} viewBox="0 0 22 22" fill="none">
+    <circle cx="11" cy="11" r="3" stroke={active?T.blue:T.t1} strokeWidth="1.6" fill="none"/>
+    <path d="M11 1 L11 4 M11 18 L11 21 M1 11 L4 11 M18 11 L21 11
+             M3.9 3.9 L6 6 M16 16 L18.1 18.1 M3.9 18.1 L6 16 M16 6 L18.1 3.9"
+      stroke={active?T.blue:T.t1} strokeWidth="1.5" strokeLinecap="round"/>
+  </svg>);
+}
+function SearchIcon({size=22}){
+  return(<svg width={size} height={size} viewBox="0 0 22 22" fill="none">
+    <circle cx="9.5" cy="9.5" r="6" stroke="var(--t1)" strokeWidth="1.7" fill="none"/>
+    <line x1="14" y1="14" x2="19" y2="19" stroke="var(--t1)" strokeWidth="1.9" strokeLinecap="round"/>
+  </svg>);
+}
+function FullscreenIcon({size=18}){
+  return(<svg width={size} height={size} viewBox="0 0 18 18" fill="none">
+    <path d="M2 6 L2 2 L6 2 M12 2 L16 2 L16 6 M16 12 L16 16 L12 16 M6 16 L2 16 L2 12"
+      stroke="var(--t1)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+  </svg>);
+}
+function EditIcon({size=20,color=T.t1}){
+  return(<svg width={size} height={size} viewBox="0 0 22 22" fill="none">
+    {/* Pencil/edit shape */}
+    <path d="M3 19 L3 14 L14 3 L19 8 L8 19 L3 19 Z"
+      stroke={color} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+    {/* Eraser separator line */}
+    <line x1="12" y1="5" x2="17" y2="10" stroke={color} strokeWidth="1.6" strokeLinecap="round"/>
+  </svg>);
+}
+function ExitFullscreenIcon({size=18}){
+  return(<svg width={size} height={size} viewBox="0 0 18 18" fill="none">
+    <path d="M6 2 L6 6 L2 6 M12 6 L16 6 L12 2 L12 6 Z M6 16 L6 12 L2 12 M16 12 L12 12 L12 16"
+      stroke="var(--t1)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+  </svg>);
+}
+function BookIcon({size=28}){
+  return(<svg width={size} height={size} viewBox="0 0 32 32" fill="none">
+    {/* Open book silhouette */}
+    <path d="M4 7 L4 25 L15 27 L15 9 Z" fill="none" stroke="var(--o)" strokeWidth="1.6" strokeLinejoin="round"/>
+    <path d="M28 7 L28 25 L17 27 L17 9 Z" fill="none" stroke="var(--o)" strokeWidth="1.6" strokeLinejoin="round"/>
+    <line x1="15" y1="9" x2="15" y2="27" stroke="var(--o)" strokeWidth="1.6"/>
+    <line x1="17" y1="9" x2="17" y2="27" stroke="var(--o)" strokeWidth="1.6"/>
+    {/* Page lines */}
+    <line x1="7" y1="13" x2="12" y2="13.5" stroke="var(--o)" strokeWidth=".9" opacity=".55"/>
+    <line x1="7" y1="17" x2="12" y2="17.5" stroke="var(--o)" strokeWidth=".9" opacity=".55"/>
+    <line x1="20" y1="13.5" x2="25" y2="13" stroke="var(--o)" strokeWidth=".9" opacity=".55"/>
+    <line x1="20" y1="17.5" x2="25" y2="17" stroke="var(--o)" strokeWidth=".9" opacity=".55"/>
+  </svg>);
+}
+
+function WandIcon({size=22}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    {/* Wand body diagonal */}
+    <line x1="4" y1="20" x2="17" y2="7" stroke="var(--o)" strokeWidth="1.8" strokeLinecap="round"/>
+    {/* Wand tip star */}
+    <circle cx="18" cy="6" r="2.2" fill="var(--o)"/>
+    {/* Sparkles */}
+    <path d="M14 4 L14.6 5.5 L16 6 L14.6 6.5 L14 8 L13.4 6.5 L12 6 L13.4 5.5 Z"
+      fill="var(--o)" opacity="0.8"/>
+    <path d="M20 11 L20.4 12 L21.4 12.4 L20.4 12.8 L20 13.8 L19.6 12.8 L18.6 12.4 L19.6 12 Z"
+      fill="var(--o)" opacity="0.6"/>
+  </svg>);
+}
+
+function JourneyIcon({size=28}){
+  return(<svg width={size} height={size} viewBox="0 0 32 32" fill="none">
+    {/* Compass: outer ring */}
+    <circle cx="16" cy="16" r="13" stroke="var(--o)" strokeWidth="1.6"/>
+    <circle cx="16" cy="16" r="10" stroke="var(--o)" strokeWidth="0.8" opacity="0.4"/>
+    {/* N pointer (filled) */}
+    <path d="M 16 5.5 L 12 16 L 16 13.5 L 20 16 Z" fill="var(--o)"/>
+    {/* S pointer (outlined) */}
+    <path d="M 16 26.5 L 12 16 L 16 18.5 L 20 16 Z" fill="none" stroke="var(--o)" strokeWidth="1.2" opacity="0.55"/>
+    {/* Cardinal marks */}
+    <circle cx="16" cy="3" r="0.9" fill="var(--o)" opacity="0.7"/>
+    <circle cx="29" cy="16" r="0.9" fill="var(--o)" opacity="0.7"/>
+    <circle cx="16" cy="29" r="0.9" fill="var(--o)" opacity="0.7"/>
+    <circle cx="3" cy="16" r="0.9" fill="var(--o)" opacity="0.7"/>
+    {/* Center dot */}
+    <circle cx="16" cy="16" r="1.6" fill="var(--o)"/>
+  </svg>);
+}
+
+/* ───── Color helpers (for custom themes) ───── */
+function hexToRgb(hex){
+  const h=(hex||'#000000').replace('#','');
+  return {r:parseInt(h.slice(0,2),16)||0,g:parseInt(h.slice(2,4),16)||0,b:parseInt(h.slice(4,6),16)||0};
+}
+function rgba(hex,a){
+  const{r,g,b}=hexToRgb(hex);
+  return `rgba(${r},${g},${b},${a})`;
+}
+function luminance(hex){
+  const{r,g,b}=hexToRgb(hex);
+  return (0.299*r+0.587*g+0.114*b)/255;
+}
+function shiftColor(hex,amount){
+  // amount: positive = lighten, negative = darken (0-1 range)
+  const{r,g,b}=hexToRgb(hex);
+  const dir=amount>=0?1:-1;
+  const t=Math.abs(amount);
+  const f=(c)=>Math.max(0,Math.min(255,Math.round(c+dir*t*(dir>0?(255-c):c))));
+  const toHex=(n)=>n.toString(16).padStart(2,'0');
+  return `#${toHex(f(r))}${toHex(f(g))}${toHex(f(b))}`;
+}
+/* Derive a full theme palette from 4 base colors + font.
+   Card/card2 shift relative to bg's luminance. Alpha variants of text and highlight. */
+function buildThemePalette({bg,text,highlight,secondary,font}){
+  const bgIsLight=luminance(bg)>0.5;
+  const cardShift=bgIsLight?-0.06:0.10;
+  const card2Shift=bgIsLight?-0.10:0.18;
+  return {
+    bg, card:shiftColor(bg,cardShift), card2:shiftColor(bg,card2Shift),
+    border:rgba(text,0.12), sep:rgba(text,0.07),
+    t1:text, t2:rgba(text,0.70), t3:rgba(text,0.45), t4:rgba(text,0.22),
+    o:highlight, oSoft:rgba(highlight,0.15), oGlow:rgba(highlight,0.55),
+    oFlash:rgba(highlight,0.18),
+    g:'#34C759', r:'#E84545',
+    blue:secondary, blueSoft:rgba(secondary,0.20), blueGlow:rgba(secondary,0.50),
+    gold:highlight,
+    font,
+  };
+}
+
+const FONTS=[
+  {id:'system',name:'System',     stack:'-apple-system, BlinkMacSystemFont, "SF Pro", "Segoe UI", sans-serif'},
+  {id:'sans',  name:'Sans Serif', stack:'"Helvetica Neue", Helvetica, Arial, sans-serif'},
+  {id:'serif', name:'Serif',      stack:'Georgia, "Times New Roman", Times, serif'},
+  {id:'modern',name:'Modern',     stack:'Avenir, "Avenir Next", Futura, "Trebuchet MS", sans-serif'},
+  {id:'mono',  name:'Monospace',  stack:'Menlo, "SF Mono", "Courier New", Courier, monospace'},
+];
+const fontStack=(id)=>(FONTS.find(f=>f.id===id)||FONTS[0]).stack;
+
+/* ───────────────────────────────────────────────────────────────
+   ServiceIndicator — top-down court showing serve direction.
+   In padel: ball must land in the diagonally opposite service box.
+   - servingTeam: 'A' (bottom) or 'B' (top)
+   - isDeuce: true → server's right (Einstand-Seite), false → ad/left
+─────────────────────────────────────────────────────────────── */
+function ServiceIndicator({servingTeam,isDeuce}){
+  // Diagonals across the net: BR↔TL, BL↔TR.
+  let stanceX,stanceY,targetBoxX,targetBoxY,ballX,ballY;
+  if(servingTeam==='A'){
+    stanceY=114;
+    if(isDeuce){stanceX=60;targetBoxX=4;targetBoxY=32;ballX=22;ballY=46;}
+    else{stanceX=20;targetBoxX=40;targetBoxY=32;ballX=58;ballY=46;}
+  } else {
+    stanceY=6;
+    if(isDeuce){stanceX=20;targetBoxX=40;targetBoxY=60;ballX=58;ballY=74;}
+    else{stanceX=60;targetBoxX=4;targetBoxY=60;ballX=22;ballY=74;}
+  }
+  const teamColor=servingTeam==='A'?T.o:T.blue;
+  const lineCol='rgba(255,255,255,0.55)';
+
+  return(
+    <svg viewBox="0 0 80 120" style={{width:'100%',height:'100%',display:'block'}}>
+      <defs>
+        <marker id="svArrow" markerWidth="5" markerHeight="5" refX="2.5" refY="2.5" orient="auto">
+          <polygon points="0 0, 5 2.5, 0 5" fill="#FFE600"/>
+        </marker>
+      </defs>
+      {/* Court outline */}
+      <rect x="3" y="3" width="74" height="114" rx="2"
+        fill="rgba(255,255,255,0.04)" stroke={lineCol} strokeWidth="1.4"/>
+      {/* Net */}
+      <line x1="3" y1="60" x2="77" y2="60" stroke={lineCol} strokeWidth="2"
+        strokeDasharray="2 1.5"/>
+      {/* Service lines */}
+      <line x1="3" y1="32" x2="77" y2="32" stroke={lineCol} strokeWidth=".9"/>
+      <line x1="3" y1="88" x2="77" y2="88" stroke={lineCol} strokeWidth=".9"/>
+      {/* Center service line */}
+      <line x1="40" y1="32" x2="40" y2="88" stroke={lineCol} strokeWidth=".9"/>
+      {/* Target service box highlight */}
+      <rect x={targetBoxX} y={targetBoxY} width="36" height="28"
+        fill={teamColor} fillOpacity="0.20"
+        stroke={teamColor} strokeWidth="1.5"/>
+      {/* Server stance */}
+      <circle cx={stanceX} cy={stanceY} r="2.8" fill={teamColor}/>
+      {/* Trajectory */}
+      <line x1={stanceX} y1={stanceY} x2={ballX} y2={ballY}
+        stroke="#FFE600" strokeWidth="1.4" strokeLinecap="round"
+        strokeDasharray="3 2" markerEnd="url(#svArrow)" opacity="0.85"/>
+      {/* Tennis ball */}
+      <circle cx={ballX} cy={ballY} r="3" fill="#E8FF3D" stroke="rgba(0,0,0,.4)" strokeWidth="0.4"/>
+      <path d={`M${ballX-2.4} ${ballY-1} Q${ballX} ${ballY-2.5} ${ballX+2.4} ${ballY-1}`}
+        stroke="rgba(255,255,255,.6)" strokeWidth=".35" fill="none"/>
+    </svg>
+  );
+}
+
+// Tennis Ball mini (für Splash-Spinner)
+function MiniBall({size=10,color=T.o}){
+  return <svg width={size} height={size} viewBox="0 0 10 10">
+    <circle cx="5" cy="5" r="4.5" fill={color}/>
+    <path d="M1.5 3.5 Q5 2 8.5 3.5 M1.5 6.5 Q5 8 8.5 6.5" stroke="var(--t1)" strokeWidth=".5" fill="none" opacity=".7"/>
+  </svg>;
+}
+
+function BallSpinner(){
+  return(
+    <div style={{position:'relative',width:80,height:80,animation:'spin 4s linear infinite'}}>
+      {[0,1,2,3,4,5,6,7].map(i=>(
+        <div key={i} style={{position:'absolute',top:'50%',left:'50%',marginTop:-5,marginLeft:-5,
+          transform:`rotate(${i*45}deg) translateX(28px)`,
+          opacity: 0.25 + (i/7)*0.75}}>
+          <MiniBall size={10}/>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SPLASH SCREEN
+═══════════════════════════════════════════════════════════════ */
+function Splash({onDone}){
+  const[ready,setReady]=useState(false);
+  useEffect(()=>{
+    const t=setTimeout(()=>setReady(true),1600);
+    return()=>clearTimeout(t);
+  },[]);
+  return(
+    <div onClick={ready?onDone:undefined}
+      style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+        alignItems:'center',justifyContent:'center',gap:36,
+        cursor:ready?'pointer':'default',userSelect:'none',position:'relative'}}>
+      <div className="fi"><RitmoSplashLogo size={250}/></div>
+      <div className="fi" style={{animationDelay:'.3s'}}><BallSpinner/></div>
+      <div style={{position:'absolute',bottom:48,color:T.t3,fontSize:13,letterSpacing:.3,
+        opacity:ready?1:0,transition:'opacity .4s'}}>
+        Tippen um fortzufahren
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BOTTOM TAB BAR
+═══════════════════════════════════════════════════════════════ */
+function TabBar({active,onTab}){
+  const tabs=[
+    {id:'home',label:'Home',Icon:HomeIcon},
+    {id:'live',label:'Live',Icon:LiveIcon},
+    {id:'settings',label:'Einstellungen',Icon:GearIcon},
+  ];
+  return(
+    <div style={{position:'absolute',bottom:'calc(env(safe-area-inset-bottom,0px) + 18px)',
+      left:0,right:0,display:'flex',alignItems:'center',justifyContent:'center',gap:10,
+      padding:'0 20px',pointerEvents:'none'}}>
+      <div style={{display:'flex',alignItems:'center',gap:2,
+        background:T.card,borderRadius:30,padding:'5px',
+        border:`1px solid ${T.border}`,pointerEvents:'auto',
+        boxShadow:'0 4px 20px rgba(0,0,0,.6)'}}>
+        {tabs.map(({id,label,Icon})=>{
+          const isActive=active===id;
+          return(
+            <button key={id} onClick={()=>onTab(id)}
+              style={{display:'flex',alignItems:'center',gap:7,padding:'10px 14px',
+                borderRadius:24,border:'none',cursor:'pointer',
+                background:isActive?T.blueSoft:'transparent',
+                color:isActive?T.blue:T.t2,
+                fontSize:11,fontWeight:600,transition:'all .2s'}}>
+              <Icon active={isActive} size={20}/>
+              <span style={{fontSize:11,color:isActive?T.blue:T.t3,fontWeight:isActive?700:500}}>{label}</span>
+            </button>
+          );
+        })}
+      </div>
+      <button style={{width:48,height:48,borderRadius:'50%',
+        background:T.card,border:`1px solid ${T.border}`,
+        display:'flex',alignItems:'center',justifyContent:'center',
+        cursor:'pointer',pointerEvents:'auto',
+        boxShadow:'0 4px 20px rgba(0,0,0,.6)'}}>
+        <SearchIcon size={20}/>
+      </button>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   IN-MATCH BOTTOM BAR (Home + Search separat)
+═══════════════════════════════════════════════════════════════ */
+function MatchBar({onHome,rightIcon,onRight,rightButtons}){
+  const baseStyle={
+    width:48,height:48,borderRadius:'50%',
+    background:T.card,border:`1px solid ${T.border}`,
+    display:'flex',alignItems:'center',justifyContent:'center',
+    pointerEvents:'auto',
+    boxShadow:'0 4px 20px rgba(0,0,0,.6)',
+    flexShrink:0,
+  };
+  // Legacy single-button mode → wrap into array
+  const buttons=rightButtons||(rightIcon?[{icon:rightIcon,onClick:onRight}]:[]);
+  return(
+    <div style={{position:'absolute',bottom:'calc(env(safe-area-inset-bottom,0px) + 20px)',
+      left:0,right:0,display:'flex',alignItems:'center',justifyContent:'space-between',
+      padding:'0 24px',pointerEvents:'none'}}>
+      <button onClick={onHome} style={{...baseStyle,cursor:'pointer'}}>
+        <HomeIcon size={20}/>
+      </button>
+      <div style={{display:'flex',gap:10,alignItems:'center',pointerEvents:'auto'}}>
+        {buttons.map((btn,i)=>(
+          <button key={i} onClick={btn.onClick} disabled={btn.disabled}
+            style={{
+              ...baseStyle,
+              ...(btn.style||{}),
+              cursor:btn.disabled?'not-allowed':'pointer',
+              opacity:btn.disabled?.5:1,
+              transition:'opacity .15s',
+            }}
+            onPointerDown={e=>!btn.disabled&&(e.currentTarget.style.opacity='.7')}
+            onPointerUp={e=>e.currentTarget.style.opacity=btn.disabled?.5:1}
+            onPointerLeave={e=>e.currentTarget.style.opacity=btn.disabled?.5:1}>
+            {btn.icon}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   HOME SCREEN
+═══════════════════════════════════════════════════════════════ */
+function Home({nav,activeTab,setActiveTab}){
+  return(
+    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
+
+      <div style={{padding:'0 22px 28px'}}>
+        <RitmoWordmark size={26}/>
+        <div style={{color:T.t2,fontSize:15,marginTop:8,fontWeight:400}}>Wähle deinen Modus.</div>
+      </div>
+
+      <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
+
+        {/* Single Match */}
+        <button onClick={()=>nav('single-setup')} className="fu"
+          style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:18,
+            padding:'18px 20px',display:'flex',alignItems:'center',gap:18,
+            cursor:'pointer',color:T.t1,textAlign:'left',transition:'background .15s'}}
+          onPointerDown={e=>e.currentTarget.style.background=T.card2}
+          onPointerUp={e=>e.currentTarget.style.background=T.card}
+          onPointerLeave={e=>e.currentTarget.style.background=T.card}>
+          <CourtIcon size={42}/>
+          <div style={{flex:1}}>
+            <div style={{color:T.o,fontSize:18,fontWeight:700,marginBottom:3}}>Single Match</div>
+            <div style={{color:T.t3,fontSize:12,fontWeight:500}}>Best of 3 | Americano</div>
+          </div>
+        </button>
+
+        {/* Turnier */}
+        <button onClick={()=>nav('tournament-setup')} className="fu"
+          style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:18,
+            padding:'18px 20px',display:'flex',alignItems:'center',gap:18,
+            cursor:'pointer',color:T.t1,textAlign:'left',transition:'background .15s',
+            animationDelay:'.06s'}}
+          onPointerDown={e=>e.currentTarget.style.background=T.card2}
+          onPointerUp={e=>e.currentTarget.style.background=T.card}
+          onPointerLeave={e=>e.currentTarget.style.background=T.card}>
+          <TrophyIcon size={42}/>
+          <div style={{flex:1}}>
+            <div style={{color:T.o,fontSize:18,fontWeight:700,marginBottom:3}}>Turnier</div>
+            <div style={{color:T.t3,fontSize:12,fontWeight:500}}>Americano | Mexicano</div>
+          </div>
+        </button>
+
+        {/* Turnier beitreten */}
+        <button onClick={()=>nav('remote')} className="fu"
+          style={{background:'transparent',border:`1px solid ${T.border}`,borderRadius:16,
+            padding:'14px 20px',display:'flex',alignItems:'center',gap:16,
+            cursor:'pointer',color:T.t1,textAlign:'left',transition:'background .15s',
+            animationDelay:'.12s'}}
+          onPointerDown={e=>e.currentTarget.style.background=T.card2}
+          onPointerUp={e=>e.currentTarget.style.background='transparent'}
+          onPointerLeave={e=>e.currentTarget.style.background='transparent'}>
+          <JoinIcon size={28}/>
+          <div style={{flex:1}}>
+            <div style={{color:T.o,fontSize:15,fontWeight:700,marginBottom:1}}>Turnier beitreten</div>
+            <div style={{color:T.t3,fontSize:11,fontWeight:500}}>PIN eingeben | Ergebnis übertragen</div>
+          </div>
+        </button>
+
+        {/* Regelwerk */}
+        <button onClick={()=>nav('rules')} className="fu"
+          style={{background:'transparent',border:`1px solid ${T.border}`,borderRadius:16,
+            padding:'14px 20px',display:'flex',alignItems:'center',gap:16,
+            cursor:'pointer',color:T.t1,textAlign:'left',transition:'background .15s',
+            animationDelay:'.18s'}}
+          onPointerDown={e=>e.currentTarget.style.background=T.card2}
+          onPointerUp={e=>e.currentTarget.style.background='transparent'}
+          onPointerLeave={e=>e.currentTarget.style.background='transparent'}>
+          <BookIcon size={28}/>
+          <div style={{flex:1}}>
+            <div style={{color:T.o,fontSize:15,fontWeight:700,marginBottom:1}}>Regelwerk</div>
+            <div style={{color:T.t3,fontSize:11,fontWeight:500}}>Padel-Regeln | Formate | Begriffe</div>
+          </div>
+        </button>
+
+        {/* Journey — Tipps & Tricks */}
+        <button onClick={()=>nav('journey')} className="fu"
+          style={{background:'transparent',border:`1px solid ${T.border}`,borderRadius:16,
+            padding:'14px 20px',display:'flex',alignItems:'center',gap:16,
+            cursor:'pointer',color:T.t1,textAlign:'left',transition:'background .15s',
+            animationDelay:'.22s'}}
+          onPointerDown={e=>e.currentTarget.style.background=T.card2}
+          onPointerUp={e=>e.currentTarget.style.background='transparent'}
+          onPointerLeave={e=>e.currentTarget.style.background='transparent'}>
+          <JourneyIcon size={28}/>
+          <div style={{flex:1}}>
+            <div style={{color:T.o,fontSize:15,fontWeight:700,marginBottom:1}}>Journey</div>
+            <div style={{color:T.t3,fontSize:11,fontWeight:500}}>Tipps & Tricks | Taktik | Material</div>
+          </div>
+        </button>
+      </div>
+
+      <div style={{height:120}}/>
+      <TabBar active={activeTab} onTab={setActiveTab}/>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SINGLE SETUP
+═══════════════════════════════════════════════════════════════ */
+function SingleSetup({nav,onHome,cfg,setCfg}){
+  const[nA,setNA]=useState(cfg.nameA||'Team 1');
+  const[nB,setNB]=useState(cfg.nameB||'Team 2');
+  const[fmt,setFmt]=useState(cfg.format||'bo3');
+  const[amLim,setAmLim]=useState(cfg.amLimit??21);
+  const[gpAfter,setGpAfter]=useState(cfg.goldenPointAfter??null); // null = off
+
+  return(
+    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
+
+      <div style={{padding:'0 22px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
+        <div>
+          <RitmoWordmark size={26}/>
+          <div style={{color:T.t2,fontSize:15,marginTop:6,fontWeight:400}}>Single Match</div>
+        </div>
+        <CourtIcon size={36}/>
+      </div>
+
+      <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
+
+        {/* Team Names */}
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,overflow:'hidden'}}>
+          {[
+            {label:'Team 1',val:nA,set:setNA,placeholder:'Team A'},
+            {label:'Team 2',val:nB,set:setNB,placeholder:'Team B'},
+          ].map((row,i)=>(
+            <div key={i} style={{display:'flex',alignItems:'center',padding:'14px 16px',
+              borderBottom:i===0?`1px solid ${T.sep}`:'none',gap:10}}>
+              <span style={{color:T.t1,fontSize:15,fontWeight:600}}>{row.label}</span>
+              <input value={row.val} onChange={e=>row.set(e.target.value)} placeholder={row.placeholder}
+                style={{flex:1,fontSize:14,color:T.t2,fontWeight:500,textAlign:'right',paddingRight:6}}/>
+              <button onClick={()=>row.set('')}
+                style={{width:18,height:18,borderRadius:'50%',background:T.t4,border:'none',
+                  color:T.t1,fontSize:11,cursor:'pointer',display:'flex',alignItems:'center',
+                  justifyContent:'center',fontWeight:700,lineHeight:1}}>×</button>
+            </div>
+          ))}
+        </div>
+
+        {/* Spielmodus */}
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+          padding:'18px 18px 20px'}}>
+          <div style={{color:T.o,fontSize:21,fontWeight:800,marginBottom:14}}>Spielmodus</div>
+
+          <div style={{display:'flex',background:T.card2,borderRadius:30,padding:4,gap:4,
+            border:`1px solid ${T.border}`,marginBottom:14}}>
+            <button onClick={()=>setFmt('bo3')}
+              style={{flex:1,padding:'10px',borderRadius:24,border:'none',cursor:'pointer',
+                background:fmt==='bo3'?T.t4:'transparent',
+                display:'flex',alignItems:'center',justifyContent:'center',
+                transition:'background .2s'}}>
+              <span style={{fontSize:18,fontWeight:800,color:T.t1,letterSpacing:2}}>•••</span>
+            </button>
+            <button onClick={()=>setFmt('americano')}
+              style={{flex:1,padding:'10px',borderRadius:24,border:'none',cursor:'pointer',
+                background:fmt==='americano'?T.t4:'transparent',
+                display:'flex',alignItems:'center',justifyContent:'center',
+                transition:'background .2s'}}>
+              <RacketMini size={20}/>
+            </button>
+          </div>
+
+          {fmt==='bo3'&&(
+            <div>
+              <div style={{color:T.t1,fontSize:15,fontWeight:700,marginBottom:6}}>Best of Three</div>
+              <div style={{color:T.t1,fontSize:14,fontWeight:700,marginBottom:6,letterSpacing:2}}>•••</div>
+              <div style={{color:T.t3,fontSize:12,lineHeight:1.6,fontWeight:500,marginBottom:14}}>
+                Klassisches Scoring:<br/>
+                15 - 30 - 40 | Einstand - Vorteil<br/>
+                2 Sätze zum Sieg
+              </div>
+              {/* Golden Point picker */}
+              <div style={{borderTop:`1px solid ${T.sep}`,paddingTop:10}}>
+                <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
+                  textTransform:'uppercase',marginBottom:6}}>Golden Point</div>
+                <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+                  {[
+                    {v:null,l:'Aus'},
+                    {v:0,l:'Sofort'},
+                    {v:1,l:'nach 1×'},
+                    {v:2,l:'nach 2×'},
+                  ].map(opt=>(
+                    <button key={String(opt.v)} onClick={()=>setGpAfter(opt.v)}
+                      style={{padding:'5px 11px',borderRadius:14,cursor:'pointer',
+                        background:gpAfter===opt.v?T.oSoft:'transparent',
+                        border:`1px solid ${gpAfter===opt.v?T.o:T.border}`,
+                        color:gpAfter===opt.v?T.o:T.t2,
+                        fontSize:11,fontWeight:600,transition:'all .15s'}}>
+                      {opt.l}
+                    </button>
+                  ))}
+                </div>
+                <div style={{color:T.t3,fontSize:10,marginTop:6,lineHeight:1.4}}>
+                  {gpAfter===null?'Traditionell: Vorteil → 2 Punkte Vorsprung'
+                    :gpAfter===0?'Beim 1. Einstand entscheidet der nächste Punkt'
+                    :`Ab dem ${gpAfter+1}. Einstand entscheidet der nächste Punkt`}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {fmt==='americano'&&(
+            <div>
+              <div style={{color:T.t1,fontSize:15,fontWeight:700,marginBottom:4}}>Americano</div>
+              <div style={{marginBottom:6}}><RacketMini size={18}/></div>
+              <div style={{color:T.t3,fontSize:12,lineHeight:1.6,fontWeight:500,marginBottom:14}}>
+                Punkte zählen pro Team. Optional mit Timer.
+              </div>
+              <div style={{display:'flex',justifyContent:'flex-end'}}>
+                <div style={{display:'flex',background:T.card2,borderRadius:24,padding:3,
+                  border:`1px solid ${T.border}`}}>
+                  <button onClick={()=>setAmLim(21)}
+                    style={{padding:'5px 14px',borderRadius:20,border:'none',cursor:'pointer',
+                      background:amLim===21?T.t4:'transparent',
+                      color:T.t1,fontSize:12,fontWeight:600,transition:'background .2s'}}>
+                    Split 21
+                  </button>
+                  <button onClick={()=>setAmLim(0)}
+                    style={{padding:'5px 14px',borderRadius:20,border:'none',cursor:'pointer',
+                      background:amLim===0?T.t4:'transparent',
+                      color:T.t1,fontSize:14,fontWeight:600,transition:'background .2s',
+                      display:'flex',alignItems:'center'}}>
+                    ∞
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div style={{height:100}}/>
+      <MatchBar onHome={onHome} rightButtons={[{
+        icon:'Start',
+        onClick:()=>{
+          setCfg({nameA:nA||'Team A',nameB:nB||'Team B',format:fmt,amLimit:amLim,goldenPointAfter:gpAfter});
+          nav('match');
+        },
+        style:{
+          width:56,height:56,
+          background:T.g,
+          border:'1px solid rgba(255,255,255,0.18)',
+          color:T.t1,
+          fontSize:13,fontWeight:800,
+        }
+      }]}/>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MATCH SCREEN
+═══════════════════════════════════════════════════════════════ */
+function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId='soft',matchKeyRef,theme='dark'}){
+  const isB=cfg.format==='bo3';
+  const[flA,setFA]=useState(false);const[flB,setFB]=useState(false);
+  const[confReset,setConfReset]=useState(false);
+  const[bigScreen,setBigScreen]=useState(false);
+  const[hint,setHint]=useState('');
+
+  // ═══ TIMER STATE (Americano) ═══
+  const[timerMin,setTimerMin]=useState(cfg.timerMin||10);
+  const[secsLeft,setSecsLeft]=useState((cfg.timerMin||10)*60);
+  const[running,setRunning]=useState(false);
+  const[timerFinished,setTimerFinished]=useState(false);
+  const[hasStarted,setHasStarted]=useState(false); // false = picker visible, true = countdown
+
+  // Persist minutes
+  useEffect(()=>{
+    if(setCfg) setCfg(c=>({...c,timerMin}));
+  },[timerMin]);// eslint-disable-line
+
+  // Reset secsLeft when minutes change (only if not started)
+  useEffect(()=>{
+    if(!hasStarted) setSecsLeft(timerMin*60);
+  },[timerMin,hasStarted]);
+
+  // Tick
+  useEffect(()=>{
+    if(!running||timerFinished) return;
+    const id=setInterval(()=>{
+      setSecsLeft(s=>{
+        if(s<=1){
+          setRunning(false);
+          setTimerFinished(true);
+          playRing(ringId);
+          dAm({type:'TIME_UP'});
+          return 0;
+        }
+        return s-1;
+      });
+    },1000);
+    return()=>clearInterval(id);
+  },[running,timerFinished,ringId,dAm]);
+
+  const startTimer=()=>{setHasStarted(true);setRunning(true);setTimerFinished(false);};
+  const pauseTimer=()=>setRunning(false);
+  const resetTimer=()=>{
+    setRunning(false);setTimerFinished(false);setHasStarted(false);
+    setSecsLeft(timerMin*60);
+  };
+
+  const dsp=useCallback(a=>isB?dBo3(a):dAm(a),[isB,dBo3,dAm]);
+  const punkt=useCallback(t=>{dsp({type:'PT',t,goldenPointAfter:cfg.goldenPointAfter});
+    if(t==='A'){setFA(true);setTimeout(()=>setFA(false),420);}
+    else{setFB(true);setTimeout(()=>setFB(false),420);}
+  },[dsp,cfg.goldenPointAfter]);
+
+  // Live refs to current state for use in reset (saving state before wipe)
+  const bo3Ref=useRef(bo3);const amRef=useRef(am);
+  useEffect(()=>{bo3Ref.current=bo3;},[bo3]);
+  useEffect(()=>{amRef.current=am;},[am]);
+
+  // Saved state for undo-reset functionality
+  const resetHistRef=useRef(null);
+
+  const reset=useCallback(()=>{
+    // Save current state before resetting (enables undo-reset)
+    resetHistRef.current={
+      format:cfg.format,
+      bo3:bo3Ref.current,
+      am:amRef.current,
+      timestamp:Date.now(),
+    };
+    dBo3({type:'RESET'});dAm({type:'RESET',limit:cfg.amLimit??21});
+    resetTimer();
+  },[cfg.format,cfg.amLimit,dBo3,dAm]);// eslint-disable-line
+
+  const undoReset=useCallback((maxAgeMs=Infinity)=>{
+    const saved=resetHistRef.current;
+    if(!saved) return false;
+    if(Date.now()-saved.timestamp>maxAgeMs) return false;
+    if(saved.format==='bo3'){dBo3({type:'_R',s:saved.bo3});}
+    else{dAm({type:'_R',s:saved.am});}
+    resetHistRef.current=null;
+    return true;
+  },[dBo3,dAm]);
+
+  const undo=useCallback(()=>dsp({type:'UNDO'}),[dsp]);
+
+  // ═══ PRESENTER / RING KEY HANDLER ═══
+  // App-level <KeyCapture> (in App.jsx return) catches Bluetooth-Keyboard events
+  // and dispatches them via matchKeyRef.current to handleHWKey below.
+  // App-level mounting ensures KeyCapture survives bigScreen toggles.
+  const upTimer=useRef(null);const downTimer=useRef(null);
+  const showHint=(t)=>{setHint(t);setTimeout(()=>setHint(''),1400);};
+
+  const handleHWKey=(e)=>{
+    const D=380;
+
+    // ── SMART RING: direct mappings (1, 2, 4, Space) ──
+    if(inputMode==='ring'){
+      if(e.key==='2'){
+        punkt('A');
+        return;
+      }
+      if(e.key==='4'){
+        punkt('B');
+        return;
+      }
+      if(e.key===' '||e.code==='Space'){
+        undo();
+        showHint('↩ Rückgängig');
+        return;
+      }
+      if(e.key==='1'){
+        // First press: reset (saves state). Second press within 1.5s: undo reset.
+        if(undoReset(1500)){
+          showHint('↺ Reset rückgängig gemacht');
+        } else {
+          reset();
+          showHint('↺ Zurückgesetzt · 1 erneut für Rückgängig');
+        }
+        return;
+      }
+      return;
+    }
+
+    // ── PRESENTER: PageUp/PageDown with double-click ──
+    const isUp=e.key==='PageUp'||e.code==='PageUp';
+    const isDown=e.key==='PageDown'||e.code==='PageDown';
+    if(!isUp&&!isDown) return;
+
+    if(isUp){
+      if(downTimer.current){clearTimeout(downTimer.current);downTimer.current=null;}
+      if(upTimer.current){
+        clearTimeout(upTimer.current);upTimer.current=null;
+        undo();showHint('↩ Rückgängig');
+      } else {
+        upTimer.current=setTimeout(()=>{
+          upTimer.current=null;punkt('A');
+        },D);
+      }
+    } else if(isDown){
+      if(upTimer.current){clearTimeout(upTimer.current);upTimer.current=null;}
+      if(downTimer.current){
+        clearTimeout(downTimer.current);downTimer.current=null;
+        reset();showHint('↺ Spiel zurückgesetzt');
+      } else {
+        downTimer.current=setTimeout(()=>{
+          downTimer.current=null;punkt('B');
+        },D);
+      }
+    }
+  };
+
+  // Cleanup timers on unmount or mode change
+  useEffect(()=>{
+    return()=>{
+      if(upTimer.current){clearTimeout(upTimer.current);upTimer.current=null;}
+      if(downTimer.current){clearTimeout(downTimer.current);downTimer.current=null;}
+    };
+  },[inputMode]);
+
+  // Register handler with App-level KeyCapture. Runs every render to keep the
+  // closure fresh (handleHWKey depends on latest punkt/undo/reset/undoReset).
+  useEffect(()=>{
+    if(!matchKeyRef)return;
+    matchKeyRef.current=handleHWKey;
+    return()=>{if(matchKeyRef)matchKeyRef.current=null;};
+  });
+
+  const{pA,pB,gA,gB,sA,sB,tb,tA,tB,sets,winner,deuces}=bo3;
+  const gpAct=cfg.goldenPointAfter!=null&&cfg.goldenPointAfter>=0
+    &&(deuces||0)>cfg.goldenPointAfter;
+  const[dA,dB]=tb?[String(tA),String(tB)]:ptD(pA,pB,gpAct);
+  const win=isB?winner:am.winner;
+
+  // ── Serving team + side (Padel rules) ──
+  // Total completed games across all sets (excludes current in-progress game)
+  const totalCompletedGames = gA + gB + sets.reduce((acc,s)=>acc+(s.gA||0)+(s.gB||0),0);
+  // Team A always starts the match; alternates each game
+  const baseServer = totalCompletedGames % 2 === 0 ? 'A' : 'B';
+  // Tiebreak: server changes after 1st point, then every 2 points
+  let servingTeam = baseServer;
+  if(tb){
+    const tp = tA + tB;
+    if(tp >= 1){
+      const pair = Math.floor((tp - 1) / 2);
+      // odd pair-index → original server back; even pair → opponent
+      servingTeam = pair % 2 === 0
+        ? (baseServer === 'A' ? 'B' : 'A')
+        : baseServer;
+    }
+  }
+  // Side (deuce/ad) alternates each point.
+  const pointsInCurrent = tb ? (tA + tB) : (pA + pB);
+  const isDeuce = pointsInCurrent % 2 === 0;
+
+  // ═══ BIG SCREEN HORIZONTAL ═══
+  const HintToast=()=>hint?(
+    <div style={{position:'fixed',bottom:'calc(env(safe-area-inset-bottom,0px) + 100px)',
+      left:'50%',transform:'translateX(-50%)',
+      background:T.card,border:`1px solid ${T.o}`,color:T.o,padding:'10px 18px',
+      borderRadius:24,fontSize:13,fontWeight:700,zIndex:100,
+      animation:'fadeIn .15s ease',pointerEvents:'none',
+      boxShadow:'0 4px 20px rgba(0,0,0,.6)',
+      whiteSpace:'nowrap'}}>
+      {hint}
+    </div>
+  ):null;
+
+  if(bigScreen){
+    const totalSecs=timerMin*60;
+    const progress=totalSecs?secsLeft/totalSecs:0;
+    const fmtT=(s)=>`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+    return(
+      <div style={{height:'100dvh',width:'100vw',background:T.bg,
+        display:'flex',flexDirection:'column',animation:'fadeIn .2s ease',position:'relative'}}>
+
+        {/* Progress bar (Americano with active timer) */}
+        {!isB&&hasStarted&&(
+          <div style={{height:5,background:T.card2,position:'relative',overflow:'hidden'}}>
+            <div style={{height:'100%',background:timerFinished?T.r:T.o,
+              width:`${progress*100}%`,transition:'width 1s linear'}}/>
+          </div>
+        )}
+
+        {/* Top: Team labels + close + countdown */}
+        <div style={{display:'flex',padding:'18px 24px 0',gap:14,alignItems:'center'}}>
+          <div style={{flex:1,display:'flex',alignItems:'center',gap:10,minWidth:0}}>
+            <div style={{width:14,height:14,borderRadius:'50%',background:T.o,flexShrink:0,
+              boxShadow:'0 0 8px var(--oGlow)'}}/>
+            <div style={{color:T.t1,fontSize:20,fontWeight:800,letterSpacing:.3,
+              overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+              {cfg.nameA}
+            </div>
+          </div>
+          {!isB&&hasStarted&&(
+            <div style={{fontFamily:'monospace',fontSize:20,fontWeight:800,
+              color:timerFinished?T.r:T.t1,letterSpacing:1,flexShrink:0}}>
+              {fmtT(secsLeft)}
+            </div>
+          )}
+          <div style={{flex:1,display:'flex',alignItems:'center',gap:10,minWidth:0,
+            justifyContent:!isB&&hasStarted?'flex-end':'flex-start'}}>
+            <div style={{width:14,height:14,borderRadius:'50%',background:T.blue,flexShrink:0,
+              boxShadow:'0 0 8px var(--blueGlow)'}}/>
+            <div style={{color:T.t1,fontSize:20,fontWeight:800,letterSpacing:.3,
+              overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+              {cfg.nameB}
+            </div>
+          </div>
+        </div>
+
+        {/* Scores */}
+        <div style={{flex:1,display:'flex',padding:'0 24px',minHeight:0}}>
+          {['A','B'].map((team,ti)=>{
+            const isA=team==='A';
+            const fl=isA?flA:flB;
+            const big=isB?(isA?dA:dB):(isA?am.pA:am.pB);
+            const setsCount=isA?sA:sB;
+            const gamesCount=isA?gA:gB;
+            // Detect Vorteil/Einstand/—  states (Bo3 only, regular points are short strings/numbers)
+            const isAdv = isB && big==='Vorteil';
+            const isDeuce = isB && (big==='Einstand'||big==='Golden Point');
+            const isDash = isB && big==='—';
+            const isSpecial = isAdv || isDeuce || isDash;
+            return(
+              <Fragment key={team}>
+              <button onClick={()=>punkt(team)}
+                style={{flex:1,display:'flex',flexDirection:'column',justifyContent:'center',
+                  background:fl?'var(--oFlash)':'transparent',
+                  border:'none',cursor:win?'default':'pointer',padding:'0 14px',
+                  transition:'background .3s',textAlign:'left'}}>
+                {isSpecial ? (
+                  <>
+                    {/* Tennis ball indicator */}
+                    <div style={{
+                      width:'clamp(5rem,14vh,9rem)',
+                      height:'clamp(5rem,14vh,9rem)',
+                      borderRadius:'50%',
+                      background: isAdv ? T.o : T.t1,
+                      boxShadow: isAdv
+                        ? '0 0 24px var(--oGlow), inset 0 -8px 18px rgba(0,0,0,.18)'
+                        : '0 0 18px rgba(255,255,255,.18), inset 0 -8px 18px rgba(0,0,0,.10)',
+                      marginBottom:'clamp(.6rem,2vh,1.2rem)'
+                    }}/>
+                    {/* Label below — smaller */}
+                    <div style={{
+                      color:T.t1,
+                      fontSize:'clamp(1.6rem,5.5vh,3rem)',
+                      fontWeight:800,letterSpacing:-.5,lineHeight:1,
+                      whiteSpace:'nowrap'}}>
+                      {big}
+                    </div>
+                  </>
+                ) : (
+                  <div style={{
+                    fontSize:'clamp(7rem,26vh,15rem)',
+                    fontWeight:900,color:T.t1,lineHeight:1,letterSpacing:-8,
+                    whiteSpace:'nowrap'}}>
+                    {big}
+                  </div>
+                )}
+                {/* Games + Set traffic-light dots */}
+                {isB&&(
+                  <div style={{display:'flex',alignItems:'center',gap:'clamp(1rem,3vw,2rem)',
+                    marginTop:'clamp(1rem,3vh,2rem)'}}>
+                    <div style={{color:T.o,fontSize:'clamp(2.4rem,8vh,5rem)',
+                      fontWeight:900,letterSpacing:-2,lineHeight:1}}>
+                      {gamesCount}
+                    </div>
+                    <div style={{display:'flex',gap:'clamp(.4rem,1vw,.7rem)'}}>
+                      {[0,1,2].map(i=>(
+                        <div key={i} style={{
+                          width:'clamp(.8rem,2vh,1.4rem)',
+                          height:'clamp(.8rem,2vh,1.4rem)',
+                          borderRadius:'50%',
+                          background:i<setsCount?T.o:'transparent',
+                          border:`2px solid ${T.o}`,
+                          boxSizing:'border-box'
+                        }}/>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </button>
+              {ti===0&&theme==='wimbledon'&&!isB&&(
+                <div style={{flex:'0 0 auto',display:'flex',alignItems:'center',
+                  justifyContent:'center',padding:'0 12px',minWidth:0}}>
+                  <WimbledonDial minutes={timerMin} secsLeft={secsLeft}
+                    running={running} finished={timerFinished}
+                    hasStarted={hasStarted}
+                    interactive={true}
+                    onToggle={()=>{
+                      if(!hasStarted) startTimer();
+                      else if(running) pauseTimer();
+                      else startTimer();
+                    }}
+                    onSetMinutes={(m)=>setTimerMin(m)}
+                    svgStyle={{height:'72vh',maxHeight:'72vh',width:'auto',maxWidth:'40vw'}}/>
+                </div>
+              )}
+              </Fragment>
+            );
+          })}
+          {isB&&(
+            <div style={{flexShrink:0,display:'flex',alignItems:'flex-start',
+              padding:'2vh 4px 0 12px'}}>
+              <div style={{width:'min(12vw,130px)',aspectRatio:'2/3'}}>
+                <ServiceIndicator servingTeam={servingTeam} isDeuce={isDeuce}/>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Home bottom-left */}
+        <div style={{position:'absolute',bottom:18,left:18}}>
+          <button onClick={onHome}
+            style={{width:42,height:42,borderRadius:'50%',
+              background:T.card,border:`1px solid ${T.border}`,
+              cursor:'pointer',
+              display:'flex',alignItems:'center',justifyContent:'center',
+              boxShadow:'0 4px 20px rgba(0,0,0,.6)'}}>
+            <HomeIcon size={18}/>
+          </button>
+        </div>
+
+        {/* Reset + Exit Big Screen bottom-right */}
+        <div style={{position:'absolute',bottom:18,right:18,display:'flex',gap:10}}>
+          <button onClick={()=>setConfReset(true)}
+            style={{width:42,height:42,borderRadius:'50%',
+              background:'rgba(232,69,69,0.12)',border:`1px solid rgba(232,69,69,0.5)`,
+              cursor:'pointer',color:T.r,fontSize:20,
+              display:'flex',alignItems:'center',justifyContent:'center',
+              boxShadow:'0 4px 20px rgba(0,0,0,.6)'}}>
+            ↺
+          </button>
+          <button onClick={()=>setBigScreen(false)}
+            style={{width:42,height:42,borderRadius:'50%',
+              background:T.card,border:`1px solid ${T.border}`,
+              cursor:'pointer',
+              display:'flex',alignItems:'center',justifyContent:'center',
+              boxShadow:'0 4px 20px rgba(0,0,0,.6)'}}>
+            <ExitFullscreenIcon size={18}/>
+          </button>
+        </div>
+
+        {confReset&&<ResetModal onCancel={()=>setConfReset(false)} onConfirm={()=>{reset();setConfReset(false);}}/>}
+        <HintToast/>
+      </div>
+    );
+  }
+
+  // ═══ NORMAL VERTICAL ═══
+  return(
+    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
+
+      <div style={{padding:'0 22px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
+        <div>
+          <RitmoWordmark size={26}/>
+          <div style={{color:T.t1,fontSize:20,marginTop:4,fontWeight:800}}>
+            {isB?'Best of Three':'Americano'}
+          </div>
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:10}}>
+          <span style={{color:T.t2,fontSize:18,fontWeight:800,letterSpacing:2}}>•••</span>
+          <CourtIcon size={32}/>
+        </div>
+      </div>
+
+      <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
+
+        {['A','B'].map(team=>{
+          const isA=team==='A';
+          const fl=isA?flA:flB;
+          const isW=win===team;
+          const nm=isA?cfg.nameA:cfg.nameB;
+          const big=isB?(isA?dA:dB):(isA?am.pA:am.pB);
+          const setsCount=isA?sA:sB;
+          const gamesCount=isA?gA:gB;
+          const isAdv = isB && big==='Vorteil';
+          const isDeuce = isB && (big==='Einstand'||big==='Golden Point');
+          const isDash = isB && big==='—';
+          const isSpecial = isAdv || isDeuce || isDash;
+          return(
+            <button key={team} onClick={()=>punkt(team)} className={fl?'flash':''}
+              style={{background:T.card,border:`1px solid ${isW?T.o:T.border}`,borderRadius:14,
+                padding:'18px 22px',display:'flex',alignItems:'center',
+                cursor:win?'default':'pointer',color:T.t1,textAlign:'left',
+                transition:'border-color .25s',minHeight:120}}>
+
+              <div style={{flex:1,display:'flex',flexDirection:'column',gap:14,minWidth:0}}>
+                <div style={{display:'flex',alignItems:'center',gap:9,minWidth:0}}>
+                  <div style={{width:12,height:12,borderRadius:'50%',
+                    background:isA?T.o:T.blue,flexShrink:0,
+                    boxShadow:`0 0 8px ${isA?T.oGlow:T.blueGlow}`}}/>
+                  <div style={{color:T.t1,fontSize:24,fontWeight:800,letterSpacing:-.3,
+                    overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{nm}</div>
+                </div>
+                {isB&&(
+                  <div style={{display:'flex',alignItems:'center',gap:12}}>
+                    <div style={{color:T.o,fontSize:32,fontWeight:900,
+                      letterSpacing:-1,lineHeight:1}}>
+                      {gamesCount}
+                    </div>
+                    <div style={{display:'flex',gap:5}}>
+                      {[0,1,2].map(i=>(
+                        <div key={i} style={{
+                          width:10,height:10,borderRadius:'50%',
+                          background:i<setsCount?T.o:'transparent',
+                          border:`1.5px solid ${T.o}`,boxSizing:'border-box'
+                        }}/>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {!isB&&(
+                  <div style={{color:T.o,fontSize:14,fontWeight:600}}>
+                    {(cfg.amLimit??21)>0?`${big} / ${cfg.amLimit??21}`:'∞'}
+                  </div>
+                )}
+              </div>
+
+              {isSpecial ? (
+                <div style={{display:'flex',flexDirection:'column',alignItems:'center',
+                  flexShrink:0,gap:6,maxWidth:'55%'}}>
+                  <div style={{
+                    width:48,height:48,borderRadius:'50%',
+                    background:isAdv?T.o:T.t1,
+                    boxShadow:isAdv
+                      ?'0 0 14px var(--oGlow), inset 0 -4px 10px rgba(0,0,0,.18)'
+                      :'0 0 10px rgba(255,255,255,.18), inset 0 -4px 10px rgba(0,0,0,.10)'
+                  }}/>
+                  <div style={{color:T.t1,fontSize:18,fontWeight:800,letterSpacing:-.3,
+                    whiteSpace:'nowrap',lineHeight:1}}>
+                    {big}
+                  </div>
+                </div>
+              ) : (
+                <div style={{
+                  fontSize:96,fontWeight:900,color:T.t1,
+                  lineHeight:.85,letterSpacing:-5,
+                  textAlign:'right',whiteSpace:'nowrap',
+                  flexShrink:0,maxWidth:'55%'}}>
+                  {big}
+                </div>
+              )}
+            </button>
+          );
+        })}
+
+        {/* Punkte-Verlauf */}
+        {(() => {
+          const hist=isB?bo3.hist:am.hist;
+          if(!hist||hist.length===0) return null;
+          const recent=hist.slice(-18);
+          return(
+            <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:12,
+              padding:'10px 14px',display:'flex',alignItems:'center',gap:10,
+              overflowX:'auto'}}>
+              <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1,
+                textTransform:'uppercase',flexShrink:0}}>Verlauf</div>
+              <div style={{display:'flex',gap:4,flex:1,justifyContent:'flex-end'}}>
+                {recent.map((entry,i)=>(
+                  <div key={i} title={entry._t==='A'?cfg.nameA:cfg.nameB}
+                    style={{
+                      width:14,height:14,borderRadius:4,
+                      background:entry._t==='A'?T.o:T.blue,
+                      flexShrink:0,
+                      opacity:0.4+0.6*((i+1)/recent.length),
+                    }}/>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Timer (Americano only) */}
+        {!isB&&(
+          <TimerCard
+            minutes={timerMin} setMinutes={setTimerMin}
+            running={running} secsLeft={secsLeft} finished={timerFinished}
+            hasStarted={hasStarted} theme={theme}
+            onStart={startTimer} onPause={pauseTimer} onReset={resetTimer}/>
+        )}
+
+        {win&&win!=='draw'&&(
+          <div style={{textAlign:'center',padding:14,background:T.oSoft,borderRadius:12,
+            border:`1px solid ${T.o}`,color:T.o,fontWeight:700}}>
+            🏆 {win==='A'?cfg.nameA:cfg.nameB} gewinnt!
+          </div>
+        )}
+      </div>
+
+      <div style={{height:100}}/>
+
+      <MatchBar
+        onHome={onHome}
+        rightButtons={[
+          {icon:<span style={{color:T.r,fontSize:20,lineHeight:1}}>↺</span>,
+           onClick:()=>setConfReset(true),
+           style:{background:'rgba(232,69,69,0.12)',
+                  border:`1px solid rgba(232,69,69,0.45)`}},
+          {icon:<FullscreenIcon size={18}/>,
+           onClick:()=>setBigScreen(true)},
+        ]}/>
+
+      {confReset&&<ResetModal onCancel={()=>setConfReset(false)} onConfirm={()=>{reset();setConfReset(false);}}/>}
+      <HintToast/>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RESET MODAL
+═══════════════════════════════════════════════════════════════ */
+function ResetModal({onCancel,onConfirm,
+  title='Zurücksetzen',
+  description='Dadurch werden die Sätze und Punkte zurückgesetzt.',
+  question='Spiel zurücksetzen?',
+  confirmLabel='Ja',
+  cancelLabel='Nein'}){
+  return(
+    <div onClick={onCancel} style={{position:'fixed',inset:0,zIndex:200,
+      background:'rgba(0,0,0,.7)',backdropFilter:'blur(4px)',
+      display:'flex',alignItems:'center',justifyContent:'center',padding:24,
+      animation:'fadeIn .15s ease'}}>
+      <div onClick={e=>e.stopPropagation()} className="si"
+        style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:18,
+          padding:'22px 22px 20px',width:'100%',maxWidth:340}}>
+        <div style={{color:T.t1,fontSize:18,fontWeight:800,marginBottom:6}}>{title}</div>
+        <div style={{color:T.t2,fontSize:13,lineHeight:1.5,marginBottom:16}}>
+          {description}
+        </div>
+        <div style={{background:T.card2,borderRadius:10,padding:'12px 14px',marginBottom:16,
+          border:`1px solid ${T.border}`}}>
+          <div style={{color:T.t1,fontSize:14,fontWeight:600}}>{question}</div>
+        </div>
+        <div style={{display:'flex',gap:10}}>
+          <button onClick={onCancel}
+            style={{flex:1,padding:'12px',background:T.card2,border:`1px solid ${T.border}`,
+              borderRadius:10,color:T.t1,fontSize:14,fontWeight:600,cursor:'pointer'}}>
+            {cancelLabel}
+          </button>
+          <button onClick={onConfirm}
+            style={{flex:1,padding:'12px',background:'rgba(232,69,69,0.18)',
+              border:`1px solid ${T.r}`,borderRadius:10,color:T.r,
+              fontSize:14,fontWeight:700,cursor:'pointer'}}>
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SCROLL PICKER (iPhone-Timer-Style)
+═══════════════════════════════════════════════════════════════ */
+function ScrollPicker({value,onChange,options,bgColor=T.card,width=86}){
+  const ref=useRef(null);
+  const ITEM_H=42;
+  const HEIGHT=ITEM_H*5;
+  const PAD=(HEIGHT-ITEM_H)/2;
+  const initialized=useRef(false);
+  const scrollTimeoutRef=useRef(null);
+
+  // Position scroll on mount/value change (only externally)
+  useEffect(()=>{
+    if(!ref.current)return;
+    const idx=options.indexOf(value);
+    if(idx<0)return;
+    const target=idx*ITEM_H;
+    if(!initialized.current){
+      ref.current.scrollTop=target;
+      initialized.current=true;
+    }
+  },[value,options]);
+
+  const handleScroll=(e)=>{
+    if(scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+    scrollTimeoutRef.current=setTimeout(()=>{
+      const idx=Math.round(e.target.scrollTop/ITEM_H);
+      const newVal=options[Math.max(0,Math.min(options.length-1,idx))];
+      if(newVal!==value) onChange(newVal);
+    },80);
+  };
+
+  return(
+    <div style={{position:'relative',height:HEIGHT,width,flexShrink:0}}>
+      {/* Selection band */}
+      <div style={{position:'absolute',top:PAD,left:0,right:0,height:ITEM_H,
+        background:'var(--oSoft)',borderTop:`1px solid ${T.border}`,
+        borderBottom:`1px solid ${T.border}`,pointerEvents:'none',borderRadius:8}}/>
+      {/* Top fade */}
+      <div style={{position:'absolute',top:0,left:0,right:0,height:PAD,
+        background:`linear-gradient(${bgColor},${bgColor}00)`,
+        pointerEvents:'none',zIndex:2}}/>
+      {/* Bottom fade */}
+      <div style={{position:'absolute',bottom:0,left:0,right:0,height:PAD,
+        background:`linear-gradient(${bgColor}00,${bgColor})`,
+        pointerEvents:'none',zIndex:2}}/>
+
+      <div ref={ref} onScroll={handleScroll}
+        style={{height:HEIGHT,overflowY:'scroll',
+          scrollSnapType:'y mandatory',
+          scrollPaddingTop:`${PAD}px`,
+          WebkitOverflowScrolling:'touch'}}>
+        <div style={{height:PAD}}/>
+        {options.map(o=>{
+          const active=o===value;
+          return(
+            <div key={o} style={{
+              height:ITEM_H,
+              display:'flex',alignItems:'center',justifyContent:'center',
+              scrollSnapAlign:'start',
+              fontSize:active?28:20,
+              fontWeight:active?800:500,
+              color:active?T.t1:T.t3,
+              transition:'color .15s,font-size .15s'}}>
+              {o}
+            </div>
+          );
+        })}
+        <div style={{height:PAD}}/>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TIMER CARD (Americano)
+═══════════════════════════════════════════════════════════════ */
+function WimbledonDial({minutes,secsLeft,running,finished,hasStarted,svgStyle,
+  interactive=false,onToggle,onSetMinutes}){
+  const totalSecs=minutes*60;
+  const elapsed=totalSecs-secsLeft;
+  const progress=totalSecs?elapsed/totalSecs:0;
+  const fmtTime=(s)=>`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+
+  const mainHandAngle=progress*360;
+  const secsInMin=secsLeft%60;
+  const secsHandAngle=((60-secsInMin)%60)*6;
+
+  const cx=120, cy=120;
+  const rimR=118, dialR=111;
+  const handR=78, secsHandR=92, arcR=80;
+  const C=2*Math.PI*arcR;
+  const hourMarks=[0,30,60,90,120,150,180,210,240,270,300,330];
+  const minMarks=Array.from({length:60},(_,i)=>i*6).filter(d=>d%30!==0);
+
+  // Crown drag state — accumulated rotation around dial center
+  const dragRef=useRef({active:false,lastAngle:0,startMinutes:0,accumDeg:0,moved:false});
+
+  const onCrownPointerDown=(e)=>{
+    if(!interactive||hasStarted) return;
+    e.stopPropagation();
+    const rect=e.currentTarget.ownerSVGElement.getBoundingClientRect();
+    const x=e.clientX-rect.left-(rect.width/2);
+    const y=e.clientY-rect.top-(rect.height/2);
+    const a=Math.atan2(y,x)*180/Math.PI;
+    dragRef.current={active:true,lastAngle:a,startMinutes:minutes,accumDeg:0,moved:false};
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+  const onCrownPointerMove=(e)=>{
+    if(!dragRef.current.active) return;
+    const rect=e.currentTarget.ownerSVGElement.getBoundingClientRect();
+    const x=e.clientX-rect.left-(rect.width/2);
+    const y=e.clientY-rect.top-(rect.height/2);
+    const a=Math.atan2(y,x)*180/Math.PI;
+    // shortest-path delta to handle wrap-around
+    let da=a-dragRef.current.lastAngle;
+    if(da>180) da-=360;
+    if(da<-180) da+=360;
+    dragRef.current.lastAngle=a;
+    dragRef.current.accumDeg+=da;
+    dragRef.current.moved=true;
+    // 12° per minute (so a full revolution = 30 min — comfortable resolution)
+    const deltaMin=Math.round(dragRef.current.accumDeg/12);
+    const newMin=Math.max(1,Math.min(60,dragRef.current.startMinutes+deltaMin));
+    if(newMin!==minutes&&onSetMinutes) onSetMinutes(newMin);
+  };
+  const onCrownPointerUp=(e)=>{
+    dragRef.current.active=false;
+    try{e.currentTarget.releasePointerCapture(e.pointerId);}catch{}
+  };
+
+  // Tap on dial (non-crown area) toggles start/pause
+  const onDialTap=()=>{
+    if(!interactive) return;
+    if(dragRef.current.moved){dragRef.current.moved=false; return;}
+    if(onToggle) onToggle();
+  };
+
+  // Crown position (3-o'clock side)
+  const crownX=cx+rimR;
+  const crownY=cy;
+
+  return (
+    <svg viewBox="0 0 264 240"
+      onClick={onDialTap}
+      style={{width:'100%',maxWidth:280,aspectRatio:'264/240',display:'block',
+        filter:'drop-shadow(0 6px 20px rgba(0,0,0,.35))',
+        cursor:interactive?'pointer':'default',...svgStyle}}>
+      <defs>
+        <radialGradient id="wimbRim" cx="50%" cy="35%" r="65%">
+          <stop offset="0%" stopColor="var(--o)" stopOpacity="1"/>
+          <stop offset="100%" stopColor="var(--o)" stopOpacity="0.65"/>
+        </radialGradient>
+        <radialGradient id="wimbDial" cx="50%" cy="40%" r="60%">
+          <stop offset="0%" stopColor="var(--card2)" stopOpacity="1"/>
+          <stop offset="100%" stopColor="var(--bg)" stopOpacity="1"/>
+        </radialGradient>
+      </defs>
+
+      {/* Crown (right side, like real watch). Touch target slightly larger. */}
+      {interactive&&(
+        <g style={{cursor:hasStarted?'default':'grab'}}>
+          {/* Hit area */}
+          <rect x={crownX-4} y={crownY-16} width="26" height="32" fill="transparent"
+            onPointerDown={onCrownPointerDown}
+            onPointerMove={onCrownPointerMove}
+            onPointerUp={onCrownPointerUp}
+            onPointerCancel={onCrownPointerUp}/>
+          {/* Visible crown body */}
+          <rect x={crownX-1} y={crownY-8} width="6" height="16" rx="1.5"
+            fill="var(--o)" stroke="rgba(0,0,0,.25)" strokeWidth="0.5"/>
+          <rect x={crownX+5} y={crownY-5} width="3" height="10" rx="1"
+            fill="var(--o)" opacity="0.85"/>
+          {/* Ridges */}
+          {[-5,-2,1,4].map(o=>(
+            <line key={o} x1={crownX} y1={crownY+o} x2={crownX+4} y2={crownY+o}
+              stroke="rgba(0,0,0,.35)" strokeWidth="0.6"/>
+          ))}
+        </g>
+      )}
+
+      <circle cx={cx} cy={cy} r={rimR} fill="url(#wimbRim)"/>
+      <circle cx={cx} cy={cy} r={dialR+2} fill="var(--bg)" opacity="0.6"/>
+      <circle cx={cx} cy={cy} r={dialR} fill="url(#wimbDial)"/>
+      <circle cx={cx} cy={cy} r={dialR-2} fill="none" stroke="var(--o)" strokeWidth="0.6" opacity="0.35"/>
+
+      {hourMarks.map(deg=>{
+        const rad=(deg-90)*Math.PI/180;
+        const x1=cx+95*Math.cos(rad), y1=cy+95*Math.sin(rad);
+        const x2=cx+105*Math.cos(rad), y2=cy+105*Math.sin(rad);
+        return <line key={`h${deg}`} x1={x1} y1={y1} x2={x2} y2={y2}
+          stroke="var(--o)" strokeWidth="2.4" strokeLinecap="round"/>;
+      })}
+
+      {minMarks.map(deg=>{
+        const rad=(deg-90)*Math.PI/180;
+        const x1=cx+100*Math.cos(rad), y1=cy+100*Math.sin(rad);
+        const x2=cx+105*Math.cos(rad), y2=cy+105*Math.sin(rad);
+        return <line key={`m${deg}`} x1={x1} y1={y1} x2={x2} y2={y2}
+          stroke="var(--o)" strokeWidth="0.7" opacity="0.6"/>;
+      })}
+
+      <text x={cx} y={cy-78} textAnchor="middle" dominantBaseline="middle"
+        fontSize="14" fontWeight="600" fill="var(--o)"
+        fontFamily="'Times New Roman', Georgia, serif" letterSpacing="0.5">XII</text>
+      <text x={cx+78} y={cy} textAnchor="middle" dominantBaseline="middle"
+        fontSize="14" fontWeight="600" fill="var(--o)"
+        fontFamily="'Times New Roman', Georgia, serif" letterSpacing="0.5">III</text>
+      <text x={cx} y={cy+78} textAnchor="middle" dominantBaseline="middle"
+        fontSize="14" fontWeight="600" fill="var(--o)"
+        fontFamily="'Times New Roman', Georgia, serif" letterSpacing="0.5">VI</text>
+      <text x={cx-78} y={cy} textAnchor="middle" dominantBaseline="middle"
+        fontSize="14" fontWeight="600" fill="var(--o)"
+        fontFamily="'Times New Roman', Georgia, serif" letterSpacing="0.5">IX</text>
+
+      <text x={cx} y={cy-34} textAnchor="middle" dominantBaseline="middle"
+        fontSize="9" fontWeight="700" fill="var(--o)"
+        letterSpacing="3.5" fontFamily="-apple-system, sans-serif">RITMO</text>
+      <text x={cx} y={cy-22} textAnchor="middle" dominantBaseline="middle"
+        fontSize="4.5" fontWeight="500" fill="var(--o)" opacity="0.7"
+        letterSpacing="2.5" fontFamily="-apple-system, sans-serif">CHRONOMETER · AUTOMATIC</text>
+
+      <text x={cx} y={cy+34} textAnchor="middle" dominantBaseline="middle"
+        fontSize="22" fontWeight="700" fill="var(--t1)" letterSpacing="1.5"
+        fontFamily="-apple-system, sans-serif">
+        {hasStarted?fmtTime(secsLeft):`${String(minutes).padStart(2,'0')}:00`}
+      </text>
+      <text x={cx} y={cy+50} textAnchor="middle" dominantBaseline="middle"
+        fontSize="5.5" fontWeight="600" fill="var(--t2)"
+        letterSpacing="2.5" fontFamily="-apple-system, sans-serif">
+        {interactive&&!hasStarted?'TIPPEN ZUM START':interactive&&running?'TIPPEN: PAUSE':interactive?'TIPPEN: WEITER':'MINUTEN'}
+      </text>
+
+      {hasStarted&&progress>0&&(
+        <circle cx={cx} cy={cy} r={arcR}
+          fill="none" stroke="var(--o)" strokeWidth="1.5" opacity="0.22"
+          strokeDasharray={C} strokeDashoffset={C*(1-progress)}
+          transform={`rotate(-90 ${cx} ${cy})`}
+          style={{transition:'stroke-dashoffset 1s linear'}}/>
+      )}
+
+      {hasStarted&&(
+        <g style={{
+          transform:`rotate(${mainHandAngle}deg)`,
+          transformOrigin:`${cx}px ${cy}px`,
+          transition:'transform 1s linear',
+          pointerEvents:'none'}}>
+          <line x1={cx} y1={cy+12} x2={cx} y2={cy-handR}
+            stroke="var(--o)" strokeWidth="3.2" strokeLinecap="round"/>
+          <polygon
+            points={`${cx-3.5},${cy-handR+5} ${cx+3.5},${cy-handR+5} ${cx},${cy-handR-3}`}
+            fill="var(--o)"/>
+        </g>
+      )}
+
+      {hasStarted&&running&&!finished&&(
+        <g style={{
+          transform:`rotate(${secsHandAngle}deg)`,
+          transformOrigin:`${cx}px ${cy}px`,
+          pointerEvents:'none'}}>
+          <line x1={cx} y1={cy+15} x2={cx} y2={cy-secsHandR}
+            stroke="var(--o)" strokeWidth="0.9" strokeLinecap="round" opacity="0.55"/>
+          <circle cx={cx} cy={cy-secsHandR+4} r="1.6" fill="var(--o)" opacity="0.55"/>
+        </g>
+      )}
+
+      <circle cx={cx} cy={cy} r="5.5" fill="var(--o)" style={{pointerEvents:'none'}}/>
+      <circle cx={cx} cy={cy} r="1.8" fill="var(--bg)" style={{pointerEvents:'none'}}/>
+    </svg>
+  );
+}
+
+function WimbledonTimerCard({minutes,setMinutes,running,secsLeft,finished,onStart,onPause,onReset,hasStarted}){
+  const opts=Array.from({length:60},(_,i)=>i+1);
+
+  return(
+    <div style={{
+      background:T.bg,
+      border:`1px solid ${T.o}`,
+      borderRadius:14,
+      padding:'20px 16px 16px',
+      display:'flex',
+      flexDirection:'column',
+      alignItems:'center',
+      gap:16}}>
+
+      <WimbledonDial minutes={minutes} secsLeft={secsLeft}
+        running={running} finished={finished} hasStarted={hasStarted}/>
+
+      {/* Controls */}
+      {!hasStarted&&!finished&&(
+        <div style={{display:'flex',alignItems:'center',gap:14,
+          width:'100%',justifyContent:'space-between'}}>
+          <div style={{flexShrink:0}}>
+            <div style={{color:T.o,fontSize:11,fontWeight:700,letterSpacing:2}}>TIMER</div>
+            <div style={{color:T.t3,fontSize:10,fontWeight:500,marginTop:2,letterSpacing:1.5}}>MINUTEN</div>
+          </div>
+          <ScrollPicker value={minutes} onChange={setMinutes} options={opts} bgColor={T.bg}/>
+          <button onClick={onStart}
+            style={{flexShrink:0,background:T.o,color:T.bg,
+              border:'none',borderRadius:'50%',width:52,height:52,
+              fontSize:18,fontWeight:800,cursor:'pointer',
+              boxShadow:'0 4px 16px var(--oGlow)',
+              display:'flex',alignItems:'center',justifyContent:'center'}}>
+            ▶
+          </button>
+        </div>
+      )}
+
+      {hasStarted&&!finished&&(
+        <div style={{display:'flex',gap:10}}>
+          <button onClick={running?onPause:onStart}
+            style={{width:46,height:46,borderRadius:'50%',
+              background:T.o,border:'none',color:T.bg,
+              fontSize:15,fontWeight:800,cursor:'pointer',
+              boxShadow:'0 3px 12px var(--oGlow)',
+              display:'flex',alignItems:'center',justifyContent:'center'}}>
+            {running?'⏸':'▶'}
+          </button>
+          <button onClick={onReset}
+            style={{width:46,height:46,borderRadius:'50%',
+              border:`1px solid ${T.border}`,background:T.card2,
+              color:T.t2,fontSize:18,cursor:'pointer'}}>
+            ↺
+          </button>
+        </div>
+      )}
+
+      {finished&&(
+        <div style={{display:'flex',alignItems:'center',gap:14}}>
+          <div style={{color:T.r,fontSize:14,fontWeight:700,letterSpacing:.5}}>
+            Zeit abgelaufen
+          </div>
+          <button onClick={onReset}
+            style={{padding:'10px 18px',borderRadius:24,border:'none',
+              background:T.o,color:T.bg,fontSize:13,fontWeight:700,cursor:'pointer'}}>
+            ↺ Neu
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TimerCard({minutes,setMinutes,running,secsLeft,finished,onStart,onPause,onReset,
+  hasStarted,theme='dark'}){
+  const totalSecs=minutes*60;
+  const progress=totalSecs?secsLeft/totalSecs:0;
+  const fmtTime=(s)=>`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+  const opts=Array.from({length:60},(_,i)=>i+1);
+
+  // 3 states: idle (picker visible), running/paused (countdown), finished
+  return(
+    <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+      padding:'14px 16px',transition:'border-color .25s'}}>
+
+      {!hasStarted&&!finished&&(
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:14}}>
+          <div style={{flexShrink:0}}>
+            <div style={{color:T.o,fontSize:16,fontWeight:800}}>Timer</div>
+            <div style={{color:T.t3,fontSize:11,fontWeight:500,marginTop:2}}>Minuten</div>
+          </div>
+          <ScrollPicker value={minutes} onChange={setMinutes} options={opts} bgColor={T.card}/>
+          <button onClick={onStart}
+            style={{flexShrink:0,background:T.g,color:T.t1,
+              border:`1px solid rgba(255,255,255,0.18)`,
+              borderRadius:'50%',width:56,height:56,fontSize:13,fontWeight:700,
+              cursor:'pointer',transition:'opacity .15s'}}
+            onPointerDown={e=>e.currentTarget.style.opacity='.7'}
+            onPointerUp={e=>e.currentTarget.style.opacity='1'}
+            onPointerLeave={e=>e.currentTarget.style.opacity='1'}>
+            Start
+          </button>
+        </div>
+      )}
+
+      {hasStarted&&!finished&&(
+        <div style={{position:'relative',margin:-16,padding:16,
+          border:`1px solid ${T.o}`,borderRadius:14,
+          overflow:'hidden'}}>
+          {/* Progress fill — shrinks as time runs out (tournament pattern) */}
+          <div style={{position:'absolute',left:0,top:0,bottom:0,
+            width:`${progress*100}%`,
+            background:'var(--oSoft)',
+            transition:'width 1s linear'}}/>
+          <div style={{position:'relative',zIndex:1,
+            display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+            <div style={{fontSize:34,fontWeight:800,color:T.o,
+              fontFamily:'monospace',letterSpacing:1.5}}>
+              {fmtTime(secsLeft)}
+            </div>
+            <div style={{display:'flex',gap:8}}>
+              <button onClick={running?onPause:onStart}
+                style={{width:42,height:42,borderRadius:'50%',
+                  background:T.o,border:'none',color:T.bg,
+                  fontSize:14,fontWeight:800,cursor:'pointer',
+                  display:'flex',alignItems:'center',justifyContent:'center'}}>
+                {running?'⏸':'▶'}
+              </button>
+              <button onClick={onReset}
+                style={{width:42,height:42,borderRadius:'50%',
+                  border:`1px solid ${T.border}`,background:T.card2,
+                  color:T.t2,fontSize:16,cursor:'pointer'}}>
+                ↺
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {finished&&(
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+          <div>
+            <div style={{color:T.r,fontSize:16,fontWeight:800}}>Zeit abgelaufen</div>
+            <div style={{color:T.t3,fontSize:12,marginTop:2}}>Spiel beendet</div>
+          </div>
+          <button onClick={onReset}
+            style={{padding:'10px 18px',borderRadius:24,border:'none',
+              background:T.o,color:T.bg,fontSize:13,fontWeight:700,cursor:'pointer'}}>
+            ↺ Neu
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SWIPEABLE CARD (Swipe-to-Delete)
+═══════════════════════════════════════════════════════════════ */
+function SwipeableCard({children,onDelete,outerStyle,childBg}){
+  const[tx,setTx]=useState(0);
+  const[swiping,setSwiping]=useState(false);
+  const startX=useRef(0);
+  const startTx=useRef(0);
+  const moved=useRef(false);
+
+  const onStart=(e)=>{
+    const x=e.touches?e.touches[0].clientX:e.clientX;
+    startX.current=x;
+    startTx.current=tx;
+    moved.current=false;
+    setSwiping(true);
+  };
+  const onMove=(e)=>{
+    if(!swiping)return;
+    const x=e.touches?e.touches[0].clientX:e.clientX;
+    const dx=x-startX.current;
+    if(Math.abs(dx)>4) moved.current=true;
+    const newTx=Math.min(0,Math.max(-100,startTx.current+dx));
+    setTx(newTx);
+  };
+  const onEnd=()=>{
+    setSwiping(false);
+    if(tx<-90){
+      // Threshold passed → delete
+      setTx(-400);
+      setTimeout(()=>onDelete(),200);
+    } else if(tx<-50){
+      setTx(-80); // Snap to reveal
+    } else {
+      setTx(0);
+    }
+  };
+
+  // Click on revealed delete background should trigger delete too
+  const handleDeleteClick=(e)=>{
+    e.stopPropagation();
+    setTx(-400);
+    setTimeout(()=>onDelete(),200);
+  };
+
+  // Block click on card when swiped
+  const handleCardClick=(e)=>{
+    if(moved.current||tx!==0){
+      e.stopPropagation();
+      e.preventDefault();
+      if(tx!==0) setTx(0); // reset on tap
+    }
+  };
+
+  return(
+    <div style={{position:'relative',overflow:'hidden',borderRadius:18,...outerStyle}}>
+      {/* Delete background */}
+      <div onClick={handleDeleteClick}
+        style={{position:'absolute',top:0,right:0,bottom:0,width:80,
+          background:T.r,display:'flex',alignItems:'center',justifyContent:'center',
+          cursor:'pointer',color:T.t1,fontSize:13,fontWeight:700}}>
+        Löschen
+      </div>
+      {/* Card content */}
+      <div onTouchStart={onStart} onTouchMove={onMove} onTouchEnd={onEnd}
+        onMouseDown={onStart} onMouseMove={swiping?onMove:undefined} onMouseUp={onEnd} onMouseLeave={swiping?onEnd:undefined}
+        onClickCapture={handleCardClick}
+        style={{transform:`translateX(${tx}px)`,
+          transition:swiping?'none':'transform .25s cubic-bezier(.3,0,.2,1)',
+          willChange:'transform',background:childBg??T.bg,position:'relative'}}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+
+function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit}){
+  const[players,setPlayers]=useState(saved?.players||[
+    {id:0,name:'Spieler 1',color:PCOLS[0]},
+    {id:1,name:'Spieler 2',color:PCOLS[1]},
+    {id:2,name:'Spieler 3',color:PCOLS[2]},
+    {id:3,name:'Spieler 4',color:PCOLS[3]},
+  ]);
+  const[format,setFormat]=useState(saved?.format||'americano');
+  const[winMode,setWinMode]=useState(saved?.winMode||'points');
+  const[numCourts,setNumCourts]=useState(saved?.numCourts||1);
+  const[roundDur,setRoundDur]=useState(saved?.roundDurationMin||10);
+  const nextId=useRef(players.reduce((m,p)=>Math.max(m,p.id),0)+1);
+
+  const maxCourts=Math.max(1,Math.floor(players.length/4));
+  // Auto-clamp courts when players reduced
+  useEffect(()=>{if(numCourts>maxCourts)setNumCourts(maxCourts);},[maxCourts,numCourts]);
+
+  const addPlayer=()=>{
+    if(players.length>=12)return;
+    const id=nextId.current++;
+    setPlayers(p=>[...p,{id,name:`Spieler ${p.length+1}`,color:PCOLS[id%PCOLS.length]}]);
+  };
+  const removePlayer=id=>setPlayers(p=>p.filter(x=>x.id!==id));
+  const renamePlayer=(id,name)=>setPlayers(p=>p.map(x=>x.id===id?{...x,name}:x));
+
+  const canStart=players.length>=4;
+
+  return(
+    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
+
+      <div style={{padding:'0 22px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
+        <div>
+          <RitmoWordmark size={26}/>
+          <div style={{color:T.t2,fontSize:15,marginTop:6,fontWeight:400}}>
+            {isEdit?'Turnier bearbeiten':'Turnier'}
+          </div>
+        </div>
+        <TrophyIcon size={36}/>
+      </div>
+
+      <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
+
+        {/* Format */}
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,padding:'18px'}}>
+          <div style={{color:T.o,fontSize:18,fontWeight:800,marginBottom:12}}>Format</div>
+          <div style={{display:'flex',background:T.card2,borderRadius:30,padding:4,gap:4,
+            border:`1px solid ${T.border}`}}>
+            {[{v:'americano',l:'Americano'},{v:'mexicano',l:'Mexicano'}].map(o=>(
+              <button key={o.v} onClick={()=>setFormat(o.v)}
+                style={{flex:1,padding:'10px',borderRadius:24,border:'none',cursor:'pointer',
+                  background:format===o.v?T.t4:'transparent',color:T.t1,fontSize:13,fontWeight:600,
+                  transition:'background .2s'}}>
+                {o.l}
+              </button>
+            ))}
+          </div>
+          <div style={{color:T.t3,fontSize:12,lineHeight:1.6,marginTop:10,fontWeight:500}}>
+            {format==='americano'?'Zufällige Partner jede Runde, Punkte zählen individuell.':'Ranking-basierte Paarungen ab Runde 2 (1+4 vs 2+3).'}
+          </div>
+        </div>
+
+        {/* Sieger-Modus */}
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,padding:'18px'}}>
+          <div style={{color:T.o,fontSize:18,fontWeight:800,marginBottom:12}}>Sieger-Modus</div>
+          <div style={{display:'flex',background:T.card2,borderRadius:30,padding:4,gap:4,
+            border:`1px solid ${T.border}`}}>
+            {[{v:'points',l:'Höchste Punkte'},{v:'wins',l:'Meiste Siege'}].map(o=>(
+              <button key={o.v} onClick={()=>setWinMode(o.v)}
+                style={{flex:1,padding:'10px',borderRadius:24,border:'none',cursor:'pointer',
+                  background:winMode===o.v?T.t4:'transparent',color:T.t1,fontSize:13,fontWeight:600,
+                  transition:'background .2s'}}>
+                {o.l}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Anzahl Courts */}
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+          padding:'14px 18px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+          <div>
+            <div style={{color:T.t1,fontSize:15,fontWeight:600}}>Anzahl Courts</div>
+            <div style={{color:T.t3,fontSize:11,fontWeight:500,marginTop:1}}>
+              max. {maxCourts} bei {players.length} Spielern
+            </div>
+          </div>
+          <div style={{display:'flex',alignItems:'center',gap:14}}>
+            <button onClick={()=>setNumCourts(c=>Math.max(1,c-1))}
+              style={{width:32,height:32,borderRadius:'50%',background:T.card2,border:`1px solid ${T.border}`,
+                color:T.t1,fontSize:16,cursor:'pointer'}}>−</button>
+            <span style={{color:T.t1,fontWeight:800,fontSize:18,minWidth:24,textAlign:'center'}}>{numCourts}</span>
+            <button onClick={()=>setNumCourts(c=>Math.min(maxCourts,c+1))}
+              style={{width:32,height:32,borderRadius:'50%',background:T.card2,border:`1px solid ${T.border}`,
+                color:T.t1,fontSize:16,cursor:'pointer'}}>+</button>
+          </div>
+        </div>
+
+        {/* Rundendauer */}
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+          padding:'14px 18px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+          <div>
+            <div style={{color:T.t1,fontSize:15,fontWeight:600}}>Rundendauer</div>
+            <div style={{color:T.t3,fontSize:11,fontWeight:500,marginTop:1}}>
+              Timer pro Runde
+            </div>
+          </div>
+          <div style={{display:'flex',alignItems:'center',gap:14}}>
+            <button onClick={()=>setRoundDur(d=>Math.max(1,d-1))}
+              style={{width:32,height:32,borderRadius:'50%',background:T.card2,border:`1px solid ${T.border}`,
+                color:T.t1,fontSize:16,cursor:'pointer'}}>−</button>
+            <span style={{color:T.t1,fontWeight:800,fontSize:18,minWidth:60,textAlign:'center'}}>
+              {roundDur} min
+            </span>
+            <button onClick={()=>setRoundDur(d=>Math.min(60,d+1))}
+              style={{width:32,height:32,borderRadius:'50%',background:T.card2,border:`1px solid ${T.border}`,
+                color:T.t1,fontSize:16,cursor:'pointer'}}>+</button>
+          </div>
+        </div>
+
+        {/* Spieler */}
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+          padding:'18px 18px 8px'}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
+            <div style={{color:T.o,fontSize:18,fontWeight:800}}>Spieler</div>
+            <div style={{display:'flex',alignItems:'center',gap:12}}>
+              <span style={{color:T.t3,fontSize:12,fontWeight:600}}>{players.length}/12</span>
+              {players.length<12&&(
+                <button onClick={addPlayer}
+                  style={{width:30,height:30,borderRadius:'50%',
+                    background:T.o,border:'none',color:T.bg,
+                    fontSize:18,fontWeight:800,cursor:'pointer',
+                    display:'flex',alignItems:'center',justifyContent:'center',
+                    lineHeight:1,paddingBottom:2,transition:'opacity .15s'}}
+                  onPointerDown={e=>e.currentTarget.style.opacity='.7'}
+                  onPointerUp={e=>e.currentTarget.style.opacity='1'}
+                  onPointerLeave={e=>e.currentTarget.style.opacity='1'}>+</button>
+              )}
+            </div>
+          </div>
+          {players.map((p,i)=>(
+            <div key={p.id} style={{display:'flex',alignItems:'center',padding:'10px 0',
+              borderBottom:i<players.length-1?`1px solid ${T.sep}`:'none',gap:10}}>
+              <div style={{width:10,height:10,borderRadius:'50%',background:p.color,flexShrink:0}}/>
+              <input value={p.name} onChange={e=>renamePlayer(p.id,e.target.value)}
+                style={{flex:1,fontSize:14,color:T.t1,fontWeight:500}}/>
+              {players.length>4&&(
+                <button onClick={()=>removePlayer(p.id)}
+                  style={{width:22,height:22,borderRadius:'50%',background:T.t4,border:'none',
+                    color:T.t1,fontSize:11,cursor:'pointer',display:'flex',alignItems:'center',
+                    justifyContent:'center',fontWeight:700,lineHeight:1}}>×</button>
+              )}
+            </div>
+          ))}
+          {!canStart&&(
+            <div style={{color:T.r,fontSize:11,marginTop:10,paddingBottom:6,fontWeight:500}}>
+              Mindestens 4 Spieler nötig
+            </div>
+          )}
+          {canStart&&(players.length-numCourts*4)>0&&(
+            <div style={{color:T.t3,fontSize:11,marginTop:10,paddingBottom:6,fontWeight:500}}>
+              {players.length-numCourts*4} Spieler {(players.length-numCourts*4)===1?'rotiert':'rotieren'} pro Runde durch den Pausen-Pool
+            </div>
+          )}
+        </div>
+
+      </div>
+
+      <div style={{height:100}}/>
+      <MatchBar onHome={onHome} rightButtons={[{
+        icon:isEdit?'✓':'Start',
+        disabled:!canStart,
+        onClick:()=>{
+          if(!canStart)return;
+          if(isEdit){
+            onSave({players,format,winMode,numCourts,roundDurationMin:roundDur});
+          } else {
+            const lb=calcLeaderboard(players,[],winMode);
+            const r0=format==='mexicano'
+              ?genMexicanoRound(players.map(p=>p.id),lb,numCourts)
+              :genAmericanoRound(players.map(p=>p.id),[],numCourts);
+            onStart({
+              players,format,winMode,
+              numCourts,
+              roundDurationMin:roundDur,
+              rounds:[r0],
+              current:0,
+              finished:false,
+              timerSecsLeft:roundDur*60,
+              timerRunning:false,
+              timerFinished:false,
+            });
+          }
+        },
+        style:{
+          width:56,height:56,
+          background:canStart?T.g:T.card2,
+          border:canStart?'1px solid rgba(255,255,255,0.18)':`1px solid ${T.border}`,
+          color:canStart?T.t1:T.t3,
+          fontSize:isEdit?22:13,
+          fontWeight:800,
+        }
+      }]}/>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TOURNAMENT PLAY
+═══════════════════════════════════════════════════════════════ */
+function TournamentPlay({tourney,setTourney,onHome,nav,ringId='soft',onEdit}){
+  const[tab,setTab]=useState('round');
+  const[confirmEnd,setConfirmEnd]=useState(false);
+  const[showSitOutInfo,setShowSitOutInfo]=useState(false);
+  const round=tourney.rounds[tourney.current];
+  const playerById=id=>tourney.players.find(p=>p.id===id);
+
+  const updateScore=(courtId,field,val)=>{
+    setTourney(t=>{
+      const newRounds=[...t.rounds];
+      newRounds[t.current]={...newRounds[t.current],
+        courts:newRounds[t.current].courts.map(c=>c.id!==courtId?c:{...c,[field]:val})
+      };
+      return {...t,rounds:newRounds};
+    });
+  };
+
+  const confirmCourt=(courtId)=>{
+    setTourney(t=>{
+      const newRounds=[...t.rounds];
+      newRounds[t.current]={...newRounds[t.current],
+        courts:newRounds[t.current].courts.map(c=>c.id!==courtId?c:{...c,done:!c.done})
+      };
+      return {...t,rounds:newRounds};
+    });
+  };
+
+  // ═══ TIMER LOGIC ═══
+  useEffect(()=>{
+    if(!tourney.timerRunning||tourney.finished)return;
+    const id=setInterval(()=>{
+      setTourney(t=>{
+        if(!t||!t.timerRunning)return t;
+        if(t.timerSecsLeft<=1){
+          playRing(ringId);
+          return {...t,timerSecsLeft:0,timerRunning:false,timerFinished:true};
+        }
+        return {...t,timerSecsLeft:t.timerSecsLeft-1};
+      });
+    },1000);
+    return()=>clearInterval(id);
+  },[tourney.timerRunning,tourney.finished,ringId,setTourney]);
+
+  const toggleTimer=()=>{
+    setTourney(t=>{
+      if(t.timerFinished||t.timerSecsLeft<=0){
+        return {...t,timerSecsLeft:t.roundDurationMin*60,timerRunning:true,timerFinished:false};
+      }
+      return {...t,timerRunning:!t.timerRunning};
+    });
+  };
+
+  const fmtT=(s)=>`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+
+  const nextRound=()=>{
+    setTourney(t=>{
+      const lb=calcLeaderboard(t.players,t.rounds,t.winMode);
+      const sortedLb=lb.sort((a,b)=>t.winMode==='points'?b.totalPts-a.totalPts:b.totalWins-a.totalWins);
+      const newR=t.format==='mexicano'
+        ?genMexicanoRound(t.players.map(p=>p.id),sortedLb,t.numCourts,t.rounds)
+        :genAmericanoRound(t.players.map(p=>p.id),t.rounds,t.numCourts);
+      return {...t,
+        rounds:[...t.rounds,newR],
+        current:t.current+1,
+        timerSecsLeft:t.roundDurationMin*60,
+        timerRunning:false,
+        timerFinished:false,
+      };
+    });
+  };
+
+  const endTournament=()=>{
+    setTourney(t=>({...t,finished:true,timerRunning:false}));
+    nav('tournament-leaderboard');
+  };
+
+  const allDone=round.courts.every(c=>c.done);
+  const lb=calcLeaderboard(tourney.players,tourney.rounds,tourney.winMode);
+  const sortedLb=lb.sort((a,b)=>tourney.winMode==='points'?b.totalPts-a.totalPts||b.totalWins-a.totalWins:b.totalWins-a.totalWins||b.totalPts-a.totalPts);
+
+  const totalSecs=(tourney.roundDurationMin||10)*60;
+  const progress=totalSecs?(tourney.timerSecsLeft||0)/totalSecs:0;
+
+  return(
+    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
+
+      <div style={{padding:'0 22px 14px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
+        <div>
+          <RitmoWordmark size={26}/>
+          <div style={{color:T.t2,fontSize:15,marginTop:6,fontWeight:400}}>
+            {tourney.format==='mexicano'?'Mexicano':'Americano'} · Runde {tourney.current+1}
+          </div>
+        </div>
+        <TrophyIcon size={36}/>
+      </div>
+
+      {/* Timer + Leaderboard Toggle */}
+      <div style={{display:'flex',gap:10,padding:'0 22px 14px'}}>
+        {/* Timer Card */}
+        <div style={{flex:'1 1 60%',
+          background:T.bg,
+          border:`2px solid ${tourney.timerFinished?T.r:T.o}`,
+          borderRadius:14,padding:'10px 14px',
+          display:'flex',alignItems:'center',gap:10,
+          position:'relative',overflow:'hidden'}}>
+          {/* Progress fill */}
+          <div style={{position:'absolute',left:0,top:0,bottom:0,
+            width:`${progress*100}%`,
+            background:tourney.timerFinished?'rgba(232,69,69,0.12)':'var(--oSoft)',
+            transition:'width 1s linear'}}/>
+          <div style={{flex:1,fontSize:30,fontWeight:800,
+            color:tourney.timerFinished?T.r:T.o,
+            fontFamily:'monospace',letterSpacing:1.5,
+            position:'relative',zIndex:1}}>
+            {fmtT(tourney.timerSecsLeft||0)}
+          </div>
+          <button onClick={toggleTimer}
+            style={{width:40,height:40,borderRadius:'50%',
+              background:tourney.timerFinished?T.r:T.o,border:'none',
+              color:T.bg,fontSize:14,fontWeight:800,
+              cursor:'pointer',position:'relative',zIndex:1,
+              display:'flex',alignItems:'center',justifyContent:'center'}}>
+            {tourney.timerFinished?'↺':tourney.timerRunning?'⏸':'▶'}
+          </button>
+        </div>
+
+        {/* Leaderboard Toggle */}
+        <button onClick={()=>setTab(tab==='board'?'round':'board')}
+          style={{flex:'1 1 40%',
+            background:tab==='board'?T.oSoft:T.card,
+            border:`1px solid ${tab==='board'?T.o:T.border}`,
+            borderRadius:14,padding:'10px 14px',
+            color:tab==='board'?T.o:T.t1,fontSize:14,fontWeight:600,
+            cursor:'pointer',transition:'all .2s'}}>
+          {tab==='board'?'Courts':'Leaderboard'}
+        </button>
+      </div>
+
+      <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:12,overflowY:'auto'}}>
+
+        {tab==='round'&&(<>
+          {round.courts.map((court,ci)=>(
+            <div key={court.id} style={{background:T.card,border:`1px solid ${court.done?T.o:T.border}`,
+              borderRadius:14,padding:'14px 16px',transition:'border-color .2s'}}>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
+                <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1}}>COURT {ci+1}</div>
+                {court.done&&<div style={{color:T.o,fontSize:11,fontWeight:700}}>✓ FERTIG</div>}
+              </div>
+              <div style={{display:'flex',alignItems:'center',gap:10}}>
+                {/* Team 1 */}
+                <div style={{flex:1,minWidth:0}}>
+                  {court.t1.map(pid=>{const p=playerById(pid);return(
+                    <div key={pid} style={{display:'flex',alignItems:'center',gap:6,marginBottom:3}}>
+                      <div style={{width:7,height:7,borderRadius:'50%',background:p?.color,flexShrink:0}}/>
+                      <span style={{fontSize:13,color:T.t1,fontWeight:600,
+                        overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p?.name}</span>
+                    </div>
+                  );})}
+                </div>
+                {/* Scores */}
+                <div style={{display:'flex',alignItems:'center',gap:6}}>
+                  <input type="number" min="0" max="99" value={court.s1??0}
+                    onChange={e=>updateScore(court.id,'s1',Math.max(0,parseInt(e.target.value)||0))}
+                    disabled={court.done}
+                    style={{width:48,height:48,borderRadius:10,
+                      border:`1.5px solid ${court.done?T.border:T.o}`,
+                      background:T.card2,color:T.t1,fontSize:22,fontWeight:800,
+                      textAlign:'center',opacity:court.done?.55:1}}/>
+                  <span style={{color:T.t3,fontSize:18,fontWeight:700}}>:</span>
+                  <input type="number" min="0" max="99" value={court.s2??0}
+                    onChange={e=>updateScore(court.id,'s2',Math.max(0,parseInt(e.target.value)||0))}
+                    disabled={court.done}
+                    style={{width:48,height:48,borderRadius:10,
+                      border:`1.5px solid ${court.done?T.border:T.o}`,
+                      background:T.card2,color:T.t1,fontSize:22,fontWeight:800,
+                      textAlign:'center',opacity:court.done?.55:1}}/>
+                </div>
+                {/* Team 2 */}
+                <div style={{flex:1,minWidth:0,textAlign:'right'}}>
+                  {court.t2.map(pid=>{const p=playerById(pid);return(
+                    <div key={pid} style={{display:'flex',alignItems:'center',gap:6,marginBottom:3,justifyContent:'flex-end'}}>
+                      <span style={{fontSize:13,color:T.t1,fontWeight:600,
+                        overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p?.name}</span>
+                      <div style={{width:7,height:7,borderRadius:'50%',background:p?.color,flexShrink:0}}/>
+                    </div>
+                  );})}
+                </div>
+              </div>
+              <button onClick={()=>confirmCourt(court.id)}
+                style={{width:'100%',marginTop:12,padding:'9px',borderRadius:10,border:'none',
+                  background:court.done?T.card2:T.oSoft,
+                  color:court.done?T.t2:T.o,fontSize:12,fontWeight:700,cursor:'pointer',
+                  border:`1px solid ${court.done?T.border:T.o}`}}>
+                {court.done?'✓ Bearbeiten':'Bestätigen'}
+              </button>
+            </div>
+          ))}
+
+          {round.sitOut?.length>0&&(
+            <div style={{background:T.card2,borderRadius:10,
+              border:`1px solid ${T.border}`}}>
+              <div style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px'}}>
+                <div style={{flex:1,minWidth:0,color:T.t3,fontSize:12,fontWeight:500}}>
+                  Pausiert: <span style={{color:T.t1,fontWeight:600}}>
+                    {round.sitOut.map(id=>playerById(id)?.name).join(', ')}
+                  </span>
+                </div>
+                <QuestionToggle filled={showSitOutInfo}
+                  onClick={()=>setShowSitOutInfo(v=>!v)}/>
+              </div>
+              {showSitOutInfo&&(
+                <div style={{padding:'0 14px 12px',borderTop:`1px solid ${T.sep}`,
+                  marginTop:2,paddingTop:10}}>
+                  <div style={{color:T.t1,fontSize:12,fontWeight:600,marginBottom:4}}>
+                    Pausen-Bonus
+                  </div>
+                  <div style={{color:T.t3,fontSize:11,lineHeight:1.5}}>
+                    {tourney.winMode==='points'
+                      ?'Pausierte Spieler bekommen den Median aller Punkte einer Runde gutgeschrieben — keine Benachteiligung durch erzwungene Pause.'
+                      :'Pausierte Spieler in der unteren Tabellenhälfte bekommen +1 Sieg pro Pause gutgeschrieben — damit niemand durch erzwungene Pause weiter zurückfällt.'}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Next round (when allDone) */}
+          {allDone&&(
+            <button onClick={nextRound}
+              style={{padding:'14px',borderRadius:14,border:'none',
+                background:T.o,color:T.bg,fontSize:15,fontWeight:800,cursor:'pointer',
+                marginTop:6}}>
+              Nächste Runde →
+            </button>
+          )}
+        </>)}
+
+        {tab==='board'&&(
+          <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+            overflow:'hidden',display:'flex',flexDirection:'column',maxHeight:'100%'}}>
+            <div style={{overflowY:'auto',WebkitOverflowScrolling:'touch'}}>
+              {sortedLb.map((p,i)=>(
+                <div key={p.id} style={{display:'flex',alignItems:'center',padding:'12px 16px',
+                  gap:10,borderBottom:i<sortedLb.length-1?`1px solid ${T.sep}`:'none',
+                  background:i===0?'var(--oSoft)':'transparent'}}>
+                  <div style={{width:24,fontSize:i<3?18:13,fontWeight:800,
+                    color:i===0?T.o:i===1?T.t2:i===2?T.t3:T.t3,textAlign:'center'}}>
+                    {i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}`}
+                  </div>
+                  <div style={{width:8,height:8,borderRadius:'50%',background:p.color,flexShrink:0}}/>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{color:T.t1,fontSize:14,fontWeight:i===0?700:600,
+                      overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.name}</div>
+                    <div style={{color:T.t3,fontSize:11,marginTop:1}}>
+                      {p.played} Spiele · {p.wins}S {p.losses}N
+                      {p.sitOut>0&&<> · {p.sitOut} Pause{p.sitOut>1?'n':''}</>}
+                    </div>
+                  </div>
+                  <div style={{textAlign:'right'}}>
+                    <div style={{color:T.o,fontSize:18,fontWeight:800}}>
+                      {tourney.winMode==='wins'?p.totalWins:p.totalPts}
+                    </div>
+                    <div style={{color:T.t3,fontSize:10,fontWeight:600}}>
+                      {tourney.winMode==='wins'
+                        ?(p.bonusWins>0?`Siege (+${p.bonusWins})`:'Siege')
+                        :(p.bonusPts>0?`Punkte (+${p.bonusPts})`:'Punkte')}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div style={{height:100}}/>
+      <MatchBar onHome={onHome} rightButtons={[
+        {
+          icon:'■',
+          onClick:()=>setConfirmEnd(true),
+          style:{
+            background:'rgba(232,69,69,0.12)',
+            border:`1px solid rgba(232,69,69,0.5)`,
+            color:T.r,
+            fontSize:18,
+            fontWeight:800,
+          }
+        },
+        {
+          icon:<EditIcon size={20} color={T.o}/>,
+          onClick:onEdit,
+        }
+      ]}/>
+
+      {confirmEnd&&(
+        <ResetModal
+          title="Turnier beenden"
+          description="Das Turnier wird beendet und der Endstand angezeigt."
+          question="Turnier jetzt beenden?"
+          confirmLabel="Beenden"
+          onCancel={()=>setConfirmEnd(false)}
+          onConfirm={()=>{setConfirmEnd(false);endTournament();}}/>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TOURNAMENT LEADERBOARD (Endstand)
+═══════════════════════════════════════════════════════════════ */
+function TournamentLeaderboard({tourney,onHome,onNew}){
+  const lb=calcLeaderboard(tourney.players,tourney.rounds,tourney.winMode);
+  const sortedLb=lb.sort((a,b)=>tourney.winMode==='points'?b.totalPts-a.totalPts||b.totalWins-a.totalWins:b.totalWins-a.totalWins||b.totalPts-a.totalPts);
+  const winner=sortedLb[0];
+
+  return(
+    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
+
+      <div style={{padding:'0 22px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
+        <div>
+          <RitmoWordmark size={26}/>
+          <div style={{color:T.t2,fontSize:15,marginTop:6,fontWeight:400}}>Endstand</div>
+        </div>
+        <TrophyIcon size={36}/>
+      </div>
+
+      <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
+
+        {/* Winner Hero */}
+        <div style={{background:T.card,border:`1px solid ${T.o}`,borderRadius:18,
+          padding:'24px 22px',textAlign:'center'}}>
+          <div style={{fontSize:42,marginBottom:8}}>🥇</div>
+          <div style={{fontSize:24,fontWeight:800,color:T.t1,letterSpacing:-.3}}>{winner?.name}</div>
+          <div style={{fontSize:14,color:T.o,fontWeight:700,marginTop:4}}>
+            {tourney.winMode==='wins'?`${winner?.totalWins} Siege`:`${winner?.totalPts} Punkte`}
+          </div>
+        </div>
+
+        {/* Full Leaderboard */}
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+          overflow:'hidden',flex:1,minHeight:120,display:'flex',flexDirection:'column'}}>
+          <div style={{overflowY:'auto',WebkitOverflowScrolling:'touch'}}>
+            {sortedLb.map((p,i)=>(
+              <div key={p.id} style={{display:'flex',alignItems:'center',padding:'12px 16px',
+                gap:10,borderBottom:i<sortedLb.length-1?`1px solid ${T.sep}`:'none'}}>
+                <div style={{width:24,fontSize:i<3?16:13,fontWeight:800,
+                  color:i===0?T.o:i===1?T.t2:i===2?T.t3:T.t3,textAlign:'center'}}>
+                  {i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}`}
+                </div>
+                <div style={{width:8,height:8,borderRadius:'50%',background:p.color,flexShrink:0}}/>
+                <div style={{flex:1}}>
+                  <div style={{color:T.t1,fontSize:14,fontWeight:i===0?700:600}}>{p.name}</div>
+                  <div style={{color:T.t3,fontSize:11}}>
+                    {p.played} Spiele · {p.wins}S {p.losses}N
+                    {p.sitOut>0&&<> · {p.sitOut} Pause{p.sitOut>1?'n':''}</>}
+                  </div>
+                </div>
+                <div style={{textAlign:'right'}}>
+                  <div style={{color:T.o,fontSize:16,fontWeight:800}}>
+                    {tourney.winMode==='wins'?p.totalWins:p.totalPts}
+                  </div>
+                  {((tourney.winMode==='wins'?p.bonusWins:p.bonusPts)>0)&&(
+                    <div style={{color:T.t3,fontSize:10,fontWeight:600}}>
+                      +{tourney.winMode==='wins'?p.bonusWins:p.bonusPts} Pause
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{display:'flex',gap:10,marginTop:6}}>
+          <button onClick={onNew}
+            style={{flex:1,padding:'14px',borderRadius:14,border:'none',
+              background:T.o,color:T.bg,fontSize:14,fontWeight:800,cursor:'pointer'}}>
+            🏆 Neues Turnier
+          </button>
+          <button onClick={onHome}
+            style={{flex:1,padding:'14px',borderRadius:14,
+              border:`1px solid ${T.border}`,background:T.card,
+              color:T.t1,fontSize:14,fontWeight:600,cursor:'pointer'}}>
+            🏠 Home
+          </button>
+        </div>
+      </div>
+
+      <div style={{height:100}}/>
+      <MatchBar onHome={onHome} rightIcon={<SearchIcon size={20}/>}/>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   LIVE SCREEN
+═══════════════════════════════════════════════════════════════ */
+function Live({hasMatch,hasTourney,tourneyData,matchCfg,nav,activeTab,setActiveTab,
+  onDeleteMatch,onDeleteTourney}){
+  const items=[];
+  if(hasMatch){
+    items.push({
+      id:'match',type:'match',
+      title:`${matchCfg.nameA} vs ${matchCfg.nameB}`,
+      sub:matchCfg.format==='bo3'?'Best of Three':'Americano',
+      navTo:'match',
+      onDelete:onDeleteMatch,
+    });
+  }
+  if(hasTourney){
+    items.push({
+      id:'tourney',type:'tourney',
+      title:`Turnier · ${tourneyData.format==='mexicano'?'Mexicano':'Americano'}`,
+      sub:`Runde ${tourneyData.current+1} · ${tourneyData.players.length} Spieler`,
+      navTo:tourneyData.finished?'tournament-leaderboard':'tournament-play',
+      onDelete:onDeleteTourney,
+    });
+  }
+
+  return(
+    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
+
+      <div style={{padding:'0 22px 24px'}}>
+        <RitmoWordmark size={26}/>
+        <div style={{color:T.t2,fontSize:15,marginTop:8,fontWeight:400}}>
+          {items.length===0?'Keine laufenden Spiele.':'Laufende Spiele und Turniere.'}
+        </div>
+        {items.length>0&&(
+          <div style={{color:T.t3,fontSize:11,marginTop:4,fontWeight:500}}>
+            ← Wische nach links zum Löschen
+          </div>
+        )}
+      </div>
+
+      <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
+
+        {items.length===0&&(
+          <div style={{textAlign:'center',color:T.t3,fontSize:14,padding:'40px 20px',lineHeight:1.6}}>
+            Starte ein neues Spiel oder Turnier auf dem Home-Screen, um es hier wieder aufzunehmen.
+          </div>
+        )}
+
+        {items.map((item,i)=>(
+          <div key={item.id} className="fu" style={{animationDelay:`${i*0.06}s`}}>
+            <SwipeableCard onDelete={item.onDelete}>
+              <button onClick={()=>nav(item.navTo)}
+                style={{width:'100%',background:T.card,border:`1px solid ${T.border}`,
+                  borderRadius:18,padding:'18px 20px',display:'flex',alignItems:'center',gap:18,
+                  cursor:'pointer',color:T.t1,textAlign:'left',transition:'background .15s'}}
+                onPointerDown={e=>e.currentTarget.style.background=T.card2}
+                onPointerUp={e=>e.currentTarget.style.background=T.card}
+                onPointerLeave={e=>e.currentTarget.style.background=T.card}>
+                {item.type==='match'?<CourtIcon size={42}/>:<TrophyIcon size={42}/>}
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{color:T.o,fontSize:16,fontWeight:700,marginBottom:3,
+                    overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.title}</div>
+                  <div style={{color:T.t3,fontSize:12,fontWeight:500}}>{item.sub}</div>
+                </div>
+                <div style={{display:'flex',alignItems:'center',gap:8,
+                  background:T.oSoft,borderRadius:20,
+                  padding:'5px 12px',border:`1px solid ${T.o}`,flexShrink:0}}>
+                  <span style={{color:T.o,fontSize:11,fontWeight:700}}>▶</span>
+                </div>
+              </button>
+            </SwipeableCard>
+          </div>
+        ))}
+      </div>
+
+      <div style={{height:120}}/>
+      <TabBar active={activeTab} onTab={setActiveTab}/>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   KEY CAPTURE — unsichtbarer Input fängt Hardware-Tasten zuverlässig
+   (iOS Safari fired keydown auf window NICHT für Bluetooth-Keyboards
+   wenn kein Input fokussiert ist)
+═══════════════════════════════════════════════════════════════ */
+function KeyCapture({onKey,enabled=true}){
+  const inputRef=useRef(null);
+
+  useEffect(()=>{
+    if(!enabled)return;
+    const el=inputRef.current;
+    if(!el)return;
+
+    const focusInput=()=>{
+      try{el.focus({preventScroll:true});}catch{el.focus();}
+    };
+
+    focusInput();
+
+    // Re-focus on tap anywhere except other inputs
+    const handlePointer=(e)=>{
+      const t=e.target;
+      if(!t)return;
+      if(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable)return;
+      requestAnimationFrame(focusInput);
+    };
+    document.addEventListener('pointerdown',handlePointer);
+
+    // Safety net: faster periodic check (every 400ms)
+    const interval=setInterval(()=>{
+      const ae=document.activeElement;
+      if(ae===el)return;
+      if(ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'||ae.isContentEditable))return;
+      focusInput();
+    },400);
+
+    return()=>{
+      document.removeEventListener('pointerdown',handlePointer);
+      clearInterval(interval);
+    };
+  },[enabled]);
+
+  if(!enabled)return null;
+
+  return(
+    <input
+      ref={inputRef}
+      type="text"
+      inputMode="none"
+      autoComplete="off"
+      autoCapitalize="off"
+      autoCorrect="off"
+      spellCheck="false"
+      value=""
+      onChange={()=>{}}
+      onKeyDown={(e)=>{
+        e.preventDefault();
+        onKey(e);
+      }}
+      onBlur={()=>{
+        if(!enabled)return;
+        setTimeout(()=>{
+          const ae=document.activeElement;
+          if(ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'||ae.isContentEditable))return;
+          inputRef.current?.focus({preventScroll:true});
+        },80);
+      }}
+      aria-hidden="true"
+      tabIndex={-1}
+      style={{
+        position:'fixed',top:0,left:0,
+        width:1,height:1,
+        opacity:0,pointerEvents:'none',
+        border:'none',outline:'none',
+        background:'transparent',color:'transparent',
+        caretColor:'transparent',
+        zIndex:-1,
+      }}
+    />
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   INPUT TESTER — zeigt live welche Tasten von der Hardware kommen
+═══════════════════════════════════════════════════════════════ */
+function InputTester(){
+  const[last,setLast]=useState(null);
+  const[tick,setTick]=useState(0);
+
+  const handleKey=(e)=>{
+    setLast({
+      key: e.key===' '?'Space':e.key,
+      code: e.code,
+      time: Date.now(),
+    });
+  };
+
+  // Tick to update "fresh" highlight
+  useEffect(()=>{
+    const id=setInterval(()=>setTick(t=>t+1),200);
+    return()=>clearInterval(id);
+  },[]);
+
+  const fresh=last&&(Date.now()-last.time<1500);
+
+  return(
+    <div style={{margin:'8px 0 14px',padding:'14px',
+      background:T.card2,borderRadius:10,border:`1px solid ${T.border}`}}>
+      <KeyCapture onKey={handleKey}/>
+      <div style={{color:T.t1,fontSize:12,fontWeight:700,marginBottom:6}}>
+        Eingabe testen
+      </div>
+      <div style={{color:T.t3,fontSize:11,marginBottom:12,lineHeight:1.5}}>
+        Drücke einen Knopf an deinem Gerät — wenn die App die Taste empfängt, erscheint sie hier.
+      </div>
+
+      {/* Detection display */}
+      <div style={{
+        background: fresh?T.oSoft:T.card,
+        border:`1.5px solid ${fresh?T.o:T.border}`,
+        borderRadius:10,padding:'18px 14px',textAlign:'center',
+        transition:'background .2s, border-color .2s'}}>
+        {last?(
+          <>
+            <div style={{color:fresh?T.o:T.t1,fontSize:22,fontWeight:800,
+              fontFamily:'monospace',transition:'color .2s',letterSpacing:.5}}>
+              {last.key}
+            </div>
+            <div style={{color:T.t3,fontSize:10,marginTop:4,fontFamily:'monospace'}}>
+              {last.code}
+            </div>
+          </>
+        ):(
+          <div style={{color:T.t3,fontSize:13,fontWeight:600,
+            animation:'pulse 1.5s ease infinite'}}>
+            Warte auf Eingabe...
+          </div>
+        )}
+      </div>
+
+      {/* Hint */}
+      <div style={{marginTop:10,padding:'8px 10px',background:'var(--oSoft)',
+        borderRadius:8,fontSize:10,color:T.t3,lineHeight:1.5}}>
+        💡 Wenn nichts erscheint, sendet dein Gerät keine Tastatur-Events
+        (z.B. wenn der Ring nur die iOS-Zoom-Funktion bedient). Prüfe in den
+        iOS Bedienungshilfen die Zoom-Einstellung oder schau im Manual deines
+        Geräts nach einem Keyboard-Modus.
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   QUESTION TOGGLE (Tastenbelegung an/aus)
+═══════════════════════════════════════════════════════════════ */
+function QuestionToggle({filled,onClick}){
+  return(
+    <span onClick={(e)=>{e.stopPropagation();e.preventDefault();onClick();}}
+      onPointerDown={e=>e.stopPropagation()}
+      role="button" tabIndex={0}
+      style={{width:24,height:24,borderRadius:'50%',cursor:'pointer',
+        display:'inline-flex',alignItems:'center',justifyContent:'center',
+        flexShrink:0,userSelect:'none'}}>
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+        <circle cx="11" cy="11" r="9.5"
+          fill={filled?T.o:'none'}
+          stroke={T.o} strokeWidth="1.6"/>
+        <text x="11" y="15.5" textAnchor="middle"
+          fill={filled?T.bg:T.o} fontSize="13" fontWeight="800"
+          fontFamily="-apple-system,sans-serif">?</text>
+      </svg>
+    </span>
+  );
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   SETTINGS SCREEN
+═══════════════════════════════════════════════════════════════ */
+function Settings({onHome,activeTab,setActiveTab,
+  ringId,setRingId,inputMode,setInputMode,voiceOn,setVoiceOn,
+  theme,setTheme,customThemes=[],onDeleteCustomTheme,onOpenWizard}){
+
+  const[showInfo,setShowInfo]=useState(false);
+
+  const inputs=[
+    {id:'smartphone',label:'Smartphone',icon:'📱',sub:'Tippen auf die Score-Karten'},
+    {id:'presenter',label:'Presenter',icon:'⌨️',sub:'Page Up / Page Down Tasten'},
+    {id:'ring',label:'Smart Ring',icon:'💍',sub:'Bluetooth Scroll-Ring am Finger'},
+    {id:'watch',label:'Smartwatch',icon:'⌚',sub:'Bald verfügbar'},
+    {id:'flic',label:'Flic Button',icon:'🔘',sub:'Bald verfügbar'},
+  ];
+
+  return(
+    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
+
+      <div style={{padding:'0 22px 22px'}}>
+        <RitmoWordmark size={26}/>
+        <div style={{color:T.t2,fontSize:15,marginTop:8,fontWeight:400}}>Einstellungen</div>
+      </div>
+
+      <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
+
+        {/* Steuerung */}
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+          padding:'18px 18px 6px'}}>
+          <div style={{color:T.o,fontSize:18,fontWeight:800,marginBottom:4}}>Steuerung</div>
+          <div style={{color:T.t3,fontSize:12,fontWeight:500,marginBottom:14,lineHeight:1.5}}>
+            Wie Punkte vergeben werden.
+          </div>
+
+          {inputs.map((opt,i)=>{
+            const isSel=inputMode===opt.id;
+            const hasInfo=opt.id==='presenter'||opt.id==='ring';
+            const disabled=opt.id==='flic'||opt.id==='watch';
+            return(
+              <button key={opt.id} onClick={()=>!disabled&&setInputMode(opt.id)}
+                disabled={disabled}
+                style={{width:'100%',padding:'14px 0',background:'transparent',
+                  border:'none',borderTop:i>0?`1px solid ${T.sep}`:'none',
+                  display:'flex',alignItems:'center',gap:14,
+                  cursor:disabled?'not-allowed':'pointer',
+                  opacity:disabled?.45:1,textAlign:'left'}}>
+                <span style={{fontSize:24,width:32,textAlign:'center'}}>{opt.icon}</span>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{color:T.t1,fontSize:15,fontWeight:600}}>{opt.label}</div>
+                  <div style={{color:T.t3,fontSize:11,marginTop:1,fontWeight:500}}>{opt.sub}</div>
+                </div>
+                {isSel&&hasInfo&&(
+                  <QuestionToggle filled={showInfo} onClick={()=>setShowInfo(s=>!s)}/>
+                )}
+                {isSel&&<span style={{color:T.o,fontSize:18,fontWeight:700,paddingRight:4}}>✓</span>}
+              </button>
+            );
+          })}
+
+          {/* Presenter sub-content: tester (default) or key mapping */}
+          {inputMode==='presenter'&&!showInfo&&<InputTester/>}
+          {inputMode==='presenter'&&showInfo&&(
+            <div style={{margin:'8px 0 14px',padding:'12px 14px',background:T.card2,borderRadius:10,
+              border:`1px solid ${T.border}`,color:T.t2,fontSize:12,lineHeight:1.7}}>
+              <div style={{color:T.t1,fontWeight:700,marginBottom:6}}>Tasten-Belegung:</div>
+              <div>Page Up → Punkt Team A</div>
+              <div>Page Down → Punkt Team B</div>
+              <div>Doppelklick Page Up → Letzten Punkt rückgängig</div>
+              <div>Doppelklick Page Down → Spiel zurücksetzen</div>
+            </div>
+          )}
+
+          {/* Ring sub-content: tester (default) or key mapping */}
+          {inputMode==='ring'&&!showInfo&&<InputTester/>}
+          {inputMode==='ring'&&showInfo&&(
+            <div style={{margin:'8px 0 14px',padding:'12px 14px',background:T.card2,borderRadius:10,
+              border:`1px solid ${T.border}`,color:T.t2,fontSize:12,lineHeight:1.7}}>
+              <div style={{color:T.t1,fontWeight:700,marginBottom:6}}>Tasten-Belegung:</div>
+              <div><span style={{color:T.t1,fontWeight:700,fontFamily:'monospace'}}>2</span> → Punkt Team A</div>
+              <div><span style={{color:T.t1,fontWeight:700,fontFamily:'monospace'}}>4</span> → Punkt Team B</div>
+              <div><span style={{color:T.t1,fontWeight:700,fontFamily:'monospace'}}>Leertaste</span> → Letzten Punkt rückgängig</div>
+              <div><span style={{color:T.t1,fontWeight:700,fontFamily:'monospace'}}>1</span> → Spiel zurücksetzen</div>
+              <div style={{color:T.t1,fontWeight:700,marginTop:10,marginBottom:4}}>Reset rückgängig:</div>
+              <div style={{color:T.t3}}>
+                Nach Reset hast du <span style={{color:T.o,fontWeight:700}}>1.5 Sekunden</span> Zeit,
+                durch erneutes Drücken von <span style={{color:T.t1,fontWeight:700,fontFamily:'monospace'}}>1</span> den
+                vorherigen Spielstand wiederherzustellen.
+              </div>
+              <div style={{marginTop:10,color:T.t3,fontStyle:'italic',fontSize:11}}>
+                Setup: Ring per Bluetooth koppeln, RITMO Padel öffnen, drücken — funktioniert sofort.
+              </div>
+            </div>
+          )}
+
+          {inputMode==='flic'&&(
+            <div style={{margin:'8px 0 14px',padding:'12px 14px',background:T.card2,borderRadius:10,
+              border:`1px solid ${T.border}`,color:T.t3,fontSize:12,lineHeight:1.6}}>
+              Flic Button Integration kommt in einer zukünftigen Version.
+            </div>
+          )}
+
+          {inputMode==='watch'&&(
+            <div style={{margin:'8px 0 14px',padding:'12px 14px',background:T.card2,borderRadius:10,
+              border:`1px solid ${T.border}`,color:T.t3,fontSize:12,lineHeight:1.6}}>
+              Smartwatch Integration kommt in einer zukünftigen Version.
+            </div>
+          )}
+        </div>
+
+        {/* Sprachansage */}
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+          padding:'14px 18px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+          <div>
+            <div style={{color:T.t1,fontSize:15,fontWeight:600}}>Sprachansage</div>
+            <div style={{color:T.t3,fontSize:11,marginTop:2}}>Spielstand wird angesagt</div>
+          </div>
+          <div onClick={()=>setVoiceOn(!voiceOn)}
+            style={{width:48,height:28,borderRadius:14,
+              background:voiceOn?T.o:'rgba(120,120,128,.32)',
+              position:'relative',cursor:'pointer',transition:'background .25s',flexShrink:0}}>
+            <div style={{width:24,height:24,borderRadius:'50%',background:T.bg,
+              position:'absolute',top:2,left:voiceOn?22:2,transition:'left .25s',
+              boxShadow:'0 1px 3px rgba(0,0,0,.3)'}}/>
+          </div>
+        </div>
+
+        {/* Klingelton */}
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,padding:'18px 18px 8px'}}>
+          <div style={{color:T.o,fontSize:18,fontWeight:800,marginBottom:4}}>Timer-Klingelton</div>
+          <div style={{color:T.t3,fontSize:12,fontWeight:500,marginBottom:14,lineHeight:1.5}}>
+            Ton wenn Americano-Timer abläuft.
+          </div>
+          {RINGS.map((r,i)=>(
+            <div key={r.id} onClick={()=>setRingId(r.id)}
+              style={{display:'flex',alignItems:'center',padding:'12px 0',
+                borderBottom:i<RINGS.length-1?`1px solid ${T.sep}`:'none',cursor:'pointer'}}>
+              <div style={{flex:1}}>
+                <div style={{color:T.t1,fontSize:14,fontWeight:ringId===r.id?700:500}}>{r.label}</div>
+                <div style={{color:T.t3,fontSize:11,marginTop:1}}>{r.desc}</div>
+              </div>
+              <div style={{display:'flex',alignItems:'center',gap:10}}>
+                <button onClick={e=>{e.stopPropagation();playRing(r.id);}}
+                  style={{width:30,height:30,borderRadius:8,background:T.card2,
+                    border:`1px solid ${T.border}`,color:T.o,fontSize:11,
+                    cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',
+                    fontWeight:700}}>▶</button>
+                {ringId===r.id?<span style={{color:T.o,fontSize:16,width:16,textAlign:'center'}}>✓</span>:<span style={{width:16}}/>}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Designs — built-in + custom themes */}
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+          padding:'18px 18px 8px'}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',
+            marginBottom:4}}>
+            <div style={{color:T.o,fontSize:18,fontWeight:800}}>Designs</div>
+            <button onClick={onOpenWizard}
+              style={{background:T.card2,border:`1px solid ${T.o}`,borderRadius:10,
+                padding:'7px 11px',cursor:'pointer',display:'flex',alignItems:'center',
+                gap:6,color:T.o,fontSize:12,fontWeight:700,letterSpacing:.3}}>
+              <WandIcon size={16}/>
+              <span>Neu</span>
+            </button>
+          </div>
+          <div style={{color:T.t3,fontSize:12,fontWeight:500,marginBottom:14,lineHeight:1.5}}>
+            Eingebaute Themes oder eigene Designs. Custom-Designs lassen sich nach links wischen, um sie zu löschen.
+          </div>
+          {[
+            {id:'dark',label:'RITMO Dark Bauhaus',icon:'🌙',desc:'Schwarz, weiß, orange'},
+            {id:'light',label:"Light n' Serious",icon:'☀️',desc:'Weiß, schwarz, blau'},
+            {id:'padel',label:'Padelhaus Blue',icon:'🎾',desc:'Elektroblau, weiß, gelb'},
+            {id:'wimbledon',label:'Wimbledon Green',icon:'🌿',desc:'Rolex-Grün, beige, bone white'},
+          ].map((th,i,arr)=>(
+            <div key={th.id} onClick={()=>setTheme(th.id)}
+              style={{display:'flex',alignItems:'center',padding:'12px 0',
+                borderBottom:`1px solid ${T.sep}`,cursor:'pointer'}}>
+              <div style={{fontSize:18,marginRight:12,width:22,textAlign:'center'}}>{th.icon}</div>
+              <div style={{flex:1}}>
+                <div style={{color:T.t1,fontSize:14,fontWeight:theme===th.id?700:500}}>{th.label}</div>
+                <div style={{color:T.t3,fontSize:11,marginTop:1}}>{th.desc}</div>
+              </div>
+              {theme===th.id
+                ?<span style={{color:T.o,fontSize:16,width:16,textAlign:'center'}}>✓</span>
+                :<span style={{width:16}}/>}
+            </div>
+          ))}
+
+          {/* Custom themes — swipeable */}
+          {customThemes.map((ct,i)=>{
+            const isLast=i===customThemes.length-1;
+            const isActive=theme===`custom-${ct.id}`;
+            return(
+              <SwipeableCard key={ct.id}
+                onDelete={()=>onDeleteCustomTheme(ct.id)}
+                outerStyle={{borderRadius:0,
+                  borderBottom:isLast?'none':`1px solid ${T.sep}`}}
+                childBg={T.card}>
+                <div onClick={()=>setTheme(`custom-${ct.id}`)}
+                  style={{display:'flex',alignItems:'center',padding:'12px 0',
+                    cursor:'pointer'}}>
+                  <div style={{width:22,marginRight:12,display:'flex',
+                    justifyContent:'center'}}>
+                    <div style={{display:'flex',flexDirection:'column',gap:2}}>
+                      <div style={{display:'flex',gap:2}}>
+                        <div style={{width:8,height:8,borderRadius:2,background:ct.bg,
+                          border:`1px solid ${T.border}`}}/>
+                        <div style={{width:8,height:8,borderRadius:2,background:ct.highlight}}/>
+                      </div>
+                      <div style={{display:'flex',gap:2}}>
+                        <div style={{width:8,height:8,borderRadius:2,background:ct.text,
+                          border:`1px solid ${T.border}`}}/>
+                        <div style={{width:8,height:8,borderRadius:2,background:ct.secondary}}/>
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{color:T.t1,fontSize:14,fontWeight:isActive?700:500,
+                      overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                      {ct.name}
+                    </div>
+                    <div style={{color:T.t3,fontSize:11,marginTop:1}}>
+                      Custom · {FONTS.find(f=>f.id===ct.font)?.name||'System'}
+                    </div>
+                  </div>
+                  {isActive
+                    ?<span style={{color:T.o,fontSize:16,width:16,textAlign:'center'}}>✓</span>
+                    :<span style={{width:16}}/>}
+                </div>
+              </SwipeableCard>
+            );
+          })}
+        </div>
+
+        {/* About */}
+        <div style={{background:'transparent',border:`1px solid ${T.border}`,borderRadius:14,
+          padding:'14px 18px',color:T.t3,fontSize:11,lineHeight:1.6,textAlign:'center'}}>
+          Made by Team RITMO.<br/>With love for Padel ♡
+        </div>
+      </div>
+
+      <div style={{height:120}}/>
+      <TabBar active={activeTab} onTab={setActiveTab}/>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   REGELWERK (Rules) — Übersicht + Detail-Screens
+═══════════════════════════════════════════════════════════════ */
+function RulesH({children}){
+  return <div style={{color:T.o,fontSize:11,fontWeight:700,letterSpacing:1.4,
+    textTransform:'uppercase',marginTop:18,marginBottom:6}}>{children}</div>;
+}
+function RulesP({children}){
+  return <div style={{color:T.t2,fontSize:13,lineHeight:1.6,marginBottom:4}}>{children}</div>;
+}
+function RulesUl({items}){
+  return(
+    <ul style={{margin:0,padding:0,listStyle:'none'}}>
+      {items.map((item,i)=>(
+        <li key={i} style={{color:T.t2,fontSize:13,lineHeight:1.55,
+          paddingLeft:14,position:'relative',marginBottom:3}}>
+          <span style={{position:'absolute',left:0,color:T.o,fontWeight:700}}>·</span>
+          {item}
+        </li>
+      ))}
+    </ul>
+  );
+}
+function RulesDef({term,children}){
+  return(
+    <div style={{marginBottom:8}}>
+      <span style={{color:T.t1,fontSize:13,fontWeight:700}}>{term}</span>
+      <span style={{color:T.t2,fontSize:13,lineHeight:1.5}}> — {children}</span>
+    </div>
+  );
+}
+
+/* ───── Shared shell for detail screens ───── */
+function RulesDetailLayout({icon,title,sub,visual,children,onBackToRules,onHome,
+  onNext,onPrev,currentIdx,totalSections,backIcon}){
+  const[dx,setDx]=useState(0);
+  const[animating,setAnimating]=useState(false);
+  const dragRef=useRef({active:false,startX:0,startY:0,isHoriz:false,decided:false});
+
+  const onTouchStart=(e)=>{
+    if(animating) return;
+    const t=e.touches?e.touches[0]:e;
+    dragRef.current={active:true,startX:t.clientX,startY:t.clientY,
+      isHoriz:false,decided:false};
+  };
+  const onTouchMove=(e)=>{
+    if(!dragRef.current.active||animating) return;
+    const t=e.touches?e.touches[0]:e;
+    const ddx=t.clientX-dragRef.current.startX;
+    const ddy=t.clientY-dragRef.current.startY;
+    if(!dragRef.current.decided){
+      if(Math.abs(ddx)>8||Math.abs(ddy)>8){
+        dragRef.current.isHoriz=Math.abs(ddx)>Math.abs(ddy);
+        dragRef.current.decided=true;
+      }
+    }
+    if(dragRef.current.isHoriz){
+      // Edge resistance
+      let applied=ddx;
+      if((ddx>0&&!onPrev)||(ddx<0&&!onNext)) applied=ddx*0.25;
+      setDx(applied);
+    }
+  };
+  const onTouchEnd=()=>{
+    if(!dragRef.current.active) return;
+    const wasHoriz=dragRef.current.isHoriz;
+    const finalDx=dx;
+    dragRef.current.active=false;
+    if(wasHoriz){
+      const threshold=70;
+      if(finalDx<-threshold&&onNext){
+        // Animate off to the left, then navigate
+        setAnimating(true);
+        setDx(-window.innerWidth);
+        setTimeout(()=>{onNext();setDx(0);setAnimating(false);},220);
+        return;
+      } else if(finalDx>threshold&&onPrev){
+        setAnimating(true);
+        setDx(window.innerWidth);
+        setTimeout(()=>{onPrev();setDx(0);setAnimating(false);},220);
+        return;
+      }
+    }
+    setDx(0);
+  };
+
+  return(
+    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
+
+      <div style={{padding:'0 22px 8px'}}>
+        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
+          <div style={{fontSize:32,width:42,textAlign:'center'}}>{icon}</div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{color:T.t1,fontSize:22,fontWeight:800,letterSpacing:-.3}}>{title}</div>
+            <div style={{color:T.t3,fontSize:12,marginTop:2,fontWeight:500}}>{sub}</div>
+          </div>
+        </div>
+        {/* Page indicator dots */}
+        {totalSections>1&&(
+          <div style={{display:'flex',gap:6,justifyContent:'center',
+            padding:'10px 0 4px',alignItems:'center'}}>
+            {Array.from({length:totalSections}).map((_,i)=>(
+              <div key={i} style={{
+                width:i===currentIdx?18:6,height:6,borderRadius:3,
+                background:i===currentIdx?T.o:T.t4,
+                transition:'all .25s ease'}}/>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div style={{flex:1,padding:'0 22px',overflowY:'auto',
+        WebkitOverflowScrolling:'touch',
+        transform:`translateX(${dx}px)`,
+        transition:dragRef.current.active?'none':'transform .22s ease',
+        willChange:'transform'}}
+        onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
+        onMouseDown={onTouchStart}
+        onMouseMove={(e)=>dragRef.current.active&&onTouchMove(e)}
+        onMouseUp={onTouchEnd}
+        onMouseLeave={()=>dragRef.current.active&&onTouchEnd()}>
+        {visual&&(
+          <div className="fi" style={{background:T.card,border:`1px solid ${T.border}`,
+            borderRadius:14,padding:16,marginBottom:18,
+            display:'flex',alignItems:'center',justifyContent:'center'}}>
+            {visual}
+          </div>
+        )}
+        <div className="fu" style={{animationDelay:'.1s'}}>
+          {children}
+        </div>
+        <div style={{height:30}}/>
+      </div>
+
+      <div style={{height:100}}/>
+      <MatchBar onHome={onHome} rightButtons={[
+        {icon:backIcon||<BookIcon size={18}/>,onClick:onBackToRules}
+      ]}/>
+    </div>
+  );
+}
+
+/* ───── Animated visual: Padel Court diagram (portrait, 20m × 10m) ───── */
+function CourtVisual(){
+  return(
+    <svg viewBox="0 0 140 220" style={{width:'auto',maxHeight:280,height:'70vh',display:'block'}}>
+      <defs>
+        <style>{`
+          .court-line { stroke-dasharray: 600; stroke-dashoffset: 600;
+            animation: drawLine 1.4s ease forwards; }
+          .court-line.delay1 { animation-delay: .3s; }
+          .court-line.delay2 { animation-delay: .6s; }
+          .court-line.delay3 { animation-delay: .9s; }
+          @keyframes drawLine { to { stroke-dashoffset: 0; } }
+          @keyframes fadeIn2 { from { opacity: 0 } to { opacity: 1 } }
+          .court-label { opacity: 0; animation: fadeIn2 .6s ease forwards; animation-delay: 1.2s; }
+        `}</style>
+      </defs>
+      {/* Subtle service-area tinting */}
+      <rect x="20" y="83" width="100" height="54" fill="rgba(255,255,255,0.03)"/>
+      {/* Court outline — bold white walls */}
+      <rect className="court-line" x="20" y="20" width="100" height="180" rx="2"
+        fill="rgba(255,255,255,0.04)" stroke="var(--t1)" strokeWidth="2.2"/>
+      {/* Service lines — 3 m from net (parallel to net, same boldness as outline) */}
+      <line className="court-line delay2" x1="20" y1="83" x2="120" y2="83"
+        stroke="var(--t1)" strokeWidth="1.8"/>
+      <line className="court-line delay2" x1="20" y1="137" x2="120" y2="137"
+        stroke="var(--t1)" strokeWidth="1.8"/>
+      {/* Center service line — vertical, ONLY between service lines */}
+      <line className="court-line delay3" x1="70" y1="83" x2="70" y2="137"
+        stroke="var(--t1)" strokeWidth="1.8"/>
+      {/* Net — across the middle */}
+      <line className="court-line delay1" x1="20" y1="110" x2="120" y2="110"
+        stroke="var(--o)" strokeWidth="2.4" strokeDasharray="3 2"/>
+      {/* Net posts */}
+      <circle cx="20" cy="110" r="2.5" fill="var(--o)" opacity="0.9"/>
+      <circle cx="120" cy="110" r="2.5" fill="var(--o)" opacity="0.9"/>
+      {/* Labels */}
+      <text className="court-label" x="70" y="14" textAnchor="middle"
+        fontSize="7" fill="var(--t3)" letterSpacing="1.5">10 m</text>
+      <text className="court-label" x="11" y="113" textAnchor="middle"
+        fontSize="7" fill="var(--t3)" letterSpacing="1.5"
+        transform="rotate(-90 11 113)">20 m</text>
+      <text className="court-label" x="70" y="214" textAnchor="middle"
+        fontSize="7" fill="var(--o)" fontWeight="700" letterSpacing="2">NETZ</text>
+    </svg>
+  );
+}
+
+/* ───── Bo3 score hierarchy pyramid ───── */
+function Bo3HierarchyVisual(){
+  const rows=[
+    {label:'MATCH',sub:'Best of 3',color:T.o,bars:[100]},
+    {label:'SÄTZE',sub:'2 zum Sieg',color:T.t1,bars:[48,48]},
+    {label:'SPIELE',sub:'6 (+2 Vorsprung)',color:T.t2,bars:[16,16,16,16,16,16]},
+    {label:'PUNKTE',sub:'0/15/30/40',color:T.t3,bars:[10,10,10,10]},
+  ];
+  return(
+    <div style={{width:'100%',maxWidth:300,display:'flex',flexDirection:'column',gap:10}}>
+      {rows.map((row,i)=>(
+        <div key={row.label} className="fu" style={{animationDelay:`${i*.15}s`}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',
+            marginBottom:4}}>
+            <div style={{color:row.color,fontSize:11,fontWeight:700,letterSpacing:1.5}}>
+              {row.label}</div>
+            <div style={{color:T.t3,fontSize:10,fontWeight:500}}>{row.sub}</div>
+          </div>
+          <div style={{display:'flex',gap:3}}>
+            {row.bars.map((w,j)=>(
+              <div key={j} style={{flex:w,height:8,borderRadius:4,
+                background:row.color,opacity:0.85-i*0.15}}/>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ───── Americano rotation diagram ───── */
+function AmericanoRotationVisual(){
+  const players=[
+    {label:'A',x:60,y:30,delay:0},
+    {label:'B',x:140,y:60,delay:.15},
+    {label:'C',x:60,y:130,delay:.3},
+    {label:'D',x:140,y:160,delay:.45},
+  ];
+  return(
+    <svg viewBox="0 0 200 200" style={{width:'100%',maxWidth:240,height:'auto'}}>
+      <defs>
+        <marker id="rotArr" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+          <polygon points="0 0, 6 3, 0 6" fill="var(--o)"/>
+        </marker>
+        <style>{`
+          .rot-player { animation: rotPop .5s ease backwards; }
+          @keyframes rotPop { from { opacity: 0; transform: scale(.6); } to { opacity: 1; transform: scale(1); } }
+        `}</style>
+      </defs>
+      {/* Rotation arrows in a soft circular pattern */}
+      <path d="M 85 35 Q 130 30 145 70" stroke="var(--o)" strokeWidth="1.4"
+        fill="none" markerEnd="url(#rotArr)" opacity="0.7"/>
+      <path d="M 145 95 Q 130 130 90 130" stroke="var(--o)" strokeWidth="1.4"
+        fill="none" markerEnd="url(#rotArr)" opacity="0.7"/>
+      <path d="M 80 135 Q 110 160 130 160" stroke="var(--o)" strokeWidth="1.4"
+        fill="none" markerEnd="url(#rotArr)" opacity="0.7"/>
+      <path d="M 145 130 Q 165 100 90 35" stroke="var(--o)" strokeWidth="1.4"
+        fill="none" strokeDasharray="3 2" opacity="0.4"/>
+
+      {players.map(p=>(
+        <g key={p.label} className="rot-player" style={{transformOrigin:`${p.x}px ${p.y}px`,
+          animationDelay:`${p.delay}s`}}>
+          <circle cx={p.x} cy={p.y} r="18" fill="var(--card2)"
+            stroke="var(--o)" strokeWidth="1.5"/>
+          <text x={p.x} y={p.y+1} textAnchor="middle" dominantBaseline="middle"
+            fontSize="14" fontWeight="800" fill="var(--t1)">{p.label}</text>
+        </g>
+      ))}
+      <text x="100" y="195" textAnchor="middle" fontSize="7"
+        fill="var(--t3)" letterSpacing="2" fontWeight="600">ZUFÄLLIGE PAARUNGEN PRO RUNDE</text>
+    </svg>
+  );
+}
+
+/* ───── Mexicano pairing diagram ───── */
+function MexicanoPairingVisual(){
+  const ranks=[1,2,3,4,5,6,7,8];
+  return(
+    <svg viewBox="0 0 280 140" style={{width:'100%',maxWidth:340,height:'auto'}}>
+      <defs>
+        <style>{`
+          .pair-line { stroke-dasharray: 200; stroke-dashoffset: 200;
+            animation: drawP 1s ease forwards; }
+          @keyframes drawP { to { stroke-dashoffset: 0; } }
+        `}</style>
+      </defs>
+      {/* Court labels */}
+      <text x="65" y="14" textAnchor="middle" fontSize="9" fontWeight="700"
+        fill="var(--o)" letterSpacing="1.5">COURT 1</text>
+      <text x="215" y="14" textAnchor="middle" fontSize="9" fontWeight="700"
+        fill="var(--o)" letterSpacing="1.5">COURT 2</text>
+
+      {/* Rank circles in a row */}
+      {ranks.map((r,i)=>{
+        const x=20+i*32;
+        return(
+          <g key={r}>
+            <circle cx={x} cy="40" r="13" fill="var(--card2)"
+              stroke="var(--o)" strokeWidth="1.5"/>
+            <text x={x} y="41" textAnchor="middle" dominantBaseline="middle"
+              fontSize="11" fontWeight="800" fill="var(--t1)">{r}</text>
+            <text x={x} y="70" textAnchor="middle" fontSize="7"
+              fill="var(--t3)" letterSpacing=".5">{r===1?'TOP':r===8?'LAST':''}</text>
+          </g>
+        );
+      })}
+
+      {/* Pairing arcs (1-4 vs 2-3, 5-8 vs 6-7) */}
+      <path className="pair-line" d="M 20 53 Q 50 100 116 53"
+        stroke="var(--o)" strokeWidth="1.7" fill="none" opacity="0.85"
+        style={{animationDelay:'.2s'}}/>
+      <path className="pair-line" d="M 52 53 Q 70 80 84 53"
+        stroke="var(--blue)" strokeWidth="1.7" fill="none" opacity="0.85"
+        style={{animationDelay:'.4s'}}/>
+      <path className="pair-line" d="M 148 53 Q 180 100 244 53"
+        stroke="var(--o)" strokeWidth="1.7" fill="none" opacity="0.85"
+        style={{animationDelay:'.6s'}}/>
+      <path className="pair-line" d="M 180 53 Q 200 80 212 53"
+        stroke="var(--blue)" strokeWidth="1.7" fill="none" opacity="0.85"
+        style={{animationDelay:'.8s'}}/>
+
+      {/* Legend */}
+      <g transform="translate(0,105)">
+        <rect x="20" y="0" width="14" height="3" fill="var(--o)" rx="1.5"/>
+        <text x="40" y="3" fontSize="8" fill="var(--t2)" dominantBaseline="middle">Team 1 (1+4)</text>
+        <rect x="120" y="0" width="14" height="3" fill="var(--blue)" rx="1.5"/>
+        <text x="140" y="3" fontSize="8" fill="var(--t2)" dominantBaseline="middle">Team 2 (2+3)</text>
+      </g>
+      <text x="140" y="128" textAnchor="middle" fontSize="7"
+        fill="var(--t3)" letterSpacing="1.5" fontWeight="600">
+        TOP + LOW  vs  MITTEN-PAARUNG → AUSGEGLICHENE MATCHES
+      </text>
+    </svg>
+  );
+}
+
+/* ───── Pausen-Pool visual ───── */
+function PausenPoolVisual(){
+  const players=['A','B','C','D','E'];
+  const paused=2; // E (index 4) and C (index 2) — show one
+  return(
+    <svg viewBox="0 0 240 130" style={{width:'100%',maxWidth:300,height:'auto'}}>
+      <defs>
+        <style>{`
+          .pulse { animation: pulse 2s ease infinite; transform-origin: center; }
+          @keyframes pulse { 0%,100% { opacity:0.5; transform: scale(1); } 50% { opacity: 1; transform: scale(1.08); } }
+        `}</style>
+      </defs>
+      <text x="120" y="12" textAnchor="middle" fontSize="8" fontWeight="700"
+        fill="var(--o)" letterSpacing="1.5">5 SPIELER · 1 COURT</text>
+
+      {/* Active 4 players */}
+      <text x="55" y="34" textAnchor="middle" fontSize="6"
+        fill="var(--t3)" letterSpacing="1">SPIELT</text>
+      {[0,1,2,3].map(i=>{
+        const x=20+i*30;
+        const isPlayingNow=i!==paused;
+        return(
+          <g key={i}>
+            <circle cx={x} cy="55" r="11" 
+              fill={isPlayingNow?'var(--card2)':'transparent'}
+              stroke={isPlayingNow?'var(--o)':'var(--t4)'}
+              strokeWidth="1.5"
+              strokeDasharray={isPlayingNow?'0':'2 2'}/>
+            <text x={x} y="56" textAnchor="middle" dominantBaseline="middle"
+              fontSize="10" fontWeight="800"
+              fill={isPlayingNow?'var(--t1)':'var(--t3)'}>{players[i]}</text>
+          </g>
+        );
+      })}
+
+      {/* Paused player on right */}
+      <text x="195" y="34" textAnchor="middle" fontSize="6"
+        fill="var(--t3)" letterSpacing="1">PAUSIERT</text>
+      <g className="pulse" style={{transformOrigin:'195px 55px'}}>
+        <circle cx="195" cy="55" r="13"
+          fill="var(--oSoft)" stroke="var(--o)" strokeWidth="1.8"/>
+        <text x="195" y="56" textAnchor="middle" dominantBaseline="middle"
+          fontSize="11" fontWeight="800" fill="var(--o)">{players[paused]}</text>
+      </g>
+
+      {/* Rotation arrow */}
+      <path d="M 170 55 Q 130 95 90 80" stroke="var(--o)" strokeWidth="1.4"
+        strokeDasharray="3 2" fill="none" opacity="0.55"/>
+      <polygon points="92 76, 86 79, 90 82" fill="var(--o)" opacity="0.55"/>
+
+      <text x="120" y="115" textAnchor="middle" fontSize="7"
+        fill="var(--t3)" letterSpacing="1.5" fontWeight="600">
+        ROTATION: WER AM WENIGSTEN PAUSIERT HAT, SITZT AUS
+      </text>
+    </svg>
+  );
+}
+
+/* ───── Shot illustrations: stick-figure player + racket + ball ─────
+   Common defs: arrow marker. Base body: head + torso + legs.
+   Each shot overrides arms, racket position, ball location & trajectory.
+─────────────────────────────────────────────────────────────────── */
+function ShotBase({head=true,leftArm,rightArm,racket,ball,trajectory,arrowId}){
+  return(
+    <>
+      <defs>
+        <marker id={arrowId} markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+          <polygon points="0 0, 6 3, 0 6" fill="var(--o)"/>
+        </marker>
+      </defs>
+      {/* Head */}
+      {head&&<circle cx="78" cy="32" r="10" fill="var(--t1)" opacity="0.85"/>}
+      {/* Torso */}
+      <line x1="78" y1="42" x2="78" y2="105" stroke="var(--t1)" strokeWidth="4" strokeLinecap="round"/>
+      {/* Legs */}
+      <line x1="78" y1="105" x2="60" y2="158" stroke="var(--t1)" strokeWidth="3.5" strokeLinecap="round"/>
+      <line x1="78" y1="105" x2="96" y2="158" stroke="var(--t1)" strokeWidth="3.5" strokeLinecap="round"/>
+      {/* Arms (per-shot) */}
+      {leftArm}
+      {rightArm}
+      {/* Racket */}
+      {racket}
+      {/* Ball */}
+      {ball}
+      {/* Trajectory */}
+      {trajectory}
+    </>
+  );
+}
+
+function SmashFigure(){
+  return(
+    <svg viewBox="0 0 160 180" style={{width:'100%',maxWidth:140,height:'auto',display:'block'}}>
+      <ShotBase
+        arrowId="arrSmash"
+        leftArm={<line x1="72" y1="52" x2="58" y2="80" stroke="var(--t1)" strokeWidth="3" strokeLinecap="round"/>}
+        rightArm={<line x1="84" y1="52" x2="90" y2="14" stroke="var(--t1)" strokeWidth="3.5" strokeLinecap="round"/>}
+        racket={<g transform="rotate(15 90 8)"><ellipse cx="90" cy="8" rx="8" ry="11" stroke="var(--o)" strokeWidth="2.4" fill="none"/><line x1="90" y1="14" x2="90" y2="20" stroke="var(--o)" strokeWidth="2"/></g>}
+        ball={<><circle cx="98" cy="-2" r="4.5" fill="#E8FF3D" stroke="rgba(0,0,0,.4)" strokeWidth=".5"/><path d="M 95 -1 Q 98 -3.5 101 -1" stroke="rgba(255,255,255,.5)" fill="none"/></>}
+        trajectory={<path d="M 96 6 Q 125 70 145 165" stroke="var(--o)" strokeWidth="1.6" strokeDasharray="3 3" fill="none" markerEnd="url(#arrSmash)" opacity="0.7"/>}
+      />
+    </svg>
+  );
+}
+
+function BandejaFigure(){
+  return(
+    <svg viewBox="0 0 160 180" style={{width:'100%',maxWidth:140,height:'auto',display:'block'}}>
+      <ShotBase
+        arrowId="arrBand"
+        leftArm={<line x1="72" y1="52" x2="62" y2="86" stroke="var(--t1)" strokeWidth="3" strokeLinecap="round"/>}
+        rightArm={<><line x1="84" y1="52" x2="116" y2="32" stroke="var(--t1)" strokeWidth="3.5" strokeLinecap="round"/></>}
+        racket={<g transform="rotate(55 122 28)"><ellipse cx="122" cy="28" rx="8" ry="11" stroke="var(--o)" strokeWidth="2.4" fill="none"/><line x1="122" y1="34" x2="122" y2="40" stroke="var(--o)" strokeWidth="2"/></g>}
+        ball={<><circle cx="132" cy="14" r="4.5" fill="#E8FF3D" stroke="rgba(0,0,0,.4)" strokeWidth=".5"/><path d="M 129 15 Q 132 12.5 135 15" stroke="rgba(255,255,255,.5)" fill="none"/></>}
+        trajectory={<path d="M 130 22 Q 140 90 155 160" stroke="var(--o)" strokeWidth="1.4" strokeDasharray="3 3" fill="none" markerEnd="url(#arrBand)" opacity="0.6"/>}
+      />
+    </svg>
+  );
+}
+
+function ViboraFigure(){
+  return(
+    <svg viewBox="0 0 160 180" style={{width:'100%',maxWidth:140,height:'auto',display:'block'}}>
+      <ShotBase
+        arrowId="arrVib"
+        leftArm={<line x1="72" y1="52" x2="58" y2="82" stroke="var(--t1)" strokeWidth="3" strokeLinecap="round"/>}
+        rightArm={<line x1="84" y1="52" x2="110" y2="42" stroke="var(--t1)" strokeWidth="3.5" strokeLinecap="round"/>}
+        racket={<g transform="rotate(80 116 36)"><ellipse cx="116" cy="36" rx="8" ry="11" stroke="var(--o)" strokeWidth="2.4" fill="none"/><line x1="116" y1="42" x2="116" y2="48" stroke="var(--o)" strokeWidth="2"/></g>}
+        ball={<><circle cx="125" cy="26" r="4.5" fill="#E8FF3D" stroke="rgba(0,0,0,.4)" strokeWidth=".5"/><path d="M 122 27 Q 125 24.5 128 27" stroke="rgba(255,255,255,.5)" fill="none"/></>}
+        trajectory={<path d="M 122 35 Q 138 75 132 145" stroke="var(--o)" strokeWidth="1.6" strokeDasharray="3 2" fill="none" markerEnd="url(#arrVib)" opacity="0.7"/>}
+      />
+    </svg>
+  );
+}
+
+function VoleaFigure(){
+  return(
+    <svg viewBox="0 0 160 180" style={{width:'100%',maxWidth:140,height:'auto',display:'block'}}>
+      <ShotBase
+        arrowId="arrVol"
+        leftArm={<line x1="72" y1="52" x2="50" y2="70" stroke="var(--t1)" strokeWidth="3" strokeLinecap="round"/>}
+        rightArm={<line x1="84" y1="52" x2="118" y2="68" stroke="var(--t1)" strokeWidth="3.5" strokeLinecap="round"/>}
+        racket={<g transform="rotate(75 126 65)"><ellipse cx="126" cy="65" rx="8" ry="11" stroke="var(--o)" strokeWidth="2.4" fill="none"/><line x1="126" y1="71" x2="126" y2="77" stroke="var(--o)" strokeWidth="2"/></g>}
+        ball={<><circle cx="138" cy="62" r="4.5" fill="#E8FF3D" stroke="rgba(0,0,0,.4)" strokeWidth=".5"/><path d="M 135 63 Q 138 60.5 141 63" stroke="rgba(255,255,255,.5)" fill="none"/></>}
+        trajectory={<path d="M 140 64 L 155 62" stroke="var(--o)" strokeWidth="1.6" fill="none" markerEnd="url(#arrVol)" opacity="0.7"/>}
+      />
+    </svg>
+  );
+}
+
+function DriveFigure(){
+  return(
+    <svg viewBox="0 0 160 180" style={{width:'100%',maxWidth:140,height:'auto',display:'block'}}>
+      <ShotBase
+        arrowId="arrDrv"
+        leftArm={<line x1="72" y1="55" x2="55" y2="78" stroke="var(--t1)" strokeWidth="3" strokeLinecap="round"/>}
+        rightArm={<line x1="84" y1="55" x2="42" y2="92" stroke="var(--t1)" strokeWidth="3.5" strokeLinecap="round"/>}
+        racket={<g transform="rotate(-30 38 96)"><ellipse cx="38" cy="96" rx="8" ry="11" stroke="var(--o)" strokeWidth="2.4" fill="none"/><line x1="38" y1="102" x2="38" y2="108" stroke="var(--o)" strokeWidth="2"/></g>}
+        ball={<><circle cx="50" cy="98" r="4.5" fill="#E8FF3D" stroke="rgba(0,0,0,.4)" strokeWidth=".5"/><path d="M 47 99 Q 50 96.5 53 99" stroke="rgba(255,255,255,.5)" fill="none"/></>}
+        trajectory={<path d="M 54 96 Q 100 80 145 96" stroke="var(--o)" strokeWidth="1.6" strokeDasharray="3 3" fill="none" markerEnd="url(#arrDrv)" opacity="0.7"/>}
+      />
+    </svg>
+  );
+}
+
+function GloboFigure(){
+  return(
+    <svg viewBox="0 0 160 180" style={{width:'100%',maxWidth:140,height:'auto',display:'block'}}>
+      <ShotBase
+        arrowId="arrGlb"
+        leftArm={<line x1="72" y1="55" x2="60" y2="92" stroke="var(--t1)" strokeWidth="3" strokeLinecap="round"/>}
+        rightArm={<line x1="84" y1="55" x2="48" y2="115" stroke="var(--t1)" strokeWidth="3.5" strokeLinecap="round"/>}
+        racket={<g transform="rotate(-60 44 122)"><ellipse cx="44" cy="122" rx="8" ry="11" stroke="var(--o)" strokeWidth="2.4" fill="none"/><line x1="44" y1="128" x2="44" y2="134" stroke="var(--o)" strokeWidth="2"/></g>}
+        ball={<><circle cx="58" cy="118" r="4.5" fill="#E8FF3D" stroke="rgba(0,0,0,.4)" strokeWidth=".5"/><path d="M 55 119 Q 58 116.5 61 119" stroke="rgba(255,255,255,.5)" fill="none"/></>}
+        trajectory={<path d="M 62 115 Q 105 -10 155 130" stroke="var(--o)" strokeWidth="1.6" strokeDasharray="3 3" fill="none" markerEnd="url(#arrGlb)" opacity="0.7"/>}
+      />
+    </svg>
+  );
+}
+
+function ChiquitaFigure(){
+  return(
+    <svg viewBox="0 0 160 180" style={{width:'100%',maxWidth:140,height:'auto',display:'block'}}>
+      <ShotBase
+        arrowId="arrChq"
+        leftArm={<line x1="72" y1="55" x2="60" y2="82" stroke="var(--t1)" strokeWidth="3" strokeLinecap="round"/>}
+        rightArm={<line x1="84" y1="55" x2="104" y2="92" stroke="var(--t1)" strokeWidth="3.5" strokeLinecap="round"/>}
+        racket={<g transform="rotate(40 110 98)"><ellipse cx="110" cy="98" rx="8" ry="11" stroke="var(--o)" strokeWidth="2.4" fill="none"/><line x1="110" y1="104" x2="110" y2="110" stroke="var(--o)" strokeWidth="2"/></g>}
+        ball={<><circle cx="120" cy="92" r="4.5" fill="#E8FF3D" stroke="rgba(0,0,0,.4)" strokeWidth=".5"/><path d="M 117 93 Q 120 90.5 123 93" stroke="rgba(255,255,255,.5)" fill="none"/></>}
+        trajectory={<path d="M 124 88 Q 140 70 152 100" stroke="var(--o)" strokeWidth="1.4" strokeDasharray="3 2" fill="none" markerEnd="url(#arrChq)" opacity="0.7"/>}
+      />
+    </svg>
+  );
+}
+
+/* ───── Rules — Übersicht ───── */
+function Rules({onHome,onSelect}){
+  const sections=[
+    {id:'basics',    icon:'🎾',title:'Padel-Grundregeln', sub:'Aufschlag, Wände, Punktezählung'},
+    {id:'bo3',       icon:'📜',title:'Best of 3',         sub:'Klassisches Tennis-Scoring, Tiebreak bei 6:6'},
+    {id:'americano', icon:'🏆',title:'Americano',         sub:'Wechselnde Partner, individuelle Punkte'},
+    {id:'mexicano',  icon:'🎯',title:'Mexicano',          sub:'Ranking-basierte Paarungen ab Runde 2'},
+    {id:'rotation',  icon:'⏱',title:'Pausen & Rotation', sub:'Fairer Rotations-Pool bei ungeraden Spielern'},
+    {id:'glossar',   icon:'📖',title:'Schlagarten',       sub:'Bandeja, Víbora, Smash & mehr'},
+  ];
+  return(
+    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
+      <div style={{padding:'0 22px 22px'}}>
+        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
+          <BookIcon size={32}/>
+          <div style={{color:T.t1,fontSize:26,fontWeight:800,letterSpacing:-.3}}>Regelwerk</div>
+        </div>
+        <div style={{color:T.t2,fontSize:14,marginTop:2,fontWeight:400}}>
+          Padel-Regeln, Formate, Begriffe.
+        </div>
+      </div>
+      <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:10,
+        overflowY:'auto',WebkitOverflowScrolling:'touch'}}>
+        {sections.map((s,i)=>(
+          <button key={s.id} onClick={()=>onSelect(s.id)} className="fu"
+            style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+              padding:'14px 16px',display:'flex',alignItems:'center',gap:14,
+              cursor:'pointer',color:T.t1,textAlign:'left',
+              animationDelay:`${i*40}ms`,transition:'background .15s, border-color .15s'}}
+            onPointerDown={e=>e.currentTarget.style.background=T.card2}
+            onPointerUp={e=>e.currentTarget.style.background=T.card}
+            onPointerLeave={e=>e.currentTarget.style.background=T.card}>
+            <div style={{fontSize:24,width:32,textAlign:'center'}}>{s.icon}</div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{color:T.t1,fontSize:15,fontWeight:700,marginBottom:2}}>{s.title}</div>
+              <div style={{color:T.t3,fontSize:11,fontWeight:500}}>{s.sub}</div>
+            </div>
+            <div style={{color:T.t3,fontSize:18,fontWeight:600,width:16,textAlign:'center'}}>›</div>
+          </button>
+        ))}
+        <div style={{height:20}}/>
+      </div>
+      <div style={{height:100}}/>
+      <MatchBar onHome={onHome}/>
+    </div>
+  );
+}
+
+/* ───── Detail screens (one per section) ───── */
+function RulesBasics({onBackToRules,onHome,onNext,onPrev,currentIdx,totalSections}){
+  return(
+    <RulesDetailLayout icon="🎾" title="Padel-Grundregeln"
+      sub="Aufschlag, Wände, Punktezählung"
+      visual={<CourtVisual/>}
+      onBackToRules={onBackToRules} onHome={onHome}
+      onNext={onNext} onPrev={onPrev}
+      currentIdx={currentIdx} totalSections={totalSections}>
+      <RulesH>Platz & Format</RulesH>
+      <RulesP>Padel-Court ist 20 m × 10 m, umschlossen von 3 m Glas und 4 m Drahtgitter. Gespielt wird ausschließlich im Doppel — 2 vs 2.</RulesP>
+      <RulesH>Aufschlag</RulesH>
+      <RulesUl items={[
+        'Unterhand-Aufschlag — Treffpunkt unterhalb der Hüfte',
+        'Ball muss vor dem Schlag einmal am Boden aufspringen',
+        'Erstes Aufschlag-Ziel: diagonales Service-Feld der Gegenseite',
+        'Zwei Versuche pro Punkt (wie Tennis)',
+        'Seitenwechsel innerhalb des Spiels: rechts → links → rechts …',
+      ]}/>
+      <RulesH>Wandspiel</RulesH>
+      <RulesP>Nach dem Boden-Aufprall darf der Ball die eigenen Wände berühren und bleibt im Spiel. Direkter Wandkontakt vor dem Boden = Punkt für den Gegner.</RulesP>
+      <RulesH>Punktezählung</RulesH>
+      <RulesUl items={[
+        '0 → 15 → 30 → 40 → Spiel',
+        'Bei 40-40: Einstand (Deuce). 2 Punkte in Folge nötig',
+        'Erster Punkt nach Einstand = Vorteil; danach 1 weiterer = Spiel',
+      ]}/>
+    </RulesDetailLayout>
+  );
+}
+
+function RulesBo3({onBackToRules,onHome,onNext,onPrev,currentIdx,totalSections}){
+  return(
+    <RulesDetailLayout icon="📜" title="Best of 3"
+      sub="Klassisches Tennis-Scoring, Tiebreak bei 6:6"
+      visual={<Bo3HierarchyVisual/>}
+      onBackToRules={onBackToRules} onHome={onHome}
+      onNext={onNext} onPrev={onPrev}
+      currentIdx={currentIdx} totalSections={totalSections}>
+      <RulesH>Satz- und Match-Struktur</RulesH>
+      <RulesUl items={[
+        'Match endet, sobald ein Team 2 Sätze gewinnt (max. 3 Sätze)',
+        'Ein Satz: erstes Team mit 6 Spielen UND 2 Spielen Vorsprung',
+        'Bei 5-5: weiterspielen bis 7-5 oder Tiebreak bei 6-6',
+        'Beim Tiebreak (6-6): erstes Team mit 7 Punkten und 2 Vorsprung gewinnt den Satz',
+      ]}/>
+      <RulesH>Aufschlagswechsel</RulesH>
+      <RulesUl items={[
+        'Aufschlag wechselt nach jedem abgeschlossenen Spiel',
+        'Im Tiebreak: 1. Punkt vom ursprünglichen Aufschläger, dann alle 2 Punkte Wechsel',
+        'Service-Seite (rechts/links) alterniert mit jedem Punkt',
+      ]}/>
+      <RulesH>Visualisierung in dieser App</RulesH>
+      <RulesP>Im Big-Screen siehst du rechts ein Court-Diagramm, das anzeigt, wer aufschlägt und in welche Service-Box der nächste Ball gespielt werden muss.</RulesP>
+    </RulesDetailLayout>
+  );
+}
+
+function RulesAmericano({onBackToRules,onHome,onNext,onPrev,currentIdx,totalSections}){
+  return(
+    <RulesDetailLayout icon="🏆" title="Americano"
+      sub="Wechselnde Partner, individuelle Punkte"
+      visual={<AmericanoRotationVisual/>}
+      onBackToRules={onBackToRules} onHome={onHome}
+      onNext={onNext} onPrev={onPrev}
+      currentIdx={currentIdx} totalSections={totalSections}>
+      <RulesH>Spielprinzip</RulesH>
+      <RulesUl items={[
+        'Doppel-Turnier mit rotierenden Partnern',
+        'Jede Runde neue, zufällige Paarungen',
+        'Algorithmus vermeidet Wiederholung gleicher Partner über mehrere Runden',
+        'Individuelle Wertung — jeder Spieler sammelt eigene Punkte',
+      ]}/>
+      <RulesH>Scoring-Varianten</RulesH>
+      <RulesUl items={[
+        'Split-21: 21 Punkte pro Match werden zwischen beiden Teams aufgeteilt (z. B. 13-8)',
+        'Zeit-basiert: feste Rundenzeit, am Ende der Zeit zählt der aktuelle Stand',
+        'Unlimitiert (∞): Spiel läuft bis Timer-Ende oder manueller Stop',
+      ]}/>
+      <RulesH>Sieger-Modus</RulesH>
+      <RulesUl items={[
+        'Meiste Punkte: Summe aller in Matches gesammelten Punkte',
+        'Meiste Siege: Anzahl gewonnener Matches',
+      ]}/>
+      <RulesH>Vorteile</RulesH>
+      <RulesP>Ideal für gemischte Spielstärken — alle spielen mit jedem. Kein "stärkstes Team gewinnt" sondern individuelle Performance entscheidet.</RulesP>
+    </RulesDetailLayout>
+  );
+}
+
+function RulesMexicano({onBackToRules,onHome,onNext,onPrev,currentIdx,totalSections}){
+  return(
+    <RulesDetailLayout icon="🎯" title="Mexicano"
+      sub="Ranking-basierte Paarungen ab Runde 2"
+      visual={<MexicanoPairingVisual/>}
+      onBackToRules={onBackToRules} onHome={onHome}
+      onNext={onNext} onPrev={onPrev}
+      currentIdx={currentIdx} totalSections={totalSections}>
+      <RulesH>Unterschied zu Americano</RulesH>
+      <RulesP>Wie Americano, aber Paarungen werden nach Tabellenstand zusammengestellt. Hält das Niveau jedes Matches ausgeglichen.</RulesP>
+      <RulesH>Paarungs-Logik</RulesH>
+      <RulesUl items={[
+        'Runde 1: zufällige Paarungen (wie Americano)',
+        'Ab Runde 2: nach Tabellenstand sortieren',
+        'Pro Court werden 4 nebeneinanderliegende Plätze gepaart:',
+        'Platz 1 + Platz 4  vs  Platz 2 + Platz 3',
+        'Court 2: Plätze 5+8 vs 6+7, usw.',
+      ]}/>
+      <RulesH>Effekt</RulesH>
+      <RulesUl items={[
+        'Top-Spieler treten gegen ähnlich starke Gegner an',
+        'Schwächere Spieler werden mit stärkeren gepaart',
+        'Spiele bleiben kompetitiv — kein "Walk-over"',
+      ]}/>
+    </RulesDetailLayout>
+  );
+}
+
+function RulesRotation({onBackToRules,onHome,onNext,onPrev,currentIdx,totalSections}){
+  return(
+    <RulesDetailLayout icon="⏱" title="Pausen & Rotation"
+      sub="Fairer Rotations-Pool bei ungeraden Spielern"
+      visual={<PausenPoolVisual/>}
+      onBackToRules={onBackToRules} onHome={onHome}
+      onNext={onNext} onPrev={onPrev}
+      currentIdx={currentIdx} totalSections={totalSections}>
+      <RulesH>Pausen-Logik</RulesH>
+      <RulesUl items={[
+        'Bei ungerader Spielerzahl (nicht durch 4 teilbar) pausieren Spieler pro Runde',
+        'Anzahl der Pausierenden = Spieler − (Courts × 4)',
+        'Faire Rotation: wer am wenigsten pausiert hat, sitzt als nächstes aus',
+        'Bei Gleichstand entscheidet der Zufall (Tiebreak)',
+        'Über genug Runden hat jeder gleich oft pausiert',
+      ]}/>
+      <RulesH>Pausen-Bonus (Punkte-Modus)</RulesH>
+      <RulesP>Pausierte Spieler bekommen für die Pausenrunde den <strong style={{color:T.t1}}>Median aller Punkte</strong> dieser Runde gutgeschrieben. So entgehen sie keinem Punkteverlust durch erzwungene Pause.</RulesP>
+      <RulesH>Pausen-Bonus (Siege-Modus)</RulesH>
+      <RulesP>Spieler in der <strong style={{color:T.t1}}>unteren Tabellenhälfte</strong> bekommen <strong style={{color:T.t1}}>+1 Sieg pro Pause</strong>. So fallen Spieler nicht weiter zurück, die ohnehin schon hinten liegen.</RulesP>
+      <RulesH>Transparenz</RulesH>
+      <RulesP>Im Tournament-Play öffnet das ?-Icon neben "Pausiert: …" eine Info-Box mit der aktuell aktiven Bonus-Regel. Im Leaderboard erscheint bei jedem Bonus-Empfänger ein "+X Pause"-Hinweis unter der Punktezahl.</RulesP>
+    </RulesDetailLayout>
+  );
+}
+
+function RulesGlossar({onBackToRules,onHome,onNext,onPrev,currentIdx,totalSections}){
+  const shots=[
+    {id:'smash',title:'Smash / Remate',Fig:SmashFigure,
+      desc:'Kraftvoller Schlag aus der Luft. Treffpunkt direkt über dem Kopf, Trajektorie steil nach unten.',
+      stance:'Körper unter dem Ball, beide Arme hoch — der linke zielt zum Ball, der rechte schwingt voll aus.'},
+    {id:'bandeja',title:'Bandeja',Fig:BandejaFigure,
+      desc:'Defensiver Smash mit Slice. Gleitende, kontrollierte Bewegung — weniger Power, mehr Genauigkeit.',
+      stance:'Treffpunkt rechts und oberhalb des Kopfes. Racketfläche flach, Schwung von hoch nach tief mit Seitenschnitt.'},
+    {id:'vibora',title:'Víbora',Fig:ViboraFigure,
+      desc:'Kürzerer, schärferer Smash mit aggressivem Slice. Zwischen Bandeja und Smash — kontrolliert aber bissig.',
+      stance:'Treffpunkt auf Schulterhöhe seitlich, Schlag mit gekürztem, schnellem Ausschwung.'},
+    {id:'volea',title:'Volea',Fig:VoleaFigure,
+      desc:'Volley — Schlag aus der Luft, ohne Bodenkontakt. Klassischer Netz-Schlag.',
+      stance:'Frontal zum Netz, kompakte Bewegung. Racket vor dem Körper, Schlag aus der Schulter, kurzer Punch.'},
+    {id:'drive',title:'Drive',Fig:DriveFigure,
+      desc:'Grundlinienschlag mit Topspin, gerade oder cross gespielt. Klassischer Aufbau- oder Druck-Schlag.',
+      stance:'Seitlicher Stand, Racket weit zurück geführt, Treffpunkt auf Hüfthöhe, Schwung von tief nach hoch.'},
+    {id:'globo',title:'Globo',Fig:GloboFigure,
+      desc:'Lob über die Gegner. Hoch und tief — zwingt das Gegner-Team zurück zur Grundlinie.',
+      stance:'Tiefer Stand, Schläger unter dem Ball, weicher Schwung von tief nach hoch — der Ball muss fast vertikal nach oben.'},
+    {id:'chiquita',title:'Chiquita',Fig:ChiquitaFigure,
+      desc:'Kurzer, weicher Ball direkt hinters Netz. Technische Antwort auf Volleys am Netz.',
+      stance:'Stand zentral, Racket leicht von oben nach unten geführt, weicher Touch ohne Schwung.'},
+  ];
+  return(
+    <RulesDetailLayout icon="📖" title="Schlagarten"
+      sub="Körperhaltung & Treffpunkt der wichtigsten Schläge"
+      onBackToRules={onBackToRules} onHome={onHome}
+      onNext={onNext} onPrev={onPrev}
+      currentIdx={currentIdx} totalSections={totalSections}>
+      <div style={{display:'flex',flexDirection:'column',gap:14}}>
+        {shots.map((s,i)=>(
+          <div key={s.id} className="fu"
+            style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+              padding:14,display:'flex',gap:14,animationDelay:`${i*60}ms`}}>
+            <div style={{flexShrink:0,width:120,display:'flex',alignItems:'center',
+              justifyContent:'center',background:T.card2,borderRadius:10,padding:6,
+              border:`1px solid ${T.sep}`}}>
+              <s.Fig/>
+            </div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{color:T.o,fontSize:14,fontWeight:800,marginBottom:4,letterSpacing:.2}}>{s.title}</div>
+              <div style={{color:T.t2,fontSize:12,lineHeight:1.5,marginBottom:6}}>{s.desc}</div>
+              <div style={{color:T.t3,fontSize:11,lineHeight:1.5,
+                padding:'6px 8px',background:T.card2,borderRadius:6,
+                borderLeft:`2px solid ${T.o}`}}>
+                <span style={{color:T.t1,fontWeight:700}}>Haltung: </span>{s.stance}
+              </div>
+            </div>
+          </div>
+        ))}
+
+        <RulesH>Weitere Begriffe</RulesH>
+        <RulesDef term="Por 3 / x3">Ball geht durch die Glasecke ins Aus — Punktgewinn, wenn der Gegner ihn nicht zurückholen kann.</RulesDef>
+        <RulesDef term="Por 4 / x4">Ball wird über die Wand gespielt — extrem schwer zu retournieren.</RulesDef>
+        <RulesDef term="Contrapared">Ball aus der eigenen Wand zurück übers Netz — kontrollierte Verteidigung.</RulesDef>
+        <RulesDef term="Doble Pared">Ball berührt 2 Wände nach Boden-Aufprall — bleibt weiterhin im Spiel.</RulesDef>
+      </div>
+    </RulesDetailLayout>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   DESIGN WIZARD — custom theme creator
+═══════════════════════════════════════════════════════════════ */
+function ColorPickerRow({label,sub,value,onChange}){
+  return(
+    <label style={{display:'flex',alignItems:'center',gap:14,
+      padding:'12px 14px',background:T.card2,borderRadius:12,
+      border:`1px solid ${T.border}`,cursor:'pointer'}}>
+      <div style={{width:38,height:38,background:value,borderRadius:9,
+        border:`1.5px solid ${T.border}`,flexShrink:0,position:'relative',
+        boxShadow:'inset 0 1px 2px rgba(0,0,0,.25)'}}>
+        <input type="color" value={value}
+          onChange={e=>onChange(e.target.value)}
+          style={{position:'absolute',inset:0,opacity:0,cursor:'pointer',
+            border:'none',background:'transparent'}}/>
+      </div>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{color:T.t1,fontSize:13,fontWeight:600}}>{label}</div>
+        {sub&&<div style={{color:T.t3,fontSize:10,marginTop:2}}>{sub}</div>}
+      </div>
+      <div style={{color:T.t3,fontSize:11,fontFamily:'monospace',
+        letterSpacing:.5}}>{(value||'').toUpperCase()}</div>
+    </label>
+  );
+}
+
+function FontPickerRow({fontId,name,stack,selected,onSelect}){
+  return(
+    <button onClick={()=>onSelect(fontId)}
+      style={{display:'flex',alignItems:'center',gap:12,
+        padding:'12px 14px',width:'100%',
+        background:selected?T.oSoft:T.card2,
+        border:`1px solid ${selected?T.o:T.border}`,
+        borderRadius:12,cursor:'pointer',textAlign:'left'}}>
+      <div style={{width:18,height:18,borderRadius:'50%',flexShrink:0,
+        border:`2px solid ${selected?T.o:T.t3}`,
+        background:selected?T.o:'transparent',position:'relative'}}>
+        {selected&&<div style={{position:'absolute',inset:4,
+          borderRadius:'50%',background:T.bg}}/>}
+      </div>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{color:T.t1,fontSize:14,fontWeight:600,fontFamily:stack}}>{name}</div>
+        <div style={{color:T.t3,fontSize:11,marginTop:2,fontFamily:stack,
+          letterSpacing:.3}}>Aa Bb Cc · 0123 · Padel</div>
+      </div>
+    </button>
+  );
+}
+
+function LivePreview({palette}){
+  return(
+    <div style={{background:palette.bg,border:`1px solid ${palette.border}`,
+      borderRadius:16,padding:16,fontFamily:palette.font,
+      transition:'background .15s, border-color .15s',
+      boxShadow:'0 4px 16px rgba(0,0,0,.18)'}}>
+      <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',
+        marginBottom:12}}>
+        <div style={{color:palette.t1,fontSize:13,fontWeight:800,letterSpacing:2}}>RITMO</div>
+        <div style={{color:palette.o,fontSize:9,fontWeight:700,letterSpacing:1.5}}>VORSCHAU</div>
+      </div>
+      <div style={{display:'flex',gap:8}}>
+        <div style={{flex:1,background:palette.card,padding:12,borderRadius:10,
+          border:`1px solid ${palette.border}`}}>
+          <div style={{color:palette.t3,fontSize:9,fontWeight:700,
+            letterSpacing:1.2,marginBottom:4}}>TEAM A</div>
+          <div style={{color:palette.o,fontSize:30,fontWeight:800,lineHeight:1}}>15</div>
+          <div style={{color:palette.t2,fontSize:10,marginTop:6}}>2 Spiele</div>
+        </div>
+        <div style={{flex:1,background:palette.card,padding:12,borderRadius:10,
+          border:`1px solid ${palette.border}`}}>
+          <div style={{color:palette.t3,fontSize:9,fontWeight:700,
+            letterSpacing:1.2,marginBottom:4}}>TEAM B</div>
+          <div style={{color:palette.blue,fontSize:30,fontWeight:800,lineHeight:1}}>30</div>
+          <div style={{color:palette.t2,fontSize:10,marginTop:6}}>1 Spiel</div>
+        </div>
+      </div>
+      <div style={{marginTop:10,padding:'8px 10px',background:palette.card2,
+        borderRadius:8,border:`1px solid ${palette.border}`,
+        display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+        <div style={{color:palette.t2,fontSize:11}}>Satz 1 · Spiel</div>
+        <div style={{background:palette.oSoft,padding:'2px 8px',borderRadius:5,
+          color:palette.o,fontSize:10,fontWeight:700,letterSpacing:1}}>LIVE</div>
+      </div>
+    </div>
+  );
+}
+
+function DesignWizard({onSave,onCancel,existing=[]}){
+  const[name,setName]=useState('Mein Design');
+  const[bg,setBg]=useState('#0F1A2E');
+  const[text,setText]=useState('#FFFFFF');
+  const[highlight,setHighlight]=useState('#FF7A1A');
+  const[secondary,setSecondary]=useState('#5AC8FA');
+  const[fontId,setFontId]=useState('system');
+
+  const palette=buildThemePalette({bg,text,highlight,secondary,font:fontStack(fontId)});
+  const canSave=name.trim().length>0;
+  const presets=[
+    {label:'Sunset',  bg:'#1A0F1F',text:'#FFEEDD',hl:'#FF6B6B',sec:'#FFD93D'},
+    {label:'Forest',  bg:'#0E2418',text:'#E8F5E9',hl:'#FFC857',sec:'#52B788'},
+    {label:'Ocean',   bg:'#04293A',text:'#ECF8FF',hl:'#FFB400',sec:'#00B8D4'},
+    {label:'Mono',    bg:'#FAFAFA',text:'#0A0A0A',hl:'#0A0A0A',sec:'#666666'},
+    {label:'Neon',    bg:'#0A0014',text:'#F0F0FF',hl:'#FF1493',sec:'#00FFE5'},
+  ];
+
+  return(
+    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
+
+      <div style={{padding:'0 22px 14px'}}>
+        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
+          <WandIcon size={28}/>
+          <div style={{color:T.t1,fontSize:24,fontWeight:800,letterSpacing:-.3}}>Design Wizard</div>
+        </div>
+        <div style={{color:T.t3,fontSize:12,marginTop:2,fontWeight:500}}>
+          Erstelle dein eigenes Theme.
+        </div>
+      </div>
+
+      <div style={{flex:1,padding:'0 22px',overflowY:'auto',WebkitOverflowScrolling:'touch',
+        display:'flex',flexDirection:'column',gap:18}}>
+
+        {/* Live Preview */}
+        <div className="fi">
+          <LivePreview palette={palette}/>
+        </div>
+
+        {/* Name */}
+        <div>
+          <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
+            textTransform:'uppercase',marginBottom:8,paddingLeft:4}}>Name</div>
+          <input value={name} onChange={e=>setName(e.target.value)}
+            placeholder="Mein Design" maxLength={40}
+            style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
+              borderRadius:12,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:600,
+              outline:'none',boxSizing:'border-box'}}/>
+        </div>
+
+        {/* Presets */}
+        <div>
+          <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
+            textTransform:'uppercase',marginBottom:8,paddingLeft:4}}>Schnellstart</div>
+          <div style={{display:'flex',gap:8,overflowX:'auto',paddingBottom:4,
+            WebkitOverflowScrolling:'touch'}}>
+            {presets.map(p=>(
+              <button key={p.label}
+                onClick={()=>{setBg(p.bg);setText(p.text);setHighlight(p.hl);setSecondary(p.sec);}}
+                style={{flexShrink:0,padding:'8px 14px',borderRadius:10,
+                  background:p.bg,border:`1px solid ${rgba(p.text,0.2)}`,
+                  color:p.text,fontSize:12,fontWeight:700,cursor:'pointer',
+                  display:'flex',alignItems:'center',gap:8}}>
+                <div style={{display:'flex',gap:3}}>
+                  <div style={{width:8,height:8,borderRadius:2,background:p.hl}}/>
+                  <div style={{width:8,height:8,borderRadius:2,background:p.sec}}/>
+                </div>
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Colors */}
+        <div>
+          <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
+            textTransform:'uppercase',marginBottom:8,paddingLeft:4}}>Farben</div>
+          <div style={{display:'flex',flexDirection:'column',gap:8}}>
+            <ColorPickerRow label="Hintergrund" sub="Bestimmt Karten-Töne automatisch"
+              value={bg} onChange={setBg}/>
+            <ColorPickerRow label="Text" sub="Empfehlung: hell auf dunkel, dunkel auf hell"
+              value={text} onChange={setText}/>
+            <ColorPickerRow label="Akzent" sub="Highlights, Team A, aktive Elemente"
+              value={highlight} onChange={setHighlight}/>
+            <ColorPickerRow label="Sekundär" sub="Team B, alternative Akzente"
+              value={secondary} onChange={setSecondary}/>
+          </div>
+        </div>
+
+        {/* Font */}
+        <div>
+          <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
+            textTransform:'uppercase',marginBottom:8,paddingLeft:4}}>Schrift</div>
+          <div style={{display:'flex',flexDirection:'column',gap:6}}>
+            {FONTS.map(f=>(
+              <FontPickerRow key={f.id} fontId={f.id} name={f.name} stack={f.stack}
+                selected={fontId===f.id} onSelect={setFontId}/>
+            ))}
+          </div>
+        </div>
+
+        <div style={{height:60}}/>
+      </div>
+
+      <MatchBar onHome={onCancel} rightButtons={[{
+        icon:'Speichern',
+        onClick:()=>{
+          if(!canSave) return;
+          onSave({name:name.trim(),bg,text,highlight,secondary,font:fontId});
+        },
+        style:{width:'auto',minWidth:90,height:50,padding:'0 20px',
+          background:canSave?T.g:T.card2,
+          border:`1px solid ${canSave?'rgba(255,255,255,.2)':T.border}`,
+          color:canSave?T.t1:T.t3,fontSize:13,fontWeight:800,
+          opacity:canSave?1:0.6,cursor:canSave?'pointer':'not-allowed'}
+      }]}/>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   JOURNEY — Tipps & Tricks (Visuals + Detail Screens)
+═══════════════════════════════════════════════════════════════ */
+
+/* ── Visuals ─────────────────────────────────────────────────── */
+function AngabenVisual(){
+  return(
+    <svg viewBox="0 0 140 220" style={{width:'auto',maxHeight:260,height:'62vh',display:'block'}}>
+      <defs>
+        <style>{`
+          @keyframes drawIn { to { stroke-dashoffset: 0; } }
+          .ang-arc { stroke-dasharray: 200; stroke-dashoffset: 200; animation: drawIn 1.4s ease forwards; animation-delay: .3s; }
+        `}</style>
+      </defs>
+      {/* Court */}
+      <rect x="20" y="20" width="100" height="180" rx="2" fill="rgba(255,255,255,0.04)"
+        stroke="var(--t1)" strokeWidth="1.8"/>
+      <line x1="20" y1="110" x2="120" y2="110" stroke="var(--o)" strokeWidth="2" strokeDasharray="3 2"/>
+      <line x1="20" y1="83" x2="120" y2="83" stroke="var(--t1)" strokeWidth="1.4"/>
+      <line x1="20" y1="137" x2="120" y2="137" stroke="var(--t1)" strokeWidth="1.4"/>
+      <line x1="70" y1="83" x2="70" y2="137" stroke="var(--t1)" strokeWidth="1.4"/>
+      {/* Target service box (top-left, opposite diagonal) */}
+      <rect x="20" y="83" width="50" height="27" fill="var(--oSoft)" stroke="var(--o)"
+        strokeWidth="0.8" opacity="0.85"/>
+      <text x="45" y="100" textAnchor="middle" dominantBaseline="middle" fontSize="14"
+        fill="var(--o)" fontWeight="800">×</text>
+      {/* Server position (bottom-right) */}
+      <circle cx="95" cy="180" r="7" fill="var(--o)"/>
+      <text x="95" y="180" textAnchor="middle" dominantBaseline="middle" fontSize="7"
+        fill="white" fontWeight="800">A</text>
+      <text x="95" y="195" textAnchor="middle" fontSize="6" fill="var(--t2)"
+        fontWeight="700" letterSpacing="0.5">AUFSCHLAG</text>
+      {/* Arc trajectory */}
+      <path className="ang-arc" d="M 95 175 Q 65 110 45 95"
+        stroke="var(--o)" strokeWidth="1.6" strokeDasharray="3 2" fill="none" opacity="0.8"/>
+      {/* Animated ball flying */}
+      <circle r="3" fill="#E8FF3D" stroke="rgba(0,0,0,.4)" strokeWidth="0.5">
+        <animateMotion dur="2.4s" repeatCount="indefinite" begin="1s"
+          path="M 95 175 Q 65 110 45 95"/>
+      </circle>
+      <text x="70" y="14" textAnchor="middle" fontSize="7" fill="var(--o)"
+        fontWeight="700" letterSpacing="1.5">DIAGONAL · UNTER DER HÜFTE</text>
+    </svg>
+  );
+}
+
+function AufstellungenVisual(){
+  return(
+    <svg viewBox="0 0 140 220" style={{width:'auto',maxHeight:260,height:'62vh',display:'block'}}>
+      <defs>
+        <style>{`
+          @keyframes pulseDot { 0%,100% { opacity: 1 } 50% { opacity: 0.55 } }
+          .pulse-dot { animation: pulseDot 1.8s ease infinite; }
+        `}</style>
+      </defs>
+      <rect x="20" y="20" width="100" height="180" rx="2" fill="rgba(255,255,255,0.04)"
+        stroke="var(--t1)" strokeWidth="1.8"/>
+      <line x1="20" y1="110" x2="120" y2="110" stroke="var(--o)" strokeWidth="2" strokeDasharray="3 2"/>
+      <line x1="20" y1="83" x2="120" y2="83" stroke="var(--t1)" strokeWidth="1.2" opacity="0.55"/>
+      <line x1="20" y1="137" x2="120" y2="137" stroke="var(--t1)" strokeWidth="1.2" opacity="0.55"/>
+      <line x1="70" y1="83" x2="70" y2="137" stroke="var(--t1)" strokeWidth="1.2" opacity="0.55"/>
+
+      {/* Team A: net + back formation */}
+      <g className="pulse-dot">
+        <circle cx="50" cy="175" r="7" fill="var(--o)"/>
+        <text x="50" y="175" textAnchor="middle" dominantBaseline="middle"
+          fontSize="6.5" fill="white" fontWeight="800">A1</text>
+        <text x="50" y="192" textAnchor="middle" fontSize="5.5"
+          fill="var(--t3)" fontWeight="600">HINTEN</text>
+      </g>
+      <g className="pulse-dot" style={{animationDelay:'.3s'}}>
+        <circle cx="90" cy="135" r="7" fill="var(--o)"/>
+        <text x="90" y="135" textAnchor="middle" dominantBaseline="middle"
+          fontSize="6.5" fill="white" fontWeight="800">A2</text>
+        <text x="90" y="152" textAnchor="middle" fontSize="5.5"
+          fill="var(--t3)" fontWeight="600">NETZ</text>
+      </g>
+
+      {/* Team B: net + back formation (mirrored) */}
+      <g className="pulse-dot" style={{animationDelay:'.6s'}}>
+        <circle cx="90" cy="45" r="7" fill="var(--blue)"/>
+        <text x="90" y="45" textAnchor="middle" dominantBaseline="middle"
+          fontSize="6.5" fill="white" fontWeight="800">B1</text>
+        <text x="90" y="32" textAnchor="middle" fontSize="5.5"
+          fill="var(--t3)" fontWeight="600">HINTEN</text>
+      </g>
+      <g className="pulse-dot" style={{animationDelay:'.9s'}}>
+        <circle cx="50" cy="85" r="7" fill="var(--blue)"/>
+        <text x="50" y="85" textAnchor="middle" dominantBaseline="middle"
+          fontSize="6.5" fill="white" fontWeight="800">B2</text>
+        <text x="50" y="72" textAnchor="middle" fontSize="5.5"
+          fill="var(--t3)" fontWeight="600">NETZ</text>
+      </g>
+
+      <text x="70" y="14" textAnchor="middle" fontSize="7" fill="var(--o)"
+        fontWeight="700" letterSpacing="1.5">EINER NETZ · EINER HINTEN</text>
+      <text x="70" y="214" textAnchor="middle" fontSize="6" fill="var(--t3)"
+        opacity="0.7" letterSpacing="1">DIAGONALE DECKUNG · MITTE SCHLIESST</text>
+    </svg>
+  );
+}
+
+function HandSeitenVisual(){
+  return(
+    <svg viewBox="0 0 200 200" style={{width:'auto',maxHeight:240,height:'58vh',display:'block'}}>
+      <defs>
+        <style>{`
+          @keyframes fadeArrow { 0% { opacity: 0 } 50% { opacity: 1 } 100% { opacity: 0.4 } }
+          .fade-arrow { animation: fadeArrow 2.4s ease infinite; }
+        `}</style>
+      </defs>
+      <text x="100" y="14" textAnchor="middle" fontSize="8" fill="var(--o)"
+        fontWeight="700" letterSpacing="1.5">VORHÄNDE ZUR MITTE</text>
+
+      {/* Court frame (just bottom half — own side) */}
+      <rect x="30" y="30" width="140" height="130" rx="3"
+        fill="rgba(255,255,255,0.04)" stroke="var(--t1)" strokeWidth="1.4"/>
+      {/* Center divider */}
+      <line x1="100" y1="30" x2="100" y2="160" stroke="var(--t1)"
+        strokeWidth="1.1" opacity="0.45" strokeDasharray="3 2"/>
+
+      {/* Left side: Right-handed player (R) → racket on LEFT side toward center */}
+      <g transform="translate(60, 95)">
+        <circle r="14" fill="var(--card2)" stroke="var(--o)" strokeWidth="1.8"/>
+        <text y="0" textAnchor="middle" dominantBaseline="middle" fontSize="13"
+          fill="var(--o)" fontWeight="800">R</text>
+        {/* Racket to the right (toward center) */}
+        <line x1="13" y1="-2" x2="28" y2="-2" stroke="var(--o)" strokeWidth="2" strokeLinecap="round"/>
+        <ellipse cx="33" cy="-2" rx="5" ry="6" fill="none" stroke="var(--o)" strokeWidth="1.6"/>
+        <text y="32" textAnchor="middle" fontSize="6" fill="var(--t3)"
+          fontWeight="600" letterSpacing="0.5">RECHTSHÄNDER</text>
+      </g>
+
+      {/* Right side: Left-handed player (L) → racket on RIGHT side toward center */}
+      <g transform="translate(140, 95)">
+        <circle r="14" fill="var(--card2)" stroke="var(--blue)" strokeWidth="1.8"/>
+        <text y="0" textAnchor="middle" dominantBaseline="middle" fontSize="13"
+          fill="var(--blue)" fontWeight="800">L</text>
+        {/* Racket to the left (toward center) */}
+        <line x1="-13" y1="-2" x2="-28" y2="-2" stroke="var(--blue)" strokeWidth="2" strokeLinecap="round"/>
+        <ellipse cx="-33" cy="-2" rx="5" ry="6" fill="none" stroke="var(--blue)" strokeWidth="1.6"/>
+        <text y="32" textAnchor="middle" fontSize="6" fill="var(--t3)"
+          fontWeight="600" letterSpacing="0.5">LINKSHÄNDER</text>
+      </g>
+
+      {/* Center arrow zone showing forehands meet */}
+      <g className="fade-arrow">
+        <path d="M 93 75 L 107 75" stroke="var(--o)" strokeWidth="1.4" strokeLinecap="round"/>
+        <polygon points="93 75, 96 73, 96 77" fill="var(--o)"/>
+        <polygon points="107 75, 104 73, 104 77" fill="var(--o)"/>
+      </g>
+
+      <text x="100" y="186" textAnchor="middle" fontSize="6.5" fill="var(--o)"
+        opacity="0.85" fontWeight="700">OPTIMALE PADEL-PAARUNG</text>
+    </svg>
+  );
+}
+
+function SchlagwahlVisual(){
+  return(
+    <svg viewBox="0 0 220 200" style={{width:'auto',maxHeight:240,height:'58vh',display:'block'}}>
+      <text x="110" y="14" textAnchor="middle" fontSize="8" fill="var(--o)"
+        fontWeight="700" letterSpacing="1.5">BALLHÖHE → SCHLAGART</text>
+      <text x="110" y="26" textAnchor="middle" fontSize="6" fill="var(--t3)"
+        opacity="0.8" letterSpacing="1">HOCH = AGGRESSIV · TIEF = KONTROLLE</text>
+
+      {/* HIGH zone */}
+      <g className="fi" style={{animationDelay:'.1s'}}>
+        <rect x="30" y="38" width="160" height="42" rx="8"
+          fill="var(--oSoft)" stroke="var(--o)" strokeWidth="1.4"/>
+        <text x="46" y="58" fontSize="9" fill="var(--o)" fontWeight="800">HOCH</text>
+        <text x="46" y="72" fontSize="6.5" fill="var(--t3)">über Schulter</text>
+        <text x="180" y="58" textAnchor="end" fontSize="7.5" fill="var(--t1)" fontWeight="700">Smash</text>
+        <text x="180" y="68" textAnchor="end" fontSize="6.5" fill="var(--t2)">Bandeja · Víbora</text>
+      </g>
+
+      {/* MID zone */}
+      <g className="fi" style={{animationDelay:'.25s'}}>
+        <rect x="30" y="86" width="160" height="42" rx="8"
+          fill="var(--blueSoft)" stroke="var(--blue)" strokeWidth="1.4"/>
+        <text x="46" y="106" fontSize="9" fill="var(--blue)" fontWeight="800">MITTE</text>
+        <text x="46" y="120" fontSize="6.5" fill="var(--t3)">Brust – Hüfte</text>
+        <text x="180" y="106" textAnchor="end" fontSize="7.5" fill="var(--t1)" fontWeight="700">Volea</text>
+        <text x="180" y="116" textAnchor="end" fontSize="6.5" fill="var(--t2)">Drive · Chiquita</text>
+      </g>
+
+      {/* LOW zone */}
+      <g className="fi" style={{animationDelay:'.4s'}}>
+        <rect x="30" y="134" width="160" height="42" rx="8"
+          fill="rgba(255,255,255,0.04)" stroke="var(--t1)" strokeWidth="1.4"/>
+        <text x="46" y="154" fontSize="9" fill="var(--t1)" fontWeight="800">TIEF</text>
+        <text x="46" y="168" fontSize="6.5" fill="var(--t3)">unterhalb Hüfte</text>
+        <text x="180" y="154" textAnchor="end" fontSize="7.5" fill="var(--t1)" fontWeight="700">Globo</text>
+        <text x="180" y="164" textAnchor="end" fontSize="6.5" fill="var(--t2)">Drive · Reset</text>
+      </g>
+
+      <text x="110" y="190" textAnchor="middle" fontSize="6.5" fill="var(--t3)"
+        opacity="0.7" letterSpacing="0.5">Nach Wand-Rückprall → Drive oder Globo</text>
+    </svg>
+  );
+}
+
+function SchlaegerVisual(){
+  return(
+    <svg viewBox="0 0 240 200" style={{width:'auto',maxHeight:240,height:'58vh',display:'block'}}>
+      <text x="120" y="14" textAnchor="middle" fontSize="8" fill="var(--o)"
+        fontWeight="700" letterSpacing="1.5">3 SCHLÄGER-FORMEN</text>
+
+      {/* Round paddle */}
+      <g transform="translate(50, 32)" className="fi">
+        <ellipse cx="0" cy="42" rx="22" ry="28" fill="rgba(255,255,255,0.05)"
+          stroke="var(--o)" strokeWidth="1.6"/>
+        <circle cx="0" cy="42" r="7" fill="var(--oSoft)" stroke="var(--o)" strokeWidth="1.2"/>
+        <line x1="0" y1="72" x2="0" y2="98" stroke="var(--o)" strokeWidth="3.5" strokeLinecap="round"/>
+        <line x1="-3" y1="80" x2="3" y2="80" stroke="rgba(0,0,0,.4)" strokeWidth="0.5"/>
+        <text y="120" textAnchor="middle" fontSize="9" fill="var(--t1)" fontWeight="800">Rund</text>
+        <text y="134" textAnchor="middle" fontSize="6.5" fill="var(--t3)">Kontrolle</text>
+        <text y="146" textAnchor="middle" fontSize="6" fill="var(--t3)" opacity="0.7">Anfänger</text>
+      </g>
+
+      {/* Diamond paddle */}
+      <g transform="translate(120, 32)" className="fi" style={{animationDelay:'.1s'}}>
+        <path d="M 0 14 L 22 42 L 0 70 L -22 42 Z"
+          fill="rgba(255,255,255,0.05)" stroke="var(--o)" strokeWidth="1.6" strokeLinejoin="round"/>
+        <circle cx="0" cy="30" r="7" fill="var(--oSoft)" stroke="var(--o)" strokeWidth="1.2"/>
+        <line x1="0" y1="72" x2="0" y2="98" stroke="var(--o)" strokeWidth="3.5" strokeLinecap="round"/>
+        <line x1="-3" y1="80" x2="3" y2="80" stroke="rgba(0,0,0,.4)" strokeWidth="0.5"/>
+        <text y="120" textAnchor="middle" fontSize="9" fill="var(--t1)" fontWeight="800">Diamant</text>
+        <text y="134" textAnchor="middle" fontSize="6.5" fill="var(--t3)">Power</text>
+        <text y="146" textAnchor="middle" fontSize="6" fill="var(--t3)" opacity="0.7">Smash-Spieler</text>
+      </g>
+
+      {/* Teardrop paddle */}
+      <g transform="translate(190, 32)" className="fi" style={{animationDelay:'.2s'}}>
+        <path d="M 0 14 Q 22 22 22 44 Q 22 70 0 70 Q -22 70 -22 44 Q -22 22 0 14 Z"
+          fill="rgba(255,255,255,0.05)" stroke="var(--o)" strokeWidth="1.6"/>
+        <circle cx="0" cy="36" r="7" fill="var(--oSoft)" stroke="var(--o)" strokeWidth="1.2"/>
+        <line x1="0" y1="72" x2="0" y2="98" stroke="var(--o)" strokeWidth="3.5" strokeLinecap="round"/>
+        <line x1="-3" y1="80" x2="3" y2="80" stroke="rgba(0,0,0,.4)" strokeWidth="0.5"/>
+        <text y="120" textAnchor="middle" fontSize="9" fill="var(--t1)" fontWeight="800">Tropfen</text>
+        <text y="134" textAnchor="middle" fontSize="6.5" fill="var(--t3)">Allround</text>
+        <text y="146" textAnchor="middle" fontSize="6" fill="var(--t3)" opacity="0.7">Fortgeschr.</text>
+      </g>
+
+      <text x="120" y="186" textAnchor="middle" fontSize="6" fill="var(--o)"
+        opacity="0.7" fontWeight="700" letterSpacing="1">SWEET SPOT (ORANGE) WANDERT NACH OBEN</text>
+    </svg>
+  );
+}
+
+function BaelleVisual(){
+  return(
+    <svg viewBox="0 0 240 200" style={{width:'auto',maxHeight:240,height:'58vh',display:'block'}}>
+      <text x="120" y="14" textAnchor="middle" fontSize="8" fill="var(--o)"
+        fontWeight="700" letterSpacing="1.5">TENNIS vs PADEL</text>
+
+      {/* Tennis ball */}
+      <g transform="translate(70, 55)" className="fi">
+        <circle r="32" fill="#E8FF3D" stroke="rgba(0,0,0,.3)" strokeWidth="0.6"/>
+        <path d="M -32 0 Q -16 -12 0 -10 Q 16 -12 32 0"
+          stroke="rgba(255,255,255,.55)" strokeWidth="1.4" fill="none"/>
+        <path d="M -32 0 Q -16 12 0 10 Q 16 12 32 0"
+          stroke="rgba(255,255,255,.55)" strokeWidth="1.4" fill="none"/>
+        <text y="52" textAnchor="middle" fontSize="9" fill="var(--t1)" fontWeight="800">TENNIS</text>
+        <text y="64" textAnchor="middle" fontSize="6" fill="var(--t3)">~6.5 cm</text>
+      </g>
+
+      {/* Padel ball — slightly smaller */}
+      <g transform="translate(170, 55)" className="fi" style={{animationDelay:'.15s'}}>
+        <circle r="30" fill="#E8FF3D" stroke="rgba(0,0,0,.3)" strokeWidth="0.6"/>
+        <path d="M -30 0 Q -15 -11 0 -9 Q 15 -11 30 0"
+          stroke="rgba(255,255,255,.55)" strokeWidth="1.4" fill="none"/>
+        <path d="M -30 0 Q -15 11 0 9 Q 15 11 30 0"
+          stroke="rgba(255,255,255,.55)" strokeWidth="1.4" fill="none"/>
+        <text y="52" textAnchor="middle" fontSize="9" fill="var(--t1)" fontWeight="800">PADEL</text>
+        <text y="64" textAnchor="middle" fontSize="6" fill="var(--t3)">~6.3 cm</text>
+      </g>
+
+      {/* Pressure bars */}
+      <g transform="translate(0, 138)">
+        <text x="120" y="0" textAnchor="middle" fontSize="6" fill="var(--t3)"
+          fontWeight="700" letterSpacing="1.2">INNENDRUCK (PSI)</text>
+        <text x="22" y="16" fontSize="7" fill="var(--t2)" fontWeight="700">T</text>
+        <rect x="36" y="10" width="170" height="6" rx="3" fill="var(--card2)"/>
+        <rect x="36" y="10" width="155" height="6" rx="3" fill="var(--o)"/>
+        <text x="210" y="16" fontSize="6" fill="var(--t2)" textAnchor="end" fontWeight="600">14 PSI</text>
+        <text x="22" y="32" fontSize="7" fill="var(--t2)" fontWeight="700">P</text>
+        <rect x="36" y="26" width="170" height="6" rx="3" fill="var(--card2)"/>
+        <rect x="36" y="26" width="55" height="6" rx="3" fill="var(--blue)"/>
+        <text x="210" y="32" fontSize="6" fill="var(--t2)" textAnchor="end" fontWeight="600">~5 PSI</text>
+      </g>
+
+      <text x="120" y="190" textAnchor="middle" fontSize="6" fill="var(--t3)"
+        opacity="0.7" letterSpacing="0.5">Padel-Ball springt niedriger · mehr Kontrolle</text>
+    </svg>
+  );
+}
+
+/* ── Journey overview ──────────────────────────────────────── */
+function Journey({onHome,onSelect}){
+  const sections=[
+    {id:'angaben',      icon:'🎯',title:'Aufschlag',     sub:'Reihenfolge, Position & Strategie'},
+    {id:'aufstellungen',icon:'👥',title:'Aufstellungen', sub:'Netz, Hinten, Verteidigung, Angriff'},
+    {id:'haende',       icon:'🤝',title:'Hand-Seiten',   sub:'Links-/Rechtshänder am Court'},
+    {id:'schlagwahl',   icon:'🎾',title:'Schlagwahl',    sub:'Wann welche Schlagart?'},
+    {id:'schlaeger',    icon:'🏓',title:'Schläger',      sub:'Rund, Diamant, Tropfen — Materialkunde'},
+    {id:'baelle',       icon:'🟡',title:'Bälle',         sub:'Tennis vs Padel — die Unterschiede'},
+  ];
+  return(
+    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
+      <div style={{padding:'0 22px 22px'}}>
+        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
+          <JourneyIcon size={32}/>
+          <div style={{color:T.t1,fontSize:26,fontWeight:800,letterSpacing:-.3}}>Journey</div>
+        </div>
+        <div style={{color:T.t2,fontSize:14,marginTop:2,fontWeight:400}}>
+          Tipps & Tricks für dein Padel-Spiel.
+        </div>
+      </div>
+      <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:10,
+        overflowY:'auto',WebkitOverflowScrolling:'touch'}}>
+        {sections.map((s,i)=>(
+          <button key={s.id} onClick={()=>onSelect(s.id)} className="fu"
+            style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+              padding:'14px 16px',display:'flex',alignItems:'center',gap:14,
+              cursor:'pointer',color:T.t1,textAlign:'left',
+              animationDelay:`${i*40}ms`,transition:'background .15s, border-color .15s'}}
+            onPointerDown={e=>e.currentTarget.style.background=T.card2}
+            onPointerUp={e=>e.currentTarget.style.background=T.card}
+            onPointerLeave={e=>e.currentTarget.style.background=T.card}>
+            <div style={{fontSize:24,width:32,textAlign:'center'}}>{s.icon}</div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{color:T.t1,fontSize:15,fontWeight:700,marginBottom:2}}>{s.title}</div>
+              <div style={{color:T.t3,fontSize:11,fontWeight:500}}>{s.sub}</div>
+            </div>
+            <div style={{color:T.t3,fontSize:18,fontWeight:600,width:16,textAlign:'center'}}>›</div>
+          </button>
+        ))}
+        <div style={{height:20}}/>
+      </div>
+      <div style={{height:100}}/>
+      <MatchBar onHome={onHome}/>
+    </div>
+  );
+}
+
+/* ── Journey detail screens ────────────────────────────────── */
+const JOURNEY_NAV_PROPS={backIcon:<JourneyIcon size={18}/>};
+
+function JourneyAngaben({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalSections}){
+  return(
+    <RulesDetailLayout icon="🎯" title="Aufschlag"
+      sub="Reihenfolge, Position & Strategie"
+      visual={<AngabenVisual/>}
+      onBackToRules={onBackToJourney} onHome={onHome}
+      onNext={onNext} onPrev={onPrev}
+      currentIdx={currentIdx} totalSections={totalSections}
+      {...JOURNEY_NAV_PROPS}>
+      <RulesH>Reihenfolge</RulesH>
+      <RulesUl items={[
+        'Aufschlag wechselt nach jedem Spiel zur Gegen-Mannschaft',
+        'Innerhalb eines Spiels schlägt derselbe Spieler durch',
+        'Service-Seite alterniert mit jedem Punkt (rechts/links)',
+      ]}/>
+      <RulesH>Technik</RulesH>
+      <RulesUl items={[
+        'Treffpunkt UNTER der Hüfte (Pflicht)',
+        'Ball muss vorher einmal am Boden aufspringen',
+        'Ziel: diagonales Service-Feld der Gegenseite',
+        'Zwei Versuche pro Punkt (wie Tennis)',
+      ]}/>
+      <RulesH>Strategie</RulesH>
+      <RulesUl items={[
+        'Variation in Effet & Tempo schlägt rohe Power',
+        'T-Aufschlag (an die Mittellinie) holt Returner aus der Komfortzone',
+        'Kurzer, niedriger Slice zwingt zum Vorrücken — geht oft ins Netz oder kommt schlecht zurück',
+        'Aufschlag auf den Körper neutralisiert Vorhand und Rückhand',
+      ]}/>
+      <RulesH>Tipp</RulesH>
+      <RulesP>Beim ersten Versuch ruhig riskanter spielen — der zweite muss "nur" rein. Genau wie Tennis: ein zweiter Aufschlag, der nicht angegriffen wird, ist Gold wert.</RulesP>
+    </RulesDetailLayout>
+  );
+}
+
+function JourneyAufstellungen({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalSections}){
+  return(
+    <RulesDetailLayout icon="👥" title="Aufstellungen"
+      sub="Netz, Hinten, Verteidigung, Angriff"
+      visual={<AufstellungenVisual/>}
+      onBackToRules={onBackToJourney} onHome={onHome}
+      onNext={onNext} onPrev={onPrev}
+      currentIdx={currentIdx} totalSections={totalSections}
+      {...JOURNEY_NAV_PROPS}>
+      <RulesH>Grundregel</RulesH>
+      <RulesP>Einer am Netz, einer hinten. Diese diagonale Aufstellung deckt den meisten Court ab.</RulesP>
+      <RulesH>Phasen</RulesH>
+      <RulesUl items={[
+        'Aufschlag: Aufschläger hinten, Partner am Netz',
+        'Return: Returner hinten, Partner am Netz',
+        'Angriff: BEIDE am Netz nach gutem Schlag',
+        'Verteidigung: BEIDE hinten wenn Gegner attackiert',
+      ]}/>
+      <RulesH>Tipps</RulesH>
+      <RulesUl items={[
+        'Nie beide gleichzeitig zurück — außer in echter Verteidigung',
+        'Nie beide gleichzeitig vor — außer nach gutem Angriff',
+        'Lücke zwischen euch schließen: ein leichter Diagonal-Versatz',
+        'Wer den Ball spielt, kommunizieren (laut "MEIN!")',
+      ]}/>
+      <RulesH>Faustregel</RulesH>
+      <RulesP>Das Netz-Spiel gewinnt. Wer am Netz steht, hat den Winkel-Vorteil. Aber niemals blind vorrücken — erst nach einem Schlag, der den Gegner unter Druck setzt.</RulesP>
+    </RulesDetailLayout>
+  );
+}
+
+function JourneyHaende({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalSections}){
+  return(
+    <RulesDetailLayout icon="🤝" title="Hand-Seiten"
+      sub="Links-/Rechtshänder am Court"
+      visual={<HandSeitenVisual/>}
+      onBackToRules={onBackToJourney} onHome={onHome}
+      onNext={onNext} onPrev={onPrev}
+      currentIdx={currentIdx} totalSections={totalSections}
+      {...JOURNEY_NAV_PROPS}>
+      <RulesH>Klassische Regel</RulesH>
+      <RulesP>Die stärkere Vorhand zeigt zur Mitte. Dort kommen die meisten Bälle — Mitte ist der wichtigste Bereich.</RulesP>
+      <RulesH>Rechtshänder + Rechtshänder</RulesH>
+      <RulesUl items={[
+        'Spieler 1 (stärker): links — Vorhand zur Mitte',
+        'Spieler 2: rechts',
+        'Die Mitte wird mit zwei Vorhänden gedeckt — gut',
+        'Beide Rückhände stehen außen — schwächere Außen-Abdeckung',
+      ]}/>
+      <RulesH>Rechtshand + Linkshand — die "Padel-Aufstellung"</RulesH>
+      <RulesUl items={[
+        'Rechtshänder: links · Linkshänder: rechts',
+        'BEIDE Vorhände decken die Mitte',
+        'Beide Rückhände decken die Außenseite (zu den Wänden)',
+        'Gilt in der Padel-Welt als optimale Paarung',
+      ]}/>
+      <RulesH>Wer steht wo?</RulesH>
+      <RulesP>Die "Ad-Seite" (links beim Rechtshänder) entscheidet die wichtigen Punkte — Einstand, Vorteil, Match-Point. Dort gehört der stärkere/erfahrenere Spieler hin.</RulesP>
+    </RulesDetailLayout>
+  );
+}
+
+function JourneySchlagwahl({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalSections}){
+  return(
+    <RulesDetailLayout icon="🎾" title="Schlagwahl"
+      sub="Wann welche Schlagart?"
+      visual={<SchlagwahlVisual/>}
+      onBackToRules={onBackToJourney} onHome={onHome}
+      onNext={onNext} onPrev={onPrev}
+      currentIdx={currentIdx} totalSections={totalSections}
+      {...JOURNEY_NAV_PROPS}>
+      <RulesH>Faustregel</RulesH>
+      <RulesP>Ballhöhe entscheidet: <strong style={{color:T.t1}}>Hoch = aggressiv</strong>, <strong style={{color:T.t1}}>Mitte = Aufbau</strong>, <strong style={{color:T.t1}}>Tief = Kontrolle</strong>.</RulesP>
+      <RulesH>Hoch (über Schulter)</RulesH>
+      <RulesUl items={[
+        'Nah am Netz → Smash / Remate',
+        'Hinten am Court → Bandeja (Kontrolle statt Power)',
+        'Mittlere Position → Víbora (Slice mit Biss)',
+      ]}/>
+      <RulesH>Mitte (Brust- bis Hüfthöhe)</RulesH>
+      <RulesUl items={[
+        'Am Netz → Volea (kompakter Punch)',
+        'Grundlinie → Drive mit Topspin',
+        'Gegen Netz-Spieler → Chiquita (weich, knapp übers Netz)',
+      ]}/>
+      <RulesH>Tief (unterhalb Hüfte)</RulesH>
+      <RulesUl items={[
+        'Globo (Lob) → Gegner zurück zwingen, Druck rausnehmen',
+        'Flacher Drive → Verteidigung, Reset',
+        'Nach Wand-Rückprall → ruhig spielen, nichts erzwingen',
+      ]}/>
+      <RulesH>Tipp</RulesH>
+      <RulesP>Wenn unsicher: nicht den schwersten Schlag wählen, sondern den, der dich am Ball-Tausch hält. 90% der Punkte werden durch Fehler entschieden, nicht durch Winner.</RulesP>
+    </RulesDetailLayout>
+  );
+}
+
+function JourneySchlaeger({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalSections}){
+  return(
+    <RulesDetailLayout icon="🏓" title="Schläger"
+      sub="Rund, Diamant, Tropfen — Materialkunde"
+      visual={<SchlaegerVisual/>}
+      onBackToRules={onBackToJourney} onHome={onHome}
+      onNext={onNext} onPrev={onPrev}
+      currentIdx={currentIdx} totalSections={totalSections}
+      {...JOURNEY_NAV_PROPS}>
+      <RulesH>Drei Hauptformen</RulesH>
+      <RulesDef term="Rund">Sweet Spot zentriert, maximale Kontrolle. Ideal für Anfänger und defensives Spiel.</RulesDef>
+      <RulesDef term="Diamant">Sweet Spot oben, kopflastig, maximale Power. Für Smash-orientierte Spieler.</RulesDef>
+      <RulesDef term="Tropfen">Sweet Spot oben-mittig, ausgewogen. Beliebte Allround-Wahl für Fortgeschrittene.</RulesDef>
+      <RulesH>Gewicht</RulesH>
+      <RulesUl items={[
+        'Männer: 360-380 g',
+        'Frauen: 340-365 g',
+        'Schwerer = mehr Power, weniger Wendigkeit',
+        'Leichter = mehr Spielgefühl, weniger Power',
+      ]}/>
+      <RulesH>Core (Kern)</RulesH>
+      <RulesUl items={[
+        'EVA-Soft → Komfort & Kontrolle, gut für Gelenke',
+        'EVA-Hard → mehr Power & Direktheit, härter zum Arm',
+        'Foam → sehr weich, Anfänger-Komfort',
+      ]}/>
+      <RulesH>Oberfläche & Löcher</RulesH>
+      <RulesUl items={[
+        'Glatt → mehr Power, weniger Spin',
+        'Rauh (Sand-Coating) → mehr Spin, weniger Power',
+        'Mehr Löcher → leichter, weniger stabil',
+        'Weniger Löcher → stabiler, schwerer',
+      ]}/>
+      <RulesH>Tipp</RulesH>
+      <RulesP>Anfänger sollten mit RUND + WEICH + LEICHT starten. Erst wenn die Technik sitzt, lohnt sich Diamant oder härtere Cores.</RulesP>
+    </RulesDetailLayout>
+  );
+}
+
+function JourneyBaelle({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalSections}){
+  return(
+    <RulesDetailLayout icon="🟡" title="Bälle"
+      sub="Tennis vs Padel — die Unterschiede"
+      visual={<BaelleVisual/>}
+      onBackToRules={onBackToJourney} onHome={onHome}
+      onNext={onNext} onPrev={onPrev}
+      currentIdx={currentIdx} totalSections={totalSections}
+      {...JOURNEY_NAV_PROPS}>
+      <RulesH>Optisch identisch — technisch nicht</RulesH>
+      <RulesP>Beide gelb, beide Filz. Aber Größe, Druck und Sprung-Verhalten unterscheiden sich.</RulesP>
+      <RulesH>Größe & Druck</RulesH>
+      <RulesUl items={[
+        'Tennis: ~6.5 cm Durchmesser · 14 PSI Innendruck',
+        'Padel: ~6.3 cm · nur 4.6-5.2 PSI',
+        'Padel-Ball ist also etwas kleiner UND deutlich weniger unter Druck',
+      ]}/>
+      <RulesH>Sprung-Verhalten</RulesH>
+      <RulesUl items={[
+        'Aus 254 cm Höhe fallen gelassen:',
+        'Tennis springt 135-147 cm hoch',
+        'Padel springt 135-145 cm hoch',
+        'Klingt ähnlich, aber Padel-Ball verlangsamt sich schneller',
+      ]}/>
+      <RulesH>Warum die Unterschiede wichtig sind</RulesH>
+      <RulesUl items={[
+        'Tennis-Ball auf Padel-Court: zu schnell, zu hoch nach Wand',
+        'Padel-Ball auf Tennis-Court: zu langsam, zu wenig Sprung',
+        'Niedrigerer Druck → langsamere Geschwindigkeit → mehr Kontrolle möglich',
+        'Wand-Rückprall: Padel-Ball verliert Energie schneller, ist berechenbarer',
+      ]}/>
+      <RulesH>Lebensdauer</RulesH>
+      <RulesUl items={[
+        'Profis: alle 9 Spiele neuer Ball',
+        'Hobby: nach 2-3 Sessions deutlicher Druck-Verlust',
+        'Auch ungeöffnete Dosen verlieren Druck nach ~3 Wochen',
+        'Tipp: Dose immer im Kühlschrank — verlängert Lebensdauer',
+      ]}/>
+    </RulesDetailLayout>
+  );
+}
+
+export default function App(){
+  const[scr,setScr]=useState('splash');
+  const[activeTab,setActiveTab]=useState('home');
+  const[cfg,setCfg]=useState(()=>lsGet('ritmo_cfg',{nameA:'Team A',nameB:'Team B',format:'bo3',amLimit:21}));
+  const[bo3,dBo3]=useReducer(bo3R,B0,init=>lsGet('ritmo_bo3',init));
+  const[am,dAm]=useReducer(amR,A0,init=>lsGet('ritmo_am',init));
+  const[tourney,setTourney]=useState(()=>lsGet('ritmo_tourney',null));
+  const[ringId,setRingId]=useState(()=>lsGet('ritmo_ring','soft'));
+  const[inputMode,setInputMode]=useState(()=>lsGet('ritmo_input','smartphone'));
+  const[voiceOn,setVoiceOn]=useState(()=>lsGet('ritmo_voice',false));
+  const[theme,setTheme]=useState(()=>lsGet('ritmo_theme','dark'));
+  const[customThemes,setCustomThemes]=useState(()=>lsGet('ritmo_custom_themes',[]));
+
+  // Apply theme to document root → CSS vars cascade everywhere
+  useEffect(()=>{
+    document.documentElement.setAttribute('data-theme',theme);
+  },[theme]);
+
+  // Inject CSS for custom themes (and a global font-family fallback rule)
+  useEffect(()=>{
+    let el=document.getElementById('ritmo-custom-themes');
+    if(!el){
+      el=document.createElement('style');
+      el.id='ritmo-custom-themes';
+      document.head.appendChild(el);
+    }
+    const globalRule=`html,body,#root,button,input,textarea,select{
+      font-family:var(--font,-apple-system,BlinkMacSystemFont,"SF Pro","Segoe UI",sans-serif);
+    }`;
+    const customCss=customThemes.map(t=>{
+      const p=buildThemePalette({bg:t.bg,text:t.text,highlight:t.highlight,
+        secondary:t.secondary,font:fontStack(t.font)});
+      return `[data-theme="custom-${t.id}"]{
+        --bg:${p.bg};--card:${p.card};--card2:${p.card2};
+        --border:${p.border};--sep:${p.sep};
+        --t1:${p.t1};--t2:${p.t2};--t3:${p.t3};--t4:${p.t4};
+        --o:${p.o};--oSoft:${p.oSoft};--oGlow:${p.oGlow};--oFlash:${p.oFlash};
+        --g:${p.g};--r:${p.r};
+        --blue:${p.blue};--blueSoft:${p.blueSoft};--blueGlow:${p.blueGlow};
+        --gold:${p.gold};
+        --font:${p.font};
+      }`;
+    }).join('\n');
+    el.textContent=globalRule+'\n'+customCss;
+  },[customThemes]);
+
+  // Auto-fallback if currently selected custom theme was deleted
+  useEffect(()=>{
+    if(theme.startsWith('custom-')){
+      const id=theme.replace('custom-','');
+      if(!customThemes.find(t=>t.id===id)) setTheme('dark');
+    }
+  },[customThemes,theme]);
+
+  // App-level KeyCapture: lives outside Match's render tree so bigScreen
+  // toggles in Match never unmount/remount the hidden input. Match registers
+  // its handler via this ref.
+  const matchKeyRef=useRef(null);
+  const onMatchKey=useRef((e)=>matchKeyRef.current?.(e)).current;
+
+  // Persist
+  useEffect(()=>lsSet('ritmo_cfg',cfg),[cfg]);
+  useEffect(()=>lsSet('ritmo_bo3',bo3),[bo3]);
+  useEffect(()=>lsSet('ritmo_am',am),[am]);
+  useEffect(()=>{if(tourney===null){try{localStorage.removeItem('ritmo_tourney');}catch(e){}}else lsSet('ritmo_tourney',tourney);},[tourney]);
+  useEffect(()=>lsSet('ritmo_ring',ringId),[ringId]);
+  useEffect(()=>lsSet('ritmo_input',inputMode),[inputMode]);
+  useEffect(()=>lsSet('ritmo_voice',voiceOn),[voiceOn]);
+  useEffect(()=>lsSet('ritmo_theme',theme),[theme]);
+  useEffect(()=>lsSet('ritmo_custom_themes',customThemes),[customThemes]);
+
+  const nav=useCallback(s=>setScr(s),[]);
+  const goHome=useCallback(()=>{setScr('home');setActiveTab('home');setTourneyEditMode(false);},[]);
+
+  // Live = active match if scoreboard has progress
+  const hasMatch=(bo3.gA>0||bo3.gB>0||bo3.pA>0||bo3.pB>0||bo3.sA>0||bo3.sB>0
+    ||am.pA>0||am.pB>0||(bo3.hist&&bo3.hist.length>0)||(am.hist&&am.hist.length>0));
+  const hasTourney=tourney!==null&&!tourney.finished;
+
+  const handleTab=(t)=>{
+    setActiveTab(t);
+    if(t==='home') setScr('home');
+    else if(t==='live') setScr('live');
+    else if(t==='settings') setScr('settings');
+  };
+
+  const[tourneyEditMode,setTourneyEditMode]=useState(false);
+
+  const startTourney=(t)=>{setTourney(t);setScr('tournament-play');setTourneyEditMode(false);};
+  const newTourney=()=>{setTourney(null);setScr('tournament-setup');setTourneyEditMode(false);};
+
+  const editTourney=()=>{setTourneyEditMode(true);setScr('tournament-setup');};
+  const saveTourneyEdit=(updates)=>{
+    setTourney(prev=>{
+      if(!prev)return prev;
+      return {...prev,
+        players:updates.players,
+        format:updates.format,
+        winMode:updates.winMode,
+        numCourts:updates.numCourts,
+        roundDurationMin:updates.roundDurationMin,
+      };
+    });
+    setTourneyEditMode(false);
+    setScr('tournament-play');
+  };
+
+  const deleteMatch=()=>{
+    dBo3({type:'RESET'});
+    dAm({type:'RESET',limit:cfg.amLimit??21});
+  };
+  const deleteTourney=()=>setTourney(null);
+
+  return(<>
+    <style>{CSS}</style>
+
+    {/* App-level KeyCapture — never unmounts when Match re-renders (e.g. bigScreen toggle).
+        Active only on Match screen with ring/presenter input mode. */}
+    <KeyCapture
+      enabled={scr==='match'&&(inputMode==='ring'||inputMode==='presenter')}
+      onKey={onMatchKey}/>
+
+    {scr==='splash'&&<Splash onDone={()=>nav('home')}/>}
+    {scr==='home'&&<Home nav={nav} activeTab={activeTab} setActiveTab={handleTab}/>}
+    {scr==='rules'&&<Rules onHome={goHome}
+      onSelect={(id)=>setScr(`rules-${id}`)}/>}
+    {(()=>{
+      const order=['basics','bo3','americano','mexicano','rotation','glossar'];
+      const id=scr.startsWith('rules-')?scr.slice(6):null;
+      const idx=id?order.indexOf(id):-1;
+      if(idx<0) return null;
+      const nav={
+        onBackToRules:()=>setScr('rules'),
+        onHome:goHome,
+        currentIdx:idx,
+        totalSections:order.length,
+        onNext:idx<order.length-1?()=>setScr(`rules-${order[idx+1]}`):null,
+        onPrev:idx>0?()=>setScr(`rules-${order[idx-1]}`):null,
+      };
+      const Comp={basics:RulesBasics,bo3:RulesBo3,americano:RulesAmericano,
+        mexicano:RulesMexicano,rotation:RulesRotation,glossar:RulesGlossar}[id];
+      return Comp?<Comp {...nav}/>:null;
+    })()}
+    {scr==='journey'&&<Journey onHome={goHome}
+      onSelect={(id)=>setScr(`journey-${id}`)}/>}
+    {(()=>{
+      const order=['angaben','aufstellungen','haende','schlagwahl','schlaeger','baelle'];
+      const id=scr.startsWith('journey-')?scr.slice(8):null;
+      const idx=id?order.indexOf(id):-1;
+      if(idx<0) return null;
+      const nav={
+        onBackToJourney:()=>setScr('journey'),
+        onHome:goHome,
+        currentIdx:idx,
+        totalSections:order.length,
+        onNext:idx<order.length-1?()=>setScr(`journey-${order[idx+1]}`):null,
+        onPrev:idx>0?()=>setScr(`journey-${order[idx-1]}`):null,
+      };
+      const Comp={angaben:JourneyAngaben,aufstellungen:JourneyAufstellungen,
+        haende:JourneyHaende,schlagwahl:JourneySchlagwahl,
+        schlaeger:JourneySchlaeger,baelle:JourneyBaelle}[id];
+      return Comp?<Comp {...nav}/>:null;
+    })()}
+    {scr==='live'&&<Live nav={nav} hasMatch={hasMatch} hasTourney={hasTourney}
+      tourneyData={tourney} matchCfg={cfg}
+      activeTab={activeTab} setActiveTab={handleTab}
+      onDeleteMatch={deleteMatch} onDeleteTourney={deleteTourney}/>}
+    {scr==='settings'&&<Settings onHome={goHome}
+      activeTab={activeTab} setActiveTab={handleTab}
+      ringId={ringId} setRingId={setRingId}
+      inputMode={inputMode} setInputMode={setInputMode}
+      voiceOn={voiceOn} setVoiceOn={setVoiceOn}
+      theme={theme} setTheme={setTheme}
+      customThemes={customThemes}
+      onDeleteCustomTheme={(id)=>setCustomThemes(p=>p.filter(t=>t.id!==id))}
+      onOpenWizard={()=>setScr('design-wizard')}/>}
+    {scr==='design-wizard'&&<DesignWizard
+      existing={customThemes}
+      onCancel={()=>setScr('settings')}
+      onSave={(t)=>{
+        const id=Date.now().toString(36);
+        setCustomThemes(prev=>[...prev,{...t,id}]);
+        setTheme('custom-'+id);
+        setScr('settings');
+      }}/>}
+    {scr==='single-setup'&&<SingleSetup nav={nav} onHome={goHome} cfg={cfg} setCfg={setCfg}/>}
+    {scr==='match'&&<Match cfg={cfg} setCfg={setCfg} bo3={bo3} dBo3={dBo3} am={am} dAm={dAm}
+      onHome={goHome} inputMode={inputMode} ringId={ringId}
+      matchKeyRef={matchKeyRef} theme={theme}/>}
+    {scr==='tournament-setup'&&<TournamentSetup nav={nav} onHome={goHome}
+      onStart={startTourney} onSave={saveTourneyEdit}
+      saved={tourney} isEdit={tourneyEditMode&&!!tourney}/>}
+    {scr==='tournament-play'&&tourney&&<TournamentPlay tourney={tourney} setTourney={setTourney}
+      onHome={goHome} nav={nav} ringId={ringId} onEdit={editTourney}/>}
+    {scr==='tournament-leaderboard'&&tourney&&<TournamentLeaderboard tourney={tourney}
+      onHome={goHome} onNew={newTourney}/>}
+
+    {scr==='remote'&&(
+      <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+        alignItems:'center',justifyContent:'center',gap:20,padding:24,position:'relative'}}>
+        <RitmoWordmark size={28}/>
+        <div style={{color:T.t2,fontSize:15,textAlign:'center',marginTop:8,maxWidth:300,lineHeight:1.5}}>
+          QR Remote-Eingabe — Figma-Design schicken!
+        </div>
+        <button onClick={goHome}
+          style={{marginTop:20,padding:'12px 28px',background:T.o,color:T.bg,
+            border:'none',borderRadius:24,fontSize:15,fontWeight:700,cursor:'pointer'}}>
+          Zurück zum Home
+        </button>
+      </div>
+    )}
+  </>);
+}

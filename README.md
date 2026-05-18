@@ -1,89 +1,65 @@
 # RITMO Padel
 
-Scoreboard für Padel-Matches und Turniere — React PWA, mobile-first.
+> Mobile-first Padel-Scoreboard PWA. Made by Team RITMO. With love for Padel ♡
 
-## Schnellstart
+## Features
+
+- 🎾 Bo3 Match-Scoring mit 4-Spieler-Setup
+- 🏆 Americano & Mexicano Turniere
+- 🎨 5 Themes (Bauhaus Dark / Federleicht / Padelhaus Blue / Wimbledon Green / Funky)
+- 🔊 Sprachansagen via Custom Audio-URL
+- 👤 Player-Profile mit RITMO-Level-Estimator (0.30–5.80 in 0.03-Schritten)
+- 🎭 Padel Personality Quiz → 6 Spielstile (Chico/Toro/Individuoso/Muro/Fantasma/Motor)
+- 📖 Regelwerk + Spieler-Journey mit Swipe-Navigation
+
+## Lokale Entwicklung
 
 ```bash
 npm install
-npm run dev       # http://localhost:5173
-npm run build     # → dist/
-npm run preview   # local preview of build
+npm run dev
 ```
 
----
+Öffnet `http://localhost:5173`.
 
-## Deploy auf GitHub Pages
-
-### Einmaliger Setup (5 Minuten)
-
-1. **GitHub-Repo erstellen**
-   - Auf github.com → "New repository"
-   - Name: z.B. `ritmo-padel` (merken — wird Teil der URL)
-   - Public (Pages funktioniert auch privat, aber dann braucht's Pro)
-   - "Create repository"
-
-2. **Code pushen** (lokal im Projekt-Ordner)
-   ```bash
-   git init
-   git add .
-   git commit -m "Initial commit"
-   git branch -M main
-   git remote add origin https://github.com/DEIN-USERNAME/ritmo-padel.git
-   git push -u origin main
-   ```
-
-3. **Pages aktivieren**
-   - Im Repo → Settings → Pages
-   - Source: **GitHub Actions** (NICHT "Deploy from a branch")
-   - Speichern
-
-4. **Workflow läuft automatisch**
-   - Beim nächsten Push (oder direkt nach Setup) startet `.github/workflows/deploy.yml`
-   - Im "Actions"-Tab sichtbar
-   - Nach ~1-2 Minuten ist die App live unter:
-   ```
-   https://DEIN-USERNAME.github.io/ritmo-padel/
-   ```
-
-### Updates deployen
+## Build
 
 ```bash
-git add .
-git commit -m "Update"
-git push
+npm run build
+npm run preview   # local production preview
 ```
 
-Der Workflow läuft automatisch bei jedem Push auf `main`. URL ändert sich nicht.
+## Deployment zu GitHub Pages
 
-### Manueller Re-Deploy
+1. Repo zu GitHub pushen
+2. Settings → Pages → Source: **GitHub Actions** auswählen
+3. Beim nächsten Push auf `main` deployt der Workflow automatisch
+4. App erreichbar unter `https://<username>.github.io/<repo-name>/`
 
-Im GitHub-Repo → Actions → "Deploy to GitHub Pages" → "Run workflow".
+`BASE_PATH=/<repo-name>/` wird vom Workflow automatisch gesetzt.
 
----
+## Spielstil-Bilder
 
-## Architektur-Notizen
+6 JPEGs in `public/assets/` ablegen. Details siehe `public/assets/README.md`.
 
-- **Single-File App**: `src/App.jsx` (~5100 Zeilen) enthält die komplette App. CSS-Variables im `CSS`-Konstanten-Block am Anfang, injected via `<style>{CSS}</style>` im JSX.
-- **Themes**: 4 eingebaute (Dark, Light, Padelhaus Blue, Wimbledon Green) + Custom-Designs aus dem Design Wizard. Theme-Switch via `data-theme`-Attribut am `<html>`-Element.
-- **State**: alles in `localStorage` mit `ritmo_*` Prefixes — Custom Themes, Match-State, Turnier, Settings.
-- **Keine externen UI-Libraries**: alle Icons inline SVG, kein Tailwind, kein Lucide, kein CSS-Framework. Nur React + Vite.
+## Projektstruktur
 
-## Base-Path-Konfiguration
+```
+ritmo-padel/
+├── .github/workflows/deploy.yml
+├── public/
+│   ├── 404.html
+│   ├── favicon.svg
+│   └── assets/         Spielstil-Bilder
+├── src/
+│   ├── main.jsx
+│   └── App.jsx
+├── index.html
+├── package.json
+└── vite.config.js
+```
 
-GitHub Pages serviert unter `/<repo-name>/`. Der Workflow setzt automatisch `BASE_PATH=/<repo-name>/` beim Build (`vite.config.js` liest das Environment-Var). Wer das Repo anders benennt, muss nichts ändern — funktioniert automatisch.
+## Demo-Login
 
-Falls du auf eine eigene Domain (CNAME) deployen willst:
-1. `public/CNAME` mit deiner Domain anlegen (z.B. `padel.example.com`)
-2. Im Workflow `BASE_PATH=/` setzen (oder den env-Block entfernen)
-3. Custom Domain im Repo-Settings → Pages konfigurieren
+Username: `dev` · Password: `ritmodev` (überspringt Onboarding)
 
-## Browser-Support
-
-- Modern browsers (last 2 Jahre): voll funktional
-- iOS Safari 15+: voll funktional inklusive Web Audio + Speech
-- Custom Themes: Pointer Events API erforderlich
-
-## Lizenz
-
-Privates Projekt — Team RITMO. Made with love for Padel ♡
+Oder **Registrieren** klicken → Onboarding-Flow.

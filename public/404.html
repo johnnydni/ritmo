@@ -1,21 +1,16 @@
-<!--
-  GitHub Pages serves 404.html for any path that doesn't match a static file.
-  Since RITMO Padel is a single-page app with internal navigation (no router),
-  this fallback redirects to the root so deep-links / refreshes work.
-  This file is automatically copied to dist/ during build (via Vite's public/).
--->
-<!doctype html>
-<html lang="de">
+<!DOCTYPE html>
+<html>
   <head>
-    <meta charset="UTF-8">
-    <title>RITMO Padel</title>
+    <meta charset="utf-8">
     <script>
-      // Strip current path back to the repo base and reload there
-      var path = window.location.pathname;
-      var segments = path.split('/').filter(Boolean);
-      // Keep the repo segment (first), drop the rest
-      var base = segments.length ? '/' + segments[0] + '/' : '/';
-      window.location.replace(base);
+      // GitHub Pages SPA redirect
+      var l = window.location;
+      l.replace(l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
+        l.pathname.split('/').slice(0, 1 + (l.pathname.match(/\//g) || []).length - 1).join('/') +
+        '/?p=/' + l.pathname.slice(1).replace(/&/g, '~and~') +
+        (l.search ? '&q=' + l.search.slice(1).replace(/&/g, '~and~') : '') +
+        l.hash
+      );
     </script>
   </head>
   <body></body>

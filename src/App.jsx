@@ -111,6 +111,28 @@ const CSS = `
   --gold: #D4B98F;
 }
 
+:root[data-theme="funky"] {
+  --bg: #1A0918;
+  --card: #2A1530;
+  --card2: #3D1F45;
+  --border: rgba(255,229,45,0.20);
+  --sep: rgba(255,229,45,0.10);
+  --t1: #FFF4D9;
+  --t2: rgba(255,244,217,0.78);
+  --t3: rgba(255,244,217,0.52);
+  --t4: rgba(255,244,217,0.28);
+  --o: #FFE52D;
+  --oSoft: rgba(255,229,45,0.16);
+  --oGlow: rgba(255,229,45,0.55);
+  --oFlash: rgba(255,229,45,0.16);
+  --g: #00C896;
+  --r: #FF6B4A;
+  --blue: #FF3D5A;
+  --blueSoft: rgba(255,61,90,0.18);
+  --blueGlow: rgba(255,61,90,0.55);
+  --gold: #FFE52D;
+}
+
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html,body,#root{background:var(--bg);height:100%;min-height:100dvh;overflow:hidden;
   font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','SF Pro Text','Helvetica Neue',sans-serif;
@@ -597,6 +619,88 @@ function ExitFullscreenIcon({size=18}){
       stroke="var(--t1)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
   </svg>);
 }
+function KiwiIcon({size=18}){
+  const seeds=[[12,5.5],[16,7],[18,11],[16.5,15.5],[12,18.5],[7.5,15.5],[6,11],[8,7]];
+  return(<svg width={size} height={size} viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="11" fill="#7BAB3E"/>
+    <circle cx="12" cy="12" r="9.2" fill="#A7D070"/>
+    <circle cx="12" cy="12" r="1.7" fill="#FFFCEB"/>
+    {seeds.map(([x,y],i)=>(
+      <ellipse key={i} cx={x} cy={y} rx="0.55" ry="0.95" fill="#1A1A1A"
+        transform={`rotate(${i*45} ${x} ${y})`}/>
+    ))}
+  </svg>);
+}
+
+function PineappleIcon({size=18}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24">
+    {/* Leaves */}
+    <path d="M 12 1 L 9 5 L 12 4 L 15 5 Z" fill="#3AA050"/>
+    <path d="M 8 5.5 L 11 2 L 12 4 L 10 6 Z" fill="#3AA050"/>
+    <path d="M 16 5.5 L 13 2 L 12 4 L 14 6 Z" fill="#3AA050"/>
+    {/* Body */}
+    <ellipse cx="12" cy="14.5" rx="5.4" ry="6.8" fill="#FFD93C"/>
+    <ellipse cx="12" cy="14.5" rx="5.4" ry="6.8" fill="none" stroke="#C8860B" strokeWidth="0.5" opacity="0.4"/>
+    {/* Diamond cross-hatch */}
+    <path d="M 9 9 L 13 12 L 9 15 M 15 9 L 11 12 L 15 15 M 9 15 L 13 18 L 9 21 M 15 15 L 11 18 L 15 21"
+      stroke="#C8860B" strokeWidth="0.55" fill="none" opacity="0.7"/>
+  </svg>);
+}
+
+function CoconutIcon({size=18}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="10" fill="#6B4226"/>
+    <circle cx="12" cy="12" r="8" fill="#F4ECDF"/>
+    {/* Brown shell flecks on inside ring */}
+    <circle cx="10" cy="10" r="0.6" fill="#6B4226"/>
+    <circle cx="14" cy="11" r="0.5" fill="#6B4226"/>
+    <circle cx="11.5" cy="14" r="0.55" fill="#6B4226"/>
+    <circle cx="14.5" cy="14.5" r="0.45" fill="#6B4226"/>
+    {/* Three eyes (coconut signature) */}
+    <circle cx="9.5" cy="7" r="0.85" fill="#3D1F0E"/>
+    <circle cx="12" cy="6" r="0.85" fill="#3D1F0E"/>
+    <circle cx="14.5" cy="7" r="0.85" fill="#3D1F0E"/>
+  </svg>);
+}
+
+function TennisBallIcon({size=18}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="10.5" fill="#E8FF3D" stroke="rgba(0,0,0,0.32)" strokeWidth="0.4"/>
+    <path d="M 2 12 Q 7 9 12 10 Q 17 9 22 12" stroke="white" strokeWidth="1.4" fill="none" opacity="0.85"/>
+    <path d="M 2 12 Q 7 15 12 14 Q 17 15 22 12" stroke="white" strokeWidth="1.4" fill="none" opacity="0.85"/>
+  </svg>);
+}
+
+function ParrotIcon({size=18}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24">
+    {/* Body */}
+    <ellipse cx="11" cy="13" rx="6.5" ry="7.5" fill="#FF3D5A"/>
+    {/* Wing */}
+    <path d="M 7 11 Q 10 9 13 11 Q 13 16 9 17 Q 6 16 7 11 Z" fill="#FFE52D"/>
+    {/* Head */}
+    <circle cx="11" cy="7.5" r="4" fill="#FF3D5A"/>
+    {/* Beak */}
+    <path d="M 14 7 L 18 6 L 14.5 9 Z" fill="#FFE52D" stroke="#C8860B" strokeWidth="0.3" strokeLinejoin="round"/>
+    {/* Eye */}
+    <circle cx="12.5" cy="6.8" r="1.1" fill="#FFF"/>
+    <circle cx="12.7" cy="6.8" r="0.55" fill="#1A1A1A"/>
+    {/* Tail feathers */}
+    <path d="M 5 18 L 3 22 L 6 20 L 5 23 L 8 21 Z" fill="#00C896"/>
+  </svg>);
+}
+
+function FunkyFruitsRow({size=16,gap=7}){
+  return(
+    <div style={{display:'flex',alignItems:'center',gap}}>
+      <PineappleIcon size={size}/>
+      <KiwiIcon size={size}/>
+      <CoconutIcon size={size}/>
+      <TennisBallIcon size={size}/>
+      <ParrotIcon size={size}/>
+    </div>
+  );
+}
+
 function BookIcon({size=28}){
   return(<svg width={size} height={size} viewBox="0 0 32 32" fill="none">
     {/* Open book silhouette */}
@@ -609,20 +713,6 @@ function BookIcon({size=28}){
     <line x1="7" y1="17" x2="12" y2="17.5" stroke="var(--o)" strokeWidth=".9" opacity=".55"/>
     <line x1="20" y1="13.5" x2="25" y2="13" stroke="var(--o)" strokeWidth=".9" opacity=".55"/>
     <line x1="20" y1="17.5" x2="25" y2="17" stroke="var(--o)" strokeWidth=".9" opacity=".55"/>
-  </svg>);
-}
-
-function WandIcon({size=22}){
-  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    {/* Wand body diagonal */}
-    <line x1="4" y1="20" x2="17" y2="7" stroke="var(--o)" strokeWidth="1.8" strokeLinecap="round"/>
-    {/* Wand tip star */}
-    <circle cx="18" cy="6" r="2.2" fill="var(--o)"/>
-    {/* Sparkles */}
-    <path d="M14 4 L14.6 5.5 L16 6 L14.6 6.5 L14 8 L13.4 6.5 L12 6 L13.4 5.5 Z"
-      fill="var(--o)" opacity="0.8"/>
-    <path d="M20 11 L20.4 12 L21.4 12.4 L20.4 12.8 L20 13.8 L19.6 12.8 L18.6 12.4 L19.6 12 Z"
-      fill="var(--o)" opacity="0.6"/>
   </svg>);
 }
 
@@ -642,6 +732,266 @@ function JourneyIcon({size=28}){
     <circle cx="3" cy="16" r="0.9" fill="var(--o)" opacity="0.7"/>
     {/* Center dot */}
     <circle cx="16" cy="16" r="1.6" fill="var(--o)"/>
+  </svg>);
+}
+
+function ArrowRightCircleIcon({size=26}){
+  return(<svg width={size} height={size} viewBox="0 0 32 32" fill="none">
+    <circle cx="16" cy="16" r="14" stroke="var(--o)" strokeWidth="2.2"/>
+    <path d="M 10 16 L 21 16" stroke="var(--o)" strokeWidth="2.2" strokeLinecap="round"/>
+    <path d="M 17 11.5 L 21.5 16 L 17 20.5" stroke="var(--o)" strokeWidth="2.2"
+      strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+  </svg>);
+}
+
+function HeroRulesVisual(){
+  return(
+    <svg viewBox="0 0 400 320" preserveAspectRatio="xMidYMid slice"
+      style={{width:'100%',height:'100%',display:'block'}}>
+      <defs>
+        <linearGradient id="hrBg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="var(--card2)"/>
+          <stop offset="100%" stopColor="var(--card)"/>
+        </linearGradient>
+        <radialGradient id="hrGlow" cx="0.7" cy="0.3" r="0.6">
+          <stop offset="0%" stopColor="var(--oGlow)" stopOpacity="0.35"/>
+          <stop offset="100%" stopColor="var(--oGlow)" stopOpacity="0"/>
+        </radialGradient>
+      </defs>
+      <rect width="400" height="320" fill="url(#hrBg)"/>
+      <rect width="400" height="320" fill="url(#hrGlow)"/>
+      {/* Diagonal court line */}
+      <line x1="-20" y1="260" x2="420" y2="80"
+        stroke="var(--t1)" strokeWidth="2.5" opacity="0.18"/>
+      <line x1="-20" y1="265" x2="420" y2="85"
+        stroke="var(--t1)" strokeWidth="0.8" opacity="0.35"/>
+
+      {/* Racket 1 — back, tilted left */}
+      <g transform="translate(155, 170) rotate(-22)">
+        <ellipse cx="0" cy="0" rx="58" ry="78" fill="var(--bg)" opacity="0.55"/>
+        <ellipse cx="0" cy="0" rx="58" ry="78" fill="none"
+          stroke="var(--t1)" strokeWidth="3.5"/>
+        {/* Hole pattern */}
+        <g fill="var(--t1)" opacity="0.7">
+          {Array.from({length:5}).map((_,row)=>
+            Array.from({length:5}).map((_,col)=>{
+              const x=-40+col*20, y=-50+row*20;
+              if(Math.sqrt((x/55)**2+(y/72)**2)>1) return null;
+              return <circle key={`${row}-${col}`} cx={x} cy={y} r="2.6"/>;
+            })
+          )}
+        </g>
+        {/* Brand mark */}
+        <circle cx="0" cy="0" r="13" fill="none" stroke="var(--o)" strokeWidth="2.5"/>
+        <text x="0" y="4" textAnchor="middle" fontSize="13" fontWeight="900" fill="var(--o)">R</text>
+        {/* Handle + grip */}
+        <rect x="-7" y="78" width="14" height="58" rx="3" fill="var(--t1)" opacity="0.85"/>
+        <rect x="-9" y="92" width="18" height="38" rx="3" fill="var(--o)"/>
+      </g>
+
+      {/* Racket 2 — front, tilted right */}
+      <g transform="translate(230, 160) rotate(18)">
+        <ellipse cx="0" cy="0" rx="58" ry="78" fill="var(--card2)"/>
+        <ellipse cx="0" cy="0" rx="58" ry="78" fill="none"
+          stroke="var(--t1)" strokeWidth="3.5"/>
+        <g fill="var(--t1)" opacity="0.85">
+          {Array.from({length:5}).map((_,row)=>
+            Array.from({length:5}).map((_,col)=>{
+              const x=-40+col*20, y=-50+row*20;
+              if(Math.sqrt((x/55)**2+(y/72)**2)>1) return null;
+              return <circle key={`b-${row}-${col}`} cx={x} cy={y} r="2.6"/>;
+            })
+          )}
+        </g>
+        <path d="M -14 -8 L 0 -22 L 14 -8 L 0 6 Z" fill="var(--o)" opacity="0.9"/>
+        <rect x="-7" y="78" width="14" height="58" rx="3" fill="var(--t1)"/>
+        <rect x="-9" y="92" width="18" height="38" rx="3" fill="var(--t2)"/>
+      </g>
+
+      {/* Ball — bottom right, with shadow */}
+      <ellipse cx="318" cy="268" rx="22" ry="6" fill="rgba(0,0,0,0.35)"/>
+      <circle cx="318" cy="248" r="18" fill="#E8FF3D"/>
+      <path d="M 301 244 Q 309 238 318 240 Q 327 238 335 244"
+        stroke="rgba(255,255,255,0.6)" strokeWidth="1.4" fill="none"/>
+      <path d="M 301 252 Q 309 258 318 256 Q 327 258 335 252"
+        stroke="rgba(255,255,255,0.6)" strokeWidth="1.4" fill="none"/>
+    </svg>
+  );
+}
+
+function HeroJourneyVisual(){
+  return(
+    <svg viewBox="0 0 400 320" preserveAspectRatio="xMidYMid slice"
+      style={{width:'100%',height:'100%',display:'block'}}>
+      <defs>
+        <linearGradient id="hjBg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="var(--card2)"/>
+          <stop offset="100%" stopColor="var(--card)"/>
+        </linearGradient>
+        <radialGradient id="hjGlow" cx="0.5" cy="0.5" r="0.65">
+          <stop offset="0%" stopColor="var(--oGlow)" stopOpacity="0.4"/>
+          <stop offset="60%" stopColor="var(--oGlow)" stopOpacity="0.08"/>
+          <stop offset="100%" stopColor="var(--oGlow)" stopOpacity="0"/>
+        </radialGradient>
+      </defs>
+      <rect width="400" height="320" fill="url(#hjBg)"/>
+      <rect width="400" height="320" fill="url(#hjGlow)"/>
+
+      {/* Large compass rose, centered */}
+      <g transform="translate(200, 165)">
+        {/* Outer rings */}
+        <circle r="120" stroke="var(--t1)" strokeWidth="1" fill="none" opacity="0.18"/>
+        <circle r="95" stroke="var(--t1)" strokeWidth="1" fill="none" opacity="0.25"/>
+        <circle r="62" stroke="var(--o)" strokeWidth="2" fill="none" opacity="0.55"/>
+        {/* Cardinal lines */}
+        <line x1="0" y1="-120" x2="0" y2="120" stroke="var(--t1)" strokeWidth="0.8" opacity="0.35"/>
+        <line x1="-120" y1="0" x2="120" y2="0" stroke="var(--t1)" strokeWidth="0.8" opacity="0.35"/>
+        <line x1="-85" y1="-85" x2="85" y2="85" stroke="var(--t1)" strokeWidth="0.5" opacity="0.18"/>
+        <line x1="85" y1="-85" x2="-85" y2="85" stroke="var(--t1)" strokeWidth="0.5" opacity="0.18"/>
+        {/* N pointer big — orange filled */}
+        <path d="M 0 -100 L -22 0 L 0 -18 L 22 0 Z" fill="var(--o)"/>
+        {/* S pointer outlined */}
+        <path d="M 0 100 L -22 0 L 0 18 L 22 0 Z" fill="none" stroke="var(--t1)" strokeWidth="1.5" opacity="0.5"/>
+        {/* E/W small */}
+        <path d="M 100 0 L 0 -16 L -10 0 L 0 16 Z" fill="var(--t1)" opacity="0.35"/>
+        <path d="M -100 0 L 0 -16 L 10 0 L 0 16 Z" fill="var(--t1)" opacity="0.35"/>
+        {/* Center cap */}
+        <circle r="8" fill="var(--bg)" stroke="var(--o)" strokeWidth="2"/>
+        <circle r="2.5" fill="var(--o)"/>
+        {/* Cardinal labels */}
+        <text x="0" y="-130" textAnchor="middle" fontSize="11" fontWeight="800"
+          fill="var(--o)" letterSpacing="2">N</text>
+        <text x="130" y="4" textAnchor="middle" fontSize="9" fontWeight="700"
+          fill="var(--t2)" letterSpacing="2" opacity="0.7">E</text>
+        <text x="0" y="138" textAnchor="middle" fontSize="9" fontWeight="700"
+          fill="var(--t2)" letterSpacing="2" opacity="0.7">S</text>
+        <text x="-130" y="4" textAnchor="middle" fontSize="9" fontWeight="700"
+          fill="var(--t2)" letterSpacing="2" opacity="0.7">W</text>
+      </g>
+
+      {/* Small racket silhouette top-left */}
+      <g transform="translate(58, 70) rotate(-18)" opacity="0.55">
+        <ellipse cx="0" cy="0" rx="22" ry="30" fill="none" stroke="var(--t1)" strokeWidth="1.6"/>
+        <rect x="-2.5" y="28" width="5" height="24" rx="1" fill="var(--t1)"/>
+      </g>
+      {/* Small racket silhouette bottom-right */}
+      <g transform="translate(340, 260) rotate(28)" opacity="0.55">
+        <ellipse cx="0" cy="0" rx="22" ry="30" fill="none" stroke="var(--t1)" strokeWidth="1.6"/>
+        <rect x="-2.5" y="28" width="5" height="24" rx="1" fill="var(--o)"/>
+      </g>
+
+      {/* Trail dots (movement path) */}
+      <circle cx="80" cy="220" r="3" fill="var(--o)" opacity="0.8"/>
+      <circle cx="120" cy="200" r="2.5" fill="var(--o)" opacity="0.6"/>
+      <circle cx="155" cy="195" r="2" fill="var(--o)" opacity="0.45"/>
+      <circle cx="245" cy="125" r="2" fill="var(--o)" opacity="0.45"/>
+      <circle cx="280" cy="115" r="2.5" fill="var(--o)" opacity="0.6"/>
+      <circle cx="318" cy="100" r="3" fill="var(--o)" opacity="0.8"/>
+    </svg>
+  );
+}
+
+/* ─── Landing pages ─────────────────────────────────────────── */
+function RulesLanding({onHome,onContinue}){
+  return(
+    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+      position:'relative',overflow:'hidden'}}>
+      {/* Header */}
+      <div style={{paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',
+        padding:'calc(env(safe-area-inset-top,0px) + 60px) 22px 18px',
+        flexShrink:0,zIndex:2,background:T.bg}}>
+        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
+          <BookIcon size={32}/>
+          <div style={{color:T.t1,fontSize:26,fontWeight:800,letterSpacing:-.3}}>Regelwerk</div>
+        </div>
+        <div style={{color:T.t2,fontSize:14,marginTop:2,fontWeight:400}}>
+          Padel-Regeln, Formate, Begriffe.
+        </div>
+      </div>
+
+      {/* Hero */}
+      <div className="fi" style={{width:'100%',flexShrink:0,
+        height:'clamp(220px,42vh,420px)',overflow:'hidden',
+        borderTop:`1px solid ${T.sep}`,borderBottom:`1px solid ${T.sep}`}}>
+        <HeroRulesVisual/>
+      </div>
+
+      {/* Title + description */}
+      <div style={{flex:1,padding:'24px 22px',overflowY:'auto',
+        display:'flex',flexDirection:'column'}}>
+        <div className="fi" style={{color:T.t1,fontSize:36,fontWeight:900,
+          letterSpacing:-.6,lineHeight:1,animationDelay:'.05s'}}>Padel Up</div>
+        <div className="fu" style={{color:T.t2,fontSize:15,marginTop:14,lineHeight:1.55,
+          fontWeight:400,animationDelay:'.15s'}}>
+          Die Regeln zu verstehen ist die Basis für jedes gute Spiel. Wer sie
+          verinnerlicht hat, spielt entspannter, fairer und kann sich auf das
+          Wesentliche konzentrieren — Strategie, Schlagwahl, Teamwork.
+        </div>
+      </div>
+
+      <div style={{height:100,flexShrink:0}}/>
+      <MatchBar onHome={onHome} rightButtons={[
+        {icon:<ArrowRightCircleIcon size={22}/>,onClick:onContinue}
+      ]}/>
+    </div>
+  );
+}
+
+function JourneyLanding({onHome,onContinue}){
+  return(
+    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+      position:'relative',overflow:'hidden'}}>
+      {/* Header */}
+      <div style={{padding:'calc(env(safe-area-inset-top,0px) + 60px) 22px 18px',
+        flexShrink:0,zIndex:2,background:T.bg}}>
+        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
+          <JourneyIcon size={32}/>
+          <div style={{color:T.t1,fontSize:26,fontWeight:800,letterSpacing:-.3}}>Journey</div>
+        </div>
+        <div style={{color:T.t2,fontSize:14,marginTop:2,fontWeight:400}}>
+          Tipps & Tricks für dein Padel-Spiel.
+        </div>
+      </div>
+
+      {/* Hero */}
+      <div className="fi" style={{width:'100%',flexShrink:0,
+        height:'clamp(220px,42vh,420px)',overflow:'hidden',
+        borderTop:`1px solid ${T.sep}`,borderBottom:`1px solid ${T.sep}`}}>
+        <HeroJourneyVisual/>
+      </div>
+
+      {/* Title + description */}
+      <div style={{flex:1,padding:'24px 22px',overflowY:'auto',
+        display:'flex',flexDirection:'column'}}>
+        <div className="fi" style={{color:T.t1,fontSize:36,fontWeight:900,
+          letterSpacing:-.6,lineHeight:1,animationDelay:'.05s'}}>Spielsinn</div>
+        <div className="fu" style={{color:T.t2,fontSize:15,marginTop:14,lineHeight:1.55,
+          fontWeight:400,animationDelay:'.15s'}}>
+          Regeln sind die Pflicht, Spielsinn ist die Kür. Wer Schlagwahl,
+          Position und Material versteht, gewinnt nicht über Power, sondern über
+          Köpfchen — und genau dorthin führt diese Sektion.
+        </div>
+      </div>
+
+      <div style={{height:100,flexShrink:0}}/>
+      <MatchBar onHome={onHome} rightButtons={[
+        {icon:<ArrowRightCircleIcon size={22}/>,onClick:onContinue}
+      ]}/>
+    </div>
+  );
+}
+
+function WandIcon({size=22}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    {/* Wand body diagonal */}
+    <line x1="4" y1="20" x2="17" y2="7" stroke="var(--o)" strokeWidth="1.8" strokeLinecap="round"/>
+    {/* Wand tip star */}
+    <circle cx="18" cy="6" r="2.2" fill="var(--o)"/>
+    {/* Sparkles */}
+    <path d="M14 4 L14.6 5.5 L16 6 L14.6 6.5 L14 8 L13.4 6.5 L12 6 L13.4 5.5 Z"
+      fill="var(--o)" opacity="0.8"/>
+    <path d="M20 11 L20.4 12 L21.4 12.4 L20.4 12.8 L20 13.8 L19.6 12.8 L18.6 12.4 L19.6 12 Z"
+      fill="var(--o)" opacity="0.6"/>
   </svg>);
 }
 
@@ -685,15 +1035,6 @@ function buildThemePalette({bg,text,highlight,secondary,font}){
     font,
   };
 }
-
-const FONTS=[
-  {id:'system',name:'System',     stack:'-apple-system, BlinkMacSystemFont, "SF Pro", "Segoe UI", sans-serif'},
-  {id:'sans',  name:'Sans Serif', stack:'"Helvetica Neue", Helvetica, Arial, sans-serif'},
-  {id:'serif', name:'Serif',      stack:'Georgia, "Times New Roman", Times, serif'},
-  {id:'modern',name:'Modern',     stack:'Avenir, "Avenir Next", Futura, "Trebuchet MS", sans-serif'},
-  {id:'mono',  name:'Monospace',  stack:'Menlo, "SF Mono", "Courier New", Courier, monospace'},
-];
-const fontStack=(id)=>(FONTS.find(f=>f.id===id)||FONTS[0]).stack;
 
 /* ───────────────────────────────────────────────────────────────
    ServiceIndicator — top-down court showing serve direction.
@@ -799,6 +1140,1004 @@ function Splash({onDone}){
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   LOGIN — RITMO + (Google/Apple placeholders)
+═══════════════════════════════════════════════════════════════ */
+function GoogleGlyph({size=18}){
+  return(<svg width={size} height={size} viewBox="0 0 18 18">
+    <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
+    <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/>
+    <path d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+    <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+  </svg>);
+}
+function AppleGlyph({size=20}){
+  return(<svg width={size} height={size} viewBox="0 0 384 512" fill="currentColor">
+    <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zM262.1 104.5c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/>
+  </svg>);
+}
+
+function Login({onSuccess,onRegister}){
+  const[username,setUsername]=useState('');
+  const[password,setPassword]=useState('');
+  const[error,setError]=useState('');
+  const[shake,setShake]=useState(false);
+
+  const tryLogin=()=>{
+    if(username.trim()==='dev'&&password==='ritmodev'){
+      setError('');
+      onSuccess();
+    } else {
+      setError('Falscher Benutzername oder Passwort');
+      setShake(true);
+      setTimeout(()=>setShake(false),420);
+    }
+  };
+
+  const onKeyDown=(e)=>{ if(e.key==='Enter') tryLogin(); };
+
+  return(
+    <div style={{minHeight:'100dvh',background:T.bg,display:'flex',
+      flexDirection:'column',alignItems:'center',justifyContent:'center',
+      padding:'calc(env(safe-area-inset-top,0px) + 40px) 22px calc(env(safe-area-inset-bottom,0px) + 40px)',
+      overflow:'auto'}}>
+      <style>{`
+        @keyframes shakeBox {
+          0%,100%{transform:translateX(0)}
+          20%{transform:translateX(-8px)}
+          40%{transform:translateX(8px)}
+          60%{transform:translateX(-5px)}
+          80%{transform:translateX(5px)}
+        }
+        .login-shake{animation:shakeBox .42s ease}
+      `}</style>
+
+      <div className={`fi ${shake?'login-shake':''}`}
+        style={{width:'100%',maxWidth:380,display:'flex',flexDirection:'column',alignItems:'stretch'}}>
+
+        {/* Logo + Title */}
+        <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:14,marginBottom:32}}>
+          <RitmoSplashLogo size={120}/>
+          <div style={{color:T.t1,fontSize:24,fontWeight:800,letterSpacing:-.3}}>RITMO Log-In</div>
+        </div>
+
+        {/* Google */}
+        <button onClick={()=>{/* no-op placeholder */}}
+          style={{display:'flex',alignItems:'center',justifyContent:'center',gap:10,
+            background:'#fff',border:'1px solid rgba(0,0,0,.15)',borderRadius:12,
+            padding:'13px 16px',color:'#1f1f1f',fontSize:15,fontWeight:600,
+            cursor:'pointer',marginBottom:10,
+            boxShadow:'0 1px 2px rgba(0,0,0,.12)'}}>
+          <GoogleGlyph size={18}/>
+          <span>Mit Google anmelden</span>
+        </button>
+
+        {/* Apple */}
+        <button onClick={()=>{/* no-op placeholder */}}
+          style={{display:'flex',alignItems:'center',justifyContent:'center',gap:10,
+            background:'#000',border:'1px solid #000',borderRadius:12,
+            padding:'13px 16px',color:'#fff',fontSize:15,fontWeight:600,
+            cursor:'pointer',marginBottom:22,
+            boxShadow:'0 1px 2px rgba(0,0,0,.3)'}}>
+          <AppleGlyph size={18}/>
+          <span>Mit Apple anmelden</span>
+        </button>
+
+        {/* Divider */}
+        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:18}}>
+          <div style={{flex:1,height:1,background:T.border}}/>
+          <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.5}}>ODER MIT RITMO</div>
+          <div style={{flex:1,height:1,background:T.border}}/>
+        </div>
+
+        {/* Username */}
+        <div style={{marginBottom:10}}>
+          <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
+            textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Benutzername</div>
+          <input value={username} onChange={e=>{setUsername(e.target.value);setError('');}}
+            onKeyDown={onKeyDown} autoComplete="username"
+            autoCapitalize="off" autoCorrect="off" spellCheck={false}
+            placeholder="dev"
+            style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
+              borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
+              outline:'none',boxSizing:'border-box'}}/>
+        </div>
+
+        {/* Password */}
+        <div style={{marginBottom:16}}>
+          <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
+            textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Passwort</div>
+          <input type="password" value={password} onChange={e=>{setPassword(e.target.value);setError('');}}
+            onKeyDown={onKeyDown} autoComplete="current-password"
+            placeholder="••••••••"
+            style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
+              borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
+              outline:'none',boxSizing:'border-box'}}/>
+        </div>
+
+        {/* Error */}
+        {error&&(
+          <div style={{background:'rgba(232,69,69,.12)',border:'1px solid rgba(232,69,69,.4)',
+            borderRadius:8,padding:'9px 12px',marginBottom:12,
+            color:'#FF6B6B',fontSize:12,fontWeight:600,letterSpacing:.2}}>
+            {error}
+          </div>
+        )}
+
+        {/* Submit */}
+        <button onClick={tryLogin}
+          style={{background:T.o,border:'none',borderRadius:12,
+            padding:'14px 16px',color:'#000',fontSize:15,fontWeight:800,letterSpacing:.2,
+            cursor:'pointer',boxShadow:'0 4px 14px var(--oGlow)'}}>
+          Anmelden
+        </button>
+
+        {/* Register */}
+        <div style={{display:'flex',alignItems:'center',gap:8,marginTop:18,
+          justifyContent:'center'}}>
+          <div style={{color:T.t3,fontSize:12}}>Noch kein Account?</div>
+          <button onClick={onRegister}
+            style={{background:'none',border:'none',color:T.o,fontSize:13,
+              fontWeight:700,cursor:'pointer',padding:'4px 8px',textDecoration:'underline'}}>
+            Registrieren
+          </button>
+        </div>
+
+        <div style={{color:T.t3,fontSize:10,textAlign:'center',marginTop:18,
+          letterSpacing:.3,opacity:0.7}}>
+          Made by Team RITMO. With love for Padel ♡
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   WELCOME / ONBOARDING — Kapitel-System
+   Erweiterbar: füge Einträge zu `chapters` hinzu (z.B. Playtomic, Spielstil)
+═══════════════════════════════════════════════════════════════ */
+
+function OnboardProgress({total,current}){
+  return(
+    <div style={{display:'flex',gap:6,justifyContent:'center',padding:'10px 0',alignItems:'center'}}>
+      {Array.from({length:total}).map((_,i)=>(
+        <div key={i} style={{
+          width:i===current?22:6,height:6,borderRadius:3,
+          background:i<=current?T.o:T.t4,
+          transition:'all .25s ease'
+        }}/>
+      ))}
+    </div>
+  );
+}
+
+function ChapterWelcome(){
+  return(
+    <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:24,padding:'30px 0'}}>
+      <RitmoSplashLogo size={130}/>
+      <div style={{color:T.t2,fontSize:14,textAlign:'center',maxWidth:300,lineHeight:1.6}}>
+        Lass uns RITMO kurz für dich einrichten — dauert keine Minute.
+      </div>
+    </div>
+  );
+}
+
+function ChapterName({profile,setProfile}){
+  return(
+    <div>
+      <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
+        textTransform:'uppercase',marginBottom:8,paddingLeft:4}}>
+        Name oder Spitzname
+      </div>
+      <input value={profile.name}
+        onChange={e=>setProfile(p=>({...p,name:e.target.value}))}
+        placeholder="z.B. Alex"
+        autoFocus autoCapitalize="words" autoCorrect="off" spellCheck={false}
+        style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
+          borderRadius:10,padding:'14px 16px',color:T.t1,fontSize:15,fontWeight:500,
+          outline:'none',boxSizing:'border-box'}}/>
+      <div style={{color:T.t3,fontSize:11,marginTop:8,lineHeight:1.5,paddingLeft:4}}>
+        Wird beim Match-Setup voreingetragen und in Turnieren angezeigt.
+      </div>
+    </div>
+  );
+}
+
+/* Question helper: stacked option buttons with selected highlight */
+function QuestionGroup({label,value,onChange,options,sub}){
+  return(
+    <div style={{marginBottom:18}}>
+      <div style={{color:T.t1,fontSize:14,fontWeight:700,marginBottom:sub?2:8,paddingLeft:2}}>{label}</div>
+      {sub&&<div style={{color:T.t3,fontSize:11,marginBottom:8,paddingLeft:2,lineHeight:1.4}}>{sub}</div>}
+      <div style={{display:'flex',flexDirection:'column',gap:8}}>
+        {options.map(o=>{
+          const sel=value===o.id;
+          return(
+            <button key={o.id} onClick={()=>onChange(o.id)}
+              style={{padding:'12px 14px',textAlign:'left',
+                background:sel?T.oSoft:T.card,
+                border:`1.5px solid ${sel?T.o:T.border}`,
+                borderRadius:10,color:T.t1,fontSize:13,fontWeight:sel?700:500,
+                cursor:'pointer',transition:'all .15s',
+                display:'flex',alignItems:'center',gap:10}}>
+              <span style={{flex:1}}>{o.label}</span>
+              {sel&&<span style={{color:T.o,fontSize:16}}>✓</span>}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* Maps questionnaire answers → estimated Playtomic level (1.0–7.0 in 0.5 steps) */
+/* ── Level-Label mapping (Playtomic-Skala) ─────────────────── */
+function getLevelLabel(lvl){
+  if(lvl==null) return '';
+  if(lvl<1.0)  return 'Einsteiger';
+  if(lvl<1.5)  return 'Anfänger';
+  if(lvl<2.5)  return 'Einsteiger Fortgeschritten';
+  if(lvl<3.5)  return 'Fortgeschritten';
+  if(lvl<4.5)  return 'Fortgeschritten Hoch';
+  if(lvl<5.4)  return 'Fortgeschritten Advanced';
+  return 'Wettkampf';
+}
+
+/* ── RITMO Level Estimation ─────────────────────────────────
+   Weights:
+     Jahre spielen    → mittel, aber HALBIERT
+     Häufigkeit       → gering
+     Turniere (binary)→ mittel
+     Turnier-Anzahl   → mittel
+     Matches gespielt → mittel
+     Siegquote        → HOCH  (stärkster Faktor)
+
+   Granularität: 0.03-Schritte, Skala 0.3–5.8
+─────────────────────────────────────────────────────────── */
+function estimateLevel(p){
+  if(!p.yearsPlaying||!p.frequencyPerWeek) return null;
+
+  let score=0.5; // Basis-Score
+
+  // Wie lange spielst du schon? — mittel (HALBIERT)
+  score+=({lt6m:0,'6-12m':0.20,'1-2y':0.45,'2-5y':0.75,'5y+':1.00}[p.yearsPlaying]||0);
+
+  // Wie oft pro Woche? — gering
+  score+=({rare:0,'1x':0.10,'2x':0.22,'3x+':0.38}[p.frequencyPerWeek]||0);
+
+  // Spielst du Turniere? — mittel
+  score+=({never:0,occasional:0.30,regular:0.60}[p.playsTournaments]||0);
+
+  // Wie viele Turniere? — mittel (nur wenn Turniere vorhanden)
+  if(p.playsTournaments&&p.playsTournaments!=='never'){
+    score+=({'0':0,'1-3':0.15,'4-10':0.40,'10+':0.75}[p.tournamentCount]||0);
+  }
+
+  // Anzahl wettbewerbsfähiger Matches — mittel
+  const m=Math.max(0,parseInt(p.matchesPlayed)||0);
+  if(m>=100) score+=0.90;
+  else if(m>=61) score+=0.70;
+  else if(m>=31) score+=0.55;
+  else if(m>=11) score+=0.35;
+  else if(m>=1)  score+=0.15;
+
+  // Siegquote — HOCH (stärkster Faktor, skaliert mit Zuverlässigkeit)
+  if(m>0){
+    const w=Math.min(m,50)/50; // Zuverlässigkeits-Faktor: wächst bis 50 Matches
+    const wins=Math.max(0,Math.min(m,parseInt(p.winsCount)||0));
+    const rate=wins/m;
+    let winScore=0;
+    if(rate>=0.80) winScore=1.80;
+    else if(rate>=0.60) winScore=1.30;
+    else if(rate>=0.40) winScore=0.80;
+    else if(rate>=0.20) winScore=0.40;
+    score+=winScore*w; // Skaliert bis auf vollen Wert bei 50+ Matches
+  }
+
+  // Runden auf 0.03-Schritte, Cap 0.3–5.8
+  const raw=Math.min(5.80,Math.max(0.30,score));
+  return Math.round(raw/0.03)*0.03;
+}
+
+function ChapterPlaytomic({profile,setProfile}){
+  const hasPlaytomic=profile.playtomicLevel!=null;
+  const estimated=estimateLevel(profile);
+  const m=parseInt(profile.matchesPlayed)||0;
+
+  // Playtomic stepper: ±0.01
+  const setPlaytomicLevel=(delta)=>{
+    const cur=profile.playtomicLevel??2.00;
+    const next=Math.min(7,Math.max(0,Math.round((cur+delta)*100)/100));
+    setProfile(p=>({...p,playtomicLevel:next}));
+  };
+
+  return(
+    <div>
+      {/* Toggle */}
+      <div style={{display:'flex',gap:8,marginBottom:18}}>
+        <button onClick={()=>setProfile(p=>({...p,playtomicLevel:p.playtomicLevel??2.50}))}
+          style={{flex:1,padding:'11px 10px',
+            background:hasPlaytomic?T.oSoft:T.card,
+            border:`1.5px solid ${hasPlaytomic?T.o:T.border}`,
+            borderRadius:10,color:T.t1,fontSize:12,fontWeight:hasPlaytomic?700:500,
+            cursor:'pointer',transition:'all .15s',lineHeight:1.3,textAlign:'center'}}>
+          Habe Playtomic-Level
+        </button>
+        <button onClick={()=>setProfile(p=>({...p,playtomicLevel:null}))}
+          style={{flex:1,padding:'11px 10px',
+            background:!hasPlaytomic?T.oSoft:T.card,
+            border:`1.5px solid ${!hasPlaytomic?T.o:T.border}`,
+            borderRadius:10,color:T.t1,fontSize:12,fontWeight:!hasPlaytomic?700:500,
+            cursor:'pointer',transition:'all .15s',lineHeight:1.3,textAlign:'center'}}>
+          {'Habe ich nicht —\nGib mir ein RITMO Level 😉'}
+        </button>
+      </div>
+
+      {hasPlaytomic?(
+        /* ── Playtomic Level — 0.01-Schritte ── */
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+          padding:'20px 18px 16px'}}>
+          <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
+            textTransform:'uppercase',textAlign:'center',marginBottom:14}}>
+            Playtomic Level
+          </div>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:12}}>
+            <button onClick={()=>setPlaytomicLevel(-0.01)}
+              style={{width:42,height:42,borderRadius:'50%',
+                background:T.card2,border:`1px solid ${T.border}`,
+                color:T.o,fontSize:22,fontWeight:700,cursor:'pointer',flexShrink:0}}>−</button>
+            <input
+              type="number" min="0" max="7" step="0.01"
+              value={(profile.playtomicLevel??2.50).toFixed(2)}
+              onChange={e=>{
+                const v=parseFloat(e.target.value);
+                if(!isNaN(v)) setProfile(p=>({...p,playtomicLevel:Math.min(7,Math.max(0,Math.round(v*100)/100))}));
+              }}
+              style={{width:110,textAlign:'center',
+                color:T.o,fontSize:42,fontWeight:900,letterSpacing:-1,lineHeight:1,
+                background:'transparent',border:'none',outline:'none',
+                fontFamily:'inherit'}}/>
+            <button onClick={()=>setPlaytomicLevel(+0.01)}
+              style={{width:42,height:42,borderRadius:'50%',
+                background:T.card2,border:`1px solid ${T.border}`,
+                color:T.o,fontSize:22,fontWeight:700,cursor:'pointer',flexShrink:0}}>+</button>
+          </div>
+          <div style={{color:T.t3,fontSize:11,textAlign:'center',marginTop:6}}>
+            Skala 0.00 – 7.00
+          </div>
+          {profile.playtomicLevel!=null&&(
+            <div style={{color:T.o,fontSize:12,fontWeight:700,textAlign:'center',marginTop:8}}>
+              {getLevelLabel(profile.playtomicLevel)}
+            </div>
+          )}
+        </div>
+      ):(
+        /* ── RITMO Level Fragebogen — 6 Fragen ── */
+        <div>
+          <div style={{color:T.t2,fontSize:13,lineHeight:1.55,marginBottom:16,padding:'0 2px'}}>
+            Beantworte 6 kurze Fragen — wir schätzen dein RITMO-Level. Je mehr du angibst, desto genauer.
+          </div>
+
+          <QuestionGroup
+            label="Wie lange spielst du schon Padel?"
+            value={profile.yearsPlaying}
+            onChange={v=>setProfile(p=>({...p,yearsPlaying:v}))}
+            options={[
+              {id:'lt6m',   label:'Weniger als 6 Monate'},
+              {id:'6-12m',  label:'6–12 Monate'},
+              {id:'1-2y',   label:'1–2 Jahre'},
+              {id:'2-5y',   label:'2–5 Jahre'},
+              {id:'5y+',    label:'5+ Jahre'},
+            ]}/>
+
+          <QuestionGroup
+            label="Wie oft spielst du pro Woche?"
+            value={profile.frequencyPerWeek}
+            onChange={v=>setProfile(p=>({...p,frequencyPerWeek:v}))}
+            options={[
+              {id:'rare',   label:'Selten (weniger als 1×)'},
+              {id:'1x',     label:'1× pro Woche'},
+              {id:'2x',     label:'2× pro Woche'},
+              {id:'3x+',    label:'3× oder mehr'},
+            ]}/>
+
+          <QuestionGroup
+            label="Spielst du Turniere?"
+            value={profile.playsTournaments}
+            onChange={v=>setProfile(p=>({...p,playsTournaments:v,
+              tournamentCount:v==='never'?'0':p.tournamentCount}))}
+            options={[
+              {id:'never',      label:'Nie'},
+              {id:'occasional', label:'Gelegentlich'},
+              {id:'regular',    label:'Regelmäßig'},
+            ]}/>
+
+          {profile.playsTournaments&&profile.playsTournaments!=='never'&&(
+            <QuestionGroup
+              label="Wie viele Turniere hast du bisher gespielt?"
+              value={profile.tournamentCount}
+              onChange={v=>setProfile(p=>({...p,tournamentCount:v}))}
+              options={[
+                {id:'1-3',   label:'1–3 Turniere'},
+                {id:'4-10',  label:'4–10 Turniere'},
+                {id:'10+',   label:'Mehr als 10'},
+              ]}/>
+          )}
+
+          {/* Matches — Zahlen-Input */}
+          <div style={{marginBottom:18}}>
+            <div style={{color:T.t1,fontSize:14,fontWeight:700,marginBottom:8,paddingLeft:2}}>
+              Wettbewerbsfähige Matches gespielt?
+            </div>
+            <input
+              type="number" min="0" max="9999"
+              value={profile.matchesPlayed??''}
+              placeholder="z.B. 45"
+              onChange={e=>{
+                const v=e.target.value;
+                setProfile(p=>({...p,matchesPlayed:v===''?'':Math.max(0,parseInt(v)||0)}));
+              }}
+              style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
+                borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:15,fontWeight:600,
+                outline:'none',boxSizing:'border-box'}}/>
+          </div>
+
+          {m>0&&(
+            <div style={{marginBottom:18}}>
+              <div style={{color:T.t1,fontSize:14,fontWeight:700,marginBottom:8,paddingLeft:2}}>
+                Davon Siege?
+              </div>
+              <input
+                type="number" min="0" max={m}
+                value={profile.winsCount??''}
+                placeholder={`0 – ${m}`}
+                onChange={e=>{
+                  const v=e.target.value;
+                  const wins=Math.min(m,Math.max(0,parseInt(v)||0));
+                  setProfile(p=>({...p,winsCount:v===''?'':wins}));
+                }}
+                style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
+                  borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:15,fontWeight:600,
+                  outline:'none',boxSizing:'border-box'}}/>
+              {profile.winsCount!==''&&profile.winsCount!=null&&(
+                <div style={{color:T.t3,fontSize:12,marginTop:6,paddingLeft:2}}>
+                  Siegquote: {Math.round((parseInt(profile.winsCount)||0)/m*100)}%
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Live estimate */}
+          {estimated!=null&&(
+            <div className="fi" style={{background:T.oSoft,
+              border:`1px solid ${T.o}`,borderRadius:12,padding:'16px 18px',
+              display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:12}}>
+              <div>
+                <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.3,
+                  textTransform:'uppercase',marginBottom:4}}>RITMO Level (Schätzung)</div>
+                <div style={{color:T.o,fontSize:40,fontWeight:900,letterSpacing:-.5,lineHeight:1}}>
+                  {estimated.toFixed(2)}
+                </div>
+                <div style={{color:T.o,fontSize:12,fontWeight:700,marginTop:4}}>
+                  {getLevelLabel(estimated)}
+                </div>
+              </div>
+              <div style={{color:T.t3,fontSize:11,textAlign:'right',lineHeight:1.5}}>
+                Im Profil<br/>anpassbar
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PADEL SPIELSTILE — Data + Visuals + Hero Card
+═══════════════════════════════════════════════════════════════ */
+
+const PADEL_STYLES={
+  chico:{
+    name:'Chico / Chica', subtitle:'Der Allrounder',
+    tagline:'Kann alles. Macht wenig falsch.',
+    desc:'Vielseitig, anpassungsfähig und konstant — Chico / Chica passt sich schnell an Gegner, Partner und Match-Dynamik an. Kein extremes Risiko, aber fast immer die richtige Lösung.',
+    kernwerte:['Balance','Anpassung','Konstanz'],
+    shots:['Kontrollierte Volleys','Bandeja','Lob','Chiquita','Returns'],
+    weaknesses:['Zu vorsichtig','Kein Killerinstinkt','Kann passiv wirken'],
+    accent:'#C9943A', card:'#2E1E08', text:'#FFF3D9', symbol:'○',
+  },
+  toro:{
+    name:'Toro', subtitle:'Der Aggressor',
+    tagline:'Druck ist meine Defensive.',
+    desc:'Toro lebt von Intensität und Netzkontrolle. Er sucht Punkte zu diktieren, forciert Fehler und macht das Match körperlich und mental anstrengend für den Gegner.',
+    kernwerte:['Power','Dominanz','Entschlossenheit'],
+    shots:['Smash / Remate','Víbora','Aggressive Volley','Bajada','Netzangriff'],
+    weaknesses:['Überhastung','Hohes Fehlerrisiko','Berechenbar'],
+    accent:'#C0392B', card:'#2A0808', text:'#FFE0DC', symbol:'▲',
+  },
+  individuoso:{
+    name:'Individuoso', subtitle:'Der Strategische',
+    tagline:'Ich gewinne den Punkt vor dem Schlag.',
+    desc:'Individuoso denkt mehrere Schläge voraus, analysiert Räume und Rhythmen, kontrolliert Tempo und zwingt Gegner in unangenehme Entscheidungen. Schach auf Glas.',
+    kernwerte:['Strategie','Antizipation','Präzision'],
+    shots:['Winkelvolleys','Tempowechsel','Präzisions-Lobs','Chiquita','Platzierungs-Bandeja'],
+    weaknesses:['Overthinken','Zu wenig Direktheit','Risiko von Passivität'],
+    accent:'#2471A3', card:'#071828', text:'#D0E8FF', symbol:'■',
+  },
+  muro:{
+    name:'Muro', subtitle:'Die Wand',
+    tagline:'Du machst den Fehler.',
+    desc:'Muro gewinnt durch Geduld, Defensive und mentale Stärke. Er bringt jeden Ball zurück und zwingt Gegner dazu, selbst Fehler zu machen. Jeder Punkt fühlt sich länger an.',
+    kernwerte:['Geduld','Widerstandskraft','Kontrolle'],
+    shots:['Defensiv-Lob','Tiefe Returns','Glas-Defense','Hohe Bandeja','Crosscourt'],
+    weaknesses:['Wenig Initiative','Gefahr passiv zu werden','Reaktiv'],
+    accent:'#1E8449', card:'#071A0E', text:'#C8F0D8', symbol:'⬡',
+  },
+  fantasma:{
+    name:'Fantasma', subtitle:'Der Kreative',
+    tagline:'Du weißt nie, was kommt.',
+    desc:'Fantasma ist unvorhersehbar, intuitiv und liebt Überraschung. Mit ungewöhnlichen Winkeln, Rhythmusbrüchen und mutigen Ideen erzeugt er Chaos und Unsicherheit.',
+    kernwerte:['Kreativität','Überraschung','Freiheit'],
+    shots:['Trickshots','Chiquita','Spin-Lobs','Überraschungs-Lob','Unkonventionelle Volleys'],
+    weaknesses:['Inkonsistenz','Hohes Risiko','Unnötig verspielt'],
+    accent:'#7D3C98', card:'#180828', text:'#EDD8FF', symbol:'●',
+  },
+  motor:{
+    name:'Motor', subtitle:'Der Ausdauernde',
+    tagline:'Ich krieg noch einen Ball.',
+    desc:'Motor gewinnt durch Bewegung, Reichweite und nie endende Energie. Er deckt enorme Flächen ab und bleibt auch in langen Rallyes gefährlich. Wer ihn schlagen will, muss einen Extra-Ball spielen.',
+    kernwerte:['Ausdauer','Geschwindigkeit','Kampfgeist'],
+    shots:['Recovery Lob','Laufvolleys','Defensive Counter','Tiefe Returns','Sprint-Retrievals'],
+    weaknesses:['Wenig Power','Kann sich überarbeiten','Ineffizienz'],
+    accent:'#27AE60', card:'#071A10', text:'#C8FFE0', symbol:'▶▶',
+  },
+};
+
+const PADEL_QUIZ=[
+  {
+    key:'q1',
+    label:'Was fühlt sich für dich am besten an?',
+    options:[
+      {id:'a',label:'Ein solides, fehlerfreies Match'},
+      {id:'b',label:'Den Punkt mit Power beenden'},
+      {id:'c',label:'Den Gegner taktisch ausspielen'},
+      {id:'d',label:'Alles verteidigen, bis der Fehler kommt'},
+      {id:'e',label:'Mit etwas Unerwartetem überraschen'},
+      {id:'f',label:'Jeden Ball noch erreichen'},
+    ],
+  },
+  {
+    key:'q2',
+    label:'Deine größte Stärke?',
+    options:[
+      {id:'a',label:'Vielseitigkeit'},
+      {id:'b',label:'Dominanz'},
+      {id:'c',label:'Spielintelligenz'},
+      {id:'d',label:'Geduld'},
+      {id:'e',label:'Kreativität'},
+      {id:'f',label:'Ausdauer'},
+    ],
+  },
+  {
+    key:'q3',
+    label:'Wie gewinnst du am liebsten?',
+    options:[
+      {id:'a',label:'Konstanz'},
+      {id:'b',label:'Druck'},
+      {id:'c',label:'Strategie'},
+      {id:'d',label:'Fehler des Gegners'},
+      {id:'e',label:'Überraschung'},
+      {id:'f',label:'Längere Rallyes'},
+    ],
+  },
+  {
+    key:'q4',
+    label:'Dein größtes Risiko?',
+    options:[
+      {id:'a',label:'Zu vorsichtig'},
+      {id:'b',label:'Zu aggressiv'},
+      {id:'c',label:'Zu kompliziert'},
+      {id:'d',label:'Zu passiv'},
+      {id:'e',label:'Zu verspielt'},
+      {id:'f',label:'Zu laufintensiv'},
+    ],
+  },
+];
+
+function computeStyle(qa){
+  if(!qa) return null;
+  const counts={a:0,b:0,c:0,d:0,e:0,f:0};
+  Object.values(qa).forEach(v=>{if(v&&counts[v]!==undefined) counts[v]++;});
+  const max=Math.max(...Object.values(counts));
+  if(max===0) return null;
+  const winner=Object.entries(counts).sort((a,b)=>b[1]-a[1])[0][0];
+  return {a:'chico',b:'toro',c:'individuoso',d:'muro',e:'fantasma',f:'motor'}[winner]||null;
+}
+
+/* ── Per-style image visuals ─────────────────────────────────
+   Bilder werden aus /assets im Vite-Projekt geladen.
+   Vite injiziert BASE_URL automatisch, sodass GitHub Pages-Pfade
+   (/REPO-NAME/assets/...) korrekt aufgelöst werden.
+─────────────────────────────────────────────────────────────── */
+const STYLE_IMAGES={
+  chico:       'chicochica.jpeg',
+  toro:        'toro.jpeg',
+  individuoso: 'individuoso.jpeg',
+  muro:        'muro.jpeg',
+  fantasma:    'fantasma.jpeg',
+  motor:       'motor.jpeg',
+};
+
+function getAssetBase(){
+  // Vite setzt window.__BASE__ über index.html-Injection (siehe vite.config.js).
+  // Im Artifact-Preview oder lokal fällt es auf '/' zurück.
+  return (typeof window!=='undefined'&&window.__BASE__)||'/';
+}
+
+function StyleVisual({styleId}){
+  const s=PADEL_STYLES[styleId];
+  const filename=STYLE_IMAGES[styleId];
+  const[imgError,setImgError]=useState(false);
+
+  if(!s) return null;
+
+  if(imgError||!filename){
+    // Fallback: solid color block with style name
+    return(
+      <div style={{width:'100%',aspectRatio:'7/5',background:s.accent,
+        display:'flex',alignItems:'center',justifyContent:'center',
+        color:'white',fontSize:24,fontWeight:900,letterSpacing:1.5,
+        textShadow:'0 2px 8px rgba(0,0,0,0.3)'}}>
+        {s.name.toUpperCase()}
+      </div>
+    );
+  }
+
+  return(
+    <img src={`${getAssetBase()}assets/${filename}`}
+      onError={()=>setImgError(true)}
+      style={{width:'100%',height:'auto',aspectRatio:'7/5',
+        objectFit:'cover',display:'block'}}
+      alt={s.name}/>
+  );
+}
+
+function StyleHeroCard({styleId}){
+  const s=PADEL_STYLES[styleId];
+  if(!s) return null;
+  return(
+    <div style={{background:'#F5EDDC',borderRadius:16,overflow:'hidden',
+      marginBottom:16,boxShadow:'0 4px 24px rgba(0,0,0,0.35)'}}>
+      {/* Visual */}
+      <div style={{background:'#F5EDDC',padding:'20px 20px 0',paddingBottom:8}}>
+        <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:10}}>
+          <div>
+            <div style={{color:'#1A1A1A',fontSize:26,fontWeight:900,letterSpacing:-.5,lineHeight:1}}>
+              {s.name.toUpperCase()}
+            </div>
+            <div style={{color:'#1A1A1A',fontSize:11,fontWeight:800,letterSpacing:2,
+              textTransform:'uppercase',marginTop:3,opacity:0.7}}>
+              {s.subtitle.toUpperCase()}
+            </div>
+          </div>
+          <div style={{color:s.accent,fontSize:24,fontWeight:900,marginTop:2}}>{s.symbol}</div>
+        </div>
+        <StyleVisual styleId={styleId}/>
+      </div>
+      {/* Bottom info */}
+      <div style={{padding:'14px 20px 18px',background:'#F5EDDC',
+        borderTop:'1px solid rgba(0,0,0,0.08)'}}>
+        <div style={{color:'#1A1A1A',fontSize:13,fontWeight:600,
+          textTransform:'uppercase',letterSpacing:1,marginBottom:10,opacity:0.55}}>
+          {s.tagline.toUpperCase()}
+        </div>
+        {/* Description */}
+        <div style={{color:'#1A1A1A',fontSize:13,lineHeight:1.55,marginBottom:14,opacity:0.78}}>
+          {s.desc}
+        </div>
+        {/* Kernwerte */}
+        <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:12}}>
+          {s.kernwerte.map(k=>(
+            <div key={k} style={{padding:'4px 10px',background:s.accent,borderRadius:20,
+              color:'white',fontSize:11,fontWeight:700,letterSpacing:.5}}>
+              {k}
+            </div>
+          ))}
+        </div>
+        {/* Shots */}
+        <div style={{color:'#1A1A1A',fontSize:10,fontWeight:700,letterSpacing:1.2,
+          textTransform:'uppercase',marginBottom:6,opacity:0.5}}>Typische Shots</div>
+        <div style={{display:'flex',gap:4,flexWrap:'wrap',marginBottom:12}}>
+          {s.shots.map(sh=>(
+            <div key={sh} style={{padding:'3px 8px',background:'rgba(0,0,0,0.08)',
+              borderRadius:14,color:'#1A1A1A',fontSize:11,fontWeight:500}}>
+              {sh}
+            </div>
+          ))}
+        </div>
+        {/* Weaknesses */}
+        <div style={{color:'#1A1A1A',fontSize:10,fontWeight:700,letterSpacing:1.2,
+          textTransform:'uppercase',marginBottom:6,opacity:0.5}}>Schwächen</div>
+        <div style={{color:'#1A1A1A',fontSize:12,opacity:0.55,lineHeight:1.5}}>
+          {s.weaknesses.join(' · ')}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Updated ChapterPlaystyle with full personality quiz ────── */
+function ChapterPlaystyle({profile,setProfile}){
+  const qa=profile.quizAnswers||{};
+  const answered=Object.values(qa).filter(Boolean).length;
+  const result=answered===4?computeStyle(qa):null;
+
+  return(
+    <div>
+      {/* Personality Quiz */}
+      <div style={{marginBottom:6}}>
+        <div style={{color:T.t1,fontSize:15,fontWeight:800,marginBottom:4}}>
+          Padel Personality Quiz
+        </div>
+        <div style={{color:T.t3,fontSize:12,marginBottom:16,lineHeight:1.5}}>
+          4 kurze Fragen — dein Spieltyp wird automatisch erkannt.
+        </div>
+        {PADEL_QUIZ.map(q=>(
+          <div key={q.key} style={{marginBottom:14}}>
+            <div style={{color:T.t1,fontSize:13,fontWeight:700,marginBottom:8}}>{q.label}</div>
+            <div style={{display:'flex',flexDirection:'column',gap:6}}>
+              {q.options.map(o=>{
+                const sel=qa[q.key]===o.id;
+                return(
+                  <button key={o.id} onClick={()=>{
+                    const newQa={...qa,[q.key]:o.id};
+                    const styleType=computeStyle(newQa);
+                    setProfile(p=>({...p,quizAnswers:newQa,styleType}));
+                  }} style={{display:'flex',alignItems:'center',gap:8,padding:'9px 12px',
+                    background:sel?T.oSoft:T.card,
+                    border:`1.5px solid ${sel?T.o:T.border}`,
+                    borderRadius:9,color:T.t1,fontSize:12,fontWeight:sel?700:500,
+                    cursor:'pointer',textAlign:'left',transition:'all .12s'}}>
+                    <span style={{width:18,height:18,borderRadius:'50%',flexShrink:0,
+                      background:sel?T.o:T.card2,border:`1.5px solid ${sel?T.o:T.border}`,
+                      display:'flex',alignItems:'center',justifyContent:'center',
+                      color:sel?'#000':T.t3,fontSize:10,fontWeight:800}}>
+                      {o.id.toUpperCase()}
+                    </span>
+                    {o.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+
+        {/* Live result */}
+        {result&&(
+          <div className="fi" style={{background:PADEL_STYLES[result].card,
+            border:`1.5px solid ${PADEL_STYLES[result].accent}`,
+            borderRadius:12,padding:'14px 16px',marginBottom:16,
+            display:'flex',alignItems:'center',gap:12}}>
+            <div style={{fontSize:28}}>{PADEL_STYLES[result].symbol}</div>
+            <div>
+              <div style={{color:PADEL_STYLES[result].accent,fontSize:16,fontWeight:900}}>
+                {PADEL_STYLES[result].name}
+              </div>
+              <div style={{color:PADEL_STYLES[result].text,fontSize:12,opacity:0.7,marginTop:2}}>
+                {PADEL_STYLES[result].subtitle} — {PADEL_STYLES[result].tagline}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div style={{height:1,background:T.sep,margin:'8px 0 18px'}}/>
+
+      {/* Technical questions */}
+      <QuestionGroup
+        label="Welche Hand?"
+        value={profile.handPreference}
+        onChange={v=>setProfile(p=>({...p,handPreference:v}))}
+        options={[
+          {id:'right',label:'Rechtshänder 🤚'},
+          {id:'left',label:'Linkshänder ✋'},
+        ]}/>
+      <QuestionGroup
+        label="Lieblings-Position am Court"
+        value={profile.courtSide}
+        onChange={v=>setProfile(p=>({...p,courtSide:v}))}
+        options={[
+          {id:'left',label:'Ad-Seite (links)'},
+          {id:'right',label:'Deuce-Seite (rechts)'},
+          {id:'any',label:'Beides geht'},
+        ]}/>
+      <QuestionGroup
+        label="Stärkster Schlag"
+        value={profile.strongestShot}
+        onChange={v=>setProfile(p=>({...p,strongestShot:v}))}
+        options={[
+          {id:'smash',label:'Smash / Remate'},
+          {id:'volley',label:'Volea'},
+          {id:'bandeja',label:'Bandeja'},
+          {id:'vibora',label:'Víbora'},
+          {id:'drive',label:'Drive'},
+          {id:'globo',label:'Globo (Lob)'},
+        ]}/>
+    </div>
+  );
+}
+
+function ChapterTheme({theme,setTheme}){
+  const themes=[
+    {id:'dark',     label:'RITMO BAUHAUS Dark',  swatch:['#000000','#FF7A1A','#FFFFFF']},
+    {id:'light',    label:'Federleicht',         swatch:['#FFFFFF','#FF9500','#000000']},
+    {id:'padel',    label:'Padelhaus Blue',      swatch:['#0018F9','#FFD60A','#FFFFFF']},
+    {id:'wimbledon',label:'Wimbledon Green',     swatch:['#006039','#D4B98F','#F4EFE3']},
+    {id:'funky',    label:'RITMO BAUHAUS Funky', swatch:['#1A0918','#FFE52D','#FF3D5A']},
+  ];
+  return(
+    <div style={{display:'flex',flexDirection:'column',gap:10}}>
+      {themes.map(t=>{
+        const sel=theme===t.id;
+        return(
+          <div key={t.id} onClick={()=>setTheme(t.id)} style={{
+            display:'flex',alignItems:'center',gap:14,
+            background:sel?T.oSoft:T.card,
+            border:`1.5px solid ${sel?T.o:T.border}`,
+            borderRadius:12,padding:'12px 14px',
+            cursor:'pointer',transition:'all .15s'}}>
+            <div style={{display:'flex',flexShrink:0,borderRadius:5,overflow:'hidden',
+              boxShadow:'inset 0 0 0 1px rgba(255,255,255,0.06)'}}>
+              {t.swatch.map((c,i)=>(
+                <div key={i} style={{width:18,height:30,background:c}}/>
+              ))}
+            </div>
+            <div style={{flex:1,color:T.t1,fontSize:14,fontWeight:sel?700:500}}>
+              {t.label}
+            </div>
+            {sel&&<span style={{color:T.o,fontSize:18,width:16,textAlign:'center'}}>✓</span>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function Welcome({profile,setProfile,theme,setTheme,onComplete}){
+  const[step,setStep]=useState(0);
+
+  /* CHAPTER DEFINITIONS — extend this array for future onboarding steps
+     (Playtomic-Level, Spielstil, Hand-Präferenz, Lieblings-Format, ...) */
+  const chapters=[
+    {
+      id:'welcome',
+      title:profile.name?`Willkommen zurück, ${profile.name}!`:'Willkommen!',
+      subtitle:'Schön dass du da bist — wir starten kurz mit dem Setup.',
+      Content:ChapterWelcome,
+      contentProps:{},
+      canContinue:()=>true,
+      cta:'Los geht\'s',
+      skippable:false,
+    },
+    {
+      id:'name',
+      title:'Wie heißt du?',
+      subtitle:'Damit dich Mitspieler:innen am Court erkennen.',
+      Content:ChapterName,
+      contentProps:{profile,setProfile},
+      canContinue:()=>profile.name.trim().length>0,
+      cta:'Weiter',
+      skippable:true,
+    },
+    {
+      id:'theme',
+      title:'Wähle dein Theme',
+      subtitle:'Kann in den Einstellungen jederzeit geändert werden.',
+      Content:ChapterTheme,
+      contentProps:{theme,setTheme},
+      canContinue:()=>true,
+      cta:'Weiter',
+      skippable:true,
+    },
+    {
+      id:'playtomic',
+      title:'Dein Spielniveau',
+      subtitle:'Falls du Playtomic spielst — trag dein Level ein. Sonst schätzen wir es.',
+      Content:ChapterPlaytomic,
+      contentProps:{profile,setProfile},
+      canContinue:()=>profile.playtomicLevel!=null||estimateLevel(profile)!=null,
+      cta:'Weiter',
+      skippable:true,
+    },
+    {
+      id:'playstyle',
+      title:'Dein Spielstil',
+      subtitle:'Hilft uns, dich besser kennenzulernen und passende Mitspieler:innen vorzuschlagen.',
+      Content:ChapterPlaystyle,
+      contentProps:{profile,setProfile},
+      canContinue:()=>profile.handPreference!=null&&profile.playStyle!=null,
+      cta:'Fertig',
+      skippable:true,
+    },
+    /* FUTURE: weitere Kapitel hier */
+  ];
+
+  const current=chapters[step];
+  const isLast=step===chapters.length-1;
+  const Content=current.Content;
+
+  const goNext=()=>{ if(isLast) onComplete(); else setStep(s=>s+1); };
+  const goBack=()=>{ if(step>0) setStep(s=>s-1); };
+
+  return(
+    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 30px)',position:'relative',overflow:'hidden'}}>
+
+      {/* Header: chapter counter + skip */}
+      <div style={{padding:'0 22px',display:'flex',alignItems:'center',
+        justifyContent:'space-between',minHeight:24}}>
+        <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.5}}>
+          {String(step+1).padStart(2,'0')} / {String(chapters.length).padStart(2,'0')}
+        </div>
+        {current.skippable?(
+          <button onClick={goNext}
+            style={{background:'none',border:'none',color:T.t3,fontSize:12,
+              fontWeight:600,cursor:'pointer',padding:'4px 8px',letterSpacing:.3}}>
+            Überspringen
+          </button>
+        ):<div style={{width:1,height:1}}/>}
+      </div>
+
+      <OnboardProgress total={chapters.length} current={step}/>
+
+      {/* Body — re-mount on step change for fresh fade animations */}
+      <div key={step} style={{flex:1,padding:'24px 22px 16px',
+        overflowY:'auto',WebkitOverflowScrolling:'touch',
+        display:'flex',flexDirection:'column'}}>
+
+        <div className="fi" style={{marginBottom:24}}>
+          <div style={{color:T.t1,fontSize:28,fontWeight:900,letterSpacing:-.5,lineHeight:1.15}}>
+            {current.title}
+          </div>
+          <div style={{color:T.t2,fontSize:14,marginTop:10,lineHeight:1.55,fontWeight:400}}>
+            {current.subtitle}
+          </div>
+        </div>
+
+        <div className="fu" style={{animationDelay:'.1s'}}>
+          <Content {...current.contentProps}/>
+        </div>
+      </div>
+
+      {/* Footer: back + primary CTA */}
+      <div style={{padding:'14px 22px calc(env(safe-area-inset-bottom,0px) + 22px)',
+        display:'flex',gap:10,alignItems:'center',background:T.bg,
+        borderTop:`1px solid ${T.sep}`}}>
+        {step>0&&(
+          <button onClick={goBack}
+            style={{padding:'14px 18px',background:T.card,
+              border:`1px solid ${T.border}`,borderRadius:12,
+              color:T.t1,fontSize:14,fontWeight:600,cursor:'pointer'}}>
+            Zurück
+          </button>
+        )}
+        <button onClick={goNext} disabled={!current.canContinue()}
+          style={{flex:1,padding:'14px 18px',
+            background:current.canContinue()?T.o:T.card,
+            border:'none',borderRadius:12,
+            color:current.canContinue()?'#000':T.t3,
+            fontSize:15,fontWeight:800,letterSpacing:.2,
+            cursor:current.canContinue()?'pointer':'not-allowed',
+            boxShadow:current.canContinue()?'0 4px 14px var(--oGlow)':'none',
+            transition:'all .2s ease'}}>
+          {current.cta}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
    BOTTOM TAB BAR
 ═══════════════════════════════════════════════════════════════ */
 function TabBar({active,onTab}){
@@ -886,14 +2225,245 @@ function MatchBar({onHome,rightIcon,onRight,rightButtons}){
 /* ═══════════════════════════════════════════════════════════════
    HOME SCREEN
 ═══════════════════════════════════════════════════════════════ */
-function Home({nav,activeTab,setActiveTab}){
+/* ═══════════════════════════════════════════════════════════════
+   PROFILE — Avatar + Spielerprofil-Seite
+═══════════════════════════════════════════════════════════════ */
+
+function getInitials(name){
+  if(!name) return '';
+  const parts=name.trim().split(/\s+/).filter(Boolean);
+  if(parts.length===0) return '';
+  if(parts.length===1) return parts[0][0].toUpperCase();
+  return (parts[0][0]+parts[parts.length-1][0]).toUpperCase();
+}
+
+function PersonGlyph({size=22}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <circle cx="12" cy="8" r="3.6" stroke="currentColor" strokeWidth="1.8"/>
+    <path d="M 4.5 20 Q 4.5 14 12 14 Q 19.5 14 19.5 20"
+      stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" fill="none"/>
+  </svg>);
+}
+
+function ProfileAvatar({name,size=40,onClick,emphasize=false}){
+  const init=getInitials(name);
+  const ringColor=emphasize?T.o:T.border;
+  return(
+    <button onClick={onClick} aria-label="Spielerprofil"
+      style={{width:size,height:size,borderRadius:'50%',
+        background:T.card2,border:`1.5px solid ${ringColor}`,
+        color:T.o,fontWeight:800,fontSize:size*0.4,
+        cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',
+        padding:0,letterSpacing:.5,flexShrink:0,
+        transition:'transform .15s, border-color .15s',
+        boxShadow:emphasize?'0 4px 14px var(--oGlow)':'0 1px 3px rgba(0,0,0,.25)'}}>
+      {init||<span style={{color:T.t2}}><PersonGlyph size={size*0.55}/></span>}
+    </button>
+  );
+}
+
+function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding}){
+  const yearsLabels={lt6m:'Weniger als 6 Monate','6-12m':'6–12 Monate','1-2y':'1–2 Jahre','2-5y':'2–5 Jahre','5y+':'5+ Jahre'};
+  const freqLabels={rare:'Selten','1x':'1× pro Woche','2x':'2× pro Woche','3x+':'3× oder mehr'};
+  const tournLabels={never:'Nie',occasional:'Gelegentlich',regular:'Regelmäßig',competitive:'Wettkampf-orientiert'};
+  const handLabels={right:'Rechtshänder',left:'Linkshänder'};
+  const sideLabels={left:'Ad-Seite (links)',right:'Deuce-Seite (rechts)',any:'Beides geht'};
+  const styleLabels={offensive:'Aggressiv',defensive:'Defensiv',strategic:'Strategisch',balanced:'Allround'};
+  const shotLabels={volley:'Volea',smash:'Smash',bandeja:'Bandeja',drive:'Drive',globo:'Globo',counter:'Konter'};
+
+  const[editingLevel,setEditingLevel]=useState(false);
+
+  const lvl=profile.playtomicLevel??profile.estimatedLevel??estimateLevel(profile);
+  const isEstimated=profile.playtomicLevel==null&&lvl!=null;
+
+  const Row=({label,value})=>(
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',
+      padding:'10px 0',borderBottom:`1px solid ${T.sep}`,gap:14}}>
+      <div style={{color:T.t3,fontSize:12,fontWeight:500}}>{label}</div>
+      <div style={{color:value?T.t1:T.t4,fontSize:13,fontWeight:value?600:500,
+        textAlign:'right'}}>{value||'—'}</div>
+    </div>
+  );
+
   return(
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
-      <div style={{padding:'0 22px 28px'}}>
-        <RitmoWordmark size={26}/>
-        <div style={{color:T.t2,fontSize:15,marginTop:8,fontWeight:400}}>Wähle deinen Modus.</div>
+      <div style={{padding:'0 22px 18px'}}>
+        <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.5,marginBottom:4}}>PROFIL</div>
+        <div style={{color:T.t1,fontSize:26,fontWeight:800,letterSpacing:-.3}}>
+          {profile.name||'Spieler'}
+        </div>
+      </div>
+
+      <div style={{flex:1,padding:'0 22px',overflowY:'auto',WebkitOverflowScrolling:'touch'}}>
+
+        {/* Spielniveau — avatar + level (TOP) */}
+        <div className="fi" style={{background:T.card,border:`1px solid ${T.border}`,
+          borderRadius:16,padding:'24px 20px',marginBottom:14,
+          display:'flex',alignItems:'center',gap:18}}>
+          <ProfileAvatar name={profile.name} size={72} emphasize/>
+          <div style={{flex:1,minWidth:0}}>
+            {lvl!=null?(
+              <>
+                <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.3,
+                  textTransform:'uppercase',marginBottom:2}}>
+                  {isEstimated?'RITMO Level':'Playtomic Level'}
+                </div>
+                {isEstimated&&editingLevel?(
+                  <div style={{display:'flex',flexDirection:'column',gap:8,marginTop:4}}>
+                    <div style={{display:'flex',alignItems:'center',gap:6,minWidth:0}}>
+                      <button onClick={()=>setProfile(p=>({...p,estimatedLevel:Math.max(0.30,Math.round((lvl-0.03)*100)/100)}))}
+                        style={{width:30,height:30,borderRadius:'50%',background:T.card2,
+                          border:`1px solid ${T.border}`,color:T.o,fontSize:15,fontWeight:700,
+                          cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>−</button>
+                      <input type="text" inputMode="decimal" defaultValue={lvl.toFixed(2)}
+                        onBlur={e=>{
+                          const v=parseFloat(e.target.value.replace(',','.'));
+                          if(!isNaN(v)) setProfile(p=>({...p,estimatedLevel:Math.min(5.8,Math.max(0.3,Math.round(v*100)/100))}));
+                          else e.target.value=lvl.toFixed(2);
+                        }}
+                        onKeyDown={e=>{if(e.key==='Enter') e.target.blur();}}
+                        style={{flex:1,minWidth:0,width:0,
+                          textAlign:'center',background:T.card2,
+                          border:`1px solid ${T.o}`,borderRadius:8,padding:'5px 4px',
+                          color:T.o,fontSize:22,fontWeight:900,outline:'none',
+                          boxSizing:'border-box'}}/>
+                      <button onClick={()=>setProfile(p=>({...p,estimatedLevel:Math.min(5.80,Math.round((lvl+0.03)*100)/100)}))}
+                        style={{width:30,height:30,borderRadius:'50%',background:T.card2,
+                          border:`1px solid ${T.border}`,color:T.o,fontSize:15,fontWeight:700,
+                          cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>+</button>
+                    </div>
+                    <button onClick={()=>setEditingLevel(false)}
+                      style={{padding:'8px',background:T.o,border:'none',borderRadius:8,
+                        color:'#000',fontSize:12,fontWeight:800,cursor:'pointer'}}>Fertig</button>
+                  </div>
+                ):(
+                  <div style={{display:'flex',alignItems:'center',gap:10}}>
+                    <div style={{color:T.o,fontSize:38,fontWeight:900,letterSpacing:-.8,lineHeight:1}}>
+                      {lvl.toFixed(2)}
+                    </div>
+                    {isEstimated&&(
+                      <button onClick={()=>setEditingLevel(true)}
+                        style={{background:'none',border:'none',padding:4,cursor:'pointer',
+                          display:'flex',alignItems:'center',color:T.t3,flexShrink:0}}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                          stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                )}
+                <div style={{color:T.o,fontSize:12,fontWeight:700,marginTop:4}}>
+                  {getLevelLabel(lvl)}
+                </div>
+                {isEstimated&&!editingLevel&&(
+                  <div style={{color:T.t3,fontSize:10,marginTop:2}}>aus Fragebogen</div>
+                )}
+              </>
+            ):(
+              <div style={{color:T.t3,fontSize:13,lineHeight:1.5}}>Noch kein Spielniveau eingetragen.</div>
+            )}
+          </div>
+        </div>
+
+        {/* Spielstil Hero — BELOW level */}
+        {profile.styleType?(
+          <div className="fu" style={{animationDelay:'.05s'}}>
+            <StyleHeroCard styleId={profile.styleType}/>
+          </div>
+        ):(
+          <div className="fu" style={{background:T.card,border:`1px solid ${T.border}`,
+            borderRadius:14,padding:'16px 18px',marginBottom:14,animationDelay:'.05s'}}>
+            <div style={{color:T.t3,fontSize:13,lineHeight:1.5}}>
+              Spielstil noch nicht bestimmt — Onboarding-Quiz abschließen.
+            </div>
+          </div>
+        )}
+
+        {/* Spielniveau details */}
+        <div className="fu" style={{animationDelay:'.05s',
+          background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+          padding:'16px 18px',marginBottom:12}}>
+          <div style={{color:T.o,fontSize:11,fontWeight:700,letterSpacing:1.3,
+            textTransform:'uppercase',marginBottom:6}}>Spielniveau</div>
+          <Row label="Spielzeit" value={yearsLabels[profile.yearsPlaying]}/>
+          <Row label="Häufigkeit" value={freqLabels[profile.frequencyPerWeek]}/>
+          <Row label="Turniere" value={tournLabels[profile.playsTournaments]}/>
+          <Row label="Turnier-Anzahl"
+            value={profile.tournamentCount?({'1-3':'1–3','4-10':'4–10','10+':'10+'}[profile.tournamentCount]):null}/>
+          <Row label="Matches"
+            value={profile.matchesPlayed?`${profile.matchesPlayed} gespielt`:null}/>
+          <Row label="Siege"
+            value={(profile.winsCount!==''&&profile.winsCount!=null&&parseInt(profile.matchesPlayed)>0)
+              ?`${profile.winsCount} (${Math.round(parseInt(profile.winsCount)/parseInt(profile.matchesPlayed)*100)}%)`
+              :null}/>
+        </div>
+
+        {/* Spielstil details */}
+        <div className="fu" style={{animationDelay:'.1s',
+          background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+          padding:'16px 18px',marginBottom:12}}>
+          <div style={{color:T.o,fontSize:11,fontWeight:700,letterSpacing:1.3,
+            textTransform:'uppercase',marginBottom:6}}>Spielstil</div>
+          <Row label="Hand" value={handLabels[profile.handPreference]}/>
+          <Row label="Position" value={sideLabels[profile.courtSide]}/>
+          <Row label="Stil" value={styleLabels[profile.playStyle]}/>
+          <Row label="Stärkster Schlag" value={shotLabels[profile.strongestShot]}/>
+        </div>
+
+        {/* Actions */}
+        <div className="fu" style={{animationDelay:'.15s',
+          display:'flex',flexDirection:'column',gap:8,marginBottom:16}}>
+          <button onClick={onResetOnboarding}
+            style={{padding:'13px 16px',background:T.card,
+              border:`1px solid ${T.border}`,borderRadius:12,
+              color:T.t1,fontSize:14,fontWeight:600,cursor:'pointer',
+              textAlign:'left'}}>
+            Onboarding wiederholen
+          </button>
+          <button onClick={onLogout}
+            style={{padding:'13px 16px',background:'transparent',
+              border:`1px solid ${T.border}`,borderRadius:12,
+              color:T.t2,fontSize:14,fontWeight:600,cursor:'pointer',
+              textAlign:'left'}}>
+            Abmelden
+          </button>
+        </div>
+
+        <div style={{height:120}}/>
+      </div>
+
+      <MatchBar onHome={onHome}/>
+    </div>
+  );
+}
+
+function Home({nav,activeTab,setActiveTab,profile}){
+  return(
+    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
+
+      <div style={{padding:'0 22px 28px',display:'flex',alignItems:'flex-start',
+        justifyContent:'space-between',gap:14}}>
+        <div style={{flex:1,minWidth:0}}>
+          <RitmoWordmark size={26}/>
+          {profile?.name?(
+            <div style={{color:T.t1,fontSize:18,fontWeight:700,marginTop:10,letterSpacing:-.2}}>
+              Hi, {profile.name}! 👋
+            </div>
+          ):null}
+          <div style={{color:T.t2,fontSize:14,marginTop:profile?.name?4:8,fontWeight:400}}>
+            Wähle deinen Modus.
+          </div>
+          {document.documentElement.getAttribute('data-theme')==='funky'&&(
+            <div style={{marginTop:14}}><FunkyFruitsRow size={20} gap={10}/></div>
+          )}
+        </div>
+        <ProfileAvatar name={profile?.name} size={44}
+          onClick={()=>nav('profile')}/>
       </div>
 
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
@@ -987,12 +2557,23 @@ function Home({nav,activeTab,setActiveTab}){
 /* ═══════════════════════════════════════════════════════════════
    SINGLE SETUP
 ═══════════════════════════════════════════════════════════════ */
-function SingleSetup({nav,onHome,cfg,setCfg}){
-  const[nA,setNA]=useState(cfg.nameA||'Team 1');
-  const[nB,setNB]=useState(cfg.nameB||'Team 2');
+function SingleSetup({nav,onHome,cfg,setCfg,profile}){
+  const userName=profile?.name||'';
+  // Initialize players: prefer stored, else seed from profile
+  const[players,setPlayers]=useState(()=>{
+    const stored=cfg.players;
+    if(stored&&stored.length===4) return stored;
+    return [userName,'','',''];
+  });
+  const setPlayer=(idx,val)=>setPlayers(p=>p.map((v,i)=>i===idx?val:v));
+
   const[fmt,setFmt]=useState(cfg.format||'bo3');
   const[amLim,setAmLim]=useState(cfg.amLimit??21);
-  const[gpAfter,setGpAfter]=useState(cfg.goldenPointAfter??null); // null = off
+  const[gpAfter,setGpAfter]=useState(cfg.goldenPointAfter??null);
+
+  // Computed team display names (used during scoring)
+  const teamA=[players[0]||'Spieler 1',players[1]||'Spieler 2'].join(' & ');
+  const teamB=[players[2]||'Spieler 3',players[3]||'Spieler 4'].join(' & ');
 
   return(
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
@@ -1008,21 +2589,60 @@ function SingleSetup({nav,onHome,cfg,setCfg}){
 
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
 
-        {/* Team Names */}
-        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,overflow:'hidden'}}>
-          {[
-            {label:'Team 1',val:nA,set:setNA,placeholder:'Team A'},
-            {label:'Team 2',val:nB,set:setNB,placeholder:'Team B'},
-          ].map((row,i)=>(
-            <div key={i} style={{display:'flex',alignItems:'center',padding:'14px 16px',
-              borderBottom:i===0?`1px solid ${T.sep}`:'none',gap:10}}>
-              <span style={{color:T.t1,fontSize:15,fontWeight:600}}>{row.label}</span>
-              <input value={row.val} onChange={e=>row.set(e.target.value)} placeholder={row.placeholder}
-                style={{flex:1,fontSize:14,color:T.t2,fontWeight:500,textAlign:'right',paddingRight:6}}/>
-              <button onClick={()=>row.set('')}
-                style={{width:18,height:18,borderRadius:'50%',background:T.t4,border:'none',
-                  color:T.t1,fontSize:11,cursor:'pointer',display:'flex',alignItems:'center',
-                  justifyContent:'center',fontWeight:700,lineHeight:1}}>×</button>
+        {/* Team 1 */}
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14}}>
+          <div style={{padding:'14px 18px 6px',color:T.o,fontSize:11,fontWeight:700,
+            letterSpacing:1.3,textTransform:'uppercase'}}>
+            Team 1
+          </div>
+          {[0,1].map(idx=>{
+            const isUser=idx===0;
+            return(
+              <div key={idx} style={{display:'flex',alignItems:'center',
+                padding:'14px 18px',borderTop:`1px solid ${T.sep}`,gap:12}}>
+                <span style={{color:T.t1,fontSize:14,fontWeight:600,
+                  width:94,flexShrink:0,display:'flex',alignItems:'center',gap:5}}>
+                  Spieler {idx+1}
+                  {isUser&&<span style={{color:T.o,fontWeight:700}}>(Du)</span>}
+                </span>
+                <input value={players[idx]}
+                  onChange={e=>setPlayer(idx,e.target.value)}
+                  placeholder={isUser?'Dein Name':`Mitspieler ${idx+1}`}
+                  autoCapitalize="words" autoCorrect="off" spellCheck={false}
+                  style={{flex:1,fontSize:14,color:T.t2,fontWeight:500,textAlign:'right',
+                    background:'transparent',border:'none',outline:'none'}}/>
+                <button onClick={()=>setPlayer(idx,'')}
+                  style={{width:20,height:20,borderRadius:'50%',background:T.t4,border:'none',
+                    color:T.t1,fontSize:12,cursor:'pointer',display:'flex',alignItems:'center',
+                    justifyContent:'center',fontWeight:700,flexShrink:0}}>×</button>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Team 2 */}
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14}}>
+          <div style={{padding:'14px 18px 6px',color:T.o,fontSize:11,fontWeight:700,
+            letterSpacing:1.3,textTransform:'uppercase'}}>
+            Team 2
+          </div>
+          {[2,3].map(idx=>(
+            <div key={idx} style={{display:'flex',alignItems:'center',
+              padding:'14px 18px',borderTop:`1px solid ${T.sep}`,gap:12}}>
+              <span style={{color:T.t1,fontSize:14,fontWeight:600,
+                width:94,flexShrink:0}}>
+                Spieler {idx+1}
+              </span>
+              <input value={players[idx]}
+                onChange={e=>setPlayer(idx,e.target.value)}
+                placeholder={`Gegner ${idx-1}`}
+                autoCapitalize="words" autoCorrect="off" spellCheck={false}
+                style={{flex:1,fontSize:14,color:T.t2,fontWeight:500,textAlign:'right',
+                  background:'transparent',border:'none',outline:'none'}}/>
+              <button onClick={()=>setPlayer(idx,'')}
+                style={{width:20,height:20,borderRadius:'50%',background:T.t4,border:'none',
+                  color:T.t1,fontSize:12,cursor:'pointer',display:'flex',alignItems:'center',
+                  justifyContent:'center',fontWeight:700,flexShrink:0}}>×</button>
             </div>
           ))}
         </div>
@@ -1123,7 +2743,7 @@ function SingleSetup({nav,onHome,cfg,setCfg}){
       <MatchBar onHome={onHome} rightButtons={[{
         icon:'Start',
         onClick:()=>{
-          setCfg({nameA:nA||'Team A',nameB:nB||'Team B',format:fmt,amLimit:amLim,goldenPointAfter:gpAfter});
+          setCfg({players,nameA:teamA,nameB:teamB,format:fmt,amLimit:amLim,goldenPointAfter:gpAfter});
           nav('match');
         },
         style:{
@@ -1141,7 +2761,7 @@ function SingleSetup({nav,onHome,cfg,setCfg}){
 /* ═══════════════════════════════════════════════════════════════
    MATCH SCREEN
 ═══════════════════════════════════════════════════════════════ */
-function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId='soft',matchKeyRef,theme='dark'}){
+function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId='soft',matchKeyRef,theme='dark',voiceOn=false,voiceBaseUrl=''}){
   const isB=cfg.format==='bo3';
   const[flA,setFA]=useState(false);const[flB,setFB]=useState(false);
   const[confReset,setConfReset]=useState(false);
@@ -1195,6 +2815,70 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
     if(t==='A'){setFA(true);setTimeout(()=>setFA(false),420);}
     else{setFB(true);setTimeout(()=>setFB(false),420);}
   },[dsp,cfg.goldenPointAfter]);
+
+  /* ── Voice announce engine ──────────────────────────────────────
+     Plays {baseUrl}/{key}.mp3 on score-changing events.
+     Silent on missing files / blocked autoplay (logs to console). */
+  const audioRef=useRef(null);
+  const announce=useCallback((key)=>{
+    if(!voiceOn||!voiceBaseUrl) return;
+    try{
+      const url=voiceBaseUrl.replace(/\/+$/,'')+'/'+key+'.mp3';
+      // Stop any in-flight announcement so the latest event wins
+      if(audioRef.current){
+        try{audioRef.current.pause();}catch{}
+        audioRef.current=null;
+      }
+      const a=new Audio(url);
+      a.volume=0.9;
+      audioRef.current=a;
+      a.play().catch(err=>{
+        console.debug('[voice] play failed for',key,'-',err?.message||err);
+      });
+    }catch(err){
+      console.debug('[voice] error for',key,err);
+    }
+  },[voiceOn,voiceBaseUrl]);
+
+  /* Watch bo3 state changes and call announce() with the right key.
+     Priority: match > set > game > point. Only Bo3 supported. */
+  const prevBo3Ref=useRef(bo3);
+  useEffect(()=>{
+    const prev=prevBo3Ref.current;
+    prevBo3Ref.current=bo3;
+    if(!isB||!voiceOn||!voiceBaseUrl) return;
+    if(bo3===prev) return;
+
+    // Match win
+    if(bo3.winner&&!prev.winner){
+      announce(`match-${bo3.winner.toLowerCase()}`);
+      return;
+    }
+    // Set win (sets array grew)
+    if(bo3.sets.length>prev.sets.length){
+      const w=bo3.sets[bo3.sets.length-1].w;
+      announce(`satz-${w.toLowerCase()}`);
+      return;
+    }
+    // Game win (games count went up — covers regular + tiebreak-won)
+    if(bo3.gA>prev.gA){announce('spiel-a'); return;}
+    if(bo3.gB>prev.gB){announce('spiel-b'); return;}
+    // Inside tiebreak — skip individual point announcements (could explode)
+    if(bo3.tb) return;
+    // Regular point change
+    if(bo3.pA!==prev.pA||bo3.pB!==prev.pB){
+      const a=bo3.pA, b=bo3.pB;
+      const gpAct=cfg.goldenPointAfter!=null&&cfg.goldenPointAfter>=0
+        &&(bo3.deuces||0)>cfg.goldenPointAfter;
+      if(a>=3&&b>=3){
+        if(a===b) announce(gpAct?'golden-point':'einstand');
+        else announce(a>b?'vorteil-a':'vorteil-b');
+      } else {
+        const LU=['0','15','30','40'];
+        announce(`s-${LU[a]}-${LU[b]}`);
+      }
+    }
+  },[bo3,isB,voiceOn,voiceBaseUrl,announce,cfg.goldenPointAfter]);
 
   // Live refs to current state for use in reset (saving state before wipe)
   const bo3Ref=useRef(bo3);const amRef=useRef(am);
@@ -1411,55 +3095,56 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
               <button onClick={()=>punkt(team)}
                 style={{flex:1,display:'flex',flexDirection:'column',justifyContent:'center',
                   background:fl?'var(--oFlash)':'transparent',
-                  border:'none',cursor:win?'default':'pointer',padding:'0 14px',
+                  border:'none',cursor:win?'default':'pointer',padding:'0 28px',
                   transition:'background .3s',textAlign:'left'}}>
                 {isSpecial ? (
                   <>
                     {/* Tennis ball indicator */}
                     <div style={{
-                      width:'clamp(5rem,14vh,9rem)',
-                      height:'clamp(5rem,14vh,9rem)',
+                      width:'clamp(7rem,19vh,13rem)',
+                      height:'clamp(7rem,19vh,13rem)',
                       borderRadius:'50%',
                       background: isAdv ? T.o : T.t1,
                       boxShadow: isAdv
-                        ? '0 0 24px var(--oGlow), inset 0 -8px 18px rgba(0,0,0,.18)'
-                        : '0 0 18px rgba(255,255,255,.18), inset 0 -8px 18px rgba(0,0,0,.10)',
-                      marginBottom:'clamp(.6rem,2vh,1.2rem)'
+                        ? '0 0 36px var(--oGlow), inset 0 -12px 26px rgba(0,0,0,.18)'
+                        : '0 0 28px rgba(255,255,255,.22), inset 0 -12px 26px rgba(0,0,0,.10)',
+                      marginBottom:'clamp(1rem,2.8vh,1.8rem)'
                     }}/>
-                    {/* Label below — smaller */}
+                    {/* Label below */}
                     <div style={{
                       color:T.t1,
-                      fontSize:'clamp(1.6rem,5.5vh,3rem)',
-                      fontWeight:800,letterSpacing:-.5,lineHeight:1,
+                      fontSize:'clamp(2.4rem,8vh,4.5rem)',
+                      fontWeight:800,letterSpacing:-1,lineHeight:1,
                       whiteSpace:'nowrap'}}>
                       {big}
                     </div>
                   </>
                 ) : (
                   <div style={{
-                    fontSize:'clamp(7rem,26vh,15rem)',
-                    fontWeight:900,color:T.t1,lineHeight:1,letterSpacing:-8,
+                    fontSize:'clamp(9rem,36vh,22rem)',
+                    fontWeight:900,color:T.t1,lineHeight:.95,letterSpacing:-12,
                     whiteSpace:'nowrap'}}>
                     {big}
                   </div>
                 )}
                 {/* Games + Set traffic-light dots */}
                 {isB&&(
-                  <div style={{display:'flex',alignItems:'center',gap:'clamp(1rem,3vw,2rem)',
-                    marginTop:'clamp(1rem,3vh,2rem)'}}>
-                    <div style={{color:T.o,fontSize:'clamp(2.4rem,8vh,5rem)',
-                      fontWeight:900,letterSpacing:-2,lineHeight:1}}>
+                  <div style={{display:'flex',alignItems:'center',gap:'clamp(1.5rem,4vw,3rem)',
+                    marginTop:'clamp(1.6rem,4.5vh,3rem)'}}>
+                    <div style={{color:T.o,fontSize:'clamp(3.5rem,12vh,8rem)',
+                      fontWeight:900,letterSpacing:-3,lineHeight:1}}>
                       {gamesCount}
                     </div>
-                    <div style={{display:'flex',gap:'clamp(.4rem,1vw,.7rem)'}}>
+                    <div style={{display:'flex',gap:'clamp(.7rem,1.5vw,1.2rem)'}}>
                       {[0,1,2].map(i=>(
                         <div key={i} style={{
-                          width:'clamp(.8rem,2vh,1.4rem)',
-                          height:'clamp(.8rem,2vh,1.4rem)',
+                          width:'clamp(1.4rem,3.5vh,2.5rem)',
+                          height:'clamp(1.4rem,3.5vh,2.5rem)',
                           borderRadius:'50%',
                           background:i<setsCount?T.o:'transparent',
-                          border:`2px solid ${T.o}`,
-                          boxSizing:'border-box'
+                          border:`2.5px solid ${T.o}`,
+                          boxSizing:'border-box',
+                          boxShadow:i<setsCount?'0 0 14px var(--oGlow)':'none'
                         }}/>
                       ))}
                     </div>
@@ -2083,6 +3768,12 @@ function WimbledonTimerCard({minutes,setMinutes,running,secsLeft,finished,onStar
 
 function TimerCard({minutes,setMinutes,running,secsLeft,finished,onStart,onPause,onReset,
   hasStarted,theme='dark'}){
+  if(theme==='wimbledon'){
+    return <WimbledonTimerCard minutes={minutes} setMinutes={setMinutes}
+      running={running} secsLeft={secsLeft} finished={finished}
+      hasStarted={hasStarted}
+      onStart={onStart} onPause={onPause} onReset={onReset}/>;
+  }
   const totalSecs=minutes*60;
   const progress=totalSecs?secsLeft/totalSecs:0;
   const fmtTime=(s)=>`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
@@ -2167,7 +3858,7 @@ function TimerCard({minutes,setMinutes,running,secsLeft,finished,onStart,onPause
 /* ═══════════════════════════════════════════════════════════════
    SWIPEABLE CARD (Swipe-to-Delete)
 ═══════════════════════════════════════════════════════════════ */
-function SwipeableCard({children,onDelete,outerStyle,childBg}){
+function SwipeableCard({children,onDelete}){
   const[tx,setTx]=useState(0);
   const[swiping,setSwiping]=useState(false);
   const startX=useRef(0);
@@ -2219,7 +3910,7 @@ function SwipeableCard({children,onDelete,outerStyle,childBg}){
   };
 
   return(
-    <div style={{position:'relative',overflow:'hidden',borderRadius:18,...outerStyle}}>
+    <div style={{position:'relative',overflow:'hidden',borderRadius:18}}>
       {/* Delete background */}
       <div onClick={handleDeleteClick}
         style={{position:'absolute',top:0,right:0,bottom:0,width:80,
@@ -2233,7 +3924,7 @@ function SwipeableCard({children,onDelete,outerStyle,childBg}){
         onClickCapture={handleCardClick}
         style={{transform:`translateX(${tx}px)`,
           transition:swiping?'none':'transform .25s cubic-bezier(.3,0,.2,1)',
-          willChange:'transform',background:childBg??T.bg,position:'relative'}}>
+          willChange:'transform',background:T.bg,position:'relative'}}>
         {children}
       </div>
     </div>
@@ -3109,9 +4800,24 @@ function QuestionToggle({filled,onClick}){
 ═══════════════════════════════════════════════════════════════ */
 function Settings({onHome,activeTab,setActiveTab,
   ringId,setRingId,inputMode,setInputMode,voiceOn,setVoiceOn,
-  theme,setTheme,customThemes=[],onDeleteCustomTheme,onOpenWizard}){
+  voiceBaseUrl,setVoiceBaseUrl,
+  theme,setTheme,onResetOnboarding}){
 
   const[showInfo,setShowInfo]=useState(false);
+
+  const testVoice=()=>{
+    if(!voiceBaseUrl) return;
+    try{
+      const url=voiceBaseUrl.replace(/\/+$/,'')+'/s-15-0.mp3';
+      const a=new Audio(url);
+      a.volume=0.9;
+      a.play().catch(err=>{
+        console.warn('Voice test failed:',err?.message||err);
+      });
+    }catch(err){
+      console.warn('Voice test error:',err);
+    }
+  };
 
   const inputs=[
     {id:'smartphone',label:'Smartphone',icon:'📱',sub:'Tippen auf die Score-Karten'},
@@ -3217,19 +4923,100 @@ function Settings({onHome,activeTab,setActiveTab,
 
         {/* Sprachansage */}
         <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
-          padding:'14px 18px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-          <div>
-            <div style={{color:T.t1,fontSize:15,fontWeight:600}}>Sprachansage</div>
-            <div style={{color:T.t3,fontSize:11,marginTop:2}}>Spielstand wird angesagt</div>
+          padding:'14px 18px'}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{color:T.t1,fontSize:15,fontWeight:600}}>Sprachansage</div>
+              <div style={{color:T.t3,fontSize:11,marginTop:2}}>Audio-Dateien per URL · eigene Ansagen möglich</div>
+            </div>
+            <div onClick={()=>setVoiceOn(!voiceOn)}
+              style={{width:48,height:28,borderRadius:14,
+                background:voiceOn?T.o:'rgba(120,120,128,.32)',
+                position:'relative',cursor:'pointer',transition:'background .25s',flexShrink:0}}>
+              <div style={{width:24,height:24,borderRadius:'50%',background:T.bg,
+                position:'absolute',top:2,left:voiceOn?22:2,transition:'left .25s',
+                boxShadow:'0 1px 3px rgba(0,0,0,.3)'}}/>
+            </div>
           </div>
-          <div onClick={()=>setVoiceOn(!voiceOn)}
-            style={{width:48,height:28,borderRadius:14,
-              background:voiceOn?T.o:'rgba(120,120,128,.32)',
-              position:'relative',cursor:'pointer',transition:'background .25s',flexShrink:0}}>
-            <div style={{width:24,height:24,borderRadius:'50%',background:T.bg,
-              position:'absolute',top:2,left:voiceOn?22:2,transition:'left .25s',
-              boxShadow:'0 1px 3px rgba(0,0,0,.3)'}}/>
-          </div>
+
+          {voiceOn&&(
+            <div className="fu" style={{marginTop:14,paddingTop:14,
+              borderTop:`1px solid ${T.sep}`,display:'flex',flexDirection:'column',gap:10}}>
+              <div>
+                <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
+                  textTransform:'uppercase',marginBottom:6}}>Base-URL</div>
+                <input type="url" value={voiceBaseUrl}
+                  onChange={e=>setVoiceBaseUrl(e.target.value.trim())}
+                  placeholder="https://my-cdn.com/padel-audio"
+                  spellCheck={false} autoCapitalize="off" autoCorrect="off"
+                  style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
+                    borderRadius:10,padding:'10px 12px',color:T.t1,fontSize:12,
+                    fontFamily:'monospace',outline:'none',boxSizing:'border-box'}}/>
+                <div style={{color:T.t3,fontSize:10,marginTop:6,lineHeight:1.5}}>
+                  Pfad ohne Trailing-Slash. App lädt {'{base}'}/{'{key}'}.mp3
+                </div>
+              </div>
+
+              <button onClick={()=>testVoice()}
+                disabled={!voiceBaseUrl}
+                style={{padding:'10px 14px',background:voiceBaseUrl?T.oSoft:T.card2,
+                  border:`1px solid ${voiceBaseUrl?T.o:T.border}`,borderRadius:10,
+                  color:voiceBaseUrl?T.o:T.t4,fontSize:12,fontWeight:700,letterSpacing:.3,
+                  cursor:voiceBaseUrl?'pointer':'not-allowed'}}>
+                ▶ Test (spielt s-15-0.mp3)
+              </button>
+
+              <details style={{marginTop:4}}>
+                <summary style={{color:T.t2,fontSize:12,fontWeight:600,cursor:'pointer',
+                  padding:'6px 0',userSelect:'none'}}>
+                  Welche Dateien hochladen? (25)
+                </summary>
+                <div style={{marginTop:8,padding:'12px 14px',background:T.card2,
+                  borderRadius:10,border:`1px solid ${T.sep}`,
+                  fontFamily:'monospace',fontSize:11,lineHeight:1.7,color:T.t2}}>
+                  <div style={{color:T.o,fontWeight:700,marginBottom:4,
+                    fontFamily:'-apple-system,sans-serif',letterSpacing:1}}>
+                    PUNKTE (Bo3) — 16 Score-Files
+                  </div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'2px 16px'}}>
+                    <div>s-0-0.mp3</div><div>s-0-15.mp3</div>
+                    <div>s-15-0.mp3</div><div>s-15-15.mp3</div>
+                    <div>s-30-0.mp3</div><div>s-30-15.mp3</div>
+                    <div>s-40-0.mp3</div><div>s-40-15.mp3</div>
+                    <div>s-0-30.mp3</div><div>s-0-40.mp3</div>
+                    <div>s-15-30.mp3</div><div>s-15-40.mp3</div>
+                    <div>s-30-30.mp3</div><div>s-30-40.mp3</div>
+                    <div>s-40-30.mp3</div>{/* 40-40 → einstand */}
+                  </div>
+                  <div style={{color:T.o,fontWeight:700,margin:'10px 0 4px',
+                    fontFamily:'-apple-system,sans-serif',letterSpacing:1}}>
+                    SPEZIAL — 3
+                  </div>
+                  <div>einstand.mp3</div>
+                  <div>vorteil-a.mp3 · vorteil-b.mp3</div>
+                  <div style={{color:T.o,fontWeight:700,margin:'10px 0 4px',
+                    fontFamily:'-apple-system,sans-serif',letterSpacing:1}}>
+                    GOLDEN POINT — 1
+                  </div>
+                  <div>golden-point.mp3</div>
+                  <div style={{color:T.o,fontWeight:700,margin:'10px 0 4px',
+                    fontFamily:'-apple-system,sans-serif',letterSpacing:1}}>
+                    EVENTS — 6
+                  </div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'2px 16px'}}>
+                    <div>spiel-a.mp3</div><div>spiel-b.mp3</div>
+                    <div>satz-a.mp3</div><div>satz-b.mp3</div>
+                    <div>match-a.mp3</div><div>match-b.mp3</div>
+                  </div>
+                  <div style={{color:T.t3,fontSize:10,marginTop:12,lineHeight:1.5,
+                    fontFamily:'-apple-system,sans-serif'}}>
+                    Format: MP3, ~30-50 KB pro Datei. Bei fehlender Datei wird der Aufruf still ignoriert.<br/>
+                    Hosting: GitHub Pages, Cloudinary, Bunny CDN, S3. <strong style={{color:T.t2}}>SoundCloud streamt NICHT direkt</strong> und funktioniert daher nicht.
+                  </div>
+                </div>
+              </details>
+            </div>
+          )}
         </div>
 
         {/* Klingelton */}
@@ -3258,87 +5045,54 @@ function Settings({onHome,activeTab,setActiveTab,
           ))}
         </div>
 
-        {/* Designs — built-in + custom themes */}
+        {/* Erscheinungsbild — Theme */}
         <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
           padding:'18px 18px 8px'}}>
-          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',
-            marginBottom:4}}>
-            <div style={{color:T.o,fontSize:18,fontWeight:800}}>Designs</div>
-            <button onClick={onOpenWizard}
-              style={{background:T.card2,border:`1px solid ${T.o}`,borderRadius:10,
-                padding:'7px 11px',cursor:'pointer',display:'flex',alignItems:'center',
-                gap:6,color:T.o,fontSize:12,fontWeight:700,letterSpacing:.3}}>
-              <WandIcon size={16}/>
-              <span>Neu</span>
-            </button>
-          </div>
+          <div style={{color:T.o,fontSize:18,fontWeight:800,marginBottom:4}}>Erscheinungsbild</div>
           <div style={{color:T.t3,fontSize:12,fontWeight:500,marginBottom:14,lineHeight:1.5}}>
-            Eingebaute Themes oder eigene Designs. Custom-Designs lassen sich nach links wischen, um sie zu löschen.
+            Farb-Theme der App.
           </div>
           {[
-            {id:'dark',label:'RITMO Dark Bauhaus',icon:'🌙',desc:'Schwarz, weiß, orange'},
-            {id:'light',label:"Light n' Serious",icon:'☀️',desc:'Weiß, schwarz, blau'},
+            {id:'dark',label:'RITMO BAUHAUS Dark',icon:'🌙',desc:'Schwarz, weiß, orange'},
+            {id:'light',label:'Federleicht',icon:'☀️',desc:'Weiß, schwarz, blau'},
             {id:'padel',label:'Padelhaus Blue',icon:'🎾',desc:'Elektroblau, weiß, gelb'},
             {id:'wimbledon',label:'Wimbledon Green',icon:'🌿',desc:'Rolex-Grün, beige, bone white'},
+            {id:'funky',label:'RITMO BAUHAUS Funky',icon:'🦜',desc:'Tropisch — Gelb, Papageienrot, Kiwi'},
           ].map((th,i,arr)=>(
             <div key={th.id} onClick={()=>setTheme(th.id)}
               style={{display:'flex',alignItems:'center',padding:'12px 0',
-                borderBottom:`1px solid ${T.sep}`,cursor:'pointer'}}>
+                borderBottom:i<arr.length-1?`1px solid ${T.sep}`:'none',cursor:'pointer'}}>
               <div style={{fontSize:18,marginRight:12,width:22,textAlign:'center'}}>{th.icon}</div>
-              <div style={{flex:1}}>
+              <div style={{flex:1,minWidth:0}}>
                 <div style={{color:T.t1,fontSize:14,fontWeight:theme===th.id?700:500}}>{th.label}</div>
                 <div style={{color:T.t3,fontSize:11,marginTop:1}}>{th.desc}</div>
+                {th.id==='funky'&&(
+                  <div style={{marginTop:6}}><FunkyFruitsRow size={14} gap={6}/></div>
+                )}
               </div>
               {theme===th.id
                 ?<span style={{color:T.o,fontSize:16,width:16,textAlign:'center'}}>✓</span>
                 :<span style={{width:16}}/>}
             </div>
           ))}
+        </div>
 
-          {/* Custom themes — swipeable */}
-          {customThemes.map((ct,i)=>{
-            const isLast=i===customThemes.length-1;
-            const isActive=theme===`custom-${ct.id}`;
-            return(
-              <SwipeableCard key={ct.id}
-                onDelete={()=>onDeleteCustomTheme(ct.id)}
-                outerStyle={{borderRadius:0,
-                  borderBottom:isLast?'none':`1px solid ${T.sep}`}}
-                childBg={T.card}>
-                <div onClick={()=>setTheme(`custom-${ct.id}`)}
-                  style={{display:'flex',alignItems:'center',padding:'12px 0',
-                    cursor:'pointer'}}>
-                  <div style={{width:22,marginRight:12,display:'flex',
-                    justifyContent:'center'}}>
-                    <div style={{display:'flex',flexDirection:'column',gap:2}}>
-                      <div style={{display:'flex',gap:2}}>
-                        <div style={{width:8,height:8,borderRadius:2,background:ct.bg,
-                          border:`1px solid ${T.border}`}}/>
-                        <div style={{width:8,height:8,borderRadius:2,background:ct.highlight}}/>
-                      </div>
-                      <div style={{display:'flex',gap:2}}>
-                        <div style={{width:8,height:8,borderRadius:2,background:ct.text,
-                          border:`1px solid ${T.border}`}}/>
-                        <div style={{width:8,height:8,borderRadius:2,background:ct.secondary}}/>
-                      </div>
-                    </div>
-                  </div>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{color:T.t1,fontSize:14,fontWeight:isActive?700:500,
-                      overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                      {ct.name}
-                    </div>
-                    <div style={{color:T.t3,fontSize:11,marginTop:1}}>
-                      Custom · {FONTS.find(f=>f.id===ct.font)?.name||'System'}
-                    </div>
-                  </div>
-                  {isActive
-                    ?<span style={{color:T.o,fontSize:16,width:16,textAlign:'center'}}>✓</span>
-                    :<span style={{width:16}}/>}
-                </div>
-              </SwipeableCard>
-            );
-          })}
+        {/* Profil — Test / Re-Setup */}
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+          padding:'14px 18px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:14}}>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{color:T.t1,fontSize:14,fontWeight:600}}>Onboarding wiederholen</div>
+            <div style={{color:T.t3,fontSize:11,marginTop:2,lineHeight:1.5}}>
+              Profil-Daten bleiben erhalten · du kannst sie überarbeiten.
+            </div>
+          </div>
+          <button onClick={onResetOnboarding}
+            style={{padding:'10px 14px',background:T.oSoft,
+              border:`1px solid ${T.o}`,borderRadius:10,
+              color:T.o,fontSize:12,fontWeight:700,letterSpacing:.3,
+              cursor:'pointer',flexShrink:0}}>
+            Starten
+          </button>
         </div>
 
         {/* About */}
@@ -3411,7 +5165,7 @@ function RulesDetailLayout({icon,title,sub,visual,children,onBackToRules,onHome,
       }
     }
     if(dragRef.current.isHoriz){
-      // Edge resistance
+      // Edge resistance at start/end
       let applied=ddx;
       if((ddx>0&&!onPrev)||(ddx<0&&!onNext)) applied=ddx*0.25;
       setDx(applied);
@@ -3425,7 +5179,6 @@ function RulesDetailLayout({icon,title,sub,visual,children,onBackToRules,onHome,
     if(wasHoriz){
       const threshold=70;
       if(finalDx<-threshold&&onNext){
-        // Animate off to the left, then navigate
         setAnimating(true);
         setDx(-window.innerWidth);
         setTimeout(()=>{onNext();setDx(0);setAnimating(false);},220);
@@ -3452,7 +5205,6 @@ function RulesDetailLayout({icon,title,sub,visual,children,onBackToRules,onHome,
             <div style={{color:T.t3,fontSize:12,marginTop:2,fontWeight:500}}>{sub}</div>
           </div>
         </div>
-        {/* Page indicator dots */}
         {totalSections>1&&(
           <div style={{display:'flex',gap:6,justifyContent:'center',
             padding:'10px 0 4px',alignItems:'center'}}>
@@ -3513,25 +5265,20 @@ function CourtVisual(){
           .court-label { opacity: 0; animation: fadeIn2 .6s ease forwards; animation-delay: 1.2s; }
         `}</style>
       </defs>
-      {/* Subtle service-area tinting */}
-      <rect x="20" y="83" width="100" height="54" fill="rgba(255,255,255,0.03)"/>
-      {/* Court outline — bold white walls */}
+      {/* Court outline — 100 wide × 180 tall (10m × 20m proportion) */}
       <rect className="court-line" x="20" y="20" width="100" height="180" rx="2"
-        fill="rgba(255,255,255,0.04)" stroke="var(--t1)" strokeWidth="2.2"/>
-      {/* Service lines — 3 m from net (parallel to net, same boldness as outline) */}
-      <line className="court-line delay2" x1="20" y1="83" x2="120" y2="83"
-        stroke="var(--t1)" strokeWidth="1.8"/>
-      <line className="court-line delay2" x1="20" y1="137" x2="120" y2="137"
-        stroke="var(--t1)" strokeWidth="1.8"/>
-      {/* Center service line — vertical, ONLY between service lines */}
-      <line className="court-line delay3" x1="70" y1="83" x2="70" y2="137"
-        stroke="var(--t1)" strokeWidth="1.8"/>
-      {/* Net — across the middle */}
+        fill="rgba(255,255,255,0.04)" stroke="var(--t1)" strokeWidth="1.6"/>
+      {/* Net — horizontal across middle (long axis split) */}
       <line className="court-line delay1" x1="20" y1="110" x2="120" y2="110"
-        stroke="var(--o)" strokeWidth="2.4" strokeDasharray="3 2"/>
-      {/* Net posts */}
-      <circle cx="20" cy="110" r="2.5" fill="var(--o)" opacity="0.9"/>
-      <circle cx="120" cy="110" r="2.5" fill="var(--o)" opacity="0.9"/>
+        stroke="var(--o)" strokeWidth="2" strokeDasharray="3 2"/>
+      {/* Service lines — 3m from net = ~27 units (out of 90 per half) */}
+      <line className="court-line delay2" x1="20" y1="83" x2="120" y2="83"
+        stroke="var(--t1)" strokeWidth="1" opacity="0.6"/>
+      <line className="court-line delay2" x1="20" y1="137" x2="120" y2="137"
+        stroke="var(--t1)" strokeWidth="1" opacity="0.6"/>
+      {/* Center service line — vertical between service lines */}
+      <line className="court-line delay3" x1="70" y1="83" x2="70" y2="137"
+        stroke="var(--t1)" strokeWidth="1" opacity="0.6"/>
       {/* Labels */}
       <text className="court-label" x="70" y="14" textAnchor="middle"
         fontSize="7" fill="var(--t3)" letterSpacing="1.5">10 m</text>
@@ -4131,218 +5878,9 @@ function RulesGlossar({onBackToRules,onHome,onNext,onPrev,currentIdx,totalSectio
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   DESIGN WIZARD — custom theme creator
-═══════════════════════════════════════════════════════════════ */
-function ColorPickerRow({label,sub,value,onChange}){
-  return(
-    <label style={{display:'flex',alignItems:'center',gap:14,
-      padding:'12px 14px',background:T.card2,borderRadius:12,
-      border:`1px solid ${T.border}`,cursor:'pointer'}}>
-      <div style={{width:38,height:38,background:value,borderRadius:9,
-        border:`1.5px solid ${T.border}`,flexShrink:0,position:'relative',
-        boxShadow:'inset 0 1px 2px rgba(0,0,0,.25)'}}>
-        <input type="color" value={value}
-          onChange={e=>onChange(e.target.value)}
-          style={{position:'absolute',inset:0,opacity:0,cursor:'pointer',
-            border:'none',background:'transparent'}}/>
-      </div>
-      <div style={{flex:1,minWidth:0}}>
-        <div style={{color:T.t1,fontSize:13,fontWeight:600}}>{label}</div>
-        {sub&&<div style={{color:T.t3,fontSize:10,marginTop:2}}>{sub}</div>}
-      </div>
-      <div style={{color:T.t3,fontSize:11,fontFamily:'monospace',
-        letterSpacing:.5}}>{(value||'').toUpperCase()}</div>
-    </label>
-  );
-}
-
-function FontPickerRow({fontId,name,stack,selected,onSelect}){
-  return(
-    <button onClick={()=>onSelect(fontId)}
-      style={{display:'flex',alignItems:'center',gap:12,
-        padding:'12px 14px',width:'100%',
-        background:selected?T.oSoft:T.card2,
-        border:`1px solid ${selected?T.o:T.border}`,
-        borderRadius:12,cursor:'pointer',textAlign:'left'}}>
-      <div style={{width:18,height:18,borderRadius:'50%',flexShrink:0,
-        border:`2px solid ${selected?T.o:T.t3}`,
-        background:selected?T.o:'transparent',position:'relative'}}>
-        {selected&&<div style={{position:'absolute',inset:4,
-          borderRadius:'50%',background:T.bg}}/>}
-      </div>
-      <div style={{flex:1,minWidth:0}}>
-        <div style={{color:T.t1,fontSize:14,fontWeight:600,fontFamily:stack}}>{name}</div>
-        <div style={{color:T.t3,fontSize:11,marginTop:2,fontFamily:stack,
-          letterSpacing:.3}}>Aa Bb Cc · 0123 · Padel</div>
-      </div>
-    </button>
-  );
-}
-
-function LivePreview({palette}){
-  return(
-    <div style={{background:palette.bg,border:`1px solid ${palette.border}`,
-      borderRadius:16,padding:16,fontFamily:palette.font,
-      transition:'background .15s, border-color .15s',
-      boxShadow:'0 4px 16px rgba(0,0,0,.18)'}}>
-      <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',
-        marginBottom:12}}>
-        <div style={{color:palette.t1,fontSize:13,fontWeight:800,letterSpacing:2}}>RITMO</div>
-        <div style={{color:palette.o,fontSize:9,fontWeight:700,letterSpacing:1.5}}>VORSCHAU</div>
-      </div>
-      <div style={{display:'flex',gap:8}}>
-        <div style={{flex:1,background:palette.card,padding:12,borderRadius:10,
-          border:`1px solid ${palette.border}`}}>
-          <div style={{color:palette.t3,fontSize:9,fontWeight:700,
-            letterSpacing:1.2,marginBottom:4}}>TEAM A</div>
-          <div style={{color:palette.o,fontSize:30,fontWeight:800,lineHeight:1}}>15</div>
-          <div style={{color:palette.t2,fontSize:10,marginTop:6}}>2 Spiele</div>
-        </div>
-        <div style={{flex:1,background:palette.card,padding:12,borderRadius:10,
-          border:`1px solid ${palette.border}`}}>
-          <div style={{color:palette.t3,fontSize:9,fontWeight:700,
-            letterSpacing:1.2,marginBottom:4}}>TEAM B</div>
-          <div style={{color:palette.blue,fontSize:30,fontWeight:800,lineHeight:1}}>30</div>
-          <div style={{color:palette.t2,fontSize:10,marginTop:6}}>1 Spiel</div>
-        </div>
-      </div>
-      <div style={{marginTop:10,padding:'8px 10px',background:palette.card2,
-        borderRadius:8,border:`1px solid ${palette.border}`,
-        display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-        <div style={{color:palette.t2,fontSize:11}}>Satz 1 · Spiel</div>
-        <div style={{background:palette.oSoft,padding:'2px 8px',borderRadius:5,
-          color:palette.o,fontSize:10,fontWeight:700,letterSpacing:1}}>LIVE</div>
-      </div>
-    </div>
-  );
-}
-
-function DesignWizard({onSave,onCancel,existing=[]}){
-  const[name,setName]=useState('Mein Design');
-  const[bg,setBg]=useState('#0F1A2E');
-  const[text,setText]=useState('#FFFFFF');
-  const[highlight,setHighlight]=useState('#FF7A1A');
-  const[secondary,setSecondary]=useState('#5AC8FA');
-  const[fontId,setFontId]=useState('system');
-
-  const palette=buildThemePalette({bg,text,highlight,secondary,font:fontStack(fontId)});
-  const canSave=name.trim().length>0;
-  const presets=[
-    {label:'Sunset',  bg:'#1A0F1F',text:'#FFEEDD',hl:'#FF6B6B',sec:'#FFD93D'},
-    {label:'Forest',  bg:'#0E2418',text:'#E8F5E9',hl:'#FFC857',sec:'#52B788'},
-    {label:'Ocean',   bg:'#04293A',text:'#ECF8FF',hl:'#FFB400',sec:'#00B8D4'},
-    {label:'Mono',    bg:'#FAFAFA',text:'#0A0A0A',hl:'#0A0A0A',sec:'#666666'},
-    {label:'Neon',    bg:'#0A0014',text:'#F0F0FF',hl:'#FF1493',sec:'#00FFE5'},
-  ];
-
-  return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
-      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
-
-      <div style={{padding:'0 22px 14px'}}>
-        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
-          <WandIcon size={28}/>
-          <div style={{color:T.t1,fontSize:24,fontWeight:800,letterSpacing:-.3}}>Design Wizard</div>
-        </div>
-        <div style={{color:T.t3,fontSize:12,marginTop:2,fontWeight:500}}>
-          Erstelle dein eigenes Theme.
-        </div>
-      </div>
-
-      <div style={{flex:1,padding:'0 22px',overflowY:'auto',WebkitOverflowScrolling:'touch',
-        display:'flex',flexDirection:'column',gap:18}}>
-
-        {/* Live Preview */}
-        <div className="fi">
-          <LivePreview palette={palette}/>
-        </div>
-
-        {/* Name */}
-        <div>
-          <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
-            textTransform:'uppercase',marginBottom:8,paddingLeft:4}}>Name</div>
-          <input value={name} onChange={e=>setName(e.target.value)}
-            placeholder="Mein Design" maxLength={40}
-            style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-              borderRadius:12,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:600,
-              outline:'none',boxSizing:'border-box'}}/>
-        </div>
-
-        {/* Presets */}
-        <div>
-          <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
-            textTransform:'uppercase',marginBottom:8,paddingLeft:4}}>Schnellstart</div>
-          <div style={{display:'flex',gap:8,overflowX:'auto',paddingBottom:4,
-            WebkitOverflowScrolling:'touch'}}>
-            {presets.map(p=>(
-              <button key={p.label}
-                onClick={()=>{setBg(p.bg);setText(p.text);setHighlight(p.hl);setSecondary(p.sec);}}
-                style={{flexShrink:0,padding:'8px 14px',borderRadius:10,
-                  background:p.bg,border:`1px solid ${rgba(p.text,0.2)}`,
-                  color:p.text,fontSize:12,fontWeight:700,cursor:'pointer',
-                  display:'flex',alignItems:'center',gap:8}}>
-                <div style={{display:'flex',gap:3}}>
-                  <div style={{width:8,height:8,borderRadius:2,background:p.hl}}/>
-                  <div style={{width:8,height:8,borderRadius:2,background:p.sec}}/>
-                </div>
-                {p.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Colors */}
-        <div>
-          <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
-            textTransform:'uppercase',marginBottom:8,paddingLeft:4}}>Farben</div>
-          <div style={{display:'flex',flexDirection:'column',gap:8}}>
-            <ColorPickerRow label="Hintergrund" sub="Bestimmt Karten-Töne automatisch"
-              value={bg} onChange={setBg}/>
-            <ColorPickerRow label="Text" sub="Empfehlung: hell auf dunkel, dunkel auf hell"
-              value={text} onChange={setText}/>
-            <ColorPickerRow label="Akzent" sub="Highlights, Team A, aktive Elemente"
-              value={highlight} onChange={setHighlight}/>
-            <ColorPickerRow label="Sekundär" sub="Team B, alternative Akzente"
-              value={secondary} onChange={setSecondary}/>
-          </div>
-        </div>
-
-        {/* Font */}
-        <div>
-          <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
-            textTransform:'uppercase',marginBottom:8,paddingLeft:4}}>Schrift</div>
-          <div style={{display:'flex',flexDirection:'column',gap:6}}>
-            {FONTS.map(f=>(
-              <FontPickerRow key={f.id} fontId={f.id} name={f.name} stack={f.stack}
-                selected={fontId===f.id} onSelect={setFontId}/>
-            ))}
-          </div>
-        </div>
-
-        <div style={{height:60}}/>
-      </div>
-
-      <MatchBar onHome={onCancel} rightButtons={[{
-        icon:'Speichern',
-        onClick:()=>{
-          if(!canSave) return;
-          onSave({name:name.trim(),bg,text,highlight,secondary,font:fontId});
-        },
-        style:{width:'auto',minWidth:90,height:50,padding:'0 20px',
-          background:canSave?T.g:T.card2,
-          border:`1px solid ${canSave?'rgba(255,255,255,.2)':T.border}`,
-          color:canSave?T.t1:T.t3,fontSize:13,fontWeight:800,
-          opacity:canSave?1:0.6,cursor:canSave?'pointer':'not-allowed'}
-      }]}/>
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   JOURNEY — Tipps & Tricks (Visuals + Detail Screens)
+   JOURNEY — Tipps & Tricks
 ═══════════════════════════════════════════════════════════════ */
 
-/* ── Visuals ─────────────────────────────────────────────────── */
 function AngabenVisual(){
   return(
     <svg viewBox="0 0 140 220" style={{width:'auto',maxHeight:260,height:'62vh',display:'block'}}>
@@ -4352,28 +5890,23 @@ function AngabenVisual(){
           .ang-arc { stroke-dasharray: 200; stroke-dashoffset: 200; animation: drawIn 1.4s ease forwards; animation-delay: .3s; }
         `}</style>
       </defs>
-      {/* Court */}
       <rect x="20" y="20" width="100" height="180" rx="2" fill="rgba(255,255,255,0.04)"
         stroke="var(--t1)" strokeWidth="1.8"/>
       <line x1="20" y1="110" x2="120" y2="110" stroke="var(--o)" strokeWidth="2" strokeDasharray="3 2"/>
       <line x1="20" y1="83" x2="120" y2="83" stroke="var(--t1)" strokeWidth="1.4"/>
       <line x1="20" y1="137" x2="120" y2="137" stroke="var(--t1)" strokeWidth="1.4"/>
       <line x1="70" y1="83" x2="70" y2="137" stroke="var(--t1)" strokeWidth="1.4"/>
-      {/* Target service box (top-left, opposite diagonal) */}
       <rect x="20" y="83" width="50" height="27" fill="var(--oSoft)" stroke="var(--o)"
         strokeWidth="0.8" opacity="0.85"/>
       <text x="45" y="100" textAnchor="middle" dominantBaseline="middle" fontSize="14"
         fill="var(--o)" fontWeight="800">×</text>
-      {/* Server position (bottom-right) */}
       <circle cx="95" cy="180" r="7" fill="var(--o)"/>
       <text x="95" y="180" textAnchor="middle" dominantBaseline="middle" fontSize="7"
         fill="white" fontWeight="800">A</text>
       <text x="95" y="195" textAnchor="middle" fontSize="6" fill="var(--t2)"
         fontWeight="700" letterSpacing="0.5">AUFSCHLAG</text>
-      {/* Arc trajectory */}
       <path className="ang-arc" d="M 95 175 Q 65 110 45 95"
         stroke="var(--o)" strokeWidth="1.6" strokeDasharray="3 2" fill="none" opacity="0.8"/>
-      {/* Animated ball flying */}
       <circle r="3" fill="#E8FF3D" stroke="rgba(0,0,0,.4)" strokeWidth="0.5">
         <animateMotion dur="2.4s" repeatCount="indefinite" begin="1s"
           path="M 95 175 Q 65 110 45 95"/>
@@ -4399,43 +5932,28 @@ function AufstellungenVisual(){
       <line x1="20" y1="83" x2="120" y2="83" stroke="var(--t1)" strokeWidth="1.2" opacity="0.55"/>
       <line x1="20" y1="137" x2="120" y2="137" stroke="var(--t1)" strokeWidth="1.2" opacity="0.55"/>
       <line x1="70" y1="83" x2="70" y2="137" stroke="var(--t1)" strokeWidth="1.2" opacity="0.55"/>
-
-      {/* Team A: net + back formation */}
       <g className="pulse-dot">
         <circle cx="50" cy="175" r="7" fill="var(--o)"/>
-        <text x="50" y="175" textAnchor="middle" dominantBaseline="middle"
-          fontSize="6.5" fill="white" fontWeight="800">A1</text>
-        <text x="50" y="192" textAnchor="middle" fontSize="5.5"
-          fill="var(--t3)" fontWeight="600">HINTEN</text>
+        <text x="50" y="175" textAnchor="middle" dominantBaseline="middle" fontSize="6.5" fill="white" fontWeight="800">A1</text>
+        <text x="50" y="192" textAnchor="middle" fontSize="5.5" fill="var(--t3)" fontWeight="600">HINTEN</text>
       </g>
       <g className="pulse-dot" style={{animationDelay:'.3s'}}>
         <circle cx="90" cy="135" r="7" fill="var(--o)"/>
-        <text x="90" y="135" textAnchor="middle" dominantBaseline="middle"
-          fontSize="6.5" fill="white" fontWeight="800">A2</text>
-        <text x="90" y="152" textAnchor="middle" fontSize="5.5"
-          fill="var(--t3)" fontWeight="600">NETZ</text>
+        <text x="90" y="135" textAnchor="middle" dominantBaseline="middle" fontSize="6.5" fill="white" fontWeight="800">A2</text>
+        <text x="90" y="152" textAnchor="middle" fontSize="5.5" fill="var(--t3)" fontWeight="600">NETZ</text>
       </g>
-
-      {/* Team B: net + back formation (mirrored) */}
       <g className="pulse-dot" style={{animationDelay:'.6s'}}>
         <circle cx="90" cy="45" r="7" fill="var(--blue)"/>
-        <text x="90" y="45" textAnchor="middle" dominantBaseline="middle"
-          fontSize="6.5" fill="white" fontWeight="800">B1</text>
-        <text x="90" y="32" textAnchor="middle" fontSize="5.5"
-          fill="var(--t3)" fontWeight="600">HINTEN</text>
+        <text x="90" y="45" textAnchor="middle" dominantBaseline="middle" fontSize="6.5" fill="white" fontWeight="800">B1</text>
+        <text x="90" y="32" textAnchor="middle" fontSize="5.5" fill="var(--t3)" fontWeight="600">HINTEN</text>
       </g>
       <g className="pulse-dot" style={{animationDelay:'.9s'}}>
         <circle cx="50" cy="85" r="7" fill="var(--blue)"/>
-        <text x="50" y="85" textAnchor="middle" dominantBaseline="middle"
-          fontSize="6.5" fill="white" fontWeight="800">B2</text>
-        <text x="50" y="72" textAnchor="middle" fontSize="5.5"
-          fill="var(--t3)" fontWeight="600">NETZ</text>
+        <text x="50" y="85" textAnchor="middle" dominantBaseline="middle" fontSize="6.5" fill="white" fontWeight="800">B2</text>
+        <text x="50" y="72" textAnchor="middle" fontSize="5.5" fill="var(--t3)" fontWeight="600">NETZ</text>
       </g>
-
-      <text x="70" y="14" textAnchor="middle" fontSize="7" fill="var(--o)"
-        fontWeight="700" letterSpacing="1.5">EINER NETZ · EINER HINTEN</text>
-      <text x="70" y="214" textAnchor="middle" fontSize="6" fill="var(--t3)"
-        opacity="0.7" letterSpacing="1">DIAGONALE DECKUNG · MITTE SCHLIESST</text>
+      <text x="70" y="14" textAnchor="middle" fontSize="7" fill="var(--o)" fontWeight="700" letterSpacing="1.5">EINER NETZ · EINER HINTEN</text>
+      <text x="70" y="214" textAnchor="middle" fontSize="6" fill="var(--t3)" opacity="0.7" letterSpacing="1">DIAGONALE DECKUNG · MITTE SCHLIESST</text>
     </svg>
   );
 }
@@ -4449,49 +5967,29 @@ function HandSeitenVisual(){
           .fade-arrow { animation: fadeArrow 2.4s ease infinite; }
         `}</style>
       </defs>
-      <text x="100" y="14" textAnchor="middle" fontSize="8" fill="var(--o)"
-        fontWeight="700" letterSpacing="1.5">VORHÄNDE ZUR MITTE</text>
-
-      {/* Court frame (just bottom half — own side) */}
-      <rect x="30" y="30" width="140" height="130" rx="3"
-        fill="rgba(255,255,255,0.04)" stroke="var(--t1)" strokeWidth="1.4"/>
-      {/* Center divider */}
-      <line x1="100" y1="30" x2="100" y2="160" stroke="var(--t1)"
-        strokeWidth="1.1" opacity="0.45" strokeDasharray="3 2"/>
-
-      {/* Left side: Right-handed player (R) → racket on LEFT side toward center */}
+      <text x="100" y="14" textAnchor="middle" fontSize="8" fill="var(--o)" fontWeight="700" letterSpacing="1.5">VORHÄNDE ZUR MITTE</text>
+      <rect x="30" y="30" width="140" height="130" rx="3" fill="rgba(255,255,255,0.04)" stroke="var(--t1)" strokeWidth="1.4"/>
+      <line x1="100" y1="30" x2="100" y2="160" stroke="var(--t1)" strokeWidth="1.1" opacity="0.45" strokeDasharray="3 2"/>
       <g transform="translate(60, 95)">
         <circle r="14" fill="var(--card2)" stroke="var(--o)" strokeWidth="1.8"/>
-        <text y="0" textAnchor="middle" dominantBaseline="middle" fontSize="13"
-          fill="var(--o)" fontWeight="800">R</text>
-        {/* Racket to the right (toward center) */}
+        <text y="0" textAnchor="middle" dominantBaseline="middle" fontSize="13" fill="var(--o)" fontWeight="800">R</text>
         <line x1="13" y1="-2" x2="28" y2="-2" stroke="var(--o)" strokeWidth="2" strokeLinecap="round"/>
         <ellipse cx="33" cy="-2" rx="5" ry="6" fill="none" stroke="var(--o)" strokeWidth="1.6"/>
-        <text y="32" textAnchor="middle" fontSize="6" fill="var(--t3)"
-          fontWeight="600" letterSpacing="0.5">RECHTSHÄNDER</text>
+        <text y="32" textAnchor="middle" fontSize="6" fill="var(--t3)" fontWeight="600" letterSpacing="0.5">RECHTSHÄNDER</text>
       </g>
-
-      {/* Right side: Left-handed player (L) → racket on RIGHT side toward center */}
       <g transform="translate(140, 95)">
         <circle r="14" fill="var(--card2)" stroke="var(--blue)" strokeWidth="1.8"/>
-        <text y="0" textAnchor="middle" dominantBaseline="middle" fontSize="13"
-          fill="var(--blue)" fontWeight="800">L</text>
-        {/* Racket to the left (toward center) */}
+        <text y="0" textAnchor="middle" dominantBaseline="middle" fontSize="13" fill="var(--blue)" fontWeight="800">L</text>
         <line x1="-13" y1="-2" x2="-28" y2="-2" stroke="var(--blue)" strokeWidth="2" strokeLinecap="round"/>
         <ellipse cx="-33" cy="-2" rx="5" ry="6" fill="none" stroke="var(--blue)" strokeWidth="1.6"/>
-        <text y="32" textAnchor="middle" fontSize="6" fill="var(--t3)"
-          fontWeight="600" letterSpacing="0.5">LINKSHÄNDER</text>
+        <text y="32" textAnchor="middle" fontSize="6" fill="var(--t3)" fontWeight="600" letterSpacing="0.5">LINKSHÄNDER</text>
       </g>
-
-      {/* Center arrow zone showing forehands meet */}
       <g className="fade-arrow">
         <path d="M 93 75 L 107 75" stroke="var(--o)" strokeWidth="1.4" strokeLinecap="round"/>
         <polygon points="93 75, 96 73, 96 77" fill="var(--o)"/>
         <polygon points="107 75, 104 73, 104 77" fill="var(--o)"/>
       </g>
-
-      <text x="100" y="186" textAnchor="middle" fontSize="6.5" fill="var(--o)"
-        opacity="0.85" fontWeight="700">OPTIMALE PADEL-PAARUNG</text>
+      <text x="100" y="186" textAnchor="middle" fontSize="6.5" fill="var(--o)" opacity="0.85" fontWeight="700">OPTIMALE PADEL-PAARUNG</text>
     </svg>
   );
 }
@@ -4499,43 +5997,30 @@ function HandSeitenVisual(){
 function SchlagwahlVisual(){
   return(
     <svg viewBox="0 0 220 200" style={{width:'auto',maxHeight:240,height:'58vh',display:'block'}}>
-      <text x="110" y="14" textAnchor="middle" fontSize="8" fill="var(--o)"
-        fontWeight="700" letterSpacing="1.5">BALLHÖHE → SCHLAGART</text>
-      <text x="110" y="26" textAnchor="middle" fontSize="6" fill="var(--t3)"
-        opacity="0.8" letterSpacing="1">HOCH = AGGRESSIV · TIEF = KONTROLLE</text>
-
-      {/* HIGH zone */}
+      <text x="110" y="14" textAnchor="middle" fontSize="8" fill="var(--o)" fontWeight="700" letterSpacing="1.5">BALLHÖHE → SCHLAGART</text>
+      <text x="110" y="26" textAnchor="middle" fontSize="6" fill="var(--t3)" opacity="0.8" letterSpacing="1">HOCH = AGGRESSIV · TIEF = KONTROLLE</text>
       <g className="fi" style={{animationDelay:'.1s'}}>
-        <rect x="30" y="38" width="160" height="42" rx="8"
-          fill="var(--oSoft)" stroke="var(--o)" strokeWidth="1.4"/>
+        <rect x="30" y="38" width="160" height="42" rx="8" fill="var(--oSoft)" stroke="var(--o)" strokeWidth="1.4"/>
         <text x="46" y="58" fontSize="9" fill="var(--o)" fontWeight="800">HOCH</text>
         <text x="46" y="72" fontSize="6.5" fill="var(--t3)">über Schulter</text>
         <text x="180" y="58" textAnchor="end" fontSize="7.5" fill="var(--t1)" fontWeight="700">Smash</text>
         <text x="180" y="68" textAnchor="end" fontSize="6.5" fill="var(--t2)">Bandeja · Víbora</text>
       </g>
-
-      {/* MID zone */}
       <g className="fi" style={{animationDelay:'.25s'}}>
-        <rect x="30" y="86" width="160" height="42" rx="8"
-          fill="var(--blueSoft)" stroke="var(--blue)" strokeWidth="1.4"/>
+        <rect x="30" y="86" width="160" height="42" rx="8" fill="var(--blueSoft)" stroke="var(--blue)" strokeWidth="1.4"/>
         <text x="46" y="106" fontSize="9" fill="var(--blue)" fontWeight="800">MITTE</text>
         <text x="46" y="120" fontSize="6.5" fill="var(--t3)">Brust – Hüfte</text>
         <text x="180" y="106" textAnchor="end" fontSize="7.5" fill="var(--t1)" fontWeight="700">Volea</text>
         <text x="180" y="116" textAnchor="end" fontSize="6.5" fill="var(--t2)">Drive · Chiquita</text>
       </g>
-
-      {/* LOW zone */}
       <g className="fi" style={{animationDelay:'.4s'}}>
-        <rect x="30" y="134" width="160" height="42" rx="8"
-          fill="rgba(255,255,255,0.04)" stroke="var(--t1)" strokeWidth="1.4"/>
+        <rect x="30" y="134" width="160" height="42" rx="8" fill="rgba(255,255,255,0.04)" stroke="var(--t1)" strokeWidth="1.4"/>
         <text x="46" y="154" fontSize="9" fill="var(--t1)" fontWeight="800">TIEF</text>
         <text x="46" y="168" fontSize="6.5" fill="var(--t3)">unterhalb Hüfte</text>
         <text x="180" y="154" textAnchor="end" fontSize="7.5" fill="var(--t1)" fontWeight="700">Globo</text>
         <text x="180" y="164" textAnchor="end" fontSize="6.5" fill="var(--t2)">Drive · Reset</text>
       </g>
-
-      <text x="110" y="190" textAnchor="middle" fontSize="6.5" fill="var(--t3)"
-        opacity="0.7" letterSpacing="0.5">Nach Wand-Rückprall → Drive oder Globo</text>
+      <text x="110" y="190" textAnchor="middle" fontSize="6.5" fill="var(--t3)" opacity="0.7" letterSpacing="0.5">Nach Wand-Rückprall → Drive oder Globo</text>
     </svg>
   );
 }
@@ -4543,47 +6028,32 @@ function SchlagwahlVisual(){
 function SchlaegerVisual(){
   return(
     <svg viewBox="0 0 240 200" style={{width:'auto',maxHeight:240,height:'58vh',display:'block'}}>
-      <text x="120" y="14" textAnchor="middle" fontSize="8" fill="var(--o)"
-        fontWeight="700" letterSpacing="1.5">3 SCHLÄGER-FORMEN</text>
-
-      {/* Round paddle */}
+      <text x="120" y="14" textAnchor="middle" fontSize="8" fill="var(--o)" fontWeight="700" letterSpacing="1.5">3 SCHLÄGER-FORMEN</text>
       <g transform="translate(50, 32)" className="fi">
-        <ellipse cx="0" cy="42" rx="22" ry="28" fill="rgba(255,255,255,0.05)"
-          stroke="var(--o)" strokeWidth="1.6"/>
+        <ellipse cx="0" cy="42" rx="22" ry="28" fill="rgba(255,255,255,0.05)" stroke="var(--o)" strokeWidth="1.6"/>
         <circle cx="0" cy="42" r="7" fill="var(--oSoft)" stroke="var(--o)" strokeWidth="1.2"/>
         <line x1="0" y1="72" x2="0" y2="98" stroke="var(--o)" strokeWidth="3.5" strokeLinecap="round"/>
-        <line x1="-3" y1="80" x2="3" y2="80" stroke="rgba(0,0,0,.4)" strokeWidth="0.5"/>
         <text y="120" textAnchor="middle" fontSize="9" fill="var(--t1)" fontWeight="800">Rund</text>
         <text y="134" textAnchor="middle" fontSize="6.5" fill="var(--t3)">Kontrolle</text>
         <text y="146" textAnchor="middle" fontSize="6" fill="var(--t3)" opacity="0.7">Anfänger</text>
       </g>
-
-      {/* Diamond paddle */}
       <g transform="translate(120, 32)" className="fi" style={{animationDelay:'.1s'}}>
-        <path d="M 0 14 L 22 42 L 0 70 L -22 42 Z"
-          fill="rgba(255,255,255,0.05)" stroke="var(--o)" strokeWidth="1.6" strokeLinejoin="round"/>
+        <path d="M 0 14 L 22 42 L 0 70 L -22 42 Z" fill="rgba(255,255,255,0.05)" stroke="var(--o)" strokeWidth="1.6" strokeLinejoin="round"/>
         <circle cx="0" cy="30" r="7" fill="var(--oSoft)" stroke="var(--o)" strokeWidth="1.2"/>
         <line x1="0" y1="72" x2="0" y2="98" stroke="var(--o)" strokeWidth="3.5" strokeLinecap="round"/>
-        <line x1="-3" y1="80" x2="3" y2="80" stroke="rgba(0,0,0,.4)" strokeWidth="0.5"/>
         <text y="120" textAnchor="middle" fontSize="9" fill="var(--t1)" fontWeight="800">Diamant</text>
         <text y="134" textAnchor="middle" fontSize="6.5" fill="var(--t3)">Power</text>
         <text y="146" textAnchor="middle" fontSize="6" fill="var(--t3)" opacity="0.7">Smash-Spieler</text>
       </g>
-
-      {/* Teardrop paddle */}
       <g transform="translate(190, 32)" className="fi" style={{animationDelay:'.2s'}}>
-        <path d="M 0 14 Q 22 22 22 44 Q 22 70 0 70 Q -22 70 -22 44 Q -22 22 0 14 Z"
-          fill="rgba(255,255,255,0.05)" stroke="var(--o)" strokeWidth="1.6"/>
+        <path d="M 0 14 Q 22 22 22 44 Q 22 70 0 70 Q -22 70 -22 44 Q -22 22 0 14 Z" fill="rgba(255,255,255,0.05)" stroke="var(--o)" strokeWidth="1.6"/>
         <circle cx="0" cy="36" r="7" fill="var(--oSoft)" stroke="var(--o)" strokeWidth="1.2"/>
         <line x1="0" y1="72" x2="0" y2="98" stroke="var(--o)" strokeWidth="3.5" strokeLinecap="round"/>
-        <line x1="-3" y1="80" x2="3" y2="80" stroke="rgba(0,0,0,.4)" strokeWidth="0.5"/>
         <text y="120" textAnchor="middle" fontSize="9" fill="var(--t1)" fontWeight="800">Tropfen</text>
         <text y="134" textAnchor="middle" fontSize="6.5" fill="var(--t3)">Allround</text>
         <text y="146" textAnchor="middle" fontSize="6" fill="var(--t3)" opacity="0.7">Fortgeschr.</text>
       </g>
-
-      <text x="120" y="186" textAnchor="middle" fontSize="6" fill="var(--o)"
-        opacity="0.7" fontWeight="700" letterSpacing="1">SWEET SPOT (ORANGE) WANDERT NACH OBEN</text>
+      <text x="120" y="186" textAnchor="middle" fontSize="6" fill="var(--o)" opacity="0.7" fontWeight="700" letterSpacing="1">SWEET SPOT (ORANGE) WANDERT NACH OBEN</text>
     </svg>
   );
 }
@@ -4591,35 +6061,23 @@ function SchlaegerVisual(){
 function BaelleVisual(){
   return(
     <svg viewBox="0 0 240 200" style={{width:'auto',maxHeight:240,height:'58vh',display:'block'}}>
-      <text x="120" y="14" textAnchor="middle" fontSize="8" fill="var(--o)"
-        fontWeight="700" letterSpacing="1.5">TENNIS vs PADEL</text>
-
-      {/* Tennis ball */}
+      <text x="120" y="14" textAnchor="middle" fontSize="8" fill="var(--o)" fontWeight="700" letterSpacing="1.5">TENNIS vs PADEL</text>
       <g transform="translate(70, 55)" className="fi">
         <circle r="32" fill="#E8FF3D" stroke="rgba(0,0,0,.3)" strokeWidth="0.6"/>
-        <path d="M -32 0 Q -16 -12 0 -10 Q 16 -12 32 0"
-          stroke="rgba(255,255,255,.55)" strokeWidth="1.4" fill="none"/>
-        <path d="M -32 0 Q -16 12 0 10 Q 16 12 32 0"
-          stroke="rgba(255,255,255,.55)" strokeWidth="1.4" fill="none"/>
+        <path d="M -32 0 Q -16 -12 0 -10 Q 16 -12 32 0" stroke="rgba(255,255,255,.55)" strokeWidth="1.4" fill="none"/>
+        <path d="M -32 0 Q -16 12 0 10 Q 16 12 32 0" stroke="rgba(255,255,255,.55)" strokeWidth="1.4" fill="none"/>
         <text y="52" textAnchor="middle" fontSize="9" fill="var(--t1)" fontWeight="800">TENNIS</text>
         <text y="64" textAnchor="middle" fontSize="6" fill="var(--t3)">~6.5 cm</text>
       </g>
-
-      {/* Padel ball — slightly smaller */}
       <g transform="translate(170, 55)" className="fi" style={{animationDelay:'.15s'}}>
         <circle r="30" fill="#E8FF3D" stroke="rgba(0,0,0,.3)" strokeWidth="0.6"/>
-        <path d="M -30 0 Q -15 -11 0 -9 Q 15 -11 30 0"
-          stroke="rgba(255,255,255,.55)" strokeWidth="1.4" fill="none"/>
-        <path d="M -30 0 Q -15 11 0 9 Q 15 11 30 0"
-          stroke="rgba(255,255,255,.55)" strokeWidth="1.4" fill="none"/>
+        <path d="M -30 0 Q -15 -11 0 -9 Q 15 -11 30 0" stroke="rgba(255,255,255,.55)" strokeWidth="1.4" fill="none"/>
+        <path d="M -30 0 Q -15 11 0 9 Q 15 11 30 0" stroke="rgba(255,255,255,.55)" strokeWidth="1.4" fill="none"/>
         <text y="52" textAnchor="middle" fontSize="9" fill="var(--t1)" fontWeight="800">PADEL</text>
         <text y="64" textAnchor="middle" fontSize="6" fill="var(--t3)">~6.3 cm</text>
       </g>
-
-      {/* Pressure bars */}
       <g transform="translate(0, 138)">
-        <text x="120" y="0" textAnchor="middle" fontSize="6" fill="var(--t3)"
-          fontWeight="700" letterSpacing="1.2">INNENDRUCK (PSI)</text>
+        <text x="120" y="0" textAnchor="middle" fontSize="6" fill="var(--t3)" fontWeight="700" letterSpacing="1.2">INNENDRUCK (PSI)</text>
         <text x="22" y="16" fontSize="7" fill="var(--t2)" fontWeight="700">T</text>
         <rect x="36" y="10" width="170" height="6" rx="3" fill="var(--card2)"/>
         <rect x="36" y="10" width="155" height="6" rx="3" fill="var(--o)"/>
@@ -4629,14 +6087,11 @@ function BaelleVisual(){
         <rect x="36" y="26" width="55" height="6" rx="3" fill="var(--blue)"/>
         <text x="210" y="32" fontSize="6" fill="var(--t2)" textAnchor="end" fontWeight="600">~5 PSI</text>
       </g>
-
-      <text x="120" y="190" textAnchor="middle" fontSize="6" fill="var(--t3)"
-        opacity="0.7" letterSpacing="0.5">Padel-Ball springt niedriger · mehr Kontrolle</text>
+      <text x="120" y="190" textAnchor="middle" fontSize="6" fill="var(--t3)" opacity="0.7" letterSpacing="0.5">Padel-Ball springt niedriger · mehr Kontrolle</text>
     </svg>
   );
 }
 
-/* ── Journey overview ──────────────────────────────────────── */
 function Journey({onHome,onSelect}){
   const sections=[
     {id:'angaben',      icon:'🎯',title:'Aufschlag',     sub:'Reihenfolge, Position & Strategie'},
@@ -4685,8 +6140,7 @@ function Journey({onHome,onSelect}){
   );
 }
 
-/* ── Journey detail screens ────────────────────────────────── */
-const JOURNEY_NAV_PROPS={backIcon:<JourneyIcon size={18}/>};
+const J_BACK={backIcon:<JourneyIcon size={18}/>};
 
 function JourneyAngaben({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalSections}){
   return(
@@ -4696,7 +6150,7 @@ function JourneyAngaben({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalSe
       onBackToRules={onBackToJourney} onHome={onHome}
       onNext={onNext} onPrev={onPrev}
       currentIdx={currentIdx} totalSections={totalSections}
-      {...JOURNEY_NAV_PROPS}>
+      {...J_BACK}>
       <RulesH>Reihenfolge</RulesH>
       <RulesUl items={[
         'Aufschlag wechselt nach jedem Spiel zur Gegen-Mannschaft',
@@ -4714,7 +6168,7 @@ function JourneyAngaben({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalSe
       <RulesUl items={[
         'Variation in Effet & Tempo schlägt rohe Power',
         'T-Aufschlag (an die Mittellinie) holt Returner aus der Komfortzone',
-        'Kurzer, niedriger Slice zwingt zum Vorrücken — geht oft ins Netz oder kommt schlecht zurück',
+        'Kurzer, niedriger Slice zwingt zum Vorrücken',
         'Aufschlag auf den Körper neutralisiert Vorhand und Rückhand',
       ]}/>
       <RulesH>Tipp</RulesH>
@@ -4731,7 +6185,7 @@ function JourneyAufstellungen({onBackToJourney,onHome,onNext,onPrev,currentIdx,t
       onBackToRules={onBackToJourney} onHome={onHome}
       onNext={onNext} onPrev={onPrev}
       currentIdx={currentIdx} totalSections={totalSections}
-      {...JOURNEY_NAV_PROPS}>
+      {...J_BACK}>
       <RulesH>Grundregel</RulesH>
       <RulesP>Einer am Netz, einer hinten. Diese diagonale Aufstellung deckt den meisten Court ab.</RulesP>
       <RulesH>Phasen</RulesH>
@@ -4762,7 +6216,7 @@ function JourneyHaende({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalSec
       onBackToRules={onBackToJourney} onHome={onHome}
       onNext={onNext} onPrev={onPrev}
       currentIdx={currentIdx} totalSections={totalSections}
-      {...JOURNEY_NAV_PROPS}>
+      {...J_BACK}>
       <RulesH>Klassische Regel</RulesH>
       <RulesP>Die stärkere Vorhand zeigt zur Mitte. Dort kommen die meisten Bälle — Mitte ist der wichtigste Bereich.</RulesP>
       <RulesH>Rechtshänder + Rechtshänder</RulesH>
@@ -4793,7 +6247,7 @@ function JourneySchlagwahl({onBackToJourney,onHome,onNext,onPrev,currentIdx,tota
       onBackToRules={onBackToJourney} onHome={onHome}
       onNext={onNext} onPrev={onPrev}
       currentIdx={currentIdx} totalSections={totalSections}
-      {...JOURNEY_NAV_PROPS}>
+      {...J_BACK}>
       <RulesH>Faustregel</RulesH>
       <RulesP>Ballhöhe entscheidet: <strong style={{color:T.t1}}>Hoch = aggressiv</strong>, <strong style={{color:T.t1}}>Mitte = Aufbau</strong>, <strong style={{color:T.t1}}>Tief = Kontrolle</strong>.</RulesP>
       <RulesH>Hoch (über Schulter)</RulesH>
@@ -4828,7 +6282,7 @@ function JourneySchlaeger({onBackToJourney,onHome,onNext,onPrev,currentIdx,total
       onBackToRules={onBackToJourney} onHome={onHome}
       onNext={onNext} onPrev={onPrev}
       currentIdx={currentIdx} totalSections={totalSections}
-      {...JOURNEY_NAV_PROPS}>
+      {...J_BACK}>
       <RulesH>Drei Hauptformen</RulesH>
       <RulesDef term="Rund">Sweet Spot zentriert, maximale Kontrolle. Ideal für Anfänger und defensives Spiel.</RulesDef>
       <RulesDef term="Diamant">Sweet Spot oben, kopflastig, maximale Power. Für Smash-orientierte Spieler.</RulesDef>
@@ -4867,7 +6321,7 @@ function JourneyBaelle({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalSec
       onBackToRules={onBackToJourney} onHome={onHome}
       onNext={onNext} onPrev={onPrev}
       currentIdx={currentIdx} totalSections={totalSections}
-      {...JOURNEY_NAV_PROPS}>
+      {...J_BACK}>
       <RulesH>Optisch identisch — technisch nicht</RulesH>
       <RulesP>Beide gelb, beide Filz. Aber Größe, Druck und Sprung-Verhalten unterscheiden sich.</RulesP>
       <RulesH>Größe & Druck</RulesH>
@@ -4904,6 +6358,25 @@ function JourneyBaelle({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalSec
 export default function App(){
   const[scr,setScr]=useState('splash');
   const[activeTab,setActiveTab]=useState('home');
+  const[loggedIn,setLoggedIn]=useState(()=>lsGet('ritmo_logged_in',false));
+  const[onboarded,setOnboarded]=useState(()=>lsGet('ritmo_onboarded',false));
+  const[profile,setProfile]=useState(()=>lsGet('ritmo_profile',{
+    name:'',
+    playtomicLevel:null,
+    estimatedLevel:null,
+    yearsPlaying:null,
+    frequencyPerWeek:null,
+    playsTournaments:null,
+    tournamentCount:null,
+    matchesPlayed:'',
+    winsCount:'',
+    handPreference:null,
+    courtSide:null,
+    playStyle:null,
+    strongestShot:null,
+    quizAnswers:{q1:null,q2:null,q3:null,q4:null},
+    styleType:null,
+  }));
   const[cfg,setCfg]=useState(()=>lsGet('ritmo_cfg',{nameA:'Team A',nameB:'Team B',format:'bo3',amLimit:21}));
   const[bo3,dBo3]=useReducer(bo3R,B0,init=>lsGet('ritmo_bo3',init));
   const[am,dAm]=useReducer(amR,A0,init=>lsGet('ritmo_am',init));
@@ -4911,49 +6384,13 @@ export default function App(){
   const[ringId,setRingId]=useState(()=>lsGet('ritmo_ring','soft'));
   const[inputMode,setInputMode]=useState(()=>lsGet('ritmo_input','smartphone'));
   const[voiceOn,setVoiceOn]=useState(()=>lsGet('ritmo_voice',false));
+  const[voiceBaseUrl,setVoiceBaseUrl]=useState(()=>lsGet('ritmo_voice_url',''));
   const[theme,setTheme]=useState(()=>lsGet('ritmo_theme','dark'));
-  const[customThemes,setCustomThemes]=useState(()=>lsGet('ritmo_custom_themes',[]));
 
   // Apply theme to document root → CSS vars cascade everywhere
   useEffect(()=>{
     document.documentElement.setAttribute('data-theme',theme);
   },[theme]);
-
-  // Inject CSS for custom themes (and a global font-family fallback rule)
-  useEffect(()=>{
-    let el=document.getElementById('ritmo-custom-themes');
-    if(!el){
-      el=document.createElement('style');
-      el.id='ritmo-custom-themes';
-      document.head.appendChild(el);
-    }
-    const globalRule=`html,body,#root,button,input,textarea,select{
-      font-family:var(--font,-apple-system,BlinkMacSystemFont,"SF Pro","Segoe UI",sans-serif);
-    }`;
-    const customCss=customThemes.map(t=>{
-      const p=buildThemePalette({bg:t.bg,text:t.text,highlight:t.highlight,
-        secondary:t.secondary,font:fontStack(t.font)});
-      return `[data-theme="custom-${t.id}"]{
-        --bg:${p.bg};--card:${p.card};--card2:${p.card2};
-        --border:${p.border};--sep:${p.sep};
-        --t1:${p.t1};--t2:${p.t2};--t3:${p.t3};--t4:${p.t4};
-        --o:${p.o};--oSoft:${p.oSoft};--oGlow:${p.oGlow};--oFlash:${p.oFlash};
-        --g:${p.g};--r:${p.r};
-        --blue:${p.blue};--blueSoft:${p.blueSoft};--blueGlow:${p.blueGlow};
-        --gold:${p.gold};
-        --font:${p.font};
-      }`;
-    }).join('\n');
-    el.textContent=globalRule+'\n'+customCss;
-  },[customThemes]);
-
-  // Auto-fallback if currently selected custom theme was deleted
-  useEffect(()=>{
-    if(theme.startsWith('custom-')){
-      const id=theme.replace('custom-','');
-      if(!customThemes.find(t=>t.id===id)) setTheme('dark');
-    }
-  },[customThemes,theme]);
 
   // App-level KeyCapture: lives outside Match's render tree so bigScreen
   // toggles in Match never unmount/remount the hidden input. Match registers
@@ -4969,8 +6406,11 @@ export default function App(){
   useEffect(()=>lsSet('ritmo_ring',ringId),[ringId]);
   useEffect(()=>lsSet('ritmo_input',inputMode),[inputMode]);
   useEffect(()=>lsSet('ritmo_voice',voiceOn),[voiceOn]);
+  useEffect(()=>lsSet('ritmo_voice_url',voiceBaseUrl),[voiceBaseUrl]);
   useEffect(()=>lsSet('ritmo_theme',theme),[theme]);
-  useEffect(()=>lsSet('ritmo_custom_themes',customThemes),[customThemes]);
+  useEffect(()=>lsSet('ritmo_logged_in',loggedIn),[loggedIn]);
+  useEffect(()=>lsSet('ritmo_onboarded',onboarded),[onboarded]);
+  useEffect(()=>lsSet('ritmo_profile',profile),[profile]);
 
   const nav=useCallback(s=>setScr(s),[]);
   const goHome=useCallback(()=>{setScr('home');setActiveTab('home');setTourneyEditMode(false);},[]);
@@ -5023,17 +6463,35 @@ export default function App(){
       enabled={scr==='match'&&(inputMode==='ring'||inputMode==='presenter')}
       onKey={onMatchKey}/>
 
-    {scr==='splash'&&<Splash onDone={()=>nav('home')}/>}
-    {scr==='home'&&<Home nav={nav} activeTab={activeTab} setActiveTab={handleTab}/>}
-    {scr==='rules'&&<Rules onHome={goHome}
+    {scr==='splash'&&<Splash onDone={()=>{
+      if(!loggedIn) return nav('login');
+      if(!onboarded) return nav('welcome');
+      return nav('home');
+    }}/>}
+    {scr==='login'&&<Login
+      onSuccess={()=>{setLoggedIn(true);setOnboarded(true);nav('home');}}
+      onRegister={()=>{setLoggedIn(true);setOnboarded(false);nav('welcome');}}/>}
+    {scr==='welcome'&&<Welcome
+      profile={profile} setProfile={setProfile}
+      theme={theme} setTheme={setTheme}
+      onComplete={()=>{setOnboarded(true);nav('home');}}/>}
+    {scr==='home'&&<Home nav={nav} activeTab={activeTab} setActiveTab={handleTab} profile={profile}/>}
+    {scr==='profile'&&<Profile profile={profile} setProfile={setProfile}
+      onHome={goHome}
+      onResetOnboarding={()=>{setOnboarded(false);nav('welcome');}}
+      onLogout={()=>{setLoggedIn(false);setOnboarded(false);nav('login');}}/>}
+    {scr==='rules'&&<RulesLanding onHome={goHome}
+      onContinue={()=>setScr('rules-overview')}/>}
+    {scr==='rules-overview'&&<Rules onHome={goHome}
       onSelect={(id)=>setScr(`rules-${id}`)}/>}
     {(()=>{
       const order=['basics','bo3','americano','mexicano','rotation','glossar'];
       const id=scr.startsWith('rules-')?scr.slice(6):null;
+      if(id==='overview') return null;
       const idx=id?order.indexOf(id):-1;
       if(idx<0) return null;
       const nav={
-        onBackToRules:()=>setScr('rules'),
+        onBackToRules:()=>setScr('rules-overview'),
         onHome:goHome,
         currentIdx:idx,
         totalSections:order.length,
@@ -5044,15 +6502,18 @@ export default function App(){
         mexicano:RulesMexicano,rotation:RulesRotation,glossar:RulesGlossar}[id];
       return Comp?<Comp {...nav}/>:null;
     })()}
-    {scr==='journey'&&<Journey onHome={goHome}
+    {scr==='journey'&&<JourneyLanding onHome={goHome}
+      onContinue={()=>setScr('journey-overview')}/>}
+    {scr==='journey-overview'&&<Journey onHome={goHome}
       onSelect={(id)=>setScr(`journey-${id}`)}/>}
     {(()=>{
       const order=['angaben','aufstellungen','haende','schlagwahl','schlaeger','baelle'];
       const id=scr.startsWith('journey-')?scr.slice(8):null;
+      if(id==='overview') return null;
       const idx=id?order.indexOf(id):-1;
       if(idx<0) return null;
       const nav={
-        onBackToJourney:()=>setScr('journey'),
+        onBackToJourney:()=>setScr('journey-overview'),
         onHome:goHome,
         currentIdx:idx,
         totalSections:order.length,
@@ -5073,23 +6534,14 @@ export default function App(){
       ringId={ringId} setRingId={setRingId}
       inputMode={inputMode} setInputMode={setInputMode}
       voiceOn={voiceOn} setVoiceOn={setVoiceOn}
+      voiceBaseUrl={voiceBaseUrl} setVoiceBaseUrl={setVoiceBaseUrl}
       theme={theme} setTheme={setTheme}
-      customThemes={customThemes}
-      onDeleteCustomTheme={(id)=>setCustomThemes(p=>p.filter(t=>t.id!==id))}
-      onOpenWizard={()=>setScr('design-wizard')}/>}
-    {scr==='design-wizard'&&<DesignWizard
-      existing={customThemes}
-      onCancel={()=>setScr('settings')}
-      onSave={(t)=>{
-        const id=Date.now().toString(36);
-        setCustomThemes(prev=>[...prev,{...t,id}]);
-        setTheme('custom-'+id);
-        setScr('settings');
-      }}/>}
-    {scr==='single-setup'&&<SingleSetup nav={nav} onHome={goHome} cfg={cfg} setCfg={setCfg}/>}
+      onResetOnboarding={()=>{setOnboarded(false);nav('welcome');}}/>}
+    {scr==='single-setup'&&<SingleSetup nav={nav} onHome={goHome} cfg={cfg} setCfg={setCfg} profile={profile}/>}
     {scr==='match'&&<Match cfg={cfg} setCfg={setCfg} bo3={bo3} dBo3={dBo3} am={am} dAm={dAm}
       onHome={goHome} inputMode={inputMode} ringId={ringId}
-      matchKeyRef={matchKeyRef} theme={theme}/>}
+      matchKeyRef={matchKeyRef} theme={theme}
+      voiceOn={voiceOn} voiceBaseUrl={voiceBaseUrl}/>}
     {scr==='tournament-setup'&&<TournamentSetup nav={nav} onHome={goHome}
       onStart={startTourney} onSave={saveTourneyEdit}
       saved={tourney} isEdit={tourneyEditMode&&!!tourney}/>}
@@ -5102,8 +6554,12 @@ export default function App(){
       <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
         alignItems:'center',justifyContent:'center',gap:20,padding:24,position:'relative'}}>
         <RitmoWordmark size={28}/>
-        <div style={{color:T.t2,fontSize:15,textAlign:'center',marginTop:8,maxWidth:300,lineHeight:1.5}}>
-          Turniere per QR Code beitreten — Bald verfügbar!
+        <div style={{color:T.t1,fontSize:18,fontWeight:700,textAlign:'center',marginTop:8,
+          maxWidth:320,lineHeight:1.4,letterSpacing:-.2}}>
+          Coming soon
+        </div>
+        <div style={{color:T.t2,fontSize:14,textAlign:'center',maxWidth:320,lineHeight:1.55}}>
+          Schon bald kannst du Turnieren beitreten und die nächsten Padel-Geschichten schreiben…
         </div>
         <button onClick={goHome}
           style={{marginTop:20,padding:'12px 28px',background:T.o,color:T.bg,

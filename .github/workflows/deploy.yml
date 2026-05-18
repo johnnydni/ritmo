@@ -1,24 +1,25 @@
-name: Deploy to GitHub Pages
+name: Deploy RITMO Padel to GitHub Pages
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
-# Permissions needed for the deploy-pages action
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# Allow only one concurrent deployment, skipping queued runs in between
 concurrency:
   group: pages
   cancel-in-progress: false
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,33 +27,26 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: 20
+          cache: npm
 
-      - name: Install dependencies
+      - name: Install
         run: npm ci
 
       - name: Build
-        env:
-          # GitHub Pages serves at /<repo>/ — extract repo name from full GITHUB_REPOSITORY (user/repo)
-          BASE_PATH: /${{ github.event.repository.name }}/
         run: npm run build
+        env:
+          # Setzt den Base-Pfad auf /<repo-name>/
+          BASE_PATH: /${{ github.event.repository.name }}/
 
       - name: Setup Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v4
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./dist
+          path: dist
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
+      - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4

@@ -2897,7 +2897,7 @@ function TabBar({active,onTab}){
     {id:'settings',label:'Einstellungen',Icon:GearIcon},
   ];
   return(
-    <div style={{position:'absolute',bottom:'calc(env(safe-area-inset-bottom,0px) + 18px)',
+    <div style={{position:'absolute',bottom:'calc(env(safe-area-inset-bottom,0px) + 3px)',
       left:0,right:0,display:'flex',alignItems:'center',justifyContent:'center',gap:10,
       padding:'0 20px',pointerEvents:'none',zIndex:5}}>
       <div style={{display:'flex',alignItems:'center',gap:2,
@@ -3361,11 +3361,6 @@ function Home({nav,activeTab,setActiveTab,profile}){
         {/* Internal scroll-bottom spacer so last card isn't hidden behind floating TabBar */}
         <div style={{height:120,flexShrink:0}}/>
       </div>
-
-      {/* Solid theme-colored footer — fills below TabBar incl. safe-area */}
-      <div style={{position:'absolute',left:0,right:0,bottom:0,
-        height:'calc(env(safe-area-inset-bottom,0px) + 18px)',
-        background:T.bg,zIndex:3,pointerEvents:'none'}}/>
 
       <TabBar active={activeTab} onTab={setActiveTab}/>
     </div>

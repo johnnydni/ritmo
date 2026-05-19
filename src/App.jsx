@@ -3806,6 +3806,16 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
     return()=>{if(matchKeyRef)matchKeyRef.current=null;};
   });
 
+  // bigScreen toggle removes the previously focused button from DOM and focus
+  // falls back to <body>. iOS Safari only dispatches Bluetooth-keyboard
+  // (smart-ring) keys to a focused input, so we ping the App-level KeyCapture
+  // to immediately refocus its hidden input instead of waiting for the 400ms
+  // safety-net interval.
+  useEffect(()=>{
+    if(inputMode!=='ring'&&inputMode!=='presenter')return;
+    window.dispatchEvent(new Event('ritmo-refocus-key'));
+  },[bigScreen,inputMode]);
+
   const{pA,pB,gA,gB,sA,sB,tb,tA,tB,sets,winner,deuces}=bo3;
   const gpAct=cfg.goldenPointAfter!=null&&cfg.goldenPointAfter>=0
     &&(deuces||0)>cfg.goldenPointAfter;
@@ -5457,6 +5467,12 @@ function KeyCapture({onKey,enabled=true}){
     };
     document.addEventListener('pointerdown',handlePointer);
 
+    // Explicit refocus signal — fired e.g. on bigScreen toggle, where the
+    // previously focused button is removed from DOM and we'd otherwise wait
+    // up to 400ms for the safety-net interval below.
+    const handleRefocus=()=>requestAnimationFrame(focusInput);
+    window.addEventListener('ritmo-refocus-key',handleRefocus);
+
     // Safety net: faster periodic check (every 400ms)
     const interval=setInterval(()=>{
       const ae=document.activeElement;
@@ -5467,6 +5483,7 @@ function KeyCapture({onKey,enabled=true}){
 
     return()=>{
       document.removeEventListener('pointerdown',handlePointer);
+      window.removeEventListener('ritmo-refocus-key',handleRefocus);
       clearInterval(interval);
     };
   },[enabled]);

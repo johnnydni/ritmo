@@ -2912,6 +2912,9 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
                     {getLevelTier(lvl)}
                   </div>
                 </div>
+                {isEstimated&&!editingLevel&&(
+                  <div style={{color:T.t3,fontSize:10,marginTop:2}}>aus Fragebogen</div>
+                )}
               </>
             ):(
               <div style={{color:T.t3,fontSize:13,lineHeight:1.5}}>Noch kein Spielniveau eingetragen.</div>
@@ -5226,10 +5229,9 @@ function Live({hasMatch,hasTourney,tourneyData,matchCfg,nav,activeTab,setActiveT
             </SwipeableCard>
           </div>
         ))}
-        {/* Internal scroll-bottom spacer so last card isn't hidden behind floating TabBar */}
-        <div style={{height:120,flexShrink:0}}/>
       </div>
 
+      <div style={{height:120}}/>
       <TabBar active={activeTab} onTab={setActiveTab}/>
     </div>
   );
@@ -5742,6 +5744,7 @@ function Settings({onHome,activeTab,setActiveTab,
         </div>
       </div>
 
+      <div style={{height:120}}/>
       <TabBar active={activeTab} onTab={setActiveTab}/>
     </div>
   );
@@ -5877,8 +5880,10 @@ function RulesDetailLayout({icon,title,sub,visual,children,onBackToRules,onHome,
         <div className="fu" style={{animationDelay:'.1s'}}>
           {children}
         </div>
+        <div style={{height:30}}/>
       </div>
 
+      <div style={{height:100}}/>
       <MatchBar onHome={onHome} rightButtons={[
         {icon:backIcon||<BookIcon size={18}/>,onClick:onBackToRules}
       ]}/>
@@ -6303,8 +6308,9 @@ function Rules({onHome,onSelect,alreadyRead,onToggleRead}){
             <div style={{color:T.t3,fontSize:18,fontWeight:600,width:16,textAlign:'center'}}>›</div>
           </button>
         ))}
-        <div style={{height:120,flexShrink:0}}/>
+        <div style={{height:20}}/>
       </div>
+      <div style={{height:100}}/>
       <MatchBar onHome={onHome}/>
     </div>
   );
@@ -6776,8 +6782,9 @@ function Journey({onHome,onSelect,alreadyRead,onToggleRead}){
             <div style={{color:T.t3,fontSize:18,fontWeight:600,width:16,textAlign:'center'}}>›</div>
           </button>
         ))}
-        <div style={{height:120,flexShrink:0}}/>
+        <div style={{height:20}}/>
       </div>
+      <div style={{height:100}}/>
       <MatchBar onHome={onHome}/>
     </div>
   );
@@ -6855,8 +6862,9 @@ function JourneySpielstileList({onBack,onHome,onSelect}){
             </button>
           );
         })}
-        <div style={{height:120,flexShrink:0}}/>
+        <div style={{height:20}}/>
       </div>
+      <div style={{height:100}}/>
       <MatchBar onHome={onHome} rightButtons={[
         {icon:<JourneyIcon size={18}/>,onClick:onBack}
       ]}/>

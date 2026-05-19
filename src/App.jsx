@@ -2313,6 +2313,280 @@ function StyleHeroCard({styleId}){
   );
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   ANALYTICS / HEALTH-STYLE GRAPHS — Wiederverwendbar
+═══════════════════════════════════════════════════════════════ */
+
+function Sparkline({data,color,height=40,fill=true}){
+  if(!data||data.length<2) return null;
+  const w=200, h=height, pad=4;
+  const max=Math.max(...data), min=Math.min(...data), range=max-min||1;
+  const points=data.map((v,i)=>{
+    const x=pad+(i/(data.length-1))*(w-pad*2);
+    const y=pad+(1-(v-min)/range)*(h-pad*2);
+    return [x,y];
+  });
+  const path=points.map((p,i)=>`${i===0?'M':'L'} ${p[0]} ${p[1]}`).join(' ');
+  const area=`${path} L ${points[points.length-1][0]} ${h} L ${points[0][0]} ${h} Z`;
+  return(
+    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none"
+      style={{width:'100%',height,display:'block'}}>
+      {fill&&<path d={area} fill={color} opacity="0.18"/>}
+      <path d={path} stroke={color} strokeWidth="2" fill="none"
+        strokeLinecap="round" strokeLinejoin="round"/>
+      {points.map((p,i)=>(
+        <circle key={i} cx={p[0]} cy={p[1]} r={i===points.length-1?3:0} fill={color}/>
+      ))}
+    </svg>
+  );
+}
+
+function RingChart({value,total=100,size=80,color,trackColor,label,subLabel}){
+  const r=size/2-6, c=2*Math.PI*r, frac=Math.max(0,Math.min(1,value/total));
+  return(
+    <div style={{position:'relative',width:size,height:size}}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}
+        style={{transform:'rotate(-90deg)'}}>
+        <circle cx={size/2} cy={size/2} r={r} fill="none"
+          stroke={trackColor||T.card2} strokeWidth="6"/>
+        <circle cx={size/2} cy={size/2} r={r} fill="none"
+          stroke={color} strokeWidth="6" strokeLinecap="round"
+          strokeDasharray={`${c*frac} ${c*(1-frac)}`}/>
+      </svg>
+      <div style={{position:'absolute',inset:0,display:'flex',flexDirection:'column',
+        alignItems:'center',justifyContent:'center',gap:0}}>
+        <div style={{color,fontSize:18,fontWeight:900,letterSpacing:-.5,lineHeight:1}}>
+          {label}
+        </div>
+        {subLabel&&<div style={{color:T.t3,fontSize:9,fontWeight:600,
+          letterSpacing:.5,marginTop:2,textTransform:'uppercase'}}>{subLabel}</div>}
+      </div>
+    </div>
+  );
+}
+
+function BarChart({values,labels,color,height=80}){
+  const max=Math.max(...values,1);
+  return(
+    <div style={{display:'flex',alignItems:'flex-end',gap:6,height,paddingTop:4}}>
+      {values.map((v,i)=>{
+        const h=Math.max(2,(v/max)*(height-22));
+        return(
+          <div key={i} style={{flex:1,display:'flex',flexDirection:'column',
+            alignItems:'center',gap:4}}>
+            <div style={{color,fontSize:9,fontWeight:700,letterSpacing:.3}}>{v}</div>
+            <div style={{width:'100%',height:h,background:color,borderRadius:'4px 4px 0 0',
+              opacity:0.85,transition:'height .35s ease'}}/>
+            <div style={{color:T.t3,fontSize:9,fontWeight:600,letterSpacing:.3,textTransform:'uppercase'}}>
+              {labels?.[i]||''}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function StatTile({label,value,unit,trend,color,sparklineData}){
+  return(
+    <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+      padding:'14px 16px'}}>
+      <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.2,
+        textTransform:'uppercase',marginBottom:4}}>{label}</div>
+      <div style={{display:'flex',alignItems:'baseline',gap:4,marginBottom:4}}>
+        <div style={{color:color||T.t1,fontSize:24,fontWeight:900,letterSpacing:-.5,lineHeight:1}}>
+          {value}
+        </div>
+        {unit&&<div style={{color:T.t3,fontSize:12,fontWeight:600}}>{unit}</div>}
+        {trend!=null&&(
+          <div style={{color:trend>=0?'#1A8754':'#E84545',fontSize:11,fontWeight:700,
+            marginLeft:'auto'}}>
+            {trend>=0?'▲':'▼'} {Math.abs(trend)}%
+          </div>
+        )}
+      </div>
+      {sparklineData&&<Sparkline data={sparklineData} color={color||T.o} height={32}/>}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PROFILE RITMO DNA SCREEN — Persönliche Stil + Analytics
+═══════════════════════════════════════════════════════════════ */
+function ProfileRitmoDNA({profile,onBack,onHome}){
+  // Mock match data — in der Praxis aus localStorage/Supabase
+  const stats={
+    matches:24,
+    wins:15,
+    losses:9,
+    winRate:Math.round((15/24)*100),
+    avgSets:'5.6',
+    formTrend:[2,1,3,2,4,3,5,4,3,5,4,5], // last 12 matches form score
+    weeklyMatches:[2,3,1,4,2,5,3], // last 7 weeks
+    weekDays:['M','D','M','D','F','S','S'],
+  };
+
+  const style=profile.styleType?PADEL_STYLES[profile.styleType]:null;
+  const lvl=profile.playtomicLevel??profile.estimatedLevel;
+  const accent=style?.accent||T.o;
+
+  return(
+    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+      position:'relative',overflow:'hidden'}}>
+
+      {/* HEADER ZONE — colored with style accent */}
+      <div style={{
+        padding:'calc(env(safe-area-inset-top,0px) + 60px) 22px 36px',
+        background:style?`linear-gradient(135deg, ${accent}55 0%, ${T.bg} 100%)`:'var(--headerGrad)',
+        display:'flex',alignItems:'flex-start',gap:12,position:'relative',zIndex:1,
+      }}>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{color:T.t1,fontSize:11,fontWeight:700,letterSpacing:1.5,
+            textTransform:'uppercase',opacity:0.7,marginBottom:6}}>Spielerprofil</div>
+          <div style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:4}}>
+            <div style={{color:T.t1,fontSize:32,fontWeight:900,letterSpacing:-.8,lineHeight:1}}>
+              RITMO
+            </div>
+            <div style={{color:accent,fontSize:32,fontWeight:900,letterSpacing:-.8,lineHeight:1}}>
+              DNA
+            </div>
+          </div>
+          <div style={{color:T.t2,fontSize:13,marginTop:6,fontWeight:500}}>
+            Kenne deinen Stil. Finde deinen Rhythmus.
+          </div>
+        </div>
+      </div>
+
+      {/* CORPUS — drawer */}
+      <div style={{
+        flex:1,background:T.bg,
+        borderTopLeftRadius:24,borderTopRightRadius:24,
+        marginTop:-20,
+        boxShadow:'0 -10px 28px rgba(0,0,0,0.55), 0 -1px 0 rgba(255,255,255,0.04) inset',
+        padding:'26px 22px 0',
+        overflowY:'auto',WebkitOverflowScrolling:'touch',
+        position:'relative',zIndex:2,
+      }}>
+
+        {/* Spielstil Hero */}
+        {profile.styleType&&(
+          <div className="fi" style={{marginBottom:18}}>
+            <StyleHeroCard styleId={profile.styleType}/>
+          </div>
+        )}
+
+        {/* Section: Performance Übersicht */}
+        <div className="fu" style={{animationDelay:'.1s',marginBottom:18}}>
+          <div style={{color:T.t3,fontSize:11,fontWeight:800,letterSpacing:1.5,
+            textTransform:'uppercase',marginBottom:10,paddingLeft:2}}>
+            Performance Übersicht
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+            <StatTile label="Matches" value={stats.matches} color={T.t1}/>
+            <StatTile label="Siege" value={stats.wins} color={'#1A8754'}/>
+            <StatTile label="Niederlagen" value={stats.losses} color={'#E84545'}/>
+            <StatTile label="Win Rate" value={stats.winRate} unit="%"
+              color={accent} trend={8}/>
+          </div>
+        </div>
+
+        {/* Section: Form Trend */}
+        <div className="fu" style={{animationDelay:'.15s',background:T.card,
+          border:`1px solid ${T.border}`,borderRadius:14,padding:'16px 18px',marginBottom:14}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',
+            marginBottom:10}}>
+            <div>
+              <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.3,
+                textTransform:'uppercase',marginBottom:3}}>Form-Verlauf</div>
+              <div style={{color:T.t1,fontSize:18,fontWeight:800,letterSpacing:-.3}}>
+                Letzte 12 Matches
+              </div>
+            </div>
+            <div style={{color:accent,fontSize:14,fontWeight:800}}>
+              ↑ Steigend
+            </div>
+          </div>
+          <Sparkline data={stats.formTrend} color={accent} height={70}/>
+        </div>
+
+        {/* Section: Match Aktivität pro Woche */}
+        <div className="fu" style={{animationDelay:'.2s',background:T.card,
+          border:`1px solid ${T.border}`,borderRadius:14,padding:'16px 18px',marginBottom:14}}>
+          <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.3,
+            textTransform:'uppercase',marginBottom:3}}>Aktivität</div>
+          <div style={{color:T.t1,fontSize:18,fontWeight:800,letterSpacing:-.3,marginBottom:14}}>
+            Matches pro Woche
+          </div>
+          <BarChart values={stats.weeklyMatches} labels={stats.weekDays}
+            color={accent} height={100}/>
+        </div>
+
+        {/* Section: Level & Ring */}
+        {lvl!=null&&style&&(
+          <div className="fu" style={{animationDelay:'.25s',background:T.card,
+            border:`1px solid ${T.border}`,borderRadius:14,padding:'16px 18px',marginBottom:14,
+            display:'flex',alignItems:'center',gap:18}}>
+            <RingChart value={(lvl/7)*100} size={90} color={accent}
+              label={lvl.toFixed(2)} subLabel="Level"/>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.3,
+                textTransform:'uppercase',marginBottom:3}}>Skill</div>
+              <div style={{color:T.t1,fontSize:18,fontWeight:800,letterSpacing:-.3,
+                marginBottom:6}}>
+                {getLevelLabel(lvl)}
+              </div>
+              <div style={{color:T.t2,fontSize:12,lineHeight:1.5}}>
+                Bei deinem aktuellen Spielniveau gehört dein
+                <span style={{color:accent,fontWeight:700}}> {style.name}</span>-Stil
+                zu den unangenehmsten Gegnern für defensive Spieler.
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Section: Beste Partner-Stile (Mock) */}
+        {style&&(
+          <div className="fu" style={{animationDelay:'.3s',background:T.card,
+            border:`1px solid ${T.border}`,borderRadius:14,padding:'16px 18px',marginBottom:14}}>
+            <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.3,
+              textTransform:'uppercase',marginBottom:10}}>Beste Partner-Chemie</div>
+            {style.partners?.slice(0,2).map(p=>{
+              const pStyle=PADEL_STYLES[p.id];
+              return(
+                <div key={p.id} style={{display:'flex',alignItems:'center',gap:12,
+                  padding:'10px 0',borderTop:`1px solid ${T.sep}`}}>
+                  <div style={{width:32,height:32,borderRadius:'50%',background:pStyle.accent,
+                    display:'flex',alignItems:'center',justifyContent:'center',
+                    color:'white',fontSize:16,fontWeight:800,flexShrink:0}}>
+                    {pStyle.symbol}
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{color:pStyle.accent,fontSize:13,fontWeight:800}}>
+                      {pStyle.name}
+                    </div>
+                    <div style={{color:T.t3,fontSize:11,marginTop:1}}>{p.why}</div>
+                  </div>
+                  <div style={{color:'#1A8754',fontSize:11,fontWeight:800,letterSpacing:.5}}>
+                    S-TIER
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <div style={{height:120}}/>
+      </div>
+
+      <MatchBar onHome={onHome} rightButtons={[
+        {icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M19 12H5M12 19l-7-7 7-7"/></svg>, onClick:onBack}
+      ]}/>
+    </div>
+  );
+}
+
 /* ── Updated ChapterPlaystyle with full personality quiz ────── */
 function ChapterPlaystyle({profile,setProfile}){
   const qa=profile.quizAnswers||{};
@@ -2711,7 +2985,7 @@ function ProfileAvatar({name,size=40,onClick,emphasize=false}){
   );
 }
 
-function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding}){
+function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRitmoDNA}){
   const yearsLabels={lt6m:'Weniger als 6 Monate','6-12m':'6–12 Monate','1-2y':'1–2 Jahre','2-5y':'2–5 Jahre','5y+':'5+ Jahre'};
   const freqLabels={rare:'Selten','1x':'1× pro Woche','2x':'2× pro Woche','3x+':'3× oder mehr'};
   const tournLabels={never:'Nie',occasional:'Gelegentlich',regular:'Regelmäßig',competitive:'Wettkampf-orientiert'};
@@ -2818,11 +3092,48 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding}){
           </div>
         </div>
 
-        {/* Spielstil Hero — BELOW level */}
+        {/* RITMO DNA — Entry card to dedicated screen */}
         {profile.styleType?(
-          <div className="fu" style={{animationDelay:'.05s'}}>
-            <StyleHeroCard styleId={profile.styleType}/>
-          </div>
+          <button onClick={()=>onOpenRitmoDNA&&onOpenRitmoDNA()} className="fu"
+            style={{animationDelay:'.05s',width:'100%',
+              background:'linear-gradient(135deg,#1A1A1A 0%,#000000 100%)',
+              border:`1px solid ${PADEL_STYLES[profile.styleType].accent}40`,
+              borderRadius:16,padding:'20px 20px',marginBottom:14,
+              display:'flex',alignItems:'center',gap:16,cursor:'pointer',
+              boxShadow:`0 0 0 1px ${PADEL_STYLES[profile.styleType].accent}20, 0 4px 20px rgba(0,0,0,0.4)`,
+              textAlign:'left',color:'#FFF'}}>
+            {/* DNA helix icon */}
+            <div style={{width:56,height:56,borderRadius:'50%',flexShrink:0,
+              background:`${PADEL_STYLES[profile.styleType].accent}22`,
+              border:`1.5px solid ${PADEL_STYLES[profile.styleType].accent}`,
+              display:'flex',alignItems:'center',justifyContent:'center'}}>
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none"
+                stroke={PADEL_STYLES[profile.styleType].accent} strokeWidth="2"
+                strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 4 C 4 10, 20 14, 20 20"/>
+                <path d="M20 4 C 20 10, 4 14, 4 20"/>
+                <line x1="6" y1="6" x2="18" y2="6"/>
+                <line x1="6" y1="18" x2="18" y2="18"/>
+                <line x1="9" y1="10" x2="15" y2="10"/>
+                <line x1="9" y1="14" x2="15" y2="14"/>
+              </svg>
+            </div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:3}}>
+                <div style={{fontSize:18,fontWeight:900,letterSpacing:-.3,color:'#FFF'}}>
+                  RITMO <span style={{color:PADEL_STYLES[profile.styleType].accent}}>DNA</span>
+                </div>
+              </div>
+              <div style={{color:'rgba(255,255,255,0.6)',fontSize:12,lineHeight:1.4}}>
+                Dein Stil · Dein Rhythmus · Deine Stats
+              </div>
+              <div style={{color:PADEL_STYLES[profile.styleType].accent,fontSize:11,
+                fontWeight:700,marginTop:6,letterSpacing:.5,textTransform:'uppercase'}}>
+                {PADEL_STYLES[profile.styleType].name} · {PADEL_STYLES[profile.styleType].subtitle}
+              </div>
+            </div>
+            <div style={{color:'rgba(255,255,255,0.4)',fontSize:22,fontWeight:600}}>›</div>
+          </button>
         ):(
           <div className="fu" style={{background:T.card,border:`1px solid ${T.border}`,
             borderRadius:14,padding:'16px 18px',marginBottom:14,animationDelay:'.05s'}}>
@@ -6571,6 +6882,7 @@ function BaelleVisual(){
 
 function Journey({onHome,onSelect,alreadyRead,onToggleRead}){
   const sections=[
+    {id:'ritmodna',     icon:'🧬',title:'RITMO DNA',     sub:'Stil · Chemie · Tier-Matching · Levels'},
     {id:'spielstile',   icon:'🎭',title:'Spielstile',    sub:'Die 6 Padel-Personalities'},
     {id:'angaben',      icon:'🎯',title:'Aufschlag',     sub:'Reihenfolge, Position & Strategie'},
     {id:'aufstellungen',icon:'👥',title:'Aufstellungen', sub:'Netz, Hinten, Verteidigung, Angriff'},
@@ -6852,6 +7164,262 @@ function SectionTitle({children,accent}){
   return(
     <div style={{color:accent||T.t3,fontSize:10,fontWeight:800,letterSpacing:1.5,
       textTransform:'uppercase',marginBottom:8,marginTop:0}}>{children}</div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   JOURNEY: RITMO DNA — Edukative Sektion
+   Erklärt Matching-Ebenen, Match-Tier, Levels und Beispiele
+═══════════════════════════════════════════════════════════════ */
+
+const MATCHING_LEVELS=[
+  {id:'duo',     name:'Duo',     subtitle:'Partner Matching',  symbol:'⊕',
+   desc:'Stärken ergänzen, Schwächen ausgleichen. Für die perfekte Teamchemie.',
+   color:'#3498DB'},
+  {id:'mirror',  name:'Mirror',  subtitle:'Spiegel Matching',  symbol:'≡',
+   desc:'Gleicher Stil, gleiche DNA. Hohe Identität, aber Risiko von Schwächen-Dopplung.',
+   color:'#E67E22'},
+  {id:'counter', name:'Counter', subtitle:'Gegensatz Matching',symbol:'⚡',
+   desc:'Stil-Konflikte verstehen und gezielt herausfordern. Der Clash der Archetypen.',
+   color:'#9B59B6'},
+];
+
+const MATCH_TIERS=[
+  {id:'S', name:'S-TIER', subtitle:'Elite Synergy',
+   desc:'Perfekte Stilergänzung und ähnliches Spielniveau.', stars:5, color:'#1A8754'},
+  {id:'A', name:'A-TIER', subtitle:'Starke Chemie',
+   desc:'Sehr gute Kombination und kleiner Level-Unterschied.', stars:4, color:'#3498DB'},
+  {id:'B', name:'B-TIER', subtitle:'Solides Match',
+   desc:'Spielbar, aber Anpassung und Kommunikation nötig.', stars:3, color:'#F39C12'},
+  {id:'C', name:'C-TIER', subtitle:'Reibungs-Match',
+   desc:'Stil-Konflikte oder Levelreibung — mehr Aufwand, weniger Flow.', stars:2, color:'#E67E22'},
+  {id:'X', name:'X-TIER', subtitle:'Chaos Mode',
+   desc:'Bewusst wild und unvorhersehbar — für Spaß, Experimente und Events.', stars:1, color:'#9B59B6'},
+];
+
+const PLAYER_LEVELS=[
+  {id:'L1', label:'Beginner',     desc:'Grundlagen verstehen und erste Erfahrungen sammeln.', color:'#7F8C8D'},
+  {id:'L2', label:'Fortgeschritten',desc:'Solide Technik und konstante Fortschritte.',         color:'#16A085'},
+  {id:'L3', label:'Sehr Gut',     desc:'Stabiles Spiel, gute Taktik und Situationen lesen.', color:'#27AE60'},
+  {id:'L4', label:'Kompetitiv',   desc:'Hohe Intensität und Wettkampferfahrung.',            color:'#C0392B'},
+  {id:'L5', label:'Elite',        desc:'Elite-Niveau mit maximaler Konstanz und Performance.', color:'#8E44AD'},
+];
+
+function JourneyRitmoDNA({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalSections}){
+  return(
+    <RulesDetailLayout
+      icon="🧬"
+      title="RITMO DNA"
+      sub="Dein Stil. Deine Chemie. Dein Rhythmus."
+      visual={
+        <div style={{padding:'20px 0',display:'flex',flexDirection:'column',alignItems:'center',gap:14}}>
+          <div style={{display:'flex',alignItems:'baseline',gap:8}}>
+            <div style={{color:T.t1,fontSize:40,fontWeight:900,letterSpacing:-1,lineHeight:1}}>
+              RITMO
+            </div>
+            <div style={{color:T.o,fontSize:40,fontWeight:900,letterSpacing:-1,lineHeight:1}}>
+              DNA
+            </div>
+          </div>
+          <div style={{color:T.t2,fontSize:13,textAlign:'center',letterSpacing:.5}}>
+            Kenne deinen Stil. Finde deinen Rhythmus.
+          </div>
+        </div>
+      }
+      onBackToRules={onBackToJourney}
+      onHome={onHome}
+      onNext={onNext}
+      onPrev={onPrev}
+      currentIdx={currentIdx}
+      totalSections={totalSections}
+      backIcon={<JourneyIcon size={18}/>}>
+
+      <div style={{color:T.t2,fontSize:14,lineHeight:1.6,marginBottom:22}}>
+        RITMO DNA ist das System hinter den Partner- und Gegner-Matchings.
+        Es kombiniert Spielstil-Chemie und Spielniveau zu einem Tier-Ranking — damit du
+        weißt, wie gut Spieler:innen zusammenpassen.
+      </div>
+
+      {/* 1. MATCHING-EBENEN */}
+      <SectionTitle accent={T.o}>1. Matching-Ebenen</SectionTitle>
+      <div style={{color:T.t2,fontSize:13,marginBottom:14,lineHeight:1.5}}>
+        Wie funktioniert das Matching?
+      </div>
+      {MATCHING_LEVELS.map(m=>(
+        <div key={m.id} style={{background:T.card,border:`1px solid ${T.border}`,
+          borderRadius:12,padding:'14px 16px',marginBottom:10,
+          display:'flex',gap:14,alignItems:'flex-start'}}>
+          <div style={{width:42,height:42,borderRadius:'50%',flexShrink:0,
+            background:`${m.color}22`,border:`1.5px solid ${m.color}`,
+            display:'flex',alignItems:'center',justifyContent:'center',
+            color:m.color,fontSize:22,fontWeight:900}}>{m.symbol}</div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{color:m.color,fontSize:14,fontWeight:900,letterSpacing:-.2,
+              marginBottom:2}}>{m.name}</div>
+            <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1,
+              textTransform:'uppercase',marginBottom:6}}>{m.subtitle}</div>
+            <div style={{color:T.t2,fontSize:12,lineHeight:1.5}}>{m.desc}</div>
+          </div>
+        </div>
+      ))}
+
+      <div style={{height:20}}/>
+
+      {/* 2. MATCH TIER */}
+      <SectionTitle accent={T.o}>2. Match Tier</SectionTitle>
+      <div style={{color:T.t2,fontSize:13,marginBottom:14,lineHeight:1.5}}>
+        Wie stark passt ihr zusammen?
+      </div>
+      {MATCH_TIERS.map(t=>(
+        <div key={t.id} style={{background:T.card,border:`1px solid ${T.border}`,
+          borderRadius:12,padding:'12px 16px',marginBottom:8,
+          display:'flex',alignItems:'center',gap:14}}>
+          <div style={{width:36,height:36,borderRadius:'50%',flexShrink:0,
+            background:t.color,color:'white',
+            display:'flex',alignItems:'center',justifyContent:'center',
+            fontSize:14,fontWeight:900,letterSpacing:-.5}}>{t.id}</div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:2}}>
+              <div style={{color:t.color,fontSize:13,fontWeight:900,letterSpacing:-.2}}>
+                {t.name}
+              </div>
+              <div style={{color:T.t3,fontSize:10,fontWeight:600,
+                textTransform:'uppercase',letterSpacing:.5}}>{t.subtitle}</div>
+            </div>
+            <div style={{color:T.t2,fontSize:11,lineHeight:1.4,marginBottom:3}}>{t.desc}</div>
+            <div style={{color:t.color,fontSize:11,letterSpacing:2}}>
+              {'★'.repeat(t.stars)}{'☆'.repeat(5-t.stars)}
+            </div>
+          </div>
+        </div>
+      ))}
+
+      <div style={{height:20}}/>
+
+      {/* 3. LEVEL MATTERS */}
+      <SectionTitle accent={T.o}>3. Level Matters</SectionTitle>
+      <div style={{color:T.t2,fontSize:13,marginBottom:14,lineHeight:1.5}}>
+        Das Level entscheidet — gleiches Niveau, höherer Match-Tier.
+      </div>
+      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:12,
+        overflow:'hidden',marginBottom:14}}>
+        {PLAYER_LEVELS.map((lv,i)=>(
+          <div key={lv.id} style={{display:'flex',alignItems:'center',gap:12,
+            padding:'12px 14px',borderTop:i>0?`1px solid ${T.sep}`:'none'}}>
+            <div style={{width:44,height:36,borderRadius:6,flexShrink:0,
+              background:lv.color,color:'white',
+              display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',
+              gap:0}}>
+              <div style={{fontSize:14,fontWeight:900,letterSpacing:-.5,lineHeight:1}}>{lv.id}</div>
+            </div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{color:lv.color,fontSize:13,fontWeight:800,marginBottom:1}}>
+                {lv.label.toUpperCase()}
+              </div>
+              <div style={{color:T.t2,fontSize:11,lineHeight:1.4}}>{lv.desc}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div style={{background:T.card2,border:`1px solid ${T.border}`,borderRadius:10,
+        padding:'12px 14px',marginBottom:22,color:T.t2,fontSize:12,lineHeight:1.6}}>
+        <span style={{color:T.t1,fontWeight:700}}>Warum?</span> Je größer die Level-Differenz,
+        desto höher die Gefahr von Dominanz und desto stärker leidet die Chemie. Spieler:innen
+        auf gleichem Niveau erleben mehr Vertrauen und Impact.
+      </div>
+
+      {/* 4. EXAMPLES */}
+      <SectionTitle accent={T.o}>Beispiele</SectionTitle>
+      <div style={{display:'flex',flexDirection:'column',gap:10,marginBottom:22}}>
+        {/* Matching example */}
+        <div style={{background:T.card,border:`1px solid #1A875440`,borderRadius:12,
+          padding:'14px 16px'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',
+            marginBottom:8}}>
+            <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.2,
+              textTransform:'uppercase'}}>Matching-Beispiel</div>
+            <div style={{color:'#1A8754',fontSize:12,fontWeight:900,letterSpacing:.5}}>S-TIER</div>
+          </div>
+          <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:8}}>
+            <div style={{padding:'5px 11px',background:'#C0392B',color:'white',
+              borderRadius:6,fontSize:11,fontWeight:800,letterSpacing:.5}}>TORO L3</div>
+            <div style={{color:T.t3,fontSize:14}}>+</div>
+            <div style={{padding:'5px 11px',background:'#1E8449',color:'white',
+              borderRadius:6,fontSize:11,fontWeight:800,letterSpacing:.5}}>MURO L3</div>
+          </div>
+          <div style={{color:T.t2,fontSize:12,lineHeight:1.5}}>
+            Elite Synergy. Perfekte Balance zwischen Druck und Absicherung.
+          </div>
+        </div>
+
+        {/* Counter example */}
+        <div style={{background:T.card,border:`1px solid #3498DB40`,borderRadius:12,
+          padding:'14px 16px'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',
+            marginBottom:8}}>
+            <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.2,
+              textTransform:'uppercase'}}>Counter-Beispiel</div>
+            <div style={{color:'#3498DB',fontSize:12,fontWeight:900,letterSpacing:.5}}>A-TIER</div>
+          </div>
+          <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:8}}>
+            <div style={{padding:'5px 11px',background:'#C0392B',color:'white',
+              borderRadius:6,fontSize:11,fontWeight:800,letterSpacing:.5}}>TORO L3</div>
+            <div style={{color:T.t3,fontSize:11,fontWeight:700}}>vs</div>
+            <div style={{padding:'5px 11px',background:'#1E8449',color:'white',
+              borderRadius:6,fontSize:11,fontWeight:800,letterSpacing:.5}}>MURO L3</div>
+          </div>
+          <div style={{color:T.t2,fontSize:12,lineHeight:1.5}}>
+            Spannungsreiches Duell. Power gegen Geduld, beide Stile fordern sich auf höchstem Niveau.
+          </div>
+        </div>
+
+        {/* Mirror example */}
+        <div style={{background:T.card,border:`1px solid #F39C1240`,borderRadius:12,
+          padding:'14px 16px'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',
+            marginBottom:8}}>
+            <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.2,
+              textTransform:'uppercase'}}>Mirror-Beispiel</div>
+            <div style={{color:'#F39C12',fontSize:12,fontWeight:900,letterSpacing:.5}}>B-TIER</div>
+          </div>
+          <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:8}}>
+            <div style={{padding:'5px 11px',background:'#C0392B',color:'white',
+              borderRadius:6,fontSize:11,fontWeight:800,letterSpacing:.5}}>TORO L3</div>
+            <div style={{color:T.t3,fontSize:14}}>+</div>
+            <div style={{padding:'5px 11px',background:'#C0392B',color:'white',
+              borderRadius:6,fontSize:11,fontWeight:800,letterSpacing:.5}}>TORO L3</div>
+          </div>
+          <div style={{color:T.t2,fontSize:12,lineHeight:1.5}}>
+            Hohes Risiko. Doppelter Druck, doppelte Power — aber mehr Fehlerpotenzial und
+            weniger Absicherung.
+          </div>
+        </div>
+      </div>
+
+      {/* 5. HOW IT WORKS */}
+      <SectionTitle accent={T.o}>So funktioniert RITMO DNA</SectionTitle>
+      <div style={{display:'flex',flexDirection:'column',gap:14}}>
+        {[
+          {n:'1.',title:'Quiz machen',desc:'Finde deinen primären und sekundären Spielstil.'},
+          {n:'2.',title:'Level wählen',desc:'Wähle dein aktuelles Spielniveau realistisch aus.'},
+          {n:'3.',title:'Match finden',desc:'RITMO DNA berechnet die besten Partner und deine härtesten Gegner.'},
+          {n:'4.',title:'Spielen',desc:'Verstehe die Dynamik. Nutze eure Chemie. Gewinne mit deinem Rhythmus.'},
+        ].map(step=>(
+          <div key={step.n} style={{display:'flex',gap:12,alignItems:'flex-start'}}>
+            <div style={{width:32,height:32,borderRadius:'50%',background:T.oSoft,
+              border:`1.5px solid ${T.o}`,color:T.o,
+              display:'flex',alignItems:'center',justifyContent:'center',
+              fontSize:13,fontWeight:900,flexShrink:0}}>{step.n.replace('.','')}</div>
+            <div style={{flex:1,minWidth:0,paddingTop:4}}>
+              <div style={{color:T.t1,fontSize:14,fontWeight:800,marginBottom:3}}>{step.title}</div>
+              <div style={{color:T.t2,fontSize:12,lineHeight:1.5}}>{step.desc}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{height:30}}/>
+    </RulesDetailLayout>
   );
 }
 
@@ -7221,8 +7789,12 @@ export default function App(){
     {scr==='home'&&<Home nav={nav} activeTab={activeTab} setActiveTab={handleTab} profile={profile}/>}
     {scr==='profile'&&<Profile profile={profile} setProfile={setProfile}
       onHome={goHome}
+      onOpenRitmoDNA={()=>setScr('profile-ritmodna')}
       onResetOnboarding={()=>{setOnboarded(false);nav('welcome');}}
       onLogout={()=>{auth.signOut();setLoggedIn(false);setOnboarded(false);nav('login');}}/>}
+    {scr==='profile-ritmodna'&&<ProfileRitmoDNA profile={profile}
+      onBack={()=>setScr('profile')}
+      onHome={goHome}/>}
     {scr==='rules'&&<RulesLanding onHome={goHome}
       onContinue={()=>setScr('rules-overview')}
       onMarkRead={()=>{setRulesRead(true);setScr('rules-overview');}}
@@ -7277,7 +7849,7 @@ export default function App(){
         onPartnerJump={(pid)=>setScr(`journey-spielstil-${pid}`)}/>;
     })()}
     {(()=>{
-      const order=['angaben','aufstellungen','haende','schlagwahl','schlaeger','baelle'];
+      const order=['ritmodna','angaben','aufstellungen','haende','schlagwahl','schlaeger','baelle'];
       const id=scr.startsWith('journey-')?scr.slice(8):null;
       if(id==='overview'||id==='spielstile'||!id||scr.startsWith('journey-spielstil-')) return null;
       const idx=id?order.indexOf(id):-1;
@@ -7290,7 +7862,7 @@ export default function App(){
         onNext:idx<order.length-1?()=>setScr(`journey-${order[idx+1]}`):null,
         onPrev:idx>0?()=>setScr(`journey-${order[idx-1]}`):null,
       };
-      const Comp={angaben:JourneyAngaben,aufstellungen:JourneyAufstellungen,
+      const Comp={ritmodna:JourneyRitmoDNA,angaben:JourneyAngaben,aufstellungen:JourneyAufstellungen,
         haende:JourneyHaende,schlagwahl:JourneySchlagwahl,
         schlaeger:JourneySchlaeger,baelle:JourneyBaelle}[id];
       return Comp?<Comp {...nav}/>:null;

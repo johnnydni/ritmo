@@ -1760,13 +1760,35 @@ function QuestionGroup({label,value,onChange,options,sub}){
 /* ── Level-Label mapping (Playtomic-Skala) ─────────────────── */
 function getLevelLabel(lvl){
   if(lvl==null) return '';
-  if(lvl<1.0)  return 'Einsteiger';
-  if(lvl<1.5)  return 'Anfänger';
-  if(lvl<2.5)  return 'Einsteiger Fortgeschritten';
-  if(lvl<3.5)  return 'Fortgeschritten';
-  if(lvl<4.5)  return 'Fortgeschritten Hoch';
-  if(lvl<5.4)  return 'Fortgeschritten Advanced';
-  return 'Wettkampf';
+  if(lvl<1.0) return 'Beginner';
+  if(lvl<2.0) return 'Fortgeschritten';
+  if(lvl<3.0) return 'Kompetitiv';
+  if(lvl<4.0) return 'Expert';
+  if(lvl<5.0) return 'Master';
+  if(lvl<6.0) return 'Elite';
+  return 'Ikone';
+}
+
+function getLevelTier(lvl){
+  if(lvl==null) return '';
+  if(lvl<1.0) return 'L1';
+  if(lvl<2.0) return 'L2';
+  if(lvl<3.0) return 'L3';
+  if(lvl<4.0) return 'L4';
+  if(lvl<5.0) return 'L5';
+  if(lvl<6.0) return 'L6';
+  return 'L7';
+}
+
+function getLevelColor(lvl){
+  if(lvl==null) return '#7F8C8D';
+  if(lvl<1.0) return '#7F8C8D';  // L1 Beginner — grey
+  if(lvl<2.0) return '#16A085';  // L2 Fortgeschritten — teal
+  if(lvl<3.0) return '#27AE60';  // L3 Kompetitiv — green
+  if(lvl<4.0) return '#2980B9';  // L4 Expert — blue
+  if(lvl<5.0) return '#C0392B';  // L5 Master — red
+  if(lvl<6.0) return '#8E44AD';  // L6 Elite — purple
+  return '#F39C12';              // L7 Ikone — gold
 }
 
 /* ── RITMO Level Estimation ─────────────────────────────────
@@ -1820,8 +1842,8 @@ function estimateLevel(p){
     score+=winScore*w; // Skaliert bis auf vollen Wert bei 50+ Matches
   }
 
-  // Runden auf 0.03-Schritte, Cap 0.3–5.8
-  const raw=Math.min(5.80,Math.max(0.30,score));
+  // Runden auf 0.03-Schritte, Cap 0.0–7.0 (full L1-L7 range)
+  const raw=Math.min(7.00,Math.max(0.30,score));
   return Math.round(raw/0.03)*0.03;
 }
 
@@ -2531,9 +2553,14 @@ function ProfileRitmoDNA({profile,onBack,onHome}){
             <div style={{flex:1,minWidth:0}}>
               <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.3,
                 textTransform:'uppercase',marginBottom:3}}>Skill</div>
-              <div style={{color:T.t1,fontSize:18,fontWeight:800,letterSpacing:-.3,
-                marginBottom:6}}>
-                {getLevelLabel(lvl)}
+              <div style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:6}}>
+                <div style={{color:T.t1,fontSize:18,fontWeight:800,letterSpacing:-.3}}>
+                  {getLevelLabel(lvl)}
+                </div>
+                <div style={{padding:'2px 7px',background:getLevelColor(lvl),
+                  color:'#fff',borderRadius:5,fontSize:10,fontWeight:900,letterSpacing:.5}}>
+                  {getLevelTier(lvl)}
+                </div>
               </div>
               <div style={{color:T.t2,fontSize:12,lineHeight:1.5}}>
                 Bei deinem aktuellen Spielniveau gehört dein
@@ -3043,7 +3070,7 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
                       <input type="text" inputMode="decimal" defaultValue={lvl.toFixed(2)}
                         onBlur={e=>{
                           const v=parseFloat(e.target.value.replace(',','.'));
-                          if(!isNaN(v)) setProfile(p=>({...p,estimatedLevel:Math.min(5.8,Math.max(0.3,Math.round(v*100)/100))}));
+                          if(!isNaN(v)) setProfile(p=>({...p,estimatedLevel:Math.min(7.0,Math.max(0.3,Math.round(v*100)/100))}));
                           else e.target.value=lvl.toFixed(2);
                         }}
                         onKeyDown={e=>{if(e.key==='Enter') e.target.blur();}}
@@ -3052,7 +3079,7 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
                           border:`1px solid ${T.o}`,borderRadius:8,padding:'5px 4px',
                           color:T.o,fontSize:22,fontWeight:900,outline:'none',
                           boxSizing:'border-box'}}/>
-                      <button onClick={()=>setProfile(p=>({...p,estimatedLevel:Math.min(5.80,Math.round((lvl+0.03)*100)/100)}))}
+                      <button onClick={()=>setProfile(p=>({...p,estimatedLevel:Math.min(7.00,Math.round((lvl+0.03)*100)/100)}))}
                         style={{width:30,height:30,borderRadius:'50%',background:T.card2,
                           border:`1px solid ${T.border}`,color:T.o,fontSize:15,fontWeight:700,
                           cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>+</button>
@@ -3079,8 +3106,14 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
                     )}
                   </div>
                 )}
-                <div style={{color:T.o,fontSize:12,fontWeight:700,marginTop:4}}>
-                  {getLevelLabel(lvl)}
+                <div style={{display:'flex',alignItems:'center',gap:8,marginTop:4}}>
+                  <div style={{color:T.o,fontSize:12,fontWeight:700}}>
+                    {getLevelLabel(lvl)}
+                  </div>
+                  <div style={{padding:'1px 6px',background:getLevelColor(lvl),
+                    color:'#fff',borderRadius:4,fontSize:9,fontWeight:900,letterSpacing:.5}}>
+                    {getLevelTier(lvl)}
+                  </div>
                 </div>
                 {isEstimated&&!editingLevel&&(
                   <div style={{color:T.t3,fontSize:10,marginTop:2}}>aus Fragebogen</div>
@@ -3185,9 +3218,9 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
             Onboarding wiederholen
           </button>
           <button onClick={onLogout}
-            style={{padding:'13px 16px',background:'transparent',
-              border:`1px solid ${T.border}`,borderRadius:12,
-              color:T.t2,fontSize:14,fontWeight:600,cursor:'pointer',
+            style={{padding:'13px 16px',background:'rgba(232,69,69,0.08)',
+              border:'1px solid rgba(232,69,69,0.35)',borderRadius:12,
+              color:'#FF6B6B',fontSize:14,fontWeight:700,cursor:'pointer',
               textAlign:'left'}}>
             Abmelden
           </button>
@@ -7198,11 +7231,13 @@ const MATCH_TIERS=[
 ];
 
 const PLAYER_LEVELS=[
-  {id:'L1', label:'Beginner',     desc:'Grundlagen verstehen und erste Erfahrungen sammeln.', color:'#7F8C8D'},
-  {id:'L2', label:'Fortgeschritten',desc:'Solide Technik und konstante Fortschritte.',         color:'#16A085'},
-  {id:'L3', label:'Sehr Gut',     desc:'Stabiles Spiel, gute Taktik und Situationen lesen.', color:'#27AE60'},
-  {id:'L4', label:'Kompetitiv',   desc:'Hohe Intensität und Wettkampferfahrung.',            color:'#C0392B'},
-  {id:'L5', label:'Elite',        desc:'Elite-Niveau mit maximaler Konstanz und Performance.', color:'#8E44AD'},
+  {id:'L1', label:'Beginner',         desc:'Grundlagen verstehen und erste Erfahrungen sammeln.',                  color:'#7F8C8D'},
+  {id:'L2', label:'Fortgeschritten',  desc:'Solide Technik, konstante Fortschritte und einfache Spielzüge.',       color:'#16A085'},
+  {id:'L3', label:'Kompetitiv',       desc:'Sicheres Spiel, taktisches Denken und gezielte Schlagwahl.',           color:'#27AE60'},
+  {id:'L4', label:'Expert',           desc:'Hohe Konstanz, komplexe Taktik und kontrollierte Spielsituationen.',   color:'#2980B9'},
+  {id:'L5', label:'Master',           desc:'Wettkampfniveau mit präziser Technik und mentaler Stärke.',            color:'#C0392B'},
+  {id:'L6', label:'Elite',            desc:'Spitzenamateur — antizipiert das Spiel, dominiert Rallyes.',            color:'#8E44AD'},
+  {id:'L7', label:'Ikone',            desc:'Maximales Niveau — Padel als Kunst, Stil prägend für andere.',          color:'#F39C12'},
 ];
 
 function JourneyRitmoDNA({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalSections}){

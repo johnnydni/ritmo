@@ -1725,7 +1725,6 @@ function EmailVerification({email,onVerified,onBack}){
     </div>
   );
 }
-═══════════════════════════════════════════════════════════════ */
 
 function OnboardProgress({total,current}){
   return(

@@ -522,8 +522,12 @@ const auth={
 function RitmoWordmark({size=22}){
   const[err,setErr]=useState(false);
   const G=T.gold;
+  // Theme-dependent: light theme braucht dunkle Logos für Kontrast
+  const isLight=typeof document!=='undefined'&&
+    document.documentElement.getAttribute('data-theme')==='light';
+  const file=isLight?'ritmowidedark.png':'ritmowide.png';
   if(err){
-    // SVG fallback wenn ritmowide.png nicht vorhanden
+    // SVG fallback wenn das PNG nicht vorhanden
     const iconSize=size*1.2;
     return(
       <div style={{display:'flex',alignItems:'center',gap:7}}>
@@ -545,7 +549,7 @@ function RitmoWordmark({size=22}){
     );
   }
   return(
-    <img src={`${getAssetBase()}assets/ritmowide.png`}
+    <img src={`${getAssetBase()}assets/${file}`}
       onError={()=>setErr(true)}
       style={{height:size*1.4,width:'auto',display:'block',userSelect:'none'}}
       alt="RITMO"/>
@@ -556,6 +560,9 @@ function RitmoWordmark({size=22}){
 function RitmoSplashLogo({size=260}){
   const[err,setErr]=useState(false);
   const G=T.gold;
+  const isLight=typeof document!=='undefined'&&
+    document.documentElement.getAttribute('data-theme')==='light';
+  const file=isLight?'ritmohighdark.png':'ritmohigh.png';
   if(err){
     // SVG fallback
     return(
@@ -581,7 +588,7 @@ function RitmoSplashLogo({size=260}){
     );
   }
   return(
-    <img src={`${getAssetBase()}assets/ritmohigh.png`}
+    <img src={`${getAssetBase()}assets/${file}`}
       onError={()=>setErr(true)}
       style={{width:size,height:'auto',display:'block',userSelect:'none'}}
       alt="RITMO PADEL CLUB"/>
@@ -2495,7 +2502,7 @@ function Welcome({profile,setProfile,theme,setTheme,onComplete}){
       subtitle:'Hilft uns, dich besser kennenzulernen und passende Mitspieler:innen vorzuschlagen.',
       Content:ChapterPlaystyle,
       contentProps:{profile,setProfile},
-      canContinue:()=>profile.handPreference!=null&&profile.playStyle!=null,
+      canContinue:()=>profile.handPreference!=null&&profile.styleType!=null,
       cta:'Fertig',
       skippable:true,
     },
@@ -2563,12 +2570,14 @@ function Welcome({profile,setProfile,theme,setTheme,onComplete}){
         )}
         <button onClick={goNext} disabled={!current.canContinue()}
           style={{flex:1,padding:'14px 18px',
-            background:current.canContinue()?T.o:T.card,
-            border:'none',borderRadius:12,
-            color:current.canContinue()?'#000':T.t3,
+            background:current.canContinue()?T.o:T.card2,
+            border:current.canContinue()?'none':`1px solid ${T.border}`,
+            borderRadius:12,
+            color:current.canContinue()?'#000':T.t4,
             fontSize:15,fontWeight:800,letterSpacing:.2,
             cursor:current.canContinue()?'pointer':'not-allowed',
             boxShadow:current.canContinue()?'0 4px 14px var(--oGlow)':'none',
+            opacity:current.canContinue()?1:0.7,
             transition:'all .2s ease'}}>
           {current.cta}
         </button>

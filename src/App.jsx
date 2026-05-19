@@ -446,6 +446,11 @@ const auth={
   async signInWithEmail(email,password){
     const e=(email||'').trim().toLowerCase();
     if(!e||!password) throw new Error('Bitte alle Felder ausfüllen');
+    // Test-User-Bypass für Demo/Dev-Zugang ohne Supabase-Konto.
+    // Bewusst gelassen — der einzige Nicht-Supabase-Pfad in der Auth.
+    if(e==='ritmo'&&password==='padelhaus'){
+      return {user:{email:'ritmo@test.local',provider:'test'}};
+    }
     const {data,error}=await sb().auth.signInWithPassword({email:e,password});
     if(error) throw new Error(error.message||'Anmeldung fehlgeschlagen');
     return data;
@@ -464,6 +469,24 @@ const auth={
 
   async signOut(){
     try{await sb().auth.signOut();}catch(e){}
+  },
+
+  async requestPasswordReset(email){
+    const e=(email||'').trim().toLowerCase();
+    if(!e||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) throw new Error('Bitte gültige E-Mail eingeben');
+    const base=(typeof window!=='undefined'&&window.__BASE__)||'/';
+    const {error}=await sb().auth.resetPasswordForEmail(e,{
+      redirectTo:window.location.origin+base,
+    });
+    if(error) throw new Error(error.message||'Reset-Mail konnte nicht gesendet werden');
+    return true;
+  },
+
+  async updatePassword(newPassword){
+    if(!newPassword||newPassword.length<8) throw new Error('Passwort min. 8 Zeichen');
+    const {error}=await sb().auth.updateUser({password:newPassword});
+    if(error) throw new Error(error.message||'Passwort konnte nicht aktualisiert werden');
+    return true;
   },
 };
 
@@ -832,7 +855,6 @@ function RulesLanding({onHome,onContinue,onMarkRead,alreadyRead}){
         </div>
       </div>
 
-      <div style={{height:100,flexShrink:0}}/>
       <MatchBar onHome={onHome} rightButtons={[
         {icon:<ArrowRightCircleIcon size={22}/>,onClick:onContinue}
       ]}/>
@@ -879,7 +901,6 @@ function JourneyLanding({onHome,onContinue,onMarkRead,alreadyRead}){
         </div>
       </div>
 
-      <div style={{height:100,flexShrink:0}}/>
       <MatchBar onHome={onHome} rightButtons={[
         {icon:<ArrowRightCircleIcon size={22}/>,onClick:onContinue}
       ]}/>
@@ -1062,6 +1083,42 @@ function AppleGlyph({size=20}){
   </svg>);
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   FIRST-LAUNCH DISCLAIMER — einmaliger Hinweis beim ersten Start
+═══════════════════════════════════════════════════════════════ */
+function WelcomeNotice({onConfirm}){
+  return(
+    <div style={{position:'fixed',inset:0,zIndex:1000,
+      background:'rgba(0,0,0,0.65)',backdropFilter:'blur(6px)',
+      display:'flex',alignItems:'center',justifyContent:'center',
+      padding:'24px',animation:'fadeIn .25s ease'}}>
+      <div className="si" style={{
+        maxWidth:380,width:'100%',background:T.card,
+        border:`1px solid ${T.border}`,borderRadius:18,
+        padding:'28px 24px 22px',
+        boxShadow:'0 24px 48px rgba(0,0,0,0.55)'}}>
+        <div style={{display:'flex',justifyContent:'center',marginBottom:16}}>
+          <RitmoSplashLogo size={80}/>
+        </div>
+        <div style={{color:T.t1,fontSize:13,lineHeight:1.6,textAlign:'center',
+          marginBottom:22,letterSpacing:.1}}>
+          Die App ist aktuell in Entwicklung und wird sich noch viel ändern.
+          Sei nicht zu böse, wenn etwas nicht funktioniert. It's all about Padel.
+          <div style={{marginTop:10,color:T.o,fontWeight:700}}>
+            Dein RITMO-Team {'<3'}
+          </div>
+        </div>
+        <button onClick={onConfirm}
+          style={{width:'100%',background:T.o,border:'none',borderRadius:12,
+            padding:'13px 16px',color:'#000',fontSize:15,fontWeight:800,letterSpacing:.3,
+            cursor:'pointer',boxShadow:'0 4px 14px var(--oGlow)'}}>
+          OK
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function Login({onSuccess,onRegister}){
   const[username,setUsername]=useState('');
   const[password,setPassword]=useState('');
@@ -1069,10 +1126,27 @@ function Login({onSuccess,onRegister}){
   const[shake,setShake]=useState(false);
   const[busy,setBusy]=useState(false);
 
+  // Passwort-Reset-Inline-Flow
+  const[resetMode,setResetMode]=useState(false);
+  const[resetEmail,setResetEmail]=useState('');
+  const[resetSent,setResetSent]=useState(false);
+  const[resetBusy,setResetBusy]=useState(false);
+  const[resetError,setResetError]=useState('');
+
   const fail=(msg)=>{
     setError(msg);
     setShake(true);
     setTimeout(()=>setShake(false),420);
+  };
+
+  const submitReset=async()=>{
+    setResetBusy(true);setResetError('');
+    try{
+      await auth.requestPasswordReset(resetEmail);
+      setResetSent(true);
+    }catch(e){
+      setResetError(e.message||'Reset fehlgeschlagen');
+    }finally{setResetBusy(false);}
   };
 
   const tryLogin=async()=>{
@@ -1133,7 +1207,7 @@ function Login({onSuccess,onRegister}){
           <AppleGlyph size={18}/>
           <span>Mit Apple anmelden</span>
           <span style={{position:'absolute',top:6,right:10,fontSize:9,fontWeight:700,
-            letterSpacing:.5,color:T.t3,textTransform:'uppercase'}}>bald</span>
+            letterSpacing:.5,color:'#FFFFFF',textTransform:'uppercase'}}>bald</span>
         </button>
 
         {/* Divider */}
@@ -1185,6 +1259,49 @@ function Login({onSuccess,onRegister}){
             boxShadow:'0 4px 14px var(--oGlow)'}}>
           {busy?'…':'Anmelden'}
         </button>
+
+        {/* Passwort vergessen */}
+        <div style={{display:'flex',justifyContent:'center',marginTop:12}}>
+          <button onClick={()=>{setResetMode(m=>!m);setResetError('');setResetSent(false);}}
+            style={{background:'none',border:'none',color:T.t2,fontSize:12,
+              fontWeight:600,cursor:'pointer',padding:'4px 8px',textDecoration:'underline'}}>
+            Passwort vergessen?
+          </button>
+        </div>
+
+        {resetMode&&(
+          <div className="fi" style={{marginTop:10,background:T.card2,
+            border:`1px solid ${T.border}`,borderRadius:12,padding:'14px 14px 12px'}}>
+            {resetSent?(
+              <div style={{color:T.g,fontSize:13,fontWeight:600,textAlign:'center',
+                padding:'6px 0'}}>
+                ✓ Reset-Mail gesendet — prüfe dein Postfach.
+              </div>
+            ):(<>
+              <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
+                textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>E-Mail für Reset</div>
+              <input value={resetEmail}
+                onChange={e=>{setResetEmail(e.target.value);setResetError('');}}
+                onKeyDown={e=>{if(e.key==='Enter') submitReset();}}
+                autoComplete="email" type="email"
+                autoCapitalize="off" autoCorrect="off" spellCheck={false}
+                placeholder="du@example.com"
+                style={{width:'100%',background:T.bg,border:`1px solid ${T.border}`,
+                  borderRadius:10,padding:'10px 12px',color:T.t1,fontSize:13,fontWeight:500,
+                  outline:'none',boxSizing:'border-box',marginBottom:10}}/>
+              {resetError&&(
+                <div style={{color:'#FF6B6B',fontSize:11,fontWeight:600,
+                  marginBottom:8,paddingLeft:2}}>{resetError}</div>
+              )}
+              <button onClick={submitReset} disabled={resetBusy}
+                style={{width:'100%',background:T.o,border:'none',borderRadius:10,
+                  padding:'10px 14px',color:'#000',fontSize:13,fontWeight:800,
+                  cursor:resetBusy?'not-allowed':'pointer',opacity:resetBusy?.6:1}}>
+                {resetBusy?'Sende…':'Reset-Mail anfordern'}
+              </button>
+            </>)}
+          </div>
+        )}
 
         {/* Register */}
         <div style={{display:'flex',alignItems:'center',gap:8,marginTop:18,
@@ -1289,7 +1406,7 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
           <AppleGlyph size={18}/>
           <span>Mit Apple registrieren</span>
           <span style={{position:'absolute',top:6,right:10,fontSize:9,fontWeight:700,
-            letterSpacing:.5,color:T.t3,textTransform:'uppercase'}}>bald</span>
+            letterSpacing:.5,color:'#FFFFFF',textTransform:'uppercase'}}>bald</span>
         </button>
 
         {/* Divider */}
@@ -1476,6 +1593,88 @@ function EmailVerification({email,onVerified,onBack}){
           style={{background:'none',border:'none',color:T.t3,fontSize:12,
             cursor:'pointer',padding:6,textDecoration:'underline'}}>
           Falsche E-Mail? Zurück
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PASSWORD RECOVERY — User klickt auf Reset-Link, Supabase setzt
+   temporäre Session, App leitet hierher um, neues Passwort wird
+   gesetzt und gespeichert.
+═══════════════════════════════════════════════════════════════ */
+function PasswordRecovery({onDone}){
+  const[pw,setPw]=useState('');
+  const[pw2,setPw2]=useState('');
+  const[busy,setBusy]=useState(false);
+  const[error,setError]=useState('');
+
+  const submit=async()=>{
+    if(pw!==pw2){setError('Passwörter stimmen nicht überein');return;}
+    setBusy(true);setError('');
+    try{
+      await auth.updatePassword(pw);
+      onDone();
+    }catch(e){
+      setError(e.message||'Passwort konnte nicht gesetzt werden');
+    }finally{setBusy(false);}
+  };
+
+  return(
+    <div style={{minHeight:'100dvh',background:T.bg,display:'flex',
+      flexDirection:'column',alignItems:'center',justifyContent:'center',
+      padding:'calc(env(safe-area-inset-top,0px) + 40px) 22px calc(env(safe-area-inset-bottom,0px) + 40px)'}}>
+      <div className="fi" style={{width:'100%',maxWidth:380,display:'flex',flexDirection:'column'}}>
+        <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:14,marginBottom:24}}>
+          <RitmoSplashLogo size={110}/>
+          <div style={{color:T.t1,fontSize:22,fontWeight:800,letterSpacing:-.3}}>
+            Neues Passwort setzen
+          </div>
+          <div style={{color:T.t3,fontSize:12,textAlign:'center',maxWidth:300,lineHeight:1.5}}>
+            Wähle ein neues Passwort für dein RITMO-Konto.
+          </div>
+        </div>
+
+        <div style={{marginBottom:10}}>
+          <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
+            textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Neues Passwort</div>
+          <input type="password" value={pw}
+            onChange={e=>{setPw(e.target.value);setError('');}}
+            autoComplete="new-password"
+            placeholder="Mindestens 8 Zeichen"
+            style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
+              borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
+              outline:'none',boxSizing:'border-box'}}/>
+        </div>
+
+        <div style={{marginBottom:16}}>
+          <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
+            textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Passwort bestätigen</div>
+          <input type="password" value={pw2}
+            onChange={e=>{setPw2(e.target.value);setError('');}}
+            onKeyDown={e=>{if(e.key==='Enter') submit();}}
+            autoComplete="new-password"
+            placeholder="••••••••"
+            style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
+              borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
+              outline:'none',boxSizing:'border-box'}}/>
+        </div>
+
+        {error&&(
+          <div style={{background:'rgba(232,69,69,.12)',border:'1px solid rgba(232,69,69,.4)',
+            borderRadius:8,padding:'9px 12px',marginBottom:12,
+            color:'#FF6B6B',fontSize:12,fontWeight:600}}>
+            {error}
+          </div>
+        )}
+
+        <button onClick={submit} disabled={busy}
+          style={{background:T.o,border:'none',borderRadius:12,
+            padding:'14px 16px',color:'#000',fontSize:15,fontWeight:800,letterSpacing:.2,
+            cursor:busy?'not-allowed':'pointer',opacity:busy?.6:1,
+            boxShadow:'0 4px 14px var(--oGlow)'}}>
+          {busy?'…':'Passwort speichern'}
         </button>
       </div>
     </div>
@@ -5744,7 +5943,6 @@ function Settings({onHome,activeTab,setActiveTab,
         </div>
       </div>
 
-      <div style={{height:120}}/>
       <TabBar active={activeTab} onTab={setActiveTab}/>
     </div>
   );
@@ -5880,10 +6078,8 @@ function RulesDetailLayout({icon,title,sub,visual,children,onBackToRules,onHome,
         <div className="fu" style={{animationDelay:'.1s'}}>
           {children}
         </div>
-        <div style={{height:30}}/>
       </div>
 
-      <div style={{height:100}}/>
       <MatchBar onHome={onHome} rightButtons={[
         {icon:backIcon||<BookIcon size={18}/>,onClick:onBackToRules}
       ]}/>
@@ -6308,9 +6504,7 @@ function Rules({onHome,onSelect,alreadyRead,onToggleRead}){
             <div style={{color:T.t3,fontSize:18,fontWeight:600,width:16,textAlign:'center'}}>›</div>
           </button>
         ))}
-        <div style={{height:20}}/>
       </div>
-      <div style={{height:100}}/>
       <MatchBar onHome={onHome}/>
     </div>
   );
@@ -6782,9 +6976,7 @@ function Journey({onHome,onSelect,alreadyRead,onToggleRead}){
             <div style={{color:T.t3,fontSize:18,fontWeight:600,width:16,textAlign:'center'}}>›</div>
           </button>
         ))}
-        <div style={{height:20}}/>
       </div>
-      <div style={{height:100}}/>
       <MatchBar onHome={onHome}/>
     </div>
   );
@@ -6862,9 +7054,7 @@ function JourneySpielstileList({onBack,onHome,onSelect}){
             </button>
           );
         })}
-        <div style={{height:20}}/>
       </div>
-      <div style={{height:100}}/>
       <MatchBar onHome={onHome} rightButtons={[
         {icon:<JourneyIcon size={18}/>,onClick:onBack}
       ]}/>
@@ -7503,6 +7693,7 @@ export default function App(){
   const[onboarded,setOnboarded]=useState(()=>lsGet('ritmo_onboarded',false));
   const[rulesRead,setRulesRead]=useState(()=>lsGet('ritmo_rules_read',false));
   const[journeyRead,setJourneyRead]=useState(()=>lsGet('ritmo_journey_read',false));
+  const[welcomeSeen,setWelcomeSeen]=useState(()=>lsGet('ritmo_welcome_seen',false));
   const[pendingEmail,setPendingEmail]=useState('');
   const[profile,setProfile]=useState(()=>lsGet('ritmo_profile',{
     name:'',
@@ -7578,7 +7769,12 @@ export default function App(){
     }).catch(()=>{});
     // Live-Updates (SIGNED_IN nach Verify-Klick im selben Tab)
     const {data:sub}=window.supabase.auth.onAuthStateChange((event)=>{
-      if(event==='SIGNED_IN') enter();
+      if(event==='PASSWORD_RECOVERY'){
+        // Supabase hat temporäre Recovery-Session gesetzt → User zum
+        // Passwort-neu-setzen-Screen schicken. Nicht loggedIn=true setzen,
+        // damit Logout/Done-Pfade sauber bleiben.
+        setScr('password-recovery');
+      } else if(event==='SIGNED_IN') enter();
       else if(event==='SIGNED_OUT') setLoggedIn(false);
     });
     return ()=>sub?.subscription?.unsubscribe();
@@ -7598,6 +7794,7 @@ export default function App(){
   useEffect(()=>lsSet('ritmo_onboarded',onboarded),[onboarded]);
   useEffect(()=>lsSet('ritmo_rules_read',rulesRead),[rulesRead]);
   useEffect(()=>lsSet('ritmo_journey_read',journeyRead),[journeyRead]);
+  useEffect(()=>lsSet('ritmo_welcome_seen',welcomeSeen),[welcomeSeen]);
   useEffect(()=>lsSet('ritmo_profile',profile),[profile]);
 
   const nav=useCallback(s=>{
@@ -7666,11 +7863,20 @@ export default function App(){
     {scr==='register'&&<Register
       onSuccess={()=>{setLoggedIn(true);setOnboarded(false);nav('welcome');}}
       onLogin={()=>nav('login')}
-      onNeedsVerification={(email)=>{setPendingEmail(email);nav('verify-email');}}/>}
+      onNeedsVerification={(email)=>{
+        setPendingEmail(email);
+        // Frische Registrierung → Onboarding-Flag zurücksetzen, damit
+        // auch der Supabase-Auth-Listener (SIGNED_IN nach Verify-Klick)
+        // zuverlässig auf 'welcome' routet und nicht auf 'home'.
+        setOnboarded(false);
+        nav('verify-email');
+      }}/>}
     {scr==='verify-email'&&<EmailVerification
       email={pendingEmail}
       onVerified={()=>{setLoggedIn(true);setOnboarded(false);nav('welcome');}}
       onBack={()=>nav('register')}/>}
+    {scr==='password-recovery'&&<PasswordRecovery
+      onDone={()=>{setLoggedIn(true);nav(onboarded?'home':'welcome');}}/>}
     {scr==='welcome'&&<Welcome
       profile={profile} setProfile={setProfile}
       theme={theme} setTheme={setTheme}
@@ -7804,5 +8010,9 @@ export default function App(){
         </button>
       </div>
     )}
+
+    {/* First-launch disclaimer — liegt über allen Screens, blockiert
+        Interaktion bis OK gedrückt wurde */}
+    {!welcomeSeen&&<WelcomeNotice onConfirm={()=>setWelcomeSeen(true)}/>}
   </>);
 }

@@ -1,4 +1,5 @@
 import { useState, useEffect, useReducer, useCallback, useRef, Fragment } from "react";
+import { SKILL_DESCRIPTIONS } from "./skillDescriptions.js";
 
 /* ═══════════════════════════════════════════════════════════════
    DESIGN TOKENS — CSS variables; values per theme defined in CSS below
@@ -2563,9 +2564,7 @@ function ProfileRitmoDNA({profile,onBack,onHome}){
                 </div>
               </div>
               <div style={{color:T.t2,fontSize:12,lineHeight:1.5}}>
-                Bei deinem aktuellen Spielniveau gehört dein
-                <span style={{color:accent,fontWeight:700}}> {style.name}</span>-Stil
-                zu den unangenehmsten Gegnern für defensive Spieler.
+                {SKILL_DESCRIPTIONS[getLevelTier(lvl)]?.desc}
               </div>
             </div>
           </div>

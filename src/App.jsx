@@ -46,6 +46,7 @@ const CSS = `
   --blueSoft: rgba(10,132,255,0.18);
   --blueGlow: rgba(10,132,255,0.5);
   --gold: #C8A878;
+  --headerGrad: linear-gradient(90deg, #FFC037 0%, #5F4848 100%);
 }
 :root[data-theme="light"] {
   --bg: #FFFFFF;
@@ -67,6 +68,7 @@ const CSS = `
   --blueSoft: rgba(255,149,0,0.18);
   --blueGlow: rgba(255,149,0,0.5);
   --gold: #B8945A;
+  --headerGrad: linear-gradient(135deg, #EAF3FF 0%, #C9DBF2 100%);
 }
 :root[data-theme="padel"] {
   --bg: #0018F9;
@@ -88,6 +90,7 @@ const CSS = `
   --blueSoft: rgba(255,149,0,0.18);
   --blueGlow: rgba(255,149,0,0.5);
   --gold: #FFD60A;
+  --headerGrad: linear-gradient(90deg, #FFD60A 0%, #1F2FFA 100%);
 }
 :root[data-theme="wimbledon"] {
   --bg: #006039;
@@ -109,6 +112,7 @@ const CSS = `
   --blueSoft: rgba(237,229,208,0.20);
   --blueGlow: rgba(237,229,208,0.55);
   --gold: #D4B98F;
+  --headerGrad: linear-gradient(90deg, #D4B98F 0%, #006039 100%);
 }
 
 :root[data-theme="funky"] {
@@ -131,6 +135,7 @@ const CSS = `
   --blueSoft: rgba(255,61,90,0.18);
   --blueGlow: rgba(255,61,90,0.55);
   --gold: #FFE52D;
+  --headerGrad: linear-gradient(90deg, #FFE52D 0%, #FF3D5A 100%);
 }
 
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -410,6 +415,103 @@ function playRing(id){
 ═══════════════════════════════════════════════════════════════ */
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}};
+
+/* ═══════════════════════════════════════════════════════════════
+   AUTH MODULE — Supabase if available, mock for preview/dev
+   
+   Production: main.jsx initialisiert window.supabase aus env-vars.
+   Wenn nicht vorhanden → mock-fallback mit localStorage.
+═══════════════════════════════════════════════════════════════ */
+const auth={
+  get isReal(){return typeof window!=='undefined'&&!!window.supabase;},
+
+  async signInWithGoogle(){
+    if(this.isReal){
+      const base=(typeof window!=='undefined'&&window.__BASE__)||'/';
+      const {data,error}=await window.supabase.auth.signInWithOAuth({
+        provider:'google',
+        options:{redirectTo:window.location.origin+base},
+      });
+      if(error) throw new Error(error.message||'Google Login fehlgeschlagen');
+      return data;
+    }
+    await new Promise(r=>setTimeout(r,700));
+    const u={email:'demo@google.com',provider:'google'};
+    lsSet('ritmo_user',u);
+    return {user:u};
+  },
+
+  async signUpWithEmail(email,password){
+    const e=(email||'').trim().toLowerCase();
+    if(!e||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) throw new Error('Bitte gültige E-Mail eingeben');
+    if(!password||password.length<8) throw new Error('Passwort min. 8 Zeichen');
+    if(this.isReal){
+      const base=(typeof window!=='undefined'&&window.__BASE__)||'/';
+      const {data,error}=await window.supabase.auth.signUp({
+        email:e,password,
+        options:{emailRedirectTo:window.location.origin+base},
+      });
+      if(error) throw new Error(error.message||'Registrierung fehlgeschlagen');
+      return {needsVerification:!data.session,email:e};
+    }
+    await new Promise(r=>setTimeout(r,600));
+    lsSet('ritmo_pending_user',{email:e,verified:false,createdAt:Date.now()});
+    return {needsVerification:true,email:e};
+  },
+
+  async signInWithEmail(email,password){
+    const e=(email||'').trim().toLowerCase();
+    if(!e||!password) throw new Error('Bitte alle Felder ausfüllen');
+    if(this.isReal){
+      const {data,error}=await window.supabase.auth.signInWithPassword({email:e,password});
+      if(error) throw new Error(error.message||'Anmeldung fehlgeschlagen');
+      return data;
+    }
+    await new Promise(r=>setTimeout(r,500));
+    const u={email:e,provider:'email'};
+    lsSet('ritmo_user',u);
+    return {user:u};
+  },
+
+  async resendVerification(email){
+    if(this.isReal){
+      const {error}=await window.supabase.auth.resend({type:'signup',email});
+      if(error) throw new Error(error.message||'Resend fehlgeschlagen');
+      return true;
+    }
+    await new Promise(r=>setTimeout(r,500));
+    return true;
+  },
+
+  async confirmVerification(){
+    if(this.isReal){
+      const {data}=await window.supabase.auth.getSession();
+      return !!data.session;
+    }
+    const pending=lsGet('ritmo_pending_user',null);
+    if(pending){
+      const u={email:pending.email,provider:'email',verified:true};
+      lsSet('ritmo_user',u);
+      try{localStorage.removeItem('ritmo_pending_user');}catch(e){}
+      return true;
+    }
+    return false;
+  },
+
+  async signOut(){
+    if(this.isReal){try{await window.supabase.auth.signOut();}catch(e){}}
+    try{localStorage.removeItem('ritmo_user');}catch(e){}
+    try{localStorage.removeItem('ritmo_pending_user');}catch(e){}
+  },
+
+  getCurrentUser(){
+    if(this.isReal){
+      // Supabase handles session; component should listen to onAuthStateChange
+      return null;
+    }
+    return lsGet('ritmo_user',null);
+  },
+};
 
 /* ═══════════════════════════════════════════════════════════════
    ICONS / LOGOS
@@ -892,7 +994,7 @@ function HeroJourneyVisual(){
 }
 
 /* ─── Landing pages ─────────────────────────────────────────── */
-function RulesLanding({onHome,onContinue}){
+function RulesLanding({onHome,onContinue,onMarkRead,alreadyRead}){
   return(
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden'}}>
@@ -917,7 +1019,7 @@ function RulesLanding({onHome,onContinue}){
       </div>
 
       {/* Title + description */}
-      <div style={{flex:1,padding:'24px 22px',overflowY:'auto',
+      <div style={{flex:1,padding:'24px 22px 16px',overflowY:'auto',
         display:'flex',flexDirection:'column'}}>
         <div className="fi" style={{color:T.t1,fontSize:36,fontWeight:900,
           letterSpacing:-.6,lineHeight:1,animationDelay:'.05s'}}>Padel Up</div>
@@ -927,6 +1029,18 @@ function RulesLanding({onHome,onContinue}){
           verinnerlicht hat, spielt entspannter, fairer und kann sich auf das
           Wesentliche konzentrieren — Strategie, Schlagwahl, Teamwork.
         </div>
+
+        {/* Gelesen button */}
+        <button onClick={onMarkRead} className="fu" style={{
+          marginTop:24,background:alreadyRead?T.oSoft:'transparent',
+          border:`1.5px solid ${alreadyRead?T.o:T.border}`,
+          borderRadius:12,padding:'12px 16px',color:alreadyRead?T.o:T.t2,
+          fontSize:13,fontWeight:700,cursor:'pointer',
+          display:'flex',alignItems:'center',justifyContent:'center',gap:8,
+          animationDelay:'.25s'}}>
+          {alreadyRead&&<span>✓</span>}
+          {alreadyRead?'Gelesen — direkt zum Index':'Schon gelesen? Direkt zum Index'}
+        </button>
       </div>
 
       <div style={{height:100,flexShrink:0}}/>
@@ -937,7 +1051,7 @@ function RulesLanding({onHome,onContinue}){
   );
 }
 
-function JourneyLanding({onHome,onContinue}){
+function JourneyLanding({onHome,onContinue,onMarkRead,alreadyRead}){
   return(
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden'}}>
@@ -961,7 +1075,7 @@ function JourneyLanding({onHome,onContinue}){
       </div>
 
       {/* Title + description */}
-      <div style={{flex:1,padding:'24px 22px',overflowY:'auto',
+      <div style={{flex:1,padding:'24px 22px 16px',overflowY:'auto',
         display:'flex',flexDirection:'column'}}>
         <div className="fi" style={{color:T.t1,fontSize:36,fontWeight:900,
           letterSpacing:-.6,lineHeight:1,animationDelay:'.05s'}}>Spielsinn</div>
@@ -971,6 +1085,18 @@ function JourneyLanding({onHome,onContinue}){
           Position und Material versteht, gewinnt nicht über Power, sondern über
           Köpfchen — und genau dorthin führt diese Sektion.
         </div>
+
+        {/* Gelesen button */}
+        <button onClick={onMarkRead} className="fu" style={{
+          marginTop:24,background:alreadyRead?T.oSoft:'transparent',
+          border:`1.5px solid ${alreadyRead?T.o:T.border}`,
+          borderRadius:12,padding:'12px 16px',color:alreadyRead?T.o:T.t2,
+          fontSize:13,fontWeight:700,cursor:'pointer',
+          display:'flex',alignItems:'center',justifyContent:'center',gap:8,
+          animationDelay:'.25s'}}>
+          {alreadyRead&&<span>✓</span>}
+          {alreadyRead?'Gelesen — direkt zum Index':'Schon gelesen? Direkt zum Index'}
+        </button>
       </div>
 
       <div style={{height:100,flexShrink:0}}/>
@@ -1161,16 +1287,38 @@ function Login({onSuccess,onRegister}){
   const[password,setPassword]=useState('');
   const[error,setError]=useState('');
   const[shake,setShake]=useState(false);
+  const[busy,setBusy]=useState(false);
 
-  const tryLogin=()=>{
+  const fail=(msg)=>{
+    setError(msg);
+    setShake(true);
+    setTimeout(()=>setShake(false),420);
+  };
+
+  const tryLogin=async()=>{
+    // Dev shortcut
     if(username.trim()==='dev'&&password==='ritmodev'){
       setError('');
       onSuccess();
-    } else {
-      setError('Falscher Benutzername oder Passwort');
-      setShake(true);
-      setTimeout(()=>setShake(false),420);
+      return;
     }
+    setBusy(true);setError('');
+    try{
+      await auth.signInWithEmail(username,password);
+      onSuccess();
+    }catch(e){
+      fail(e.message||'Anmeldung fehlgeschlagen');
+    }finally{setBusy(false);}
+  };
+
+  const tryGoogle=async()=>{
+    setBusy(true);setError('');
+    try{
+      await auth.signInWithGoogle();
+      onSuccess();
+    }catch(e){
+      fail(e.message||'Google-Anmeldung fehlgeschlagen');
+    }finally{setBusy(false);}
   };
 
   const onKeyDown=(e)=>{ if(e.key==='Enter') tryLogin(); };
@@ -1201,25 +1349,26 @@ function Login({onSuccess,onRegister}){
         </div>
 
         {/* Google */}
-        <button onClick={()=>{/* no-op placeholder */}}
+        <button onClick={tryGoogle} disabled={busy}
           style={{display:'flex',alignItems:'center',justifyContent:'center',gap:10,
             background:'#fff',border:'1px solid rgba(0,0,0,.15)',borderRadius:12,
             padding:'13px 16px',color:'#1f1f1f',fontSize:15,fontWeight:600,
-            cursor:'pointer',marginBottom:10,
+            cursor:busy?'not-allowed':'pointer',marginBottom:10,opacity:busy?.6:1,
             boxShadow:'0 1px 2px rgba(0,0,0,.12)'}}>
           <GoogleGlyph size={18}/>
           <span>Mit Google anmelden</span>
         </button>
 
-        {/* Apple */}
-        <button onClick={()=>{/* no-op placeholder */}}
+        {/* Apple — disabled bis Apple Dev Program aktiv */}
+        <button disabled
           style={{display:'flex',alignItems:'center',justifyContent:'center',gap:10,
-            background:'#000',border:'1px solid #000',borderRadius:12,
-            padding:'13px 16px',color:'#fff',fontSize:15,fontWeight:600,
-            cursor:'pointer',marginBottom:22,
-            boxShadow:'0 1px 2px rgba(0,0,0,.3)'}}>
+            background:'#000',border:'1px solid rgba(255,255,255,.08)',borderRadius:12,
+            padding:'13px 16px',color:'rgba(255,255,255,.4)',fontSize:15,fontWeight:600,
+            cursor:'not-allowed',marginBottom:22,position:'relative'}}>
           <AppleGlyph size={18}/>
           <span>Mit Apple anmelden</span>
+          <span style={{position:'absolute',top:6,right:10,fontSize:9,fontWeight:700,
+            letterSpacing:.5,color:T.t3,textTransform:'uppercase'}}>bald</span>
         </button>
 
         {/* Divider */}
@@ -1229,14 +1378,14 @@ function Login({onSuccess,onRegister}){
           <div style={{flex:1,height:1,background:T.border}}/>
         </div>
 
-        {/* Username */}
+        {/* Email */}
         <div style={{marginBottom:10}}>
           <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
-            textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Benutzername</div>
+            textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>E-Mail</div>
           <input value={username} onChange={e=>{setUsername(e.target.value);setError('');}}
-            onKeyDown={onKeyDown} autoComplete="username"
+            onKeyDown={onKeyDown} autoComplete="email" type="email"
             autoCapitalize="off" autoCorrect="off" spellCheck={false}
-            placeholder="dev"
+            placeholder="du@example.com"
             style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
               borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
               outline:'none',boxSizing:'border-box'}}/>
@@ -1264,11 +1413,12 @@ function Login({onSuccess,onRegister}){
         )}
 
         {/* Submit */}
-        <button onClick={tryLogin}
+        <button onClick={tryLogin} disabled={busy}
           style={{background:T.o,border:'none',borderRadius:12,
             padding:'14px 16px',color:'#000',fontSize:15,fontWeight:800,letterSpacing:.2,
-            cursor:'pointer',boxShadow:'0 4px 14px var(--oGlow)'}}>
-          Anmelden
+            cursor:busy?'not-allowed':'pointer',opacity:busy?.6:1,
+            boxShadow:'0 4px 14px var(--oGlow)'}}>
+          {busy?'…':'Anmelden'}
         </button>
 
         {/* Register */}
@@ -1292,8 +1442,289 @@ function Login({onSuccess,onRegister}){
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   WELCOME / ONBOARDING — Kapitel-System
-   Erweiterbar: füge Einträge zu `chapters` hinzu (z.B. Playtomic, Spielstil)
+   REGISTER — Email Signup + OAuth Optionen
+═══════════════════════════════════════════════════════════════ */
+function Register({onSuccess,onLogin,onNeedsVerification}){
+  const[email,setEmail]=useState('');
+  const[password,setPassword]=useState('');
+  const[password2,setPassword2]=useState('');
+  const[error,setError]=useState('');
+  const[shake,setShake]=useState(false);
+  const[busy,setBusy]=useState(false);
+
+  const fail=(msg)=>{
+    setError(msg);
+    setShake(true);
+    setTimeout(()=>setShake(false),420);
+  };
+
+  const tryRegister=async()=>{
+    if(password!==password2){
+      fail('Passwörter stimmen nicht überein');
+      return;
+    }
+    setBusy(true);setError('');
+    try{
+      const r=await auth.signUpWithEmail(email,password);
+      if(r.needsVerification){
+        onNeedsVerification(r.email);
+      }else{
+        onSuccess();
+      }
+    }catch(e){
+      fail(e.message||'Registrierung fehlgeschlagen');
+    }finally{setBusy(false);}
+  };
+
+  const tryGoogle=async()=>{
+    setBusy(true);setError('');
+    try{
+      await auth.signInWithGoogle();
+      onSuccess();
+    }catch(e){
+      fail(e.message||'Google fehlgeschlagen');
+    }finally{setBusy(false);}
+  };
+
+  const onKeyDown=(e)=>{ if(e.key==='Enter') tryRegister(); };
+
+  return(
+    <div style={{minHeight:'100dvh',background:T.bg,display:'flex',
+      flexDirection:'column',alignItems:'center',justifyContent:'center',
+      padding:'calc(env(safe-area-inset-top,0px) + 40px) 22px calc(env(safe-area-inset-bottom,0px) + 40px)',
+      overflow:'auto'}}>
+      <style>{`
+        @keyframes shakeBox {
+          0%,100%{transform:translateX(0)}
+          20%{transform:translateX(-8px)}40%{transform:translateX(8px)}
+          60%{transform:translateX(-5px)}80%{transform:translateX(5px)}
+        }
+        .reg-shake{animation:shakeBox .42s ease}
+      `}</style>
+
+      <div className={`fi ${shake?'reg-shake':''}`}
+        style={{width:'100%',maxWidth:380,display:'flex',flexDirection:'column'}}>
+
+        <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:14,marginBottom:28}}>
+          <RitmoSplashLogo size={110}/>
+          <div style={{color:T.t1,fontSize:22,fontWeight:800,letterSpacing:-.3}}>Account erstellen</div>
+          <div style={{color:T.t3,fontSize:12,textAlign:'center',maxWidth:280}}>
+            In wenigen Sekunden dein RITMO-Konto.
+          </div>
+        </div>
+
+        {/* Google */}
+        <button onClick={tryGoogle} disabled={busy}
+          style={{display:'flex',alignItems:'center',justifyContent:'center',gap:10,
+            background:'#fff',border:'1px solid rgba(0,0,0,.15)',borderRadius:12,
+            padding:'13px 16px',color:'#1f1f1f',fontSize:15,fontWeight:600,
+            cursor:busy?'not-allowed':'pointer',marginBottom:10,opacity:busy?.6:1,
+            boxShadow:'0 1px 2px rgba(0,0,0,.12)'}}>
+          <GoogleGlyph size={18}/>
+          <span>Mit Google registrieren</span>
+        </button>
+
+        {/* Apple disabled */}
+        <button disabled
+          style={{display:'flex',alignItems:'center',justifyContent:'center',gap:10,
+            background:'#000',border:'1px solid rgba(255,255,255,.08)',borderRadius:12,
+            padding:'13px 16px',color:'rgba(255,255,255,.4)',fontSize:15,fontWeight:600,
+            cursor:'not-allowed',marginBottom:22,position:'relative'}}>
+          <AppleGlyph size={18}/>
+          <span>Mit Apple registrieren</span>
+          <span style={{position:'absolute',top:6,right:10,fontSize:9,fontWeight:700,
+            letterSpacing:.5,color:T.t3,textTransform:'uppercase'}}>bald</span>
+        </button>
+
+        {/* Divider */}
+        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:18}}>
+          <div style={{flex:1,height:1,background:T.border}}/>
+          <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.5}}>ODER MIT E-MAIL</div>
+          <div style={{flex:1,height:1,background:T.border}}/>
+        </div>
+
+        {/* Email */}
+        <div style={{marginBottom:10}}>
+          <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
+            textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>E-Mail</div>
+          <input value={email} onChange={e=>{setEmail(e.target.value);setError('');}}
+            onKeyDown={onKeyDown} autoComplete="email" type="email"
+            autoCapitalize="off" autoCorrect="off" spellCheck={false}
+            placeholder="du@example.com"
+            style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
+              borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
+              outline:'none',boxSizing:'border-box'}}/>
+        </div>
+
+        {/* Password */}
+        <div style={{marginBottom:10}}>
+          <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
+            textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Passwort</div>
+          <input type="password" value={password}
+            onChange={e=>{setPassword(e.target.value);setError('');}}
+            onKeyDown={onKeyDown} autoComplete="new-password"
+            placeholder="Mindestens 8 Zeichen"
+            style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
+              borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
+              outline:'none',boxSizing:'border-box'}}/>
+        </div>
+
+        {/* Confirm Password */}
+        <div style={{marginBottom:16}}>
+          <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
+            textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Passwort bestätigen</div>
+          <input type="password" value={password2}
+            onChange={e=>{setPassword2(e.target.value);setError('');}}
+            onKeyDown={onKeyDown} autoComplete="new-password"
+            placeholder="••••••••"
+            style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
+              borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
+              outline:'none',boxSizing:'border-box'}}/>
+        </div>
+
+        {error&&(
+          <div style={{background:'rgba(232,69,69,.12)',border:'1px solid rgba(232,69,69,.4)',
+            borderRadius:8,padding:'9px 12px',marginBottom:12,
+            color:'#FF6B6B',fontSize:12,fontWeight:600,letterSpacing:.2}}>
+            {error}
+          </div>
+        )}
+
+        <button onClick={tryRegister} disabled={busy}
+          style={{background:T.o,border:'none',borderRadius:12,
+            padding:'14px 16px',color:'#000',fontSize:15,fontWeight:800,letterSpacing:.2,
+            cursor:busy?'not-allowed':'pointer',opacity:busy?.6:1,
+            boxShadow:'0 4px 14px var(--oGlow)'}}>
+          {busy?'…':'Registrieren'}
+        </button>
+
+        <div style={{display:'flex',alignItems:'center',gap:8,marginTop:18,
+          justifyContent:'center'}}>
+          <div style={{color:T.t3,fontSize:12}}>Schon Account?</div>
+          <button onClick={onLogin}
+            style={{background:'none',border:'none',color:T.o,fontSize:13,
+              fontWeight:700,cursor:'pointer',padding:'4px 8px',textDecoration:'underline'}}>
+            Anmelden
+          </button>
+        </div>
+
+        <div style={{color:T.t3,fontSize:10,textAlign:'center',marginTop:18,
+          letterSpacing:.3,opacity:0.7}}>
+          Made by Team RITMO. With love for Padel ♡
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   EMAIL VERIFICATION — nach Email-Signup
+═══════════════════════════════════════════════════════════════ */
+function EmailVerification({email,onVerified,onBack}){
+  const[busy,setBusy]=useState(false);
+  const[resent,setResent]=useState(false);
+  const[error,setError]=useState('');
+
+  // Auto-poll session every 3s — Supabase Email-Click setzt Session automatisch
+  useEffect(()=>{
+    const id=setInterval(async()=>{
+      try{
+        const ok=await auth.confirmVerification();
+        if(ok) onVerified();
+      }catch(e){}
+    },3000);
+    return ()=>clearInterval(id);
+  },[onVerified]);
+
+  const resend=async()=>{
+    setBusy(true);setError('');
+    try{
+      await auth.resendVerification(email);
+      setResent(true);
+      setTimeout(()=>setResent(false),3000);
+    }catch(e){setError(e.message||'Fehler beim Senden');}
+    finally{setBusy(false);}
+  };
+
+  const manualCheck=async()=>{
+    setBusy(true);setError('');
+    try{
+      const ok=await auth.confirmVerification();
+      if(ok) onVerified();
+      else setError('Noch nicht bestätigt — prüfe dein Postfach.');
+    }catch(e){setError(e.message||'Prüfung fehlgeschlagen');}
+    finally{setBusy(false);}
+  };
+
+  return(
+    <div style={{minHeight:'100dvh',background:T.bg,display:'flex',
+      flexDirection:'column',alignItems:'center',justifyContent:'center',
+      padding:'calc(env(safe-area-inset-top,0px) + 40px) 22px calc(env(safe-area-inset-bottom,0px) + 40px)'}}>
+      <div className="fi" style={{width:'100%',maxWidth:380,display:'flex',
+        flexDirection:'column',alignItems:'center'}}>
+
+        {/* Mail icon */}
+        <div style={{width:88,height:88,borderRadius:'50%',background:T.oSoft,
+          display:'flex',alignItems:'center',justifyContent:'center',marginBottom:22,
+          border:`2px solid ${T.o}40`}}>
+          <svg width="38" height="38" viewBox="0 0 24 24" fill="none"
+            stroke={T.o} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+            <polyline points="22,6 12,13 2,6"/>
+          </svg>
+        </div>
+
+        <div style={{color:T.t1,fontSize:22,fontWeight:800,letterSpacing:-.3,
+          textAlign:'center',marginBottom:8}}>
+          Bestätige deine E-Mail
+        </div>
+        <div style={{color:T.t2,fontSize:14,lineHeight:1.5,textAlign:'center',
+          maxWidth:320,marginBottom:6}}>
+          Wir haben einen Link an
+        </div>
+        <div style={{color:T.o,fontSize:15,fontWeight:700,marginBottom:14,
+          wordBreak:'break-all',textAlign:'center'}}>
+          {email}
+        </div>
+        <div style={{color:T.t3,fontSize:13,lineHeight:1.5,textAlign:'center',
+          maxWidth:320,marginBottom:26}}>
+          geschickt. Klick darauf, um dein Konto zu aktivieren. Sobald bestätigt,
+          geht's automatisch weiter.
+        </div>
+
+        {error&&(
+          <div style={{background:'rgba(232,69,69,.12)',border:'1px solid rgba(232,69,69,.4)',
+            borderRadius:8,padding:'9px 12px',marginBottom:14,
+            color:'#FF6B6B',fontSize:12,fontWeight:600,width:'100%',textAlign:'center'}}>
+            {error}
+          </div>
+        )}
+
+        <button onClick={manualCheck} disabled={busy}
+          style={{width:'100%',background:T.o,border:'none',borderRadius:12,
+            padding:'14px 16px',color:'#000',fontSize:15,fontWeight:800,
+            cursor:busy?'not-allowed':'pointer',opacity:busy?.6:1,
+            boxShadow:'0 4px 14px var(--oGlow)',marginBottom:10}}>
+          {busy?'Prüfe…':'Ich habe es bestätigt'}
+        </button>
+
+        <button onClick={resend} disabled={busy||resent}
+          style={{width:'100%',background:T.card,border:`1px solid ${T.border}`,
+            borderRadius:12,padding:'12px 16px',color:T.t1,fontSize:13,fontWeight:600,
+            cursor:(busy||resent)?'not-allowed':'pointer',opacity:(busy||resent)?.6:1,
+            marginBottom:18}}>
+          {resent?'✓ Erneut gesendet':'E-Mail erneut senden'}
+        </button>
+
+        <button onClick={onBack}
+          style={{background:'none',border:'none',color:T.t3,fontSize:12,
+            cursor:'pointer',padding:6,textDecoration:'underline'}}>
+          Falsche E-Mail? Zurück
+        </button>
+      </div>
+    </div>
+  );
+}
 ═══════════════════════════════════════════════════════════════ */
 
 function OnboardProgress({total,current}){
@@ -1640,55 +2071,115 @@ const PADEL_STYLES={
   chico:{
     name:'Chico / Chica', subtitle:'Der Allrounder',
     tagline:'Kann alles. Macht wenig falsch.',
-    desc:'Vielseitig, anpassungsfähig und konstant — Chico / Chica passt sich schnell an Gegner, Partner und Match-Dynamik an. Kein extremes Risiko, aber fast immer die richtige Lösung.',
+    desc:'Vielseitig, anpassungsfähig und konstant — Chico / Chica passt sich schnell an Gegner, Partner und Match-Dynamik an. Kein extremes Risiko, aber fast immer die richtige Lösung. Dieser Typ liest das Match in Echtzeit und wechselt zwischen Offensive und Defensive je nach Situation.',
     kernwerte:['Balance','Anpassung','Konstanz'],
+    strengths:[
+      'Stabilität in jedem Match-Szenario',
+      'Minimiert eigene Fehler über lange Sätze',
+      'Liest Gegner und Partner intuitiv',
+      'Wechselt situativ zwischen Modi',
+    ],
     shots:['Kontrollierte Volleys','Bandeja','Lob','Chiquita','Returns'],
     weaknesses:['Zu vorsichtig','Kein Killerinstinkt','Kann passiv wirken'],
+    partners:[
+      {id:'toro',why:'Du gleichst Toros Risiko aus und stabilisierst das Match.'},
+      {id:'fantasma',why:'Du verankerst Fantasmas Chaos mit Konstanz.'},
+    ],
     accent:'#C9943A', card:'#2E1E08', text:'#FFF3D9', symbol:'○',
   },
   toro:{
     name:'Toro', subtitle:'Der Aggressor',
     tagline:'Druck ist meine Defensive.',
-    desc:'Toro lebt von Intensität und Netzkontrolle. Er sucht Punkte zu diktieren, forciert Fehler und macht das Match körperlich und mental anstrengend für den Gegner.',
+    desc:'Toro lebt von Intensität und Netzkontrolle. Er sucht Punkte zu diktieren, forciert Fehler und macht das Match körperlich und mental anstrengend für den Gegner. Wenn Toro im Flow ist, fühlt sich der Court enger an — jeder Ball muss schneller, besser, riskanter gespielt werden.',
     kernwerte:['Power','Dominanz','Entschlossenheit'],
+    strengths:[
+      'Forciert Punktende durch Netzpräsenz',
+      'Erzeugt physischen und mentalen Druck',
+      'Belohnt aggressive Risikobereitschaft',
+      'Dominiert kurze Punkte',
+    ],
     shots:['Smash / Remate','Víbora','Aggressive Volley','Bajada','Netzangriff'],
     weaknesses:['Überhastung','Hohes Fehlerrisiko','Berechenbar'],
+    partners:[
+      {id:'muro',why:'Muro liefert die Defensive, die deine Aggression absichert.'},
+      {id:'chico',why:'Chico balanciert deine Spitzen und macht weniger Fehler.'},
+    ],
     accent:'#C0392B', card:'#2A0808', text:'#FFE0DC', symbol:'▲',
   },
   individuoso:{
     name:'Individuoso', subtitle:'Der Strategische',
     tagline:'Ich gewinne den Punkt vor dem Schlag.',
-    desc:'Individuoso denkt mehrere Schläge voraus, analysiert Räume und Rhythmen, kontrolliert Tempo und zwingt Gegner in unangenehme Entscheidungen. Schach auf Glas.',
+    desc:'Individuoso denkt mehrere Schläge voraus, analysiert Räume und Rhythmen, kontrolliert Tempo und zwingt Gegner in unangenehme Entscheidungen. Schach auf Glas. Dieser Typ baut Punkte über mehrere Schläge auf — der entscheidende Ball ist oft die Folge von zwei Schlägen davor.',
     kernwerte:['Strategie','Antizipation','Präzision'],
+    strengths:[
+      'Liest Spielmuster zwei bis drei Schläge voraus',
+      'Findet Lücken in Gegner-Aufstellungen',
+      'Setzt Tempo und Rhythmus gezielt ein',
+      'Verwandelt Information in Punkte',
+    ],
     shots:['Winkelvolleys','Tempowechsel','Präzisions-Lobs','Chiquita','Platzierungs-Bandeja'],
     weaknesses:['Overthinken','Zu wenig Direktheit','Risiko von Passivität'],
+    partners:[
+      {id:'motor',why:'Motor exekutiert deine Pläne mit Tempo und Reichweite.'},
+      {id:'toro',why:'Toro setzt deine taktischen Lücken in Punkte um.'},
+    ],
     accent:'#2471A3', card:'#071828', text:'#D0E8FF', symbol:'■',
   },
   muro:{
     name:'Muro', subtitle:'Die Wand',
     tagline:'Du machst den Fehler.',
-    desc:'Muro gewinnt durch Geduld, Defensive und mentale Stärke. Er bringt jeden Ball zurück und zwingt Gegner dazu, selbst Fehler zu machen. Jeder Punkt fühlt sich länger an.',
+    desc:'Muro gewinnt durch Geduld, Defensive und mentale Stärke. Er bringt jeden Ball zurück und zwingt Gegner dazu, selbst Fehler zu machen. Jeder Punkt fühlt sich länger an. Gegen Muro reichen normale Schläge nicht — du musst aktiv riskieren um zu gewinnen, und das ist genau die Falle.',
     kernwerte:['Geduld','Widerstandskraft','Kontrolle'],
+    strengths:[
+      'Bringt fast jeden Ball ins Spiel zurück',
+      'Frustriert Gegner mental über lange Rallyes',
+      'Verwandelt Defensive in Court-Kontrolle',
+      'Verlängert jeden Punkt um zwei Schläge',
+    ],
     shots:['Defensiv-Lob','Tiefe Returns','Glas-Defense','Hohe Bandeja','Crosscourt'],
     weaknesses:['Wenig Initiative','Gefahr passiv zu werden','Reaktiv'],
+    partners:[
+      {id:'toro',why:'Toro liefert die Offensive, die du absicherst.'},
+      {id:'fantasma',why:'Fantasma erzeugt Überraschung, du bringst den Rest zurück.'},
+    ],
     accent:'#1E8449', card:'#071A0E', text:'#C8F0D8', symbol:'⬡',
   },
   fantasma:{
     name:'Fantasma', subtitle:'Der Kreative',
     tagline:'Du weißt nie, was kommt.',
-    desc:'Fantasma ist unvorhersehbar, intuitiv und liebt Überraschung. Mit ungewöhnlichen Winkeln, Rhythmusbrüchen und mutigen Ideen erzeugt er Chaos und Unsicherheit.',
+    desc:'Fantasma ist unvorhersehbar, intuitiv und liebt Überraschung. Mit ungewöhnlichen Winkeln, Rhythmusbrüchen und mutigen Ideen erzeugt er Chaos und Unsicherheit. Gegen Fantasma ist Lesen schwerer als Rennen — du weißt nie, ob jetzt der Chiquita oder der Smash kommt.',
     kernwerte:['Kreativität','Überraschung','Freiheit'],
+    strengths:[
+      'Bricht systematische Gegner-Strategien auf',
+      'Erzeugt unlesbare, unkonventionelle Spielzüge',
+      'Findet Winkel die Gegner nicht erwarten',
+      'Mentaler Game-Changer in engen Sätzen',
+    ],
     shots:['Trickshots','Chiquita','Spin-Lobs','Überraschungs-Lob','Unkonventionelle Volleys'],
     weaknesses:['Inkonsistenz','Hohes Risiko','Unnötig verspielt'],
+    partners:[
+      {id:'muro',why:'Muro fängt deine kreativen Risiken sicher auf.'},
+      {id:'chico',why:'Chico bringt Konstanz in dein verspieltes Repertoire.'},
+    ],
     accent:'#7D3C98', card:'#180828', text:'#EDD8FF', symbol:'●',
   },
   motor:{
     name:'Motor', subtitle:'Der Ausdauernde',
     tagline:'Ich krieg noch einen Ball.',
-    desc:'Motor gewinnt durch Bewegung, Reichweite und nie endende Energie. Er deckt enorme Flächen ab und bleibt auch in langen Rallyes gefährlich. Wer ihn schlagen will, muss einen Extra-Ball spielen.',
+    desc:'Motor gewinnt durch Bewegung, Reichweite und nie endende Energie. Er deckt enorme Flächen ab und bleibt auch in langen Rallyes gefährlich. Wer ihn schlagen will, muss einen Extra-Ball spielen. Motor zermürbt Gegner allein durch seine Präsenz auf jedem Quadratmeter des Courts.',
     kernwerte:['Ausdauer','Geschwindigkeit','Kampfgeist'],
+    strengths:[
+      'Deckt enorme Court-Fläche ab',
+      'Erreicht "unmögliche" Bälle und verlängert Punkte',
+      'Bleibt fit und scharf über lange Matches',
+      'Erzwingt Extra-Schläge beim Gegner',
+    ],
     shots:['Recovery Lob','Laufvolleys','Defensive Counter','Tiefe Returns','Sprint-Retrievals'],
-    weaknesses:['Wenig Power','Kann sich überarbeiten','Ineffizienz'],
+    weaknesses:['Wenig natürliche Power','Kann sich überarbeiten','Risiko von ineffizientem Energieeinsatz'],
+    partners:[
+      {id:'individuoso',why:'Individuoso lenkt deine Energie taktisch klug.'},
+      {id:'muro',why:'Muro hält den Court, während du jagst.'},
+    ],
     accent:'#27AE60', card:'#071A10', text:'#C8FFE0', symbol:'▶▶',
   },
 };
@@ -2444,10 +2935,16 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding}){
 function Home({nav,activeTab,setActiveTab,profile}){
   return(
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
-      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
+      position:'relative',overflow:'hidden'}}>
 
-      <div style={{padding:'0 22px 28px',display:'flex',alignItems:'flex-start',
-        justifyContent:'space-between',gap:14}}>
+      {/* HEADER ZONE — gradient via theme CSS var */}
+      <div style={{
+        padding:'calc(env(safe-area-inset-top,0px) + 60px) 22px 40px',
+        display:'flex',alignItems:'flex-start',
+        justifyContent:'space-between',gap:14,
+        background:'var(--headerGrad)',
+        position:'relative',zIndex:1,
+      }}>
         <div style={{flex:1,minWidth:0}}>
           <RitmoWordmark size={26}/>
           {profile?.name?(
@@ -2466,7 +2963,19 @@ function Home({nav,activeTab,setActiveTab,profile}){
           onClick={()=>nav('profile')}/>
       </div>
 
-      <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
+      {/* CORPUS — drawer-style panel (rounded top, elevated shadow) */}
+      <div style={{
+        flex:1,
+        background:T.bg,
+        borderTopLeftRadius:24,
+        borderTopRightRadius:24,
+        marginTop:-20,
+        boxShadow:'0 -10px 28px rgba(0,0,0,0.55), 0 -1px 0 rgba(255,255,255,0.04) inset',
+        padding:'26px 22px 0',
+        display:'flex',flexDirection:'column',gap:14,
+        overflowY:'auto',WebkitOverflowScrolling:'touch',
+        position:'relative',zIndex:2,
+      }}>
 
         {/* Single Match */}
         <button onClick={()=>nav('single-setup')} className="fu"
@@ -2546,9 +3055,11 @@ function Home({nav,activeTab,setActiveTab,profile}){
             <div style={{color:T.t3,fontSize:11,fontWeight:500}}>Tipps & Tricks | Taktik | Material</div>
           </div>
         </button>
+
+        {/* Internal scroll-bottom spacer so last card isn't hidden behind floating TabBar */}
+        <div style={{height:120,flexShrink:0}}/>
       </div>
 
-      <div style={{height:120}}/>
       <TabBar active={activeTab} onTab={setActiveTab}/>
     </div>
   );
@@ -6094,6 +6605,7 @@ function BaelleVisual(){
 
 function Journey({onHome,onSelect}){
   const sections=[
+    {id:'spielstile',   icon:'🎭',title:'Spielstile',    sub:'Die 6 Padel-Personalities'},
     {id:'angaben',      icon:'🎯',title:'Aufschlag',     sub:'Reihenfolge, Position & Strategie'},
     {id:'aufstellungen',icon:'👥',title:'Aufstellungen', sub:'Netz, Hinten, Verteidigung, Angriff'},
     {id:'haende',       icon:'🤝',title:'Hand-Seiten',   sub:'Links-/Rechtshänder am Court'},
@@ -6141,6 +6653,238 @@ function Journey({onHome,onSelect}){
 }
 
 const J_BACK={backIcon:<JourneyIcon size={18}/>};
+
+/* ── JourneySpielstileList — Overview of 6 styles ──────────────── */
+function JourneySpielstileList({onBack,onHome,onSelect}){
+  const order=['chico','toro','individuoso','muro','fantasma','motor'];
+  const[imgErr,setImgErr]=useState({});
+
+  return(
+    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
+      <div style={{padding:'0 22px 8px'}}>
+        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
+          <div style={{fontSize:32,width:42,textAlign:'center'}}>🎭</div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{color:T.t1,fontSize:22,fontWeight:800,letterSpacing:-.3}}>
+              Die 6 Spielstile
+            </div>
+            <div style={{color:T.t3,fontSize:12,marginTop:2,fontWeight:500}}>
+              Jeder Padel-Typ — Stärken, Schwächen und Partner.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Style cards */}
+      <div style={{flex:1,padding:'14px 22px 0',display:'flex',flexDirection:'column',gap:10,
+        overflowY:'auto',WebkitOverflowScrolling:'touch'}}>
+        {order.map((id,i)=>{
+          const s=PADEL_STYLES[id];
+          const fn=STYLE_IMAGES[id];
+          return(
+            <button key={id} onClick={()=>onSelect(id)} className="fu"
+              style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+                padding:0,display:'flex',alignItems:'stretch',gap:0,
+                cursor:'pointer',color:T.t1,textAlign:'left',overflow:'hidden',
+                animationDelay:`${i*40}ms`,transition:'border-color .15s'}}
+              onPointerDown={e=>e.currentTarget.style.borderColor=s.accent}
+              onPointerUp={e=>e.currentTarget.style.borderColor=T.border}
+              onPointerLeave={e=>e.currentTarget.style.borderColor=T.border}>
+              <div style={{width:96,flexShrink:0,background:s.accent,
+                position:'relative',overflow:'hidden'}}>
+                {imgErr[id]?(
+                  <div style={{width:'100%',height:'100%',display:'flex',
+                    alignItems:'center',justifyContent:'center',color:'white',
+                    fontSize:22,fontWeight:900}}>
+                    {s.symbol}
+                  </div>
+                ):(
+                  <img src={`${getAssetBase()}assets/${fn}`}
+                    onError={()=>setImgErr(e=>({...e,[id]:true}))}
+                    style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}
+                    alt={s.name}/>
+                )}
+              </div>
+              <div style={{flex:1,minWidth:0,padding:'14px 14px 14px 16px',
+                display:'flex',flexDirection:'column',justifyContent:'center'}}>
+                <div style={{display:'flex',alignItems:'baseline',gap:7,marginBottom:3}}>
+                  <div style={{color:s.accent,fontSize:14,fontWeight:900,letterSpacing:-.2}}>
+                    {s.name}
+                  </div>
+                  <div style={{color:T.t3,fontSize:10,fontWeight:600,letterSpacing:.5,
+                    textTransform:'uppercase'}}>{s.subtitle}</div>
+                </div>
+                <div style={{color:T.t2,fontSize:11,lineHeight:1.4,fontStyle:'italic'}}>
+                  „{s.tagline}"
+                </div>
+              </div>
+              <div style={{display:'flex',alignItems:'center',paddingRight:14,
+                color:T.t3,fontSize:20,fontWeight:600}}>›</div>
+            </button>
+          );
+        })}
+        <div style={{height:20}}/>
+      </div>
+      <div style={{height:100}}/>
+      <MatchBar onHome={onHome} rightButtons={[
+        {icon:<JourneyIcon size={18}/>,onClick:onBack}
+      ]}/>
+    </div>
+  );
+}
+
+/* ── JourneySpielstile — Detail via RulesDetailLayout ──────────── */
+function JourneySpielstile({styleId,onBack,onHome,onNext,onPrev,currentIdx,totalSections,onPartnerJump}){
+  const style=PADEL_STYLES[styleId];
+  const filename=STYLE_IMAGES[styleId];
+  const[imgErr,setImgErr]=useState(false);
+
+  if(!style) return null;
+
+  const hero=imgErr?(
+    <div style={{width:'100%',aspectRatio:'7/5',background:style.accent,
+      display:'flex',alignItems:'center',justifyContent:'center',
+      color:'white',fontSize:28,fontWeight:900,letterSpacing:1.5,borderRadius:8}}>
+      {style.name.toUpperCase()}
+    </div>
+  ):(
+    <img src={`${getAssetBase()}assets/${filename}`}
+      onError={()=>setImgErr(true)}
+      style={{width:'100%',height:'auto',aspectRatio:'7/5',
+        objectFit:'cover',display:'block',borderRadius:8}}
+      alt={style.name}/>
+  );
+
+  return(
+    <RulesDetailLayout
+      icon={style.symbol}
+      title={style.name}
+      sub={style.subtitle}
+      visual={hero}
+      onBackToRules={onBack}
+      onHome={onHome}
+      onNext={onNext}
+      onPrev={onPrev}
+      currentIdx={currentIdx}
+      totalSections={totalSections}
+      backIcon={<JourneyIcon size={18}/>}>
+
+      {/* Tagline */}
+      <div style={{color:style.accent,fontSize:14,fontWeight:600,fontStyle:'italic',
+        marginBottom:14,lineHeight:1.4}}>
+        „{style.tagline}"
+      </div>
+
+      {/* Description */}
+      <div style={{color:T.t2,fontSize:14,lineHeight:1.6,marginBottom:18}}>
+        {style.desc}
+      </div>
+
+      {/* Strengths */}
+      <SectionTitle accent={style.accent}>Stärken</SectionTitle>
+      <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:16}}>
+        {style.strengths.map(s=>(
+          <div key={s} style={{display:'flex',gap:10,alignItems:'flex-start'}}>
+            <div style={{width:5,height:5,borderRadius:'50%',background:style.accent,
+              marginTop:7,flexShrink:0}}/>
+            <div style={{color:T.t1,fontSize:13,lineHeight:1.5}}>{s}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Weaknesses */}
+      <SectionTitle accent={T.t3}>Schwächen</SectionTitle>
+      <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:16}}>
+        {style.weaknesses.map(w=>(
+          <div key={w} style={{display:'flex',gap:10,alignItems:'flex-start'}}>
+            <div style={{width:5,height:5,borderRadius:'50%',background:T.t4,
+              marginTop:7,flexShrink:0}}/>
+            <div style={{color:T.t2,fontSize:13,lineHeight:1.5}}>{w}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Kernwerte */}
+      <SectionTitle accent={style.accent}>Kernwerte</SectionTitle>
+      <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:16}}>
+        {style.kernwerte.map(k=>(
+          <div key={k} style={{padding:'5px 11px',background:style.accent,
+            borderRadius:20,color:'white',fontSize:11,fontWeight:700,letterSpacing:.5}}>
+            {k}
+          </div>
+        ))}
+      </div>
+
+      {/* Shots */}
+      <SectionTitle accent={style.accent}>Typische Shots</SectionTitle>
+      <div style={{display:'flex',gap:5,flexWrap:'wrap',marginBottom:18}}>
+        {style.shots.map(sh=>(
+          <div key={sh} style={{padding:'4px 10px',background:T.card,
+            border:`1px solid ${T.border}`,borderRadius:14,
+            color:T.t1,fontSize:11,fontWeight:500}}>{sh}</div>
+        ))}
+      </div>
+
+      {/* Partners */}
+      <SectionTitle accent={style.accent}>Passt gut zu</SectionTitle>
+      <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:18}}>
+        {style.partners.map(p=>{
+          const pStyle=PADEL_STYLES[p.id];
+          const pFile=STYLE_IMAGES[p.id];
+          return(
+            <PartnerCard key={p.id} pStyle={pStyle} pFile={pFile}
+              why={p.why}
+              onClick={()=>onPartnerJump&&onPartnerJump(p.id)}/>
+          );
+        })}
+      </div>
+    </RulesDetailLayout>
+  );
+}
+
+/* Partner card — extracted so onClick can be passed cleanly */
+function PartnerCard({pStyle,pFile,why,onClick}){
+  const[err,setErr]=useState(false);
+  return(
+    <button onClick={onClick}
+      style={{display:'flex',gap:12,alignItems:'center',
+        background:pStyle.card,border:`1px solid ${pStyle.accent}40`,
+        borderRadius:12,padding:10,cursor:'pointer',textAlign:'left',
+        color:'inherit'}}>
+      <div style={{width:56,height:40,borderRadius:6,overflow:'hidden',
+        flexShrink:0,background:pStyle.accent}}>
+        {err?(
+          <div style={{width:'100%',height:'100%',display:'flex',
+            alignItems:'center',justifyContent:'center',color:'white',
+            fontSize:18,fontWeight:800}}>{pStyle.symbol}</div>
+        ):(
+          <img src={`${getAssetBase()}assets/${pFile}`}
+            onError={()=>setErr(true)}
+            style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}
+            alt={pStyle.name}/>
+        )}
+      </div>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{display:'flex',alignItems:'baseline',gap:6,marginBottom:2}}>
+          <div style={{color:pStyle.accent,fontSize:13,fontWeight:800}}>
+            {pStyle.name}
+          </div>
+          <div style={{color:T.t3,fontSize:10}}>{pStyle.subtitle}</div>
+        </div>
+        <div style={{color:T.t2,fontSize:11,lineHeight:1.4}}>{why}</div>
+      </div>
+      <div style={{color:T.t3,fontSize:16}}>›</div>
+    </button>
+  );
+}
+
+function SectionTitle({children,accent}){
+  return(
+    <div style={{color:accent||T.t3,fontSize:10,fontWeight:800,letterSpacing:1.5,
+      textTransform:'uppercase',marginBottom:8,marginTop:0}}>{children}</div>
+  );
+}
 
 function JourneyAngaben({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalSections}){
   return(
@@ -6355,11 +7099,15 @@ function JourneyBaelle({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalSec
   );
 }
 
+
 export default function App(){
   const[scr,setScr]=useState('splash');
   const[activeTab,setActiveTab]=useState('home');
   const[loggedIn,setLoggedIn]=useState(()=>lsGet('ritmo_logged_in',false));
   const[onboarded,setOnboarded]=useState(()=>lsGet('ritmo_onboarded',false));
+  const[rulesRead,setRulesRead]=useState(()=>lsGet('ritmo_rules_read',false));
+  const[journeyRead,setJourneyRead]=useState(()=>lsGet('ritmo_journey_read',false));
+  const[pendingEmail,setPendingEmail]=useState('');
   const[profile,setProfile]=useState(()=>lsGet('ritmo_profile',{
     name:'',
     playtomicLevel:null,
@@ -6410,9 +7158,15 @@ export default function App(){
   useEffect(()=>lsSet('ritmo_theme',theme),[theme]);
   useEffect(()=>lsSet('ritmo_logged_in',loggedIn),[loggedIn]);
   useEffect(()=>lsSet('ritmo_onboarded',onboarded),[onboarded]);
+  useEffect(()=>lsSet('ritmo_rules_read',rulesRead),[rulesRead]);
+  useEffect(()=>lsSet('ritmo_journey_read',journeyRead),[journeyRead]);
   useEffect(()=>lsSet('ritmo_profile',profile),[profile]);
 
-  const nav=useCallback(s=>setScr(s),[]);
+  const nav=useCallback(s=>{
+    if(s==='rules'&&rulesRead) return setScr('rules-overview');
+    if(s==='journey'&&journeyRead) return setScr('journey-overview');
+    setScr(s);
+  },[rulesRead,journeyRead]);
   const goHome=useCallback(()=>{setScr('home');setActiveTab('home');setTourneyEditMode(false);},[]);
 
   // Live = active match if scoreboard has progress
@@ -6470,7 +7224,15 @@ export default function App(){
     }}/>}
     {scr==='login'&&<Login
       onSuccess={()=>{setLoggedIn(true);setOnboarded(true);nav('home');}}
-      onRegister={()=>{setLoggedIn(true);setOnboarded(false);nav('welcome');}}/>}
+      onRegister={()=>nav('register')}/>}
+    {scr==='register'&&<Register
+      onSuccess={()=>{setLoggedIn(true);setOnboarded(false);nav('welcome');}}
+      onLogin={()=>nav('login')}
+      onNeedsVerification={(email)=>{setPendingEmail(email);nav('verify-email');}}/>}
+    {scr==='verify-email'&&<EmailVerification
+      email={pendingEmail}
+      onVerified={()=>{setLoggedIn(true);setOnboarded(false);nav('welcome');}}
+      onBack={()=>nav('register')}/>}
     {scr==='welcome'&&<Welcome
       profile={profile} setProfile={setProfile}
       theme={theme} setTheme={setTheme}
@@ -6479,9 +7241,11 @@ export default function App(){
     {scr==='profile'&&<Profile profile={profile} setProfile={setProfile}
       onHome={goHome}
       onResetOnboarding={()=>{setOnboarded(false);nav('welcome');}}
-      onLogout={()=>{setLoggedIn(false);setOnboarded(false);nav('login');}}/>}
+      onLogout={()=>{auth.signOut();setLoggedIn(false);setOnboarded(false);nav('login');}}/>}
     {scr==='rules'&&<RulesLanding onHome={goHome}
-      onContinue={()=>setScr('rules-overview')}/>}
+      onContinue={()=>setScr('rules-overview')}
+      onMarkRead={()=>{setRulesRead(true);setScr('rules-overview');}}
+      alreadyRead={rulesRead}/>}
     {scr==='rules-overview'&&<Rules onHome={goHome}
       onSelect={(id)=>setScr(`rules-${id}`)}/>}
     {(()=>{
@@ -6503,13 +7267,34 @@ export default function App(){
       return Comp?<Comp {...nav}/>:null;
     })()}
     {scr==='journey'&&<JourneyLanding onHome={goHome}
-      onContinue={()=>setScr('journey-overview')}/>}
+      onContinue={()=>setScr('journey-overview')}
+      onMarkRead={()=>{setJourneyRead(true);setScr('journey-overview');}}
+      alreadyRead={journeyRead}/>}
     {scr==='journey-overview'&&<Journey onHome={goHome}
-      onSelect={(id)=>setScr(`journey-${id}`)}/>}
+      onSelect={(id)=>setScr(id==='spielstile'?'journey-spielstile':`journey-${id}`)}/>}
+    {scr==='journey-spielstile'&&<JourneySpielstileList
+      onBack={()=>setScr('journey-overview')}
+      onHome={goHome}
+      onSelect={(id)=>setScr(`journey-spielstil-${id}`)}/>}
+    {scr.startsWith('journey-spielstil-')&&(()=>{
+      const id=scr.slice('journey-spielstil-'.length);
+      const order=['chico','toro','individuoso','muro','fantasma','motor'];
+      const idx=order.indexOf(id);
+      if(idx<0) return null;
+      return <JourneySpielstile
+        styleId={id}
+        currentIdx={idx}
+        totalSections={order.length}
+        onBack={()=>setScr('journey-spielstile')}
+        onHome={goHome}
+        onNext={idx<order.length-1?()=>setScr(`journey-spielstil-${order[idx+1]}`):null}
+        onPrev={idx>0?()=>setScr(`journey-spielstil-${order[idx-1]}`):null}
+        onPartnerJump={(pid)=>setScr(`journey-spielstil-${pid}`)}/>;
+    })()}
     {(()=>{
       const order=['angaben','aufstellungen','haende','schlagwahl','schlaeger','baelle'];
       const id=scr.startsWith('journey-')?scr.slice(8):null;
-      if(id==='overview') return null;
+      if(id==='overview'||id==='spielstile'||!id||scr.startsWith('journey-spielstil-')) return null;
       const idx=id?order.indexOf(id):-1;
       if(idx<0) return null;
       const nav={

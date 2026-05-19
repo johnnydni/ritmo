@@ -520,103 +520,71 @@ const auth={
 // RITMO Wortmarke (klein, für Header)
 // RITMO Wortmarke (klein) — Mini-R-Icon mit Schläger-Kopf + RITMO Text in Italic
 function RitmoWordmark({size=22}){
+  const[err,setErr]=useState(false);
   const G=T.gold;
-  const iconSize=size*1.2;
-  return (
-    <div style={{display:'flex',alignItems:'center',gap:7}}>
-      <svg width={iconSize} height={iconSize} viewBox="0 0 30 30" fill="none" style={{display:'block'}}>
-        {/* Speed-Linien links - gold */}
-        <line x1="0" y1="8"  x2="3" y2="8"  stroke={G} strokeWidth="1.2" strokeLinecap="round"/>
-        <line x1="0" y1="14" x2="3" y2="14" stroke={G} strokeWidth="1.2" strokeLinecap="round"/>
-        <line x1="0" y1="20" x2="3" y2="20" stroke={G} strokeWidth="1.2" strokeLinecap="round"/>
-
-        {/* R - mit dickem Strich gezeichnet */}
-        <g stroke="var(--t1)" fill="none" strokeLinecap="square">
-          <line x1="6" y1="2" x2="6" y2="26" strokeWidth="3.5"/>
-          <path d="M7.5 2 L14 2 Q21 2 21 8 Q21 14 14 14 L7.5 14"
-            strokeWidth="3.5" strokeLinejoin="miter"/>
-          <line x1="11.5" y1="14" x2="22" y2="26" strokeWidth="3.5"/>
-        </g>
-
-        {/* Mini Tennis-Ball - gold */}
-        <circle cx="24" cy="27" r="1.9" fill={G}/>
-      </svg>
-
-      <span style={{
-        color:T.t1,
-        fontSize:size,
-        fontWeight:900,
-        letterSpacing:0.6,
-        fontStyle:'italic',
-        fontFamily:'-apple-system,sans-serif',
-        lineHeight:1
-      }}>RITMO</span>
-    </div>
+  if(err){
+    // SVG fallback wenn ritmowide.png nicht vorhanden
+    const iconSize=size*1.2;
+    return(
+      <div style={{display:'flex',alignItems:'center',gap:7}}>
+        <svg width={iconSize} height={iconSize} viewBox="0 0 30 30" fill="none" style={{display:'block'}}>
+          <line x1="0" y1="8"  x2="3" y2="8"  stroke={G} strokeWidth="1.2" strokeLinecap="round"/>
+          <line x1="0" y1="14" x2="3" y2="14" stroke={G} strokeWidth="1.2" strokeLinecap="round"/>
+          <line x1="0" y1="20" x2="3" y2="20" stroke={G} strokeWidth="1.2" strokeLinecap="round"/>
+          <g stroke="var(--t1)" fill="none" strokeLinecap="square">
+            <line x1="6" y1="2" x2="6" y2="26" strokeWidth="3.5"/>
+            <path d="M7.5 2 L14 2 Q21 2 21 8 Q21 14 14 14 L7.5 14"
+              strokeWidth="3.5" strokeLinejoin="miter"/>
+            <line x1="11.5" y1="14" x2="22" y2="26" strokeWidth="3.5"/>
+          </g>
+          <circle cx="24" cy="27" r="1.9" fill={G}/>
+        </svg>
+        <span style={{color:T.t1,fontSize:size,fontWeight:900,letterSpacing:0.6,
+          fontStyle:'italic',fontFamily:'-apple-system,sans-serif',lineHeight:1}}>RITMO</span>
+      </div>
+    );
+  }
+  return(
+    <img src={`${getAssetBase()}assets/ritmowide.png`}
+      onError={()=>setErr(true)}
+      style={{height:size*1.4,width:'auto',display:'block',userSelect:'none'}}
+      alt="RITMO"/>
   );
 }
 
-// RITMO PADEL CLUB Splash Logo (groß) — offizielles Markenlogo
+// RITMO PADEL CLUB Splash Logo (offizielles Markenlogo)
 function RitmoSplashLogo({size=260}){
+  const[err,setErr]=useState(false);
   const G=T.gold;
+  if(err){
+    // SVG fallback
+    return(
+      <svg width={size} height={size} viewBox="0 0 280 280" fill="none">
+        <text x="140" y="44" textAnchor="middle" fill="var(--t1)" fontSize="14"
+          fontWeight="700" letterSpacing="8"
+          fontFamily="-apple-system,sans-serif">PADEL</text>
+        <g transform="translate(86,62)">
+          <line x1="-50" y1="22" x2="-2" y2="22" stroke={G} strokeWidth="3" strokeLinecap="round"/>
+          <line x1="-65" y1="42" x2="-2" y2="42" stroke={G} strokeWidth="3" strokeLinecap="round"/>
+          <line x1="-72" y1="62" x2="-2" y2="62" stroke={G} strokeWidth="3" strokeLinecap="round"/>
+          <g stroke="var(--t1)" fill="none" strokeLinecap="square">
+            <line x1="0" y1="0" x2="0" y2="125" strokeWidth="14"/>
+            <path d="M7 0 L46 0 Q88 0 88 33 Q88 66 46 66 L7 66" strokeWidth="14" strokeLinejoin="miter"/>
+            <line x1="38" y1="66" x2="100" y2="125" strokeWidth="14"/>
+          </g>
+          <circle cx="106" cy="130" r="6" fill={G}/>
+        </g>
+        <text x="140" y="240" textAnchor="middle" fill="var(--t1)" fontSize="14"
+          fontWeight="700" letterSpacing="8"
+          fontFamily="-apple-system,sans-serif">CLUB</text>
+      </svg>
+    );
+  }
   return(
-    <svg width={size} height={size} viewBox="0 0 280 280" fill="none">
-
-      {/* PADEL Schriftzug oben */}
-      <text x="140" y="44" textAnchor="middle" fill="var(--t1)" fontSize="14"
-        fontWeight="700" letterSpacing="8"
-        fontFamily="-apple-system,sans-serif">PADEL</text>
-
-      {/* Hauptlogo: R mit integriertem Padel-Schläger + Speed-Lines + Ball */}
-      <g transform="translate(86,62)">
-
-        {/* Goldene Speed-Linien links vom R */}
-        <line x1="-50" y1="22" x2="-2" y2="22" stroke={G} strokeWidth="3" strokeLinecap="round"/>
-        <line x1="-65" y1="42" x2="-2" y2="42" stroke={G} strokeWidth="3" strokeLinecap="round"/>
-        <line x1="-72" y1="62" x2="-2" y2="62" stroke={G} strokeWidth="3" strokeLinecap="round"/>
-        <line x1="-50" y1="82" x2="-2" y2="82" stroke={G} strokeWidth="3" strokeLinecap="round"/>
-
-        {/* R — als drei dicke Linien gezeichnet */}
-        <g stroke="var(--t1)" fill="none" strokeLinecap="square">
-          {/* Vertikaler Spine */}
-          <line x1="10" y1="0" x2="10" y2="118" strokeWidth="20"/>
-          {/* Top-Loop (Schläger-Kopf-Form) */}
-          <path d="M18 0 L55 0 Q90 0 90 30 Q90 60 55 60 L18 60"
-            strokeWidth="20" strokeLinejoin="miter"/>
-          {/* Diagonale Schräge */}
-          <line x1="44" y1="60" x2="92" y2="118" strokeWidth="20"/>
-        </g>
-
-        {/* Saiten-Punktraster im Loop (Padel-Schläger-Strings) */}
-        <g fill="var(--t1)">
-          {[0,1,2,3].map(r=>
-            [0,1,2,3].map(c=>(
-              <circle key={`${r}-${c}`}
-                cx={32+c*11} cy={18+r*11} r="1.7"/>
-            ))
-          )}
-        </g>
-
-        {/* Tennisball am Ende der Diagonale */}
-        <circle cx="100" cy="124" r="9" fill={G}/>
-        <path d="M92 124 Q100 118 108 124" stroke="var(--t1)" strokeWidth=".5" fill="none" opacity=".6"/>
-        <path d="M92 124 Q100 130 108 124" stroke="var(--t1)" strokeWidth=".5" fill="none" opacity=".6"/>
-      </g>
-
-      {/* RITMO — italic, fett */}
-      <text x="140" y="220" textAnchor="middle" fill="var(--t1)" fontSize="42"
-        fontWeight="900" letterSpacing="5"
-        fontStyle="italic"
-        fontFamily="-apple-system,sans-serif">RITMO</text>
-
-      {/* Goldene Trennstriche um CLUB */}
-      <line x1="50" y1="237" x2="115" y2="237" stroke={G} strokeWidth="1.5"/>
-      <line x1="165" y1="237" x2="230" y2="237" stroke={G} strokeWidth="1.5"/>
-
-      {/* CLUB */}
-      <text x="140" y="251" textAnchor="middle" fill={G} fontSize="12"
-        fontWeight="700" letterSpacing="11"
-        fontFamily="-apple-system,sans-serif">CLUB</text>
-    </svg>
+    <img src={`${getAssetBase()}assets/ritmohigh.png`}
+      onError={()=>setErr(true)}
+      style={{width:size,height:'auto',display:'block',userSelect:'none'}}
+      alt="RITMO PADEL CLUB"/>
   );
 }
 
@@ -1004,10 +972,13 @@ function RulesLanding({onHome,onContinue,onMarkRead,alreadyRead}){
         flexShrink:0,zIndex:2,background:T.bg}}>
         <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
           <BookIcon size={32}/>
-          <div style={{color:T.t1,fontSize:26,fontWeight:800,letterSpacing:-.3}}>Regelwerk</div>
-        </div>
-        <div style={{color:T.t2,fontSize:14,marginTop:2,fontWeight:400}}>
-          Padel-Regeln, Formate, Begriffe.
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{color:T.t1,fontSize:26,fontWeight:800,letterSpacing:-.3}}>Regelwerk</div>
+            <div style={{color:T.t2,fontSize:14,marginTop:2,fontWeight:400}}>
+              Padel-Regeln, Formate, Begriffe.
+            </div>
+          </div>
+          <QuestionToggle filled={alreadyRead} onClick={onMarkRead}/>
         </div>
       </div>
 
@@ -1029,18 +1000,6 @@ function RulesLanding({onHome,onContinue,onMarkRead,alreadyRead}){
           verinnerlicht hat, spielt entspannter, fairer und kann sich auf das
           Wesentliche konzentrieren — Strategie, Schlagwahl, Teamwork.
         </div>
-
-        {/* Gelesen button */}
-        <button onClick={onMarkRead} className="fu" style={{
-          marginTop:24,background:alreadyRead?T.oSoft:'transparent',
-          border:`1.5px solid ${alreadyRead?T.o:T.border}`,
-          borderRadius:12,padding:'12px 16px',color:alreadyRead?T.o:T.t2,
-          fontSize:13,fontWeight:700,cursor:'pointer',
-          display:'flex',alignItems:'center',justifyContent:'center',gap:8,
-          animationDelay:'.25s'}}>
-          {alreadyRead&&<span>✓</span>}
-          {alreadyRead?'Gelesen — direkt zum Index':'Schon gelesen? Direkt zum Index'}
-        </button>
       </div>
 
       <div style={{height:100,flexShrink:0}}/>
@@ -1060,10 +1019,13 @@ function JourneyLanding({onHome,onContinue,onMarkRead,alreadyRead}){
         flexShrink:0,zIndex:2,background:T.bg}}>
         <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
           <JourneyIcon size={32}/>
-          <div style={{color:T.t1,fontSize:26,fontWeight:800,letterSpacing:-.3}}>Journey</div>
-        </div>
-        <div style={{color:T.t2,fontSize:14,marginTop:2,fontWeight:400}}>
-          Tipps & Tricks für dein Padel-Spiel.
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{color:T.t1,fontSize:26,fontWeight:800,letterSpacing:-.3}}>Journey</div>
+            <div style={{color:T.t2,fontSize:14,marginTop:2,fontWeight:400}}>
+              Tipps & Tricks für dein Padel-Spiel.
+            </div>
+          </div>
+          <QuestionToggle filled={alreadyRead} onClick={onMarkRead}/>
         </div>
       </div>
 
@@ -1085,18 +1047,6 @@ function JourneyLanding({onHome,onContinue,onMarkRead,alreadyRead}){
           Position und Material versteht, gewinnt nicht über Power, sondern über
           Köpfchen — und genau dorthin führt diese Sektion.
         </div>
-
-        {/* Gelesen button */}
-        <button onClick={onMarkRead} className="fu" style={{
-          marginTop:24,background:alreadyRead?T.oSoft:'transparent',
-          border:`1.5px solid ${alreadyRead?T.o:T.border}`,
-          borderRadius:12,padding:'12px 16px',color:alreadyRead?T.o:T.t2,
-          fontSize:13,fontWeight:700,cursor:'pointer',
-          display:'flex',alignItems:'center',justifyContent:'center',gap:8,
-          animationDelay:'.25s'}}>
-          {alreadyRead&&<span>✓</span>}
-          {alreadyRead?'Gelesen — direkt zum Index':'Schon gelesen? Direkt zum Index'}
-        </button>
       </div>
 
       <div style={{height:100,flexShrink:0}}/>
@@ -2639,7 +2589,7 @@ function TabBar({active,onTab}){
   return(
     <div style={{position:'absolute',bottom:'calc(env(safe-area-inset-bottom,0px) + 18px)',
       left:0,right:0,display:'flex',alignItems:'center',justifyContent:'center',gap:10,
-      padding:'0 20px',pointerEvents:'none'}}>
+      padding:'0 20px',pointerEvents:'none',zIndex:5}}>
       <div style={{display:'flex',alignItems:'center',gap:2,
         background:T.card,borderRadius:30,padding:'5px',
         border:`1px solid ${T.border}`,pointerEvents:'auto',
@@ -2687,7 +2637,7 @@ function MatchBar({onHome,rightIcon,onRight,rightButtons}){
   return(
     <div style={{position:'absolute',bottom:'calc(env(safe-area-inset-bottom,0px) + 20px)',
       left:0,right:0,display:'flex',alignItems:'center',justifyContent:'space-between',
-      padding:'0 24px',pointerEvents:'none'}}>
+      padding:'0 24px',pointerEvents:'none',zIndex:5}}>
       <button onClick={onHome} style={{...baseStyle,cursor:'pointer'}}>
         <HomeIcon size={20}/>
       </button>
@@ -3058,6 +3008,11 @@ function Home({nav,activeTab,setActiveTab,profile}){
         {/* Internal scroll-bottom spacer so last card isn't hidden behind floating TabBar */}
         <div style={{height:120,flexShrink:0}}/>
       </div>
+
+      {/* Solid theme-colored footer — fills below TabBar incl. safe-area */}
+      <div style={{position:'absolute',left:0,right:0,bottom:0,
+        height:'calc(env(safe-area-inset-bottom,0px) + 18px)',
+        background:T.bg,zIndex:3,pointerEvents:'none'}}/>
 
       <TabBar active={activeTab} onTab={setActiveTab}/>
     </div>
@@ -6133,7 +6088,7 @@ function ChiquitaFigure(){
 }
 
 /* ───── Rules — Übersicht ───── */
-function Rules({onHome,onSelect}){
+function Rules({onHome,onSelect,alreadyRead,onToggleRead}){
   const sections=[
     {id:'basics',    icon:'🎾',title:'Padel-Grundregeln', sub:'Aufschlag, Wände, Punktezählung'},
     {id:'bo3',       icon:'📜',title:'Best of 3',         sub:'Klassisches Tennis-Scoring, Tiebreak bei 6:6'},
@@ -6148,10 +6103,13 @@ function Rules({onHome,onSelect}){
       <div style={{padding:'0 22px 22px'}}>
         <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
           <BookIcon size={32}/>
-          <div style={{color:T.t1,fontSize:26,fontWeight:800,letterSpacing:-.3}}>Regelwerk</div>
-        </div>
-        <div style={{color:T.t2,fontSize:14,marginTop:2,fontWeight:400}}>
-          Padel-Regeln, Formate, Begriffe.
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{color:T.t1,fontSize:26,fontWeight:800,letterSpacing:-.3}}>Regelwerk</div>
+            <div style={{color:T.t2,fontSize:14,marginTop:2,fontWeight:400}}>
+              Padel-Regeln, Formate, Begriffe.
+            </div>
+          </div>
+          {onToggleRead&&<QuestionToggle filled={alreadyRead} onClick={onToggleRead}/>}
         </div>
       </div>
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:10,
@@ -6602,7 +6560,7 @@ function BaelleVisual(){
   );
 }
 
-function Journey({onHome,onSelect}){
+function Journey({onHome,onSelect,alreadyRead,onToggleRead}){
   const sections=[
     {id:'spielstile',   icon:'🎭',title:'Spielstile',    sub:'Die 6 Padel-Personalities'},
     {id:'angaben',      icon:'🎯',title:'Aufschlag',     sub:'Reihenfolge, Position & Strategie'},
@@ -6618,10 +6576,13 @@ function Journey({onHome,onSelect}){
       <div style={{padding:'0 22px 22px'}}>
         <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
           <JourneyIcon size={32}/>
-          <div style={{color:T.t1,fontSize:26,fontWeight:800,letterSpacing:-.3}}>Journey</div>
-        </div>
-        <div style={{color:T.t2,fontSize:14,marginTop:2,fontWeight:400}}>
-          Tipps & Tricks für dein Padel-Spiel.
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{color:T.t1,fontSize:26,fontWeight:800,letterSpacing:-.3}}>Journey</div>
+            <div style={{color:T.t2,fontSize:14,marginTop:2,fontWeight:400}}>
+              Tipps & Tricks für dein Padel-Spiel.
+            </div>
+          </div>
+          {onToggleRead&&<QuestionToggle filled={alreadyRead} onClick={onToggleRead}/>}
         </div>
       </div>
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:10,
@@ -7135,8 +7096,20 @@ export default function App(){
   const[theme,setTheme]=useState(()=>lsGet('ritmo_theme','dark'));
 
   // Apply theme to document root → CSS vars cascade everywhere
+  // Also sync the theme-color meta tag so iOS/Android system UI matches
   useEffect(()=>{
     document.documentElement.setAttribute('data-theme',theme);
+    // Read computed --bg value and reflect it to body inline bg + theme-color meta.
+    // Done in a microtask so the data-theme attribute is fully applied first.
+    Promise.resolve().then(()=>{
+      try{
+        const bg=getComputedStyle(document.documentElement).getPropertyValue('--bg').trim()||'#000';
+        document.documentElement.style.background=bg;
+        document.body.style.background=bg;
+        const meta=document.getElementById('theme-color-meta');
+        if(meta) meta.setAttribute('content',bg);
+      }catch(e){}
+    });
   },[theme]);
 
   // App-level KeyCapture: lives outside Match's render tree so bigScreen
@@ -7246,7 +7219,9 @@ export default function App(){
       onMarkRead={()=>{setRulesRead(true);setScr('rules-overview');}}
       alreadyRead={rulesRead}/>}
     {scr==='rules-overview'&&<Rules onHome={goHome}
-      onSelect={(id)=>setScr(`rules-${id}`)}/>}
+      onSelect={(id)=>setScr(`rules-${id}`)}
+      alreadyRead={rulesRead}
+      onToggleRead={()=>setRulesRead(r=>!r)}/>}
     {(()=>{
       const order=['basics','bo3','americano','mexicano','rotation','glossar'];
       const id=scr.startsWith('rules-')?scr.slice(6):null;
@@ -7270,7 +7245,9 @@ export default function App(){
       onMarkRead={()=>{setJourneyRead(true);setScr('journey-overview');}}
       alreadyRead={journeyRead}/>}
     {scr==='journey-overview'&&<Journey onHome={goHome}
-      onSelect={(id)=>setScr(id==='spielstile'?'journey-spielstile':`journey-${id}`)}/>}
+      onSelect={(id)=>setScr(id==='spielstile'?'journey-spielstile':`journey-${id}`)}
+      alreadyRead={journeyRead}
+      onToggleRead={()=>setJourneyRead(r=>!r)}/>}
     {scr==='journey-spielstile'&&<JourneySpielstileList
       onBack={()=>setScr('journey-overview')}
       onHome={goHome}

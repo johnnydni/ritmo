@@ -1289,7 +1289,7 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
           <AppleGlyph size={18}/>
           <span>Mit Apple registrieren</span>
           <span style={{position:'absolute',top:6,right:10,fontSize:9,fontWeight:700,
-            letterSpacing:.5,color:T.t3,textTransform:'uppercase'}}>bald</span>
+            letterSpacing:.5,color:T.t1,textTransform:'uppercase'}}>bald</span>
         </button>
 
         {/* Divider */}

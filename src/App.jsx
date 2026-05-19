@@ -3117,7 +3117,7 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
               </>
             (
               <div style={{color:T.t3,fontSize:13,lineHeight:1.5}}>Noch kein Spielniveau eingetragen.</div>
-            )}
+            )
           </div>
         </div>
 

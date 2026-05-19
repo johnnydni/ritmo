@@ -3114,12 +3114,8 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
                     {getLevelTier(lvl)}
                   </div>
                 </div>
-              <>
-  </div>
-  <div style={{ color: T.t3, fontSize: 13, lineHeight: 1.5 }}>
-    Noch kein Spielniveau eingetragen.
-  </div>
-</>
+              
+       
         {/* RITMO DNA — Entry card to dedicated screen */}
         {profile.styleType?(
           <button onClick={()=>onOpenRitmoDNA&&onOpenRitmoDNA()} className="fu"

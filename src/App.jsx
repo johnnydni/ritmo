@@ -418,99 +418,52 @@ const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}};
 
 /* ═══════════════════════════════════════════════════════════════
-   AUTH MODULE — Supabase if available, mock for preview/dev
-   
-   Production: main.jsx initialisiert window.supabase aus env-vars.
-   Wenn nicht vorhanden → mock-fallback mit localStorage.
+   AUTH MODULE — Supabase only (no fallbacks)
+
+   main.jsx initialisiert window.supabase aus VITE_SUPABASE_URL +
+   VITE_SUPABASE_ANON_KEY. Fehlt der Client, schlagen alle Calls
+   sofort fehl — keine Mock-Pfade mehr.
 ═══════════════════════════════════════════════════════════════ */
+const SUPA_MISSING='Authentifizierung nicht verfügbar. Bitte später erneut versuchen.';
+function sb(){
+  if(typeof window==='undefined'||!window.supabase) throw new Error(SUPA_MISSING);
+  return window.supabase;
+}
 const auth={
-  get isReal(){return typeof window!=='undefined'&&!!window.supabase;},
-
-  async signInWithGoogle(){
-    if(this.isReal){
-      const base=(typeof window!=='undefined'&&window.__BASE__)||'/';
-      const {data,error}=await window.supabase.auth.signInWithOAuth({
-        provider:'google',
-        options:{redirectTo:window.location.origin+base},
-      });
-      if(error) throw new Error(error.message||'Google Login fehlgeschlagen');
-      return data;
-    }
-    await new Promise(r=>setTimeout(r,700));
-    const u={email:'demo@google.com',provider:'google'};
-    lsSet('ritmo_user',u);
-    return {user:u};
-  },
-
   async signUpWithEmail(email,password){
     const e=(email||'').trim().toLowerCase();
     if(!e||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) throw new Error('Bitte gültige E-Mail eingeben');
     if(!password||password.length<8) throw new Error('Passwort min. 8 Zeichen');
-    if(this.isReal){
-      const base=(typeof window!=='undefined'&&window.__BASE__)||'/';
-      const {data,error}=await window.supabase.auth.signUp({
-        email:e,password,
-        options:{emailRedirectTo:window.location.origin+base},
-      });
-      if(error) throw new Error(error.message||'Registrierung fehlgeschlagen');
-      return {needsVerification:!data.session,email:e};
-    }
-    await new Promise(r=>setTimeout(r,600));
-    lsSet('ritmo_pending_user',{email:e,verified:false,createdAt:Date.now()});
-    return {needsVerification:true,email:e};
+    const base=(typeof window!=='undefined'&&window.__BASE__)||'/';
+    const {data,error}=await sb().auth.signUp({
+      email:e,password,
+      options:{emailRedirectTo:window.location.origin+base},
+    });
+    if(error) throw new Error(error.message||'Registrierung fehlgeschlagen');
+    return {needsVerification:!data.session,email:e};
   },
 
   async signInWithEmail(email,password){
     const e=(email||'').trim().toLowerCase();
     if(!e||!password) throw new Error('Bitte alle Felder ausfüllen');
-    if(this.isReal){
-      const {data,error}=await window.supabase.auth.signInWithPassword({email:e,password});
-      if(error) throw new Error(error.message||'Anmeldung fehlgeschlagen');
-      return data;
-    }
-    await new Promise(r=>setTimeout(r,500));
-    const u={email:e,provider:'email'};
-    lsSet('ritmo_user',u);
-    return {user:u};
+    const {data,error}=await sb().auth.signInWithPassword({email:e,password});
+    if(error) throw new Error(error.message||'Anmeldung fehlgeschlagen');
+    return data;
   },
 
   async resendVerification(email){
-    if(this.isReal){
-      const {error}=await window.supabase.auth.resend({type:'signup',email});
-      if(error) throw new Error(error.message||'Resend fehlgeschlagen');
-      return true;
-    }
-    await new Promise(r=>setTimeout(r,500));
+    const {error}=await sb().auth.resend({type:'signup',email});
+    if(error) throw new Error(error.message||'Resend fehlgeschlagen');
     return true;
   },
 
   async confirmVerification(){
-    if(this.isReal){
-      const {data}=await window.supabase.auth.getSession();
-      return !!data.session;
-    }
-    const pending=lsGet('ritmo_pending_user',null);
-    if(pending){
-      const u={email:pending.email,provider:'email',verified:true};
-      lsSet('ritmo_user',u);
-      try{localStorage.removeItem('ritmo_pending_user');}catch(e){}
-      return true;
-    }
-    return false;
+    const {data}=await sb().auth.getSession();
+    return !!data.session;
   },
 
   async signOut(){
-    if(this.isReal){try{await window.supabase.auth.signOut();}catch(e){}}
-    try{localStorage.removeItem('ritmo_user');}catch(e){}
-    try{localStorage.removeItem('ritmo_pending_user');}catch(e){}
-  },
-
-  getCurrentUser(){
-    if(this.isReal){
-      // Supabase handles session; component should listen to onAuthStateChange
-      return null;
-    }
-    return lsGet('ritmo_user',null);
+    try{await sb().auth.signOut();}catch(e){}
   },
 };
 
@@ -1254,28 +1207,12 @@ function Login({onSuccess,onRegister}){
   };
 
   const tryLogin=async()=>{
-    // Dev shortcut
-    if(username.trim()==='dev'&&password==='ritmodev'){
-      setError('');
-      onSuccess();
-      return;
-    }
     setBusy(true);setError('');
     try{
       await auth.signInWithEmail(username,password);
       onSuccess();
     }catch(e){
       fail(e.message||'Anmeldung fehlgeschlagen');
-    }finally{setBusy(false);}
-  };
-
-  const tryGoogle=async()=>{
-    setBusy(true);setError('');
-    try{
-      await auth.signInWithGoogle();
-      onSuccess();
-    }catch(e){
-      fail(e.message||'Google-Anmeldung fehlgeschlagen');
     }finally{setBusy(false);}
   };
 
@@ -1306,15 +1243,16 @@ function Login({onSuccess,onRegister}){
           <div style={{color:T.t1,fontSize:24,fontWeight:800,letterSpacing:-.3}}>RITMO Log-In</div>
         </div>
 
-        {/* Google */}
-        <button onClick={tryGoogle} disabled={busy}
+        {/* Google — disabled (OAuth folgt) */}
+        <button disabled
           style={{display:'flex',alignItems:'center',justifyContent:'center',gap:10,
-            background:'#fff',border:'1px solid rgba(0,0,0,.15)',borderRadius:12,
-            padding:'13px 16px',color:'#1f1f1f',fontSize:15,fontWeight:600,
-            cursor:busy?'not-allowed':'pointer',marginBottom:10,opacity:busy?.6:1,
-            boxShadow:'0 1px 2px rgba(0,0,0,.12)'}}>
+            background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.08)',borderRadius:12,
+            padding:'13px 16px',color:'rgba(255,255,255,.4)',fontSize:15,fontWeight:600,
+            cursor:'not-allowed',marginBottom:10,position:'relative'}}>
           <GoogleGlyph size={18}/>
           <span>Mit Google anmelden</span>
+          <span style={{position:'absolute',top:6,right:10,fontSize:9,fontWeight:700,
+            letterSpacing:.5,color:T.t3,textTransform:'uppercase'}}>bald</span>
         </button>
 
         {/* Apple — disabled bis Apple Dev Program aktiv */}
@@ -1434,16 +1372,6 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
     }finally{setBusy(false);}
   };
 
-  const tryGoogle=async()=>{
-    setBusy(true);setError('');
-    try{
-      await auth.signInWithGoogle();
-      onSuccess();
-    }catch(e){
-      fail(e.message||'Google fehlgeschlagen');
-    }finally{setBusy(false);}
-  };
-
   const onKeyDown=(e)=>{ if(e.key==='Enter') tryRegister(); };
 
   return(
@@ -1471,15 +1399,16 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
           </div>
         </div>
 
-        {/* Google */}
-        <button onClick={tryGoogle} disabled={busy}
+        {/* Google — disabled (OAuth folgt) */}
+        <button disabled
           style={{display:'flex',alignItems:'center',justifyContent:'center',gap:10,
-            background:'#fff',border:'1px solid rgba(0,0,0,.15)',borderRadius:12,
-            padding:'13px 16px',color:'#1f1f1f',fontSize:15,fontWeight:600,
-            cursor:busy?'not-allowed':'pointer',marginBottom:10,opacity:busy?.6:1,
-            boxShadow:'0 1px 2px rgba(0,0,0,.12)'}}>
+            background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.08)',borderRadius:12,
+            padding:'13px 16px',color:'rgba(255,255,255,.4)',fontSize:15,fontWeight:600,
+            cursor:'not-allowed',marginBottom:10,position:'relative'}}>
           <GoogleGlyph size={18}/>
           <span>Mit Google registrieren</span>
+          <span style={{position:'absolute',top:6,right:10,fontSize:9,fontWeight:700,
+            letterSpacing:.5,color:T.t3,textTransform:'uppercase'}}>bald</span>
         </button>
 
         {/* Apple disabled */}
@@ -7736,6 +7665,36 @@ export default function App(){
   const matchKeyRef=useRef(null);
   const onMatchKey=useRef((e)=>matchKeyRef.current?.(e)).current;
 
+  // Supabase auth listener — fängt die Session, die der Email-Verify-Link
+  // (oder ein bereits eingeloggter Session-Cookie) beim Page-Load setzt,
+  // und schiebt den User automatisch weiter ins Onboarding/Home.
+  // onboarded wird über eine ref gelesen, damit die Subscription nicht
+  // bei jedem Onboarding-Schritt neu aufgebaut wird.
+  const onboardedRef=useRef(onboarded);
+  useEffect(()=>{onboardedRef.current=onboarded;},[onboarded]);
+  useEffect(()=>{
+    if(typeof window==='undefined'||!window.supabase) return;
+    const enter=()=>{
+      setLoggedIn(true);
+      setScr(curr=>{
+        if(curr==='splash'||curr==='login'||curr==='register'||curr==='verify-email'){
+          return onboardedRef.current?'home':'welcome';
+        }
+        return curr;
+      });
+    };
+    // Initiale Session (Verify-Link auf Cold-Load) prüfen
+    window.supabase.auth.getSession().then(({data})=>{
+      if(data?.session) enter();
+    }).catch(()=>{});
+    // Live-Updates (SIGNED_IN nach Verify-Klick im selben Tab)
+    const {data:sub}=window.supabase.auth.onAuthStateChange((event)=>{
+      if(event==='SIGNED_IN') enter();
+      else if(event==='SIGNED_OUT') setLoggedIn(false);
+    });
+    return ()=>sub?.subscription?.unsubscribe();
+  },[]);
+
   // Persist
   useEffect(()=>lsSet('ritmo_cfg',cfg),[cfg]);
   useEffect(()=>lsSet('ritmo_bo3',bo3),[bo3]);
@@ -7832,7 +7791,16 @@ export default function App(){
       onHome={goHome}
       onOpenRitmoDNA={()=>setScr('profile-ritmodna')}
       onResetOnboarding={()=>{setOnboarded(false);nav('welcome');}}
-      onLogout={()=>{auth.signOut();setLoggedIn(false);setOnboarded(false);nav('login');}}/>}
+      onLogout={async()=>{
+        try{await auth.signOut();}catch(e){}
+        setLoggedIn(false);
+        // Versuch, das Fenster zu schließen; Fallback auf about:blank,
+        // damit der User wirklich aus der App raus ist.
+        try{window.close();}catch(e){}
+        setTimeout(()=>{
+          try{window.location.href='about:blank';}catch(e){}
+        },120);
+      }}/>}
     {scr==='profile-ritmodna'&&<ProfileRitmoDNA profile={profile}
       onBack={()=>setScr('profile')}
       onHome={goHome}/>}

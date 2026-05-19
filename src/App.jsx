@@ -2601,7 +2601,7 @@ function ProfileRitmoDNA({profile,onBack,onHome}){
           </div>
         )}
 
-        <div style={{height:120}}/>
+        <div style={{height:120,flexShrink:0}}/>
       </div>
 
       <MatchBar onHome={onHome} rightButtons={[
@@ -3225,7 +3225,7 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
           </button>
         </div>
 
-        <div style={{height:120}}/>
+        <div style={{height:120,flexShrink:0}}/>
       </div>
 
       <MatchBar onHome={onHome}/>
@@ -3549,9 +3549,9 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
             </div>
           )}
         </div>
+        <div style={{height:100,flexShrink:0}}/>
       </div>
 
-      <div style={{height:100}}/>
       <MatchBar onHome={onHome} rightButtons={[{
         icon:'Start',
         onClick:()=>{
@@ -4170,9 +4170,8 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
             🏆 {win==='A'?cfg.nameA:cfg.nameB} gewinnt!
           </div>
         )}
+        <div style={{height:100,flexShrink:0}}/>
       </div>
-
-      <div style={{height:100}}/>
 
       <MatchBar
         onHome={onHome}
@@ -4909,10 +4908,9 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit}){
             </div>
           )}
         </div>
-
+        <div style={{height:100,flexShrink:0}}/>
       </div>
 
-      <div style={{height:100}}/>
       <MatchBar onHome={onHome} rightButtons={[{
         icon:isEdit?'✓':'Start',
         disabled:!canStart,
@@ -5228,9 +5226,9 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='soft',onEdit}){
             </div>
           </div>
         )}
+        <div style={{height:100,flexShrink:0}}/>
       </div>
 
-      <div style={{height:100}}/>
       <MatchBar onHome={onHome} rightButtons={[
         {
           icon:'■',
@@ -5341,9 +5339,9 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
             🏠 Home
           </button>
         </div>
+        <div style={{height:100,flexShrink:0}}/>
       </div>
 
-      <div style={{height:100}}/>
       <MatchBar onHome={onHome} rightIcon={<SearchIcon size={20}/>}/>
     </div>
   );

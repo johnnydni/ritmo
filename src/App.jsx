@@ -777,148 +777,17 @@ function ArrowRightCircleIcon({size=26}){
 
 function HeroRulesVisual(){
   return(
-    <svg viewBox="0 0 400 320" preserveAspectRatio="xMidYMid slice"
-      style={{width:'100%',height:'100%',display:'block'}}>
-      <defs>
-        <linearGradient id="hrBg" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="var(--card2)"/>
-          <stop offset="100%" stopColor="var(--card)"/>
-        </linearGradient>
-        <radialGradient id="hrGlow" cx="0.7" cy="0.3" r="0.6">
-          <stop offset="0%" stopColor="var(--oGlow)" stopOpacity="0.35"/>
-          <stop offset="100%" stopColor="var(--oGlow)" stopOpacity="0"/>
-        </radialGradient>
-      </defs>
-      <rect width="400" height="320" fill="url(#hrBg)"/>
-      <rect width="400" height="320" fill="url(#hrGlow)"/>
-      {/* Diagonal court line */}
-      <line x1="-20" y1="260" x2="420" y2="80"
-        stroke="var(--t1)" strokeWidth="2.5" opacity="0.18"/>
-      <line x1="-20" y1="265" x2="420" y2="85"
-        stroke="var(--t1)" strokeWidth="0.8" opacity="0.35"/>
-
-      {/* Racket 1 — back, tilted left */}
-      <g transform="translate(155, 170) rotate(-22)">
-        <ellipse cx="0" cy="0" rx="58" ry="78" fill="var(--bg)" opacity="0.55"/>
-        <ellipse cx="0" cy="0" rx="58" ry="78" fill="none"
-          stroke="var(--t1)" strokeWidth="3.5"/>
-        {/* Hole pattern */}
-        <g fill="var(--t1)" opacity="0.7">
-          {Array.from({length:5}).map((_,row)=>
-            Array.from({length:5}).map((_,col)=>{
-              const x=-40+col*20, y=-50+row*20;
-              if(Math.sqrt((x/55)**2+(y/72)**2)>1) return null;
-              return <circle key={`${row}-${col}`} cx={x} cy={y} r="2.6"/>;
-            })
-          )}
-        </g>
-        {/* Brand mark */}
-        <circle cx="0" cy="0" r="13" fill="none" stroke="var(--o)" strokeWidth="2.5"/>
-        <text x="0" y="4" textAnchor="middle" fontSize="13" fontWeight="900" fill="var(--o)">R</text>
-        {/* Handle + grip */}
-        <rect x="-7" y="78" width="14" height="58" rx="3" fill="var(--t1)" opacity="0.85"/>
-        <rect x="-9" y="92" width="18" height="38" rx="3" fill="var(--o)"/>
-      </g>
-
-      {/* Racket 2 — front, tilted right */}
-      <g transform="translate(230, 160) rotate(18)">
-        <ellipse cx="0" cy="0" rx="58" ry="78" fill="var(--card2)"/>
-        <ellipse cx="0" cy="0" rx="58" ry="78" fill="none"
-          stroke="var(--t1)" strokeWidth="3.5"/>
-        <g fill="var(--t1)" opacity="0.85">
-          {Array.from({length:5}).map((_,row)=>
-            Array.from({length:5}).map((_,col)=>{
-              const x=-40+col*20, y=-50+row*20;
-              if(Math.sqrt((x/55)**2+(y/72)**2)>1) return null;
-              return <circle key={`b-${row}-${col}`} cx={x} cy={y} r="2.6"/>;
-            })
-          )}
-        </g>
-        <path d="M -14 -8 L 0 -22 L 14 -8 L 0 6 Z" fill="var(--o)" opacity="0.9"/>
-        <rect x="-7" y="78" width="14" height="58" rx="3" fill="var(--t1)"/>
-        <rect x="-9" y="92" width="18" height="38" rx="3" fill="var(--t2)"/>
-      </g>
-
-      {/* Ball — bottom right, with shadow */}
-      <ellipse cx="318" cy="268" rx="22" ry="6" fill="rgba(0,0,0,0.35)"/>
-      <circle cx="318" cy="248" r="18" fill="#E8FF3D"/>
-      <path d="M 301 244 Q 309 238 318 240 Q 327 238 335 244"
-        stroke="rgba(255,255,255,0.6)" strokeWidth="1.4" fill="none"/>
-      <path d="M 301 252 Q 309 258 318 256 Q 327 258 335 252"
-        stroke="rgba(255,255,255,0.6)" strokeWidth="1.4" fill="none"/>
-    </svg>
+    <img src={`${getAssetBase()}assets/regelwerkhero.jpeg`}
+      style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}
+      alt="Regelwerk"/>
   );
 }
 
 function HeroJourneyVisual(){
   return(
-    <svg viewBox="0 0 400 320" preserveAspectRatio="xMidYMid slice"
-      style={{width:'100%',height:'100%',display:'block'}}>
-      <defs>
-        <linearGradient id="hjBg" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="var(--card2)"/>
-          <stop offset="100%" stopColor="var(--card)"/>
-        </linearGradient>
-        <radialGradient id="hjGlow" cx="0.5" cy="0.5" r="0.65">
-          <stop offset="0%" stopColor="var(--oGlow)" stopOpacity="0.4"/>
-          <stop offset="60%" stopColor="var(--oGlow)" stopOpacity="0.08"/>
-          <stop offset="100%" stopColor="var(--oGlow)" stopOpacity="0"/>
-        </radialGradient>
-      </defs>
-      <rect width="400" height="320" fill="url(#hjBg)"/>
-      <rect width="400" height="320" fill="url(#hjGlow)"/>
-
-      {/* Large compass rose, centered */}
-      <g transform="translate(200, 165)">
-        {/* Outer rings */}
-        <circle r="120" stroke="var(--t1)" strokeWidth="1" fill="none" opacity="0.18"/>
-        <circle r="95" stroke="var(--t1)" strokeWidth="1" fill="none" opacity="0.25"/>
-        <circle r="62" stroke="var(--o)" strokeWidth="2" fill="none" opacity="0.55"/>
-        {/* Cardinal lines */}
-        <line x1="0" y1="-120" x2="0" y2="120" stroke="var(--t1)" strokeWidth="0.8" opacity="0.35"/>
-        <line x1="-120" y1="0" x2="120" y2="0" stroke="var(--t1)" strokeWidth="0.8" opacity="0.35"/>
-        <line x1="-85" y1="-85" x2="85" y2="85" stroke="var(--t1)" strokeWidth="0.5" opacity="0.18"/>
-        <line x1="85" y1="-85" x2="-85" y2="85" stroke="var(--t1)" strokeWidth="0.5" opacity="0.18"/>
-        {/* N pointer big — orange filled */}
-        <path d="M 0 -100 L -22 0 L 0 -18 L 22 0 Z" fill="var(--o)"/>
-        {/* S pointer outlined */}
-        <path d="M 0 100 L -22 0 L 0 18 L 22 0 Z" fill="none" stroke="var(--t1)" strokeWidth="1.5" opacity="0.5"/>
-        {/* E/W small */}
-        <path d="M 100 0 L 0 -16 L -10 0 L 0 16 Z" fill="var(--t1)" opacity="0.35"/>
-        <path d="M -100 0 L 0 -16 L 10 0 L 0 16 Z" fill="var(--t1)" opacity="0.35"/>
-        {/* Center cap */}
-        <circle r="8" fill="var(--bg)" stroke="var(--o)" strokeWidth="2"/>
-        <circle r="2.5" fill="var(--o)"/>
-        {/* Cardinal labels */}
-        <text x="0" y="-130" textAnchor="middle" fontSize="11" fontWeight="800"
-          fill="var(--o)" letterSpacing="2">N</text>
-        <text x="130" y="4" textAnchor="middle" fontSize="9" fontWeight="700"
-          fill="var(--t2)" letterSpacing="2" opacity="0.7">E</text>
-        <text x="0" y="138" textAnchor="middle" fontSize="9" fontWeight="700"
-          fill="var(--t2)" letterSpacing="2" opacity="0.7">S</text>
-        <text x="-130" y="4" textAnchor="middle" fontSize="9" fontWeight="700"
-          fill="var(--t2)" letterSpacing="2" opacity="0.7">W</text>
-      </g>
-
-      {/* Small racket silhouette top-left */}
-      <g transform="translate(58, 70) rotate(-18)" opacity="0.55">
-        <ellipse cx="0" cy="0" rx="22" ry="30" fill="none" stroke="var(--t1)" strokeWidth="1.6"/>
-        <rect x="-2.5" y="28" width="5" height="24" rx="1" fill="var(--t1)"/>
-      </g>
-      {/* Small racket silhouette bottom-right */}
-      <g transform="translate(340, 260) rotate(28)" opacity="0.55">
-        <ellipse cx="0" cy="0" rx="22" ry="30" fill="none" stroke="var(--t1)" strokeWidth="1.6"/>
-        <rect x="-2.5" y="28" width="5" height="24" rx="1" fill="var(--o)"/>
-      </g>
-
-      {/* Trail dots (movement path) */}
-      <circle cx="80" cy="220" r="3" fill="var(--o)" opacity="0.8"/>
-      <circle cx="120" cy="200" r="2.5" fill="var(--o)" opacity="0.6"/>
-      <circle cx="155" cy="195" r="2" fill="var(--o)" opacity="0.45"/>
-      <circle cx="245" cy="125" r="2" fill="var(--o)" opacity="0.45"/>
-      <circle cx="280" cy="115" r="2.5" fill="var(--o)" opacity="0.6"/>
-      <circle cx="318" cy="100" r="3" fill="var(--o)" opacity="0.8"/>
-    </svg>
+    <img src={`${getAssetBase()}assets/journeyhero.jpeg`}
+      style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}
+      alt="Journey"/>
   );
 }
 
@@ -1246,8 +1115,8 @@ function Login({onSuccess,onRegister}){
         {/* Google — disabled (OAuth folgt) */}
         <button disabled
           style={{display:'flex',alignItems:'center',justifyContent:'center',gap:10,
-            background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.08)',borderRadius:12,
-            padding:'13px 16px',color:'rgba(255,255,255,.4)',fontSize:15,fontWeight:600,
+            background:T.card,border:`1px solid ${T.border}`,borderRadius:12,
+            padding:'13px 16px',color:T.t2,fontSize:15,fontWeight:600,
             cursor:'not-allowed',marginBottom:10,position:'relative'}}>
           <GoogleGlyph size={18}/>
           <span>Mit Google anmelden</span>
@@ -1402,8 +1271,8 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
         {/* Google — disabled (OAuth folgt) */}
         <button disabled
           style={{display:'flex',alignItems:'center',justifyContent:'center',gap:10,
-            background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.08)',borderRadius:12,
-            padding:'13px 16px',color:'rgba(255,255,255,.4)',fontSize:15,fontWeight:600,
+            background:T.card,border:`1px solid ${T.border}`,borderRadius:12,
+            padding:'13px 16px',color:T.t2,fontSize:15,fontWeight:600,
             cursor:'not-allowed',marginBottom:10,position:'relative'}}>
           <GoogleGlyph size={18}/>
           <span>Mit Google registrieren</span>
@@ -3173,7 +3042,7 @@ function Home({nav,activeTab,setActiveTab,profile}){
         position:'relative',zIndex:1,
       }}>
         <div style={{flex:1,minWidth:0}}>
-          <RitmoWordmark size={26}/>
+          <RitmoWordmark size={52}/>
           {profile?.name?(
             <div style={{color:T.t1,fontSize:18,fontWeight:700,marginTop:10,letterSpacing:-.2}}>
               Hi, {profile.name}! 👋
@@ -3319,7 +3188,7 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
 
       <div style={{padding:'0 22px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
         <div>
-          <RitmoWordmark size={26}/>
+          <RitmoWordmark size={52}/>
           <div style={{color:T.t2,fontSize:15,marginTop:6,fontWeight:400}}>Single Match</div>
         </div>
         <CourtIcon size={36}/>
@@ -3726,11 +3595,11 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
 
   // Register handler with App-level KeyCapture. Runs every render to keep the
   // closure fresh (handleHWKey depends on latest punkt/undo/reset/undoReset).
-  useEffect(()=>{
-    if(!matchKeyRef)return;
-    matchKeyRef.current=handleHWKey;
-    return()=>{if(matchKeyRef)matchKeyRef.current=null;};
-  });
+  // No cleanup: nulling the ref between renders would create a micro-window
+  // where keystrokes from the smart ring hit a null handler and are dropped.
+  // When Match unmounts, App-level KeyCapture is disabled (scr changes) so
+  // the dangling ref is never invoked anyway.
+  if(matchKeyRef) matchKeyRef.current=handleHWKey;
 
   // bigScreen toggle removes the previously focused button from DOM and focus
   // falls back to <body>. iOS Safari only dispatches Bluetooth-keyboard
@@ -3973,7 +3842,7 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
 
       <div style={{padding:'0 22px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
         <div>
-          <RitmoWordmark size={26}/>
+          <RitmoWordmark size={52}/>
           <div style={{color:T.t1,fontSize:20,marginTop:4,fontWeight:800}}>
             {isB?'Best of Three':'Americano'}
           </div>
@@ -4712,7 +4581,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit}){
 
       <div style={{padding:'0 22px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
         <div>
-          <RitmoWordmark size={26}/>
+          <RitmoWordmark size={52}/>
           <div style={{color:T.t2,fontSize:15,marginTop:6,fontWeight:400}}>
             {isEdit?'Turnier bearbeiten':'Turnier'}
           </div>
@@ -4977,7 +4846,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='soft',onEdit}){
 
       <div style={{padding:'0 22px 14px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
         <div>
-          <RitmoWordmark size={26}/>
+          <RitmoWordmark size={52}/>
           <div style={{color:T.t2,fontSize:15,marginTop:6,fontWeight:400}}>
             {tourney.format==='mexicano'?'Mexicano':'Americano'} · Runde {tourney.current+1}
           </div>
@@ -5210,7 +5079,7 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
 
       <div style={{padding:'0 22px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
         <div>
-          <RitmoWordmark size={26}/>
+          <RitmoWordmark size={52}/>
           <div style={{color:T.t2,fontSize:15,marginTop:6,fontWeight:400}}>Endstand</div>
         </div>
         <TrophyIcon size={36}/>
@@ -5313,7 +5182,7 @@ function Live({hasMatch,hasTourney,tourneyData,matchCfg,nav,activeTab,setActiveT
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
       <div style={{padding:'0 22px 24px'}}>
-        <RitmoWordmark size={26}/>
+        <RitmoWordmark size={52}/>
         <div style={{color:T.t2,fontSize:15,marginTop:8,fontWeight:400}}>
           {items.length===0?'Keine laufenden Spiele.':'Laufende Spiele und Turniere.'}
         </div>
@@ -5367,12 +5236,24 @@ function Live({hasMatch,hasTourney,tourneyData,matchCfg,nav,activeTab,setActiveT
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   KEY CAPTURE — unsichtbarer Input fängt Hardware-Tasten zuverlässig
-   (iOS Safari fired keydown auf window NICHT für Bluetooth-Keyboards
-   wenn kein Input fokussiert ist)
+   KEY CAPTURE — Smart-Ring / Bluetooth-Keyboard Eingabe.
+
+   Doppelter Ansatz:
+   1) document-level keydown-Listener: trifft Android/Desktop direkt
+      und iOS Safari per Bubbling vom fokussierten Hidden-Input.
+   2) Minimal sichtbarer Input (4×4 px, opacity 0.01): iOS Safari
+      dispatcht Bluetooth-Keyboard-Events NUR an fokussierte Inputs,
+      und nur an solche, die der Render-Engine "sichtbar genug"
+      sind — opacity:0 reicht iOS nicht.
+
+   Latest-Handler-Pattern via Ref: onKey wird in einer Ref gehalten,
+   damit der document-Listener nicht für jedes Rerender neu auf-
+   und abgebaut wird (das war der "Verzögerungs-/Refocus-Bug").
 ═══════════════════════════════════════════════════════════════ */
 function KeyCapture({onKey,enabled=true}){
   const inputRef=useRef(null);
+  const onKeyRef=useRef(onKey);
+  useEffect(()=>{onKeyRef.current=onKey;},[onKey]);
 
   useEffect(()=>{
     if(!enabled)return;
@@ -5380,37 +5261,52 @@ function KeyCapture({onKey,enabled=true}){
     if(!el)return;
 
     const focusInput=()=>{
-      try{el.focus({preventScroll:true});}catch{el.focus();}
+      try{el.focus({preventScroll:true});}catch{try{el.focus();}catch{}}
     };
-
     focusInput();
 
-    // Re-focus on tap anywhere except other inputs
+    // Single source of truth: document-level keydown (capture phase).
+    // Real form inputs müssen normal tippbar bleiben — wir filtern raus.
+    const handleKey=(e)=>{
+      const t=e.target;
+      if(t&&t!==el&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable)) return;
+      onKeyRef.current?.(e);
+    };
+    document.addEventListener('keydown',handleKey,true);
+
+    // Aggressive Refocus — jeder Pfad in dem iOS Safari den Fokus
+    // verlieren könnte muss sofort restored werden.
+    const refocus=()=>requestAnimationFrame(focusInput);
     const handlePointer=(e)=>{
       const t=e.target;
-      if(!t)return;
-      if(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable)return;
-      requestAnimationFrame(focusInput);
+      if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable)) return;
+      refocus();
+    };
+    const handleVisibility=()=>{
+      if(document.visibilityState==='visible') refocus();
     };
     document.addEventListener('pointerdown',handlePointer);
+    document.addEventListener('touchend',handlePointer,{passive:true});
+    document.addEventListener('visibilitychange',handleVisibility);
+    window.addEventListener('focus',focusInput);
+    window.addEventListener('ritmo-refocus-key',refocus);
 
-    // Explicit refocus signal — fired e.g. on bigScreen toggle, where the
-    // previously focused button is removed from DOM and we'd otherwise wait
-    // up to 400ms for the safety-net interval below.
-    const handleRefocus=()=>requestAnimationFrame(focusInput);
-    window.addEventListener('ritmo-refocus-key',handleRefocus);
-
-    // Safety net: faster periodic check (every 400ms)
+    // Sicherheitsnetz: 150 ms statt 400 ms — die Wahrnehmungsschwelle
+    // für "fühlt sich sofort an" liegt bei ~100 ms.
     const interval=setInterval(()=>{
       const ae=document.activeElement;
-      if(ae===el)return;
-      if(ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'||ae.isContentEditable))return;
+      if(ae===el) return;
+      if(ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'||ae.isContentEditable)) return;
       focusInput();
-    },400);
+    },150);
 
     return()=>{
+      document.removeEventListener('keydown',handleKey,true);
       document.removeEventListener('pointerdown',handlePointer);
-      window.removeEventListener('ritmo-refocus-key',handleRefocus);
+      document.removeEventListener('touchend',handlePointer);
+      document.removeEventListener('visibilitychange',handleVisibility);
+      window.removeEventListener('focus',focusInput);
+      window.removeEventListener('ritmo-refocus-key',refocus);
       clearInterval(interval);
     };
   },[enabled]);
@@ -5428,24 +5324,14 @@ function KeyCapture({onKey,enabled=true}){
       spellCheck="false"
       value=""
       onChange={()=>{}}
-      onKeyDown={(e)=>{
-        e.preventDefault();
-        onKey(e);
-      }}
-      onBlur={()=>{
-        if(!enabled)return;
-        setTimeout(()=>{
-          const ae=document.activeElement;
-          if(ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'||ae.isContentEditable))return;
-          inputRef.current?.focus({preventScroll:true});
-        },80);
-      }}
+      onBeforeInput={(e)=>e.preventDefault()}
       aria-hidden="true"
       tabIndex={-1}
       style={{
         position:'fixed',top:0,left:0,
-        width:1,height:1,
-        opacity:0,pointerEvents:'none',
+        width:4,height:4,
+        // opacity 0 würde iOS Safari den Fokus verweigern lassen.
+        opacity:0.01,
         border:'none',outline:'none',
         background:'transparent',color:'transparent',
         caretColor:'transparent',
@@ -5586,7 +5472,7 @@ function Settings({onHome,activeTab,setActiveTab,
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
       <div style={{padding:'0 22px 22px'}}>
-        <RitmoWordmark size={26}/>
+        <RitmoWordmark size={52}/>
         <div style={{color:T.t2,fontSize:15,marginTop:8,fontWeight:400}}>Einstellungen</div>
       </div>
 
@@ -5854,9 +5740,6 @@ function Settings({onHome,activeTab,setActiveTab,
           padding:'14px 18px',color:T.t3,fontSize:11,lineHeight:1.6,textAlign:'center'}}>
           Made by Team RITMO.<br/>With love for Padel ♡
         </div>
-
-        {/* Internal scroll-bottom spacer so last card isn't hidden behind floating TabBar */}
-        <div style={{height:120,flexShrink:0}}/>
       </div>
 
       <TabBar active={activeTab} onTab={setActiveTab}/>
@@ -5994,8 +5877,6 @@ function RulesDetailLayout({icon,title,sub,visual,children,onBackToRules,onHome,
         <div className="fu" style={{animationDelay:'.1s'}}>
           {children}
         </div>
-        {/* Internal scroll-bottom spacer so last content isn't hidden behind floating MatchBar */}
-        <div style={{height:130,flexShrink:0}}/>
       </div>
 
       <MatchBar onHome={onHome} rightButtons={[
@@ -7794,12 +7675,8 @@ export default function App(){
       onLogout={async()=>{
         try{await auth.signOut();}catch(e){}
         setLoggedIn(false);
-        // Versuch, das Fenster zu schließen; Fallback auf about:blank,
-        // damit der User wirklich aus der App raus ist.
-        try{window.close();}catch(e){}
-        setTimeout(()=>{
-          try{window.location.href='about:blank';}catch(e){}
-        },120);
+        setOnboarded(false);
+        nav('login');
       }}/>}
     {scr==='profile-ritmodna'&&<ProfileRitmoDNA profile={profile}
       onBack={()=>setScr('profile')}
@@ -7904,7 +7781,7 @@ export default function App(){
     {scr==='remote'&&(
       <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
         alignItems:'center',justifyContent:'center',gap:20,padding:24,position:'relative'}}>
-        <RitmoWordmark size={28}/>
+        <RitmoWordmark size={56}/>
         <div style={{color:T.t1,fontSize:18,fontWeight:700,textAlign:'center',marginTop:8,
           maxWidth:320,lineHeight:1.4,letterSpacing:-.2}}>
           Coming soon

@@ -1496,22 +1496,10 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
 /* ═══════════════════════════════════════════════════════════════
    EMAIL VERIFICATION — nach Email-Signup
 ═══════════════════════════════════════════════════════════════ */
-function EmailVerification({email,onVerified,onBack,onSignIn}){
+function EmailVerification({email,onBack,onSignIn}){
   const[busy,setBusy]=useState(false);
   const[resent,setResent]=useState(false);
   const[error,setError]=useState('');
-  const[suggestLogin,setSuggestLogin]=useState(false);
-
-  // Auto-poll session every 3s — Supabase Email-Click setzt Session automatisch
-  useEffect(()=>{
-    const id=setInterval(async()=>{
-      try{
-        const ok=await auth.confirmVerification();
-        if(ok) onVerified();
-      }catch(e){}
-    },3000);
-    return ()=>clearInterval(id);
-  },[onVerified]);
 
   const resend=async()=>{
     setBusy(true);setError('');
@@ -1520,23 +1508,6 @@ function EmailVerification({email,onVerified,onBack,onSignIn}){
       setResent(true);
       setTimeout(()=>setResent(false),3000);
     }catch(e){setError(e.message||'Fehler beim Senden');}
-    finally{setBusy(false);}
-  };
-
-  const manualCheck=async()=>{
-    setBusy(true);setError('');
-    try{
-      const ok=await auth.confirmVerification();
-      if(ok){
-        onVerified();
-      } else {
-        // Session ist nicht in diesem Tab/Browser — z.B. weil der User
-        // den Verify-Link in einem anderen Browser geöffnet hat. Per
-        // Mail wurde aber bestätigt → User soll sich einfach anmelden.
-        setError('Session in diesem Browser nicht gefunden — bitte melde dich direkt an.');
-        setSuggestLogin(true);
-      }
-    }catch(e){setError(e.message||'Prüfung fehlgeschlagen');}
     finally{setBusy(false);}
   };
 
@@ -1572,8 +1543,8 @@ function EmailVerification({email,onVerified,onBack,onSignIn}){
         </div>
         <div style={{color:T.t3,fontSize:13,lineHeight:1.5,textAlign:'center',
           maxWidth:320,marginBottom:26}}>
-          geschickt. Klick darauf, um dein Konto zu aktivieren. Sobald bestätigt,
-          geht's automatisch weiter.
+          geschickt. Klick darauf, um dein Konto zu aktivieren. Danach kannst
+          du dich hier ganz normal anmelden.
         </div>
 
         {error&&(
@@ -1584,14 +1555,6 @@ function EmailVerification({email,onVerified,onBack,onSignIn}){
           </div>
         )}
 
-        <button onClick={manualCheck} disabled={busy}
-          style={{width:'100%',background:T.o,border:'none',borderRadius:12,
-            padding:'14px 16px',color:'#000',fontSize:15,fontWeight:800,
-            cursor:busy?'not-allowed':'pointer',opacity:busy?.6:1,
-            boxShadow:'0 4px 14px var(--oGlow)',marginBottom:10}}>
-          {busy?'Prüfe…':'Ich habe es bestätigt'}
-        </button>
-
         <button onClick={resend} disabled={busy||resent}
           style={{width:'100%',background:T.card,border:`1px solid ${T.border}`,
             borderRadius:12,padding:'12px 16px',color:T.t1,fontSize:13,fontWeight:600,
@@ -1600,15 +1563,12 @@ function EmailVerification({email,onVerified,onBack,onSignIn}){
           {resent?'✓ Erneut gesendet':'E-Mail erneut senden'}
         </button>
 
-        {/* Login-Fallback — sichtbar nach manualCheck, der die Session
-            in diesem Tab nicht finden konnte. Klappt auch IMMER als
-            Notausgang aus diesem Screen. */}
         <button onClick={()=>onSignIn?.(email)}
-          style={{width:'100%',background:'transparent',border:`1px solid ${T.o}`,
-            borderRadius:12,padding:'12px 16px',color:T.o,fontSize:13,fontWeight:800,
-            cursor:'pointer',marginBottom:18,letterSpacing:.3,
-            outline:suggestLogin?`2px solid ${T.o}55`:'none',outlineOffset:2}}>
-          {suggestLogin?'→ Jetzt direkt anmelden':'Direkt anmelden'}
+          style={{width:'100%',background:T.o,border:'none',borderRadius:12,
+            padding:'14px 16px',color:'#000',fontSize:14,fontWeight:800,letterSpacing:.3,
+            cursor:'pointer',marginBottom:18,
+            boxShadow:'0 4px 14px var(--oGlow)'}}>
+          Bestätigt? Auf zum Login →
         </button>
 
         <button onClick={onBack}
@@ -1708,7 +1668,7 @@ function PasswordRecovery({onDone}){
    (statt direkter Sprung ins Onboarding). Wird durch ?verified=1
    in der Redirect-URL aus dem Supabase-Mail-Link aktiviert.
 ═══════════════════════════════════════════════════════════════ */
-function VerifiedLanding({onContinue}){
+function VerifiedLanding(){
   return(
     <div style={{position:'fixed',inset:0,zIndex:900,
       background:T.bg,display:'flex',
@@ -1731,36 +1691,17 @@ function VerifiedLanding({onContinue}){
 
         <RitmoSplashLogo size={88}/>
 
-        <div style={{color:T.t1,fontSize:24,fontWeight:800,letterSpacing:-.3,
-          textAlign:'center',marginTop:18,marginBottom:8}}>
-          E-Mail bestätigt!
+        <div style={{color:T.t1,fontSize:22,fontWeight:800,letterSpacing:-.3,
+          textAlign:'center',marginTop:20,marginBottom:14,maxWidth:320,lineHeight:1.35}}>
+          Deine Email ist nun bestätigt.
         </div>
 
         <div style={{color:T.t2,fontSize:14,lineHeight:1.55,textAlign:'center',
-          maxWidth:320,marginBottom:20}}>
-          Schön, dass du dabei bist. Deine Adresse ist jetzt verifiziert.
+          maxWidth:320}}>
+          Logge dich nun gerne in der Applikation ein.
         </div>
 
-        {/* How-to-continue card */}
-        <div style={{width:'100%',background:T.card,border:`1px solid ${T.border}`,
-          borderRadius:14,padding:'16px 18px',marginBottom:22}}>
-          <div style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:1.3,
-            textTransform:'uppercase',marginBottom:8}}>So geht's weiter</div>
-          <ol style={{margin:0,paddingLeft:18,color:T.t2,fontSize:13,lineHeight:1.7}}>
-            <li>Tippe auf <strong style={{color:T.t1}}>"App öffnen"</strong> unten.</li>
-            <li>Beantworte ein paar kurze Fragen zu deinem Spiel.</li>
-            <li>Entdecke deinen RITMO-Spielstil und leg los.</li>
-          </ol>
-        </div>
-
-        <button onClick={onContinue}
-          style={{width:'100%',background:T.o,border:'none',borderRadius:12,
-            padding:'14px 16px',color:'#000',fontSize:15,fontWeight:800,letterSpacing:.3,
-            cursor:'pointer',boxShadow:'0 4px 14px var(--oGlow)'}}>
-          App öffnen
-        </button>
-
-        <div style={{color:T.t3,fontSize:10,textAlign:'center',marginTop:18,
+        <div style={{color:T.t3,fontSize:10,textAlign:'center',marginTop:28,
           letterSpacing:.3,opacity:0.7}}>
           Made by Team RITMO. With love for Padel ♡
         </div>
@@ -3524,11 +3465,13 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded}){
 ═══════════════════════════════════════════════════════════════ */
 function SingleSetup({nav,onHome,cfg,setCfg,profile}){
   const userName=profile?.name||'';
-  // Initialize players: prefer stored, else seed from profile
+  // Initialize players: prefer stored, else seed mit Defaults — Spieler 1
+  // ist der User, die anderen kriegen einen generischen "Spieler N" Namen
+  // damit das Setup ohne Tippen direkt startbar ist.
   const[players,setPlayers]=useState(()=>{
     const stored=cfg.players;
     if(stored&&stored.length===4) return stored;
-    return [userName,'','',''];
+    return [userName,'Spieler 2','Spieler 3','Spieler 4'];
   });
   const setPlayer=(idx,val)=>setPlayers(p=>p.map((v,i)=>i===idx?val:v));
 
@@ -3572,7 +3515,7 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
                 </span>
                 <input value={players[idx]}
                   onChange={e=>setPlayer(idx,e.target.value)}
-                  placeholder={isUser?'Dein Name':`Mitspieler ${idx+1}`}
+                  placeholder={isUser?'Dein Name':`Spieler ${idx+1}`}
                   autoCapitalize="words" autoCorrect="off" spellCheck={false}
                   style={{flex:1,fontSize:14,color:T.t2,fontWeight:500,textAlign:'right',
                     background:'transparent',border:'none',outline:'none'}}/>
@@ -3600,7 +3543,7 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
               </span>
               <input value={players[idx]}
                 onChange={e=>setPlayer(idx,e.target.value)}
-                placeholder={`Gegner ${idx-1}`}
+                placeholder={`Spieler ${idx+1}`}
                 autoCapitalize="words" autoCorrect="off" spellCheck={false}
                 style={{flex:1,fontSize:14,color:T.t2,fontWeight:500,textAlign:'right',
                   background:'transparent',border:'none',outline:'none'}}/>
@@ -3731,11 +3674,16 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
   const[flA,setFA]=useState(false);const[flB,setFB]=useState(false);
   const[confReset,setConfReset]=useState(false);
   const[bigScreen,setBigScreen]=useState(false);
-  // Max-Mode im BigScreen: verdoppelt alle Anzeige-Größen (Score, Sätze,
-  // Game-Count, Service-Indikator). Default: aus. Reset, wenn BigScreen
-  // geschlossen wird.
-  const[maxMode,setMaxMode]=useState(false);
-  useEffect(()=>{if(!bigScreen) setMaxMode(false);},[bigScreen]);
+  // Zoom-Level im BigScreen: skaliert alle Anzeige-Größen (Score, Sätze,
+  // Game-Count, Service-Indikator). Zyklus 1 → 2 → 0.5 → 1. Reset beim
+  // Schließen von BigScreen.
+  const ZOOM_CYCLE=[1,2,0.5];
+  const[zoomLevel,setZoomLevel]=useState(1);
+  useEffect(()=>{if(!bigScreen) setZoomLevel(1);},[bigScreen]);
+  const cycleZoom=()=>setZoomLevel(z=>{
+    const i=ZOOM_CYCLE.indexOf(z);
+    return ZOOM_CYCLE[(i+1)%ZOOM_CYCLE.length];
+  });
   const[hint,setHint]=useState('');
 
   // ═══ TIMER STATE (Americano) ═══
@@ -4042,9 +3990,9 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
     const totalSecs=timerMin*60;
     const progress=totalSecs?secsLeft/totalSecs:0;
     const fmtT=(s)=>`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
-    // Max-Mode Multiplier — verdoppelt alle Anzeige-Größen für maximale
-    // Lesbarkeit aus großer Entfernung.
-    const m=maxMode?2:1;
+    // Zoom-Level Multiplier — 0.5/1/2 für minimale, normale und maximale
+    // Anzeige-Größe. Wirkt auf alle clamp()-Werte im BigScreen + Service.
+    const m=zoomLevel;
     return(
       <div style={{height:'100dvh',width:'100vw',background:T.bg,
         display:'flex',flexDirection:'column',animation:'fadeIn .2s ease',position:'relative'}}>
@@ -4209,16 +4157,17 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
               boxShadow:'0 4px 20px rgba(0,0,0,.6)'}}>
             ↺
           </button>
-          <button onClick={()=>setMaxMode(v=>!v)}
-            title={maxMode?'Normale Größe':'Max-Größe (2x)'}
-            style={{minWidth:42,height:42,borderRadius:21,padding:'0 12px',
-              background:maxMode?T.o:T.card,
-              border:`1px solid ${maxMode?T.o:T.border}`,
-              cursor:'pointer',color:maxMode?'#000':T.t1,
-              fontSize:12,fontWeight:900,letterSpacing:1,
-              display:'flex',alignItems:'center',justifyContent:'center',
+          <button onClick={cycleZoom}
+            title="Zoom (0.5× · 1× · 2×)"
+            style={{minWidth:52,height:42,borderRadius:21,padding:'0 14px',
+              background:zoomLevel===1?T.card:T.o,
+              border:`1px solid ${zoomLevel===1?T.border:T.o}`,
+              cursor:'pointer',color:zoomLevel===1?T.t1:'#000',
+              fontSize:13,fontWeight:900,letterSpacing:.5,
+              display:'flex',alignItems:'center',justifyContent:'center',gap:3,
               boxShadow:'0 4px 20px rgba(0,0,0,.6)'}}>
-            {maxMode?'1×':'MAX'}
+            <span>{zoomLevel===0.5?'0.5':zoomLevel}</span>
+            <span style={{fontSize:11,opacity:.85}}>×</span>
           </button>
           <button onClick={()=>setBigScreen(false)}
             style={{width:42,height:42,borderRadius:'50%',
@@ -8018,9 +7967,17 @@ export default function App(){
         const dbProfile=await dbLoadProfile();
         if(dbProfile){
           setProfile(p=>({...p,...dbProfile}));
-          if(dbProfile.styleType||dbProfile.playtomicLevel!=null||dbProfile.estimatedLevel!=null){
+          // Explizites Onboarded-Flag in der DB ist die Source-of-Truth.
+          // Fallback (Legacy-Profile ohne Flag): Onboarding gilt als
+          // erledigt wenn styleType/Level gesetzt sind.
+          const dbOnboarded=dbProfile.onboarded===true
+            ||(dbProfile.styleType||dbProfile.playtomicLevel!=null||dbProfile.estimatedLevel!=null);
+          if(dbOnboarded){
             setOnboarded(true);
             isOnboarded=true;
+          } else {
+            setOnboarded(false);
+            isOnboarded=false;
           }
         }
       }catch(e){}
@@ -8064,6 +8021,13 @@ export default function App(){
   useEffect(()=>lsSet('ritmo_journey_read',journeyRead),[journeyRead]);
   useEffect(()=>lsSet('ritmo_welcome_seen',welcomeSeen),[welcomeSeen]);
   useEffect(()=>lsSet('ritmo_profile',profile),[profile]);
+
+  // onboarded ist die Source-of-Truth im React-State, profile.onboarded
+  // ist die DB-Persistenz. Spiegel das eine ins andere, damit der
+  // debounced Profile-Save den Onboarding-Status mitnimmt.
+  useEffect(()=>{
+    setProfile(p=>p.onboarded===onboarded?p:{...p,onboarded});
+  },[onboarded]);
 
   // Debounced Profile-Sync zur DB. Greift nur, wenn der User eingeloggt
   // ist und eine echte Supabase-Session besteht (db.js no-op'pt sonst).
@@ -8161,7 +8125,6 @@ export default function App(){
       }}/>}
     {scr==='verify-email'&&<EmailVerification
       email={pendingEmail}
-      onVerified={()=>{setLoggedIn(true);setOnboarded(false);nav('welcome');}}
       onBack={()=>nav('register')}
       onSignIn={()=>nav('login')}/>}
     {scr==='password-recovery'&&<PasswordRecovery
@@ -8305,19 +8268,8 @@ export default function App(){
     {!welcomeSeen&&<WelcomeNotice onConfirm={()=>setWelcomeSeen(true)}/>}
 
     {/* Verified-Landing nach Email-Verify (?verified=1 in der URL).
-        Liegt als Overlay über allen Screens; Listener routet währenddessen
-        nicht automatisch. Beim Klick auf "App öffnen" wird der Query-
-        Param aus der URL entfernt und ins Onboarding navigiert. */}
-    {verifyLanding&&<VerifiedLanding onContinue={()=>{
-      try{
-        const url=new URL(window.location.href);
-        url.searchParams.delete('verified');
-        window.history.replaceState({},'',url.toString());
-      }catch(e){}
-      setVerifyLanding(false);
-      setLoggedIn(true);
-      setOnboarded(false);
-      nav('welcome');
-    }}/>}
+        Statisches Overlay ohne Buttons — User soll den Tab manuell
+        schließen und sich neu einloggen. */}
+    {verifyLanding&&<VerifiedLanding/>}
   </>);
 }

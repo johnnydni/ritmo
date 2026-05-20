@@ -3675,9 +3675,9 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
   const[confReset,setConfReset]=useState(false);
   const[bigScreen,setBigScreen]=useState(false);
   // Zoom-Level im BigScreen: skaliert alle Anzeige-Größen (Score, Sätze,
-  // Game-Count, Service-Indikator). Zyklus 1 → 2 → 0.5 → 1. Reset beim
-  // Schließen von BigScreen.
-  const ZOOM_CYCLE=[1,2,0.5];
+  // Game-Count, Service-Indikator). Zyklus 1 → 1.5 → 2 → 0.5 → 1.
+  // Reset beim Schließen von BigScreen.
+  const ZOOM_CYCLE=[1,1.5,2,0.5];
   const[zoomLevel,setZoomLevel]=useState(1);
   useEffect(()=>{if(!bigScreen) setZoomLevel(1);},[bigScreen]);
   const cycleZoom=()=>setZoomLevel(z=>{
@@ -4158,7 +4158,7 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
             ↺
           </button>
           <button onClick={cycleZoom}
-            title="Zoom (0.5× · 1× · 2×)"
+            title="Zoom (1× · 1.5× · 2× · 0.5×)"
             style={{minWidth:52,height:42,borderRadius:21,padding:'0 14px',
               background:zoomLevel===1?T.card:T.o,
               border:`1px solid ${zoomLevel===1?T.border:T.o}`,
@@ -4166,7 +4166,7 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
               fontSize:13,fontWeight:900,letterSpacing:.5,
               display:'flex',alignItems:'center',justifyContent:'center',gap:3,
               boxShadow:'0 4px 20px rgba(0,0,0,.6)'}}>
-            <span>{zoomLevel===0.5?'0.5':zoomLevel}</span>
+            <span>{zoomLevel===0.5?'0.5':zoomLevel===1.5?'1.5':zoomLevel}</span>
             <span style={{fontSize:11,opacity:.85}}>×</span>
           </button>
           <button onClick={()=>setBigScreen(false)}

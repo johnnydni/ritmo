@@ -1155,8 +1155,8 @@ function Login({onSuccess,onRegister}){
   const tryLogin=async()=>{
     setBusy(true);setError('');
     try{
-      await auth.signInWithEmail(username,password);
-      onSuccess();
+      const result=await auth.signInWithEmail(username,password);
+      onSuccess(result);
     }catch(e){
       fail(e.message||'Anmeldung fehlgeschlagen');
     }finally{setBusy(false);}
@@ -1496,10 +1496,11 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
 /* ═══════════════════════════════════════════════════════════════
    EMAIL VERIFICATION — nach Email-Signup
 ═══════════════════════════════════════════════════════════════ */
-function EmailVerification({email,onVerified,onBack}){
+function EmailVerification({email,onVerified,onBack,onSignIn}){
   const[busy,setBusy]=useState(false);
   const[resent,setResent]=useState(false);
   const[error,setError]=useState('');
+  const[suggestLogin,setSuggestLogin]=useState(false);
 
   // Auto-poll session every 3s — Supabase Email-Click setzt Session automatisch
   useEffect(()=>{
@@ -1526,8 +1527,15 @@ function EmailVerification({email,onVerified,onBack}){
     setBusy(true);setError('');
     try{
       const ok=await auth.confirmVerification();
-      if(ok) onVerified();
-      else setError('Noch nicht bestätigt — prüfe dein Postfach.');
+      if(ok){
+        onVerified();
+      } else {
+        // Session ist nicht in diesem Tab/Browser — z.B. weil der User
+        // den Verify-Link in einem anderen Browser geöffnet hat. Per
+        // Mail wurde aber bestätigt → User soll sich einfach anmelden.
+        setError('Session in diesem Browser nicht gefunden — bitte melde dich direkt an.');
+        setSuggestLogin(true);
+      }
     }catch(e){setError(e.message||'Prüfung fehlgeschlagen');}
     finally{setBusy(false);}
   };
@@ -1588,8 +1596,19 @@ function EmailVerification({email,onVerified,onBack}){
           style={{width:'100%',background:T.card,border:`1px solid ${T.border}`,
             borderRadius:12,padding:'12px 16px',color:T.t1,fontSize:13,fontWeight:600,
             cursor:(busy||resent)?'not-allowed':'pointer',opacity:(busy||resent)?.6:1,
-            marginBottom:18}}>
+            marginBottom:10}}>
           {resent?'✓ Erneut gesendet':'E-Mail erneut senden'}
+        </button>
+
+        {/* Login-Fallback — sichtbar nach manualCheck, der die Session
+            in diesem Tab nicht finden konnte. Klappt auch IMMER als
+            Notausgang aus diesem Screen. */}
+        <button onClick={()=>onSignIn?.(email)}
+          style={{width:'100%',background:'transparent',border:`1px solid ${T.o}`,
+            borderRadius:12,padding:'12px 16px',color:T.o,fontSize:13,fontWeight:800,
+            cursor:'pointer',marginBottom:18,letterSpacing:.3,
+            outline:suggestLogin?`2px solid ${T.o}55`:'none',outlineOffset:2}}>
+          {suggestLogin?'→ Jetzt direkt anmelden':'Direkt anmelden'}
         </button>
 
         <button onClick={onBack}
@@ -3340,7 +3359,10 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
   );
 }
 
-function Home({nav,activeTab,setActiveTab,profile}){
+function Home({nav,activeTab,setActiveTab,profile,onboarded}){
+  // Hinweis-Banner falls Onboarding nicht abgeschlossen ist UND der
+  // User nicht den Test-Bypass benutzt (Test-User hat onboarded=true).
+  const needsOnboarding=!onboarded;
   return(
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden'}}>
@@ -3384,6 +3406,30 @@ function Home({nav,activeTab,setActiveTab,profile}){
         overflowY:'auto',WebkitOverflowScrolling:'touch',
         position:'relative',zIndex:2,
       }}>
+
+        {/* Onboarding-Prompt — sichtbar wenn das Profil noch nicht
+            durch das Onboarding gelaufen ist. */}
+        {needsOnboarding&&(
+          <button onClick={()=>nav('welcome')} className="fu"
+            style={{background:T.oSoft,border:`1px solid ${T.o}`,borderRadius:18,
+              padding:'16px 18px',display:'flex',alignItems:'center',gap:14,
+              cursor:'pointer',color:T.t1,textAlign:'left',transition:'background .15s',
+              animationDelay:'.02s'}}
+            onPointerDown={e=>e.currentTarget.style.background=T.card2}
+            onPointerUp={e=>e.currentTarget.style.background=T.oSoft}
+            onPointerLeave={e=>e.currentTarget.style.background=T.oSoft}>
+            <div style={{fontSize:28,lineHeight:1,flexShrink:0}}>✨</div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{color:T.o,fontSize:14,fontWeight:800,marginBottom:2,letterSpacing:.2}}>
+                Profil vervollständigen
+              </div>
+              <div style={{color:T.t2,fontSize:11,fontWeight:500,lineHeight:1.45}}>
+                Beantworte ein paar Fragen und entdecke deinen RITMO-Spielstil.
+              </div>
+            </div>
+            <div style={{color:T.o,fontSize:18,fontWeight:800,flexShrink:0}}>›</div>
+          </button>
+        )}
 
         {/* Single Match */}
         <button onClick={()=>nav('single-setup')} className="fu"
@@ -3685,6 +3731,11 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
   const[flA,setFA]=useState(false);const[flB,setFB]=useState(false);
   const[confReset,setConfReset]=useState(false);
   const[bigScreen,setBigScreen]=useState(false);
+  // Max-Mode im BigScreen: verdoppelt alle Anzeige-Größen (Score, Sätze,
+  // Game-Count, Service-Indikator). Default: aus. Reset, wenn BigScreen
+  // geschlossen wird.
+  const[maxMode,setMaxMode]=useState(false);
+  useEffect(()=>{if(!bigScreen) setMaxMode(false);},[bigScreen]);
   const[hint,setHint]=useState('');
 
   // ═══ TIMER STATE (Americano) ═══
@@ -3991,6 +4042,9 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
     const totalSecs=timerMin*60;
     const progress=totalSecs?secsLeft/totalSecs:0;
     const fmtT=(s)=>`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+    // Max-Mode Multiplier — verdoppelt alle Anzeige-Größen für maximale
+    // Lesbarkeit aus großer Entfernung.
+    const m=maxMode?2:1;
     return(
       <div style={{height:'100dvh',width:'100vw',background:T.bg,
         display:'flex',flexDirection:'column',animation:'fadeIn .2s ease',position:'relative'}}>
@@ -4054,19 +4108,19 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
                   <>
                     {/* Tennis ball indicator */}
                     <div style={{
-                      width:'clamp(7rem,19vh,13rem)',
-                      height:'clamp(7rem,19vh,13rem)',
+                      width:`clamp(${7*m}rem,${19*m}vh,${13*m}rem)`,
+                      height:`clamp(${7*m}rem,${19*m}vh,${13*m}rem)`,
                       borderRadius:'50%',
                       background: isAdv ? T.o : T.t1,
                       boxShadow: isAdv
                         ? '0 0 36px var(--oGlow), inset 0 -12px 26px rgba(0,0,0,.18)'
                         : '0 0 28px rgba(255,255,255,.22), inset 0 -12px 26px rgba(0,0,0,.10)',
-                      marginBottom:'clamp(1rem,2.8vh,1.8rem)'
+                      marginBottom:`clamp(${1*m}rem,${2.8*m}vh,${1.8*m}rem)`
                     }}/>
                     {/* Label below */}
                     <div style={{
                       color:T.t1,
-                      fontSize:'clamp(2.4rem,8vh,4.5rem)',
+                      fontSize:`clamp(${2.4*m}rem,${8*m}vh,${4.5*m}rem)`,
                       fontWeight:800,letterSpacing:-1,lineHeight:1,
                       whiteSpace:'nowrap'}}>
                       {big}
@@ -4074,7 +4128,7 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
                   </>
                 ) : (
                   <div style={{
-                    fontSize:'clamp(9rem,36vh,22rem)',
+                    fontSize:`clamp(${9*m}rem,${36*m}vh,${22*m}rem)`,
                     fontWeight:900,color:T.t1,lineHeight:.95,letterSpacing:-12,
                     whiteSpace:'nowrap'}}>
                     {big}
@@ -4082,17 +4136,17 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
                 )}
                 {/* Games + Set traffic-light dots */}
                 {isB&&(
-                  <div style={{display:'flex',alignItems:'center',gap:'clamp(1.5rem,4vw,3rem)',
-                    marginTop:'clamp(1.6rem,4.5vh,3rem)'}}>
-                    <div style={{color:T.o,fontSize:'clamp(3.5rem,12vh,8rem)',
+                  <div style={{display:'flex',alignItems:'center',gap:`clamp(${1.5*m}rem,${4*m}vw,${3*m}rem)`,
+                    marginTop:`clamp(${1.6*m}rem,${4.5*m}vh,${3*m}rem)`}}>
+                    <div style={{color:T.o,fontSize:`clamp(${3.5*m}rem,${12*m}vh,${8*m}rem)`,
                       fontWeight:900,letterSpacing:-3,lineHeight:1}}>
                       {gamesCount}
                     </div>
-                    <div style={{display:'flex',gap:'clamp(.7rem,1.5vw,1.2rem)'}}>
+                    <div style={{display:'flex',gap:`clamp(${.7*m}rem,${1.5*m}vw,${1.2*m}rem)`}}>
                       {[0,1,2].map(i=>(
                         <div key={i} style={{
-                          width:'clamp(1.4rem,3.5vh,2.5rem)',
-                          height:'clamp(1.4rem,3.5vh,2.5rem)',
+                          width:`clamp(${1.4*m}rem,${3.5*m}vh,${2.5*m}rem)`,
+                          height:`clamp(${1.4*m}rem,${3.5*m}vh,${2.5*m}rem)`,
                           borderRadius:'50%',
                           background:i<setsCount?T.o:'transparent',
                           border:`2.5px solid ${T.o}`,
@@ -4126,7 +4180,7 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
           {isB&&(
             <div style={{flexShrink:0,display:'flex',alignItems:'flex-start',
               padding:'2vh 4px 0 12px'}}>
-              <div style={{width:'min(12vw,130px)',aspectRatio:'2/3'}}>
+              <div style={{width:`min(${12*m}vw,${130*m}px)`,aspectRatio:'2/3'}}>
                 <ServiceIndicator servingTeam={servingTeam} isDeuce={isDeuce}/>
               </div>
             </div>
@@ -4145,7 +4199,7 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
           </button>
         </div>
 
-        {/* Reset + Exit Big Screen bottom-right */}
+        {/* Reset + Max + Exit Big Screen bottom-right */}
         <div style={{position:'absolute',bottom:18,right:18,display:'flex',gap:10}}>
           <button onClick={()=>setConfReset(true)}
             style={{width:42,height:42,borderRadius:'50%',
@@ -4154,6 +4208,17 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
               display:'flex',alignItems:'center',justifyContent:'center',
               boxShadow:'0 4px 20px rgba(0,0,0,.6)'}}>
             ↺
+          </button>
+          <button onClick={()=>setMaxMode(v=>!v)}
+            title={maxMode?'Normale Größe':'Max-Größe (2x)'}
+            style={{minWidth:42,height:42,borderRadius:21,padding:'0 12px',
+              background:maxMode?T.o:T.card,
+              border:`1px solid ${maxMode?T.o:T.border}`,
+              cursor:'pointer',color:maxMode?'#000':T.t1,
+              fontSize:12,fontWeight:900,letterSpacing:1,
+              display:'flex',alignItems:'center',justifyContent:'center',
+              boxShadow:'0 4px 20px rgba(0,0,0,.6)'}}>
+            {maxMode?'1×':'MAX'}
           </button>
           <button onClick={()=>setBigScreen(false)}
             style={{width:42,height:42,borderRadius:'50%',
@@ -8069,7 +8134,19 @@ export default function App(){
       return nav('home');
     }}/>}
     {scr==='login'&&<Login
-      onSuccess={()=>{setLoggedIn(true);setOnboarded(true);nav('home');}}
+      onSuccess={(result)=>{
+        setLoggedIn(true);
+        // Test-User-Bypass: kein SIGNED_IN-Event vom Supabase-Listener,
+        // also setzen wir onboarded selbst und routen direkt nach home.
+        if(result?.user?.provider==='test'){
+          setOnboarded(true);
+          return nav('home');
+        }
+        // Real user: aktuellen onboarded-Flag respektieren. Auf einem
+        // neuen Gerät ist onboarded=false → welcome (Onboarding); der
+        // Auth-Listener kann das später per DB-Profil korrigieren.
+        nav(onboarded?'home':'welcome');
+      }}
       onRegister={()=>nav('register')}/>}
     {scr==='register'&&<Register
       onSuccess={()=>{setLoggedIn(true);setOnboarded(false);nav('welcome');}}
@@ -8085,14 +8162,15 @@ export default function App(){
     {scr==='verify-email'&&<EmailVerification
       email={pendingEmail}
       onVerified={()=>{setLoggedIn(true);setOnboarded(false);nav('welcome');}}
-      onBack={()=>nav('register')}/>}
+      onBack={()=>nav('register')}
+      onSignIn={()=>nav('login')}/>}
     {scr==='password-recovery'&&<PasswordRecovery
       onDone={()=>{setLoggedIn(true);nav(onboarded?'home':'welcome');}}/>}
     {scr==='welcome'&&<Welcome
       profile={profile} setProfile={setProfile}
       theme={theme} setTheme={setTheme}
       onComplete={()=>{setOnboarded(true);nav('home');}}/>}
-    {scr==='home'&&<Home nav={nav} activeTab={activeTab} setActiveTab={handleTab} profile={profile}/>}
+    {scr==='home'&&<Home nav={nav} activeTab={activeTab} setActiveTab={handleTab} profile={profile} onboarded={onboarded}/>}
     {scr==='profile'&&<Profile profile={profile} setProfile={setProfile}
       onHome={goHome}
       onOpenRitmoDNA={()=>setScr('profile-ritmodna')}

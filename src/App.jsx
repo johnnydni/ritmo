@@ -1,5 +1,6 @@
 import { useState, useEffect, useReducer, useCallback, useRef, Fragment } from "react";
 import { SKILL_DESCRIPTIONS } from "./skillDescriptions.js";
+import { loadProfile as dbLoadProfile, saveProfile as dbSaveProfile, logMatch as dbLogMatch, loadMatchStats as dbLoadMatchStats } from "./db.js";
 
 /* ═══════════════════════════════════════════════════════════════
    DESIGN TOKENS — CSS variables; values per theme defined in CSS below
@@ -2502,17 +2503,36 @@ function StatTile({label,value,unit,trend,color,sparklineData}){
    PROFILE RITMO DNA SCREEN — Persönliche Stil + Analytics
 ═══════════════════════════════════════════════════════════════ */
 function ProfileRitmoDNA({profile,onBack,onHome}){
-  // Mock match data — in der Praxis aus localStorage/Supabase
-  const stats={
-    matches:24,
-    wins:15,
-    losses:9,
-    winRate:Math.round((15/24)*100),
-    avgSets:'5.6',
-    formTrend:[2,1,3,2,4,3,5,4,3,5,4,5], // last 12 matches form score
-    weeklyMatches:[2,3,1,4,2,5,3], // last 7 weeks
-    weekDays:['M','D','M','D','F','S','S'],
+  // Stats aus der DB (ritmo_matches). Null = noch nicht geladen,
+  // 0-Matches = Empty-State, sonst echte Aggregate.
+  const[stats,setStats]=useState(null);
+  useEffect(()=>{
+    let alive=true;
+    dbLoadMatchStats().then(s=>{
+      if(!alive) return;
+      // Falls keine Session/Supabase verfügbar (Test-User): Empty-State.
+      setStats(s||{
+        matches:0,wins:0,losses:0,winRate:0,
+        formTrend:[],weeklyMatches:[0,0,0,0,0,0,0],
+        weekDays:['M','D','M','D','F','S','S'],avgSets:'0',
+      });
+    }).catch(()=>{
+      if(alive) setStats({
+        matches:0,wins:0,losses:0,winRate:0,
+        formTrend:[],weeklyMatches:[0,0,0,0,0,0,0],
+        weekDays:['M','D','M','D','F','S','S'],avgSets:'0',
+      });
+    });
+    return ()=>{alive=false;};
+  },[]);
+  // Während des Loadings: einen sicheren Default zeigen, damit Renderer
+  // (Sparkline etc.) nicht auf undefined arrays crashen.
+  const safeStats=stats||{
+    matches:0,wins:0,losses:0,winRate:0,
+    formTrend:[],weeklyMatches:[0,0,0,0,0,0,0],
+    weekDays:['M','D','M','D','F','S','S'],avgSets:'0',
   };
+  const hasMatches=safeStats.matches>0;
 
   const style=profile.styleType?PADEL_STYLES[profile.styleType]:null;
   const lvl=profile.playtomicLevel??profile.estimatedLevel;
@@ -2570,14 +2590,15 @@ function ProfileRitmoDNA({profile,onBack,onHome}){
             Performance Übersicht
           </div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
-            <StatTile label="Matches" value={stats.matches} color={T.t1}/>
-            <StatTile label="Siege" value={stats.wins} color={'#1A8754'}/>
-            <StatTile label="Niederlagen" value={stats.losses} color={'#E84545'}/>
-            <StatTile label="Win Rate" value={stats.winRate} unit="%"
-              color={accent} trend={8}/>
+            <StatTile label="Matches" value={safeStats.matches} color={T.t1}/>
+            <StatTile label="Siege" value={safeStats.wins} color={'#1A8754'}/>
+            <StatTile label="Niederlagen" value={safeStats.losses} color={'#E84545'}/>
+            <StatTile label="Win Rate" value={safeStats.winRate} unit="%"
+              color={accent}/>
           </div>
         </div>
 
+        {hasMatches?(<>
         {/* Section: Form Trend */}
         <div className="fu" style={{animationDelay:'.15s',background:T.card,
           border:`1px solid ${T.border}`,borderRadius:14,padding:'16px 18px',marginBottom:14}}>
@@ -2587,14 +2608,22 @@ function ProfileRitmoDNA({profile,onBack,onHome}){
               <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.3,
                 textTransform:'uppercase',marginBottom:3}}>Form-Verlauf</div>
               <div style={{color:T.t1,fontSize:18,fontWeight:800,letterSpacing:-.3}}>
-                Letzte 12 Matches
+                Letzte {Math.min(safeStats.formTrend.length,12)} Matches
               </div>
             </div>
             <div style={{color:accent,fontSize:14,fontWeight:800}}>
-              ↑ Steigend
+              {(()=>{
+                const f=safeStats.formTrend;
+                if(f.length<3) return '→ Neu';
+                const last=f.slice(-Math.min(4,f.length)).reduce((a,b)=>a+b,0)/Math.min(4,f.length);
+                const all=f.reduce((a,b)=>a+b,0)/f.length;
+                if(last>all+.3) return '↑ Steigend';
+                if(last<all-.3) return '↓ Fallend';
+                return '→ Stabil';
+              })()}
             </div>
           </div>
-          <Sparkline data={stats.formTrend} color={accent} height={70}/>
+          <Sparkline data={safeStats.formTrend} color={accent} height={70}/>
         </div>
 
         {/* Section: Match Aktivität pro Woche */}
@@ -2605,9 +2634,22 @@ function ProfileRitmoDNA({profile,onBack,onHome}){
           <div style={{color:T.t1,fontSize:18,fontWeight:800,letterSpacing:-.3,marginBottom:14}}>
             Matches pro Woche
           </div>
-          <BarChart values={stats.weeklyMatches} labels={stats.weekDays}
+          <BarChart values={safeStats.weeklyMatches} labels={safeStats.weekDays}
             color={accent} height={100}/>
         </div>
+        </>):(
+          <div className="fu" style={{animationDelay:'.15s',background:T.card,
+            border:`1px solid ${T.border}`,borderRadius:14,padding:'24px 20px',
+            marginBottom:14,textAlign:'center'}}>
+            <div style={{color:T.t2,fontSize:14,fontWeight:700,marginBottom:6}}>
+              Noch keine Matches geloggt
+            </div>
+            <div style={{color:T.t3,fontSize:12,lineHeight:1.5}}>
+              Spiel ein Single Match oder ein Turnier — sobald es beendet ist,
+              landet es automatisch hier in deinen Stats.
+            </div>
+          </div>
+        )}
 
         {/* Section: Level & Ring */}
         {lvl!=null&&style&&(
@@ -3887,6 +3929,30 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
   const[dA,dB]=tb?[String(tA),String(tB)]:ptD(pA,pB,gpAct);
   const win=isB?winner:am.winner;
 
+  // ── Match-Logging zur DB bei winner-Transition null→Wert ──
+  // useRef wird beim Mount auf den aktuellen win-Wert initialisiert.
+  // Dadurch loggen wir ein bereits abgeschlossenes Match NICHT erneut,
+  // wenn der User den Screen erneut öffnet (Match-State liegt in
+  // localStorage). Erst nach RESET (win wird null) und neuem Sieg
+  // wird wieder geloggt.
+  const loggedWinRef=useRef(win);
+  useEffect(()=>{
+    if(win&&!loggedWinRef.current){
+      loggedWinRef.current=win;
+      dbLogMatch({
+        format:isB?'bo3':'americano',
+        player_names:cfg.players||[cfg.nameA,cfg.nameB],
+        score_a:isB?sA:am.pA,
+        score_b:isB?sB:am.pB,
+        sets:isB?sets:null,
+        user_team:'A', // Konvention: User ist im Single immer Team A
+        user_won:win==='A',
+      }).catch(()=>{});
+    } else if(!win){
+      loggedWinRef.current=null;
+    }
+  },[win]);// eslint-disable-line
+
   // ── Serving team + side (Padel rules) ──
   // Total completed games across all sets (excludes current in-progress game)
   const totalCompletedGames = gA + gB + sets.reduce((acc,s)=>acc+(s.gA||0)+(s.gB||0),0);
@@ -5033,6 +5099,45 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='soft',onEdit}){
   const[showSitOutInfo,setShowSitOutInfo]=useState(false);
   const round=tourney.rounds[tourney.current];
   const playerById=id=>tourney.players.find(p=>p.id===id);
+
+  // ── Tournament-Court Logging ──
+  // Wenn ein Court done=true wird (und noch nicht .logged), wird das
+  // Match in die DB geschrieben und der Court mit .logged=true markiert,
+  // damit Toggling "Bearbeiten"/"Bestätigen" keine Duplikate erzeugt.
+  // Annahme: Spieler[0] ist der eingeloggte User → user_team/user_won
+  // werden anhand dessen abgeleitet.
+  useEffect(()=>{
+    if(!tourney||!tourney.rounds) return;
+    const userPid=tourney.players?.[0]?.id;
+    let dirty=false;
+    const newRounds=tourney.rounds.map((r,rIdx)=>({
+      ...r,
+      courts:r.courts.map(c=>{
+        if(!c.done||c.logged) return c;
+        dirty=true;
+        const userTeam=userPid!=null
+          ?(c.t1?.includes(userPid)?'A':(c.t2?.includes(userPid)?'B':null))
+          :null;
+        const userWon=userTeam==='A'?(c.s1>c.s2)
+          :userTeam==='B'?(c.s2>c.s1)
+          :null;
+        dbLogMatch({
+          format:'tournament-'+(tourney.format||'americano'),
+          player_names:[...(c.t1||[]),...(c.t2||[])].map(pid=>tourney.players.find(p=>p.id===pid)?.name||''),
+          score_a:c.s1??0,
+          score_b:c.s2??0,
+          sets:null,
+          user_team:userTeam,
+          user_won:userTeam?userWon:null,
+          tournament_id:tourney.id||tourney.createdAt||null,
+          round_index:rIdx,
+        }).catch(()=>{});
+        return {...c,logged:true};
+      }),
+    }));
+    if(dirty) setTourney(t=>({...t,rounds:newRounds}));
+    // eslint-disable-next-line
+  },[tourney]);
 
   const updateScore=(courtId,field,val)=>{
     setTourney(t=>{
@@ -7833,16 +7938,30 @@ export default function App(){
   useEffect(()=>{onboardedRef.current=onboarded;},[onboarded]);
   useEffect(()=>{
     if(typeof window==='undefined'||!window.supabase) return;
-    const enter=()=>{
+    const enter=async()=>{
       // Während VerifiedLanding sichtbar ist: NICHT auto-routen,
       // sonst springt der Listener sofort weiter und der User
-      // sieht die Info-Page nie. Login + Onboarded werden später
-      // beim "App öffnen"-Klick gesetzt.
+      // sieht die Info-Page nie.
       if(verifyLandingRef.current) return;
       setLoggedIn(true);
+      // Erst Profil aus DB ziehen, DANN routen. Sonst würde der
+      // Listener auf neuem Gerät (onboarded=false in localStorage)
+      // immer auf 'welcome' schicken, obwohl der User längst onboarded
+      // ist und das Profil nur in der DB liegt.
+      let isOnboarded=onboardedRef.current;
+      try{
+        const dbProfile=await dbLoadProfile();
+        if(dbProfile){
+          setProfile(p=>({...p,...dbProfile}));
+          if(dbProfile.styleType||dbProfile.playtomicLevel!=null||dbProfile.estimatedLevel!=null){
+            setOnboarded(true);
+            isOnboarded=true;
+          }
+        }
+      }catch(e){}
       setScr(curr=>{
         if(curr==='splash'||curr==='login'||curr==='register'||curr==='verify-email'){
-          return onboardedRef.current?'home':'welcome';
+          return isOnboarded?'home':'welcome';
         }
         return curr;
       });
@@ -7880,6 +7999,14 @@ export default function App(){
   useEffect(()=>lsSet('ritmo_journey_read',journeyRead),[journeyRead]);
   useEffect(()=>lsSet('ritmo_welcome_seen',welcomeSeen),[welcomeSeen]);
   useEffect(()=>lsSet('ritmo_profile',profile),[profile]);
+
+  // Debounced Profile-Sync zur DB. Greift nur, wenn der User eingeloggt
+  // ist und eine echte Supabase-Session besteht (db.js no-op'pt sonst).
+  useEffect(()=>{
+    if(!loggedIn) return;
+    const id=setTimeout(()=>{dbSaveProfile(profile).catch(()=>{});},800);
+    return ()=>clearTimeout(id);
+  },[profile,loggedIn]);
 
   const nav=useCallback(s=>{
     if(s==='rules'&&rulesRead) return setScr('rules-overview');

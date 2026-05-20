@@ -435,9 +435,11 @@ const auth={
     if(!e||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) throw new Error('Bitte gültige E-Mail eingeben');
     if(!password||password.length<8) throw new Error('Passwort min. 8 Zeichen');
     const base=(typeof window!=='undefined'&&window.__BASE__)||'/';
+    // ?verified=1 schaltet in der App die VerifiedLanding-Page frei,
+    // statt direkt ins Onboarding zu springen.
     const {data,error}=await sb().auth.signUp({
       email:e,password,
-      options:{emailRedirectTo:window.location.origin+base},
+      options:{emailRedirectTo:window.location.origin+base+'?verified=1'},
     });
     if(error) throw new Error(error.message||'Registrierung fehlgeschlagen');
     return {needsVerification:!data.session,email:e};
@@ -1676,6 +1678,72 @@ function PasswordRecovery({onDone}){
             boxShadow:'0 4px 14px var(--oGlow)'}}>
           {busy?'…':'Passwort speichern'}
         </button>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   VERIFIED LANDING — Standalone Info-Page nach Email-Verify
+   (statt direkter Sprung ins Onboarding). Wird durch ?verified=1
+   in der Redirect-URL aus dem Supabase-Mail-Link aktiviert.
+═══════════════════════════════════════════════════════════════ */
+function VerifiedLanding({onContinue}){
+  return(
+    <div style={{position:'fixed',inset:0,zIndex:900,
+      background:T.bg,display:'flex',
+      flexDirection:'column',alignItems:'center',justifyContent:'center',
+      overflowY:'auto',
+      padding:'calc(env(safe-area-inset-top,0px) + 40px) 22px calc(env(safe-area-inset-bottom,0px) + 40px)'}}>
+      <div className="fi" style={{width:'100%',maxWidth:380,display:'flex',
+        flexDirection:'column',alignItems:'center'}}>
+
+        {/* Check-Icon */}
+        <div style={{width:96,height:96,borderRadius:'50%',
+          background:`${T.g}22`,border:`2px solid ${T.g}`,
+          display:'flex',alignItems:'center',justifyContent:'center',
+          marginBottom:24,boxShadow:`0 0 24px ${T.g}55`}}>
+          <svg width="44" height="44" viewBox="0 0 24 24" fill="none"
+            stroke={T.g} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+
+        <RitmoSplashLogo size={88}/>
+
+        <div style={{color:T.t1,fontSize:24,fontWeight:800,letterSpacing:-.3,
+          textAlign:'center',marginTop:18,marginBottom:8}}>
+          E-Mail bestätigt!
+        </div>
+
+        <div style={{color:T.t2,fontSize:14,lineHeight:1.55,textAlign:'center',
+          maxWidth:320,marginBottom:20}}>
+          Schön, dass du dabei bist. Deine Adresse ist jetzt verifiziert.
+        </div>
+
+        {/* How-to-continue card */}
+        <div style={{width:'100%',background:T.card,border:`1px solid ${T.border}`,
+          borderRadius:14,padding:'16px 18px',marginBottom:22}}>
+          <div style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:1.3,
+            textTransform:'uppercase',marginBottom:8}}>So geht's weiter</div>
+          <ol style={{margin:0,paddingLeft:18,color:T.t2,fontSize:13,lineHeight:1.7}}>
+            <li>Tippe auf <strong style={{color:T.t1}}>"App öffnen"</strong> unten.</li>
+            <li>Beantworte ein paar kurze Fragen zu deinem Spiel.</li>
+            <li>Entdecke deinen RITMO-Spielstil und leg los.</li>
+          </ol>
+        </div>
+
+        <button onClick={onContinue}
+          style={{width:'100%',background:T.o,border:'none',borderRadius:12,
+            padding:'14px 16px',color:'#000',fontSize:15,fontWeight:800,letterSpacing:.3,
+            cursor:'pointer',boxShadow:'0 4px 14px var(--oGlow)'}}>
+          App öffnen
+        </button>
+
+        <div style={{color:T.t3,fontSize:10,textAlign:'center',marginTop:18,
+          letterSpacing:.3,opacity:0.7}}>
+          Made by Team RITMO. With love for Padel ♡
+        </div>
       </div>
     </div>
   );
@@ -7694,6 +7762,17 @@ export default function App(){
   const[rulesRead,setRulesRead]=useState(()=>lsGet('ritmo_rules_read',false));
   const[journeyRead,setJourneyRead]=useState(()=>lsGet('ritmo_journey_read',false));
   const[welcomeSeen,setWelcomeSeen]=useState(()=>lsGet('ritmo_welcome_seen',false));
+
+  // VerifiedLanding: aktiv wenn der Supabase-Mail-Link uns mit
+  // ?verified=1 zurückgeschickt hat. Blockiert das Auto-Routing
+  // des Auth-Listeners, damit der User die Info-Seite zuerst sieht.
+  const[verifyLanding,setVerifyLanding]=useState(()=>{
+    if(typeof window==='undefined') return false;
+    try{return new URLSearchParams(window.location.search).get('verified')==='1';}
+    catch(e){return false;}
+  });
+  const verifyLandingRef=useRef(verifyLanding);
+  useEffect(()=>{verifyLandingRef.current=verifyLanding;},[verifyLanding]);
   const[pendingEmail,setPendingEmail]=useState('');
   const[profile,setProfile]=useState(()=>lsGet('ritmo_profile',{
     name:'',
@@ -7755,6 +7834,11 @@ export default function App(){
   useEffect(()=>{
     if(typeof window==='undefined'||!window.supabase) return;
     const enter=()=>{
+      // Während VerifiedLanding sichtbar ist: NICHT auto-routen,
+      // sonst springt der Listener sofort weiter und der User
+      // sieht die Info-Page nie. Login + Onboarded werden später
+      // beim "App öffnen"-Klick gesetzt.
+      if(verifyLandingRef.current) return;
       setLoggedIn(true);
       setScr(curr=>{
         if(curr==='splash'||curr==='login'||curr==='register'||curr==='verify-email'){
@@ -8014,5 +8098,21 @@ export default function App(){
     {/* First-launch disclaimer — liegt über allen Screens, blockiert
         Interaktion bis OK gedrückt wurde */}
     {!welcomeSeen&&<WelcomeNotice onConfirm={()=>setWelcomeSeen(true)}/>}
+
+    {/* Verified-Landing nach Email-Verify (?verified=1 in der URL).
+        Liegt als Overlay über allen Screens; Listener routet währenddessen
+        nicht automatisch. Beim Klick auf "App öffnen" wird der Query-
+        Param aus der URL entfernt und ins Onboarding navigiert. */}
+    {verifyLanding&&<VerifiedLanding onContinue={()=>{
+      try{
+        const url=new URL(window.location.href);
+        url.searchParams.delete('verified');
+        window.history.replaceState({},'',url.toString());
+      }catch(e){}
+      setVerifyLanding(false);
+      setLoggedIn(true);
+      setOnboarded(false);
+      nav('welcome');
+    }}/>}
   </>);
 }

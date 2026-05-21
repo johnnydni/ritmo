@@ -1,6 +1,7 @@
 import { useState, useEffect, useReducer, useCallback, useRef, Fragment } from "react";
 import { SKILL_DESCRIPTIONS } from "./skillDescriptions.js";
-import { loadProfile as dbLoadProfile, saveProfile as dbSaveProfile, logMatch as dbLogMatch, loadMatchStats as dbLoadMatchStats } from "./db.js";
+import { loadProfile as dbLoadProfile, saveProfile as dbSaveProfile, logMatch as dbLogMatch, loadMatchStats as dbLoadMatchStats,
+  createOnlineTournament, joinOnlineTournament, fetchOnlineTournament, updateOnlineTournament, subscribeToTournament } from "./db.js";
 
 /* ═══════════════════════════════════════════════════════════════
    DESIGN TOKENS — CSS variables; values per theme defined in CSS below
@@ -5063,7 +5064,10 @@ function SwipeableCard({children,onDelete}){
 }
 
 
-function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit}){
+function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit,profile,onCreateOnline}){
+  // mode: 'lokal' = bestehender Flow (lokale Spielerliste).
+  // 'online' = Host erstellt Session, Player joinen via PIN/QR.
+  const[mode,setMode]=useState(saved?.mode||'lokal');
   const[players,setPlayers]=useState(saved?.players||[
     {id:0,name:'Spieler 1',color:PCOLS[0]},
     {id:1,name:'Spieler 2',color:PCOLS[1]},
@@ -5074,6 +5078,8 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit}){
   const[winMode,setWinMode]=useState(saved?.winMode||'points');
   const[numCourts,setNumCourts]=useState(saved?.numCourts||1);
   const[roundDur,setRoundDur]=useState(saved?.roundDurationMin||10);
+  const[creatingOnline,setCreatingOnline]=useState(false);
+  const[onlineError,setOnlineError]=useState('');
   const nextId=useRef(players.reduce((m,p)=>Math.max(m,p.id),0)+1);
 
   const maxCourts=Math.max(1,Math.floor(players.length/4));
@@ -5105,6 +5111,29 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit}){
       </div>
 
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
+
+        {/* Modus: Lokal vs Online */}
+        {!isEdit&&(
+          <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,padding:'18px'}}>
+            <div style={{color:T.o,fontSize:18,fontWeight:800,marginBottom:12}}>Modus</div>
+            <div style={{display:'flex',background:T.card2,borderRadius:30,padding:4,gap:4,
+              border:`1px solid ${T.border}`}}>
+              {[{v:'lokal',l:'Lokal'},{v:'online',l:'Online'}].map(o=>(
+                <button key={o.v} onClick={()=>{setMode(o.v);setOnlineError('');}}
+                  style={{flex:1,padding:'10px',borderRadius:24,border:'none',cursor:'pointer',
+                    background:mode===o.v?T.t4:'transparent',color:T.t1,fontSize:13,fontWeight:600,
+                    transition:'background .2s'}}>
+                  {o.l}
+                </button>
+              ))}
+            </div>
+            <div style={{color:T.t3,fontSize:12,lineHeight:1.6,marginTop:10,fontWeight:500}}>
+              {mode==='lokal'
+                ?'Alle Spieler auf diesem Gerät. Keine Internet-Verbindung nötig.'
+                :'Host erstellt das Turnier, andere Spieler joinen per PIN oder QR-Code von ihren eigenen Geräten.'}
+            </div>
+          </div>
+        )}
 
         {/* Format */}
         <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,padding:'18px'}}>
@@ -5183,7 +5212,10 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit}){
           </div>
         </div>
 
-        {/* Spieler */}
+        {/* Spieler — nur im Lokal-Modus editierbar.
+            Im Online-Modus erscheint stattdessen eine Info-Karte,
+            da Spieler nach Erstellung über PIN/QR joinen. */}
+        {mode==='lokal'?(
         <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
           padding:'18px 18px 8px'}}>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
@@ -5228,43 +5260,508 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit}){
             </div>
           )}
         </div>
+        ):(
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+          padding:'18px'}}>
+          <div style={{color:T.o,fontSize:18,fontWeight:800,marginBottom:8}}>Spieler joinen via QR</div>
+          <div style={{color:T.t2,fontSize:13,lineHeight:1.55,marginBottom:6}}>
+            Nach dem Start öffnest du die Lobby. Dort siehst du PIN + QR-Code.
+          </div>
+          <div style={{color:T.t3,fontSize:12,lineHeight:1.55}}>
+            Du bist als <span style={{color:T.o,fontWeight:700}}>{profile?.name||'Host'}</span> automatisch erster Spieler.
+            Andere scannen den QR oder geben den PIN unter „Turnier beitreten" ein.
+          </div>
+          {onlineError&&(
+            <div style={{color:T.r,fontSize:12,marginTop:10,fontWeight:600}}>{onlineError}</div>
+          )}
+        </div>
+        )}
         <div style={{height:100,flexShrink:0}}/>
       </div>
 
       <MatchBar onHome={onHome} rightButtons={[{
-        icon:isEdit?'✓':'Start',
-        disabled:!canStart,
-        onClick:()=>{
-          if(!canStart)return;
+        icon:creatingOnline?'…':(isEdit?'✓':'Start'),
+        disabled:creatingOnline||(mode==='lokal'&&!canStart),
+        onClick:async()=>{
+          if(creatingOnline) return;
           if(isEdit){
             onSave({players,format,winMode,numCourts,roundDurationMin:roundDur});
-          } else {
-            const lb=calcLeaderboard(players,[],winMode);
-            const r0=format==='mexicano'
-              ?genMexicanoRound(players.map(p=>p.id),lb,numCourts)
-              :genAmericanoRound(players.map(p=>p.id),[],numCourts);
-            onStart({
-              players,format,winMode,
-              numCourts,
-              roundDurationMin:roundDur,
-              rounds:[r0],
-              current:0,
-              finished:false,
-              timerSecsLeft:roundDur*60,
-              timerRunning:false,
-              timerFinished:false,
-            });
+            return;
           }
+          if(mode==='online'){
+            // Host erstellt Session und navigiert zur Lobby —
+            // Player-Liste wird in der Lobby live via Realtime gefüllt.
+            setCreatingOnline(true);setOnlineError('');
+            try{
+              const hostName=(profile?.name||'').trim()||'Host';
+              const pin=await createOnlineTournament({
+                format,winMode,numCourts,
+                roundDurationMin:roundDur,
+                hostName,
+                mode:'online',
+              });
+              onCreateOnline?.(pin);
+            }catch(e){
+              setOnlineError(e?.message||'Konnte Tournament nicht erstellen.');
+            }finally{setCreatingOnline(false);}
+            return;
+          }
+          if(!canStart) return;
+          const lb=calcLeaderboard(players,[],winMode);
+          const r0=format==='mexicano'
+            ?genMexicanoRound(players.map(p=>p.id),lb,numCourts)
+            :genAmericanoRound(players.map(p=>p.id),[],numCourts);
+          onStart({
+            players,format,winMode,
+            numCourts,
+            roundDurationMin:roundDur,
+            rounds:[r0],
+            current:0,
+            finished:false,
+            timerSecsLeft:roundDur*60,
+            timerRunning:false,
+            timerFinished:false,
+          });
         },
         style:{
           width:56,height:56,
-          background:canStart?T.g:T.card2,
-          border:canStart?'1px solid rgba(255,255,255,0.18)':`1px solid ${T.border}`,
-          color:canStart?T.t1:T.t3,
+          background:(mode==='online'||canStart)&&!creatingOnline?T.g:T.card2,
+          border:`1px solid ${T.border}`,
+          color:(mode==='online'||canStart)&&!creatingOnline?T.t1:T.t3,
           fontSize:isEdit?22:13,
           fontWeight:800,
         }
       }]}/>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ONLINE TOURNAMENT LOBBY — Host view
+
+   Zeigt PIN + QR-Code, live-updated Spieler-Liste mit Approve/Reject
+   Buttons. Bei Klick auf Start: Tournament wird aus der approved-Liste
+   gebaut, Session-Status auf 'playing' gesetzt, Host navigiert weiter
+   in den lokalen TournamentPlay-Screen.
+
+   QR-URL nutzt qrserver.com (kostenlos, keine zusätzliche Lib). Der
+   verlinkte Inhalt ist die App-URL mit ?join=PIN — Scan öffnet die
+   App und füllt den PIN in der Join-Maske automatisch.
+═══════════════════════════════════════════════════════════════ */
+function OnlineTournamentLobby({pin,onHome,onStart,onCancel}){
+  const[session,setSession]=useState(null);
+  const[err,setErr]=useState('');
+  const[busy,setBusy]=useState(false);
+
+  // Initial laden + Realtime-Subscription.
+  useEffect(()=>{
+    let alive=true;
+    fetchOnlineTournament(pin).then(s=>{if(alive&&s)setSession(s);});
+    const unsub=subscribeToTournament(pin,(data)=>{if(alive)setSession(data);});
+    return ()=>{alive=false;unsub();};
+  },[pin]);
+
+  const participants=session?.participants||[];
+  const approved=participants.filter(p=>p.approved);
+  const pending=participants.filter(p=>!p.approved);
+
+  // Join-URL für QR-Code. Nutzt window.__BASE__ (siehe vite.config).
+  const joinUrl=(()=>{
+    if(typeof window==='undefined') return '';
+    const base=window.__BASE__||'/';
+    return window.location.origin+base+'?join='+pin;
+  })();
+  const qrSrc=`https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(joinUrl)}&size=220x220&bgcolor=ffffff&color=000000&margin=8`;
+
+  const setParticipantApproved=async(id,approved)=>{
+    if(!session) return;
+    const newParticipants=session.participants.map(p=>
+      p.id===id?{...p,approved}:p);
+    setSession({...session,participants:newParticipants});
+    await updateOnlineTournament(pin,{...session,participants:newParticipants});
+  };
+  const removeParticipant=async(id)=>{
+    if(!session) return;
+    const newParticipants=session.participants.filter(p=>p.id!==id);
+    setSession({...session,participants:newParticipants});
+    await updateOnlineTournament(pin,{...session,participants:newParticipants});
+  };
+
+  const canStart=approved.length>=4;
+  const startTournament=async()=>{
+    if(!canStart||busy) return;
+    setBusy(true);setErr('');
+    try{
+      // Spieler-Liste für die lokale Tournament-Engine bauen.
+      const tPlayers=approved.map((p,i)=>({
+        id:i,
+        name:p.name,
+        color:PCOLS[i%PCOLS.length],
+        sessionParticipantId:p.id,
+      }));
+      const lb=calcLeaderboard(tPlayers,[],session.winMode||'points');
+      const r0=session.format==='mexicano'
+        ?genMexicanoRound(tPlayers.map(p=>p.id),lb,session.numCourts)
+        :genAmericanoRound(tPlayers.map(p=>p.id),[],session.numCourts);
+      const tourneyState={
+        players:tPlayers,
+        format:session.format,
+        winMode:session.winMode||'points',
+        numCourts:session.numCourts,
+        roundDurationMin:session.roundDurationMin,
+        rounds:[r0],
+        current:0,
+        finished:false,
+        timerSecsLeft:(session.roundDurationMin||10)*60,
+        timerRunning:false,
+        timerFinished:false,
+        // Online-Marker, damit später die Score-Submission etc. weiß,
+        // dass es eine geteilte Session ist.
+        onlinePin:pin,
+        isHost:true,
+      };
+      // Session in DB auf 'playing' setzen + Tournament-State publishen,
+      // damit joinende Player den Spielplan sehen.
+      await updateOnlineTournament(pin,{
+        ...session,
+        status:'playing',
+        tournamentState:tourneyState,
+      });
+      onStart(tourneyState);
+    }catch(e){
+      setErr(e?.message||'Start fehlgeschlagen.');
+    }finally{setBusy(false);}
+  };
+
+  if(!session){
+    return(
+      <div style={{height:'100dvh',background:T.bg,display:'flex',
+        alignItems:'center',justifyContent:'center'}}>
+        <BallSpinner/>
+      </div>
+    );
+  }
+
+  return(
+    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
+
+      <div style={{padding:'0 9px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
+        <div>
+          <RitmoWordmark size={52} style={{marginLeft:-3}}/>
+          <div style={{color:T.t2,fontSize:15,marginTop:6,marginLeft:7,fontWeight:400}}>
+            Online-Lobby
+          </div>
+        </div>
+        <TrophyIcon size={36}/>
+      </div>
+
+      <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
+
+        {/* PIN + QR */}
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+          padding:'18px',textAlign:'center'}}>
+          <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.3,
+            textTransform:'uppercase',marginBottom:6}}>Beitritts-PIN</div>
+          <div style={{color:T.o,fontSize:34,fontWeight:900,letterSpacing:6,
+            fontFamily:'monospace',marginBottom:14}}>
+            {pin.toUpperCase()}
+          </div>
+          <div style={{display:'flex',justifyContent:'center',marginBottom:10}}>
+            <div style={{width:220,height:220,background:'#fff',padding:8,borderRadius:10}}>
+              <img src={qrSrc} alt={`QR für PIN ${pin}`}
+                style={{width:'100%',height:'100%',display:'block'}}
+                onError={(e)=>{e.currentTarget.style.opacity='0.2';}}/>
+            </div>
+          </div>
+          <div style={{color:T.t3,fontSize:11,lineHeight:1.55}}>
+            Andere Spieler scannen den QR oder geben den PIN unter
+            <span style={{color:T.t2,fontWeight:700}}> „Turnier beitreten"</span> ein.
+          </div>
+        </div>
+
+        {/* Teilnehmer */}
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+          padding:'18px 18px 8px'}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
+            <div style={{color:T.o,fontSize:18,fontWeight:800}}>Teilnehmer</div>
+            <span style={{color:T.t3,fontSize:12,fontWeight:600}}>
+              {approved.length} bestätigt · {pending.length} wartend
+            </span>
+          </div>
+          {participants.length===0?(
+            <div style={{color:T.t3,fontSize:13,padding:'14px 0',textAlign:'center'}}>
+              Warte auf erste Teilnehmer…
+            </div>
+          ):null}
+          {participants.map((p,i)=>(
+            <div key={p.id} style={{display:'flex',alignItems:'center',gap:10,
+              padding:'12px 0',borderBottom:i<participants.length-1?`1px solid ${T.sep}`:'none'}}>
+              <div style={{width:10,height:10,borderRadius:'50%',
+                background:p.approved?T.g:T.t4,flexShrink:0}}/>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{color:T.t1,fontSize:14,fontWeight:600,
+                  display:'flex',alignItems:'center',gap:6}}>
+                  {p.name}
+                  {p.isHost&&(
+                    <span style={{color:T.o,fontSize:9,fontWeight:800,letterSpacing:1,
+                      background:T.oSoft,padding:'2px 6px',borderRadius:4}}>HOST</span>
+                  )}
+                </div>
+                {!p.approved&&(
+                  <div style={{color:T.t3,fontSize:11,marginTop:1}}>Wartet auf Freigabe</div>
+                )}
+              </div>
+              {!p.isHost&&!p.approved&&(<>
+                {/* Tick — approve */}
+                <button onClick={()=>setParticipantApproved(p.id,true)}
+                  style={{width:34,height:34,borderRadius:'50%',
+                    background:`${T.g}22`,border:`1.5px solid ${T.g}`,
+                    color:T.g,fontSize:16,fontWeight:900,cursor:'pointer',
+                    display:'flex',alignItems:'center',justifyContent:'center',
+                    lineHeight:1,flexShrink:0}}
+                  title="Annehmen">✓</button>
+                {/* Cross — slightly smaller */}
+                <button onClick={()=>removeParticipant(p.id)}
+                  style={{width:28,height:28,borderRadius:'50%',
+                    background:`${T.r}22`,border:`1.5px solid ${T.r}`,
+                    color:T.r,fontSize:13,fontWeight:900,cursor:'pointer',
+                    display:'flex',alignItems:'center',justifyContent:'center',
+                    lineHeight:1,flexShrink:0}}
+                  title="Ablehnen">✕</button>
+              </>)}
+              {!p.isHost&&p.approved&&(
+                /* Approved → kann wieder rausgeworfen werden */
+                <button onClick={()=>removeParticipant(p.id)}
+                  style={{width:26,height:26,borderRadius:'50%',
+                    background:T.card2,border:`1px solid ${T.border}`,
+                    color:T.t2,fontSize:12,fontWeight:700,cursor:'pointer',
+                    display:'flex',alignItems:'center',justifyContent:'center',
+                    lineHeight:1,flexShrink:0}}
+                  title="Entfernen">×</button>
+              )}
+            </div>
+          ))}
+          {approved.length>0&&approved.length<4&&(
+            <div style={{color:T.t3,fontSize:11,marginTop:10,paddingBottom:6,fontWeight:500}}>
+              Mindestens 4 bestätigte Teilnehmer für den Start nötig.
+            </div>
+          )}
+          {canStart&&(approved.length-(session.numCourts||1)*4)>0&&(
+            <div style={{color:T.t3,fontSize:11,marginTop:10,paddingBottom:6,fontWeight:500}}>
+              {approved.length-(session.numCourts||1)*4} Spieler rotieren pro Runde durch den Pausen-Pool
+            </div>
+          )}
+        </div>
+
+        {err&&(
+          <div style={{background:'rgba(232,69,69,.12)',border:'1px solid rgba(232,69,69,.4)',
+            borderRadius:8,padding:'10px 14px',color:'#FF6B6B',fontSize:12,fontWeight:600}}>
+            {err}
+          </div>
+        )}
+
+        <div style={{height:100,flexShrink:0}}/>
+      </div>
+
+      <MatchBar onHome={onHome} rightButtons={[
+        {icon:'✕',onClick:onCancel,
+          style:{width:46,height:46,
+            background:'rgba(232,69,69,0.12)',
+            border:'1px solid rgba(232,69,69,0.4)',color:T.r,
+            fontSize:16,fontWeight:700}},
+        {icon:busy?'…':'Start',
+          disabled:!canStart||busy,
+          onClick:startTournament,
+          style:{width:56,height:56,
+            background:canStart&&!busy?T.g:T.card2,
+            border:`1px solid ${T.border}`,
+            color:canStart&&!busy?T.t1:T.t3,
+            fontSize:13,fontWeight:800}},
+      ]}/>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   JOIN TOURNAMENT (Player-Side)
+
+   Flow:
+   1. PIN-Eingabe (kann auch via ?join=PIN URL vorbelegt sein)
+   2. Username eingeben (prefilled aus profile)
+   3. Joinen → wartet auf Host-Freigabe (Realtime)
+   4. Wenn Host startet (status='playing') → in den Tournament-View
+      navigieren (read-only / participant)
+═══════════════════════════════════════════════════════════════ */
+function JoinTournament({initialPin,profile,onHome,onJoined}){
+  const[pin,setPin]=useState((initialPin||'').toLowerCase());
+  const[name,setName]=useState(profile?.name||'');
+  const[status,setStatus]=useState('input');   // input | joining | waiting | approved | rejected | error
+  const[participantId,setParticipantId]=useState(null);
+  const[session,setSession]=useState(null);
+  const[err,setErr]=useState('');
+
+  // Sobald wir gejoint sind: Realtime-Subscription auf die Session.
+  useEffect(()=>{
+    if(status!=='waiting'&&status!=='approved'&&status!=='playing') return;
+    const unsub=subscribeToTournament(pin,(data)=>{
+      setSession(data);
+      const me=(data.participants||[]).find(p=>p.id===participantId);
+      if(!me){
+        setStatus('rejected');
+        return;
+      }
+      if(data.status==='playing'){
+        setStatus('playing');
+        return;
+      }
+      setStatus(me.approved?'approved':'waiting');
+    });
+    return ()=>unsub();
+  },[status,pin,participantId]);
+
+  const submitJoin=async()=>{
+    const p=(pin||'').trim().toLowerCase();
+    const n=(name||'').trim();
+    if(!p||p.length<4){setErr('Bitte PIN eingeben.');return;}
+    if(!n){setErr('Bitte Namen eingeben.');return;}
+    setStatus('joining');setErr('');
+    try{
+      const id=await joinOnlineTournament(p,n);
+      setParticipantId(id);
+      setPin(p);
+      setStatus('waiting');
+    }catch(e){
+      setErr(e?.message||'Beitritt fehlgeschlagen.');
+      setStatus('input');
+    }
+  };
+
+  return(
+    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
+
+      <div style={{padding:'0 9px 22px'}}>
+        <RitmoWordmark size={52} style={{marginLeft:-3}}/>
+        <div style={{color:T.t2,fontSize:15,marginTop:8,marginLeft:7,fontWeight:400}}>
+          Turnier beitreten
+        </div>
+      </div>
+
+      <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
+        {status==='input'||status==='joining'?(<>
+          <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+            padding:'18px'}}>
+            <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
+              textTransform:'uppercase',marginBottom:6}}>PIN</div>
+            <input value={pin}
+              onChange={e=>{setPin(e.target.value.toLowerCase());setErr('');}}
+              placeholder="z.B. j3k7p2"
+              autoCapitalize="off" autoCorrect="off" spellCheck={false}
+              maxLength={8}
+              style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
+                borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:18,
+                fontFamily:'monospace',letterSpacing:4,
+                outline:'none',boxSizing:'border-box',textAlign:'center'}}/>
+            <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
+              textTransform:'uppercase',marginTop:14,marginBottom:6}}>Dein Name</div>
+            <input value={name}
+              onChange={e=>{setName(e.target.value);setErr('');}}
+              placeholder="Wie du im Tournament heißt"
+              autoCapitalize="words" autoCorrect="off" spellCheck={false}
+              style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
+                borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
+                outline:'none',boxSizing:'border-box'}}/>
+            {err&&(
+              <div style={{color:'#FF6B6B',fontSize:12,fontWeight:600,marginTop:10}}>
+                {err}
+              </div>
+            )}
+          </div>
+        </>):null}
+
+        {status==='waiting'&&(
+          <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+            padding:'24px 20px',textAlign:'center'}}>
+            <div style={{margin:'0 auto 18px'}}><BallSpinner/></div>
+            <div style={{color:T.t1,fontSize:16,fontWeight:800,marginBottom:6}}>
+              Warte auf den Host…
+            </div>
+            <div style={{color:T.t3,fontSize:12,lineHeight:1.55,maxWidth:280,margin:'0 auto'}}>
+              Du bist als <span style={{color:T.o,fontWeight:700}}>{name}</span> beigetreten.
+              Sobald der Host dich freigegeben hat, geht's los.
+            </div>
+          </div>
+        )}
+
+        {status==='approved'&&(
+          <div style={{background:T.card,border:`1px solid ${T.g}`,borderRadius:14,
+            padding:'24px 20px',textAlign:'center'}}>
+            <div style={{width:64,height:64,borderRadius:'50%',background:`${T.g}22`,
+              border:`2px solid ${T.g}`,display:'flex',alignItems:'center',justifyContent:'center',
+              margin:'0 auto 16px'}}>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none"
+                stroke={T.g} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            </div>
+            <div style={{color:T.t1,fontSize:16,fontWeight:800,marginBottom:6}}>
+              Freigegeben!
+            </div>
+            <div style={{color:T.t3,fontSize:12,lineHeight:1.55,maxWidth:280,margin:'0 auto'}}>
+              Warte noch kurz, bis der Host das Turnier startet —
+              {session?.participants?.filter(p=>p.approved).length||0} Spieler bereit.
+            </div>
+          </div>
+        )}
+
+        {status==='playing'&&(
+          <div style={{background:T.card,border:`1px solid ${T.o}`,borderRadius:14,
+            padding:'24px 20px',textAlign:'center'}}>
+            <div style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:1.5,
+              textTransform:'uppercase',marginBottom:6}}>Tournament läuft</div>
+            <div style={{color:T.t1,fontSize:18,fontWeight:800,marginBottom:8}}>
+              Runde {((session?.tournamentState?.current)||0)+1}
+            </div>
+            <div style={{color:T.t3,fontSize:12,lineHeight:1.55,maxWidth:280,margin:'0 auto'}}>
+              Der Host führt das Tournament. Halte dich an die Anweisungen
+              vor Ort — Live-Spielplan + Score-Eingabe für Teilnehmer kommt
+              in der nächsten Version.
+            </div>
+          </div>
+        )}
+
+        {status==='rejected'&&(
+          <div style={{background:T.card,border:`1px solid ${T.r}`,borderRadius:14,
+            padding:'24px 20px',textAlign:'center'}}>
+            <div style={{color:T.r,fontSize:42,fontWeight:900,marginBottom:8}}>✕</div>
+            <div style={{color:T.t1,fontSize:16,fontWeight:800,marginBottom:6}}>
+              Vom Host entfernt
+            </div>
+            <div style={{color:T.t3,fontSize:12,lineHeight:1.55,maxWidth:280,margin:'0 auto',marginBottom:14}}>
+              Frag den Host kurz, oder versuche es mit einem anderen PIN.
+            </div>
+            <button onClick={()=>{setStatus('input');setParticipantId(null);}}
+              style={{padding:'10px 20px',background:T.oSoft,border:`1px solid ${T.o}`,
+                borderRadius:10,color:T.o,fontSize:12,fontWeight:700,cursor:'pointer'}}>
+              Erneut versuchen
+            </button>
+          </div>
+        )}
+
+        <div style={{height:100,flexShrink:0}}/>
+      </div>
+
+      <MatchBar onHome={onHome} rightButtons={[
+        (status==='input'||status==='joining')?{
+          icon:status==='joining'?'…':'Join',
+          disabled:status==='joining',
+          onClick:submitJoin,
+          style:{width:56,height:56,background:T.g,
+            border:`1px solid ${T.border}`,
+            color:T.t1,fontSize:13,fontWeight:800}
+        }:null,
+      ].filter(Boolean)}/>
     </div>
   );
 }
@@ -7961,6 +8458,28 @@ export default function App(){
   });
   const verifyLandingRef=useRef(verifyLanding);
   useEffect(()=>{verifyLandingRef.current=verifyLanding;},[verifyLanding]);
+  // Aktuelle Online-Tournament-Session des Hosts (während die Lobby
+  // offen ist). Player-Side Pin wird im JoinTournament-Component selbst
+  // verwaltet, hier nur Host-State.
+  const[onlinePin,setOnlinePin]=useState(null);
+  // ?join=PIN aus der URL extrahieren (vom QR-Scan). Wird beim
+  // Cold-Load gelesen und an JoinTournament als initialPin gegeben.
+  // Sobald gelesen, säubern wir die URL via history.replaceState.
+  const[joinPinFromUrl,setJoinPinFromUrl]=useState(()=>{
+    if(typeof window==='undefined') return null;
+    try{
+      const p=new URLSearchParams(window.location.search).get('join');
+      return p?p.trim().toLowerCase():null;
+    }catch{return null;}
+  });
+  useEffect(()=>{
+    if(!joinPinFromUrl) return;
+    try{
+      const url=new URL(window.location.href);
+      url.searchParams.delete('join');
+      window.history.replaceState({},'',url.toString());
+    }catch{}
+  },[joinPinFromUrl]);
   const[pendingEmail,setPendingEmail]=useState('');
   const[profile,setProfile]=useState(()=>lsGet('ritmo_profile',{
     name:'',
@@ -8176,6 +8695,9 @@ export default function App(){
       onKey={onMatchKey}/>
 
     {scr==='splash'&&<Splash onDone={()=>{
+      // ?join=PIN aus QR-Scan: direkt zur Join-Maske, auch ohne Login
+      // (Auth-Pflicht wäre Reibung für den eingeladenen Spieler).
+      if(joinPinFromUrl) return nav('remote');
       if(!loggedIn) return nav('login');
       if(!onboarded) return nav('welcome');
       return nav('home');
@@ -8321,31 +8843,28 @@ export default function App(){
       onMatchLogged={onMatchLogged}/>}
     {scr==='tournament-setup'&&<TournamentSetup nav={nav} onHome={goHome}
       onStart={startTourney} onSave={saveTourneyEdit}
-      saved={tourney} isEdit={tourneyEditMode&&!!tourney}/>}
+      saved={tourney} isEdit={tourneyEditMode&&!!tourney}
+      profile={profile}
+      onCreateOnline={(pin)=>{setOnlinePin(pin);setScr('online-lobby');}}/>}
+    {scr==='online-lobby'&&onlinePin&&<OnlineTournamentLobby
+      pin={onlinePin}
+      onHome={goHome}
+      onCancel={()=>{setOnlinePin(null);setScr('tournament-setup');}}
+      onStart={(tourneyState)=>{
+        setTourney(tourneyState);
+        setOnlinePin(null);
+        setScr('tournament-play');
+      }}/>}
     {scr==='tournament-play'&&tourney&&<TournamentPlay tourney={tourney} setTourney={setTourney}
       onHome={goHome} nav={nav} ringId={ringId} onEdit={editTourney}
       onMatchLogged={onMatchLogged}/>}
     {scr==='tournament-leaderboard'&&tourney&&<TournamentLeaderboard tourney={tourney}
       onHome={goHome} onNew={newTourney}/>}
 
-    {scr==='remote'&&(
-      <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
-        alignItems:'center',justifyContent:'center',gap:20,padding:24,position:'relative'}}>
-        <RitmoWordmark size={56}/>
-        <div style={{color:T.t1,fontSize:18,fontWeight:700,textAlign:'center',marginTop:8,
-          maxWidth:320,lineHeight:1.4,letterSpacing:-.2}}>
-          Coming soon
-        </div>
-        <div style={{color:T.t2,fontSize:14,textAlign:'center',maxWidth:320,lineHeight:1.55}}>
-          Schon bald kannst du Turnieren beitreten und die nächsten Padel-Geschichten schreiben…
-        </div>
-        <button onClick={goHome}
-          style={{marginTop:20,padding:'12px 28px',background:T.o,color:T.bg,
-            border:'none',borderRadius:24,fontSize:15,fontWeight:700,cursor:'pointer'}}>
-          Zurück zum Home
-        </button>
-      </div>
-    )}
+    {scr==='remote'&&<JoinTournament
+      initialPin={joinPinFromUrl}
+      profile={profile}
+      onHome={()=>{setJoinPinFromUrl(null);goHome();}}/>}
 
     {/* First-launch disclaimer — liegt über allen Screens, blockiert
         Interaktion bis OK gedrückt wurde */}

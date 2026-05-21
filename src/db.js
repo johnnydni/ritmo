@@ -316,3 +316,111 @@ export function subscribeToTournament(pin, onChange) {
     return () => {};
   }
 }
+
+/* ───── PHASE 2: Live-Sync + Score-Submission + Ready-Check ───── */
+
+/**
+ * Host publiziert seinen lokalen Tournament-State (Runden, Timer,
+ * Courts, etc.) zur Session, damit alle Teilnehmer ihn live sehen.
+ */
+export async function publishTournamentState(pin, tournamentState) {
+  const session = await fetchOnlineTournament(pin);
+  if (!session) return;
+  await updateOnlineTournament(pin, { ...session, tournamentState });
+}
+
+/**
+ * Player reicht ein Match-Ergebnis ein. Dupes vom selben Submitter
+ * für denselben Court/Runde werden ersetzt (resubmit overrides).
+ */
+export async function submitScore(pin, submission) {
+  const session = await fetchOnlineTournament(pin);
+  if (!session) throw new Error('Tournament nicht gefunden.');
+  const subs = (session.scoreSubmissions || []).filter(s =>
+    !(s.courtId === submission.courtId
+      && s.roundIndex === submission.roundIndex
+      && s.submittedBy === submission.submittedBy)
+  );
+  const id = 'sub_' + Math.random().toString(36).slice(2, 10);
+  subs.push({
+    ...submission,
+    id,
+    submittedAt: new Date().toISOString(),
+  });
+  await updateOnlineTournament(pin, { ...session, scoreSubmissions: subs });
+  return id;
+}
+
+/**
+ * Host approved eine Submission und wendet die finalen Scores auf
+ * den Court an (= setzt court.s1/s2 + court.done=true). Submission
+ * verschwindet aus der Pending-Liste.
+ */
+export async function approveScore(pin, submissionId, finalScoreA, finalScoreB) {
+  const session = await fetchOnlineTournament(pin);
+  if (!session) return;
+  const sub = (session.scoreSubmissions || []).find(s => s.id === submissionId);
+  if (!sub || !session.tournamentState) return;
+  const ts = session.tournamentState;
+  const rounds = (ts.rounds || []).map((r, i) => {
+    if (i !== sub.roundIndex) return r;
+    return {
+      ...r,
+      courts: r.courts.map(c => c.id === sub.courtId
+        ? { ...c, s1: finalScoreA, s2: finalScoreB, done: true }
+        : c),
+    };
+  });
+  const newState = { ...ts, rounds };
+  const newSubs = (session.scoreSubmissions || []).filter(s => s.id !== submissionId);
+  await updateOnlineTournament(pin, {
+    ...session,
+    tournamentState: newState,
+    scoreSubmissions: newSubs,
+  });
+}
+
+/** Host verwirft eine Submission (Player muss neu submitten). */
+export async function rejectScore(pin, submissionId) {
+  const session = await fetchOnlineTournament(pin);
+  if (!session) return;
+  const newSubs = (session.scoreSubmissions || []).filter(s => s.id !== submissionId);
+  await updateOnlineTournament(pin, { ...session, scoreSubmissions: newSubs });
+}
+
+/**
+ * Host startet einen Ready-Check für eine bestimmte Runde. Bestätigte
+ * Player tragen sich in confirmedBy ein, der Host sieht den Fortschritt.
+ */
+export async function sendReadyCheck(pin, roundIndex) {
+  const session = await fetchOnlineTournament(pin);
+  if (!session) return;
+  await updateOnlineTournament(pin, {
+    ...session,
+    readyCheck: {
+      roundIndex,
+      requestedAt: new Date().toISOString(),
+      confirmedBy: [],
+    },
+  });
+}
+
+/** Player bestätigt seine Bereitschaft für den aktuellen Ready-Check. */
+export async function confirmReady(pin, participantId) {
+  const session = await fetchOnlineTournament(pin);
+  if (!session || !session.readyCheck) return;
+  const cb = session.readyCheck.confirmedBy || [];
+  if (cb.includes(participantId)) return;
+  await updateOnlineTournament(pin, {
+    ...session,
+    readyCheck: { ...session.readyCheck, confirmedBy: [...cb, participantId] },
+  });
+}
+
+/** Host löscht den Ready-Check (z.B. nach Rundenstart). */
+export async function clearReadyCheck(pin) {
+  const session = await fetchOnlineTournament(pin);
+  if (!session) return;
+  const { readyCheck, ...rest } = session;
+  await updateOnlineTournament(pin, rest);
+}

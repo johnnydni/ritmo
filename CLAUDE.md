@@ -13,7 +13,10 @@ npm run preview    # preview built /dist
 
 There are no lint, test, or typecheck scripts — this is a plain JS (no TypeScript) Vite + React 18 app with no test suite. When verifying changes, run `npm run build` to catch syntax errors and start `npm run dev` to exercise the UI manually.
 
-Deployment is automated: pushing to `main` triggers [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) which builds with `BASE_PATH=/<repo-name>/` and publishes to GitHub Pages. `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are read from repo secrets at build time.
+Deployment is automated: pushing to `main` triggers [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) which builds and publishes to GitHub Pages. `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are read from repo secrets at build time.
+
+- **Project page** (`https://<user>.github.io/<repo>/`): default. Workflow uses `BASE_PATH=/<repo>/`.
+- **Custom domain** (e.g. `https://ritmopadel.app/`): set the repository *variable* `CUSTOM_DOMAIN` (Settings → Secrets and variables → Actions → Variables). The workflow then switches `BASE_PATH=/` and writes `dist/CNAME` on every deploy so the binding persists. DNS + Supabase URL changes are documented in `setup.txt`.
 
 ## Architecture
 

@@ -652,10 +652,49 @@ function GearIcon({active,size=22}){
       stroke={active?T.blue:T.t1} strokeWidth="1.5" strokeLinecap="round"/>
   </svg>);
 }
-function SearchIcon({size=22}){
+function SearchIcon({size=22,filled=false}){
+  // filled = aktiv (z.B. Search-Mode mit Text). Lupe wird komplett orange
+  // ausgefüllt statt nur Outline.
+  if(filled){
+    return(<svg width={size} height={size} viewBox="0 0 22 22" fill="none">
+      <circle cx="9.5" cy="9.5" r="6" stroke="var(--o)" strokeWidth="1.9" fill="var(--o)"/>
+      <line x1="14" y1="14" x2="19" y2="19" stroke="var(--o)" strokeWidth="2.3" strokeLinecap="round"/>
+    </svg>);
+  }
   return(<svg width={size} height={size} viewBox="0 0 22 22" fill="none">
     <circle cx="9.5" cy="9.5" r="6" stroke="var(--t1)" strokeWidth="1.7" fill="none"/>
     <line x1="14" y1="14" x2="19" y2="19" stroke="var(--t1)" strokeWidth="1.9" strokeLinecap="round"/>
+  </svg>);
+}
+
+/* Hl — markiert alle Vorkommen eines Such-Strings (case-insensitive)
+   im gegebenen Text gelb. Nichts zu tun, wenn q leer. */
+function Hl({text,q}){
+  if(!q||!text||typeof text!=='string') return text||'';
+  const lo=text.toLowerCase(), qLo=q.toLowerCase();
+  if(!lo.includes(qLo)) return text;
+  const out=[]; let i=0, k=0;
+  while(i<text.length){
+    const f=lo.indexOf(qLo,i);
+    if(f<0){out.push(text.slice(i));break;}
+    if(f>i) out.push(text.slice(i,f));
+    out.push(<mark key={k++} style={{background:'#FFE600',color:'#000',
+      padding:'0 2px',borderRadius:3,fontWeight:'inherit'}}>
+      {text.slice(f,f+q.length)}
+    </mark>);
+    i=f+q.length;
+  }
+  return <>{out}</>;
+}
+function DNAIcon({size=22,color='var(--t1)'}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 4 C 4 10, 20 14, 20 20"/>
+    <path d="M20 4 C 20 10, 4 14, 4 20"/>
+    <line x1="6" y1="6" x2="18" y2="6"/>
+    <line x1="6" y1="18" x2="18" y2="18"/>
+    <line x1="9" y1="10" x2="15" y2="10"/>
+    <line x1="9" y1="14" x2="15" y2="14"/>
   </svg>);
 }
 function FullscreenIcon({size=18}){
@@ -2959,12 +2998,63 @@ function Welcome({profile,setProfile,theme,setTheme,onComplete}){
 /* ═══════════════════════════════════════════════════════════════
    BOTTOM TAB BAR
 ═══════════════════════════════════════════════════════════════ */
-function TabBar({active,onTab}){
+function TabBar({active,onTab,rightAction,searchable=false,onSearch}){
   const tabs=[
     {id:'home',label:'Home',Icon:HomeIcon},
     {id:'live',label:'Live',Icon:LiveIcon},
     {id:'settings',label:'Einstellungen',Icon:GearIcon},
   ];
+  // Search-Mode: nur aktiv wenn searchable=true. Tab "Home" bleibt sichtbar,
+  // die anderen schrumpfen via maxWidth/opacity raus, ein Such-Input
+  // expandiert in den freigewordenen Platz.
+  const[searchMode,setSearchMode]=useState(false);
+  const[searchValue,setSearchValue]=useState('');
+  const inputRef=useRef(null);
+
+  // Beim Verlassen des suchbaren Screens: Mode + Query zurücksetzen.
+  useEffect(()=>{
+    if(!searchable||active!=='settings'){
+      if(searchMode||searchValue){
+        setSearchMode(false);setSearchValue('');
+        onSearch?.('');
+      }
+    }
+    // eslint-disable-next-line
+  },[active,searchable]);
+
+  // Auto-focus auf den Input direkt beim Eintritt in Search-Mode.
+  useEffect(()=>{
+    if(searchMode) requestAnimationFrame(()=>inputRef.current?.focus());
+  },[searchMode]);
+
+  const exitSearch=()=>{setSearchMode(false);setSearchValue('');onSearch?.('');};
+  const submit=()=>{
+    if(!searchValue.trim()){exitSearch();return;}
+    onSearch?.(searchValue.trim());
+  };
+  const clearText=()=>{setSearchValue('');onSearch?.('');inputRef.current?.focus();};
+
+  const isSearching=searchable&&searchMode;
+  // Default-Action: passives Such-Icon. Screens dürfen rightAction
+  // überschreiben (z.B. Home → RITMO DNA Shortcut).
+  const action=rightAction||{icon:<SearchIcon size={20}/>,onClick:undefined,title:''};
+  // Klick-Handler des rechten Floating-Buttons:
+  //  - Im Search-Mode → submit() (oder exit wenn leer)
+  //  - Sonst suchbar → Search-Mode einschalten
+  //  - Sonst → rightAction.onClick
+  const rightClick=()=>{
+    if(isSearching) return submit();
+    if(searchable){setSearchMode(true);return;}
+    action.onClick?.();
+  };
+  const rightIcon=isSearching
+    ?<SearchIcon size={20} filled={!!searchValue}/>
+    :(searchable?<SearchIcon size={20}/>:action.icon);
+  const rightTitle=isSearching
+    ?(searchValue?'Suchen':'Suche schließen')
+    :(searchable?'Suchen':action.title);
+  const rightHighlight=isSearching?!!searchValue:!!action.highlight;
+
   return(
     <div style={{position:'absolute',bottom:'calc(env(safe-area-inset-bottom,0px) + 3px)',
       left:0,right:0,display:'flex',alignItems:'center',justifyContent:'center',gap:10,
@@ -2972,28 +3062,76 @@ function TabBar({active,onTab}){
       <div style={{display:'flex',alignItems:'center',gap:2,
         background:T.card,borderRadius:30,padding:'5px',
         border:`1px solid ${T.border}`,pointerEvents:'auto',
-        boxShadow:'0 4px 20px rgba(0,0,0,.6)'}}>
+        boxShadow:'0 4px 20px rgba(0,0,0,.6)',
+        transition:'padding .25s ease'}}>
         {tabs.map(({id,label,Icon})=>{
           const isActive=active===id;
+          // Im Search-Mode bleibt nur Home sichtbar; Live + Settings
+          // animieren weg (Breite/Padding/Opacity).
+          const hidden=isSearching&&id!=='home';
           return(
             <button key={id} onClick={()=>onTab(id)}
-              style={{display:'flex',alignItems:'center',gap:7,padding:'10px 14px',
+              style={{display:'flex',alignItems:'center',gap:7,
+                padding:hidden?'10px 0':'10px 14px',
+                maxWidth:hidden?0:200,
+                opacity:hidden?0:1,
+                overflow:'hidden',
                 borderRadius:24,border:'none',cursor:'pointer',
                 background:isActive?T.blueSoft:'transparent',
                 color:isActive?T.blue:T.t2,
-                fontSize:11,fontWeight:600,transition:'all .2s'}}>
+                fontSize:11,fontWeight:600,
+                transition:'max-width .25s ease, padding .25s ease, opacity .2s ease'}}>
               <Icon active={isActive} size={20}/>
-              <span style={{fontSize:11,color:isActive?T.blue:T.t3,fontWeight:isActive?700:500}}>{label}</span>
+              <span style={{fontSize:11,color:isActive?T.blue:T.t3,
+                fontWeight:isActive?700:500,whiteSpace:'nowrap'}}>{label}</span>
             </button>
           );
         })}
+        {searchable&&(
+          <input ref={inputRef}
+            value={searchValue}
+            onChange={e=>setSearchValue(e.target.value)}
+            onKeyDown={e=>{
+              if(e.key==='Enter') submit();
+              else if(e.key==='Escape') exitSearch();
+            }}
+            placeholder="Einstellungen durchsuchen…"
+            autoCorrect="off" autoCapitalize="off" spellCheck={false}
+            style={{
+              flex:isSearching?1:0,
+              maxWidth:isSearching?260:0,
+              opacity:isSearching?1:0,
+              padding:isSearching?'8px 10px':'8px 0',
+              minWidth:0,
+              border:'none',background:'transparent',outline:'none',
+              color:T.t1,fontSize:13,fontWeight:500,
+              transition:'max-width .25s ease, padding .25s ease, opacity .2s ease'}}/>
+        )}
+        {searchable&&isSearching&&searchValue&&(
+          <button onClick={clearText} title="Eingabe löschen"
+            className="fi"
+            style={{
+              width:22,height:22,borderRadius:'50%',
+              background:T.card2,border:'none',
+              color:T.t1,fontSize:12,fontWeight:700,
+              cursor:'pointer',marginRight:4,
+              display:'flex',alignItems:'center',justifyContent:'center',
+              flexShrink:0,lineHeight:1}}>
+            ×
+          </button>
+        )}
       </div>
-      <button style={{width:48,height:48,borderRadius:'50%',
-        background:T.card,border:`1px solid ${T.border}`,
-        display:'flex',alignItems:'center',justifyContent:'center',
-        cursor:'pointer',pointerEvents:'auto',
-        boxShadow:'0 4px 20px rgba(0,0,0,.6)'}}>
-        <SearchIcon size={20}/>
+      <button onClick={rightClick} title={rightTitle}
+        style={{width:48,height:48,borderRadius:'50%',
+          background:T.card,
+          border:`1px solid ${rightHighlight?T.o:T.border}`,
+          display:'flex',alignItems:'center',justifyContent:'center',
+          cursor:rightClick?'pointer':'default',pointerEvents:'auto',
+          transition:'border-color .2s ease, box-shadow .2s ease',
+          boxShadow:rightHighlight
+            ?`0 4px 20px rgba(0,0,0,.6), 0 0 0 2px ${T.o}33`
+            :'0 4px 20px rgba(0,0,0,.6)'}}>
+        {rightIcon}
       </button>
     </div>
   );
@@ -3461,7 +3599,13 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded}){
         <div style={{height:120,flexShrink:0}}/>
       </div>
 
-      <TabBar active={activeTab} onTab={setActiveTab}/>
+      <TabBar active={activeTab} onTab={setActiveTab}
+        rightAction={{
+          icon:<DNAIcon size={22} color={T.o}/>,
+          onClick:()=>nav('profile-ritmodna'),
+          title:'RITMO DNA',
+          highlight:true,
+        }}/>
     </div>
   );
 }
@@ -5842,6 +5986,10 @@ function Settings({onHome,activeTab,setActiveTab,
   theme,setTheme,onResetOnboarding}){
 
   const[showInfo,setShowInfo]=useState(false);
+  // Such-Query — wird via TabBar gesetzt (siehe searchable / onSearch
+  // unten). Hl-Komponente highlightet alle Treffer in den UI-Strings.
+  const[query,setQuery]=useState('');
+  const q=query;
 
   const inputs=[
     {id:'smartphone',label:'Smartphone',icon:'📱',sub:'Tippen auf die Score-Karten'},
@@ -5857,7 +6005,9 @@ function Settings({onHome,activeTab,setActiveTab,
 
       <div style={{padding:'0 14px 22px'}}>
         <RitmoWordmark size={52}/>
-        <div style={{color:T.t2,fontSize:15,marginTop:8,fontWeight:400}}>Einstellungen</div>
+        <div style={{color:T.t2,fontSize:15,marginTop:8,fontWeight:400}}>
+          <Hl text="Einstellungen" q={q}/>
+        </div>
       </div>
 
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
@@ -5865,9 +6015,11 @@ function Settings({onHome,activeTab,setActiveTab,
         {/* Steuerung */}
         <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
           padding:'18px 18px 6px'}}>
-          <div style={{color:T.o,fontSize:18,fontWeight:800,marginBottom:4}}>Steuerung</div>
+          <div style={{color:T.o,fontSize:18,fontWeight:800,marginBottom:4}}>
+            <Hl text="Steuerung" q={q}/>
+          </div>
           <div style={{color:T.t3,fontSize:12,fontWeight:500,marginBottom:14,lineHeight:1.5}}>
-            Wie Punkte vergeben werden.
+            <Hl text="Wie Punkte vergeben werden." q={q}/>
           </div>
 
           {inputs.map((opt,i)=>{
@@ -5884,8 +6036,8 @@ function Settings({onHome,activeTab,setActiveTab,
                   opacity:disabled?.45:1,textAlign:'left'}}>
                 <span style={{fontSize:24,width:32,textAlign:'center'}}>{opt.icon}</span>
                 <div style={{flex:1,minWidth:0}}>
-                  <div style={{color:T.t1,fontSize:15,fontWeight:600}}>{opt.label}</div>
-                  <div style={{color:T.t3,fontSize:11,marginTop:1,fontWeight:500}}>{opt.sub}</div>
+                  <div style={{color:T.t1,fontSize:15,fontWeight:600}}><Hl text={opt.label} q={q}/></div>
+                  <div style={{color:T.t3,fontSize:11,marginTop:1,fontWeight:500}}><Hl text={opt.sub} q={q}/></div>
                 </div>
                 {isSel&&hasInfo&&(
                   <QuestionToggle filled={showInfo} onClick={()=>setShowInfo(s=>!s)}/>
@@ -5900,11 +6052,11 @@ function Settings({onHome,activeTab,setActiveTab,
           {inputMode==='presenter'&&showInfo&&(
             <div style={{margin:'8px 0 14px',padding:'12px 14px',background:T.card2,borderRadius:10,
               border:`1px solid ${T.border}`,color:T.t2,fontSize:12,lineHeight:1.7}}>
-              <div style={{color:T.t1,fontWeight:700,marginBottom:6}}>Tasten-Belegung:</div>
-              <div>Page Up → Punkt Team A</div>
-              <div>Page Down → Punkt Team B</div>
-              <div>Doppelklick Page Up → Letzten Punkt rückgängig</div>
-              <div>Doppelklick Page Down → Spiel zurücksetzen</div>
+              <div style={{color:T.t1,fontWeight:700,marginBottom:6}}><Hl text="Tasten-Belegung:" q={q}/></div>
+              <div><Hl text="Page Up → Punkt Team A" q={q}/></div>
+              <div><Hl text="Page Down → Punkt Team B" q={q}/></div>
+              <div><Hl text="Doppelklick Page Up → Letzten Punkt rückgängig" q={q}/></div>
+              <div><Hl text="Doppelklick Page Down → Spiel zurücksetzen" q={q}/></div>
             </div>
           )}
 
@@ -5913,19 +6065,17 @@ function Settings({onHome,activeTab,setActiveTab,
           {inputMode==='ring'&&showInfo&&(
             <div style={{margin:'8px 0 14px',padding:'12px 14px',background:T.card2,borderRadius:10,
               border:`1px solid ${T.border}`,color:T.t2,fontSize:12,lineHeight:1.7}}>
-              <div style={{color:T.t1,fontWeight:700,marginBottom:6}}>Tasten-Belegung:</div>
-              <div><span style={{color:T.t1,fontWeight:700,fontFamily:'monospace'}}>2</span> → Punkt Team A</div>
-              <div><span style={{color:T.t1,fontWeight:700,fontFamily:'monospace'}}>4</span> → Punkt Team B</div>
-              <div><span style={{color:T.t1,fontWeight:700,fontFamily:'monospace'}}>Leertaste</span> → Letzten Punkt rückgängig</div>
-              <div><span style={{color:T.t1,fontWeight:700,fontFamily:'monospace'}}>1</span> → Spiel zurücksetzen</div>
-              <div style={{color:T.t1,fontWeight:700,marginTop:10,marginBottom:4}}>Reset rückgängig:</div>
+              <div style={{color:T.t1,fontWeight:700,marginBottom:6}}><Hl text="Tasten-Belegung:" q={q}/></div>
+              <div><span style={{color:T.t1,fontWeight:700,fontFamily:'monospace'}}>2</span> <Hl text="→ Punkt Team A" q={q}/></div>
+              <div><span style={{color:T.t1,fontWeight:700,fontFamily:'monospace'}}>4</span> <Hl text="→ Punkt Team B" q={q}/></div>
+              <div><span style={{color:T.t1,fontWeight:700,fontFamily:'monospace'}}>Leertaste</span> <Hl text="→ Letzten Punkt rückgängig" q={q}/></div>
+              <div><span style={{color:T.t1,fontWeight:700,fontFamily:'monospace'}}>1</span> <Hl text="→ Spiel zurücksetzen" q={q}/></div>
+              <div style={{color:T.t1,fontWeight:700,marginTop:10,marginBottom:4}}><Hl text="Reset rückgängig:" q={q}/></div>
               <div style={{color:T.t3}}>
-                Nach Reset hast du <span style={{color:T.o,fontWeight:700}}>1.5 Sekunden</span> Zeit,
-                durch erneutes Drücken von <span style={{color:T.t1,fontWeight:700,fontFamily:'monospace'}}>1</span> den
-                vorherigen Spielstand wiederherzustellen.
+                <Hl text="Nach Reset hast du 1.5 Sekunden Zeit, durch erneutes Drücken von 1 den vorherigen Spielstand wiederherzustellen." q={q}/>
               </div>
               <div style={{marginTop:10,color:T.t3,fontStyle:'italic',fontSize:11}}>
-                Setup: Ring per Bluetooth koppeln, RITMO Padel öffnen, drücken — funktioniert sofort.
+                <Hl text="Setup: Ring per Bluetooth koppeln, RITMO Padel öffnen, drücken — funktioniert sofort." q={q}/>
               </div>
             </div>
           )}
@@ -5933,14 +6083,14 @@ function Settings({onHome,activeTab,setActiveTab,
           {inputMode==='flic'&&(
             <div style={{margin:'8px 0 14px',padding:'12px 14px',background:T.card2,borderRadius:10,
               border:`1px solid ${T.border}`,color:T.t3,fontSize:12,lineHeight:1.6}}>
-              Flic Button Integration kommt in einer zukünftigen Version.
+              <Hl text="Flic Button Integration kommt in einer zukünftigen Version." q={q}/>
             </div>
           )}
 
           {inputMode==='watch'&&(
             <div style={{margin:'8px 0 14px',padding:'12px 14px',background:T.card2,borderRadius:10,
               border:`1px solid ${T.border}`,color:T.t3,fontSize:12,lineHeight:1.6}}>
-              Smartwatch Integration kommt in einer zukünftigen Version.
+              <Hl text="Smartwatch Integration kommt in einer zukünftigen Version." q={q}/>
             </div>
           )}
         </div>
@@ -5952,7 +6102,7 @@ function Settings({onHome,activeTab,setActiveTab,
         <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
           padding:'14px 18px'}}>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-            <div style={{color:T.t1,fontSize:15,fontWeight:600}}>Sprachansage</div>
+            <div style={{color:T.t1,fontSize:15,fontWeight:600}}><Hl text="Sprachansage" q={q}/></div>
             <div onClick={()=>setVoiceOn(!voiceOn)}
               style={{width:48,height:28,borderRadius:14,
                 background:voiceOn?T.o:'rgba(120,120,128,.32)',
@@ -5966,17 +6116,17 @@ function Settings({onHome,activeTab,setActiveTab,
 
         {/* Klingelton */}
         <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,padding:'18px 18px 8px'}}>
-          <div style={{color:T.o,fontSize:18,fontWeight:800,marginBottom:4}}>Timer-Klingelton</div>
+          <div style={{color:T.o,fontSize:18,fontWeight:800,marginBottom:4}}><Hl text="Timer-Klingelton" q={q}/></div>
           <div style={{color:T.t3,fontSize:12,fontWeight:500,marginBottom:14,lineHeight:1.5}}>
-            Ton wenn Americano-Timer abläuft.
+            <Hl text="Ton wenn Americano-Timer abläuft." q={q}/>
           </div>
           {RINGS.map((r,i)=>(
             <div key={r.id} onClick={()=>setRingId(r.id)}
               style={{display:'flex',alignItems:'center',padding:'12px 0',
                 borderBottom:i<RINGS.length-1?`1px solid ${T.sep}`:'none',cursor:'pointer'}}>
               <div style={{flex:1}}>
-                <div style={{color:T.t1,fontSize:14,fontWeight:ringId===r.id?700:500}}>{r.label}</div>
-                <div style={{color:T.t3,fontSize:11,marginTop:1}}>{r.desc}</div>
+                <div style={{color:T.t1,fontSize:14,fontWeight:ringId===r.id?700:500}}><Hl text={r.label} q={q}/></div>
+                <div style={{color:T.t3,fontSize:11,marginTop:1}}><Hl text={r.desc} q={q}/></div>
               </div>
               <div style={{display:'flex',alignItems:'center',gap:10}}>
                 <button onClick={e=>{e.stopPropagation();playRing(r.id);}}
@@ -5993,9 +6143,9 @@ function Settings({onHome,activeTab,setActiveTab,
         {/* Erscheinungsbild — Theme */}
         <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
           padding:'18px 18px 8px'}}>
-          <div style={{color:T.o,fontSize:18,fontWeight:800,marginBottom:4}}>Erscheinungsbild</div>
+          <div style={{color:T.o,fontSize:18,fontWeight:800,marginBottom:4}}><Hl text="Erscheinungsbild" q={q}/></div>
           <div style={{color:T.t3,fontSize:12,fontWeight:500,marginBottom:14,lineHeight:1.5}}>
-            Farb-Theme der App.
+            <Hl text="Farb-Theme der App." q={q}/>
           </div>
           {[
             {id:'dark',label:'RITMO BAUHAUS Dark',icon:'🌙',desc:'Schwarz, weiß, orange'},
@@ -6009,8 +6159,8 @@ function Settings({onHome,activeTab,setActiveTab,
                 borderBottom:i<arr.length-1?`1px solid ${T.sep}`:'none',cursor:'pointer'}}>
               <div style={{fontSize:18,marginRight:12,width:22,textAlign:'center'}}>{th.icon}</div>
               <div style={{flex:1,minWidth:0}}>
-                <div style={{color:T.t1,fontSize:14,fontWeight:theme===th.id?700:500}}>{th.label}</div>
-                <div style={{color:T.t3,fontSize:11,marginTop:1}}>{th.desc}</div>
+                <div style={{color:T.t1,fontSize:14,fontWeight:theme===th.id?700:500}}><Hl text={th.label} q={q}/></div>
+                <div style={{color:T.t3,fontSize:11,marginTop:1}}><Hl text={th.desc} q={q}/></div>
                 {th.id==='funky'&&(
                   <div style={{marginTop:6}}><FunkyFruitsRow size={14} gap={6}/></div>
                 )}
@@ -6026,9 +6176,9 @@ function Settings({onHome,activeTab,setActiveTab,
         <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
           padding:'14px 18px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:14}}>
           <div style={{flex:1,minWidth:0}}>
-            <div style={{color:T.t1,fontSize:14,fontWeight:600}}>Onboarding wiederholen</div>
+            <div style={{color:T.t1,fontSize:14,fontWeight:600}}><Hl text="Onboarding wiederholen" q={q}/></div>
             <div style={{color:T.t3,fontSize:11,marginTop:2,lineHeight:1.5}}>
-              Profil-Daten bleiben erhalten · du kannst sie überarbeiten.
+              <Hl text="Profil-Daten bleiben erhalten · du kannst sie überarbeiten." q={q}/>
             </div>
           </div>
           <button onClick={onResetOnboarding}
@@ -6036,18 +6186,19 @@ function Settings({onHome,activeTab,setActiveTab,
               border:`1px solid ${T.o}`,borderRadius:10,
               color:T.o,fontSize:12,fontWeight:700,letterSpacing:.3,
               cursor:'pointer',flexShrink:0}}>
-            Starten
+            <Hl text="Starten" q={q}/>
           </button>
         </div>
 
         {/* About */}
         <div style={{background:'transparent',border:`1px solid ${T.border}`,borderRadius:14,
           padding:'14px 18px',color:T.t3,fontSize:11,lineHeight:1.6,textAlign:'center'}}>
-          Made by Team RITMO.<br/>With love for Padel ♡
+          <Hl text="Made by Team RITMO." q={q}/><br/><Hl text="With love for Padel ♡" q={q}/>
         </div>
       </div>
 
-      <TabBar active={activeTab} onTab={setActiveTab}/>
+      <TabBar active={activeTab} onTab={setActiveTab}
+        searchable={true} onSearch={setQuery}/>
     </div>
   );
 }

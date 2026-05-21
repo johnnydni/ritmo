@@ -55,8 +55,71 @@ RLS macht: jeder User sieht nur eigene Daten — auch wenn anon-key public ist.
 
 1. Repo erstellen, Code pushen
 2. Settings → Pages → Source: **GitHub Actions**
-3. Settings → Secrets → Actions: `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` setzen
+3. Settings → Secrets and variables → Actions → **Secrets**: `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` setzen
 4. Workflow läuft automatisch → live unter `https://<USER>.github.io/<REPO>/`
+
+### Custom Domain (Apex z.B. `ritmopadel.app`)
+
+Der Workflow erkennt einen Custom Domain automatisch über eine
+Repository-**Variable** (nicht Secret) und schaltet dann `base` von
+`/<repo>/` auf `/` um, schreibt eine `dist/CNAME`-Datei und deployt.
+
+**1. Repo-Variable setzen**
+- Settings → Secrets and variables → Actions → **Variables** → "New repository variable"
+- Name: `CUSTOM_DOMAIN`
+- Value: `ritmopadel.app` (ohne `https://`, ohne Pfad, ohne Trailing-Slash)
+
+**2. DNS beim Domain-Provider konfigurieren**
+
+Für Apex-Domain (`example.com`) — vier A-Records auf die GitHub-Pages-IPs:
+```
+@   A   185.199.108.153
+@   A   185.199.109.153
+@   A   185.199.110.153
+@   A   185.199.111.153
+```
+Optional zusätzlich vier AAAA-Records (IPv6, robustness):
+```
+@   AAAA   2606:50c0:8000::153
+@   AAAA   2606:50c0:8001::153
+@   AAAA   2606:50c0:8002::153
+@   AAAA   2606:50c0:8003::153
+```
+`www` Subdomain als zusätzlichen Redirect:
+```
+www   CNAME   <USER>.github.io.
+```
+
+Für Subdomain-only (`app.example.com`) reicht ein einzelner CNAME:
+```
+app   CNAME   <USER>.github.io.
+```
+(Punkt am Ende beachten — manche Provider verlangen ihn.)
+
+**3. GitHub Pages Settings**
+- Settings → Pages → **Custom domain**: `ritmopadel.app` eintragen → Save
+- DNS-Check läuft automatisch (kann 10 min - 24 h dauern)
+- Sobald grün: **Enforce HTTPS** aktivieren (Let's-Encrypt-Cert wird auto-provisioniert)
+
+**4. Supabase Auth-URLs anpassen**
+- Dashboard → Authentication → URL Configuration
+- Site URL: `https://ritmopadel.app/`
+- Redirect URLs ergänzen: `https://ritmopadel.app/**`
+- (Alte `<user>.github.io`-Einträge können bleiben, schaden nicht)
+
+**5. Google OAuth Authorized Redirect**
+Falls Google-OAuth genutzt wird: Die Supabase-Callback-URL ändert sich
+nicht (bleibt `https://<projekt>.supabase.co/auth/v1/callback`).
+
+**Troubleshooting**
+- Build deployt, aber Domain zeigt 404: Custom-Domain-Eintrag in GH Pages
+  Settings prüfen — wurde evtl. von einem alten Deploy ohne `CNAME` Datei
+  überschrieben. Variable `CUSTOM_DOMAIN` muss gesetzt sein.
+- HTTPS-Cert-Fehler nach DNS-Switch: 10–30 min warten, danach
+  "Unenforce HTTPS" → Save → "Enforce HTTPS" → Save (toggle).
+- Workflow nutzt weiterhin `/<repo>/` Base: Variable nicht in *Variables*
+  sondern in *Secrets* eingetragen. `vars.CUSTOM_DOMAIN` liest nur
+  Variables.
 
 ## Spielstil-Bilder
 

@@ -157,16 +157,6 @@ input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
 @keyframes scaleIn{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 @keyframes flashOrange{0%,100%{background:var(--card)}40%{background:var(--oFlash)}}
-/* DNA-Strand Animation im Home-Header: einmal pro Minute kurz auftauchen.
-   60s Zyklus: ~3s fade-in, ~5s halten, ~3s fade-out, Rest unsichtbar. */
-@keyframes dnaBlink {
-  0%, 100% { opacity: 0; transform: rotate(-12deg) scale(.95); }
-  5% { opacity: 0; transform: rotate(-12deg) scale(.95); }
-  10% { opacity: 0.55; transform: rotate(-12deg) scale(1); }
-  18% { opacity: 0.55; transform: rotate(-12deg) scale(1); }
-  23% { opacity: 0; transform: rotate(-12deg) scale(.95); }
-}
-.dna-pulse{animation:dnaBlink 60s ease-in-out infinite;}
 .fu{animation:fadeUp .4s ease both;}
 .fi{animation:fadeIn .25s ease both;}
 .si{animation:scaleIn .2s ease both;}
@@ -3527,105 +3517,6 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
   );
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   UPDATES / ROADMAP — zwei Sections: was kommt + was ist neu
-═══════════════════════════════════════════════════════════════ */
-const ROADMAP=[
-  {emoji:'🎯',title:'Player-side Match-Logging',desc:'Auch beigetretene Online-Spieler bekommen ihre Matches in den Spielniveau-Estimate gezählt.'},
-  {emoji:'📊',title:'Live Spectator-Mode',desc:'Externer Zugriff auf laufende Turniere ohne Spieler-Beitritt — Big-Screen für Kameras / Zuschauer.'},
-  {emoji:'🏅',title:'Liga & Saisons',desc:'Wiederkehrende Spiele mit Punkten über Saisons hinweg — Ranglisten und Trophäen.'},
-  {emoji:'🤝',title:'Freunde & Buddy-Lists',desc:'Spieler-Profile finden, befreunden, schneller in Matches einladen.'},
-  {emoji:'🔔',title:'Push-Notifications',desc:'Turnier startet, du bist dran, Ready-Check — auch wenn die App im Hintergrund läuft.'},
-  {emoji:'🎨',title:'Mehr Themes',desc:'Saisonale Themes, Brand-Kollabos, Dark/Light Auto-Switch.'},
-  {emoji:'📱',title:'PWA Install-Guide',desc:'In-App Anleitung wie man RITMO als App auf iOS/Android installiert.'},
-];
-const CHANGELOG=[
-  {emoji:'🎟️',title:'Online-Turniere',desc:'PIN- und QR-basierte Sessions, Realtime-Sync, Host-Moderation, Score-Submission durch Spieler, Ready-Checks pro Runde.'},
-  {emoji:'📷',title:'In-App QR-Scanner',desc:'Beitritt zu Online-Turnieren per Kamera-Scan, kein Tippen mehr nötig.'},
-  {emoji:'🧬',title:'RITMO DNA Shortcut',desc:'Klick auf den Home-Header öffnet direkt dein RITMO-DNA-Profil mit Stats und Spielstil.'},
-  {emoji:'🔍',title:'Einstellungen-Suche',desc:'Such-Icon klickt sich auf, durchsucht alle Settings mit gelber Highlight-Markierung.'},
-  {emoji:'📈',title:'Echte Stats',desc:'Spielniveau-Estimate fließt automatisch aus geloggten App-Matches ein, nicht nur Quiz-Antworten.'},
-  {emoji:'🔐',title:'Auth-Flow',desc:'Email-Verify, Passwort-vergessen-Flow, Auto-Redirect, Test-User für Demo-Zugang.'},
-  {emoji:'🎚️',title:'BigScreen-Zoom',desc:'Score-Anzeige im BigScreen lässt sich auf 0.5×, 1×, 1.5× oder 2× toggeln.'},
-  {emoji:'🌐',title:'Mehrsprachige Texte',desc:'Komplette App auf Deutsch lokalisiert, mit klaren Erklärungen für Regeln und Onboarding.'},
-];
-function UpdatesScreen({onHome}){
-  return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
-      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
-
-      <div style={{padding:'0 9px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
-        <div>
-          <RitmoWordmark size={52} style={{marginLeft:-3}}/>
-          <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>
-            Updates
-          </div>
-        </div>
-        <div style={{fontSize:32}}>✨</div>
-      </div>
-
-      <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:18,overflowY:'auto'}}>
-
-        {/* Roadmap */}
-        <div className="fu">
-          <div style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:1.5,
-            textTransform:'uppercase',marginBottom:10,paddingLeft:2}}>
-            Roadmap · Coming soon
-          </div>
-          <div style={{display:'flex',flexDirection:'column',gap:10}}>
-            {ROADMAP.map((item,i)=>(
-              <div key={i} style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
-                padding:'14px 16px',display:'flex',alignItems:'flex-start',gap:12}}>
-                <div style={{fontSize:22,width:34,height:34,borderRadius:'50%',
-                  background:T.card2,display:'flex',alignItems:'center',justifyContent:'center',
-                  flexShrink:0}}>{item.emoji}</div>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{color:T.t1,fontSize:14,fontWeight:800,marginBottom:3,letterSpacing:-.1}}>
-                    {item.title}
-                  </div>
-                  <div style={{color:T.t3,fontSize:12,lineHeight:1.55}}>
-                    {item.desc}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Changelog */}
-        <div className="fu" style={{animationDelay:'.08s'}}>
-          <div style={{color:T.g,fontSize:11,fontWeight:800,letterSpacing:1.5,
-            textTransform:'uppercase',marginBottom:10,paddingLeft:2}}>
-            Was ist neu in dieser Version
-          </div>
-          <div style={{display:'flex',flexDirection:'column',gap:10}}>
-            {CHANGELOG.map((item,i)=>(
-              <div key={i} style={{background:T.card,border:`1px solid ${T.g}33`,borderRadius:14,
-                padding:'14px 16px',display:'flex',alignItems:'flex-start',gap:12}}>
-                <div style={{fontSize:22,width:34,height:34,borderRadius:'50%',
-                  background:`${T.g}22`,display:'flex',alignItems:'center',justifyContent:'center',
-                  flexShrink:0}}>{item.emoji}</div>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{color:T.t1,fontSize:14,fontWeight:800,marginBottom:3,letterSpacing:-.1}}>
-                    {item.title}
-                  </div>
-                  <div style={{color:T.t3,fontSize:12,lineHeight:1.55}}>
-                    {item.desc}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div style={{height:100,flexShrink:0}}/>
-      </div>
-
-      <MatchBar onHome={onHome}/>
-    </div>
-  );
-}
-
 function Home({nav,activeTab,setActiveTab,profile,onboarded}){
   // Hinweis-Banner falls Onboarding nicht abgeschlossen ist UND der
   // User nicht den Test-Bypass benutzt (Test-User hat onboarded=true).
@@ -3642,17 +3533,9 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded}){
       <div style={{
         padding:'calc(env(safe-area-inset-top,0px) + 60px) 9px 40px',
         background:'var(--headerGrad)',
-        position:'relative',zIndex:1,overflow:'hidden',
+        position:'relative',zIndex:1,
         cursor:'pointer',
       }} onClick={()=>nav('profile-ritmodna')}>
-        {/* Dezente DNA-Strang Animation: erscheint einmal pro Minute
-            für ein paar Sekunden, dann wieder weg. Absolute Position
-            damit das Layout drumherum nicht beeinflusst wird. */}
-        <div className="dna-pulse" aria-hidden="true"
-          style={{position:'absolute',right:-10,top:'calc(env(safe-area-inset-top,0px) + 30px)',
-            pointerEvents:'none',zIndex:0,opacity:0}}>
-          <DNAIcon size={120} color={T.t1}/>
-        </div>
         <div style={{display:'flex',alignItems:'center',
           justifyContent:'space-between',gap:14}}>
           <RitmoWordmark size={52} style={{marginLeft:-3}}/>
@@ -3788,22 +3671,6 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded}){
           <div style={{flex:1}}>
             <div style={{color:T.o,fontSize:15,fontWeight:700,marginBottom:1}}>Journey</div>
             <div style={{color:T.t3,fontSize:11,fontWeight:500}}>Tipps & Tricks | Taktik | Material</div>
-          </div>
-        </button>
-
-        {/* Updates / Coming soon */}
-        <button onClick={(e)=>{e.stopPropagation?.();nav('updates');}} className="fu"
-          style={{background:'transparent',border:`1px solid ${T.border}`,borderRadius:16,
-            padding:'14px 20px',display:'flex',alignItems:'center',gap:16,
-            cursor:'pointer',color:T.t1,textAlign:'left',transition:'background .15s',
-            animationDelay:'.28s'}}
-          onPointerDown={e=>e.currentTarget.style.background=T.card2}
-          onPointerUp={e=>e.currentTarget.style.background='transparent'}
-          onPointerLeave={e=>e.currentTarget.style.background='transparent'}>
-          <div style={{fontSize:24,width:28,textAlign:'center'}}>✨</div>
-          <div style={{flex:1}}>
-            <div style={{color:T.o,fontSize:15,fontWeight:700,marginBottom:1}}>Updates / Coming soon</div>
-            <div style={{color:T.t3,fontSize:11,fontWeight:500}}>Roadmap · Was ist neu in dieser Version</div>
           </div>
         </button>
 
@@ -9704,7 +9571,6 @@ export default function App(){
     {scr==='profile-ritmodna'&&<ProfileRitmoDNA profile={profile}
       onBack={()=>setScr('profile')}
       onHome={goHome}/>}
-    {scr==='updates'&&<UpdatesScreen onHome={goHome}/>}
     {scr==='rules'&&<RulesLanding onHome={goHome}
       onContinue={()=>setScr('rules-overview')}
       onMarkRead={()=>{setRulesRead(true);setScr('rules-overview');}}

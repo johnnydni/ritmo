@@ -173,3 +173,146 @@ function computeStats(rows) {
     avgSets,
   };
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   ONLINE TOURNAMENT (ritmo_sessions Tabelle)
+
+   PIN-basierte Session, Daten als JSONB. Host erstellt → Player
+   joinen via PIN/QR → Host approved → Tournament läuft.
+═══════════════════════════════════════════════════════════════ */
+
+function genPin() {
+  // 6-stelliger Pin, easy zu tippen wenn QR nicht klappt.
+  // Buchstaben/Ziffern ohne 0/o/1/l für Lesbarkeit.
+  const chars = '23456789abcdefghjkmnpqrstuvwxyz';
+  let pin = '';
+  for (let i = 0; i < 6; i++) {
+    pin += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return pin;
+}
+
+/**
+ * Erzeugt eine neue Online-Tournament-Session.
+ * @param {object} data — Tournament-Setup (format, winMode, numCourts, roundDurationMin, hostName, hostId?)
+ * @returns {Promise<string>} der PIN
+ */
+export async function createOnlineTournament(data) {
+  const c = sb();
+  if (!c) throw new Error('Online-Modus nicht verfügbar.');
+  const sessionData = {
+    ...data,
+    status: 'lobby',           // lobby | playing | finished
+    participants: data.hostName ? [{
+      id: 'host',
+      name: data.hostName,
+      approved: true,
+      isHost: true,
+      joinedAt: new Date().toISOString(),
+    }] : [],
+    createdAt: new Date().toISOString(),
+  };
+  // Bis zu 5 Versuche, einen freien PIN zu finden.
+  for (let i = 0; i < 5; i++) {
+    const pin = genPin();
+    const { error } = await c
+      .from('ritmo_sessions')
+      .insert({ pin, data: sessionData });
+    if (!error) return pin;
+    // Bei Unique-Constraint-Violation einfach neuen PIN probieren.
+    if (error.code !== '23505') {
+      console.warn('[db] createOnlineTournament:', error.message);
+      throw new Error('Tournament konnte nicht erstellt werden.');
+    }
+  }
+  throw new Error('Konnte keinen freien PIN finden, bitte erneut versuchen.');
+}
+
+/** Liest Session-Daten zum PIN. Null wenn nicht da. */
+export async function fetchOnlineTournament(pin) {
+  const c = sb();
+  if (!c || !pin) return null;
+  try {
+    const { data, error } = await c
+      .from('ritmo_sessions')
+      .select('data')
+      .eq('pin', pin.toLowerCase())
+      .maybeSingle();
+    if (error || !data) return null;
+    return data.data;
+  } catch (e) {
+    console.warn('[db] fetchOnlineTournament:', e?.message || e);
+    return null;
+  }
+}
+
+/** Überschreibt die data-Spalte. Sollte vom Host gerufen werden. */
+export async function updateOnlineTournament(pin, data) {
+  const c = sb();
+  if (!c || !pin) return;
+  try {
+    const { error } = await c
+      .from('ritmo_sessions')
+      .update({ data, updated_at: new Date().toISOString() })
+      .eq('pin', pin.toLowerCase());
+    if (error) console.warn('[db] updateOnlineTournament:', error.message);
+  } catch (e) {
+    console.warn('[db] updateOnlineTournament:', e?.message || e);
+  }
+}
+
+/**
+ * Ein Player tritt einer Session bei. Atomar (read-modify-write):
+ * holt aktuelle data, fügt sich in participants ein, schreibt zurück.
+ * @returns {Promise<string>} participant id
+ */
+export async function joinOnlineTournament(pin, username) {
+  const c = sb();
+  if (!c) throw new Error('Online-Modus nicht verfügbar.');
+  const name = (username || '').trim();
+  if (!name) throw new Error('Bitte gib einen Namen ein.');
+  const p = (pin || '').trim().toLowerCase();
+  const session = await fetchOnlineTournament(p);
+  if (!session) throw new Error('Tournament nicht gefunden — PIN prüfen.');
+  if (session.status && session.status !== 'lobby') {
+    throw new Error('Dieses Tournament läuft bereits oder ist beendet.');
+  }
+  const participants = session.participants || [];
+  if (participants.some(x => x.name.toLowerCase() === name.toLowerCase())) {
+    throw new Error('Dieser Name ist schon vergeben.');
+  }
+  const participantId = 'p_' + Math.random().toString(36).slice(2, 10);
+  participants.push({
+    id: participantId,
+    name,
+    approved: false,
+    isHost: false,
+    joinedAt: new Date().toISOString(),
+  });
+  await updateOnlineTournament(p, { ...session, participants });
+  return participantId;
+}
+
+/**
+ * Realtime-Subscription auf eine Session. Callback bekommt das
+ * frische data-Objekt bei jeder Änderung. Returns cleanup function.
+ */
+export function subscribeToTournament(pin, onChange) {
+  const c = sb();
+  if (!c || !pin) return () => {};
+  const p = pin.toLowerCase();
+  try {
+    const channel = c
+      .channel('ritmo-session-' + p)
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'ritmo_sessions', filter: 'pin=eq.' + p },
+        (payload) => {
+          if (payload.new && payload.new.data) onChange(payload.new.data);
+        })
+      .subscribe();
+    return () => { try { c.removeChannel(channel); } catch {} };
+  } catch (e) {
+    console.warn('[db] subscribeToTournament:', e?.message || e);
+    return () => {};
+  }
+}

@@ -9389,7 +9389,12 @@ export default function App(){
         }
       }catch(e){}
       setScr(curr=>{
-        if(curr==='splash'||curr==='login'||curr==='register'||curr==='verify-email'){
+        // Auth-Screens und welcome/home: hier korrigiert der Listener
+        // nach DB-Profil, falls Login.onSuccess auf Basis von stale
+        // localStorage-Werten geroutet hat. Andere Screens (match,
+        // tournament-*, profile, etc.) bleiben unverändert.
+        if(curr==='splash'||curr==='login'||curr==='register'||curr==='verify-email'
+          ||curr==='welcome'||curr==='home'){
           return isOnboarded?'home':'welcome';
         }
         return curr;
@@ -9565,7 +9570,10 @@ export default function App(){
       onLogout={async()=>{
         try{await auth.signOut();}catch(e){}
         setLoggedIn(false);
-        setOnboarded(false);
+        // onboarded NICHT zurücksetzen — bleibt persistiert, damit
+        // ein erneuter Login desselben Users nicht ins Onboarding
+        // läuft. Bei User-Wechsel auf demselben Gerät korrigiert der
+        // Auth-Listener (DB-Profil-Load) den Status nach Login.
         nav('login');
       }}/>}
     {scr==='profile-ritmodna'&&<ProfileRitmoDNA profile={profile}

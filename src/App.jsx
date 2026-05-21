@@ -534,7 +534,7 @@ function RitmoWordmark({size=22}){
   return(
     <img src={`${getAssetBase()}assets/${file}`}
       onError={()=>setErr(true)}
-      style={{height:size*1.4,width:'auto',display:'block',userSelect:'none'}}
+      style={{height:size*1.46,width:'auto',display:'block',userSelect:'none'}}
       alt="RITMO"/>
   );
 }
@@ -2714,9 +2714,7 @@ function ProfileRitmoDNA({profile,onBack,onHome}){
       </div>
 
       <MatchBar onHome={onHome} rightButtons={[
-        {icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M19 12H5M12 19l-7-7 7-7"/></svg>, onClick:onBack}
+        {icon:<PersonGlyph size={20}/>, onClick:onBack}
       ]}/>
     </div>
   );
@@ -3056,7 +3054,8 @@ function TabBar({active,onTab,rightAction,searchable=false,onSearch}){
   const rightHighlight=isSearching?!!searchValue:!!action.highlight;
 
   return(
-    <div style={{position:'absolute',bottom:'calc(env(safe-area-inset-bottom,0px) + 3px)',
+    <div style={{position:'absolute',
+      bottom:'max(1px, calc(env(safe-area-inset-bottom,0px) - 2px))',
       left:0,right:0,display:'flex',alignItems:'center',justifyContent:'center',gap:10,
       padding:'0 20px',pointerEvents:'none',zIndex:5}}>
       <div style={{display:'flex',alignItems:'center',gap:2,
@@ -3455,15 +3454,16 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded}){
           in einer eigenen flex row, vertikal mittig zueinander zentriert,
           damit der Avatar bündig mit dem Logo sitzt. Texte darunter. */}
       <div style={{
-        padding:'calc(env(safe-area-inset-top,0px) + 60px) 14px 40px',
+        padding:'calc(env(safe-area-inset-top,0px) + 60px) 9px 40px',
         background:'var(--headerGrad)',
         position:'relative',zIndex:1,
-      }}>
+        cursor:'pointer',
+      }} onClick={()=>nav('profile-ritmodna')}>
         <div style={{display:'flex',alignItems:'center',
           justifyContent:'space-between',gap:14}}>
           <RitmoWordmark size={52}/>
           <ProfileAvatar name={profile?.name} size={44}
-            onClick={()=>nav('profile')}/>
+            onClick={(e)=>{e?.stopPropagation?.();nav('profile');}}/>
         </div>
         {profile?.name?(
           <div style={{color:T.t1,fontSize:18,fontWeight:700,marginTop:10,letterSpacing:-.2}}>
@@ -3599,13 +3599,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded}){
         <div style={{height:120,flexShrink:0}}/>
       </div>
 
-      <TabBar active={activeTab} onTab={setActiveTab}
-        rightAction={{
-          icon:<DNAIcon size={22} color={T.o}/>,
-          onClick:()=>nav('profile-ritmodna'),
-          title:'RITMO DNA',
-          highlight:true,
-        }}/>
+      <TabBar active={activeTab} onTab={setActiveTab}/>
     </div>
   );
 }
@@ -3637,7 +3631,7 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
-      <div style={{padding:'0 14px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
+      <div style={{padding:'0 9px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
         <div>
           <RitmoWordmark size={52}/>
           <div style={{color:T.t2,fontSize:15,marginTop:6,fontWeight:400}}>Single Match</div>
@@ -3819,7 +3813,7 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
 /* ═══════════════════════════════════════════════════════════════
    MATCH SCREEN
 ═══════════════════════════════════════════════════════════════ */
-function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId='soft',matchKeyRef,theme='dark',voiceOn=false,voiceBaseUrl=''}){
+function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId='soft',matchKeyRef,theme='dark',voiceOn=false,voiceBaseUrl='',onMatchLogged}){
   const isB=cfg.format==='bo3';
   const[flA,setFA]=useState(false);const[flB,setFB]=useState(false);
   const[confReset,setConfReset]=useState(false);
@@ -4094,6 +4088,7 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
   useEffect(()=>{
     if(win&&!loggedWinRef.current){
       loggedWinRef.current=win;
+      const userWon=win==='A';
       dbLogMatch({
         format:isB?'bo3':'americano',
         player_names:cfg.players||[cfg.nameA,cfg.nameB],
@@ -4101,8 +4096,11 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
         score_b:isB?sB:am.pB,
         sets:isB?sets:null,
         user_team:'A', // Konvention: User ist im Single immer Team A
-        user_won:win==='A',
+        user_won:userWon,
       }).catch(()=>{});
+      // Counter im Profil hochzählen (matchesPlayed + ggf. winsCount),
+      // damit App-Matches in den Spielniveau-Estimate einfließen.
+      onMatchLogged?.({userWon});
     } else if(!win){
       loggedWinRef.current=null;
     }
@@ -4357,7 +4355,7 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
-      <div style={{padding:'0 14px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
+      <div style={{padding:'0 9px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
         <div>
           <RitmoWordmark size={52}/>
           <div style={{color:T.t1,fontSize:20,marginTop:4,fontWeight:800}}>
@@ -5096,7 +5094,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit}){
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
-      <div style={{padding:'0 14px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
+      <div style={{padding:'0 9px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
         <div>
           <RitmoWordmark size={52}/>
           <div style={{color:T.t2,fontSize:15,marginTop:6,fontWeight:400}}>
@@ -5274,7 +5272,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit}){
 /* ═══════════════════════════════════════════════════════════════
    TOURNAMENT PLAY
 ═══════════════════════════════════════════════════════════════ */
-function TournamentPlay({tourney,setTourney,onHome,nav,ringId='soft',onEdit}){
+function TournamentPlay({tourney,setTourney,onHome,nav,ringId='soft',onEdit,onMatchLogged}){
   const[tab,setTab]=useState('round');
   const[confirmEnd,setConfirmEnd]=useState(false);
   const[showSitOutInfo,setShowSitOutInfo]=useState(false);
@@ -5313,6 +5311,9 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='soft',onEdit}){
           tournament_id:tourney.id||tourney.createdAt||null,
           round_index:rIdx,
         }).catch(()=>{});
+        // Profile-Counter aktualisieren — nur wenn der User
+        // identifizierbar ist (sonst kein userWon).
+        if(userTeam) onMatchLogged?.({userWon});
         return {...c,logged:true};
       }),
     }));
@@ -5633,7 +5634,7 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
-      <div style={{padding:'0 14px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
+      <div style={{padding:'0 9px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
         <div>
           <RitmoWordmark size={52}/>
           <div style={{color:T.t2,fontSize:15,marginTop:6,fontWeight:400}}>Endstand</div>
@@ -5737,7 +5738,7 @@ function Live({hasMatch,hasTourney,tourneyData,matchCfg,nav,activeTab,setActiveT
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
-      <div style={{padding:'0 14px 24px'}}>
+      <div style={{padding:'0 9px 24px'}}>
         <RitmoWordmark size={52}/>
         <div style={{color:T.t2,fontSize:15,marginTop:8,fontWeight:400}}>
           {items.length===0?'Keine laufenden Spiele.':'Laufende Spiele und Turniere.'}
@@ -6003,7 +6004,7 @@ function Settings({onHome,activeTab,setActiveTab,
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
-      <div style={{padding:'0 14px 22px'}}>
+      <div style={{padding:'0 9px 22px'}}>
         <RitmoWordmark size={52}/>
         <div style={{color:T.t2,fontSize:15,marginTop:8,fontWeight:400}}>
           <Hl text="Einstellungen" q={q}/>
@@ -8151,6 +8152,20 @@ export default function App(){
   };
   const deleteTourney=()=>setTourney(null);
 
+  // Wird von Match + TournamentPlay aufgerufen, sobald ein Match
+  // tatsächlich geloggt wird (winner-Transition / done=true→logged).
+  // Inkrementiert profile.matchesPlayed (+ winsCount wenn user_won).
+  // Dadurch fließen App-gespielte Matches ins Spielniveau-Estimate ein,
+  // zusätzlich zur Quiz-Eingabe.
+  const onMatchLogged=useCallback(({userWon})=>{
+    setProfile(p=>{
+      const matches=(parseInt(p.matchesPlayed||'0',10)||0)+1;
+      const winsBase=parseInt(p.winsCount||'0',10)||0;
+      const wins=winsBase+(userWon?1:0);
+      return {...p,matchesPlayed:String(matches),winsCount:String(wins)};
+    });
+  },[]);
+
   return(<>
     <style>{CSS}</style>
 
@@ -8302,12 +8317,14 @@ export default function App(){
     {scr==='match'&&<Match cfg={cfg} setCfg={setCfg} bo3={bo3} dBo3={dBo3} am={am} dAm={dAm}
       onHome={goHome} inputMode={inputMode} ringId={ringId}
       matchKeyRef={matchKeyRef} theme={theme}
-      voiceOn={voiceOn} voiceBaseUrl={voiceBaseUrl}/>}
+      voiceOn={voiceOn} voiceBaseUrl={voiceBaseUrl}
+      onMatchLogged={onMatchLogged}/>}
     {scr==='tournament-setup'&&<TournamentSetup nav={nav} onHome={goHome}
       onStart={startTourney} onSave={saveTourneyEdit}
       saved={tourney} isEdit={tourneyEditMode&&!!tourney}/>}
     {scr==='tournament-play'&&tourney&&<TournamentPlay tourney={tourney} setTourney={setTourney}
-      onHome={goHome} nav={nav} ringId={ringId} onEdit={editTourney}/>}
+      onHome={goHome} nav={nav} ringId={ringId} onEdit={editTourney}
+      onMatchLogged={onMatchLogged}/>}
     {scr==='tournament-leaderboard'&&tourney&&<TournamentLeaderboard tourney={tourney}
       onHome={goHome} onNew={newTourney}/>}
 

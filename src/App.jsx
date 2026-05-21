@@ -5083,8 +5083,12 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit,profile,onCreat
   const[onlineError,setOnlineError]=useState('');
   const nextId=useRef(players.reduce((m,p)=>Math.max(m,p.id),0)+1);
 
-  const maxCourts=Math.max(1,Math.floor(players.length/4));
-  // Auto-clamp courts when players reduced
+  // Im Online-Modus joinen Spieler erst nach Erstellung — daher hier
+  // keine Cap durch lokale Spielerzahl. Trotzdem ein sinnvolles UI-
+  // Maximum (20 Courts), damit der +/-/Picker nicht ins Endlose läuft.
+  // Lokal: weiterhin floor(players/4) als Obergrenze.
+  const maxCourts=mode==='online'?20:Math.max(1,Math.floor(players.length/4));
+  // Auto-clamp courts when players reduced (gilt nur im Lokal-Modus)
   useEffect(()=>{if(numCourts>maxCourts)setNumCourts(maxCourts);},[maxCourts,numCourts]);
 
   const addPlayer=()=>{
@@ -5769,19 +5773,21 @@ function TournamentParticipantView({session,participantId,pin}){
               textTransform:'uppercase',marginBottom:8}}>
               {mySubmission?'Neuer Vorschlag':'Ergebnis eingeben'}
             </div>
-            <div style={{display:'flex',alignItems:'center',gap:8}}>
+            <div style={{display:'flex',alignItems:'center',gap:8,minWidth:0}}>
               <input type="number" inputMode="numeric" min="0"
                 value={sA} onChange={e=>{setSA(e.target.value);setErr('');}}
                 placeholder="0"
-                style={{flex:1,padding:'12px',background:T.card2,
+                style={{flex:1,minWidth:0,width:0,padding:'12px',
+                  background:T.card2,boxSizing:'border-box',
                   border:`1px solid ${T.border}`,borderRadius:10,
                   color:T.t1,fontSize:20,fontWeight:800,fontFamily:'monospace',
                   textAlign:'center',outline:'none'}}/>
-              <span style={{color:T.t3,fontSize:18,fontWeight:700}}>:</span>
+              <span style={{color:T.t3,fontSize:18,fontWeight:700,flexShrink:0}}>:</span>
               <input type="number" inputMode="numeric" min="0"
                 value={sB} onChange={e=>{setSB(e.target.value);setErr('');}}
                 placeholder="0"
-                style={{flex:1,padding:'12px',background:T.card2,
+                style={{flex:1,minWidth:0,width:0,padding:'12px',
+                  background:T.card2,boxSizing:'border-box',
                   border:`1px solid ${T.border}`,borderRadius:10,
                   color:T.t1,fontSize:20,fontWeight:800,fontFamily:'monospace',
                   textAlign:'center',outline:'none'}}/>
@@ -5841,6 +5847,98 @@ function TournamentParticipantView({session,participantId,pin}){
   </>);
 }
 
+/* QR-Scanner Modal — öffnet die Kamera, decodet QR-Codes via
+   qr-scanner Lib. Auf Match wird onResult mit dem decoded Text
+   gerufen und der Stream sofort gestoppt. */
+function QRScannerModal({onResult,onClose}){
+  const videoRef=useRef(null);
+  const scannerRef=useRef(null);
+  const[err,setErr]=useState('');
+
+  useEffect(()=>{
+    let mounted=true;
+    let scanner;
+    (async()=>{
+      try{
+        // qr-scanner ist ~12kB minified, lädt einen Worker zum Decoden.
+        const mod=await import('qr-scanner');
+        const QrScanner=mod.default;
+        if(!videoRef.current||!mounted) return;
+        scanner=new QrScanner(videoRef.current,(result)=>{
+          const text=typeof result==='string'?result:result?.data;
+          if(text) onResult(text);
+        },{
+          highlightScanRegion:true,
+          highlightCodeOutline:true,
+          preferredCamera:'environment',
+        });
+        scannerRef.current=scanner;
+        await scanner.start();
+      }catch(e){
+        if(mounted){
+          setErr(e?.message||'Kamera konnte nicht gestartet werden.');
+        }
+      }
+    })();
+    return()=>{
+      mounted=false;
+      try{scanner?.stop();scanner?.destroy();}catch{}
+    };
+  },[onResult]);
+
+  return(
+    <div style={{position:'fixed',inset:0,zIndex:1000,background:'#000',
+      display:'flex',flexDirection:'column'}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',
+        padding:'calc(env(safe-area-inset-top,0px) + 14px) 18px 14px',
+        background:'rgba(0,0,0,.7)',color:'#fff'}}>
+        <div style={{fontSize:14,fontWeight:700,letterSpacing:.3}}>QR-Code scannen</div>
+        <button onClick={onClose}
+          style={{width:36,height:36,borderRadius:'50%',background:'rgba(255,255,255,.15)',
+            border:'none',color:'#fff',fontSize:18,cursor:'pointer',
+            display:'flex',alignItems:'center',justifyContent:'center'}}>×</button>
+      </div>
+      <div style={{flex:1,position:'relative',overflow:'hidden'}}>
+        <video ref={videoRef} playsInline muted autoPlay
+          style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+        {err&&(
+          <div style={{position:'absolute',inset:0,display:'flex',
+            alignItems:'center',justifyContent:'center',padding:24}}>
+            <div style={{background:T.card,border:`1px solid ${T.r}`,
+              borderRadius:14,padding:'20px',maxWidth:320,textAlign:'center'}}>
+              <div style={{color:T.r,fontSize:14,fontWeight:800,marginBottom:8}}>
+                Kamera nicht verfügbar
+              </div>
+              <div style={{color:T.t2,fontSize:12,lineHeight:1.55}}>
+                {err}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+      <div style={{padding:'14px 18px calc(env(safe-area-inset-bottom,0px) + 14px)',
+        background:'rgba(0,0,0,.7)',color:'#fff',fontSize:12,textAlign:'center',
+        lineHeight:1.5}}>
+        Halte den QR-Code des Hosts in den Rahmen.
+      </div>
+    </div>
+  );
+}
+
+/* Hilfsfunktion: PIN aus QR-Text extrahieren. Akzeptiert sowohl die
+   App-URL mit ?join=PIN als auch einen rohen PIN-String. */
+function extractPinFromScan(text){
+  if(!text) return null;
+  try{
+    const u=new URL(text);
+    const p=u.searchParams.get('join');
+    if(p) return p.trim().toLowerCase();
+  }catch{}
+  const clean=String(text).trim().toLowerCase();
+  if(/^[a-z0-9]{4,12}$/.test(clean)) return clean;
+  return null;
+}
+
 /* ═══════════════════════════════════════════════════════════════
    JOIN TOURNAMENT (Player-Side)
 
@@ -5850,13 +5948,25 @@ function TournamentParticipantView({session,participantId,pin}){
    3. Joinen → wartet auf Host-Freigabe (Realtime)
    4. Wenn Host startet (status='playing') → TournamentParticipantView
 ═══════════════════════════════════════════════════════════════ */
-function JoinTournament({initialPin,profile,onHome,onJoined}){
-  const[pin,setPin]=useState((initialPin||'').toLowerCase());
-  const[name,setName]=useState(profile?.name||'');
-  const[status,setStatus]=useState('input');   // input | joining | waiting | approved | rejected | error
-  const[participantId,setParticipantId]=useState(null);
+function JoinTournament({initialPin,profile,onHome,onJoin,restored}){
+  const[pin,setPin]=useState((restored?.pin||initialPin||'').toLowerCase());
+  const[name,setName]=useState(restored?.name||profile?.name||'');
+  // Wenn wir mit gespeichertem participantId starten, springen wir
+  // direkt in waiting/approved/playing — die Subscription cleart das.
+  const[status,setStatus]=useState(restored?.participantId?'waiting':'input');
+  const[participantId,setParticipantId]=useState(restored?.participantId||null);
   const[session,setSession]=useState(null);
   const[err,setErr]=useState('');
+  const[scannerOpen,setScannerOpen]=useState(false);
+
+  const onScanResult=useCallback((text)=>{
+    const found=extractPinFromScan(text);
+    if(found){
+      setPin(found);
+      setErr('');
+      setScannerOpen(false);
+    }
+  },[]);
 
   // Sobald wir gejoint sind: Realtime-Subscription auf die Session.
   useEffect(()=>{
@@ -5888,6 +5998,9 @@ function JoinTournament({initialPin,profile,onHome,onJoined}){
       setParticipantId(id);
       setPin(p);
       setStatus('waiting');
+      // App-State persistieren, damit der Beitritt unter Live
+      // sichtbar bleibt und beim Reload wiederhergestellt wird.
+      onJoin?.({pin:p,participantId:id,name:n});
     }catch(e){
       setErr(e?.message||'Beitritt fehlgeschlagen.');
       setStatus('input');
@@ -5909,6 +6022,28 @@ function JoinTournament({initialPin,profile,onHome,onJoined}){
         {status==='input'||status==='joining'?(<>
           <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
             padding:'18px'}}>
+            {/* QR-Code Scanner Button */}
+            <button onClick={()=>setScannerOpen(true)}
+              style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'center',gap:10,
+                background:T.oSoft,border:`1px solid ${T.o}`,borderRadius:10,
+                padding:'12px 14px',color:T.o,fontSize:14,fontWeight:700,
+                cursor:'pointer',marginBottom:14,letterSpacing:.2}}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="6" height="6" rx="1"/>
+                <rect x="15" y="3" width="6" height="6" rx="1"/>
+                <rect x="3" y="15" width="6" height="6" rx="1"/>
+                <line x1="14" y1="14" x2="21" y2="14"/>
+                <line x1="14" y1="18" x2="17" y2="18"/>
+                <line x1="14" y1="21" x2="21" y2="21"/>
+              </svg>
+              <span>QR-Code scannen</span>
+            </button>
+            <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:14}}>
+              <div style={{flex:1,height:1,background:T.border}}/>
+              <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.5}}>ODER</div>
+              <div style={{flex:1,height:1,background:T.border}}/>
+            </div>
             <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
               textTransform:'uppercase',marginBottom:6}}>PIN</div>
             <input value={pin}
@@ -5989,7 +6124,10 @@ function JoinTournament({initialPin,profile,onHome,onJoined}){
             <div style={{color:T.t3,fontSize:12,lineHeight:1.55,maxWidth:280,margin:'0 auto',marginBottom:14}}>
               Frag den Host kurz, oder versuche es mit einem anderen PIN.
             </div>
-            <button onClick={()=>{setStatus('input');setParticipantId(null);}}
+            <button onClick={()=>{
+                onJoin?.(null);  // persisted Join löschen
+                setStatus('input');setParticipantId(null);
+              }}
               style={{padding:'10px 20px',background:T.oSoft,border:`1px solid ${T.o}`,
                 borderRadius:10,color:T.o,fontSize:12,fontWeight:700,cursor:'pointer'}}>
               Erneut versuchen
@@ -6010,6 +6148,12 @@ function JoinTournament({initialPin,profile,onHome,onJoined}){
             color:T.t1,fontSize:13,fontWeight:800}
         }:null,
       ].filter(Boolean)}/>
+
+      {scannerOpen&&(
+        <QRScannerModal
+          onResult={onScanResult}
+          onClose={()=>setScannerOpen(false)}/>
+      )}
     </div>
   );
 }
@@ -6045,16 +6189,20 @@ function PendingSubmissionRow({sub,tourney,onApprove,onReject}){
           {teamLabel(court.t1)} <span style={{color:T.t3}}>vs</span> {teamLabel(court.t2)}
         </div>
       )}
-      <div style={{display:'flex',alignItems:'center',gap:8}}>
+      <div style={{display:'flex',alignItems:'center',gap:8,minWidth:0}}>
         <input type="number" inputMode="numeric" min="0" value={a}
           onChange={e=>setA(parseInt(e.target.value)||0)}
-          style={{flex:1,padding:'8px',background:T.card2,border:`1px solid ${T.border}`,
+          style={{flex:1,minWidth:0,width:0,padding:'8px',
+            background:T.card2,boxSizing:'border-box',
+            border:`1px solid ${T.border}`,
             borderRadius:8,color:T.t1,fontSize:18,fontWeight:800,fontFamily:'monospace',
             textAlign:'center',outline:'none'}}/>
-        <span style={{color:T.t3,fontSize:16,fontWeight:700}}>:</span>
+        <span style={{color:T.t3,fontSize:16,fontWeight:700,flexShrink:0}}>:</span>
         <input type="number" inputMode="numeric" min="0" value={b}
           onChange={e=>setB(parseInt(e.target.value)||0)}
-          style={{flex:1,padding:'8px',background:T.card2,border:`1px solid ${T.border}`,
+          style={{flex:1,minWidth:0,width:0,padding:'8px',
+            background:T.card2,boxSizing:'border-box',
+            border:`1px solid ${T.border}`,
             borderRadius:8,color:T.t1,fontSize:18,fontWeight:800,fontFamily:'monospace',
             textAlign:'center',outline:'none'}}/>
         <button onClick={()=>handle(()=>onApprove(sub,a,b))} disabled={busy}
@@ -6666,7 +6814,7 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
    LIVE SCREEN
 ═══════════════════════════════════════════════════════════════ */
 function Live({hasMatch,hasTourney,tourneyData,matchCfg,nav,activeTab,setActiveTab,
-  onDeleteMatch,onDeleteTourney}){
+  onDeleteMatch,onDeleteTourney,joinedSession,onLeaveJoined}){
   const items=[];
   if(hasMatch){
     items.push({
@@ -6684,6 +6832,15 @@ function Live({hasMatch,hasTourney,tourneyData,matchCfg,nav,activeTab,setActiveT
       sub:`Runde ${tourneyData.current+1} · ${tourneyData.players.length} Spieler`,
       navTo:tourneyData.finished?'tournament-leaderboard':'tournament-play',
       onDelete:onDeleteTourney,
+    });
+  }
+  if(joinedSession){
+    items.push({
+      id:'joined',type:'joined',
+      title:`Online-Turnier · ${joinedSession.name||'Du'}`,
+      sub:`PIN ${joinedSession.pin?.toUpperCase()} · Tippen zum Wiedereintreten`,
+      navTo:'remote',
+      onDelete:onLeaveJoined,
     });
   }
 
@@ -8915,9 +9072,16 @@ export default function App(){
   const verifyLandingRef=useRef(verifyLanding);
   useEffect(()=>{verifyLandingRef.current=verifyLanding;},[verifyLanding]);
   // Aktuelle Online-Tournament-Session des Hosts (während die Lobby
-  // offen ist). Player-Side Pin wird im JoinTournament-Component selbst
-  // verwaltet, hier nur Host-State.
+  // offen ist).
   const[onlinePin,setOnlinePin]=useState(null);
+  // Joined-Session des Players: bleibt persistent solange die Session
+  // läuft. Damit erscheint das Turnier unter "Live" und kann
+  // jederzeit wieder geöffnet werden.
+  const[joinedSession,setJoinedSession]=useState(()=>lsGet('ritmo_joined',null));
+  useEffect(()=>{
+    if(joinedSession===null){try{localStorage.removeItem('ritmo_joined');}catch{}}
+    else lsSet('ritmo_joined',joinedSession);
+  },[joinedSession]);
   // ?join=PIN aus der URL extrahieren (vom QR-Scan). Wird beim
   // Cold-Load gelesen und an JoinTournament als initialPin gegeben.
   // Sobald gelesen, säubern wir die URL via history.replaceState.
@@ -9283,7 +9447,9 @@ export default function App(){
     {scr==='live'&&<Live nav={nav} hasMatch={hasMatch} hasTourney={hasTourney}
       tourneyData={tourney} matchCfg={cfg}
       activeTab={activeTab} setActiveTab={handleTab}
-      onDeleteMatch={deleteMatch} onDeleteTourney={deleteTourney}/>}
+      onDeleteMatch={deleteMatch} onDeleteTourney={deleteTourney}
+      joinedSession={joinedSession}
+      onLeaveJoined={()=>setJoinedSession(null)}/>}
     {scr==='settings'&&<Settings onHome={goHome}
       activeTab={activeTab} setActiveTab={handleTab}
       ringId={ringId} setRingId={setRingId}
@@ -9320,6 +9486,8 @@ export default function App(){
     {scr==='remote'&&<JoinTournament
       initialPin={joinPinFromUrl}
       profile={profile}
+      restored={joinedSession}
+      onJoin={setJoinedSession}
       onHome={()=>{setJoinPinFromUrl(null);goHome();}}/>}
 
     {/* First-launch disclaimer — liegt über allen Screens, blockiert

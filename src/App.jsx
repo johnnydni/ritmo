@@ -502,7 +502,7 @@ const auth={
 
 // RITMO Wortmarke (klein, für Header)
 // RITMO Wortmarke (klein) — Mini-R-Icon mit Schläger-Kopf + RITMO Text in Italic
-function RitmoWordmark({size=22}){
+function RitmoWordmark({size=22,style}){
   const[err,setErr]=useState(false);
   const G=T.gold;
   // Theme-dependent: light theme braucht dunkle Logos für Kontrast
@@ -513,7 +513,7 @@ function RitmoWordmark({size=22}){
     // SVG fallback wenn das PNG nicht vorhanden
     const iconSize=size*1.2;
     return(
-      <div style={{display:'flex',alignItems:'center',gap:7}}>
+      <div style={{display:'flex',alignItems:'center',gap:7,...style}}>
         <svg width={iconSize} height={iconSize} viewBox="0 0 30 30" fill="none" style={{display:'block'}}>
           <line x1="0" y1="8"  x2="3" y2="8"  stroke={G} strokeWidth="1.2" strokeLinecap="round"/>
           <line x1="0" y1="14" x2="3" y2="14" stroke={G} strokeWidth="1.2" strokeLinecap="round"/>
@@ -534,7 +534,7 @@ function RitmoWordmark({size=22}){
   return(
     <img src={`${getAssetBase()}assets/${file}`}
       onError={()=>setErr(true)}
-      style={{height:size*1.46,width:'auto',display:'block',userSelect:'none'}}
+      style={{height:size*1.46,width:'auto',display:'block',userSelect:'none',...style}}
       alt="RITMO"/>
   );
 }
@@ -3461,20 +3461,20 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded}){
       }} onClick={()=>nav('profile-ritmodna')}>
         <div style={{display:'flex',alignItems:'center',
           justifyContent:'space-between',gap:14}}>
-          <RitmoWordmark size={52}/>
+          <RitmoWordmark size={52} style={{marginLeft:-3}}/>
           <ProfileAvatar name={profile?.name} size={44}
             onClick={(e)=>{e?.stopPropagation?.();nav('profile');}}/>
         </div>
         {profile?.name?(
-          <div style={{color:T.t1,fontSize:18,fontWeight:700,marginTop:10,letterSpacing:-.2}}>
+          <div style={{color:T.t1,fontSize:18,fontWeight:700,marginTop:10,marginLeft:7,letterSpacing:-.2}}>
             Hi, {profile.name}! 👋
           </div>
         ):null}
-        <div style={{color:T.t2,fontSize:14,marginTop:profile?.name?4:8,fontWeight:400}}>
+        <div style={{color:T.t2,fontSize:14,marginTop:profile?.name?4:8,marginLeft:7,fontWeight:400}}>
           Wähle deinen Modus.
         </div>
         {document.documentElement.getAttribute('data-theme')==='funky'&&(
-          <div style={{marginTop:14}}><FunkyFruitsRow size={20} gap={10}/></div>
+          <div style={{marginTop:14,marginLeft:7}}><FunkyFruitsRow size={20} gap={10}/></div>
         )}
       </div>
 
@@ -3633,8 +3633,8 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
 
       <div style={{padding:'0 9px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
         <div>
-          <RitmoWordmark size={52}/>
-          <div style={{color:T.t2,fontSize:15,marginTop:6,fontWeight:400}}>Single Match</div>
+          <RitmoWordmark size={52} style={{marginLeft:-3}}/>
+          <div style={{color:T.t2,fontSize:15,marginTop:6,marginLeft:7,fontWeight:400}}>Single Match</div>
         </div>
         <CourtIcon size={36}/>
       </div>
@@ -4357,8 +4357,8 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
 
       <div style={{padding:'0 9px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
         <div>
-          <RitmoWordmark size={52}/>
-          <div style={{color:T.t1,fontSize:20,marginTop:4,fontWeight:800}}>
+          <RitmoWordmark size={52} style={{marginLeft:-3}}/>
+          <div style={{color:T.t1,fontSize:20,marginTop:4,marginLeft:7,fontWeight:800}}>
             {isB?'Best of Three':'Americano'}
           </div>
         </div>
@@ -5096,8 +5096,8 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit}){
 
       <div style={{padding:'0 9px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
         <div>
-          <RitmoWordmark size={52}/>
-          <div style={{color:T.t2,fontSize:15,marginTop:6,fontWeight:400}}>
+          <RitmoWordmark size={52} style={{marginLeft:-3}}/>
+          <div style={{color:T.t2,fontSize:15,marginTop:6,marginLeft:7,fontWeight:400}}>
             {isEdit?'Turnier bearbeiten':'Turnier'}
           </div>
         </div>
@@ -5403,8 +5403,8 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='soft',onEdit,onMa
 
       <div style={{padding:'0 22px 14px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
         <div>
-          <RitmoWordmark size={52}/>
-          <div style={{color:T.t2,fontSize:15,marginTop:6,fontWeight:400}}>
+          <RitmoWordmark size={52} style={{marginLeft:-3}}/>
+          <div style={{color:T.t2,fontSize:15,marginTop:6,marginLeft:7,fontWeight:400}}>
             {tourney.format==='mexicano'?'Mexicano':'Americano'} · Runde {tourney.current+1}
           </div>
         </div>
@@ -5636,8 +5636,8 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
 
       <div style={{padding:'0 9px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
         <div>
-          <RitmoWordmark size={52}/>
-          <div style={{color:T.t2,fontSize:15,marginTop:6,fontWeight:400}}>Endstand</div>
+          <RitmoWordmark size={52} style={{marginLeft:-3}}/>
+          <div style={{color:T.t2,fontSize:15,marginTop:6,marginLeft:7,fontWeight:400}}>Endstand</div>
         </div>
         <TrophyIcon size={36}/>
       </div>
@@ -5739,8 +5739,8 @@ function Live({hasMatch,hasTourney,tourneyData,matchCfg,nav,activeTab,setActiveT
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
       <div style={{padding:'0 9px 24px'}}>
-        <RitmoWordmark size={52}/>
-        <div style={{color:T.t2,fontSize:15,marginTop:8,fontWeight:400}}>
+        <RitmoWordmark size={52} style={{marginLeft:-3}}/>
+        <div style={{color:T.t2,fontSize:15,marginTop:8,marginLeft:7,fontWeight:400}}>
           {items.length===0?'Keine laufenden Spiele.':'Laufende Spiele und Turniere.'}
         </div>
         {items.length>0&&(
@@ -6005,8 +6005,8 @@ function Settings({onHome,activeTab,setActiveTab,
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
       <div style={{padding:'0 9px 22px'}}>
-        <RitmoWordmark size={52}/>
-        <div style={{color:T.t2,fontSize:15,marginTop:8,fontWeight:400}}>
+        <RitmoWordmark size={52} style={{marginLeft:-3}}/>
+        <div style={{color:T.t2,fontSize:15,marginTop:8,marginLeft:7,fontWeight:400}}>
           <Hl text="Einstellungen" q={q}/>
         </div>
       </div>

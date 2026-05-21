@@ -232,10 +232,13 @@ function amR(s,a){
   const h=[...s.hist,{pA:s.pA,pB:s.pB,winner:null,_t:a.t}];
   if(a.type==='PT'){
     const pA=s.pA+(a.t==='A'?1:0), pB=s.pB+(a.t==='B'?1:0);
-    const lim=s.limit??21;
+    // Limit nimmt den Wert aus der Action wenn dabei (kommt aus
+    // cfg.amLimit, ist die Source-of-Truth). Sonst Fallback auf
+    // den im State persistierten Wert. lim<=0 = ∞ Mode: kein Winner.
+    const lim=a.limit!=null?a.limit:(s.limit??21);
     let winner=null;
     if(lim>0&&pA+pB>=lim) winner=pA>pB?'A':pB>pA?'B':'draw';
-    return {...s,pA,pB,winner,hist:h};
+    return {...s,pA,pB,winner,limit:lim,hist:h};
   }
   return s;
 }
@@ -3308,30 +3311,33 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded}){
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden'}}>
 
-      {/* HEADER ZONE — gradient via theme CSS var */}
+      {/* HEADER ZONE — gradient via theme CSS var.
+          Reduziertes Horizontal-Padding (14px statt 22px) lässt das Logo
+          und den Avatar näher an den Rand rücken. Logo + Avatar liegen
+          in einer eigenen flex row, vertikal mittig zueinander zentriert,
+          damit der Avatar bündig mit dem Logo sitzt. Texte darunter. */}
       <div style={{
-        padding:'calc(env(safe-area-inset-top,0px) + 60px) 22px 40px',
-        display:'flex',alignItems:'flex-start',
-        justifyContent:'space-between',gap:14,
+        padding:'calc(env(safe-area-inset-top,0px) + 60px) 14px 40px',
         background:'var(--headerGrad)',
         position:'relative',zIndex:1,
       }}>
-        <div style={{flex:1,minWidth:0}}>
+        <div style={{display:'flex',alignItems:'center',
+          justifyContent:'space-between',gap:14}}>
           <RitmoWordmark size={52}/>
-          {profile?.name?(
-            <div style={{color:T.t1,fontSize:18,fontWeight:700,marginTop:10,letterSpacing:-.2}}>
-              Hi, {profile.name}! 👋
-            </div>
-          ):null}
-          <div style={{color:T.t2,fontSize:14,marginTop:profile?.name?4:8,fontWeight:400}}>
-            Wähle deinen Modus.
-          </div>
-          {document.documentElement.getAttribute('data-theme')==='funky'&&(
-            <div style={{marginTop:14}}><FunkyFruitsRow size={20} gap={10}/></div>
-          )}
+          <ProfileAvatar name={profile?.name} size={44}
+            onClick={()=>nav('profile')}/>
         </div>
-        <ProfileAvatar name={profile?.name} size={44}
-          onClick={()=>nav('profile')}/>
+        {profile?.name?(
+          <div style={{color:T.t1,fontSize:18,fontWeight:700,marginTop:10,letterSpacing:-.2}}>
+            Hi, {profile.name}! 👋
+          </div>
+        ):null}
+        <div style={{color:T.t2,fontSize:14,marginTop:profile?.name?4:8,fontWeight:400}}>
+          Wähle deinen Modus.
+        </div>
+        {document.documentElement.getAttribute('data-theme')==='funky'&&(
+          <div style={{marginTop:14}}><FunkyFruitsRow size={20} gap={10}/></div>
+        )}
       </div>
 
       {/* CORPUS — drawer-style panel (rounded top, elevated shadow) */}
@@ -3487,7 +3493,7 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
-      <div style={{padding:'0 22px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
+      <div style={{padding:'0 14px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
         <div>
           <RitmoWordmark size={52}/>
           <div style={{color:T.t2,fontSize:15,marginTop:6,fontWeight:400}}>Single Match</div>
@@ -3729,10 +3735,16 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
   };
 
   const dsp=useCallback(a=>isB?dBo3(a):dAm(a),[isB,dBo3,dAm]);
-  const punkt=useCallback(t=>{dsp({type:'PT',t,goldenPointAfter:cfg.goldenPointAfter});
+  const punkt=useCallback(t=>{
+    // limit:cfg.amLimit wird mit jeder Action mitgegeben, damit der
+    // Americano-Reducer immer das aktuelle Limit aus dem Setup
+    // verwendet — auch wenn der am-State noch ein altes Limit aus
+    // einem früheren Spiel in localStorage trägt (z.B. wechselt
+    // der User von 21 auf ∞, ohne dazwischen zu resetten).
+    dsp({type:'PT',t,goldenPointAfter:cfg.goldenPointAfter,limit:cfg.amLimit??21});
     if(t==='A'){setFA(true);setTimeout(()=>setFA(false),420);}
     else{setFB(true);setTimeout(()=>setFB(false),420);}
-  },[dsp,cfg.goldenPointAfter]);
+  },[dsp,cfg.goldenPointAfter,cfg.amLimit]);
 
   /* ── Voice announce engine ──────────────────────────────────────
      Plays {baseUrl}/{key}.mp3 on score-changing events.
@@ -3990,9 +4002,17 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
     const totalSecs=timerMin*60;
     const progress=totalSecs?secsLeft/totalSecs:0;
     const fmtT=(s)=>`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
-    // Zoom-Level Multiplier — 0.5/1/2 für minimale, normale und maximale
-    // Anzeige-Größe. Wirkt auf alle clamp()-Werte im BigScreen + Service.
+    // Zoom-Level Multiplier — 0.5/1/1.5/2 skaliert alle clamp()-Werte.
     const m=zoomLevel;
+    // vh-Helper: dämpft die vh-Komponente der Clamps mit einer
+    // Obergrenze, damit Score + Margin + Dots-Row bei m=2 zusammen
+    // nicht über 100vh hinausgehen (vertikales Budget: ~85vh nach
+    // Top-Header). Bei m≤1.5 wirkt der Cap nicht; bei m=2 schon.
+    const vh=(base,cap)=>Math.min(base*m,cap);
+    // Horizontal-Padding der Score-Buttons: bei höherem Zoom etwas
+    // schmaler, damit die großen Zahlen mehr Platz haben und nicht
+    // seitlich an Geschwister-Spalten anstoßen.
+    const sidePad=Math.max(10,Math.round(28/Math.max(1,m)));
     return(
       <div style={{height:'100dvh',width:'100vw',background:T.bg,
         display:'flex',flexDirection:'column',animation:'fadeIn .2s ease',position:'relative'}}>
@@ -4033,7 +4053,7 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
         </div>
 
         {/* Scores */}
-        <div style={{flex:1,display:'flex',padding:'0 24px',minHeight:0}}>
+        <div style={{flex:1,display:'flex',padding:'0 24px',minHeight:0,overflow:'hidden'}}>
           {['A','B'].map((team,ti)=>{
             const isA=team==='A';
             const fl=isA?flA:flB;
@@ -4048,27 +4068,28 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
             return(
               <Fragment key={team}>
               <button onClick={()=>punkt(team)}
-                style={{flex:1,display:'flex',flexDirection:'column',justifyContent:'center',
+                style={{flex:1,minWidth:0,overflow:'hidden',
+                  display:'flex',flexDirection:'column',justifyContent:'center',
                   background:fl?'var(--oFlash)':'transparent',
-                  border:'none',cursor:win?'default':'pointer',padding:'0 28px',
+                  border:'none',cursor:win?'default':'pointer',padding:`0 ${sidePad}px`,
                   transition:'background .3s',textAlign:'left'}}>
                 {isSpecial ? (
                   <>
                     {/* Tennis ball indicator */}
                     <div style={{
-                      width:`clamp(${7*m}rem,${19*m}vh,${13*m}rem)`,
-                      height:`clamp(${7*m}rem,${19*m}vh,${13*m}rem)`,
+                      width:`clamp(${7*m}rem,${vh(19,26)}vh,${13*m}rem)`,
+                      height:`clamp(${7*m}rem,${vh(19,26)}vh,${13*m}rem)`,
                       borderRadius:'50%',
                       background: isAdv ? T.o : T.t1,
                       boxShadow: isAdv
                         ? '0 0 36px var(--oGlow), inset 0 -12px 26px rgba(0,0,0,.18)'
                         : '0 0 28px rgba(255,255,255,.22), inset 0 -12px 26px rgba(0,0,0,.10)',
-                      marginBottom:`clamp(${1*m}rem,${2.8*m}vh,${1.8*m}rem)`
+                      marginBottom:`clamp(${1*m}rem,${vh(2.8,4)}vh,${1.8*m}rem)`
                     }}/>
                     {/* Label below */}
                     <div style={{
                       color:T.t1,
-                      fontSize:`clamp(${2.4*m}rem,${8*m}vh,${4.5*m}rem)`,
+                      fontSize:`clamp(${2.4*m}rem,${vh(8,12)}vh,${4.5*m}rem)`,
                       fontWeight:800,letterSpacing:-1,lineHeight:1,
                       whiteSpace:'nowrap'}}>
                       {big}
@@ -4076,7 +4097,7 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
                   </>
                 ) : (
                   <div style={{
-                    fontSize:`clamp(${9*m}rem,${36*m}vh,${22*m}rem)`,
+                    fontSize:`clamp(${9*m}rem,${vh(36,60)}vh,${22*m}rem)`,
                     fontWeight:900,color:T.t1,lineHeight:.95,letterSpacing:-12,
                     whiteSpace:'nowrap'}}>
                     {big}
@@ -4084,17 +4105,17 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
                 )}
                 {/* Games + Set traffic-light dots */}
                 {isB&&(
-                  <div style={{display:'flex',alignItems:'center',gap:`clamp(${1.5*m}rem,${4*m}vw,${3*m}rem)`,
-                    marginTop:`clamp(${1.6*m}rem,${4.5*m}vh,${3*m}rem)`}}>
-                    <div style={{color:T.o,fontSize:`clamp(${3.5*m}rem,${12*m}vh,${8*m}rem)`,
+                  <div style={{display:'flex',alignItems:'center',gap:`clamp(${1.5*m}rem,${vh(4,5)}vw,${3*m}rem)`,
+                    marginTop:`clamp(${1.6*m}rem,${vh(4.5,6)}vh,${3*m}rem)`}}>
+                    <div style={{color:T.o,fontSize:`clamp(${3.5*m}rem,${vh(12,18)}vh,${8*m}rem)`,
                       fontWeight:900,letterSpacing:-3,lineHeight:1}}>
                       {gamesCount}
                     </div>
-                    <div style={{display:'flex',gap:`clamp(${.7*m}rem,${1.5*m}vw,${1.2*m}rem)`}}>
+                    <div style={{display:'flex',gap:`clamp(${.7*m}rem,${vh(1.5,2.2)}vw,${1.2*m}rem)`}}>
                       {[0,1,2].map(i=>(
                         <div key={i} style={{
-                          width:`clamp(${1.4*m}rem,${3.5*m}vh,${2.5*m}rem)`,
-                          height:`clamp(${1.4*m}rem,${3.5*m}vh,${2.5*m}rem)`,
+                          width:`clamp(${1.4*m}rem,${vh(3.5,5)}vh,${2.5*m}rem)`,
+                          height:`clamp(${1.4*m}rem,${vh(3.5,5)}vh,${2.5*m}rem)`,
                           borderRadius:'50%',
                           background:i<setsCount?T.o:'transparent',
                           border:`2.5px solid ${T.o}`,
@@ -4128,7 +4149,9 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
           {isB&&(
             <div style={{flexShrink:0,display:'flex',alignItems:'flex-start',
               padding:'2vh 4px 0 12px'}}>
-              <div style={{width:`min(${12*m}vw,${130*m}px)`,aspectRatio:'2/3'}}>
+              {/* Service-Indikator: vw-Anteil gedämpft, damit er die Score-
+                  Spalten bei m=2 nicht verdrängt. min() mit Cap auf 18vw. */}
+              <div style={{width:`min(${Math.min(12*m,18)}vw,${130*m}px)`,aspectRatio:'2/3'}}>
                 <ServiceIndicator servingTeam={servingTeam} isDeuce={isDeuce}/>
               </div>
             </div>
@@ -4190,7 +4213,7 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
-      <div style={{padding:'0 22px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
+      <div style={{padding:'0 14px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
         <div>
           <RitmoWordmark size={52}/>
           <div style={{color:T.t1,fontSize:20,marginTop:4,fontWeight:800}}>
@@ -4929,7 +4952,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit}){
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
-      <div style={{padding:'0 22px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
+      <div style={{padding:'0 14px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
         <div>
           <RitmoWordmark size={52}/>
           <div style={{color:T.t2,fontSize:15,marginTop:6,fontWeight:400}}>
@@ -5466,7 +5489,7 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
-      <div style={{padding:'0 22px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
+      <div style={{padding:'0 14px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
         <div>
           <RitmoWordmark size={52}/>
           <div style={{color:T.t2,fontSize:15,marginTop:6,fontWeight:400}}>Endstand</div>
@@ -5570,7 +5593,7 @@ function Live({hasMatch,hasTourney,tourneyData,matchCfg,nav,activeTab,setActiveT
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
-      <div style={{padding:'0 22px 24px'}}>
+      <div style={{padding:'0 14px 24px'}}>
         <RitmoWordmark size={52}/>
         <div style={{color:T.t2,fontSize:15,marginTop:8,fontWeight:400}}>
           {items.length===0?'Keine laufenden Spiele.':'Laufende Spiele und Turniere.'}
@@ -5756,11 +5779,8 @@ function InputTester(){
     <div style={{margin:'8px 0 14px',padding:'14px',
       background:T.card2,borderRadius:10,border:`1px solid ${T.border}`}}>
       <KeyCapture onKey={handleKey}/>
-      <div style={{color:T.t1,fontSize:12,fontWeight:700,marginBottom:6}}>
+      <div style={{color:T.t1,fontSize:12,fontWeight:700,marginBottom:10}}>
         Eingabe testen
-      </div>
-      <div style={{color:T.t3,fontSize:11,marginBottom:12,lineHeight:1.5}}>
-        Drücke einen Knopf an deinem Gerät — wenn die App die Taste empfängt, erscheint sie hier.
       </div>
 
       {/* Detection display */}
@@ -5785,15 +5805,6 @@ function InputTester(){
             Warte auf Eingabe...
           </div>
         )}
-      </div>
-
-      {/* Hint */}
-      <div style={{marginTop:10,padding:'8px 10px',background:'var(--oSoft)',
-        borderRadius:8,fontSize:10,color:T.t3,lineHeight:1.5}}>
-        💡 Wenn nichts erscheint, sendet dein Gerät keine Tastatur-Events
-        (z.B. wenn der Ring nur die iOS-Zoom-Funktion bedient). Prüfe in den
-        iOS Bedienungshilfen die Zoom-Einstellung oder schau im Manual deines
-        Geräts nach einem Keyboard-Modus.
       </div>
     </div>
   );
@@ -5828,24 +5839,9 @@ function QuestionToggle({filled,onClick}){
 ═══════════════════════════════════════════════════════════════ */
 function Settings({onHome,activeTab,setActiveTab,
   ringId,setRingId,inputMode,setInputMode,voiceOn,setVoiceOn,
-  voiceBaseUrl,setVoiceBaseUrl,
   theme,setTheme,onResetOnboarding}){
 
   const[showInfo,setShowInfo]=useState(false);
-
-  const testVoice=()=>{
-    if(!voiceBaseUrl) return;
-    try{
-      const url=voiceBaseUrl.replace(/\/+$/,'')+'/s-15-0.mp3';
-      const a=new Audio(url);
-      a.volume=0.9;
-      a.play().catch(err=>{
-        console.warn('Voice test failed:',err?.message||err);
-      });
-    }catch(err){
-      console.warn('Voice test error:',err);
-    }
-  };
 
   const inputs=[
     {id:'smartphone',label:'Smartphone',icon:'📱',sub:'Tippen auf die Score-Karten'},
@@ -5859,7 +5855,7 @@ function Settings({onHome,activeTab,setActiveTab,
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
-      <div style={{padding:'0 22px 22px'}}>
+      <div style={{padding:'0 14px 22px'}}>
         <RitmoWordmark size={52}/>
         <div style={{color:T.t2,fontSize:15,marginTop:8,fontWeight:400}}>Einstellungen</div>
       </div>
@@ -5949,14 +5945,14 @@ function Settings({onHome,activeTab,setActiveTab,
           )}
         </div>
 
-        {/* Sprachansage */}
+        {/* Sprachansage — minimal: nur On/Off Toggle.
+            Details (Voice-URL, Datei-Liste, Hosting) sind in setup.txt
+            dokumentiert. URL wird über voiceBaseUrl-State gesetzt
+            (aktuell ohne UI-Eingabe). */}
         <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
           padding:'14px 18px'}}>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{color:T.t1,fontSize:15,fontWeight:600}}>Sprachansage</div>
-              <div style={{color:T.t3,fontSize:11,marginTop:2}}>Audio-Dateien per URL · eigene Ansagen möglich</div>
-            </div>
+            <div style={{color:T.t1,fontSize:15,fontWeight:600}}>Sprachansage</div>
             <div onClick={()=>setVoiceOn(!voiceOn)}
               style={{width:48,height:28,borderRadius:14,
                 background:voiceOn?T.o:'rgba(120,120,128,.32)',
@@ -5966,85 +5962,6 @@ function Settings({onHome,activeTab,setActiveTab,
                 boxShadow:'0 1px 3px rgba(0,0,0,.3)'}}/>
             </div>
           </div>
-
-          {voiceOn&&(
-            <div className="fu" style={{marginTop:14,paddingTop:14,
-              borderTop:`1px solid ${T.sep}`,display:'flex',flexDirection:'column',gap:10}}>
-              <div>
-                <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
-                  textTransform:'uppercase',marginBottom:6}}>Base-URL</div>
-                <input type="url" value={voiceBaseUrl}
-                  onChange={e=>setVoiceBaseUrl(e.target.value.trim())}
-                  placeholder="https://my-cdn.com/padel-audio"
-                  spellCheck={false} autoCapitalize="off" autoCorrect="off"
-                  style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-                    borderRadius:10,padding:'10px 12px',color:T.t1,fontSize:12,
-                    fontFamily:'monospace',outline:'none',boxSizing:'border-box'}}/>
-                <div style={{color:T.t3,fontSize:10,marginTop:6,lineHeight:1.5}}>
-                  Pfad ohne Trailing-Slash. App lädt {'{base}'}/{'{key}'}.mp3
-                </div>
-              </div>
-
-              <button onClick={()=>testVoice()}
-                disabled={!voiceBaseUrl}
-                style={{padding:'10px 14px',background:voiceBaseUrl?T.oSoft:T.card2,
-                  border:`1px solid ${voiceBaseUrl?T.o:T.border}`,borderRadius:10,
-                  color:voiceBaseUrl?T.o:T.t4,fontSize:12,fontWeight:700,letterSpacing:.3,
-                  cursor:voiceBaseUrl?'pointer':'not-allowed'}}>
-                ▶ Test (spielt s-15-0.mp3)
-              </button>
-
-              <details style={{marginTop:4}}>
-                <summary style={{color:T.t2,fontSize:12,fontWeight:600,cursor:'pointer',
-                  padding:'6px 0',userSelect:'none'}}>
-                  Welche Dateien hochladen? (25)
-                </summary>
-                <div style={{marginTop:8,padding:'12px 14px',background:T.card2,
-                  borderRadius:10,border:`1px solid ${T.sep}`,
-                  fontFamily:'monospace',fontSize:11,lineHeight:1.7,color:T.t2}}>
-                  <div style={{color:T.o,fontWeight:700,marginBottom:4,
-                    fontFamily:'-apple-system,sans-serif',letterSpacing:1}}>
-                    PUNKTE (Bo3) — 16 Score-Files
-                  </div>
-                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'2px 16px'}}>
-                    <div>s-0-0.mp3</div><div>s-0-15.mp3</div>
-                    <div>s-15-0.mp3</div><div>s-15-15.mp3</div>
-                    <div>s-30-0.mp3</div><div>s-30-15.mp3</div>
-                    <div>s-40-0.mp3</div><div>s-40-15.mp3</div>
-                    <div>s-0-30.mp3</div><div>s-0-40.mp3</div>
-                    <div>s-15-30.mp3</div><div>s-15-40.mp3</div>
-                    <div>s-30-30.mp3</div><div>s-30-40.mp3</div>
-                    <div>s-40-30.mp3</div>{/* 40-40 → einstand */}
-                  </div>
-                  <div style={{color:T.o,fontWeight:700,margin:'10px 0 4px',
-                    fontFamily:'-apple-system,sans-serif',letterSpacing:1}}>
-                    SPEZIAL — 3
-                  </div>
-                  <div>einstand.mp3</div>
-                  <div>vorteil-a.mp3 · vorteil-b.mp3</div>
-                  <div style={{color:T.o,fontWeight:700,margin:'10px 0 4px',
-                    fontFamily:'-apple-system,sans-serif',letterSpacing:1}}>
-                    GOLDEN POINT — 1
-                  </div>
-                  <div>golden-point.mp3</div>
-                  <div style={{color:T.o,fontWeight:700,margin:'10px 0 4px',
-                    fontFamily:'-apple-system,sans-serif',letterSpacing:1}}>
-                    EVENTS — 6
-                  </div>
-                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'2px 16px'}}>
-                    <div>spiel-a.mp3</div><div>spiel-b.mp3</div>
-                    <div>satz-a.mp3</div><div>satz-b.mp3</div>
-                    <div>match-a.mp3</div><div>match-b.mp3</div>
-                  </div>
-                  <div style={{color:T.t3,fontSize:10,marginTop:12,lineHeight:1.5,
-                    fontFamily:'-apple-system,sans-serif'}}>
-                    Format: MP3, ~30-50 KB pro Datei. Bei fehlender Datei wird der Aufruf still ignoriert.<br/>
-                    Hosting: GitHub Pages, Cloudinary, Bunny CDN, S3. <strong style={{color:T.t2}}>SoundCloud streamt NICHT direkt</strong> und funktioniert daher nicht.
-                  </div>
-                </div>
-              </details>
-            </div>
-          )}
         </div>
 
         {/* Klingelton */}
@@ -8228,7 +8145,6 @@ export default function App(){
       ringId={ringId} setRingId={setRingId}
       inputMode={inputMode} setInputMode={setInputMode}
       voiceOn={voiceOn} setVoiceOn={setVoiceOn}
-      voiceBaseUrl={voiceBaseUrl} setVoiceBaseUrl={setVoiceBaseUrl}
       theme={theme} setTheme={setTheme}
       onResetOnboarding={()=>{setOnboarded(false);nav('welcome');}}/>}
     {scr==='single-setup'&&<SingleSetup nav={nav} onHome={goHome} cfg={cfg} setCfg={setCfg} profile={profile}/>}

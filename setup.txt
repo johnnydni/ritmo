@@ -78,3 +78,59 @@ Bei fehlendem Bild zeigt die App einen farbigen Platzhalter.
 Die App funktioniert **ohne Supabase-Setup** mit Mock-Auth (localStorage-basiert).
 Sobald `VITE_SUPABASE_URL` und `VITE_SUPABASE_ANON_KEY` gesetzt sind, schaltet
 die App automatisch auf echte Supabase-Calls um.
+
+## Sprachansage (Voice-MP3-Hosting)
+
+Wenn `voiceOn` in den Settings aktiv ist, lädt die App per HTTP einzelne
+MP3-Dateien für Score-Ansagen. Die Base-URL wird im Code per
+`voiceBaseUrl`-State gesetzt (UI-Eingabe ist aktuell deaktiviert,
+Profil-spezifisch).
+
+App lädt `{voiceBaseUrl}/{key}.mp3`. Format: MP3, ~30–50 KB pro Datei.
+Bei fehlender Datei wird der Aufruf still ignoriert.
+
+**Punkte (Bo3) — 16 Score-Files**
+- `s-0-0.mp3`, `s-0-15.mp3`, `s-0-30.mp3`, `s-0-40.mp3`
+- `s-15-0.mp3`, `s-15-15.mp3`, `s-15-30.mp3`, `s-15-40.mp3`
+- `s-30-0.mp3`, `s-30-15.mp3`, `s-30-30.mp3`, `s-30-40.mp3`
+- `s-40-0.mp3`, `s-40-15.mp3`, `s-40-30.mp3` (40-40 ⇒ `einstand.mp3`)
+
+**Spezial (3)**
+- `einstand.mp3`, `vorteil-a.mp3`, `vorteil-b.mp3`
+
+**Golden Point (1)**
+- `golden-point.mp3`
+
+**Events (6)**
+- `spiel-a.mp3`, `spiel-b.mp3`
+- `satz-a.mp3`, `satz-b.mp3`
+- `match-a.mp3`, `match-b.mp3`
+
+**Hosting:** GitHub Pages, Cloudinary, Bunny CDN, S3.
+SoundCloud streamt **nicht** direkt und funktioniert daher nicht.
+
+## Smart Ring / Presenter — Keyboard-Modus
+
+Die App fängt Eingaben aus Bluetooth-Tasten-Geräten ab (Smart Ring,
+Presenter-Fernbedienung). Damit das auf iOS Safari überhaupt
+funktioniert, muss ein versteckter Input fokussiert sein — das macht
+`KeyCapture` automatisch.
+
+**Tastenbelegung Presenter:**
+- `Page Up` → Punkt Team A · Doppelklick = Letzten Punkt rückgängig
+- `Page Down` → Punkt Team B · Doppelklick = Spiel zurücksetzen
+
+**Tastenbelegung Smart Ring:**
+- `2` → Punkt Team A
+- `4` → Punkt Team B
+- `Leertaste` → Letzten Punkt rückgängig
+- `1` → Spiel zurücksetzen (zweimal `1` innerhalb 1.5 s = Reset rückgängig)
+
+**Wenn der Eingabe-Tester nichts zeigt:** Dein Gerät sendet keine
+Tastatur-Events. Häufige Ursache: der Ring bedient die iOS-Zoom-Funktion
+statt eines Keyboards. Prüfe in den iOS Bedienungshilfen die
+Zoom-Einstellung oder schau im Manual deines Geräts nach einem
+Keyboard-Modus.
+
+**Setup Smart Ring:** Ring per Bluetooth koppeln, RITMO Padel öffnen,
+drücken — funktioniert sofort, sobald der Match-Screen aktiv ist.

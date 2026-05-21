@@ -1,7 +1,8 @@
 import { useState, useEffect, useReducer, useCallback, useRef, Fragment } from "react";
 import { SKILL_DESCRIPTIONS } from "./skillDescriptions.js";
 import { loadProfile as dbLoadProfile, saveProfile as dbSaveProfile, logMatch as dbLogMatch, loadMatchStats as dbLoadMatchStats,
-  createOnlineTournament, joinOnlineTournament, fetchOnlineTournament, updateOnlineTournament, subscribeToTournament } from "./db.js";
+  createOnlineTournament, joinOnlineTournament, fetchOnlineTournament, updateOnlineTournament, subscribeToTournament,
+  publishTournamentState, submitScore, approveScore, rejectScore, sendReadyCheck, confirmReady, clearReadyCheck } from "./db.js";
 
 /* ═══════════════════════════════════════════════════════════════
    DESIGN TOKENS — CSS variables; values per theme defined in CSS below
@@ -5584,14 +5585,270 @@ function OnlineTournamentLobby({pin,onHome,onStart,onCancel}){
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   TOURNAMENT PARTICIPANT VIEW — Read-only Spielplan + Score-Submit
+
+   Wird im JoinTournament-Screen gerendert, sobald die Session auf
+   status='playing' steht. Spieler sehen Round-Header + Courts der
+   aktuellen Runde, finden ihren eigenen Court (über Name-Match auf
+   den team-arrays) und können dort das Ergebnis einreichen.
+═══════════════════════════════════════════════════════════════ */
+function TournamentParticipantView({session,participantId,pin}){
+  const ts=session.tournamentState||{};
+  const me=session.participants?.find(p=>p.id===participantId);
+  const myName=me?.name||'';
+  const round=ts.rounds?.[ts.current];
+  const roundIndex=ts.current??0;
+
+  // Welcher Court (wenn überhaupt) hat den User? Match anhand
+  // sessionParticipantId (bevorzugt) oder Name.
+  const playerById=id=>ts.players?.find(p=>p.id===id);
+  const myCourt=round?.courts?.find(c=>{
+    const all=[...(c.t1||[]),...(c.t2||[])];
+    return all.some(pid=>{
+      const p=playerById(pid);
+      if(!p) return false;
+      if(p.sessionParticipantId&&p.sessionParticipantId===participantId) return true;
+      return p.name&&p.name.toLowerCase()===myName.toLowerCase();
+    });
+  });
+
+  // Lokaler Score-Submit State
+  const[sA,setSA]=useState('');
+  const[sB,setSB]=useState('');
+  const[busy,setBusy]=useState(false);
+  const[err,setErr]=useState('');
+
+  // Habe ich bereits etwas eingereicht?
+  const mySubmission=(session.scoreSubmissions||[]).find(s=>
+    s.submittedBy===participantId
+    &&s.courtId===myCourt?.id
+    &&s.roundIndex===roundIndex
+  );
+
+  // Wenn Court bereits done ist (Host approved): zeige Approved-Status.
+  const courtDone=!!myCourt?.done;
+
+  const submit=async()=>{
+    const a=parseInt(sA,10), b=parseInt(sB,10);
+    if(isNaN(a)||isNaN(b)||a<0||b<0){
+      setErr('Bitte zwei gültige Zahlen eingeben.');return;
+    }
+    setBusy(true);setErr('');
+    try{
+      await submitScore(pin,{
+        roundIndex,
+        courtId:myCourt.id,
+        scoreA:a,scoreB:b,
+        submittedBy:participantId,
+        submitterName:myName,
+      });
+    }catch(e){
+      setErr(e?.message||'Senden fehlgeschlagen.');
+    }finally{setBusy(false);}
+  };
+
+  const teamLabel=(team)=>(team||[])
+    .map(pid=>playerById(pid)?.name||'?')
+    .join(' & ');
+  const myTeam=myCourt?(
+    myCourt.t1?.some(pid=>{
+      const p=playerById(pid);
+      return p?.sessionParticipantId===participantId||p?.name?.toLowerCase()===myName.toLowerCase();
+    })?'A':'B'
+  ):null;
+
+  // Ready-Check Status
+  const rc=session.readyCheck;
+  const rcActive=rc&&rc.roundIndex===roundIndex;
+  const iConfirmed=rcActive&&(rc.confirmedBy||[]).includes(participantId);
+  const confirmingReady=useRef(false);
+  const doConfirmReady=async()=>{
+    if(confirmingReady.current) return;
+    confirmingReady.current=true;
+    try{await confirmReady(pin,participantId);}catch{}
+    finally{confirmingReady.current=false;}
+  };
+
+  return(<>
+    {/* Ready-Check Banner */}
+    {rcActive&&!iConfirmed&&(
+      <div className="fi" style={{background:T.oSoft,border:`1.5px solid ${T.o}`,
+        borderRadius:14,padding:'14px 18px',display:'flex',alignItems:'center',gap:12}}>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:1.3,
+            textTransform:'uppercase',marginBottom:2}}>Bereit?</div>
+          <div style={{color:T.t1,fontSize:13,fontWeight:600}}>
+            Host wartet auf deine Bereitschaft für Runde {roundIndex+1}.
+          </div>
+        </div>
+        <button onClick={doConfirmReady}
+          style={{padding:'10px 18px',background:T.o,color:'#000',border:'none',
+            borderRadius:10,fontSize:13,fontWeight:800,cursor:'pointer',
+            boxShadow:'0 4px 14px var(--oGlow)'}}>
+          Bereit ✓
+        </button>
+      </div>
+    )}
+    {rcActive&&iConfirmed&&(
+      <div style={{background:T.card,border:`1px solid ${T.g}`,borderRadius:14,
+        padding:'10px 14px',color:T.g,fontSize:12,fontWeight:700,textAlign:'center'}}>
+        ✓ Du bist bereit — warte auf andere Spieler
+      </div>
+    )}
+
+    {/* Round-Header */}
+    <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+      padding:'16px 18px'}}>
+      <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between'}}>
+        <div>
+          <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.3,
+            textTransform:'uppercase',marginBottom:2}}>
+            {ts.format==='mexicano'?'Mexicano':'Americano'}
+          </div>
+          <div style={{color:T.t1,fontSize:20,fontWeight:800,letterSpacing:-.3}}>
+            Runde {roundIndex+1}{ts.rounds?.length>1?` / ${ts.rounds.length}`:''}
+          </div>
+        </div>
+        {typeof ts.timerSecsLeft==='number'&&(
+          <div style={{color:ts.timerFinished?T.r:T.o,fontSize:20,fontWeight:800,
+            fontFamily:'monospace',letterSpacing:1}}>
+            {Math.floor(ts.timerSecsLeft/60)}:{String(ts.timerSecsLeft%60).padStart(2,'0')}
+          </div>
+        )}
+      </div>
+    </div>
+
+    {/* Eigener Court — Score Submission */}
+    {myCourt&&(
+      <div style={{background:T.card,border:`1px solid ${myTeam?T.o:T.border}`,
+        borderRadius:14,padding:'18px'}}>
+        <div style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:1.3,
+          textTransform:'uppercase',marginBottom:10}}>Dein Court</div>
+        <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:14}}>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{color:myTeam==='A'?T.o:T.t1,fontSize:14,fontWeight:myTeam==='A'?800:600,
+              textOverflow:'ellipsis',overflow:'hidden',whiteSpace:'nowrap'}}>
+              {teamLabel(myCourt.t1)}
+            </div>
+          </div>
+          <div style={{color:T.t3,fontSize:12,fontWeight:700,padding:'0 6px'}}>vs</div>
+          <div style={{flex:1,minWidth:0,textAlign:'right'}}>
+            <div style={{color:myTeam==='B'?T.o:T.t1,fontSize:14,fontWeight:myTeam==='B'?800:600,
+              textOverflow:'ellipsis',overflow:'hidden',whiteSpace:'nowrap'}}>
+              {teamLabel(myCourt.t2)}
+            </div>
+          </div>
+        </div>
+        {courtDone?(
+          <div style={{background:`${T.g}15`,border:`1px solid ${T.g}`,borderRadius:10,
+            padding:'12px',textAlign:'center'}}>
+            <div style={{color:T.g,fontSize:11,fontWeight:800,letterSpacing:1,
+              textTransform:'uppercase',marginBottom:4}}>Vom Host bestätigt</div>
+            <div style={{color:T.t1,fontSize:24,fontWeight:900,fontFamily:'monospace'}}>
+              {myCourt.s1??0} : {myCourt.s2??0}
+            </div>
+          </div>
+        ):mySubmission?(
+          <div style={{background:T.card2,border:`1px dashed ${T.o}`,borderRadius:10,
+            padding:'12px',textAlign:'center'}}>
+            <div style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:1,
+              textTransform:'uppercase',marginBottom:4}}>Wartet auf Host</div>
+            <div style={{color:T.t1,fontSize:22,fontWeight:900,fontFamily:'monospace',marginBottom:8}}>
+              {mySubmission.scoreA} : {mySubmission.scoreB}
+            </div>
+            <button onClick={()=>{setSA(String(mySubmission.scoreA));setSB(String(mySubmission.scoreB));}}
+              style={{background:'none',border:'none',color:T.t3,fontSize:11,fontWeight:600,
+                textDecoration:'underline',cursor:'pointer'}}>
+              Korrigieren
+            </button>
+          </div>
+        ):null}
+        {!courtDone&&(
+          <div style={{marginTop:mySubmission?12:0}}>
+            <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.2,
+              textTransform:'uppercase',marginBottom:8}}>
+              {mySubmission?'Neuer Vorschlag':'Ergebnis eingeben'}
+            </div>
+            <div style={{display:'flex',alignItems:'center',gap:8}}>
+              <input type="number" inputMode="numeric" min="0"
+                value={sA} onChange={e=>{setSA(e.target.value);setErr('');}}
+                placeholder="0"
+                style={{flex:1,padding:'12px',background:T.card2,
+                  border:`1px solid ${T.border}`,borderRadius:10,
+                  color:T.t1,fontSize:20,fontWeight:800,fontFamily:'monospace',
+                  textAlign:'center',outline:'none'}}/>
+              <span style={{color:T.t3,fontSize:18,fontWeight:700}}>:</span>
+              <input type="number" inputMode="numeric" min="0"
+                value={sB} onChange={e=>{setSB(e.target.value);setErr('');}}
+                placeholder="0"
+                style={{flex:1,padding:'12px',background:T.card2,
+                  border:`1px solid ${T.border}`,borderRadius:10,
+                  color:T.t1,fontSize:20,fontWeight:800,fontFamily:'monospace',
+                  textAlign:'center',outline:'none'}}/>
+            </div>
+            {err&&<div style={{color:'#FF6B6B',fontSize:11,fontWeight:600,marginTop:6}}>{err}</div>}
+            <button onClick={submit} disabled={busy}
+              style={{width:'100%',marginTop:10,padding:'12px',background:T.o,
+                border:'none',borderRadius:10,color:'#000',fontSize:14,fontWeight:800,
+                cursor:busy?'not-allowed':'pointer',opacity:busy?.6:1,
+                boxShadow:'0 4px 14px var(--oGlow)'}}>
+              {busy?'…':(mySubmission?'Neu einreichen':'Ergebnis einreichen')}
+            </button>
+          </div>
+        )}
+      </div>
+    )}
+
+    {/* Andere Courts (read-only) */}
+    {round&&round.courts.length>1&&(
+      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+        padding:'14px 18px'}}>
+        <div style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:1.3,
+          textTransform:'uppercase',marginBottom:8}}>Weitere Courts</div>
+        {round.courts.filter(c=>c.id!==myCourt?.id).map(c=>(
+          <div key={c.id} style={{display:'flex',alignItems:'center',gap:8,
+            padding:'10px 0',borderTop:`1px solid ${T.sep}`}}>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{color:T.t1,fontSize:12,fontWeight:600,
+                overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                {teamLabel(c.t1)}
+              </div>
+              <div style={{color:T.t2,fontSize:11,fontWeight:500,marginTop:1,
+                overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                vs {teamLabel(c.t2)}
+              </div>
+            </div>
+            <div style={{color:c.done?T.g:T.t3,fontSize:13,fontWeight:700,
+              fontFamily:'monospace',flexShrink:0}}>
+              {c.done?`${c.s1??0} : ${c.s2??0}`:'–'}
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+
+    {/* Pausen-Spieler */}
+    {round?.sitOut?.length>0&&(
+      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+        padding:'14px 18px'}}>
+        <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.3,
+          textTransform:'uppercase',marginBottom:6}}>Pausiert diese Runde</div>
+        <div style={{color:T.t2,fontSize:13,fontWeight:500}}>
+          {round.sitOut.map(pid=>playerById(pid)?.name||'?').join(' · ')}
+        </div>
+      </div>
+    )}
+  </>);
+}
+
+/* ═══════════════════════════════════════════════════════════════
    JOIN TOURNAMENT (Player-Side)
 
    Flow:
    1. PIN-Eingabe (kann auch via ?join=PIN URL vorbelegt sein)
    2. Username eingeben (prefilled aus profile)
    3. Joinen → wartet auf Host-Freigabe (Realtime)
-   4. Wenn Host startet (status='playing') → in den Tournament-View
-      navigieren (read-only / participant)
+   4. Wenn Host startet (status='playing') → TournamentParticipantView
 ═══════════════════════════════════════════════════════════════ */
 function JoinTournament({initialPin,profile,onHome,onJoined}){
   const[pin,setPin]=useState((initialPin||'').toLowerCase());
@@ -5715,20 +5972,11 @@ function JoinTournament({initialPin,profile,onHome,onJoined}){
           </div>
         )}
 
-        {status==='playing'&&(
-          <div style={{background:T.card,border:`1px solid ${T.o}`,borderRadius:14,
-            padding:'24px 20px',textAlign:'center'}}>
-            <div style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:1.5,
-              textTransform:'uppercase',marginBottom:6}}>Tournament läuft</div>
-            <div style={{color:T.t1,fontSize:18,fontWeight:800,marginBottom:8}}>
-              Runde {((session?.tournamentState?.current)||0)+1}
-            </div>
-            <div style={{color:T.t3,fontSize:12,lineHeight:1.55,maxWidth:280,margin:'0 auto'}}>
-              Der Host führt das Tournament. Halte dich an die Anweisungen
-              vor Ort — Live-Spielplan + Score-Eingabe für Teilnehmer kommt
-              in der nächsten Version.
-            </div>
-          </div>
+        {status==='playing'&&session?.tournamentState&&(
+          <TournamentParticipantView
+            session={session}
+            participantId={participantId}
+            pin={pin}/>
         )}
 
         {status==='rejected'&&(
@@ -5766,6 +6014,131 @@ function JoinTournament({initialPin,profile,onHome,onJoined}){
   );
 }
 
+/* Eine eingereichte Score-Anfrage in der Host-Übersicht.
+   Host kann die vorgeschlagenen Scores editieren und dann approven,
+   oder die ganze Submission verwerfen. */
+function PendingSubmissionRow({sub,tourney,onApprove,onReject}){
+  const[a,setA]=useState(sub.scoreA);
+  const[b,setB]=useState(sub.scoreB);
+  const[busy,setBusy]=useState(false);
+  const round=tourney.rounds[sub.roundIndex];
+  const court=round?.courts?.find(c=>c.id===sub.courtId);
+  const playerById=id=>tourney.players?.find(p=>p.id===id);
+  const teamLabel=(team)=>(team||[])
+    .map(pid=>playerById(pid)?.name||'?')
+    .join(' & ');
+  const ci=round?.courts?.findIndex(c=>c.id===sub.courtId);
+  const handle=async(fn)=>{
+    if(busy) return;
+    setBusy(true);
+    try{await fn();}catch{}
+    finally{setBusy(false);}
+  };
+  return(
+    <div style={{padding:'10px 0',borderTop:`1px solid ${T.sep}`}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',
+        marginBottom:6,fontSize:11,color:T.t3,fontWeight:600}}>
+        <span>Court {ci!=null?ci+1:'?'} · von <span style={{color:T.t1,fontWeight:700}}>{sub.submitterName}</span></span>
+      </div>
+      {court&&(
+        <div style={{color:T.t2,fontSize:12,marginBottom:8,lineHeight:1.45}}>
+          {teamLabel(court.t1)} <span style={{color:T.t3}}>vs</span> {teamLabel(court.t2)}
+        </div>
+      )}
+      <div style={{display:'flex',alignItems:'center',gap:8}}>
+        <input type="number" inputMode="numeric" min="0" value={a}
+          onChange={e=>setA(parseInt(e.target.value)||0)}
+          style={{flex:1,padding:'8px',background:T.card2,border:`1px solid ${T.border}`,
+            borderRadius:8,color:T.t1,fontSize:18,fontWeight:800,fontFamily:'monospace',
+            textAlign:'center',outline:'none'}}/>
+        <span style={{color:T.t3,fontSize:16,fontWeight:700}}>:</span>
+        <input type="number" inputMode="numeric" min="0" value={b}
+          onChange={e=>setB(parseInt(e.target.value)||0)}
+          style={{flex:1,padding:'8px',background:T.card2,border:`1px solid ${T.border}`,
+            borderRadius:8,color:T.t1,fontSize:18,fontWeight:800,fontFamily:'monospace',
+            textAlign:'center',outline:'none'}}/>
+        <button onClick={()=>handle(()=>onApprove(sub,a,b))} disabled={busy}
+          title="Bestätigen"
+          style={{width:38,height:38,borderRadius:'50%',
+            background:`${T.g}22`,border:`1.5px solid ${T.g}`,
+            color:T.g,fontSize:16,fontWeight:900,cursor:busy?'not-allowed':'pointer',
+            display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+          ✓
+        </button>
+        <button onClick={()=>handle(()=>onReject(sub.id))} disabled={busy}
+          title="Verwerfen"
+          style={{width:30,height:30,borderRadius:'50%',
+            background:`${T.r}22`,border:`1.5px solid ${T.r}`,
+            color:T.r,fontSize:13,fontWeight:900,cursor:busy?'not-allowed':'pointer',
+            display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+          ✕
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* Ready-Check Karte für den Host. Zeigt aktuellen Stand und Button
+   zum Auslösen (oder Schließen) eines Ready-Checks pro Runde. */
+function ReadyCheckHostCard({tourney,participants,readyCheck,onBroadcast,onDismiss}){
+  const active=readyCheck&&readyCheck.roundIndex===tourney.current;
+  const approved=participants.filter(p=>p.approved);
+  const confirmed=active?(readyCheck.confirmedBy||[]).length:0;
+  const total=approved.filter(p=>!p.isHost).length;
+  const allReady=active&&confirmed>=total&&total>0;
+
+  if(!active){
+    return(
+      <div style={{background:T.card,border:`1px dashed ${T.border}`,borderRadius:14,
+        padding:'12px 14px',display:'flex',alignItems:'center',gap:10}}>
+        <div style={{flex:1,color:T.t3,fontSize:12,fontWeight:500}}>
+          Vor Rundenstart Bereitschaft der Spieler abfragen?
+        </div>
+        <button onClick={onBroadcast}
+          style={{padding:'8px 14px',background:T.oSoft,border:`1px solid ${T.o}`,
+            borderRadius:8,color:T.o,fontSize:11,fontWeight:800,letterSpacing:.3,
+            cursor:'pointer',whiteSpace:'nowrap'}}>
+          Ready-Check senden
+        </button>
+      </div>
+    );
+  }
+  return(
+    <div style={{background:T.card,border:`1.5px solid ${allReady?T.g:T.o}`,borderRadius:14,
+      padding:'14px 16px'}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',
+        marginBottom:8}}>
+        <div style={{color:allReady?T.g:T.o,fontSize:11,fontWeight:800,letterSpacing:1.3,
+          textTransform:'uppercase'}}>
+          {allReady?'Alle bereit ✓':'Ready-Check läuft'}
+        </div>
+        <div style={{color:T.t2,fontSize:12,fontWeight:700}}>
+          {confirmed} / {total}
+        </div>
+      </div>
+      <div style={{color:T.t3,fontSize:11,lineHeight:1.55,marginBottom:8}}>
+        {approved.filter(p=>!p.isHost).map(p=>{
+          const ok=(readyCheck.confirmedBy||[]).includes(p.id);
+          return (
+            <span key={p.id} style={{
+              display:'inline-block',marginRight:8,marginBottom:4,
+              padding:'2px 8px',borderRadius:10,fontSize:11,fontWeight:600,
+              background:ok?`${T.g}22`:T.card2,
+              color:ok?T.g:T.t3,
+              border:`1px solid ${ok?T.g:T.border}`,
+            }}>{ok?'✓ ':''}{p.name}</span>
+          );
+        })}
+      </div>
+      <button onClick={onDismiss}
+        style={{background:'none',border:'none',color:T.t3,fontSize:11,fontWeight:600,
+          textDecoration:'underline',cursor:'pointer',padding:'4px 0'}}>
+        Ready-Check beenden
+      </button>
+    </div>
+  );
+}
+
 /* ═══════════════════════════════════════════════════════════════
    TOURNAMENT PLAY
 ═══════════════════════════════════════════════════════════════ */
@@ -5775,6 +6148,64 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='soft',onEdit,onMa
   const[showSitOutInfo,setShowSitOutInfo]=useState(false);
   const round=tourney.rounds[tourney.current];
   const playerById=id=>tourney.players.find(p=>p.id===id);
+
+  // ── Online-Sync (nur wenn dieses Turnier eine Online-Session hat) ──
+  // Host publiziert tourney → session.tournamentState. Andere
+  // Teilnehmer abonnieren die Session via subscribeToTournament.
+  // Hier auch: pending-Submissions + Ready-Check aus Realtime.
+  const isOnline=!!tourney.onlinePin&&tourney.isHost;
+  const[pendingSubs,setPendingSubs]=useState([]);
+  const[readyCheckState,setReadyCheckState]=useState(null);
+  const[onlineParticipants,setOnlineParticipants]=useState([]);
+
+  // 1) Sub: Session-Änderungen empfangen (nur Submissions+ReadyCheck+
+  //    Participants — der Tournament-State wird VOM Host publiziert,
+  //    daher nicht zurücklesen, sonst Feedback-Loop).
+  useEffect(()=>{
+    if(!isOnline) return;
+    let alive=true;
+    fetchOnlineTournament(tourney.onlinePin).then(s=>{
+      if(!alive||!s) return;
+      setPendingSubs(s.scoreSubmissions||[]);
+      setReadyCheckState(s.readyCheck||null);
+      setOnlineParticipants(s.participants||[]);
+    });
+    const unsub=subscribeToTournament(tourney.onlinePin,(data)=>{
+      if(!alive) return;
+      setPendingSubs(data.scoreSubmissions||[]);
+      setReadyCheckState(data.readyCheck||null);
+      setOnlineParticipants(data.participants||[]);
+    });
+    return ()=>{alive=false;unsub();};
+  },[isOnline,tourney.onlinePin]);
+
+  // 2) Publish: Host pushed tourney→session bei jeder Änderung,
+  //    debounced auf 500ms, damit Timer-Ticks die DB nicht fluten.
+  useEffect(()=>{
+    if(!isOnline) return;
+    const id=setTimeout(()=>{publishTournamentState(tourney.onlinePin,tourney).catch(()=>{});},500);
+    return()=>clearTimeout(id);
+  },[isOnline,tourney]);
+
+  // Approve-Score Handler: nimmt Score wie eingereicht (oder editiert).
+  const onApprove=async(sub,scoreA,scoreB)=>{
+    await approveScore(tourney.onlinePin,sub.id,scoreA,scoreB);
+    // Lokal sofort updaten, damit Host nicht auf Realtime warten muss.
+    setTourney(t=>{
+      const rounds=[...t.rounds];
+      rounds[sub.roundIndex]={
+        ...rounds[sub.roundIndex],
+        courts:rounds[sub.roundIndex].courts.map(c=>c.id===sub.courtId
+          ?{...c,s1:scoreA,s2:scoreB,done:true}:c),
+      };
+      return {...t,rounds};
+    });
+  };
+  const onReject=async(subId)=>{await rejectScore(tourney.onlinePin,subId);};
+
+  // Ready-Check Broadcast
+  const broadcastReady=async()=>{await sendReadyCheck(tourney.onlinePin,tourney.current);};
+  const dismissReady=async()=>{await clearReadyCheck(tourney.onlinePin);};
 
   // ── Tournament-Court Logging ──
   // Wenn ein Court done=true wird (und noch nicht .logged), wird das
@@ -5953,6 +6384,31 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='soft',onEdit,onMa
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:12,overflowY:'auto'}}>
 
         {tab==='round'&&(<>
+          {/* Online: Pending Score-Submissions (Host approved/rejected) */}
+          {isOnline&&pendingSubs.filter(s=>s.roundIndex===tourney.current).length>0&&(
+            <div style={{background:T.card,border:`1.5px solid ${T.o}`,borderRadius:14,
+              padding:'14px 16px'}}>
+              <div style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:1.3,
+                textTransform:'uppercase',marginBottom:8}}>
+                Score-Anfragen ({pendingSubs.filter(s=>s.roundIndex===tourney.current).length})
+              </div>
+              {pendingSubs.filter(s=>s.roundIndex===tourney.current).map(sub=>(
+                <PendingSubmissionRow key={sub.id} sub={sub} tourney={tourney}
+                  onApprove={onApprove} onReject={onReject}/>
+              ))}
+            </div>
+          )}
+
+          {/* Online: Ready-Check Banner für aktuelle Runde */}
+          {isOnline&&(
+            <ReadyCheckHostCard
+              tourney={tourney}
+              participants={onlineParticipants}
+              readyCheck={readyCheckState}
+              onBroadcast={broadcastReady}
+              onDismiss={dismissReady}/>
+          )}
+
           {round.courts.map((court,ci)=>(
             <div key={court.id} style={{background:T.card,border:`1px solid ${court.done?T.o:T.border}`,
               borderRadius:14,padding:'14px 16px',transition:'border-color .2s'}}>

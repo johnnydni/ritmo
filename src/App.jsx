@@ -157,6 +157,16 @@ input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
 @keyframes scaleIn{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 @keyframes flashOrange{0%,100%{background:var(--card)}40%{background:var(--oFlash)}}
+/* DNA-Strand Animation im Home-Header: einmal pro Minute kurz auftauchen.
+   60s Zyklus: ~3s fade-in, ~5s halten, ~3s fade-out, Rest unsichtbar. */
+@keyframes dnaBlink {
+  0%, 100% { opacity: 0; transform: rotate(-12deg) scale(.95); }
+  5% { opacity: 0; transform: rotate(-12deg) scale(.95); }
+  10% { opacity: 0.55; transform: rotate(-12deg) scale(1); }
+  18% { opacity: 0.55; transform: rotate(-12deg) scale(1); }
+  23% { opacity: 0; transform: rotate(-12deg) scale(.95); }
+}
+.dna-pulse{animation:dnaBlink 60s ease-in-out infinite;}
 .fu{animation:fadeUp .4s ease both;}
 .fi{animation:fadeIn .25s ease both;}
 .si{animation:scaleIn .2s ease both;}
@@ -3203,7 +3213,7 @@ function PersonGlyph({size=22}){
   </svg>);
 }
 
-function ProfileAvatar({name,size=40,onClick,emphasize=false}){
+function ProfileAvatar({name,avatar,size=40,onClick,emphasize=false}){
   const init=getInitials(name);
   const ringColor=emphasize?T.o:T.border;
   return(
@@ -3212,12 +3222,87 @@ function ProfileAvatar({name,size=40,onClick,emphasize=false}){
         background:T.card2,border:`1.5px solid ${ringColor}`,
         color:T.o,fontWeight:800,fontSize:size*0.4,
         cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',
-        padding:0,letterSpacing:.5,flexShrink:0,
+        padding:0,letterSpacing:.5,flexShrink:0,overflow:'hidden',
         transition:'transform .15s, border-color .15s',
         boxShadow:emphasize?'0 4px 14px var(--oGlow)':'0 1px 3px rgba(0,0,0,.25)'}}>
-      {init||<span style={{color:T.t2}}><PersonGlyph size={size*0.55}/></span>}
+      {avatar
+        ?<img src={avatar} alt={name||'Profil'}
+          style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>
+        :(init||<span style={{color:T.t2}}><PersonGlyph size={size*0.55}/></span>)}
     </button>
   );
+}
+
+/* Avatar im Profile-Screen: zeigt profile.avatar (Base64), wenn
+   vorhanden, sonst Initials. Klick öffnet File-Picker und
+   resampled das Bild auf 256x256 als JPEG-DataURL → ins Profil.
+   Kleines Edit-Badge in der unteren rechten Ecke. */
+function AvatarWithUpload({profile,setProfile,size=72}){
+  const inputRef=useRef(null);
+  const onPick=async(e)=>{
+    const file=e.target.files?.[0];
+    e.target.value='';
+    if(!file) return;
+    try{
+      const dataUrl=await readImageAsDataUrl(file);
+      const resized=await resizeImage(dataUrl,256);
+      setProfile(p=>({...p,avatar:resized}));
+    }catch(err){
+      console.warn('[avatar] upload failed:',err);
+    }
+  };
+  return(
+    <div style={{position:'relative',width:size,height:size,flexShrink:0}}>
+      <ProfileAvatar name={profile.name} avatar={profile.avatar}
+        size={size} emphasize
+        onClick={()=>inputRef.current?.click()}/>
+      <button onClick={()=>inputRef.current?.click()} aria-label="Profilbild ändern"
+        style={{position:'absolute',right:-2,bottom:-2,
+          width:26,height:26,borderRadius:'50%',
+          background:T.o,border:`2px solid ${T.bg}`,color:'#000',
+          fontSize:13,fontWeight:800,cursor:'pointer',
+          display:'flex',alignItems:'center',justifyContent:'center',
+          boxShadow:'0 2px 6px rgba(0,0,0,.35)'}}>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        </svg>
+      </button>
+      <input ref={inputRef} type="file" accept="image/*"
+        onChange={onPick} style={{display:'none'}}/>
+    </div>
+  );
+}
+
+/* Helper: liest ein File als Base64-DataURL. */
+function readImageAsDataUrl(file){
+  return new Promise((resolve,reject)=>{
+    const r=new FileReader();
+    r.onload=()=>resolve(r.result);
+    r.onerror=()=>reject(r.error);
+    r.readAsDataURL(file);
+  });
+}
+
+/* Helper: zeichnet die Source-DataURL auf ein Canvas <= maxDim x maxDim
+   und gibt eine JPEG-DataURL zurück. Klein genug für JSONB-Persistenz. */
+function resizeImage(dataUrl,maxDim){
+  return new Promise((resolve,reject)=>{
+    const img=new Image();
+    img.onload=()=>{
+      const ratio=Math.min(1,maxDim/Math.max(img.width,img.height));
+      const w=Math.round(img.width*ratio);
+      const h=Math.round(img.height*ratio);
+      const canvas=document.createElement('canvas');
+      canvas.width=w;canvas.height=h;
+      const ctx=canvas.getContext('2d');
+      ctx.drawImage(img,0,0,w,h);
+      resolve(canvas.toDataURL('image/jpeg',0.82));
+    };
+    img.onerror=()=>reject(new Error('Bild konnte nicht geladen werden.'));
+    img.src=dataUrl;
+  });
 }
 
 function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRitmoDNA}){
@@ -3260,7 +3345,7 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
         <div className="fi" style={{background:T.card,border:`1px solid ${T.border}`,
           borderRadius:16,padding:'24px 20px',marginBottom:14,
           display:'flex',alignItems:'center',gap:18}}>
-          <ProfileAvatar name={profile.name} size={72} emphasize/>
+          <AvatarWithUpload profile={profile} setProfile={setProfile} size={72}/>
           <div style={{flex:1,minWidth:0}}>
             {lvl!=null?(
               <>
@@ -3442,6 +3527,105 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
   );
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   UPDATES / ROADMAP — zwei Sections: was kommt + was ist neu
+═══════════════════════════════════════════════════════════════ */
+const ROADMAP=[
+  {emoji:'🎯',title:'Player-side Match-Logging',desc:'Auch beigetretene Online-Spieler bekommen ihre Matches in den Spielniveau-Estimate gezählt.'},
+  {emoji:'📊',title:'Live Spectator-Mode',desc:'Externer Zugriff auf laufende Turniere ohne Spieler-Beitritt — Big-Screen für Kameras / Zuschauer.'},
+  {emoji:'🏅',title:'Liga & Saisons',desc:'Wiederkehrende Spiele mit Punkten über Saisons hinweg — Ranglisten und Trophäen.'},
+  {emoji:'🤝',title:'Freunde & Buddy-Lists',desc:'Spieler-Profile finden, befreunden, schneller in Matches einladen.'},
+  {emoji:'🔔',title:'Push-Notifications',desc:'Turnier startet, du bist dran, Ready-Check — auch wenn die App im Hintergrund läuft.'},
+  {emoji:'🎨',title:'Mehr Themes',desc:'Saisonale Themes, Brand-Kollabos, Dark/Light Auto-Switch.'},
+  {emoji:'📱',title:'PWA Install-Guide',desc:'In-App Anleitung wie man RITMO als App auf iOS/Android installiert.'},
+];
+const CHANGELOG=[
+  {emoji:'🎟️',title:'Online-Turniere',desc:'PIN- und QR-basierte Sessions, Realtime-Sync, Host-Moderation, Score-Submission durch Spieler, Ready-Checks pro Runde.'},
+  {emoji:'📷',title:'In-App QR-Scanner',desc:'Beitritt zu Online-Turnieren per Kamera-Scan, kein Tippen mehr nötig.'},
+  {emoji:'🧬',title:'RITMO DNA Shortcut',desc:'Klick auf den Home-Header öffnet direkt dein RITMO-DNA-Profil mit Stats und Spielstil.'},
+  {emoji:'🔍',title:'Einstellungen-Suche',desc:'Such-Icon klickt sich auf, durchsucht alle Settings mit gelber Highlight-Markierung.'},
+  {emoji:'📈',title:'Echte Stats',desc:'Spielniveau-Estimate fließt automatisch aus geloggten App-Matches ein, nicht nur Quiz-Antworten.'},
+  {emoji:'🔐',title:'Auth-Flow',desc:'Email-Verify, Passwort-vergessen-Flow, Auto-Redirect, Test-User für Demo-Zugang.'},
+  {emoji:'🎚️',title:'BigScreen-Zoom',desc:'Score-Anzeige im BigScreen lässt sich auf 0.5×, 1×, 1.5× oder 2× toggeln.'},
+  {emoji:'🌐',title:'Mehrsprachige Texte',desc:'Komplette App auf Deutsch lokalisiert, mit klaren Erklärungen für Regeln und Onboarding.'},
+];
+function UpdatesScreen({onHome}){
+  return(
+    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
+
+      <div style={{padding:'0 9px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
+        <div>
+          <RitmoWordmark size={52} style={{marginLeft:-3}}/>
+          <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>
+            Updates
+          </div>
+        </div>
+        <div style={{fontSize:32}}>✨</div>
+      </div>
+
+      <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:18,overflowY:'auto'}}>
+
+        {/* Roadmap */}
+        <div className="fu">
+          <div style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:1.5,
+            textTransform:'uppercase',marginBottom:10,paddingLeft:2}}>
+            Roadmap · Coming soon
+          </div>
+          <div style={{display:'flex',flexDirection:'column',gap:10}}>
+            {ROADMAP.map((item,i)=>(
+              <div key={i} style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+                padding:'14px 16px',display:'flex',alignItems:'flex-start',gap:12}}>
+                <div style={{fontSize:22,width:34,height:34,borderRadius:'50%',
+                  background:T.card2,display:'flex',alignItems:'center',justifyContent:'center',
+                  flexShrink:0}}>{item.emoji}</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{color:T.t1,fontSize:14,fontWeight:800,marginBottom:3,letterSpacing:-.1}}>
+                    {item.title}
+                  </div>
+                  <div style={{color:T.t3,fontSize:12,lineHeight:1.55}}>
+                    {item.desc}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Changelog */}
+        <div className="fu" style={{animationDelay:'.08s'}}>
+          <div style={{color:T.g,fontSize:11,fontWeight:800,letterSpacing:1.5,
+            textTransform:'uppercase',marginBottom:10,paddingLeft:2}}>
+            Was ist neu in dieser Version
+          </div>
+          <div style={{display:'flex',flexDirection:'column',gap:10}}>
+            {CHANGELOG.map((item,i)=>(
+              <div key={i} style={{background:T.card,border:`1px solid ${T.g}33`,borderRadius:14,
+                padding:'14px 16px',display:'flex',alignItems:'flex-start',gap:12}}>
+                <div style={{fontSize:22,width:34,height:34,borderRadius:'50%',
+                  background:`${T.g}22`,display:'flex',alignItems:'center',justifyContent:'center',
+                  flexShrink:0}}>{item.emoji}</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{color:T.t1,fontSize:14,fontWeight:800,marginBottom:3,letterSpacing:-.1}}>
+                    {item.title}
+                  </div>
+                  <div style={{color:T.t3,fontSize:12,lineHeight:1.55}}>
+                    {item.desc}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{height:100,flexShrink:0}}/>
+      </div>
+
+      <MatchBar onHome={onHome}/>
+    </div>
+  );
+}
+
 function Home({nav,activeTab,setActiveTab,profile,onboarded}){
   // Hinweis-Banner falls Onboarding nicht abgeschlossen ist UND der
   // User nicht den Test-Bypass benutzt (Test-User hat onboarded=true).
@@ -3458,25 +3642,35 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded}){
       <div style={{
         padding:'calc(env(safe-area-inset-top,0px) + 60px) 9px 40px',
         background:'var(--headerGrad)',
-        position:'relative',zIndex:1,
+        position:'relative',zIndex:1,overflow:'hidden',
         cursor:'pointer',
       }} onClick={()=>nav('profile-ritmodna')}>
+        {/* Dezente DNA-Strang Animation: erscheint einmal pro Minute
+            für ein paar Sekunden, dann wieder weg. Absolute Position
+            damit das Layout drumherum nicht beeinflusst wird. */}
+        <div className="dna-pulse" aria-hidden="true"
+          style={{position:'absolute',right:-10,top:'calc(env(safe-area-inset-top,0px) + 30px)',
+            pointerEvents:'none',zIndex:0,opacity:0}}>
+          <DNAIcon size={120} color={T.t1}/>
+        </div>
         <div style={{display:'flex',alignItems:'center',
           justifyContent:'space-between',gap:14}}>
           <RitmoWordmark size={52} style={{marginLeft:-3}}/>
-          <ProfileAvatar name={profile?.name} size={44}
-            onClick={(e)=>{e?.stopPropagation?.();nav('profile');}}/>
+          <div style={{marginRight:5}}>
+            <ProfileAvatar name={profile?.name} avatar={profile?.avatar} size={88}
+              onClick={(e)=>{e?.stopPropagation?.();nav('profile');}}/>
+          </div>
         </div>
         {profile?.name?(
-          <div style={{color:T.t1,fontSize:18,fontWeight:700,marginTop:10,marginLeft:7,letterSpacing:-.2}}>
+          <div style={{color:T.t1,fontSize:18,fontWeight:700,marginTop:10,marginLeft:10,letterSpacing:-.2}}>
             Hi, {profile.name}! 👋
           </div>
         ):null}
-        <div style={{color:T.t2,fontSize:14,marginTop:profile?.name?4:8,marginLeft:7,fontWeight:400}}>
+        <div style={{color:T.t2,fontSize:14,marginTop:profile?.name?4:8,marginLeft:10,fontWeight:400}}>
           Wähle deinen Modus.
         </div>
         {document.documentElement.getAttribute('data-theme')==='funky'&&(
-          <div style={{marginTop:14,marginLeft:7}}><FunkyFruitsRow size={20} gap={10}/></div>
+          <div style={{marginTop:14,marginLeft:10}}><FunkyFruitsRow size={20} gap={10}/></div>
         )}
       </div>
 
@@ -3597,6 +3791,22 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded}){
           </div>
         </button>
 
+        {/* Updates / Coming soon */}
+        <button onClick={(e)=>{e.stopPropagation?.();nav('updates');}} className="fu"
+          style={{background:'transparent',border:`1px solid ${T.border}`,borderRadius:16,
+            padding:'14px 20px',display:'flex',alignItems:'center',gap:16,
+            cursor:'pointer',color:T.t1,textAlign:'left',transition:'background .15s',
+            animationDelay:'.28s'}}
+          onPointerDown={e=>e.currentTarget.style.background=T.card2}
+          onPointerUp={e=>e.currentTarget.style.background='transparent'}
+          onPointerLeave={e=>e.currentTarget.style.background='transparent'}>
+          <div style={{fontSize:24,width:28,textAlign:'center'}}>✨</div>
+          <div style={{flex:1}}>
+            <div style={{color:T.o,fontSize:15,fontWeight:700,marginBottom:1}}>Updates / Coming soon</div>
+            <div style={{color:T.t3,fontSize:11,fontWeight:500}}>Roadmap · Was ist neu in dieser Version</div>
+          </div>
+        </button>
+
         {/* Internal scroll-bottom spacer so last card isn't hidden behind floating TabBar */}
         <div style={{height:120,flexShrink:0}}/>
       </div>
@@ -3609,6 +3819,34 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded}){
 /* ═══════════════════════════════════════════════════════════════
    SINGLE SETUP
 ═══════════════════════════════════════════════════════════════ */
+/* Wiederverwendbare Hero-Card oben auf den Setup-Screens.
+   Großes Icon + Headline + 1-Satz Beschreibung. Optionales accent
+   für die Border. */
+function SetupHero({icon,title,desc,accent}){
+  const c=accent||T.o;
+  return(
+    <div className="fi" style={{
+      background:`linear-gradient(135deg, ${c}18 0%, ${T.card} 100%)`,
+      border:`1px solid ${c}55`,
+      borderRadius:18,padding:'20px 22px',
+      display:'flex',alignItems:'center',gap:18}}>
+      <div style={{flexShrink:0,width:64,height:64,borderRadius:'50%',
+        background:`${c}22`,border:`1.5px solid ${c}`,
+        display:'flex',alignItems:'center',justifyContent:'center'}}>
+        {icon}
+      </div>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{color:T.t1,fontSize:18,fontWeight:900,letterSpacing:-.3,marginBottom:4}}>
+          {title}
+        </div>
+        <div style={{color:T.t2,fontSize:12,lineHeight:1.5}}>
+          {desc}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SingleSetup({nav,onHome,cfg,setCfg,profile}){
   const userName=profile?.name||'';
   // Initialize players: prefer stored, else seed mit Defaults — Spieler 1
@@ -3636,12 +3874,17 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
       <div style={{padding:'0 9px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
         <div>
           <RitmoWordmark size={52} style={{marginLeft:-3}}/>
-          <div style={{color:T.t2,fontSize:15,marginTop:6,marginLeft:7,fontWeight:400}}>Single Match</div>
+          <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>Single Match</div>
         </div>
         <CourtIcon size={36}/>
       </div>
 
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
+
+        <SetupHero
+          icon={<CourtIcon size={36}/>}
+          title="Schnelles Match"
+          desc="Du, dein Partner, zwei Gegner. Wähle Best-of-3 oder Americano und leg los."/>
 
         {/* Team 1 */}
         <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14}}>
@@ -4360,7 +4603,7 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
       <div style={{padding:'0 9px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
         <div>
           <RitmoWordmark size={52} style={{marginLeft:-3}}/>
-          <div style={{color:T.t1,fontSize:20,marginTop:4,marginLeft:7,fontWeight:800}}>
+          <div style={{color:T.t1,fontSize:40,marginTop:4,marginLeft:10,fontWeight:900}}>
             {isB?'Best of Three':'Americano'}
           </div>
         </div>
@@ -5108,7 +5351,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit,profile,onCreat
       <div style={{padding:'0 9px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
         <div>
           <RitmoWordmark size={52} style={{marginLeft:-3}}/>
-          <div style={{color:T.t2,fontSize:15,marginTop:6,marginLeft:7,fontWeight:400}}>
+          <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>
             {isEdit?'Turnier bearbeiten':'Turnier'}
           </div>
         </div>
@@ -5116,6 +5359,11 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit,profile,onCreat
       </div>
 
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
+
+        <SetupHero
+          icon={<TrophyIcon size={40}/>}
+          title="Turnier erstellen"
+          desc="Mehrere Runden, rotierende Partner oder Mexicano-Pairings. Bis zu 12+ Spieler — lokal oder online via QR-Code."/>
 
         {/* Modus: Lokal vs Online */}
         {!isEdit&&(
@@ -5454,7 +5702,7 @@ function OnlineTournamentLobby({pin,onHome,onStart,onCancel}){
       <div style={{padding:'0 9px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
         <div>
           <RitmoWordmark size={52} style={{marginLeft:-3}}/>
-          <div style={{color:T.t2,fontSize:15,marginTop:6,marginLeft:7,fontWeight:400}}>
+          <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>
             Online-Lobby
           </div>
         </div>
@@ -5672,6 +5920,83 @@ function TournamentParticipantView({session,participantId,pin}){
     try{await confirmReady(pin,participantId);}catch{}
     finally{confirmingReady.current=false;}
   };
+
+  // Wenn der Host das Turnier beendet hat, sehen die Teilnehmer
+  // das Endstand-Layout (Winner + komplettes Leaderboard) — gleicher
+  // Inhalt wie TournamentLeaderboard für die lokale Variante.
+  if(ts.finished&&ts.players&&ts.rounds){
+    const lb=calcLeaderboard(ts.players,ts.rounds,ts.winMode||'points');
+    const sortedLb=lb.sort((a,b)=>ts.winMode==='points'
+      ?b.totalPts-a.totalPts||b.totalWins-a.totalWins
+      :b.totalWins-a.totalWins||b.totalPts-a.totalPts);
+    const winner=sortedLb[0];
+    const myRow=sortedLb.find(p=>{
+      // Match by sessionParticipantId, fall back to name.
+      return (p.sessionParticipantId===participantId)
+        ||(p.name&&myName&&p.name.toLowerCase()===myName.toLowerCase());
+    });
+    const myRank=myRow?sortedLb.indexOf(myRow)+1:null;
+    return(<>
+      {/* Winner Hero */}
+      <div className="fi" style={{background:T.card,border:`1px solid ${T.o}`,borderRadius:18,
+        padding:'24px 22px',textAlign:'center'}}>
+        <div style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:1.5,
+          textTransform:'uppercase',marginBottom:6}}>Turnier beendet</div>
+        <div style={{fontSize:42,marginBottom:8}}>🥇</div>
+        <div style={{fontSize:24,fontWeight:800,color:T.t1,letterSpacing:-.3}}>
+          {winner?.name||'?'}
+        </div>
+        <div style={{fontSize:14,color:T.o,fontWeight:700,marginTop:4}}>
+          {ts.winMode==='wins'?`${winner?.totalWins??0} Siege`:`${winner?.totalPts??0} Punkte`}
+        </div>
+        {myRow&&myRank&&winner&&myRow.id!==winner.id&&(
+          <div style={{marginTop:14,padding:'8px 12px',background:T.card2,
+            borderRadius:10,color:T.t2,fontSize:12,fontWeight:600,display:'inline-block'}}>
+            Du bist auf Platz <span style={{color:T.o,fontWeight:800}}>#{myRank}</span> gelandet.
+          </div>
+        )}
+      </div>
+
+      {/* Full Leaderboard */}
+      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+        overflow:'hidden'}}>
+        {sortedLb.map((p,i)=>{
+          const isMe=myRow&&p.id===myRow.id;
+          return(
+            <div key={p.id} style={{display:'flex',alignItems:'center',padding:'12px 16px',
+              gap:10,borderBottom:i<sortedLb.length-1?`1px solid ${T.sep}`:'none',
+              background:isMe?T.oSoft:'transparent'}}>
+              <div style={{width:24,fontSize:i<3?16:13,fontWeight:800,
+                color:i===0?T.o:i===1?T.t2:i===2?T.t3:T.t3,textAlign:'center'}}>
+                {i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}`}
+              </div>
+              <div style={{width:8,height:8,borderRadius:'50%',background:p.color,flexShrink:0}}/>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{color:T.t1,fontSize:14,fontWeight:isMe||i===0?700:600,
+                  overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                  {p.name}{isMe?' (Du)':''}
+                </div>
+                <div style={{color:T.t3,fontSize:11}}>
+                  {p.played} Spiele · {p.wins}S {p.losses}N
+                  {p.sitOut>0&&<> · {p.sitOut} Pause{p.sitOut>1?'n':''}</>}
+                </div>
+              </div>
+              <div style={{textAlign:'right'}}>
+                <div style={{color:T.o,fontSize:16,fontWeight:800}}>
+                  {ts.winMode==='wins'?p.totalWins:p.totalPts}
+                </div>
+                {((ts.winMode==='wins'?p.bonusWins:p.bonusPts)>0)&&(
+                  <div style={{color:T.t3,fontSize:10,fontWeight:600}}>
+                    +{ts.winMode==='wins'?p.bonusWins:p.bonusPts} Pause
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </>);
+  }
 
   return(<>
     {/* Ready-Check Banner */}
@@ -6013,13 +6338,17 @@ function JoinTournament({initialPin,profile,onHome,onJoin,restored}){
 
       <div style={{padding:'0 9px 22px'}}>
         <RitmoWordmark size={52} style={{marginLeft:-3}}/>
-        <div style={{color:T.t2,fontSize:15,marginTop:8,marginLeft:7,fontWeight:400}}>
+        <div style={{color:T.t2,fontSize:30,marginTop:8,marginLeft:10,fontWeight:800}}>
           Turnier beitreten
         </div>
       </div>
 
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
         {status==='input'||status==='joining'?(<>
+          <SetupHero
+            icon={<JoinIcon size={36}/>}
+            title="Beitreten"
+            desc="Scan den QR-Code des Hosts oder tippe den PIN ein, um in ein laufendes Online-Turnier einzusteigen."/>
           <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
             padding:'18px'}}>
             {/* QR-Code Scanner Button */}
@@ -6075,7 +6404,9 @@ function JoinTournament({initialPin,profile,onHome,onJoin,restored}){
         {status==='waiting'&&(
           <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
             padding:'24px 20px',textAlign:'center'}}>
-            <div style={{margin:'0 auto 18px'}}><BallSpinner/></div>
+            <div style={{display:'flex',justifyContent:'center',marginBottom:18}}>
+              <BallSpinner/>
+            </div>
             <div style={{color:T.t1,fontSize:16,fontWeight:800,marginBottom:6}}>
               Warte auf den Host…
             </div>
@@ -6480,7 +6811,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='soft',onEdit,onMa
       <div style={{padding:'0 22px 14px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
         <div>
           <RitmoWordmark size={52} style={{marginLeft:-3}}/>
-          <div style={{color:T.t2,fontSize:15,marginTop:6,marginLeft:7,fontWeight:400}}>
+          <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>
             {tourney.format==='mexicano'?'Mexicano':'Americano'} · Runde {tourney.current+1}
           </div>
         </div>
@@ -6738,7 +7069,7 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
       <div style={{padding:'0 9px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
         <div>
           <RitmoWordmark size={52} style={{marginLeft:-3}}/>
-          <div style={{color:T.t2,fontSize:15,marginTop:6,marginLeft:7,fontWeight:400}}>Endstand</div>
+          <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>Endstand</div>
         </div>
         <TrophyIcon size={36}/>
       </div>
@@ -6850,7 +7181,7 @@ function Live({hasMatch,hasTourney,tourneyData,matchCfg,nav,activeTab,setActiveT
 
       <div style={{padding:'0 9px 24px'}}>
         <RitmoWordmark size={52} style={{marginLeft:-3}}/>
-        <div style={{color:T.t2,fontSize:15,marginTop:8,marginLeft:7,fontWeight:400}}>
+        <div style={{color:T.t2,fontSize:30,marginTop:8,marginLeft:10,fontWeight:800}}>
           {items.length===0?'Keine laufenden Spiele.':'Laufende Spiele und Turniere.'}
         </div>
         {items.length>0&&(
@@ -7116,7 +7447,7 @@ function Settings({onHome,activeTab,setActiveTab,
 
       <div style={{padding:'0 9px 22px'}}>
         <RitmoWordmark size={52} style={{marginLeft:-3}}/>
-        <div style={{color:T.t2,fontSize:15,marginTop:8,marginLeft:7,fontWeight:400}}>
+        <div style={{color:T.t2,fontSize:30,marginTop:8,marginLeft:10,fontWeight:800}}>
           <Hl text="Einstellungen" q={q}/>
         </div>
       </div>
@@ -9117,6 +9448,7 @@ export default function App(){
     strongestShot:null,
     quizAnswers:{q1:null,q2:null,q3:null,q4:null},
     styleType:null,
+    avatar:null,
   }));
   const[cfg,setCfg]=useState(()=>lsGet('ritmo_cfg',{nameA:'Team A',nameB:'Team B',format:'bo3',amLimit:21}));
   const[bo3,dBo3]=useReducer(bo3R,B0,init=>lsGet('ritmo_bo3',init));
@@ -9372,6 +9704,7 @@ export default function App(){
     {scr==='profile-ritmodna'&&<ProfileRitmoDNA profile={profile}
       onBack={()=>setScr('profile')}
       onHome={goHome}/>}
+    {scr==='updates'&&<UpdatesScreen onHome={goHome}/>}
     {scr==='rules'&&<RulesLanding onHome={goHome}
       onContinue={()=>setScr('rules-overview')}
       onMarkRead={()=>{setRulesRead(true);setScr('rules-overview');}}

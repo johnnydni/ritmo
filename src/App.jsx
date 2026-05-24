@@ -2,7 +2,8 @@ import { useState, useEffect, useReducer, useCallback, useRef, Fragment } from "
 import { SKILL_DESCRIPTIONS } from "./skillDescriptions.js";
 import { loadProfile as dbLoadProfile, saveProfile as dbSaveProfile, logMatch as dbLogMatch, loadMatchStats as dbLoadMatchStats,
   createOnlineTournament, joinOnlineTournament, fetchOnlineTournament, updateOnlineTournament, subscribeToTournament,
-  publishTournamentState, submitScore, approveScore, rejectScore, sendReadyCheck, confirmReady, clearReadyCheck } from "./db.js";
+  publishTournamentState, submitScore, approveScore, rejectScore, sendReadyCheck, confirmReady, clearReadyCheck,
+  checkBetaKey, redeemBetaKey } from "./db.js";
 
 /* ── Refactor (Phase 1): pure modules extracted from App.jsx.
    Components, screens and routing remain colocated here for now;
@@ -455,6 +456,17 @@ function Login({onSuccess,onRegister}){
    REGISTER — Email Signup + OAuth Optionen
 ═══════════════════════════════════════════════════════════════ */
 function Register({onSuccess,onLogin,onNeedsVerification}){
+  // Multi-step Beta-Gate:
+  //   step='key'  → User gibt einen Beta-Key ein, der über die
+  //                 check_beta_key-RPC verifiziert wird.
+  //   step='form' → Klassische E-Mail/Passwort-Registrierung.
+  //                 Nach erfolgreichem signUp wird der gehaltene Key
+  //                 atomar über redeem_beta_key eingelöst.
+  // Der validierte Key wird zwischen Schritten in betaKey gehalten;
+  // ein Abbruch/Reload setzt den Flow zurück (Key bleibt unverbraucht).
+  const[step,setStep]=useState('key');
+  const[betaKey,setBetaKey]=useState('');
+  const[betaInput,setBetaInput]=useState('');
   const[email,setEmail]=useState('');
   const[password,setPassword]=useState('');
   const[password2,setPassword2]=useState('');
@@ -468,6 +480,23 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
     setTimeout(()=>setShake(false),420);
   };
 
+  const tryCheckKey=async()=>{
+    const code=(betaInput||'').trim().toUpperCase();
+    if(!code){ fail('Bitte Beta-Key eingeben'); return; }
+    setBusy(true); setError('');
+    try{
+      const ok=await checkBetaKey(code);
+      if(!ok){
+        fail('Beta-Key ungültig oder bereits eingelöst');
+        return;
+      }
+      setBetaKey(code);
+      setStep('form');
+    }catch(e){
+      fail(e.message||'Beta-Key konnte nicht geprüft werden');
+    }finally{ setBusy(false); }
+  };
+
   const tryRegister=async()=>{
     if(password!==password2){
       fail('Passwörter stimmen nicht überein');
@@ -475,7 +504,30 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
     }
     setBusy(true);setError('');
     try{
+      // Final guard: Beta-Key noch unverbraucht? Verhindert Edge-Case,
+      // wenn jemand zwischen Schritten den Key woanders verbraucht hat.
+      const stillOk=await checkBetaKey(betaKey);
+      if(!stillOk){
+        // Zurück auf Step 1 — Key ist tot, User muss einen neuen holen.
+        setStep('key');
+        setBetaKey('');
+        setBetaInput('');
+        fail('Beta-Key wurde inzwischen anderweitig eingelöst — bitte neuen Key eingeben.');
+        return;
+      }
       const r=await auth.signUpWithEmail(email,password);
+      // Erst nach erfolgreichem signUp wird der Key atomar verbraucht.
+      // Race-edge-case ist akzeptiert: Account funktioniert weiter, Key
+      // wurde ggf. von jemand anderem gleichzeitig verbraucht.
+      try{
+        const redeemed=await redeemBetaKey(betaKey,r.email||email);
+        if(!redeemed){
+          console.warn('[beta] redeem returned false — race or expired key');
+        }
+      }catch(redeemErr){
+        // Non-fatal: log only, der User hat den Account schon.
+        console.warn('[beta] redeem failed (non-fatal):',redeemErr?.message);
+      }
       if(r.needsVerification){
         onNeedsVerification(r.email);
       }else{
@@ -486,7 +538,10 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
     }finally{setBusy(false);}
   };
 
-  const onKeyDown=(e)=>{ if(e.key==='Enter') tryRegister(); };
+  const onKeyDown=(e)=>{
+    if(e.key!=='Enter') return;
+    if(step==='key') tryCheckKey(); else tryRegister();
+  };
 
   return(
     <div style={{minHeight:'100dvh',background:T.bg,display:'flex',
@@ -507,107 +562,183 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
 
         <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:14,marginBottom:28}}>
           <RitmoSplashLogo size={110}/>
-          <div style={{color:T.t1,fontSize:22,fontWeight:800,letterSpacing:-.3}}>Account erstellen</div>
+          <div style={{color:T.t1,fontSize:22,fontWeight:800,letterSpacing:-.3}}>
+            {step==='key'?'Beta-Zugang':'Account erstellen'}
+          </div>
           <div style={{color:T.t3,fontSize:12,textAlign:'center',maxWidth:280}}>
-            In wenigen Sekunden dein RITMO-Konto.
+            {step==='key'
+              ?'Die App ist aktuell in einer geschlossenen Beta. Mit deinem Beta-Key kannst du dich registrieren.'
+              :'Beta-Key bestätigt — leg jetzt dein Konto an.'}
           </div>
         </div>
 
-        {/* Google — disabled (OAuth folgt) */}
-        <button disabled
-          style={{display:'flex',alignItems:'center',justifyContent:'center',gap:10,
-            background:T.card,border:`1px solid ${T.border}`,borderRadius:12,
-            padding:'13px 16px',color:T.t2,fontSize:15,fontWeight:600,
-            cursor:'not-allowed',marginBottom:10,position:'relative'}}>
-          <GoogleGlyph size={18}/>
-          <span>Mit Google registrieren</span>
-          <span style={{position:'absolute',top:6,right:10,fontSize:9,fontWeight:700,
-            letterSpacing:.5,color:T.t3,textTransform:'uppercase'}}>bald</span>
-        </button>
+        {step==='key'?(
+          /* ───── STEP 1: Beta-Key prüfen ───── */
+          <Fragment>
+            <div style={{marginBottom:14}}>
+              <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
+                textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Beta-Key</div>
+              <input value={betaInput}
+                onChange={e=>{setBetaInput(e.target.value.toUpperCase());setError('');}}
+                onKeyDown={onKeyDown}
+                autoCapitalize="characters" autoCorrect="off" spellCheck={false}
+                placeholder="RITMO-XXXX-XXXX"
+                style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
+                  borderRadius:10,padding:'13px 14px',color:T.t1,fontSize:15,fontWeight:700,
+                  letterSpacing:1,outline:'none',boxSizing:'border-box',
+                  fontFamily:'-apple-system,SFMono-Regular,Menlo,monospace'}}/>
+            </div>
 
-        {/* Apple disabled */}
-        <button disabled
-          style={{display:'flex',alignItems:'center',justifyContent:'center',gap:10,
-            background:'#000',border:'1px solid rgba(255,255,255,.08)',borderRadius:12,
-            padding:'13px 16px',color:'rgba(255,255,255,.4)',fontSize:15,fontWeight:600,
-            cursor:'not-allowed',marginBottom:22,position:'relative'}}>
-          <AppleGlyph size={18}/>
-          <span>Mit Apple registrieren</span>
-          <span style={{position:'absolute',top:6,right:10,fontSize:9,fontWeight:700,
-            letterSpacing:.5,color:T.t1,textTransform:'uppercase'}}>bald</span>
-        </button>
+            {error&&(
+              <div style={{background:'rgba(232,69,69,.12)',border:'1px solid rgba(232,69,69,.4)',
+                borderRadius:8,padding:'9px 12px',marginBottom:12,
+                color:'#FF6B6B',fontSize:12,fontWeight:600,letterSpacing:.2}}>
+                {error}
+              </div>
+            )}
 
-        {/* Divider */}
-        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:18}}>
-          <div style={{flex:1,height:1,background:T.border}}/>
-          <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.5}}>ODER MIT E-MAIL</div>
-          <div style={{flex:1,height:1,background:T.border}}/>
-        </div>
+            <button onClick={tryCheckKey} disabled={busy}
+              style={{background:T.o,border:'none',borderRadius:12,
+                padding:'14px 16px',color:'#000',fontSize:15,fontWeight:800,letterSpacing:.2,
+                cursor:busy?'not-allowed':'pointer',opacity:busy?.6:1,
+                boxShadow:'0 4px 14px var(--oGlow)'}}>
+              {busy?'…':'Beta-Key prüfen'}
+            </button>
 
-        {/* Email */}
-        <div style={{marginBottom:10}}>
-          <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
-            textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>E-Mail</div>
-          <input value={email} onChange={e=>{setEmail(e.target.value);setError('');}}
-            onKeyDown={onKeyDown} autoComplete="email" type="email"
-            autoCapitalize="off" autoCorrect="off" spellCheck={false}
-            placeholder="du@example.com"
-            style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-              borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
-              outline:'none',boxSizing:'border-box'}}/>
-        </div>
+            <div style={{color:T.t3,fontSize:11,textAlign:'center',marginTop:14,
+              lineHeight:1.5,letterSpacing:.2}}>
+              Du hast noch keinen Beta-Key? Schreib uns an
+              {' '}<span style={{color:T.t2}}>hallo@ritmopadel.app</span>.
+            </div>
 
-        {/* Password */}
-        <div style={{marginBottom:10}}>
-          <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
-            textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Passwort</div>
-          <input type="password" value={password}
-            onChange={e=>{setPassword(e.target.value);setError('');}}
-            onKeyDown={onKeyDown} autoComplete="new-password"
-            placeholder="Mindestens 8 Zeichen"
-            style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-              borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
-              outline:'none',boxSizing:'border-box'}}/>
-        </div>
+            <div style={{display:'flex',alignItems:'center',gap:8,marginTop:20,
+              justifyContent:'center'}}>
+              <div style={{color:T.t3,fontSize:12}}>Schon Account?</div>
+              <button onClick={onLogin}
+                style={{background:'none',border:'none',color:T.o,fontSize:13,
+                  fontWeight:700,cursor:'pointer',padding:'4px 8px',textDecoration:'underline'}}>
+                Anmelden
+              </button>
+            </div>
+          </Fragment>
+        ):(
+          /* ───── STEP 2: E-Mail / Passwort ───── */
+          <Fragment>
+            {/* Beta-Key Quittung (read-only) + Zurück */}
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',
+              gap:8,marginBottom:16,padding:'10px 12px',
+              background:T.oSoft,border:`1px solid ${T.o}`,borderRadius:10}}>
+              <div>
+                <div style={{color:T.t3,fontSize:9,fontWeight:800,letterSpacing:1.4,
+                  textTransform:'uppercase'}}>Beta-Key bestätigt</div>
+                <div style={{color:T.t1,fontSize:13,fontWeight:700,
+                  fontFamily:'-apple-system,SFMono-Regular,Menlo,monospace',
+                  letterSpacing:.5,marginTop:2}}>{betaKey}</div>
+              </div>
+              <button onClick={()=>{setStep('key');setBetaKey('');setError('');}}
+                style={{background:'none',border:'none',color:T.o,fontSize:12,
+                  fontWeight:700,cursor:'pointer',padding:'4px 8px',textDecoration:'underline'}}>
+                Ändern
+              </button>
+            </div>
 
-        {/* Confirm Password */}
-        <div style={{marginBottom:16}}>
-          <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
-            textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Passwort bestätigen</div>
-          <input type="password" value={password2}
-            onChange={e=>{setPassword2(e.target.value);setError('');}}
-            onKeyDown={onKeyDown} autoComplete="new-password"
-            placeholder="••••••••"
-            style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-              borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
-              outline:'none',boxSizing:'border-box'}}/>
-        </div>
+            {/* Google — disabled (OAuth folgt) */}
+            <button disabled
+              style={{display:'flex',alignItems:'center',justifyContent:'center',gap:10,
+                background:T.card,border:`1px solid ${T.border}`,borderRadius:12,
+                padding:'13px 16px',color:T.t2,fontSize:15,fontWeight:600,
+                cursor:'not-allowed',marginBottom:10,position:'relative'}}>
+              <GoogleGlyph size={18}/>
+              <span>Mit Google registrieren</span>
+              <span style={{position:'absolute',top:6,right:10,fontSize:9,fontWeight:700,
+                letterSpacing:.5,color:T.t3,textTransform:'uppercase'}}>bald</span>
+            </button>
 
-        {error&&(
-          <div style={{background:'rgba(232,69,69,.12)',border:'1px solid rgba(232,69,69,.4)',
-            borderRadius:8,padding:'9px 12px',marginBottom:12,
-            color:'#FF6B6B',fontSize:12,fontWeight:600,letterSpacing:.2}}>
-            {error}
-          </div>
+            {/* Apple disabled */}
+            <button disabled
+              style={{display:'flex',alignItems:'center',justifyContent:'center',gap:10,
+                background:'#000',border:'1px solid rgba(255,255,255,.08)',borderRadius:12,
+                padding:'13px 16px',color:'rgba(255,255,255,.4)',fontSize:15,fontWeight:600,
+                cursor:'not-allowed',marginBottom:22,position:'relative'}}>
+              <AppleGlyph size={18}/>
+              <span>Mit Apple registrieren</span>
+              <span style={{position:'absolute',top:6,right:10,fontSize:9,fontWeight:700,
+                letterSpacing:.5,color:T.t1,textTransform:'uppercase'}}>bald</span>
+            </button>
+
+            {/* Divider */}
+            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:18}}>
+              <div style={{flex:1,height:1,background:T.border}}/>
+              <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.5}}>ODER MIT E-MAIL</div>
+              <div style={{flex:1,height:1,background:T.border}}/>
+            </div>
+
+            {/* Email */}
+            <div style={{marginBottom:10}}>
+              <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
+                textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>E-Mail</div>
+              <input value={email} onChange={e=>{setEmail(e.target.value);setError('');}}
+                onKeyDown={onKeyDown} autoComplete="email" type="email"
+                autoCapitalize="off" autoCorrect="off" spellCheck={false}
+                placeholder="du@example.com"
+                style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
+                  borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
+                  outline:'none',boxSizing:'border-box'}}/>
+            </div>
+
+            {/* Password */}
+            <div style={{marginBottom:10}}>
+              <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
+                textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Passwort</div>
+              <input type="password" value={password}
+                onChange={e=>{setPassword(e.target.value);setError('');}}
+                onKeyDown={onKeyDown} autoComplete="new-password"
+                placeholder="Mindestens 8 Zeichen"
+                style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
+                  borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
+                  outline:'none',boxSizing:'border-box'}}/>
+            </div>
+
+            {/* Confirm Password */}
+            <div style={{marginBottom:16}}>
+              <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
+                textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Passwort bestätigen</div>
+              <input type="password" value={password2}
+                onChange={e=>{setPassword2(e.target.value);setError('');}}
+                onKeyDown={onKeyDown} autoComplete="new-password"
+                placeholder="••••••••"
+                style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
+                  borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
+                  outline:'none',boxSizing:'border-box'}}/>
+            </div>
+
+            {error&&(
+              <div style={{background:'rgba(232,69,69,.12)',border:'1px solid rgba(232,69,69,.4)',
+                borderRadius:8,padding:'9px 12px',marginBottom:12,
+                color:'#FF6B6B',fontSize:12,fontWeight:600,letterSpacing:.2}}>
+                {error}
+              </div>
+            )}
+
+            <button onClick={tryRegister} disabled={busy}
+              style={{background:T.o,border:'none',borderRadius:12,
+                padding:'14px 16px',color:'#000',fontSize:15,fontWeight:800,letterSpacing:.2,
+                cursor:busy?'not-allowed':'pointer',opacity:busy?.6:1,
+                boxShadow:'0 4px 14px var(--oGlow)'}}>
+              {busy?'…':'Registrieren'}
+            </button>
+
+            <div style={{display:'flex',alignItems:'center',gap:8,marginTop:18,
+              justifyContent:'center'}}>
+              <div style={{color:T.t3,fontSize:12}}>Schon Account?</div>
+              <button onClick={onLogin}
+                style={{background:'none',border:'none',color:T.o,fontSize:13,
+                  fontWeight:700,cursor:'pointer',padding:'4px 8px',textDecoration:'underline'}}>
+                Anmelden
+              </button>
+            </div>
+          </Fragment>
         )}
-
-        <button onClick={tryRegister} disabled={busy}
-          style={{background:T.o,border:'none',borderRadius:12,
-            padding:'14px 16px',color:'#000',fontSize:15,fontWeight:800,letterSpacing:.2,
-            cursor:busy?'not-allowed':'pointer',opacity:busy?.6:1,
-            boxShadow:'0 4px 14px var(--oGlow)'}}>
-          {busy?'…':'Registrieren'}
-        </button>
-
-        <div style={{display:'flex',alignItems:'center',gap:8,marginTop:18,
-          justifyContent:'center'}}>
-          <div style={{color:T.t3,fontSize:12}}>Schon Account?</div>
-          <button onClick={onLogin}
-            style={{background:'none',border:'none',color:T.o,fontSize:13,
-              fontWeight:700,cursor:'pointer',padding:'4px 8px',textDecoration:'underline'}}>
-            Anmelden
-          </button>
-        </div>
 
         <div style={{color:T.t3,fontSize:10,textAlign:'center',marginTop:18,
           letterSpacing:.3,opacity:0.7}}>

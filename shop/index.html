@@ -1,0 +1,585 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>RITMO Shop — Apparel & Gear in Bauhaus-Ästhetik</title>
+  <meta name="description" content="RITMO Padel Apparel und Gear in Bauhaus-Ästhetik. Schläger, Bälle, Trikots, Print-Editionen. Coming soon.">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0A0A0A">
+  <!-- Open Graph -->
+  <meta property="og:title" content="RITMO Shop">
+  <meta property="og:description" content="RITMO Apparel & Gear in Bauhaus-Ästhetik. Coming soon.">
+  <meta property="og:type" content="website">
+
+  <style>
+    /* ─── RITMO Bauhaus Dark — Shop ───────────────────────────
+       Identische Designsprache wie ritmopadel.de Landing:
+       schwarzes Fundament, geometrische Primärfarben,
+       fette italic-Wortmarke, asymmetrisches Grid.
+    ─────────────────────────────────────────────────────────── */
+    :root{
+      --bg:#0A0A0A;
+      --card:#141414;
+      --card2:#1C1C1C;
+      --line:rgba(255,255,255,0.10);
+      --line2:rgba(255,255,255,0.18);
+      --t1:#FFFFFF;
+      --t2:rgba(255,255,255,0.65);
+      --t3:rgba(255,255,255,0.40);
+      --t4:rgba(255,255,255,0.18);
+      --orange:#FF7A1A;
+      --yellow:#FFD60A;
+      --blue:#0A84FF;
+      --red:#E84545;
+      --gold:#C8A878;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+    html,body{background:var(--bg);color:var(--t1);
+      font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue','Inter',sans-serif;
+      -webkit-font-smoothing:antialiased;line-height:1.4}
+    body{overflow-x:hidden}
+    a{color:inherit;text-decoration:none}
+    a:focus-visible{outline:2px solid var(--orange);outline-offset:3px;border-radius:4px}
+    button{font-family:inherit;color:inherit;cursor:pointer}
+    button:focus-visible{outline:2px solid var(--orange);outline-offset:3px}
+
+    .wrap{max-width:1180px;margin:0 auto;padding:0 28px;position:relative}
+
+    /* ─── Top bar ──────────────────────────────────────────── */
+    header{padding:28px 0 0;position:relative;z-index:5}
+    .topbar{display:flex;align-items:center;justify-content:space-between;gap:16px}
+    .word{font-style:italic;font-weight:900;font-size:24px;letter-spacing:.5px;
+      color:var(--t1);line-height:1;display:flex;align-items:baseline;gap:8px}
+    .word .dot{width:10px;height:10px;border-radius:50%;background:var(--orange);display:inline-block;
+      transform:translateY(-2px)}
+    .word .pipe{margin:0 6px;color:var(--t3);font-style:normal;font-weight:400}
+    .word .sub{color:var(--t2);font-weight:600;font-style:normal;letter-spacing:1.5px;
+      text-transform:uppercase;font-size:12px}
+    .nav{display:flex;gap:22px;font-size:13px;font-weight:600;color:var(--t2);letter-spacing:.4px;
+      align-items:center}
+    .nav a:hover{color:var(--orange)}
+    .cart{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;
+      background:var(--card);border:1px solid var(--line);color:var(--t1);
+      font-size:13px;font-weight:700;letter-spacing:.3px}
+    .cart .bag{display:inline-block;width:14px;height:16px;border:1.5px solid currentColor;
+      border-top:none;position:relative;border-radius:0 0 2px 2px}
+    .cart .bag::before{content:"";position:absolute;left:2px;right:2px;top:-6px;height:6px;
+      border:1.5px solid currentColor;border-bottom:none;border-radius:8px 8px 0 0}
+    .cart .count{display:inline-block;min-width:18px;padding:0 5px;height:18px;line-height:17px;
+      background:var(--orange);color:#000;font-size:11px;font-weight:800;text-align:center;
+      border-radius:9px}
+    @media(max-width:640px){.nav a:not(.cart-link){display:none}}
+
+    /* ─── Hero ─────────────────────────────────────────────── */
+    .hero{position:relative;padding:80px 0 56px;overflow:hidden}
+    .hero h1{font-size:clamp(56px,12vw,144px);font-weight:900;font-style:italic;
+      letter-spacing:-2px;line-height:.95;color:var(--t1)}
+    .hero h1 .accent{color:var(--orange)}
+    .hero p.lead{margin-top:24px;font-size:clamp(16px,2.2vw,20px);
+      color:var(--t2);max-width:54ch;line-height:1.6;font-weight:400}
+    .hero .meta{margin-top:28px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+    .hero .meta .chip{padding:6px 12px;background:transparent;border:1px solid var(--line2);
+      color:var(--t2);font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase}
+    .hero .meta .live{background:var(--orange);color:#000;border-color:var(--orange)}
+
+    /* Decorative shapes */
+    .shapes{position:absolute;inset:0;pointer-events:none;z-index:0}
+    .shapes svg{position:absolute;display:block}
+    .sh-circle{top:60px;right:-50px}
+    .sh-square{top:220px;right:160px}
+    .sh-triangle{bottom:-20px;right:60px}
+    @media(max-width:720px){
+      .sh-circle{right:-120px;opacity:.5}
+      .sh-square{display:none}
+      .sh-triangle{right:-80px;opacity:.45}
+    }
+    .hero-content{position:relative;z-index:1}
+
+    /* ─── Rule strip ─────────────────────────────────────── */
+    .rule{display:flex;align-items:center;gap:16px;padding:8px 0;margin:0;
+      color:var(--t3);font-size:11px;font-weight:800;letter-spacing:3px;text-transform:uppercase}
+    .rule::before{content:"";flex:0 0 32px;height:2px;background:var(--orange);display:block}
+    .rule::after{content:"";flex:1;height:1px;background:var(--line);display:block}
+
+    /* ─── Filter chips ───────────────────────────────────── */
+    .filters{padding:28px 0 32px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+    .chip-btn{padding:10px 18px;background:transparent;border:1px solid var(--line2);
+      color:var(--t2);font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;
+      transition:all .15s ease}
+    .chip-btn:hover{border-color:var(--t1);color:var(--t1)}
+    .chip-btn.active{background:var(--t1);color:#000;border-color:var(--t1)}
+
+    /* ─── Product Grid ───────────────────────────────────── */
+    .products{padding:0 0 88px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:24px}
+    .card-prod{background:var(--card);border:1px solid var(--line);position:relative;
+      display:flex;flex-direction:column;
+      transition:transform .2s ease,border-color .2s ease,background .2s ease}
+    .card-prod:hover{transform:translateY(-3px);border-color:var(--orange);background:var(--card2)}
+
+    .prod-img{position:relative;width:100%;aspect-ratio:5/4;background:var(--card2);overflow:hidden}
+    .prod-img > svg.fallback{position:absolute;inset:0;width:100%;height:100%;display:block}
+    /* Real product photo lies on top of the SVG fallback. If the src fails
+       to load (file missing, network error), the onerror handler removes
+       the <img> and the Bauhaus-style SVG underneath stays visible. */
+    .prod-img > img{position:relative;z-index:1;width:100%;height:100%;
+      object-fit:cover;display:block}
+
+    .prod-body{padding:20px 22px 22px;display:flex;flex-direction:column;flex:1;gap:6px}
+    .prod-cat{font-size:10px;font-weight:800;letter-spacing:2.5px;text-transform:uppercase;
+      color:var(--orange);margin-bottom:4px}
+    .prod-name{font-size:22px;font-weight:900;font-style:italic;letter-spacing:-.4px;
+      color:var(--t1);line-height:1.05}
+    .prod-desc{font-size:13px;color:var(--t2);line-height:1.55;margin-top:6px;flex:1}
+    .prod-row{display:flex;align-items:center;justify-content:space-between;gap:12px;
+      margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}
+    .prod-price{font-size:22px;font-weight:900;font-style:italic;letter-spacing:-.4px;
+      color:var(--t1);line-height:1}
+    .prod-price .cur{font-size:14px;font-weight:700;font-style:normal;color:var(--t3);
+      letter-spacing:0;margin-right:3px;vertical-align:1px}
+    .prod-btn{padding:10px 14px;background:transparent;border:1.5px solid var(--orange);
+      color:var(--orange);font-size:11px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;
+      transition:all .15s ease}
+    .prod-btn:hover{background:var(--orange);color:#000}
+    .prod-flag{position:absolute;top:14px;left:14px;z-index:2;
+      padding:5px 10px;font-size:10px;font-weight:800;letter-spacing:1.8px;text-transform:uppercase;
+      background:#000;color:#fff;border:1px solid #fff}
+    .prod-flag.soon{background:var(--orange);color:#000;border-color:var(--orange)}
+
+    /* ─── Coming soon banner ─────────────────────────────── */
+    .banner{padding:64px 0 80px;border-top:1px solid var(--line)}
+    .banner-card{background:var(--card);border:1px solid var(--line);padding:48px 36px;
+      display:grid;grid-template-columns:1.4fr 1fr;gap:48px;align-items:center;position:relative;
+      overflow:hidden}
+    @media(max-width:780px){
+      .banner-card{grid-template-columns:1fr;gap:32px;padding:36px 28px}
+    }
+    .banner h2{font-size:clamp(32px,5vw,56px);font-weight:900;font-style:italic;
+      letter-spacing:-.8px;line-height:1;margin-bottom:14px}
+    .banner h2 .accent{color:var(--yellow)}
+    .banner p{color:var(--t2);font-size:15px;line-height:1.6;max-width:42ch}
+    .banner-form{display:flex;flex-direction:column;gap:12px;position:relative;z-index:1}
+    .banner input{width:100%;padding:14px 16px;background:var(--bg);
+      border:1px solid var(--line2);color:var(--t1);font-size:15px;font-weight:500;
+      letter-spacing:.2px}
+    .banner input:focus{outline:none;border-color:var(--orange)}
+    .banner button{padding:14px 22px;background:var(--orange);border:none;color:#000;
+      font-weight:800;font-size:14px;letter-spacing:1.2px;text-transform:uppercase;
+      transition:transform .15s,box-shadow .15s}
+    .banner button:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(255,122,26,.4)}
+    .banner .hint{color:var(--t3);font-size:11px;letter-spacing:.4px}
+
+    /* Bauhaus decoration in banner card */
+    .banner-card::after{content:"";position:absolute;right:-60px;top:-60px;
+      width:200px;height:200px;border-radius:50%;background:var(--blue);opacity:.18;
+      z-index:0;pointer-events:none}
+    .banner-card::before{content:"";position:absolute;right:120px;bottom:-40px;
+      width:120px;height:120px;background:var(--red);opacity:.16;z-index:0;pointer-events:none}
+
+    /* ─── Footer ─────────────────────────────────────────── */
+    footer{padding:32px 0 48px;border-top:1px solid var(--line)}
+    .foot{display:flex;align-items:center;justify-content:space-between;gap:24px;
+      color:var(--t3);font-size:12px;letter-spacing:.4px}
+    .foot a{color:var(--t2)}
+    .foot a:hover{color:var(--orange)}
+    @media(max-width:520px){.foot{flex-direction:column;align-items:flex-start;gap:10px}}
+
+    /* Bauhaus stripe */
+    .bauhausline{display:flex;height:6px;width:100%;background:var(--bg)}
+    .bauhausline span{flex:1;height:100%}
+    .bauhausline .a{background:var(--orange)}
+    .bauhausline .b{background:var(--yellow)}
+    .bauhausline .c{background:var(--blue)}
+    .bauhausline .d{background:var(--red)}
+    .bauhausline .e{background:#fff}
+
+    @keyframes fadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+    .fi{animation:fadeIn .6s cubic-bezier(.2,.7,.2,1) both}
+    .d1{animation-delay:.05s}.d2{animation-delay:.10s}.d3{animation-delay:.15s}
+    .d4{animation-delay:.20s}.d5{animation-delay:.25s}.d6{animation-delay:.30s}
+    .d7{animation-delay:.35s}.d8{animation-delay:.40s}
+  </style>
+</head>
+<body>
+
+  <!-- ─── Top bar ─────────────────────────────────────────── -->
+  <header>
+    <div class="wrap topbar">
+      <a class="word fi" href="/" aria-label="RITMO Shop">
+        <span>RITMO</span>
+        <span class="dot" aria-hidden="true"></span>
+        <span class="pipe">·</span>
+        <span class="sub">Shop</span>
+      </a>
+      <nav class="nav" aria-label="Seitennavigation">
+        <a href="#sortiment">Sortiment</a>
+        <a href="#newsletter">News</a>
+        <a href="https://ritmopadel.app/" rel="noopener">App</a>
+        <span class="cart cart-link" title="0 Artikel">
+          <span class="bag" aria-hidden="true"></span>
+          <span class="count">0</span>
+        </span>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ─── Hero ────────────────────────────────────────────── -->
+  <section class="hero">
+    <div class="shapes" aria-hidden="true">
+      <svg class="sh-circle" width="320" height="320" viewBox="0 0 320 320">
+        <circle cx="160" cy="160" r="160" fill="#FFD60A"/>
+      </svg>
+      <svg class="sh-square" width="120" height="120" viewBox="0 0 120 120">
+        <rect width="120" height="120" fill="#0A84FF"/>
+      </svg>
+      <svg class="sh-triangle" width="220" height="220" viewBox="0 0 220 220">
+        <polygon points="0,220 220,220 110,0" fill="#E84545"/>
+      </svg>
+    </div>
+    <div class="wrap hero-content">
+      <h1 class="fi d1">
+        <span class="accent">SHOP</span>.<br>
+        BAUHAUS&nbsp;GEAR.
+      </h1>
+      <p class="lead fi d2">
+        RITMO Apparel und Gear in geometrischer Klarheit. Schläger,
+        Bälle, Trikots und Print-Editionen — entworfen für die, die
+        Padel als Kunstform begreifen.
+      </p>
+      <div class="meta fi d3">
+        <span class="chip live">Coming Soon</span>
+        <span class="chip">Versand DACH</span>
+        <span class="chip">Limited Drops</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Filter chips ────────────────────────────────────── -->
+  <section id="sortiment">
+    <div class="wrap">
+      <p class="rule">Sortiment</p>
+      <div class="filters" role="tablist" aria-label="Kategorie-Filter">
+        <button class="chip-btn active" data-cat="all" type="button">Alle</button>
+        <button class="chip-btn" data-cat="schlaeger" type="button">Schläger</button>
+        <button class="chip-btn" data-cat="baelle"    type="button">Bälle</button>
+        <button class="chip-btn" data-cat="apparel"   type="button">Apparel</button>
+        <button class="chip-btn" data-cat="prints"    type="button">Prints</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Product grid ────────────────────────────────────── -->
+  <section class="products">
+    <div class="wrap">
+      <div class="grid">
+
+        <!-- 1. Pro Schläger -->
+        <article class="card-prod fi d1" data-cat="schlaeger">
+          <div class="prod-img">
+            <svg class="fallback" viewBox="0 0 400 320" preserveAspectRatio="xMidYMid slice">
+              <rect width="400" height="320" fill="#FF7A1A"/>
+              <ellipse cx="200" cy="135" rx="80" ry="85" fill="none" stroke="#000" stroke-width="6"/>
+              <g stroke="#000" stroke-width="2.2">
+                <line x1="160" y1="60"  x2="160" y2="210"/>
+                <line x1="200" y1="55"  x2="200" y2="215"/>
+                <line x1="240" y1="60"  x2="240" y2="210"/>
+                <line x1="130" y1="105" x2="270" y2="105"/>
+                <line x1="120" y1="135" x2="280" y2="135"/>
+                <line x1="130" y1="165" x2="270" y2="165"/>
+              </g>
+              <rect x="190" y="220" width="20" height="65" fill="#000"/>
+              <rect x="186" y="276" width="28" height="10" fill="#000"/>
+              <text x="20" y="304" font-family="sans-serif" font-weight="900" font-size="14" font-style="italic" fill="#000">PRO</text>
+            </svg>
+            <img src="assets/products/schlaeger-pro.jpg" alt="" onerror="this.remove()">
+            <span class="prod-flag soon">Vorbestellung</span>
+          </div>
+          <div class="prod-body">
+            <div class="prod-cat">Schläger</div>
+            <div class="prod-name">RITMO Pro</div>
+            <p class="prod-desc">Carbon-3K Rahmen, EVA-Soft-Kern, runde Form. Für Spieler:innen mit Kontrolle &amp; Punch.</p>
+            <div class="prod-row">
+              <div class="prod-price"><span class="cur">€</span>189</div>
+              <button class="prod-btn" type="button">Vormerken</button>
+            </div>
+          </div>
+        </article>
+
+        <!-- 2. Edge Schläger -->
+        <article class="card-prod fi d2" data-cat="schlaeger">
+          <div class="prod-img">
+            <svg class="fallback" viewBox="0 0 400 320" preserveAspectRatio="xMidYMid slice">
+              <rect width="400" height="320" fill="#0A84FF"/>
+              <path d="M 130 50 L 270 50 L 280 220 L 120 220 Z" fill="none" stroke="#000" stroke-width="6"/>
+              <g stroke="#000" stroke-width="2.2">
+                <line x1="160" y1="55"  x2="160" y2="220"/>
+                <line x1="200" y1="50"  x2="200" y2="220"/>
+                <line x1="240" y1="55"  x2="240" y2="220"/>
+                <line x1="128" y1="100" x2="275" y2="100"/>
+                <line x1="125" y1="140" x2="278" y2="140"/>
+                <line x1="122" y1="180" x2="282" y2="180"/>
+              </g>
+              <rect x="190" y="220" width="20" height="65" fill="#000"/>
+              <rect x="186" y="276" width="28" height="10" fill="#000"/>
+              <text x="20" y="304" font-family="sans-serif" font-weight="900" font-size="14" font-style="italic" fill="#000">EDGE</text>
+            </svg>
+            <img src="assets/products/schlaeger-edge.jpg" alt="" onerror="this.remove()">
+            <span class="prod-flag soon">Vorbestellung</span>
+          </div>
+          <div class="prod-body">
+            <div class="prod-cat">Schläger</div>
+            <div class="prod-name">RITMO Edge</div>
+            <p class="prod-desc">Diamantform, harte EVA, maximale Power. Für aggressive Netz-Spieler.</p>
+            <div class="prod-row">
+              <div class="prod-price"><span class="cur">€</span>159</div>
+              <button class="prod-btn" type="button">Vormerken</button>
+            </div>
+          </div>
+        </article>
+
+        <!-- 3. Tournament Balls -->
+        <article class="card-prod fi d3" data-cat="baelle">
+          <div class="prod-img">
+            <svg class="fallback" viewBox="0 0 400 320" preserveAspectRatio="xMidYMid slice">
+              <rect width="400" height="320" fill="#E84545"/>
+              <circle cx="130" cy="120" r="62" fill="#FFD60A" stroke="#000" stroke-width="3"/>
+              <path d="M 75 120 Q 105 95 130 105 Q 155 95 185 120" stroke="#000" stroke-width="3" fill="none"/>
+              <path d="M 75 120 Q 105 145 130 135 Q 155 145 185 120" stroke="#000" stroke-width="3" fill="none"/>
+              <circle cx="220" cy="200" r="46" fill="#FFD60A" stroke="#000" stroke-width="3"/>
+              <path d="M 180 200 Q 200 184 220 191 Q 240 184 260 200" stroke="#000" stroke-width="2.5" fill="none"/>
+              <path d="M 180 200 Q 200 216 220 209 Q 240 216 260 200" stroke="#000" stroke-width="2.5" fill="none"/>
+              <circle cx="305" cy="140" r="38" fill="#FFD60A" stroke="#000" stroke-width="3"/>
+              <path d="M 273 140 Q 290 127 305 132 Q 320 127 337 140" stroke="#000" stroke-width="2.2" fill="none"/>
+              <path d="M 273 140 Q 290 153 305 148 Q 320 153 337 140" stroke="#000" stroke-width="2.2" fill="none"/>
+              <text x="20" y="304" font-family="sans-serif" font-weight="900" font-size="14" font-style="italic" fill="#000">TOURNAMENT · 12er</text>
+            </svg>
+            <img src="assets/products/balls-tournament.jpg" alt="" onerror="this.remove()">
+          </div>
+          <div class="prod-body">
+            <div class="prod-cat">Bälle</div>
+            <div class="prod-name">Tournament 12er</div>
+            <p class="prod-desc">Drucklose Padel-Bälle in Turnier-Qualität. 4 Drei-Pack-Dosen.</p>
+            <div class="prod-row">
+              <div class="prod-price"><span class="cur">€</span>34</div>
+              <button class="prod-btn" type="button">Vormerken</button>
+            </div>
+          </div>
+        </article>
+
+        <!-- 4. Ball Set 3er -->
+        <article class="card-prod fi d4" data-cat="baelle">
+          <div class="prod-img">
+            <svg class="fallback" viewBox="0 0 400 320" preserveAspectRatio="xMidYMid slice">
+              <rect width="400" height="320" fill="#E84545"/>
+              <rect x="150" y="60" width="100" height="220" fill="#FFD60A" stroke="#000" stroke-width="3"/>
+              <line x1="150" y1="130" x2="250" y2="130" stroke="#000" stroke-width="2"/>
+              <line x1="150" y1="200" x2="250" y2="200" stroke="#000" stroke-width="2"/>
+              <circle cx="200" cy="95"  r="22" fill="#FFD60A" stroke="#000" stroke-width="2"/>
+              <circle cx="200" cy="165" r="22" fill="#FFD60A" stroke="#000" stroke-width="2"/>
+              <circle cx="200" cy="235" r="22" fill="#FFD60A" stroke="#000" stroke-width="2"/>
+              <path d="M 178 95  Q 200 80  222 95  M 178 95  Q 200 110 222 95"  stroke="#000" stroke-width="1.5" fill="none"/>
+              <path d="M 178 165 Q 200 150 222 165 M 178 165 Q 200 180 222 165" stroke="#000" stroke-width="1.5" fill="none"/>
+              <path d="M 178 235 Q 200 220 222 235 M 178 235 Q 200 250 222 235" stroke="#000" stroke-width="1.5" fill="none"/>
+              <text x="20" y="304" font-family="sans-serif" font-weight="900" font-size="14" font-style="italic" fill="#000">3er DOSE</text>
+            </svg>
+            <img src="assets/products/balls-3pack.jpg" alt="" onerror="this.remove()">
+          </div>
+          <div class="prod-body">
+            <div class="prod-cat">Bälle</div>
+            <div class="prod-name">RITMO Ball Set</div>
+            <p class="prod-desc">Klassische Drei-Pack-Dose, perfekt fürs nächste Match.</p>
+            <div class="prod-row">
+              <div class="prod-price"><span class="cur">€</span>9</div>
+              <button class="prod-btn" type="button">Vormerken</button>
+            </div>
+          </div>
+        </article>
+
+        <!-- 5. Tee Schwarz -->
+        <article class="card-prod fi d5" data-cat="apparel">
+          <div class="prod-img">
+            <svg class="fallback" viewBox="0 0 400 320" preserveAspectRatio="xMidYMid slice">
+              <rect width="400" height="320" fill="#0A84FF"/>
+              <path d="M 130 70 L 100 100 L 130 130 L 145 110 L 145 280 L 255 280 L 255 110 L 270 130 L 300 100 L 270 70 L 235 70 Q 235 95 200 95 Q 165 95 165 70 Z"
+                fill="#FFFFFF" stroke="#000" stroke-width="3"/>
+              <text x="200" y="200" text-anchor="middle" font-family="sans-serif" font-weight="900"
+                font-style="italic" font-size="36" fill="#000" letter-spacing="2">RITMO</text>
+              <circle cx="200" cy="220" r="4" fill="#FF7A1A"/>
+              <text x="20" y="304" font-family="sans-serif" font-weight="900" font-size="14" font-style="italic" fill="#000">TEE · BLACK PRINT</text>
+            </svg>
+            <img src="assets/products/tee-schwarz.jpg" alt="" onerror="this.remove()">
+          </div>
+          <div class="prod-body">
+            <div class="prod-cat">Apparel</div>
+            <div class="prod-name">RITMO Tee</div>
+            <p class="prod-desc">Weiches Heavy-Cotton, oversized Cut, italic Brust-Logo. S–XXL.</p>
+            <div class="prod-row">
+              <div class="prod-price"><span class="cur">€</span>39</div>
+              <button class="prod-btn" type="button">Vormerken</button>
+            </div>
+          </div>
+        </article>
+
+        <!-- 6. Crew Hoodie -->
+        <article class="card-prod fi d6" data-cat="apparel">
+          <div class="prod-img">
+            <svg class="fallback" viewBox="0 0 400 320" preserveAspectRatio="xMidYMid slice">
+              <rect width="400" height="320" fill="#FFD60A"/>
+              <!-- Hoodie body -->
+              <path d="M 120 110 L 90 145 L 125 175 L 145 145 L 145 285 L 255 285 L 255 145 L 275 175 L 310 145 L 280 110
+                       Q 240 130 200 130 Q 160 130 120 110 Z"
+                fill="#0A0A0A" stroke="#000" stroke-width="2.5"/>
+              <!-- Hood -->
+              <path d="M 165 60 Q 200 50 235 60 Q 235 100 200 110 Q 165 100 165 60 Z"
+                fill="#0A0A0A" stroke="#000" stroke-width="2.5"/>
+              <!-- Pocket / chest accent -->
+              <rect x="170" y="195" width="60" height="44" fill="none" stroke="#FF7A1A" stroke-width="2"/>
+              <text x="200" y="225" text-anchor="middle" font-family="sans-serif" font-weight="900"
+                font-style="italic" font-size="20" fill="#FF7A1A" letter-spacing="2">RITMO</text>
+              <text x="20" y="304" font-family="sans-serif" font-weight="900" font-size="14" font-style="italic" fill="#000">HOODIE · CREW</text>
+            </svg>
+            <img src="assets/products/hoodie-crew.jpg" alt="" onerror="this.remove()">
+          </div>
+          <div class="prod-body">
+            <div class="prod-cat">Apparel</div>
+            <div class="prod-name">RITMO Hoodie</div>
+            <p class="prod-desc">Schwerer Baumwoll-Crew-Hoodie, gefütterte Kapuze, orangenes Bauhaus-Print.</p>
+            <div class="prod-row">
+              <div class="prod-price"><span class="cur">€</span>79</div>
+              <button class="prod-btn" type="button">Vormerken</button>
+            </div>
+          </div>
+        </article>
+
+        <!-- 7. Poster A2 -->
+        <article class="card-prod fi d7" data-cat="prints">
+          <div class="prod-img">
+            <svg class="fallback" viewBox="0 0 400 320" preserveAspectRatio="xMidYMid slice">
+              <rect width="400" height="320" fill="#FFFFFF"/>
+              <rect x="60" y="40" width="280" height="220" fill="#0A0A0A" stroke="#000" stroke-width="2"/>
+              <text x="80" y="120" font-family="sans-serif" font-weight="900" font-style="italic"
+                font-size="48" fill="#FFFFFF" letter-spacing="-1">DIE&nbsp;APP</text>
+              <text x="80" y="180" font-family="sans-serif" font-weight="900" font-style="italic"
+                font-size="48" fill="#FFFFFF" letter-spacing="-1">IST&nbsp;<tspan fill="#FF7A1A">LIVE</tspan>.</text>
+              <rect x="80" y="225" width="240" height="6" fill="#FF7A1A"/>
+              <text x="80" y="252" font-family="sans-serif" font-weight="700" font-size="11"
+                fill="rgba(255,255,255,0.6)" letter-spacing="3">RITMOPADEL.APP</text>
+              <text x="20" y="304" font-family="sans-serif" font-weight="900" font-size="14" font-style="italic" fill="#000">POSTER · A2</text>
+            </svg>
+            <img src="assets/products/poster-app-live.jpg" alt="" onerror="this.remove()">
+          </div>
+          <div class="prod-body">
+            <div class="prod-cat">Print-Editionen</div>
+            <div class="prod-name">"App ist Live"</div>
+            <p class="prod-desc">Limited Print, 50×70 cm, gerollt geliefert. Premium-Mattpapier 250 g/m².</p>
+            <div class="prod-row">
+              <div class="prod-price"><span class="cur">€</span>24</div>
+              <button class="prod-btn" type="button">Vormerken</button>
+            </div>
+          </div>
+        </article>
+
+        <!-- 8. DNA Print A3 -->
+        <article class="card-prod fi d8" data-cat="prints">
+          <div class="prod-img">
+            <svg class="fallback" viewBox="0 0 400 320" preserveAspectRatio="xMidYMid slice">
+              <rect width="400" height="320" fill="#FFFFFF"/>
+              <rect x="60" y="40" width="280" height="220" fill="#0A0A0A"/>
+              <!-- Bauhaus composition: circle, square, triangle -->
+              <circle cx="130" cy="125" r="50" fill="#FFD60A"/>
+              <rect x="180" y="80" width="90" height="90" fill="#E84545"/>
+              <polygon points="80,240 280,240 180,170" fill="#0A84FF"/>
+              <rect x="78" y="252" width="220" height="4" fill="#FF7A1A"/>
+              <text x="80" y="218" font-family="sans-serif" font-weight="900" font-style="italic"
+                font-size="14" fill="#FFFFFF" letter-spacing="3">RITMO DNA</text>
+              <text x="20" y="304" font-family="sans-serif" font-weight="900" font-size="14" font-style="italic" fill="#000">PRINT · A3</text>
+            </svg>
+            <img src="assets/products/print-dna.jpg" alt="" onerror="this.remove()">
+          </div>
+          <div class="prod-body">
+            <div class="prod-cat">Print-Editionen</div>
+            <div class="prod-name">RITMO DNA</div>
+            <p class="prod-desc">Bauhaus-Komposition aus den drei Padel-Spielstil-Grundformen. A3.</p>
+            <div class="prod-row">
+              <div class="prod-price"><span class="cur">€</span>18</div>
+              <button class="prod-btn" type="button">Vormerken</button>
+            </div>
+          </div>
+        </article>
+
+      </div>
+
+      <!-- Empty-state when filter matches nothing (toggled by JS) -->
+      <div id="empty" hidden style="padding:60px 0;text-align:center;color:var(--t3);font-size:14px">
+        Keine Produkte in dieser Kategorie. Bald mehr.
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Coming Soon Banner ──────────────────────────────── -->
+  <section class="banner" id="newsletter">
+    <div class="wrap">
+      <p class="rule">Newsletter</p>
+      <div class="banner-card">
+        <div>
+          <h2>Bleib&nbsp;im&nbsp;<span class="accent">Loop</span>.</h2>
+          <p>Der Shop ist in Produktion. Trag dich ein und erfahre als
+             Erste:r, wenn die ersten RITMO-Drops verfügbar sind. Kein
+             Spam, jederzeit abbestellbar.</p>
+        </div>
+        <form class="banner-form" onsubmit="event.preventDefault();this.querySelector('button').textContent='Danke ✓';this.querySelector('button').disabled=true">
+          <input type="email" required placeholder="deine@email.de" aria-label="E-Mail Adresse">
+          <button type="submit">Vormerken lassen</button>
+          <span class="hint">Wir nutzen deine E-Mail nur, um dich über RITMO-Releases zu informieren.</span>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Footer ─────────────────────────────────────────── -->
+  <footer>
+    <div class="wrap foot">
+      <div>© <span id="yr">2026</span> RITMO Padel. Made with ♥ in DACH.</div>
+      <div>
+        <a href="https://ritmopadel.app/" rel="noopener">App</a>
+        &nbsp;·&nbsp;
+        <a href="https://ritmopadel.de/" rel="noopener">ritmopadel.de</a>
+        &nbsp;·&nbsp;
+        <a href="https://ritmopadel.de/#impressum">Impressum</a>
+      </div>
+    </div>
+  </footer>
+
+  <div class="bauhausline" aria-hidden="true">
+    <span class="a"></span><span class="b"></span><span class="c"></span>
+    <span class="d"></span><span class="e"></span>
+  </div>
+
+  <script>
+    // Year stamp
+    document.getElementById('yr').textContent = new Date().getFullYear();
+
+    // Category filter (purely client-side, no analytics, no tracking)
+    (function () {
+      var btns = document.querySelectorAll('.chip-btn');
+      var cards = document.querySelectorAll('.card-prod');
+      var empty = document.getElementById('empty');
+      btns.forEach(function (b) {
+        b.addEventListener('click', function () {
+          btns.forEach(function (x) { x.classList.remove('active'); });
+          b.classList.add('active');
+          var cat = b.dataset.cat;
+          var any = false;
+          cards.forEach(function (c) {
+            var match = (cat === 'all') || (c.dataset.cat === cat);
+            c.style.display = match ? '' : 'none';
+            if (match) any = true;
+          });
+          empty.hidden = any;
+        });
+      });
+    })();
+  </script>
+
+</body>
+</html>

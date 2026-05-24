@@ -51,6 +51,79 @@ CREATE POLICY "users create their own" ON tournaments
 
 RLS macht: jeder User sieht nur eigene Daten — auch wenn anon-key public ist.
 
+## Beta-Keys verwalten
+
+Die Registrierung ist hinter einem Beta-Gate (siehe `supabase/schema.sql`,
+Tabelle `ritmo_beta_keys`). Jeder Key ist **einmalig einlösbar**. Die
+Tabelle ist nicht direkt aus dem Client erreichbar — alle Zugriffe
+laufen über zwei SECURITY-DEFINER-Funktionen (`check_beta_key`,
+`redeem_beta_key`).
+
+### Einzelnen Key anlegen
+Supabase Dashboard → SQL Editor:
+```sql
+INSERT INTO ritmo_beta_keys (code, note)
+VALUES ('RITMO-XK7H-29MA', 'Friends & Family');
+```
+Format ist frei wählbar. Empfehlung: `RITMO-XXXX-XXXX` (Großbuchstaben,
+keine ambivalenten Zeichen wie `0/O/1/I/L`).
+
+### Mehrere Keys generieren (z.B. 25 Stück)
+```sql
+INSERT INTO ritmo_beta_keys (code, note)
+SELECT
+  'RITMO-' ||
+    substring(md5(gen_random_uuid()::text), 1, 4) || '-' ||
+    substring(md5(gen_random_uuid()::text), 1, 4),
+  'Beta-Welle 1'
+FROM generate_series(1, 25);
+
+-- Liste der gerade angelegten Keys anzeigen:
+SELECT code FROM ritmo_beta_keys
+ WHERE note = 'Beta-Welle 1' AND used_at IS NULL
+ ORDER BY created_at DESC;
+```
+Die `md5(gen_random_uuid())`-Variante ist hexadezimal — wenn du
+ausschließlich Großbuchstaben/Ziffern willst, einfach `upper(...)`
+herumlegen.
+
+### Status / Übersicht
+```sql
+-- Wie viele Keys frei vs. eingelöst?
+SELECT
+  COUNT(*) FILTER (WHERE used_at IS NULL) AS frei,
+  COUNT(*) FILTER (WHERE used_at IS NOT NULL) AS eingeloest,
+  COUNT(*) AS total
+FROM ritmo_beta_keys;
+
+-- Welche Keys hat wer eingelöst?
+SELECT code, used_by, used_at FROM ritmo_beta_keys
+ WHERE used_at IS NOT NULL
+ ORDER BY used_at DESC;
+```
+
+### Key zurücksetzen / "entwerten"
+```sql
+-- Einen verbrauchten Key wieder freischalten (Vorsicht: gibt den
+-- Account des bisherigen Nutzers nicht zurück, der bleibt aktiv):
+UPDATE ritmo_beta_keys SET used_at = NULL, used_by = NULL
+ WHERE code = 'RITMO-XK7H-29MA';
+
+-- Einen Key endgültig löschen:
+DELETE FROM ritmo_beta_keys WHERE code = 'RITMO-XK7H-29MA';
+
+-- Alle unbenutzten Keys einer Welle invalidieren:
+DELETE FROM ritmo_beta_keys
+ WHERE note = 'Beta-Welle 1' AND used_at IS NULL;
+```
+
+### Hinweise
+- Der Test-User-Bypass (`ritmo` / `padelhaus` im Login) umgeht das
+  Beta-Gate komplett — der nutzt keinen Supabase-Account und keinen Key.
+- Wenn die Beta-Phase endet, einfach die zwei Funktionen droppen und
+  den `Register`-Component-State `step` per Default auf `'form'`
+  setzen — die Tabelle kann zur Audit-Historie bleiben.
+
 ## GitHub Pages Deployment
 
 1. Repo erstellen, Code pushen
@@ -120,6 +193,27 @@ nicht (bleibt `https://<projekt>.supabase.co/auth/v1/callback`).
 - Workflow nutzt weiterhin `/<repo>/` Base: Variable nicht in *Variables*
   sondern in *Secrets* eingetragen. `vars.CUSTOM_DOMAIN` liest nur
   Variables.
+
+### Zweite Domain als Landing-Page (z.B. ritmopadel.de → ritmopadel.app)
+
+GitHub Pages serviert **eine** Custom Domain pro Repo. Eine zweite
+Domain läuft daher in einem eigenen Mini-Repo. Die fertige Vorlage
+liegt unter [`landing/`](landing/) — eine statische Single-Page Landing
+im RITMO Bauhaus Dark Design mit Hinweis auf die App (normaler Link,
+kein Auto-Redirect), Coming-Soon-Sektion (Events / Shop / mehr) und
+Impressum.
+
+Siehe [`landing/README.md`](landing/README.md) für den vollständigen
+Setup. Kurzfassung:
+
+1. **Impressum-Platzhalter** in `landing/index.html` durch echte
+   Daten ersetzen (`[Name / Firma]`, `[Anschrift]`, `[Vor- und Nachname]`).
+2. Neues Repo `ritmopadel-de` anlegen, Inhalt von `landing/` pushen.
+3. Settings → Pages → Source: **Deploy from a branch** (`main` / root).
+4. DNS für `ritmopadel.de`: dieselben 4 A-Records wie für die App.
+5. Settings → Pages → Custom domain: `ritmopadel.de` → Save → HTTPS.
+6. Test in Incognito: `https://ritmopadel.de/` → Landing-Page mit
+   Button zur App.
 
 ## Spielstil-Bilder
 

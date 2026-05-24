@@ -95,3 +95,75 @@ CREATE POLICY "own matches insert" ON ritmo_matches
 DROP POLICY IF EXISTS "own matches delete" ON ritmo_matches;
 CREATE POLICY "own matches delete" ON ritmo_matches
   FOR DELETE USING (auth.uid() = user_id);
+
+-- ─── Beta-Key Gating (Registration only via single-use key) ─────
+-- Die Tabelle ist absichtlich NICHT direkt für anon-Clients lesbar
+-- oder beschreibbar. Stattdessen exponieren wir zwei SECURITY DEFINER
+-- Funktionen, die als einzige Schnittstelle die Tabelle berühren:
+--   check_beta_key(code)        — read-only, prüft Validität
+--   redeem_beta_key(code,email) — atomarer UPDATE auf used_at
+-- So kann ein Angreifer den Tabellen-Inhalt weder enumerieren noch
+-- den used_at-Flag manuell setzen / zurücksetzen.
+CREATE TABLE IF NOT EXISTS ritmo_beta_keys (
+  code        TEXT PRIMARY KEY,           -- z.B. "RITMO-XK7H-29MA"
+  note        TEXT,                       -- optionaler Admin-Vermerk
+  used_at     TIMESTAMPTZ,                -- NULL = noch verfügbar
+  used_by     TEXT,                       -- E-Mail des Einlösers (Audit)
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE ritmo_beta_keys ENABLE ROW LEVEL SECURITY;
+-- Bewusst KEINE Policy: alle direkten Zugriffe (anon, authenticated)
+-- werden ohne weitere Konfiguration geblockt. Nur die RPCs unten
+-- erreichen die Tabelle (über SECURITY DEFINER → owner-Rechte).
+
+-- Read-only check: existiert der Key UND ist noch unbenutzt?
+-- Gibt boolean zurück; leakt keine weiteren Metadaten.
+CREATE OR REPLACE FUNCTION check_beta_key(p_code TEXT)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_ok BOOLEAN;
+BEGIN
+  SELECT EXISTS (
+    SELECT 1 FROM ritmo_beta_keys
+    WHERE code = UPPER(TRIM(p_code))
+      AND used_at IS NULL
+  ) INTO v_ok;
+  RETURN COALESCE(v_ok, FALSE);
+END;
+$$;
+
+-- Atomarer Redeem: setzt used_at/used_by NUR wenn der Key noch
+-- unverbraucht ist. Race-condition-frei dank UPDATE … WHERE.
+-- Returns TRUE bei erfolgreichem Verbrauch, FALSE wenn der Key
+-- nicht existiert oder bereits eingelöst ist.
+CREATE OR REPLACE FUNCTION redeem_beta_key(p_code TEXT, p_email TEXT)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_rows INT;
+BEGIN
+  UPDATE ritmo_beta_keys
+     SET used_at = NOW(),
+         used_by = LOWER(TRIM(p_email))
+   WHERE code = UPPER(TRIM(p_code))
+     AND used_at IS NULL;
+  GET DIAGNOSTICS v_rows = ROW_COUNT;
+  RETURN v_rows > 0;
+END;
+$$;
+
+-- Anon (unangemeldete) Clients dürfen die RPCs aufrufen — aber nicht
+-- die Tabelle direkt. SECURITY DEFINER + fehlende RLS-Policy stellt
+-- sicher, dass die Logik nicht umgangen werden kann.
+REVOKE ALL ON FUNCTION check_beta_key(TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION redeem_beta_key(TEXT, TEXT) FROM PUBLIC;
+GRANT  EXECUTE ON FUNCTION check_beta_key(TEXT)         TO anon, authenticated;
+GRANT  EXECUTE ON FUNCTION redeem_beta_key(TEXT, TEXT)  TO anon, authenticated;

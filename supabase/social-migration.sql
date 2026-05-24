@@ -229,3 +229,67 @@ CREATE POLICY "invites recipient update" ON ritmo_match_invites
   FOR UPDATE USING (auth.uid() = to_user_id) WITH CHECK (auth.uid() = to_user_id);
 CREATE POLICY "invites sender delete" ON ritmo_match_invites
   FOR DELETE USING (auth.uid() = from_user_id);
+
+-- ─── Club Cover Image ──────────────────────────────────────────
+-- Base64-JPEG (resized ≤ 800 px client-seitig). Wer keinen Cover
+-- hochlädt, hat NULL — die UI rendert ein Bauhaus-Fallback.
+ALTER TABLE ritmo_clubs
+  ADD COLUMN IF NOT EXISTS cover TEXT;
+
+-- ─── Club Chat Messages ────────────────────────────────────────
+-- Eine Zeile pro gesendeter Nachricht in einem Club-Chat. Nur
+-- Mitglieder dürfen lesen + posten — die RLS-Policies prüfen
+-- ritmo_club_members als Sub-Query.
+CREATE TABLE IF NOT EXISTS ritmo_club_messages (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  club_id    UUID NOT NULL REFERENCES ritmo_clubs(id) ON DELETE CASCADE,
+  user_id    UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  body       TEXT NOT NULL CHECK (length(body) BETWEEN 1 AND 2000),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS ritmo_club_messages_club_idx
+  ON ritmo_club_messages (club_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS ritmo_club_messages_user_idx
+  ON ritmo_club_messages (user_id);
+
+ALTER TABLE ritmo_club_messages ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "club msg member read"  ON ritmo_club_messages;
+DROP POLICY IF EXISTS "club msg member write" ON ritmo_club_messages;
+-- Lesen darf nur, wer als Mitglied im Club steht.
+CREATE POLICY "club msg member read" ON ritmo_club_messages
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM ritmo_club_members cm
+      WHERE cm.club_id = ritmo_club_messages.club_id
+        AND cm.user_id = auth.uid()
+    )
+  );
+-- Schreiben nur als sich selbst UND nur wenn man Mitglied ist.
+CREATE POLICY "club msg member write" ON ritmo_club_messages
+  FOR INSERT WITH CHECK (
+    auth.uid() = user_id
+    AND EXISTS (
+      SELECT 1 FROM ritmo_club_members cm
+      WHERE cm.club_id = ritmo_club_messages.club_id
+        AND cm.user_id = auth.uid()
+    )
+  );
+
+-- ─── Chat-Read-State ───────────────────────────────────────────
+-- Speichert pro (user, club) den last_read-Timestamp. Wird beim
+-- Öffnen eines Chats auf NOW() gesetzt; "ungelesen"-Count =
+-- ritmo_club_messages WHERE created_at > last_read_at.
+CREATE TABLE IF NOT EXISTS ritmo_chat_reads (
+  user_id      UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  club_id      UUID NOT NULL REFERENCES ritmo_clubs(id) ON DELETE CASCADE,
+  last_read_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (user_id, club_id)
+);
+
+ALTER TABLE ritmo_chat_reads ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "reads self all" ON ritmo_chat_reads;
+CREATE POLICY "reads self all" ON ritmo_chat_reads
+  FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);

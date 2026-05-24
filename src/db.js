@@ -582,16 +582,34 @@ export async function isFollowing(followeeId) {
   } catch (e) { return false; }
 }
 
+/* PostgREST kann ritmo_followers ↔ ritmo_profiles nicht automatisch
+   joinen — beide Tabellen referenzieren auth.users(id), aber es gibt
+   keinen direkten FK zwischen ihnen. Wir fetchen daher in zwei
+   Schritten: erst die Beziehungs-Rows, dann die Profile zu den
+   beteiligten user_ids, und mergen client-seitig. */
+async function _attachProfiles(c, rows, key) {
+  if (!rows || rows.length === 0) return rows || [];
+  const ids = Array.from(new Set(rows.map(r => r[key]).filter(Boolean)));
+  if (ids.length === 0) return rows;
+  const { data, error } = await c
+    .from('ritmo_profiles')
+    .select('user_id,display_name,data,is_public')
+    .in('user_id', ids);
+  if (error) { console.warn('[db] _attachProfiles:', error.message); return rows; }
+  const map = Object.fromEntries((data || []).map(p => [p.user_id, p]));
+  return rows.map(r => ({ ...r, profile: map[r[key]] || null }));
+}
+
 /** Liste aller Follower / Followees mit aufgelöstem Profil. */
 export async function listFollowers(userId, { limit = 100 } = {}) {
   const c = sb();
   if (!c || !userId) return [];
   try {
     const { data, error } = await c.from('ritmo_followers')
-      .select('follower_id,created_at,profile:ritmo_profiles!ritmo_followers_follower_id_fkey(user_id,display_name,data)')
+      .select('follower_id,created_at')
       .eq('followee_id', userId).order('created_at', { ascending: false }).limit(limit);
     if (error) { console.warn('[db] listFollowers:', error.message); return []; }
-    return data || [];
+    return await _attachProfiles(c, data || [], 'follower_id');
   } catch (e) { return []; }
 }
 export async function listFollowing(userId, { limit = 100 } = {}) {
@@ -599,10 +617,10 @@ export async function listFollowing(userId, { limit = 100 } = {}) {
   if (!c || !userId) return [];
   try {
     const { data, error } = await c.from('ritmo_followers')
-      .select('followee_id,created_at,profile:ritmo_profiles!ritmo_followers_followee_id_fkey(user_id,display_name,data)')
+      .select('followee_id,created_at')
       .eq('follower_id', userId).order('created_at', { ascending: false }).limit(limit);
     if (error) { console.warn('[db] listFollowing:', error.message); return []; }
-    return data || [];
+    return await _attachProfiles(c, data || [], 'followee_id');
   } catch (e) { return []; }
 }
 
@@ -682,11 +700,25 @@ export async function clubMembers(clubId, { limit = 100 } = {}) {
   if (!c || !clubId) return [];
   try {
     const { data, error } = await c.from('ritmo_club_members')
-      .select('user_id,role,joined_at,profile:ritmo_profiles!ritmo_club_members_user_id_fkey(user_id,display_name,data)')
+      .select('user_id,role,joined_at')
       .eq('club_id', clubId).order('joined_at').limit(limit);
     if (error) { console.warn('[db] clubMembers:', error.message); return []; }
-    return data || [];
+    return await _attachProfiles(c, data || [], 'user_id');
   } catch (e) { return []; }
+}
+
+/** Schnelle Count-Query ohne Profile — wird in der Club-Card und
+ *  Club-Header benutzt, damit auch nicht-Mitglieder die Größe sehen. */
+export async function clubMemberCount(clubId) {
+  const c = sb();
+  if (!c || !clubId) return 0;
+  try {
+    const { count, error } = await c.from('ritmo_club_members')
+      .select('*', { count: 'exact', head: true })
+      .eq('club_id', clubId);
+    if (error) { console.warn('[db] clubMemberCount:', error.message); return 0; }
+    return count || 0;
+  } catch (e) { return 0; }
 }
 
 export async function isClubMember(clubId) {
@@ -703,143 +735,164 @@ export async function isClubMember(clubId) {
   } catch (e) { return false; }
 }
 
-/* ───────── BOOKABLE MATCHES ───────── */
-
-export async function listBookings({ clubId = null, mine = false, limit = 50 } = {}) {
-  const c = sb();
-  if (!c) return [];
-  try {
-    let q = c.from('ritmo_bookable_matches')
-      .select('id,host_id,club_id,court_label,starts_at,duration_min,level_min,level_max,format,total_slots,notes,created_at')
-      .gte('starts_at', new Date(Date.now() - 6 * 3600 * 1000).toISOString())
-      .order('starts_at').limit(limit);
-    if (clubId) q = q.eq('club_id', clubId);
-    if (mine) {
-      const uid = await currentUserId();
-      if (!uid) return [];
-      q = q.eq('host_id', uid);
-    }
-    const { data, error } = await q;
-    if (error) { console.warn('[db] listBookings:', error.message); return []; }
-    return data || [];
-  } catch (e) { return []; }
-}
-
-export async function fetchBooking(id) {
-  const c = sb();
-  if (!c || !id) return null;
-  try {
-    const { data, error } = await c.from('ritmo_bookable_matches')
-      .select('*').eq('id', id).maybeSingle();
-    if (error) { console.warn('[db] fetchBooking:', error.message); return null; }
-    return data || null;
-  } catch (e) { return null; }
-}
-
-export async function createBooking(input) {
+/* ───────── CLUB UPDATE (cover + desc) ─────────
+   Patcht einen Club. RLS lässt das nur durch den Owner durch. */
+export async function updateClub(clubId, patch) {
   const c = sb();
   if (!c) throw new Error('Verbindung nicht verfügbar.');
-  const uid = await currentUserId();
-  if (!uid) throw new Error('Bitte zuerst anmelden.');
-  if (!input?.starts_at) throw new Error('Startzeit fehlt.');
-  const payload = {
-    host_id: uid,
-    club_id: input.club_id || null,
-    court_label: input.court_label?.trim() || null,
-    starts_at: input.starts_at,
-    duration_min: input.duration_min || 90,
-    level_min: input.level_min ?? null,
-    level_max: input.level_max ?? null,
-    format: input.format || 'bo3',
-    total_slots: input.total_slots || 4,
-    notes: input.notes?.trim() || null,
-  };
-  const { data, error } = await c.from('ritmo_bookable_matches')
-    .insert(payload).select('*').single();
-  if (error) throw new Error(error.message || 'Match konnte nicht angelegt werden.');
-  // Host nimmt automatisch slot 0.
-  await c.from('ritmo_match_slots').insert({ match_id: data.id, slot_index: 0, user_id: uid });
+  if (!clubId) throw new Error('Club-ID fehlt.');
+  const allowed = {};
+  ['name', 'city', 'description', 'cover'].forEach(k => {
+    if (Object.prototype.hasOwnProperty.call(patch, k)) allowed[k] = patch[k];
+  });
+  const { data, error } = await c.from('ritmo_clubs')
+    .update(allowed).eq('id', clubId).select('*').single();
+  if (error) throw new Error(error.message || 'Club konnte nicht aktualisiert werden.');
   return data;
 }
 
-export async function bookingSlots(matchId) {
+/* ═══════════════════════════════════════════════════════════════
+   CLUB CHAT
+   - Nachrichten lesen / posten (RLS-gated auf Mitglieder)
+   - Read-State pro User (für unread-Counter)
+   - Realtime-Subscribe pro Club
+═══════════════════════════════════════════════════════════════ */
+
+/** Lädt die letzten N Nachrichten eines Clubs (chronologisch).
+ *  Profile werden client-seitig gemerged (siehe _attachProfiles). */
+export async function listClubMessages(clubId, { limit = 100 } = {}) {
   const c = sb();
-  if (!c || !matchId) return [];
+  if (!c || !clubId) return [];
   try {
-    const { data, error } = await c.from('ritmo_match_slots')
-      .select('match_id,slot_index,user_id,joined_at,profile:ritmo_profiles!ritmo_match_slots_user_id_fkey(user_id,display_name,data)')
-      .eq('match_id', matchId).order('slot_index');
-    if (error) { console.warn('[db] bookingSlots:', error.message); return []; }
-    return data || [];
+    const { data, error } = await c.from('ritmo_club_messages')
+      .select('id,club_id,user_id,body,created_at')
+      .eq('club_id', clubId)
+      .order('created_at', { ascending: false }).limit(limit);
+    if (error) { console.warn('[db] listClubMessages:', error.message); return []; }
+    const merged = await _attachProfiles(c, data || [], 'user_id');
+    return merged.reverse(); // oldest first für die UI
   } catch (e) { return []; }
 }
 
-export async function joinSlot(matchId, slotIndex) {
+/** Postet eine Nachricht im Club-Chat. Liefert die neue Row. */
+export async function sendClubMessage(clubId, body) {
   const c = sb();
   if (!c) throw new Error('Verbindung nicht verfügbar.');
   const uid = await currentUserId();
   if (!uid) throw new Error('Bitte zuerst anmelden.');
-  const { error } = await c.from('ritmo_match_slots')
-    .insert({ match_id: matchId, slot_index: slotIndex, user_id: uid });
-  if (error) throw new Error(error.message || 'Slot konnte nicht belegt werden.');
-  return true;
+  const text = (body || '').toString().trim();
+  if (!text) throw new Error('Leere Nachricht.');
+  if (text.length > 2000) throw new Error('Nachricht zu lang (max. 2000 Zeichen).');
+  const { data, error } = await c.from('ritmo_club_messages')
+    .insert({ club_id: clubId, user_id: uid, body: text })
+    .select('id,club_id,user_id,body,created_at').single();
+  if (error) throw new Error(error.message || 'Nachricht konnte nicht gesendet werden.');
+  return data;
 }
 
-export async function leaveSlot(matchId) {
+/** Markiert einen Chat als gelesen (last_read_at = NOW()). */
+export async function markChatRead(clubId) {
   const c = sb();
-  if (!c) return false;
+  if (!c || !clubId) return false;
   const uid = await currentUserId();
   if (!uid) return false;
   try {
-    const { error } = await c.from('ritmo_match_slots')
-      .delete().eq('match_id', matchId).eq('user_id', uid);
-    if (error) { console.warn('[db] leaveSlot:', error.message); return false; }
+    const { error } = await c.from('ritmo_chat_reads')
+      .upsert({ user_id: uid, club_id: clubId, last_read_at: new Date().toISOString() },
+        { onConflict: 'user_id,club_id' });
+    if (error) { console.warn('[db] markChatRead:', error.message); return false; }
     return true;
   } catch (e) { return false; }
 }
 
-/* ───────── INVITES ───────── */
-
-export async function listIncomingInvites({ limit = 50 } = {}) {
+/** Liefert für den aktuellen User die Chat-Liste: alle Clubs in
+ *  denen er Mitglied ist + letzte Nachricht + unread-Count.
+ *  Wird auf dem RITMO-Post-Chats-Tab gerendert. */
+export async function listMyChats() {
   const c = sb();
   if (!c) return [];
   const uid = await currentUserId();
   if (!uid) return [];
   try {
-    const { data, error } = await c.from('ritmo_match_invites')
-      .select('id,match_id,from_user_id,status,created_at,responded_at,'
-        + 'from_profile:ritmo_profiles!ritmo_match_invites_from_user_id_fkey(user_id,display_name,data),'
-        + 'match:ritmo_bookable_matches(id,starts_at,court_label,format,total_slots)')
-      .eq('to_user_id', uid).order('created_at', { ascending: false }).limit(limit);
-    if (error) { console.warn('[db] listIncomingInvites:', error.message); return []; }
-    return data || [];
-  } catch (e) { return []; }
+    // 1. Clubs in denen ich Mitglied bin
+    const { data: mems, error: e1 } = await c.from('ritmo_club_members')
+      .select('club_id,joined_at').eq('user_id', uid);
+    if (e1 || !mems || mems.length === 0) return [];
+    const ids = mems.map(m => m.club_id);
+
+    // 2. Club-Stammdaten
+    const { data: clubs, error: e2 } = await c.from('ritmo_clubs')
+      .select('id,name,city,cover').in('id', ids);
+    if (e2) { console.warn('[db] listMyChats clubs:', e2.message); return []; }
+
+    // 3. Letzte Nachricht pro Club (eine Query, dann clientseitig
+    //    nach club_id mappen). Limit hoch ansetzen, damit pro Club
+    //    eine kommt.
+    const { data: msgs, error: e3 } = await c.from('ritmo_club_messages')
+      .select('id,club_id,user_id,body,created_at')
+      .in('club_id', ids)
+      .order('created_at', { ascending: false })
+      .limit(ids.length * 5);
+    if (e3) { console.warn('[db] listMyChats msgs:', e3.message); }
+    const lastByClub = {};
+    (msgs || []).forEach(m => { if (!lastByClub[m.club_id]) lastByClub[m.club_id] = m; });
+
+    // 4. Read-State pro Club für mich
+    const { data: reads } = await c.from('ritmo_chat_reads')
+      .select('club_id,last_read_at').eq('user_id', uid);
+    const readsByClub = Object.fromEntries((reads || []).map(r => [r.club_id, r.last_read_at]));
+
+    // 5. Unread-Counts: lookup ungelesen per Club via einzelnen
+    //    count-queries (für die Beta günstig genug). Bei vielen
+    //    Clubs sollte das später eine RPC ersetzen.
+    const unreadCounts = await Promise.all(ids.map(async cid => {
+      const since = readsByClub[cid] || '1970-01-01T00:00:00Z';
+      const { count } = await c.from('ritmo_club_messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('club_id', cid)
+        .gt('created_at', since)
+        .neq('user_id', uid);  // eigene Nachrichten zählen nicht
+      return { cid, unread: count || 0 };
+    }));
+    const unreadMap = Object.fromEntries(unreadCounts.map(u => [u.cid, u.unread]));
+
+    // 6. Zusammenführen
+    const clubsById = Object.fromEntries((clubs || []).map(cl => [cl.id, cl]));
+    return ids
+      .map(cid => ({
+        club: clubsById[cid] || { id: cid, name: '—' },
+        lastMessage: lastByClub[cid] || null,
+        unread: unreadMap[cid] || 0,
+      }))
+      .sort((a, b) => {
+        // Sort: ungelesene zuerst, dann nach letzter Nachricht.
+        if ((b.unread > 0) !== (a.unread > 0)) return (b.unread > 0) ? 1 : -1;
+        const ta = a.lastMessage?.created_at || '';
+        const tb = b.lastMessage?.created_at || '';
+        return tb.localeCompare(ta);
+      });
+  } catch (e) { console.warn('[db] listMyChats threw:', e?.message); return []; }
 }
 
-export async function sendInvite(matchId, toUserId) {
-  const c = sb();
-  if (!c) throw new Error('Verbindung nicht verfügbar.');
-  const uid = await currentUserId();
-  if (!uid) throw new Error('Bitte zuerst anmelden.');
-  if (uid === toUserId) throw new Error('Selbst-Einladungen sind nicht erlaubt.');
-  const { error } = await c.from('ritmo_match_invites')
-    .insert({ match_id: matchId, from_user_id: uid, to_user_id: toUserId, status: 'pending' });
-  if (error && error.code !== '23505') {
-    throw new Error(error.message || 'Einladung konnte nicht gesendet werden.');
-  }
-  return true;
+/** Aggregierte Unread-Zahl über alle Chats des Users — für den
+ *  roten Punkt am Post-Icon auf dem Home-Screen. */
+export async function totalUnreadCount() {
+  const chats = await listMyChats();
+  return chats.reduce((s, c) => s + (c.unread || 0), 0);
 }
 
-export async function respondInvite(inviteId, accept) {
+/** Realtime-Subscribe auf neue Nachrichten eines Clubs.
+ *  Liefert eine unsubscribe-Funktion zurück. */
+export function subscribeClubMessages(clubId, onInsert) {
   const c = sb();
-  if (!c) return false;
-  const uid = await currentUserId();
-  if (!uid) return false;
-  try {
-    const { error } = await c.from('ritmo_match_invites')
-      .update({ status: accept ? 'accepted' : 'declined', responded_at: new Date().toISOString() })
-      .eq('id', inviteId).eq('to_user_id', uid);
-    if (error) { console.warn('[db] respondInvite:', error.message); return false; }
-    return true;
-  } catch (e) { return false; }
+  if (!c || !clubId) return () => {};
+  const channel = c.channel(`club-msg-${clubId}`)
+    .on('postgres_changes', {
+      event: 'INSERT', schema: 'public', table: 'ritmo_club_messages',
+      filter: `club_id=eq.${clubId}`,
+    }, (payload) => {
+      if (typeof onInsert === 'function') onInsert(payload.new);
+    })
+    .subscribe();
+  return () => { try { c.removeChannel(channel); } catch (e) {} };
 }

@@ -8,8 +8,10 @@ import { loadProfile as dbLoadProfile, saveProfile as dbSaveProfile, logMatch as
   fetchPublicProfile, searchPlayers, followUser, unfollowUser, followCounts, isFollowing,
   listFollowers, listFollowing,
   listClubs, fetchClub, createClub, joinClub, leaveClub, clubMembers, isClubMember,
-  listBookings, fetchBooking, createBooking, bookingSlots, joinSlot, leaveSlot,
-  listIncomingInvites, sendInvite, respondInvite } from "./db.js";
+  clubMemberCount, updateClub,
+  listClubMessages, sendClubMessage, markChatRead, listMyChats, totalUnreadCount,
+  subscribeClubMessages
+  } from "./db.js";
 
 /* ── Refactor (Phase 1): pure modules extracted from App.jsx.
    Components, screens and routing remain colocated here for now;
@@ -2452,10 +2454,11 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
   );
 }
 
-function Home({nav,activeTab,setActiveTab,profile,onboarded}){
+function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
   // Hinweis-Banner falls Onboarding nicht abgeschlossen ist UND der
   // User nicht den Test-Bypass benutzt (Test-User hat onboarded=true).
   const needsOnboarding=!onboarded;
+  const hasUnread=(unread||0)>0;
   return(
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden'}}>
@@ -2483,10 +2486,19 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded}){
               aria-label="RITMO Post"
               style={{width:44,height:44,borderRadius:'50%',flexShrink:0,
                 background:'rgba(0,0,0,0.22)',border:'1px solid rgba(255,255,255,0.18)',
-                color:'#FFFFFF',cursor:'pointer',padding:0,
+                color:'#FFFFFF',cursor:'pointer',padding:0,position:'relative',
                 display:'flex',alignItems:'center',justifyContent:'center',
                 boxShadow:'0 2px 8px rgba(0,0,0,0.25)'}}>
               <RitmoPostIcon size={22} color="currentColor"/>
+              {hasUnread&&(
+                /* Notification-Dot — roter Punkt oben-rechts wenn
+                   ungelesene Nachrichten existieren. */
+                <span aria-label="Ungelesene Nachrichten"
+                  style={{position:'absolute',top:4,right:5,
+                    width:11,height:11,borderRadius:'50%',
+                    background:'#E84545',border:'2px solid rgba(0,0,0,0.45)',
+                    boxShadow:'0 0 0 2px rgba(232,69,69,.35)'}}/>
+              )}
             </button>
             <ProfileAvatar name={profile?.name} avatar={profile?.avatar} size={88}
               onClick={(e)=>{e?.stopPropagation?.();nav('profile');}}/>
@@ -2571,22 +2583,6 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded}){
           <div style={{flex:1}}>
             <div style={{color:T.o,fontSize:18,fontWeight:700,marginBottom:3}}>Turnier</div>
             <div style={{color:T.t3,fontSize:12,fontWeight:500}}>Americano | Mexicano</div>
-          </div>
-        </button>
-
-        {/* Matches buchen — offene Spielangebote */}
-        <button onClick={()=>nav('bookings')} className="fu"
-          style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:18,
-            padding:'18px 20px',display:'flex',alignItems:'center',gap:18,
-            cursor:'pointer',color:T.t1,textAlign:'left',transition:'background .15s',
-            animationDelay:'.08s'}}
-          onPointerDown={e=>e.currentTarget.style.background=T.card2}
-          onPointerUp={e=>e.currentTarget.style.background=T.card}
-          onPointerLeave={e=>e.currentTarget.style.background=T.card}>
-          <CourtIcon size={42}/>
-          <div style={{flex:1}}>
-            <div style={{color:T.o,fontSize:18,fontWeight:700,marginBottom:3}}>Match buchen</div>
-            <div style={{color:T.t3,fontSize:12,fontWeight:500}}>Offene Matches | Spieler einladen</div>
           </div>
         </button>
 
@@ -6753,13 +6749,34 @@ function SettingsKonto({onBack,onHome,onLogout}){
    Phase 1: leere Posteingänge mit Empty-States. Inhalte folgen,
    sobald Real-Time-Notifications und Chats wired sind.
 ═══════════════════════════════════════════════════════════════ */
-function RitmoPost({onHome,profile,onOpenInvites,onOpenBookings}){
+function RitmoPost({onHome,profile,onOpenChat}){
   const[tab,setTab]=useState('notify');
+  const[chats,setChats]=useState([]);
+  const[chatsBusy,setChatsBusy]=useState(false);
+  // Lade die Chats-Liste sobald der Chats-Tab aktiv wird. Nicht eager,
+  // damit beim Tab-Wechsel die letzten Unread-Counts frisch sind.
+  useEffect(()=>{
+    if(tab!=='chats') return;
+    let cancelled=false;
+    setChatsBusy(true);
+    listMyChats().then(c=>{ if(!cancelled){ setChats(c); setChatsBusy(false); } });
+    return()=>{cancelled=true;};
+  },[tab]);
   const tabs=[
     {id:'notify',label:'Benachrichtigungen',short:'Updates'},
     {id:'chats', label:'Chats',short:'Chats'},
     {id:'events',label:'Events',short:'Events'},
   ];
+  const fmtAgo=(iso)=>{
+    if(!iso) return '';
+    const d=new Date(iso);
+    const now=Date.now();
+    const diff=Math.floor((now-d.getTime())/1000);
+    if(diff<60) return 'jetzt';
+    if(diff<3600) return Math.floor(diff/60)+' Min';
+    if(diff<86400) return Math.floor(diff/3600)+' h';
+    return d.toLocaleDateString('de-DE',{day:'2-digit',month:'short'});
+  };
 
   return(
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
@@ -6817,24 +6834,76 @@ function RitmoPost({onHome,profile,onOpenInvites,onOpenBookings}){
         {tab==='notify'&&(
           <RitmoPostEmpty
             icon={<BellIcon size={28} color="currentColor"/>}
-            title="Match-Einladungen ansehen"
-            desc="Eingehende Einladungen zu offenen Matches findest du im eigenen Posteingang."
-            cta={{label:'Einladungen öffnen',onClick:onOpenInvites}}/>
+            title="Noch keine Benachrichtigungen"
+            desc="Match-Reminder, Turnier-Alerts und Updates landen hier, sobald sie für dich relevant sind."/>
         )}
 
         {tab==='chats'&&(
-          <RitmoPostEmpty
-            icon={<RitmoPostIcon size={28} color="currentColor"/>}
-            title="Noch keine Chats"
-            desc="Schreib mit Mitspielern, Turnier-Hosts und der RITMO Community. Coming soon."/>
+          chatsBusy?(
+            <div style={{color:T.t3,fontSize:13,padding:'24px 0',textAlign:'center'}}>Lädt …</div>
+          ):chats.length===0?(
+            <RitmoPostEmpty
+              icon={<RitmoPostIcon size={28} color="currentColor"/>}
+              title="Noch keine Chats"
+              desc="Sobald du einem Club beitrittst, erscheint sein Chat hier."/>
+          ):(
+            <div style={{display:'flex',flexDirection:'column',gap:10}}>
+              {chats.map((c,i)=>(
+                <button key={c.club.id} onClick={()=>onOpenChat&&onOpenChat(c.club.id)}
+                  className="fu" style={{
+                    background:T.card,border:`1px solid ${c.unread>0?T.o:T.border}`,borderRadius:14,
+                    padding:'12px 14px',display:'flex',alignItems:'center',gap:12,
+                    cursor:'pointer',color:T.t1,textAlign:'left',
+                    animationDelay:`${i*0.03}s`}}>
+                  {/* Mini-Cover */}
+                  {c.club.cover?(
+                    <img src={c.club.cover} alt={c.club.name}
+                      style={{width:42,height:42,borderRadius:10,objectFit:'cover',
+                        flexShrink:0,border:`1px solid ${T.border}`}}/>
+                  ):(
+                    <div style={{flexShrink:0,width:42,height:42,borderRadius:10,
+                      background:T.card2,border:`1px solid ${T.border}`,color:T.o,
+                      display:'flex',alignItems:'center',justifyContent:'center'}}>
+                      <TrophyIcon size={20}/>
+                    </div>
+                  )}
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{display:'flex',alignItems:'baseline',gap:8}}>
+                      <div style={{color:T.t1,fontSize:14,fontWeight:c.unread>0?800:700,
+                        letterSpacing:-.1,
+                        whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',flex:1}}>
+                        {c.club.name}
+                      </div>
+                      {c.lastMessage&&(
+                        <div style={{color:T.t3,fontSize:10,fontWeight:600,flexShrink:0}}>
+                          {fmtAgo(c.lastMessage.created_at)}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{color:T.t2,fontSize:12,marginTop:2,
+                      whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',
+                      fontWeight:c.unread>0?600:400}}>
+                      {c.lastMessage?.body||'Noch keine Nachrichten.'}
+                    </div>
+                  </div>
+                  {c.unread>0&&(
+                    <div style={{flexShrink:0,minWidth:22,height:22,borderRadius:11,
+                      background:T.o,color:'#000',fontSize:11,fontWeight:900,
+                      padding:'0 7px',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                      {c.unread>99?'99+':c.unread}
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+          )
         )}
 
         {tab==='events'&&(
           <RitmoPostEmpty
-            icon={<CourtIcon size={28}/>}
-            title="Offene Matches ansehen"
-            desc="Buchbare Matches und Events findest du gebündelt unter „Match buchen“."
-            cta={{label:'Zu den Matches',onClick:onOpenBookings}}/>
+            icon={<TrophyIcon size={28}/>}
+            title="Noch keine Events"
+            desc="RITMO Turniere, Open Days und Meetups in deiner Nähe — sobald die ersten Daten verfügbar sind."/>
         )}
       </div>
 
@@ -6932,13 +7001,29 @@ function PlayerListItem({profile,onClick,trailing}){
   );
 }
 
-/* ── Generischer Screen-Wrapper (Header + Home-FAB) ──────────────── */
-function SocialScreen({eyebrow,title,desc,icon,onHome,children}){
+/* ── Generischer Screen-Wrapper (Header + Home-FAB)
+   Optional onBack rendert eine kleine Zurück-Pille oben links — etwa
+   um vom PublicProfile zurück zur Player-Suche zu kommen. Home-FAB
+   bleibt erhalten, damit ein User immer auch direkt nach Hause kann. */
+function SocialScreen({eyebrow,title,desc,icon,onHome,onBack,backLabel='Zurück',children}){
   return(
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',
       position:'relative',overflow:'hidden'}}>
       <div className="fi" style={{padding:'0 22px 14px'}}>
+        {onBack&&(
+          <button onClick={onBack}
+            style={{display:'inline-flex',alignItems:'center',gap:6,
+              background:'transparent',border:`1px solid ${T.border}`,
+              borderRadius:999,padding:'5px 12px 5px 8px',color:T.t2,
+              fontSize:12,fontWeight:700,letterSpacing:.3,cursor:'pointer',
+              marginBottom:12,maxWidth:'fit-content'}}>
+            <span style={{transform:'rotate(180deg)',display:'inline-flex'}}>
+              <ChevronRightIcon size={14} color="currentColor"/>
+            </span>
+            {backLabel}
+          </button>
+        )}
         <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
           {icon&&(
             <div style={{flexShrink:0,color:T.o,
@@ -7027,7 +7112,7 @@ function PlayerSearch({onHome,onOpenPlayer}){
 }
 
 /* ═══ PublicProfile — Profil eines anderen Spielers ═══ */
-function PublicProfile({userId,currentUid,onHome,onBack}){
+function PublicProfile({userId,currentUid,onHome,onBack,backLabel}){
   const[prof,setProf]=useState(null);
   const[counts,setCounts]=useState({followers:0,following:0});
   const[following,setFollowing]=useState(false);
@@ -7065,7 +7150,8 @@ function PublicProfile({userId,currentUid,onHome,onBack}){
 
   return(
     <SocialScreen eyebrow="Profil" title={name}
-      icon={<PersonGlyph size={22}/>} onHome={onHome}>
+      icon={<PersonGlyph size={22}/>} onHome={onHome}
+      onBack={onBack} backLabel={backLabel||'Zurück'}>
       {!prof?(
         <RitmoPostEmpty icon={<EyeIcon size={28}/>}
           title="Profil nicht verfügbar"
@@ -7237,25 +7323,82 @@ function Clubs({onHome,onOpenClub,onCreateClub}){
 }
 
 /* ═══ ClubCreate — Formular ═══ */
-function ClubCreate({onHome,onDone,onCancel}){
-  const[name,setName]=useState('');
-  const[city,setCity]=useState('');
-  const[desc,setDesc]=useState('');
+function ClubCreate({onHome,onDone,onCancel,initial}){
+  // Doppel-funktion: ohne `initial` ist es Anlage, mit `initial` wird
+  // dieselbe Maske als Edit-Formular vom Owner benutzt.
+  const editMode=!!initial;
+  const[name,setName]=useState(initial?.name||'');
+  const[city,setCity]=useState(initial?.city||'');
+  const[desc,setDesc]=useState(initial?.description||'');
+  const[cover,setCover]=useState(initial?.cover||null);
   const[busy,setBusy]=useState(false);
   const[err,setErr]=useState('');
+  const coverInput=useRef(null);
+  const pickCover=async(e)=>{
+    const f=e.target.files?.[0];
+    e.target.value='';
+    if(!f) return;
+    try{
+      // Re-encoded JPEG ≤ 1200 px Kante hält die Cover unter ~200 KB
+      const url=await readImageAsDataUrl(f);
+      const resized=await resizeImage(url,1200);
+      setCover(resized);
+    }catch(err){ console.warn('[club cover]',err); }
+  };
   const save=async()=>{
     setErr(''); setBusy(true);
     try{
-      const club=await createClub({name,city,description:desc});
-      onDone(club);
+      if(editMode){
+        const c=await updateClub(initial.id,{name,city,description:desc,cover});
+        onDone(c);
+      } else {
+        const c=await createClub({name,city,description:desc});
+        // Cover separat patchen (createClub akzeptiert keinen Cover-Param)
+        if(cover){
+          try{ await updateClub(c.id,{cover}); c.cover=cover; }catch(e){ console.warn('[cover]',e); }
+        }
+        onDone(c);
+      }
     }catch(e){ setErr(e.message||'Fehler.'); }
     finally{ setBusy(false); }
   };
   return(
-    <SocialScreen eyebrow="Clubs" title="Neuer Club"
-      desc="Leg den Namen fest — der Rest folgt."
-      icon={<TrophyIcon size={22}/>} onHome={onHome}>
+    <SocialScreen eyebrow="Clubs" title={editMode?'Club bearbeiten':'Neuer Club'}
+      desc={editMode?'Aktualisiere Cover, Name oder Beschreibung.':'Leg den Namen fest — der Rest folgt.'}
+      icon={<TrophyIcon size={22}/>} onHome={onHome}
+      onBack={onCancel} backLabel={editMode?'Club':'Clubs'}>
       <div className="fu" style={{display:'flex',flexDirection:'column',gap:12}}>
+
+        {/* Cover-Upload */}
+        <div>
+          <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
+            textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Cover</div>
+          <button onClick={()=>coverInput.current?.click()}
+            style={{width:'100%',position:'relative',aspectRatio:'16/9',
+              background:T.card2,border:`1px dashed ${T.border}`,borderRadius:12,
+              overflow:'hidden',cursor:'pointer',color:T.t2,padding:0}}>
+            {cover?(
+              <img src={cover} alt="Cover"
+                style={{position:'absolute',inset:0,width:'100%',height:'100%',
+                  objectFit:'cover',display:'block'}}/>
+            ):(
+              <div style={{position:'absolute',inset:0,display:'flex',flexDirection:'column',
+                alignItems:'center',justifyContent:'center',gap:6,color:T.t3}}>
+                <TrophyIcon size={28}/>
+                <div style={{fontSize:12,fontWeight:600,letterSpacing:.3}}>Cover-Bild wählen</div>
+              </div>
+            )}
+            {cover&&(
+              <div style={{position:'absolute',right:10,top:10,
+                padding:'4px 10px',background:'rgba(0,0,0,.55)',color:'#fff',
+                fontSize:10,fontWeight:800,letterSpacing:1,borderRadius:6,
+                textTransform:'uppercase'}}>Ändern</div>
+            )}
+          </button>
+          <input ref={coverInput} type="file" accept="image/*"
+            onChange={pickCover} style={{display:'none'}}/>
+        </div>
+
         <div>
           <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
             textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Name *</div>
@@ -7277,11 +7420,11 @@ function ClubCreate({onHome,onDone,onCancel}){
         <div>
           <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
             textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Beschreibung</div>
-          <textarea value={desc} onChange={e=>setDesc(e.target.value)} rows={3}
-            placeholder="Was zeichnet euch aus?"
+          <textarea value={desc} onChange={e=>setDesc(e.target.value)} rows={4}
+            placeholder="Was zeichnet euch aus? Wann trefft ihr euch? Welche Levels seid ihr?"
             style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
               borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
-              outline:'none',boxSizing:'border-box',resize:'vertical'}}/>
+              outline:'none',boxSizing:'border-box',resize:'vertical',lineHeight:1.55}}/>
         </div>
         {err&&(
           <div style={{background:'rgba(232,69,69,.12)',border:'1px solid rgba(232,69,69,.4)',
@@ -7294,7 +7437,7 @@ function ClubCreate({onHome,onDone,onCancel}){
             color:'#000',fontSize:14,fontWeight:800,letterSpacing:.3,
             cursor:(busy||!name.trim())?'not-allowed':'pointer',
             opacity:(busy||!name.trim())?.55:1,marginTop:6}}>
-          {busy?'…':'Club gründen'}
+          {busy?'…':editMode?'Änderungen speichern':'Club gründen'}
         </button>
         <button onClick={onCancel}
           style={{padding:'12px 16px',background:'transparent',border:`1px solid ${T.border}`,
@@ -7307,17 +7450,24 @@ function ClubCreate({onHome,onDone,onCancel}){
 }
 
 /* ═══ ClubDetail ═══ */
-function ClubDetail({clubId,currentUid,onHome,onBack,onOpenPlayer}){
+function ClubDetail({clubId,currentUid,onHome,onBack,onOpenPlayer,onOpenChat,onEdit}){
   const[club,setClub]=useState(null);
   const[members,setMembers]=useState([]);
+  const[memberCount,setMemberCount]=useState(0);
   const[joined,setJoined]=useState(false);
   const[busy,setBusy]=useState(false);
 
   const refresh=useCallback(async()=>{
-    const [c,m,j]=await Promise.all([
-      fetchClub(clubId), clubMembers(clubId,{limit:50}), isClubMember(clubId)
+    // Vier parallele Reads. memberCount nutzt eine eigene head:true-Query
+    // damit auch nicht-Mitglieder die Größe sehen können, falls RLS später
+    // strenger wird.
+    const [c,m,n,j]=await Promise.all([
+      fetchClub(clubId),
+      clubMembers(clubId,{limit:50}),
+      clubMemberCount(clubId),
+      isClubMember(clubId),
     ]);
-    setClub(c); setMembers(m); setJoined(j);
+    setClub(c); setMembers(m); setMemberCount(n); setJoined(j);
   },[clubId]);
   useEffect(()=>{ refresh(); },[refresh]);
 
@@ -7331,20 +7481,77 @@ function ClubDetail({clubId,currentUid,onHome,onBack,onOpenPlayer}){
   };
 
   const isOwner=club?.owner_id===currentUid;
+  const cover=club?.cover;
 
   return(
     <SocialScreen eyebrow="Club" title={club?.name||'Lädt …'}
       desc={club?.city||''}
-      icon={<TrophyIcon size={22}/>} onHome={onHome}>
+      icon={<TrophyIcon size={22}/>} onHome={onHome}
+      onBack={onBack} backLabel="Clubs">
       {!club?null:(
         <Fragment>
+          {/* Hero-Image (Cover) — mit Bauhaus-Fallback wenn null */}
+          <div className="fu" style={{position:'relative',width:'100%',aspectRatio:'16/9',
+            borderRadius:14,overflow:'hidden',marginBottom:12,
+            background:T.card2,border:`1px solid ${T.border}`}}>
+            {cover?(
+              <img src={cover} alt={club.name}
+                style={{position:'absolute',inset:0,width:'100%',height:'100%',
+                  objectFit:'cover',display:'block'}}/>
+            ):(
+              /* Bauhaus-Komposition als Default-Cover */
+              <svg viewBox="0 0 400 225" preserveAspectRatio="xMidYMid slice"
+                style={{position:'absolute',inset:0,width:'100%',height:'100%'}}>
+                <rect width="400" height="225" fill="#0A0A0A"/>
+                <circle cx="90" cy="80" r="60" fill="#FFD60A"/>
+                <rect x="170" y="40" width="100" height="100" fill="#0A84FF"/>
+                <polygon points="60,180 260,180 160,80" fill="#E84545" opacity=".85"/>
+                <rect x="20" y="195" width="360" height="6" fill="#FF7A1A"/>
+              </svg>
+            )}
+            {/* Untere Verdunkelung für Lesbarkeit des Titel-Overlays */}
+            <div style={{position:'absolute',left:0,right:0,bottom:0,height:'55%',
+              background:'linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,.72) 100%)',
+              pointerEvents:'none'}}/>
+            {/* Titel + Stadt im Hero — über dem Cover */}
+            <div style={{position:'absolute',left:16,right:16,bottom:14,
+              color:'#FFFFFF'}}>
+              <div style={{fontSize:24,fontWeight:900,letterSpacing:-.3,
+                textShadow:'0 2px 8px rgba(0,0,0,.6)'}}>{club.name}</div>
+              {club.city&&(
+                <div style={{fontSize:12,fontWeight:600,letterSpacing:.4,opacity:.85,marginTop:2,
+                  textShadow:'0 1px 4px rgba(0,0,0,.6)'}}>{club.city}</div>
+              )}
+            </div>
+          </div>
+
+          {/* Description-Card (Hero-Text) — falls vorhanden */}
           {club.description&&(
             <div className="fu" style={{background:T.card,border:`1px solid ${T.border}`,
               borderRadius:14,padding:'16px 18px',marginBottom:12,
-              color:T.t2,fontSize:14,lineHeight:1.6}}>
+              color:T.t2,fontSize:14,lineHeight:1.6,animationDelay:'.03s',whiteSpace:'pre-wrap'}}>
               {club.description}
             </div>
           )}
+
+          {/* Member-Count + Chat-Button als Status-Tiles */}
+          <div className="fu" style={{display:'flex',gap:10,marginBottom:12,animationDelay:'.05s'}}>
+            <div style={{flex:1,background:T.card,border:`1px solid ${T.border}`,borderRadius:12,
+              padding:'12px 14px',textAlign:'center'}}>
+              <div style={{color:T.t1,fontSize:20,fontWeight:900,letterSpacing:-.3}}>{memberCount}</div>
+              <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.3,
+                textTransform:'uppercase',marginTop:2}}>Mitglieder</div>
+            </div>
+            {joined&&(
+              <button onClick={()=>onOpenChat&&onOpenChat(clubId)}
+                style={{flex:1,background:T.oSoft,border:`1px solid ${T.o}`,borderRadius:12,
+                  padding:'12px 14px',textAlign:'center',cursor:'pointer',color:T.o}}>
+                <RitmoPostIcon size={20} color="currentColor"/>
+                <div style={{color:T.o,fontSize:10,fontWeight:800,letterSpacing:1.3,
+                  textTransform:'uppercase',marginTop:4}}>Chat öffnen</div>
+              </button>
+            )}
+          </div>
 
           {!isOwner&&(
             <button onClick={toggle} disabled={busy} className="fu"
@@ -7353,22 +7560,33 @@ function ClubDetail({clubId,currentUid,onHome,onBack,onOpenPlayer}){
                 border:joined?`1px solid ${T.border}`:'none',borderRadius:12,
                 color:joined?T.t1:'#000',fontSize:14,fontWeight:800,letterSpacing:.3,
                 cursor:busy?'not-allowed':'pointer',opacity:busy?.6:1,
-                animationDelay:'.05s'}}>
+                animationDelay:'.07s'}}>
               {joined?'Mitglied · Austreten':'Club beitreten'}
             </button>
           )}
           {isOwner&&(
-            <div className="fu" style={{padding:'10px 14px',marginBottom:14,
-              background:T.oSoft,border:`1px solid ${T.o}`,borderRadius:10,
-              color:T.o,fontSize:11,fontWeight:800,letterSpacing:1.5,
-              textTransform:'uppercase',textAlign:'center',animationDelay:'.05s'}}>
-              Du bist Inhaber:in
+            <div className="fu" style={{display:'flex',gap:10,marginBottom:14,
+              animationDelay:'.07s'}}>
+              <div style={{flex:1,padding:'10px 14px',
+                background:T.oSoft,border:`1px solid ${T.o}`,borderRadius:10,
+                color:T.o,fontSize:11,fontWeight:800,letterSpacing:1.5,
+                textTransform:'uppercase',textAlign:'center'}}>
+                Du bist Inhaber:in
+              </div>
+              {onEdit&&(
+                <button onClick={()=>onEdit(club)}
+                  style={{padding:'10px 14px',background:T.card,border:`1px solid ${T.border}`,
+                    borderRadius:10,color:T.t1,fontSize:11,fontWeight:800,letterSpacing:.5,
+                    cursor:'pointer'}}>
+                  Bearbeiten
+                </button>
+              )}
             </div>
           )}
 
           <div className="fu" style={{color:T.o,fontSize:11,fontWeight:700,letterSpacing:1.5,
-            textTransform:'uppercase',marginBottom:8,marginLeft:4,animationDelay:'.08s'}}>
-            Mitglieder · {members.length}
+            textTransform:'uppercase',marginBottom:8,marginLeft:4,animationDelay:'.09s'}}>
+            Mitgliederliste
           </div>
           {members.length===0?(
             <div style={{color:T.t3,fontSize:13,padding:14,textAlign:'center'}}>
@@ -7396,35 +7614,197 @@ function ClubDetail({clubId,currentUid,onHome,onBack,onOpenPlayer}){
   );
 }
 
-/* ═══ Bookings — Liste offener Matches ═══ */
-function Bookings({onHome,onOpenBooking,onCreateBooking}){
-  const[mode,setMode]=useState('open'); // 'open' | 'mine'
-  const[items,setItems]=useState([]);
+/* ═══════════════════════════════════════════════════════════════
+   CLUB CHAT — Realtime-Messages für Club-Mitglieder
+═══════════════════════════════════════════════════════════════ */
+function ClubChat({clubId,currentUid,onHome,onBack}){
+  const[club,setClub]=useState(null);
+  const[msgs,setMsgs]=useState([]);
+  const[text,setText]=useState('');
   const[busy,setBusy]=useState(false);
-  const load=useCallback(async()=>{
-    setBusy(true);
-    try{ setItems(await listBookings({mine:mode==='mine',limit:50})); }
-    finally{ setBusy(false); }
-  },[mode]);
-  useEffect(()=>{ load(); },[load]);
+  const scrollRef=useRef(null);
+  const scrollToBottom=()=>{
+    requestAnimationFrame(()=>{
+      const el=scrollRef.current;
+      if(el) el.scrollTop=el.scrollHeight;
+    });
+  };
+  // Initial load + Subscribe auf Realtime-Inserts
+  useEffect(()=>{
+    let cancelled=false;
+    (async()=>{
+      const [c,ms]=await Promise.all([fetchClub(clubId),listClubMessages(clubId,{limit:100})]);
+      if(cancelled) return;
+      setClub(c); setMsgs(ms);
+      scrollToBottom();
+      markChatRead(clubId);
+    })();
+    const unsub=subscribeClubMessages(clubId, async(row)=>{
+      // Bei neuer Nachricht: in die Liste hängen und Read-State aktualisieren.
+      // Wir holen das Profil zur Nachricht aus der bestehenden Liste oder
+      // fallen auf user_id-only zurück; ein Refetch passiert beim nächsten
+      // Open.
+      setMsgs(prev=>{
+        if(prev.some(m=>m.id===row.id)) return prev;
+        return [...prev,{...row,profile:null}];
+      });
+      scrollToBottom();
+      markChatRead(clubId);
+    });
+    return()=>{ cancelled=true; unsub(); };
+  },[clubId]);
 
-  const fmtDate=(iso)=>{
+  const send=async()=>{
+    const body=text.trim();
+    if(!body||busy) return;
+    setBusy(true);
     try{
-      const d=new Date(iso);
-      const opt={weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'};
-      return d.toLocaleString('de-DE',opt);
-    }catch(e){ return iso; }
+      const row=await sendClubMessage(clubId,body);
+      setText('');
+      setMsgs(prev=>prev.some(m=>m.id===row.id)?prev:[...prev,row]);
+      scrollToBottom();
+    }catch(e){ alert(e.message); }
+    finally{ setBusy(false); }
+  };
+
+  const fmtTime=(iso)=>{
+    try{ return new Date(iso).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}); }
+    catch{ return ''; }
   };
 
   return(
-    <SocialScreen eyebrow="Spiel" title="Buchen"
-      desc="Offene Matches finden oder selber anbieten."
-      icon={<CourtIcon size={22}/>} onHome={onHome}>
-      <div className="fu" style={{display:'flex',gap:8,marginBottom:14}}>
-        {[{id:'open',label:'Offen'},{id:'mine',label:'Meine'}].map(t=>{
-          const active=mode===t.id;
+    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 40px)',
+      position:'relative',overflow:'hidden'}}>
+
+      {/* Compact Chat-Header: Cover-Mini + Club-Name + Back-Pill */}
+      <div className="fi" style={{padding:'0 22px 12px',display:'flex',alignItems:'center',gap:12}}>
+        <button onClick={onBack} aria-label="Zurück"
+          style={{flexShrink:0,width:38,height:38,borderRadius:10,
+            background:T.card2,border:`1px solid ${T.border}`,color:T.t1,
+            display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>
+          <span style={{transform:'rotate(180deg)',display:'inline-flex'}}>
+            <ChevronRightIcon size={16} color="currentColor"/>
+          </span>
+        </button>
+        {club?.cover?(
+          <img src={club.cover} alt={club.name}
+            style={{width:38,height:38,borderRadius:10,objectFit:'cover',flexShrink:0,
+              border:`1px solid ${T.border}`}}/>
+        ):(
+          <div style={{flexShrink:0,width:38,height:38,background:T.card2,
+            border:`1px solid ${T.border}`,borderRadius:10,color:T.o,
+            display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <TrophyIcon size={20}/>
+          </div>
+        )}
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.3,
+            textTransform:'uppercase'}}>Club Chat</div>
+          <div style={{color:T.t1,fontSize:17,fontWeight:800,letterSpacing:-.2,marginTop:1,
+            whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
+            {club?.name||'Lädt …'}
+          </div>
+        </div>
+      </div>
+
+      {/* Message-Stream */}
+      <div ref={scrollRef} style={{flex:1,overflowY:'auto',padding:'4px 22px 88px',
+        display:'flex',flexDirection:'column',gap:8,WebkitOverflowScrolling:'touch'}}>
+        {msgs.length===0?(
+          <div style={{color:T.t3,fontSize:13,padding:'40px 0',textAlign:'center',lineHeight:1.6}}>
+            Schreib die erste Nachricht im Club-Chat.
+          </div>
+        ):msgs.map((m,i)=>{
+          const mine=m.user_id===currentUid;
+          const name=m.profile?.display_name||m.profile?.data?.name||'Spieler';
+          const prev=msgs[i-1];
+          const showHeader=!prev||prev.user_id!==m.user_id;
           return(
-            <button key={t.id} onClick={()=>setMode(t.id)}
+            <div key={m.id} className="fi" style={{
+              display:'flex',gap:8,alignItems:'flex-end',
+              flexDirection:mine?'row-reverse':'row'}}>
+              {!mine&&showHeader?(
+                <ProfileAvatar name={name} avatar={m.profile?.data?.avatar} size={28}/>
+              ):(<div style={{width:28,flexShrink:0}}/>)}
+              <div style={{maxWidth:'78%',display:'flex',flexDirection:'column',
+                alignItems:mine?'flex-end':'flex-start',gap:2}}>
+                {!mine&&showHeader&&(
+                  <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:.3,
+                    paddingLeft:4}}>{name}</div>
+                )}
+                <div style={{padding:'8px 12px',borderRadius:14,
+                  background:mine?T.o:T.card,
+                  border:mine?'none':`1px solid ${T.border}`,
+                  color:mine?'#000':T.t1,fontSize:14,lineHeight:1.45,
+                  whiteSpace:'pre-wrap',wordBreak:'break-word',
+                  borderBottomRightRadius:mine?4:14,
+                  borderBottomLeftRadius:mine?14:4}}>
+                  {m.body}
+                </div>
+                <div style={{color:T.t3,fontSize:10,paddingLeft:mine?0:4,paddingRight:mine?4:0}}>
+                  {fmtTime(m.created_at)}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Composer */}
+      <div style={{position:'absolute',left:0,right:0,
+        bottom:'calc(env(safe-area-inset-bottom,0px) + 14px)',
+        padding:'0 22px',zIndex:5}}>
+        <div style={{display:'flex',gap:8,background:T.card,
+          border:`1px solid ${T.border}`,borderRadius:14,padding:'8px 8px 8px 14px',
+          boxShadow:'0 8px 24px rgba(0,0,0,.4)'}}>
+          <input value={text} onChange={e=>setText(e.target.value)}
+            onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}}}
+            placeholder="Nachricht …"
+            style={{flex:1,background:'transparent',border:'none',color:T.t1,
+              fontSize:14,fontWeight:500,outline:'none',minWidth:0}}/>
+          <button onClick={send} disabled={busy||!text.trim()}
+            style={{padding:'8px 14px',background:T.o,border:'none',borderRadius:10,
+              color:'#000',fontSize:13,fontWeight:800,letterSpacing:.3,
+              cursor:(busy||!text.trim())?'not-allowed':'pointer',
+              opacity:(busy||!text.trim())?.5:1}}>
+            Senden
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   FOLLOW LIST — Tab Folgt / Follower
+═══════════════════════════════════════════════════════════════ */
+function FollowList({userId,initial='followers',onHome,onBack,onOpenPlayer}){
+  const[tab,setTab]=useState(initial);
+  const[rows,setRows]=useState([]);
+  const[busy,setBusy]=useState(true);
+  useEffect(()=>{
+    let cancelled=false;
+    setBusy(true);
+    (async()=>{
+      const data=tab==='followers'
+        ? await listFollowers(userId,{limit:200})
+        : await listFollowing(userId,{limit:200});
+      if(!cancelled){ setRows(data); setBusy(false); }
+    })();
+    return()=>{cancelled=true;};
+  },[userId,tab]);
+  const keyOf=(r)=>tab==='followers'?r.follower_id:r.followee_id;
+  return(
+    <SocialScreen eyebrow="Community"
+      title={tab==='followers'?'Follower':'Folgt'}
+      icon={<PersonGlyph size={22}/>} onHome={onHome}
+      onBack={onBack} backLabel="Profil">
+      <div className="fu" style={{display:'flex',gap:8,marginBottom:14}}>
+        {[{id:'followers',label:'Follower'},{id:'following',label:'Folgt'}].map(t=>{
+          const active=tab===t.id;
+          return(
+            <button key={t.id} onClick={()=>setTab(t.id)}
               style={{flex:1,padding:'10px 8px',
                 background:active?T.t1:'transparent',color:active?T.bg:T.t2,
                 border:`1px solid ${active?T.t1:T.border}`,borderRadius:10,
@@ -7433,485 +7813,24 @@ function Bookings({onHome,onOpenBooking,onCreateBooking}){
             </button>
           );
         })}
-        <button onClick={onCreateBooking}
-          style={{padding:'10px 14px',background:T.o,border:'none',borderRadius:10,
-            color:'#000',fontSize:13,fontWeight:800,letterSpacing:.3,cursor:'pointer',
-            flexShrink:0}}>
-          + Neu
-        </button>
       </div>
       {busy?(
         <div style={{color:T.t3,fontSize:13,padding:'24px 0',textAlign:'center'}}>Lädt …</div>
-      ):items.length===0?(
-        <RitmoPostEmpty icon={<CourtIcon size={28}/>}
-          title={mode==='mine'?'Keine eigenen Matches':'Keine offenen Matches'}
-          desc={mode==='mine'
-            ?'Du hast aktuell kein Match angeboten.'
-            :'Niemand hat ein Match offen — sei der/die Erste.'}
-          cta={{label:'Match anlegen',onClick:onCreateBooking}}/>
-      ):(
-        <div style={{display:'flex',flexDirection:'column',gap:10}}>
-          {items.map((b,i)=>(
-            <button key={b.id} onClick={()=>onOpenBooking(b.id)} className="fu"
-              style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:12,
-                padding:'14px 16px',display:'flex',alignItems:'center',gap:12,
-                color:T.t1,textAlign:'left',cursor:'pointer',animationDelay:`${i*0.03}s`}}>
-              <div style={{flexShrink:0,width:40,height:40,borderRadius:10,
-                background:T.card2,border:`1px solid ${T.border}`,color:T.o,
-                display:'flex',alignItems:'center',justifyContent:'center'}}>
-                <CourtIcon size={20}/>
-              </div>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{color:T.t1,fontSize:14,fontWeight:700,letterSpacing:-.1}}>
-                  {fmtDate(b.starts_at)}
-                </div>
-                <div style={{color:T.t3,fontSize:11,marginTop:2}}>
-                  {b.format==='bo3'?'Best-of-3':'Americano'} · {b.duration_min} Min
-                  {b.court_label?` · ${b.court_label}`:''}
-                  {b.level_min!=null&&b.level_max!=null
-                    ?` · Lv ${b.level_min.toFixed?.(1)||b.level_min}–${b.level_max.toFixed?.(1)||b.level_max}`
-                    :''}
-                </div>
-              </div>
-              <ChevronRightIcon size={16} color={T.t3}/>
-            </button>
-          ))}
-        </div>
-      )}
-    </SocialScreen>
-  );
-}
-
-/* ═══ BookingDetail ═══ */
-function BookingDetail({matchId,currentUid,onHome,onBack,onInvite}){
-  const[booking,setBooking]=useState(null);
-  const[slots,setSlots]=useState([]);
-  const[busy,setBusy]=useState(false);
-
-  const refresh=useCallback(async()=>{
-    const [b,s]=await Promise.all([fetchBooking(matchId),bookingSlots(matchId)]);
-    setBooking(b); setSlots(s);
-  },[matchId]);
-  useEffect(()=>{ refresh(); },[refresh]);
-
-  if(!booking) return(
-    <SocialScreen eyebrow="Match" title="Lädt …" onHome={onHome}>
-      <div style={{color:T.t3,fontSize:13,padding:'24px 0',textAlign:'center'}}>Lädt …</div>
-    </SocialScreen>
-  );
-
-  const total=booking.total_slots||4;
-  const slotMap=Object.fromEntries(slots.map(s=>[s.slot_index,s]));
-  const mySlot=slots.find(s=>s.user_id===currentUid);
-  const fmtDate=(iso)=>{
-    try{
-      return new Date(iso).toLocaleString('de-DE',
-        {weekday:'long',day:'2-digit',month:'long',hour:'2-digit',minute:'2-digit'});
-    }catch(e){ return iso; }
-  };
-
-  const join=async(idx)=>{
-    if(busy) return; setBusy(true);
-    try{ await joinSlot(matchId,idx); await refresh(); }
-    catch(e){ alert(e.message); }
-    finally{ setBusy(false); }
-  };
-  const leave=async()=>{
-    if(busy) return; setBusy(true);
-    try{ await leaveSlot(matchId); await refresh(); }
-    finally{ setBusy(false); }
-  };
-
-  return(
-    <SocialScreen eyebrow="Match" title={fmtDate(booking.starts_at)}
-      desc={`${booking.format==='bo3'?'Best-of-3':'Americano'} · ${booking.duration_min} Min`+
-        (booking.court_label?` · ${booking.court_label}`:'')}
-      icon={<CourtIcon size={22}/>} onHome={onHome}>
-
-      {booking.notes&&(
-        <div className="fu" style={{background:T.card,border:`1px solid ${T.border}`,
-          borderRadius:14,padding:'14px 16px',marginBottom:12,
-          color:T.t2,fontSize:13,lineHeight:1.55}}>
-          {booking.notes}
-        </div>
-      )}
-
-      <div className="fu" style={{color:T.o,fontSize:11,fontWeight:700,letterSpacing:1.5,
-        textTransform:'uppercase',marginBottom:8,marginLeft:4,animationDelay:'.04s'}}>
-        Plätze · {slots.length}/{total}
-      </div>
-
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14}}>
-        {Array.from({length:total},(_,i)=>{
-          const s=slotMap[i];
-          const isMe=s?.user_id===currentUid;
-          return(
-            <div key={i} className="fu" style={{animationDelay:`${0.08+i*0.04}s`,
-              background:s?T.card:T.card2,
-              border:`1px ${s?'solid':'dashed'} ${isMe?T.o:T.border}`,
-              borderRadius:12,padding:'14px 12px',
-              display:'flex',flexDirection:'column',alignItems:'center',gap:6,minHeight:120,
-              justifyContent:'center'}}>
-              {s?(
-                <Fragment>
-                  <ProfileAvatar name={s.profile?.display_name||s.profile?.data?.name||'?'}
-                    avatar={s.profile?.data?.avatar} size={44}/>
-                  <div style={{color:T.t1,fontSize:12,fontWeight:700,textAlign:'center',
-                    whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',
-                    maxWidth:'100%'}}>
-                    {s.profile?.display_name||s.profile?.data?.name||'Spieler'}
-                  </div>
-                  {isMe&&(
-                    <span style={{padding:'2px 6px',background:T.oSoft,color:T.o,borderRadius:4,
-                      fontSize:9,fontWeight:800,letterSpacing:.8,textTransform:'uppercase'}}>
-                      Du
-                    </span>
-                  )}
-                </Fragment>
-              ):(
-                <button onClick={()=>join(i)} disabled={busy||!!mySlot}
-                  style={{padding:'10px 12px',background:'transparent',
-                    border:`1px solid ${mySlot?T.border:T.o}`,borderRadius:8,
-                    color:mySlot?T.t4:T.o,fontSize:11,fontWeight:800,letterSpacing:.4,
-                    cursor:(busy||!!mySlot)?'not-allowed':'pointer'}}>
-                  + Beitreten
-                </button>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {mySlot&&(
-        <button onClick={leave} className="fu"
-          style={{width:'100%',marginBottom:10,padding:'12px 16px',
-            background:'transparent',border:`1px solid ${T.border}`,borderRadius:12,
-            color:T.t2,fontSize:13,fontWeight:700,cursor:'pointer',animationDelay:'.2s'}}>
-          Platz frei geben
-        </button>
-      )}
-
-      <button onClick={()=>onInvite(matchId)} className="fu"
-        style={{width:'100%',padding:'12px 16px',
-          background:T.oSoft,border:`1px solid ${T.o}`,borderRadius:12,
-          color:T.o,fontSize:13,fontWeight:800,letterSpacing:.3,cursor:'pointer',
-          animationDelay:'.22s'}}>
-        Spieler einladen
-      </button>
-    </SocialScreen>
-  );
-}
-
-/* ═══ BookingCreate ═══ */
-function BookingCreate({onHome,onDone,onCancel}){
-  // Default-Startzeit: heute + 1 h, auf volle Stunde gerundet
-  const defaultStart=()=>{
-    const d=new Date(Date.now()+60*60*1000);
-    d.setMinutes(0,0,0);
-    // ins "datetime-local"-Format (yyyy-MM-ddThh:mm, lokale Zeitzone)
-    const pad=(n)=>String(n).padStart(2,'0');
-    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  };
-  const[starts,setStarts]=useState(defaultStart());
-  const[duration,setDuration]=useState(90);
-  const[court,setCourt]=useState('');
-  const[format,setFormat]=useState('bo3');
-  const[total,setTotal]=useState(4);
-  const[lmin,setLmin]=useState('');
-  const[lmax,setLmax]=useState('');
-  const[notes,setNotes]=useState('');
-  const[busy,setBusy]=useState(false);
-  const[err,setErr]=useState('');
-
-  const save=async()=>{
-    setErr(''); setBusy(true);
-    try{
-      const b=await createBooking({
-        starts_at:new Date(starts).toISOString(),
-        duration_min:Number(duration)||90,
-        court_label:court,
-        format,
-        total_slots:Number(total)||4,
-        level_min:lmin?Number(lmin):null,
-        level_max:lmax?Number(lmax):null,
-        notes,
-      });
-      onDone(b);
-    }catch(e){ setErr(e.message||'Fehler.'); }
-    finally{ setBusy(false); }
-  };
-
-  return(
-    <SocialScreen eyebrow="Match" title="Neues Match"
-      desc="Leg die Eckdaten fest — Slot 1 ist automatisch deins."
-      icon={<CourtIcon size={22}/>} onHome={onHome}>
-      <div className="fu" style={{display:'flex',flexDirection:'column',gap:12}}>
-
-        <div>
-          <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
-            textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Startzeit *</div>
-          <input type="datetime-local" value={starts} onChange={e=>setStarts(e.target.value)}
-            style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-              borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:600,
-              outline:'none',boxSizing:'border-box'}}/>
-        </div>
-
-        <div style={{display:'flex',gap:10}}>
-          <div style={{flex:1}}>
-            <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
-              textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Dauer (Min)</div>
-            <input type="number" min="30" step="15" value={duration}
-              onChange={e=>setDuration(e.target.value)}
-              style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-                borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:600,
-                outline:'none',boxSizing:'border-box'}}/>
-          </div>
-          <div style={{flex:1}}>
-            <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
-              textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Plätze</div>
-            <input type="number" min="2" max="8" value={total}
-              onChange={e=>setTotal(e.target.value)}
-              style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-                borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:600,
-                outline:'none',boxSizing:'border-box'}}/>
-          </div>
-        </div>
-
-        <div>
-          <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
-            textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Format</div>
-          <div style={{display:'flex',gap:8}}>
-            {[{id:'bo3',label:'Best-of-3'},{id:'americano',label:'Americano'}].map(f=>(
-              <button key={f.id} onClick={()=>setFormat(f.id)}
-                style={{flex:1,padding:'11px 8px',
-                  background:format===f.id?T.oSoft:T.card2,
-                  border:`1px solid ${format===f.id?T.o:T.border}`,borderRadius:10,
-                  color:format===f.id?T.o:T.t2,fontSize:13,
-                  fontWeight:format===f.id?800:600,cursor:'pointer'}}>
-                {f.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div style={{display:'flex',gap:10}}>
-          <div style={{flex:1}}>
-            <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
-              textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Level Min</div>
-            <input type="number" step="0.1" min="0" max="7" value={lmin}
-              onChange={e=>setLmin(e.target.value)} placeholder="z.B. 2.0"
-              style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-                borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:600,
-                outline:'none',boxSizing:'border-box'}}/>
-          </div>
-          <div style={{flex:1}}>
-            <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
-              textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Level Max</div>
-            <input type="number" step="0.1" min="0" max="7" value={lmax}
-              onChange={e=>setLmax(e.target.value)} placeholder="z.B. 4.0"
-              style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-                borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:600,
-                outline:'none',boxSizing:'border-box'}}/>
-          </div>
-        </div>
-
-        <div>
-          <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
-            textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Court / Notiz</div>
-          <input value={court} onChange={e=>setCourt(e.target.value)}
-            placeholder="z.B. Platz 3"
-            style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-              borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:600,
-              outline:'none',boxSizing:'border-box',marginBottom:10}}/>
-          <textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={2}
-            placeholder="Optionale Notiz für Mitspieler …"
-            style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-              borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
-              outline:'none',boxSizing:'border-box',resize:'vertical'}}/>
-        </div>
-
-        {err&&(
-          <div style={{background:'rgba(232,69,69,.12)',border:'1px solid rgba(232,69,69,.4)',
-            borderRadius:8,padding:'9px 12px',color:'#FF6B6B',fontSize:12,fontWeight:600}}>
-            {err}
-          </div>
-        )}
-
-        <button onClick={save} disabled={busy||!starts}
-          style={{padding:'14px 16px',background:T.o,border:'none',borderRadius:12,
-            color:'#000',fontSize:14,fontWeight:800,letterSpacing:.3,
-            cursor:busy?'not-allowed':'pointer',opacity:busy?.6:1,marginTop:6}}>
-          {busy?'…':'Match anlegen'}
-        </button>
-        <button onClick={onCancel}
-          style={{padding:'12px 16px',background:'transparent',border:`1px solid ${T.border}`,
-            borderRadius:12,color:T.t2,fontSize:13,fontWeight:700,cursor:'pointer'}}>
-          Abbrechen
-        </button>
-      </div>
-    </SocialScreen>
-  );
-}
-
-/* ═══ BookingInvite — Spielersuche mit "Einladen"-Button ═══ */
-function BookingInvite({matchId,onHome,onDone}){
-  const[q,setQ]=useState('');
-  const[results,setResults]=useState([]);
-  const[invited,setInvited]=useState({});
-  const[busy,setBusy]=useState(false);
-  useEffect(()=>{
-    const tq=q.trim();
-    if(!tq){setResults([]);return;}
-    const t=setTimeout(async()=>{
-      setBusy(true);
-      try{ setResults(await searchPlayers(tq,{limit:30})); }
-      finally{ setBusy(false); }
-    },250);
-    return()=>clearTimeout(t);
-  },[q]);
-  const invite=async(uid)=>{
-    try{
-      await sendInvite(matchId,uid);
-      setInvited(m=>({...m,[uid]:true}));
-    }catch(e){ alert(e.message); }
-  };
-  return(
-    <SocialScreen eyebrow="Einladen" title="Spieler suchen"
-      desc="Such Mitspieler über den Namen — sie bekommen die Einladung in ihrem RITMO Post."
-      icon={<RitmoPostIcon size={22}/>} onHome={onHome}>
-      <div className="fu" style={{marginBottom:14}}>
-        <input value={q} onChange={e=>setQ(e.target.value)}
-          placeholder="Name eingeben …"
-          style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-            borderRadius:12,padding:'13px 16px',color:T.t1,fontSize:15,fontWeight:500,
-            outline:'none',boxSizing:'border-box'}}/>
-      </div>
-      {q.trim()===''?(
-        <RitmoPostEmpty icon={<SearchIcon size={28}/>}
-          title="Wen suchst du?"
-          desc="Tipp einen Namen und lade direkt aus den Suchergebnissen ein."/>
-      ):busy?(
-        <div style={{color:T.t3,fontSize:13,padding:'24px 0',textAlign:'center'}}>Suche …</div>
-      ):results.length===0?(
+      ):rows.length===0?(
         <RitmoPostEmpty icon={<PersonGlyph size={28}/>}
-          title="Niemand gefunden" desc="Anderen Namen probieren?"/>
+          title={tab==='followers'?'Noch keine Follower':'Folgst noch niemandem'}
+          desc={tab==='followers'
+            ?'Sobald jemand dir folgt, taucht das hier auf.'
+            :'Such nach Spielern und folge ihnen, um ihre Aktivität zu sehen.'}/>
       ):(
         <div style={{display:'flex',flexDirection:'column',gap:10}}>
-          {results.map((p,i)=>(
-            <div key={p.user_id} className="fu" style={{animationDelay:`${i*0.03}s`}}>
-              <PlayerListItem profile={p} onClick={()=>!invited[p.user_id]&&invite(p.user_id)}
-                trailing={
-                  <span style={{padding:'4px 10px',borderRadius:6,fontSize:10,fontWeight:800,
-                    letterSpacing:.5,textTransform:'uppercase',
-                    background:invited[p.user_id]?T.card2:T.oSoft,
-                    border:`1px solid ${invited[p.user_id]?T.border:T.o}`,
-                    color:invited[p.user_id]?T.t2:T.o}}>
-                    {invited[p.user_id]?'✓ Eingeladen':'Einladen'}
-                  </span>
-                }/>
+          {rows.map((r,i)=>(
+            <div key={keyOf(r)} className="fu" style={{animationDelay:`${i*0.03}s`}}>
+              <PlayerListItem profile={r.profile||{user_id:keyOf(r)}}
+                onClick={()=>onOpenPlayer(keyOf(r))}
+                trailing={<ChevronRightIcon size={16} color={T.t3}/>}/>
             </div>
           ))}
-        </div>
-      )}
-      <div style={{marginTop:18}}>
-        <button onClick={onDone}
-          style={{width:'100%',padding:'12px 16px',background:'transparent',
-            border:`1px solid ${T.border}`,borderRadius:12,
-            color:T.t2,fontSize:13,fontWeight:700,cursor:'pointer'}}>
-          Fertig
-        </button>
-      </div>
-    </SocialScreen>
-  );
-}
-
-/* ═══ Invites — Eingehende Einladungen ═══ */
-function InvitesScreen({onHome,onOpenBooking}){
-  const[items,setItems]=useState([]);
-  const[busy,setBusy]=useState(true);
-  const load=useCallback(async()=>{
-    setBusy(true);
-    try{ setItems(await listIncomingInvites({limit:50})); }
-    finally{ setBusy(false); }
-  },[]);
-  useEffect(()=>{ load(); },[load]);
-  const respond=async(id,accept)=>{
-    await respondInvite(id,accept);
-    await load();
-  };
-  const fmtDate=(iso)=>{
-    try{ return new Date(iso).toLocaleString('de-DE',
-      {weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}); }
-    catch(e){ return iso; }
-  };
-  return(
-    <SocialScreen eyebrow="RITMO Post" title="Einladungen"
-      desc="Pending Match-Einladungen für dich."
-      icon={<RitmoPostIcon size={22}/>} onHome={onHome}>
-      {busy?(
-        <div style={{color:T.t3,fontSize:13,padding:'24px 0',textAlign:'center'}}>Lädt …</div>
-      ):items.length===0?(
-        <RitmoPostEmpty icon={<RitmoPostIcon size={28}/>}
-          title="Keine Einladungen"
-          desc="Sobald jemand dich zu einem Match einlädt, erscheint sie hier."/>
-      ):(
-        <div style={{display:'flex',flexDirection:'column',gap:12}}>
-          {items.map((inv,i)=>{
-            const from=inv.from_profile;
-            const m=inv.match;
-            const fromName=from?.display_name||from?.data?.name||'Spieler';
-            const pending=inv.status==='pending';
-            return(
-              <div key={inv.id} className="fu" style={{animationDelay:`${i*0.04}s`,
-                background:T.card,border:`1px solid ${pending?T.o:T.border}`,
-                borderRadius:14,padding:'16px 18px'}}>
-                <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:10}}>
-                  <ProfileAvatar name={fromName} avatar={from?.data?.avatar} size={42}/>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{color:T.t1,fontSize:14,fontWeight:700}}>{fromName}</div>
-                    <div style={{color:T.t3,fontSize:11,marginTop:2}}>
-                      lädt dich ein
-                    </div>
-                  </div>
-                  <span style={{padding:'2px 8px',borderRadius:4,fontSize:9,fontWeight:800,
-                    letterSpacing:.8,textTransform:'uppercase',
-                    background:pending?T.oSoft:T.card2,
-                    color:pending?T.o:T.t3}}>
-                    {inv.status==='accepted'?'Angenommen':inv.status==='declined'?'Abgelehnt':'Offen'}
-                  </span>
-                </div>
-                {m&&(
-                  <button onClick={()=>onOpenBooking(m.id)}
-                    style={{width:'100%',padding:'10px 12px',background:T.card2,
-                      border:`1px solid ${T.border}`,borderRadius:10,
-                      color:T.t2,fontSize:12,fontWeight:600,cursor:'pointer',
-                      display:'flex',alignItems:'center',gap:8,marginBottom:pending?10:0,textAlign:'left'}}>
-                    <CourtIcon size={18}/>
-                    <span style={{flex:1,minWidth:0}}>
-                      {fmtDate(m.starts_at)} · {m.format==='bo3'?'Best-of-3':'Americano'}
-                    </span>
-                    <ChevronRightIcon size={14} color={T.t3}/>
-                  </button>
-                )}
-                {pending&&(
-                  <div style={{display:'flex',gap:8}}>
-                    <button onClick={()=>respond(inv.id,true)}
-                      style={{flex:1,padding:'10px 14px',background:T.o,border:'none',
-                        borderRadius:10,color:'#000',fontSize:12,fontWeight:800,
-                        letterSpacing:.3,cursor:'pointer'}}>
-                      Annehmen
-                    </button>
-                    <button onClick={()=>respond(inv.id,false)}
-                      style={{flex:1,padding:'10px 14px',background:'transparent',
-                        border:`1px solid ${T.border}`,borderRadius:10,
-                        color:T.t2,fontSize:12,fontWeight:700,cursor:'pointer'}}>
-                      Ablehnen
-                    </button>
-                  </div>
-                )}
-              </div>
-            );
-          })}
         </div>
       )}
     </SocialScreen>
@@ -9712,8 +9631,30 @@ export default function App(){
   // angezeigt? Wird beim setScr nicht zurückgesetzt — die jeweiligen
   // Screens prüfen ihre IDs vor dem Mount.
   const[viewPlayerId,setViewPlayerId]=useState(null);
+  // playerBackTo: wohin der Zurück-Pfeil auf dem PublicProfile geht
+  // ('player-search' | 'club-detail' | null).
+  const[playerBackTo,setPlayerBackTo]=useState(null);
   const[viewClubId,setViewClubId]=useState(null);
-  const[viewBookingId,setViewBookingId]=useState(null);
+  // followListInitial steuert, ob FollowList mit 'followers' oder
+  // 'following' tab öffnet.
+  const[followListInitial,setFollowListInitial]=useState('followers');
+  // editClub: vorgefüllter Club beim Sprung in ClubCreate-Edit-Mode.
+  const[editClub,setEditClub]=useState(null);
+  // Aggregierter Unread-Count für den Home-Post-Dot. Wird alle 30 s
+  // refreshed plus beim Verlassen eines Chat-Screens. State auf App-Ebene
+  // damit der Dot nicht erst beim Re-Mount aktualisiert.
+  const[unreadTotal,setUnreadTotal]=useState(0);
+  useEffect(()=>{
+    if(!currentUid) return;
+    let cancelled=false;
+    const tick=async()=>{
+      const n=await totalUnreadCount();
+      if(!cancelled) setUnreadTotal(n);
+    };
+    tick();
+    const id=setInterval(tick,30000);
+    return()=>{ cancelled=true; clearInterval(id); };
+  },[currentUid,scr]);
   const[profile,setProfile]=useState(()=>lsGet('ritmo_profile',{
     name:'',
     playtomicLevel:null,
@@ -9983,12 +9924,13 @@ export default function App(){
       profile={profile} setProfile={setProfile}
       theme={theme} setTheme={setTheme}
       onComplete={()=>{setOnboarded(true);nav('home');}}/>}
-    {scr==='home'&&<Home nav={nav} activeTab={activeTab} setActiveTab={handleTab} profile={profile} onboarded={onboarded}/>}
+    {scr==='home'&&<Home nav={nav} activeTab={activeTab} setActiveTab={handleTab}
+      profile={profile} onboarded={onboarded} unread={unreadTotal}/>}
     {scr==='profile'&&<Profile profile={profile} setProfile={setProfile}
       onHome={goHome} currentUid={currentUid}
       onOpenRitmoDNA={()=>setScr('profile-ritmodna')}
-      onOpenFollowers={()=>{ if(currentUid){ setViewPlayerId(currentUid); setScr('public-profile'); } }}
-      onOpenFollowing={()=>{ if(currentUid){ setViewPlayerId(currentUid); setScr('public-profile'); } }}
+      onOpenFollowers={()=>{ if(currentUid){ setViewPlayerId(currentUid); setFollowListInitial('followers'); setScr('follow-list'); } }}
+      onOpenFollowing={()=>{ if(currentUid){ setViewPlayerId(currentUid); setFollowListInitial('following'); setScr('follow-list'); } }}
       onResetOnboarding={()=>{setOnboarded(false);nav('welcome');}}
       onLogout={async()=>{
         try{await auth.signOut();}catch(e){}
@@ -10131,37 +10073,34 @@ export default function App(){
         nav('login');
       }}/>}
     {scr==='ritmopost'&&<RitmoPost onHome={goHome} profile={profile}
-      onOpenInvites={()=>setScr('invites')}
-      onOpenBookings={()=>setScr('bookings')}/>}
+      onOpenChat={(id)=>{ setViewClubId(id); setScr('club-chat'); }}/>}
 
     {/* ─── Social Layer Screens ──────────────────────────────────── */}
     {scr==='player-search'&&<PlayerSearch onHome={goHome}
-      onOpenPlayer={(uid)=>{ setViewPlayerId(uid); setScr('public-profile'); }}/>}
+      onOpenPlayer={(uid)=>{ setViewPlayerId(uid); setPlayerBackTo('player-search'); setScr('public-profile'); }}/>}
     {scr==='public-profile'&&viewPlayerId&&<PublicProfile
       userId={viewPlayerId} currentUid={currentUid}
-      onHome={goHome} onBack={()=>setScr('player-search')}/>}
+      onHome={goHome}
+      onBack={playerBackTo?()=>setScr(playerBackTo):null}
+      backLabel={playerBackTo==='club-detail'?'Club':'Suche'}/>}
+    {scr==='follow-list'&&viewPlayerId&&<FollowList userId={viewPlayerId}
+      initial={followListInitial} onHome={goHome}
+      onBack={()=>setScr('profile')}
+      onOpenPlayer={(uid)=>{ setViewPlayerId(uid); setPlayerBackTo('follow-list'); setScr('public-profile'); }}/>}
     {scr==='clubs'&&<Clubs onHome={goHome}
       onOpenClub={(id)=>{ setViewClubId(id); setScr('club-detail'); }}
-      onCreateClub={()=>setScr('club-create')}/>}
-    {scr==='club-create'&&<ClubCreate onHome={goHome}
-      onDone={(club)=>{ setViewClubId(club.id); setScr('club-detail'); }}
-      onCancel={()=>setScr('clubs')}/>}
+      onCreateClub={()=>{ setEditClub(null); setScr('club-create'); }}/>}
+    {scr==='club-create'&&<ClubCreate onHome={goHome} initial={editClub}
+      onDone={(club)=>{ setEditClub(null); setViewClubId(club.id); setScr('club-detail'); }}
+      onCancel={()=>{ setEditClub(null); setScr(editClub?'club-detail':'clubs'); }}/>}
     {scr==='club-detail'&&viewClubId&&<ClubDetail clubId={viewClubId}
       currentUid={currentUid} onHome={goHome} onBack={()=>setScr('clubs')}
-      onOpenPlayer={(uid)=>{ setViewPlayerId(uid); setScr('public-profile'); }}/>}
-    {scr==='bookings'&&<Bookings onHome={goHome}
-      onOpenBooking={(id)=>{ setViewBookingId(id); setScr('booking-detail'); }}
-      onCreateBooking={()=>setScr('booking-create')}/>}
-    {scr==='booking-create'&&<BookingCreate onHome={goHome}
-      onDone={(b)=>{ setViewBookingId(b.id); setScr('booking-detail'); }}
-      onCancel={()=>setScr('bookings')}/>}
-    {scr==='booking-detail'&&viewBookingId&&<BookingDetail matchId={viewBookingId}
-      currentUid={currentUid} onHome={goHome} onBack={()=>setScr('bookings')}
-      onInvite={(id)=>{ setViewBookingId(id); setScr('booking-invite'); }}/>}
-    {scr==='booking-invite'&&viewBookingId&&<BookingInvite matchId={viewBookingId}
-      onHome={goHome} onDone={()=>setScr('booking-detail')}/>}
-    {scr==='invites'&&<InvitesScreen onHome={goHome}
-      onOpenBooking={(id)=>{ setViewBookingId(id); setScr('booking-detail'); }}/>}
+      onOpenPlayer={(uid)=>{ setViewPlayerId(uid); setPlayerBackTo('club-detail'); setScr('public-profile'); }}
+      onOpenChat={(id)=>{ setViewClubId(id); setScr('club-chat'); }}
+      onEdit={(club)=>{ setEditClub(club); setScr('club-create'); }}/>}
+    {scr==='club-chat'&&viewClubId&&<ClubChat clubId={viewClubId}
+      currentUid={currentUid} onHome={goHome}
+      onBack={()=>setScr('club-detail')}/>}
     {scr==='single-setup'&&<SingleSetup nav={nav} onHome={goHome} cfg={cfg} setCfg={setCfg} profile={profile}/>}
     {scr==='match'&&<Match cfg={cfg} setCfg={setCfg} bo3={bo3} dBo3={dBo3} am={am} dAm={dAm}
       onHome={goHome} inputMode={inputMode} ringId={ringId}

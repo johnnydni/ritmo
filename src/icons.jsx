@@ -434,3 +434,94 @@ export function HeroJourneyVisual(){
       alt="Journey"/>
   );
 }
+
+/* ─── Settings / Post — Line-Art Icons ─────────────────────────────
+   Alle minimal, gleicher Stroke-Width (1.8), durchgängig
+   `currentColor` damit sie sich in Card-Kontext einfach umfärben lassen.
+─────────────────────────────────────────────────────────────────── */
+
+// Lenkrad — Steuerung
+export function SteeringWheelIcon({size=24,color='currentColor'}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="9"/>
+    <circle cx="12" cy="12" r="1.6" fill={color}/>
+    <line x1="12" y1="3" x2="12" y2="10.4"/>
+    <line x1="3" y1="12" x2="10.4" y2="13.6"/>
+    <line x1="21" y1="12" x2="13.6" y2="13.6"/>
+  </svg>);
+}
+
+// Palette — Anpassung
+export function PaletteIcon({size=24,color='currentColor'}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 3a9 9 0 1 0 0 18 2.5 2.5 0 0 0 2-4c-.5-1-.3-2 .7-2.4l2-.6A4 4 0 0 0 21 11
+             a9 9 0 0 0-9-8z"/>
+    <circle cx="8"   cy="11" r=".8" fill={color}/>
+    <circle cx="11"  cy="7.5" r=".8" fill={color}/>
+    <circle cx="15.5" cy="9" r=".8" fill={color}/>
+  </svg>);
+}
+
+// Auge — Privatsphäre
+export function EyeIcon({size=24,color='currentColor'}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/>
+    <circle cx="12" cy="12" r="3"/>
+  </svg>);
+}
+
+// Glocke — Benachrichtigungen
+export function BellIcon({size=24,color='currentColor'}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M6 8a6 6 0 1 1 12 0c0 4 2 5 2 7H4c0-2 2-3 2-7z"/>
+    <path d="M10 20a2 2 0 0 0 4 0"/>
+  </svg>);
+}
+
+// Schloss — Sicherheit
+export function LockIcon({size=24,color='currentColor'}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="4" y="11" width="16" height="10" rx="2"/>
+    <path d="M8 11V8a4 4 0 1 1 8 0v3"/>
+    <circle cx="12" cy="15.5" r="1.2" fill={color}/>
+  </svg>);
+}
+
+// Tür mit Pfeil raus — "Ich muss hier raus!" / Konto löschen
+export function DoorOutIcon({size=24,color='currentColor'}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M14 3h5v18h-5"/>
+    <path d="M3 12h11"/>
+    <path d="M8 7l-5 5 5 5"/>
+  </svg>);
+}
+
+// Chevron rechts — `>` ohne Stab, klar dünn, für Card-Affordance
+export function ChevronRightIcon({size=18,color='currentColor'}){
+  return(<svg width={size} height={size} viewBox="0 0 18 18" fill="none"
+    stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="6 3 12 9 6 15"/>
+  </svg>);
+}
+
+// RITMO Post — Mash aus Glocke + Chat-Bubble, line art.
+// Die Glocke sitzt rechts-unten als Notification-Sigil über der Chat-Bubble.
+export function RitmoPostIcon({size=24,color='currentColor'}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    {/* Speech bubble — abgerundetes Rechteck mit "Tail" links unten */}
+    <path d="M3 6a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H8l-4 3.5V6z"/>
+    {/* Bell badge — kleine Glocke rechts-unten überlappt die Bubble */}
+    <g transform="translate(13.5 11)">
+      <path d="M0 4a3 3 0 1 1 6 0c0 2 1 2.5 1 3.5H-1C-1 6.5 0 6 0 4z" fill={color === 'currentColor' ? 'var(--bg)' : '#0A0A0A'}/>
+      <path d="M0 4a3 3 0 1 1 6 0c0 2 1 2.5 1 3.5H-1C-1 6.5 0 6 0 4z"/>
+      <path d="M2 8.5a1 1 0 0 0 2 0"/>
+    </g>
+  </svg>);
+}

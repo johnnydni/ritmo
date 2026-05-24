@@ -19,9 +19,7 @@ CREATE TABLE IF NOT EXISTS ritmo_submissions (
   PRIMARY KEY (pin, court_id)
 );
 
--- Row Level Security aktivieren (öffentlicher Zugriff für die App)
-ALTER TABLE ritmo_sessions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE ritmo_submissions ENABLE ROW LEVEL SECURITY;
+
 
 CREATE POLICY "Public read/write sessions"
   ON ritmo_sessions FOR ALL

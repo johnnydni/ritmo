@@ -475,3 +475,371 @@ export async function redeemBetaKey(code, email) {
   if (error) throw new Error(error.message || 'Beta-Key konnte nicht eingelöst werden.');
   return data === true;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   SOCIAL LAYER
+   - Player search across public profiles
+   - Followers (one-sided)
+   - Clubs + members
+   - Bookable matches + slots
+   - Match invites
+
+   Alle Helpers no-op'en still wenn window.supabase fehlt — die App
+   bleibt im Test-User / Offline-Mode benutzbar.
+═══════════════════════════════════════════════════════════════ */
+
+/** Public profile lookup für andere Spieler:innen. */
+export async function fetchPublicProfile(userId) {
+  const c = sb();
+  if (!c || !userId) return null;
+  try {
+    const { data, error } = await c
+      .from('ritmo_profiles')
+      .select('user_id,data,display_name,is_public,updated_at')
+      .eq('user_id', userId)
+      .eq('is_public', true)
+      .maybeSingle();
+    if (error) { console.warn('[db] fetchPublicProfile:', error.message); return null; }
+    return data || null;
+  } catch (e) { console.warn('[db] fetchPublicProfile threw:', e?.message); return null; }
+}
+
+/** Player-Search nach Display-Name (case-insensitive substring). */
+export async function searchPlayers(query, { limit = 20 } = {}) {
+  const c = sb();
+  if (!c) return [];
+  const q = (query || '').trim();
+  if (!q) return [];
+  try {
+    const { data, error } = await c
+      .from('ritmo_profiles')
+      .select('user_id,display_name,data')
+      .ilike('display_name', `%${q}%`)
+      .eq('is_public', true)
+      .limit(limit);
+    if (error) { console.warn('[db] searchPlayers:', error.message); return []; }
+    return data || [];
+  } catch (e) { console.warn('[db] searchPlayers threw:', e?.message); return []; }
+}
+
+/* ───────── FOLLOWERS ───────── */
+
+export async function followUser(followeeId) {
+  const c = sb();
+  if (!c) return false;
+  const uid = await currentUserId();
+  if (!uid || uid === followeeId) return false;
+  try {
+    const { error } = await c.from('ritmo_followers')
+      .insert({ follower_id: uid, followee_id: followeeId });
+    if (error && error.code !== '23505') {  // 23505 = duplicate key (already following)
+      console.warn('[db] followUser:', error.message);
+      return false;
+    }
+    return true;
+  } catch (e) { console.warn('[db] followUser threw:', e?.message); return false; }
+}
+
+export async function unfollowUser(followeeId) {
+  const c = sb();
+  if (!c) return false;
+  const uid = await currentUserId();
+  if (!uid) return false;
+  try {
+    const { error } = await c.from('ritmo_followers').delete()
+      .eq('follower_id', uid).eq('followee_id', followeeId);
+    if (error) { console.warn('[db] unfollowUser:', error.message); return false; }
+    return true;
+  } catch (e) { console.warn('[db] unfollowUser threw:', e?.message); return false; }
+}
+
+/** Counters via head:true + count → spart Payload. */
+export async function followCounts(userId) {
+  const c = sb();
+  if (!c || !userId) return { followers: 0, following: 0 };
+  try {
+    const [a, b] = await Promise.all([
+      c.from('ritmo_followers').select('*', { count: 'exact', head: true })
+        .eq('followee_id', userId),
+      c.from('ritmo_followers').select('*', { count: 'exact', head: true })
+        .eq('follower_id', userId),
+    ]);
+    return { followers: a.count || 0, following: b.count || 0 };
+  } catch (e) { return { followers: 0, following: 0 }; }
+}
+
+export async function isFollowing(followeeId) {
+  const c = sb();
+  if (!c) return false;
+  const uid = await currentUserId();
+  if (!uid) return false;
+  try {
+    const { count, error } = await c.from('ritmo_followers')
+      .select('*', { count: 'exact', head: true })
+      .eq('follower_id', uid).eq('followee_id', followeeId);
+    if (error) return false;
+    return (count || 0) > 0;
+  } catch (e) { return false; }
+}
+
+/** Liste aller Follower / Followees mit aufgelöstem Profil. */
+export async function listFollowers(userId, { limit = 100 } = {}) {
+  const c = sb();
+  if (!c || !userId) return [];
+  try {
+    const { data, error } = await c.from('ritmo_followers')
+      .select('follower_id,created_at,profile:ritmo_profiles!ritmo_followers_follower_id_fkey(user_id,display_name,data)')
+      .eq('followee_id', userId).order('created_at', { ascending: false }).limit(limit);
+    if (error) { console.warn('[db] listFollowers:', error.message); return []; }
+    return data || [];
+  } catch (e) { return []; }
+}
+export async function listFollowing(userId, { limit = 100 } = {}) {
+  const c = sb();
+  if (!c || !userId) return [];
+  try {
+    const { data, error } = await c.from('ritmo_followers')
+      .select('followee_id,created_at,profile:ritmo_profiles!ritmo_followers_followee_id_fkey(user_id,display_name,data)')
+      .eq('follower_id', userId).order('created_at', { ascending: false }).limit(limit);
+    if (error) { console.warn('[db] listFollowing:', error.message); return []; }
+    return data || [];
+  } catch (e) { return []; }
+}
+
+/* ───────── CLUBS ───────── */
+
+export async function listClubs({ query = '', limit = 50 } = {}) {
+  const c = sb();
+  if (!c) return [];
+  try {
+    let q = c.from('ritmo_clubs').select('id,name,city,description,owner_id,created_at')
+      .order('created_at', { ascending: false }).limit(limit);
+    if (query.trim()) q = q.or(`name.ilike.%${query.trim()}%,city.ilike.%${query.trim()}%`);
+    const { data, error } = await q;
+    if (error) { console.warn('[db] listClubs:', error.message); return []; }
+    return data || [];
+  } catch (e) { return []; }
+}
+
+export async function fetchClub(clubId) {
+  const c = sb();
+  if (!c || !clubId) return null;
+  try {
+    const { data, error } = await c.from('ritmo_clubs')
+      .select('id,name,city,description,owner_id,created_at')
+      .eq('id', clubId).maybeSingle();
+    if (error) { console.warn('[db] fetchClub:', error.message); return null; }
+    return data || null;
+  } catch (e) { return null; }
+}
+
+export async function createClub({ name, city, description }) {
+  const c = sb();
+  if (!c) throw new Error('Verbindung nicht verfügbar.');
+  const uid = await currentUserId();
+  if (!uid) throw new Error('Bitte zuerst anmelden.');
+  if (!name || !name.trim()) throw new Error('Club-Name fehlt.');
+  const { data, error } = await c.from('ritmo_clubs')
+    .insert({ owner_id: uid, name: name.trim(),
+              city: city?.trim() || null, description: description?.trim() || null })
+    .select('id,name,city,description,owner_id,created_at').single();
+  if (error) throw new Error(error.message || 'Club konnte nicht angelegt werden.');
+  // Owner automatisch als admin-Member eintragen.
+  await c.from('ritmo_club_members').insert({ club_id: data.id, user_id: uid, role: 'admin' });
+  return data;
+}
+
+export async function joinClub(clubId) {
+  const c = sb();
+  if (!c) return false;
+  const uid = await currentUserId();
+  if (!uid) return false;
+  try {
+    const { error } = await c.from('ritmo_club_members')
+      .insert({ club_id: clubId, user_id: uid, role: 'member' });
+    if (error && error.code !== '23505') {
+      console.warn('[db] joinClub:', error.message); return false;
+    }
+    return true;
+  } catch (e) { return false; }
+}
+
+export async function leaveClub(clubId) {
+  const c = sb();
+  if (!c) return false;
+  const uid = await currentUserId();
+  if (!uid) return false;
+  try {
+    const { error } = await c.from('ritmo_club_members')
+      .delete().eq('club_id', clubId).eq('user_id', uid);
+    if (error) { console.warn('[db] leaveClub:', error.message); return false; }
+    return true;
+  } catch (e) { return false; }
+}
+
+export async function clubMembers(clubId, { limit = 100 } = {}) {
+  const c = sb();
+  if (!c || !clubId) return [];
+  try {
+    const { data, error } = await c.from('ritmo_club_members')
+      .select('user_id,role,joined_at,profile:ritmo_profiles!ritmo_club_members_user_id_fkey(user_id,display_name,data)')
+      .eq('club_id', clubId).order('joined_at').limit(limit);
+    if (error) { console.warn('[db] clubMembers:', error.message); return []; }
+    return data || [];
+  } catch (e) { return []; }
+}
+
+export async function isClubMember(clubId) {
+  const c = sb();
+  if (!c) return false;
+  const uid = await currentUserId();
+  if (!uid) return false;
+  try {
+    const { count, error } = await c.from('ritmo_club_members')
+      .select('*', { count: 'exact', head: true })
+      .eq('club_id', clubId).eq('user_id', uid);
+    if (error) return false;
+    return (count || 0) > 0;
+  } catch (e) { return false; }
+}
+
+/* ───────── BOOKABLE MATCHES ───────── */
+
+export async function listBookings({ clubId = null, mine = false, limit = 50 } = {}) {
+  const c = sb();
+  if (!c) return [];
+  try {
+    let q = c.from('ritmo_bookable_matches')
+      .select('id,host_id,club_id,court_label,starts_at,duration_min,level_min,level_max,format,total_slots,notes,created_at')
+      .gte('starts_at', new Date(Date.now() - 6 * 3600 * 1000).toISOString())
+      .order('starts_at').limit(limit);
+    if (clubId) q = q.eq('club_id', clubId);
+    if (mine) {
+      const uid = await currentUserId();
+      if (!uid) return [];
+      q = q.eq('host_id', uid);
+    }
+    const { data, error } = await q;
+    if (error) { console.warn('[db] listBookings:', error.message); return []; }
+    return data || [];
+  } catch (e) { return []; }
+}
+
+export async function fetchBooking(id) {
+  const c = sb();
+  if (!c || !id) return null;
+  try {
+    const { data, error } = await c.from('ritmo_bookable_matches')
+      .select('*').eq('id', id).maybeSingle();
+    if (error) { console.warn('[db] fetchBooking:', error.message); return null; }
+    return data || null;
+  } catch (e) { return null; }
+}
+
+export async function createBooking(input) {
+  const c = sb();
+  if (!c) throw new Error('Verbindung nicht verfügbar.');
+  const uid = await currentUserId();
+  if (!uid) throw new Error('Bitte zuerst anmelden.');
+  if (!input?.starts_at) throw new Error('Startzeit fehlt.');
+  const payload = {
+    host_id: uid,
+    club_id: input.club_id || null,
+    court_label: input.court_label?.trim() || null,
+    starts_at: input.starts_at,
+    duration_min: input.duration_min || 90,
+    level_min: input.level_min ?? null,
+    level_max: input.level_max ?? null,
+    format: input.format || 'bo3',
+    total_slots: input.total_slots || 4,
+    notes: input.notes?.trim() || null,
+  };
+  const { data, error } = await c.from('ritmo_bookable_matches')
+    .insert(payload).select('*').single();
+  if (error) throw new Error(error.message || 'Match konnte nicht angelegt werden.');
+  // Host nimmt automatisch slot 0.
+  await c.from('ritmo_match_slots').insert({ match_id: data.id, slot_index: 0, user_id: uid });
+  return data;
+}
+
+export async function bookingSlots(matchId) {
+  const c = sb();
+  if (!c || !matchId) return [];
+  try {
+    const { data, error } = await c.from('ritmo_match_slots')
+      .select('match_id,slot_index,user_id,joined_at,profile:ritmo_profiles!ritmo_match_slots_user_id_fkey(user_id,display_name,data)')
+      .eq('match_id', matchId).order('slot_index');
+    if (error) { console.warn('[db] bookingSlots:', error.message); return []; }
+    return data || [];
+  } catch (e) { return []; }
+}
+
+export async function joinSlot(matchId, slotIndex) {
+  const c = sb();
+  if (!c) throw new Error('Verbindung nicht verfügbar.');
+  const uid = await currentUserId();
+  if (!uid) throw new Error('Bitte zuerst anmelden.');
+  const { error } = await c.from('ritmo_match_slots')
+    .insert({ match_id: matchId, slot_index: slotIndex, user_id: uid });
+  if (error) throw new Error(error.message || 'Slot konnte nicht belegt werden.');
+  return true;
+}
+
+export async function leaveSlot(matchId) {
+  const c = sb();
+  if (!c) return false;
+  const uid = await currentUserId();
+  if (!uid) return false;
+  try {
+    const { error } = await c.from('ritmo_match_slots')
+      .delete().eq('match_id', matchId).eq('user_id', uid);
+    if (error) { console.warn('[db] leaveSlot:', error.message); return false; }
+    return true;
+  } catch (e) { return false; }
+}
+
+/* ───────── INVITES ───────── */
+
+export async function listIncomingInvites({ limit = 50 } = {}) {
+  const c = sb();
+  if (!c) return [];
+  const uid = await currentUserId();
+  if (!uid) return [];
+  try {
+    const { data, error } = await c.from('ritmo_match_invites')
+      .select('id,match_id,from_user_id,status,created_at,responded_at,'
+        + 'from_profile:ritmo_profiles!ritmo_match_invites_from_user_id_fkey(user_id,display_name,data),'
+        + 'match:ritmo_bookable_matches(id,starts_at,court_label,format,total_slots)')
+      .eq('to_user_id', uid).order('created_at', { ascending: false }).limit(limit);
+    if (error) { console.warn('[db] listIncomingInvites:', error.message); return []; }
+    return data || [];
+  } catch (e) { return []; }
+}
+
+export async function sendInvite(matchId, toUserId) {
+  const c = sb();
+  if (!c) throw new Error('Verbindung nicht verfügbar.');
+  const uid = await currentUserId();
+  if (!uid) throw new Error('Bitte zuerst anmelden.');
+  if (uid === toUserId) throw new Error('Selbst-Einladungen sind nicht erlaubt.');
+  const { error } = await c.from('ritmo_match_invites')
+    .insert({ match_id: matchId, from_user_id: uid, to_user_id: toUserId, status: 'pending' });
+  if (error && error.code !== '23505') {
+    throw new Error(error.message || 'Einladung konnte nicht gesendet werden.');
+  }
+  return true;
+}
+
+export async function respondInvite(inviteId, accept) {
+  const c = sb();
+  if (!c) return false;
+  const uid = await currentUserId();
+  if (!uid) return false;
+  try {
+    const { error } = await c.from('ritmo_match_invites')
+      .update({ status: accept ? 'accepted' : 'declined', responded_at: new Date().toISOString() })
+      .eq('id', inviteId).eq('to_user_id', uid);
+    if (error) { console.warn('[db] respondInvite:', error.message); return false; }
+    return true;
+  } catch (e) { return false; }
+}

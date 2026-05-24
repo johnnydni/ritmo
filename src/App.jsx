@@ -6232,9 +6232,11 @@ function Settings({onHome,activeTab,setActiveTab,nav}){
         </div>
       </div>
 
+      {/* Einheitlicher gap — alle Cards sitzen gleichmäßig auseinander.
+          Visuelle Gruppierung läuft jetzt nur noch über die Card-Farbe
+          (destruktive Konto-Karte = rot), nicht mehr über Extra-Spacer. */}
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:12,overflowY:'auto'}}>
 
-        {/* Gruppe 1 — Funktionale Sub-Screens */}
         <SettingsCard q={q}
           icon={<SteeringWheelIcon size={22} color="currentColor"/>}
           title="Steuerung"
@@ -6247,11 +6249,6 @@ function Settings({onHome,activeTab,setActiveTab,nav}){
           desc="Wähle dein Erscheinungsbild."
           onClick={()=>nav('settings-anpassung')}/>
 
-        {/* Visueller Separator zwischen aktiven Sub-Screens und
-            den Coming-Soon-Karten (Privatsphäre, Notifications, …) */}
-        <div style={{height:6,flexShrink:0}}/>
-
-        {/* Gruppe 2 — Privacy / Notifications / Security */}
         <SettingsCard q={q}
           icon={<EyeIcon size={22} color="currentColor"/>}
           title="Privatsphäre"
@@ -6270,9 +6267,6 @@ function Settings({onHome,activeTab,setActiveTab,nav}){
           desc="Passwort, Sessions, Zwei-Faktor."
           onClick={()=>nav('settings-sicherheit')}/>
 
-        {/* Visueller Separator vor der Destruktiv-Karte */}
-        <div style={{height:14,flexShrink:0}}/>
-
         <SettingsCard q={q} destructive
           icon={<DoorOutIcon size={22} color="currentColor"/>}
           title="Ich muss hier raus!"
@@ -6281,8 +6275,7 @@ function Settings({onHome,activeTab,setActiveTab,nav}){
 
         {/* About — schlichte Marker, kein Tap-Target */}
         <div style={{background:'transparent',border:`1px solid ${T.border}`,borderRadius:14,
-          padding:'14px 18px',color:T.t3,fontSize:11,lineHeight:1.6,textAlign:'center',
-          marginTop:10}}>
+          padding:'14px 18px',color:T.t3,fontSize:11,lineHeight:1.6,textAlign:'center'}}>
           <Hl text="Made by Team RITMO." q={q}/><br/><Hl text="With love for Padel ♡" q={q}/>
         </div>
 
@@ -6302,7 +6295,18 @@ function Settings({onHome,activeTab,setActiveTab,nav}){
    Content-Bereich, floating Gear-FAB unten-rechts, der zurück zur
    Einstellungs-Übersicht navigiert.
 ═══════════════════════════════════════════════════════════════ */
-function SettingsSubLayout({title,desc,icon,onBack,children}){
+function SettingsSubLayout({title,desc,icon,onBack,onHome,children}){
+  // Wiederverwendbarer FAB-Stil — beide Buttons sind identisch aufgebaut,
+  // nur die Position (links vs. rechts) und das Icon unterscheiden sich.
+  const fabBase={
+    position:'absolute',
+    bottom:'calc(env(safe-area-inset-bottom,0px) + 28px)',
+    width:54,height:54,borderRadius:'50%',
+    background:T.card,border:`1px solid ${T.border}`,
+    color:T.t1,cursor:'pointer',
+    display:'flex',alignItems:'center',justifyContent:'center',
+    boxShadow:'0 8px 24px rgba(0,0,0,.45)',zIndex:5,
+  };
   return(
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',
@@ -6336,14 +6340,17 @@ function SettingsSubLayout({title,desc,icon,onBack,children}){
         {children}
       </div>
 
-      {/* Floating Gear-FAB → zurück zur Settings-Übersicht */}
+      {/* Floating Home-FAB links → zur Startseite */}
+      {onHome&&(
+        <button onClick={onHome} aria-label="Zurück zur Startseite"
+          style={{...fabBase,left:22}}>
+          <HomeIcon size={22}/>
+        </button>
+      )}
+
+      {/* Floating Gear-FAB rechts → zurück zur Settings-Übersicht */}
       <button onClick={onBack} aria-label="Zurück zu Einstellungen"
-        style={{position:'absolute',right:22,bottom:'calc(env(safe-area-inset-bottom,0px) + 28px)',
-          width:54,height:54,borderRadius:'50%',
-          background:T.card,border:`1px solid ${T.border}`,
-          color:T.t1,cursor:'pointer',
-          display:'flex',alignItems:'center',justifyContent:'center',
-          boxShadow:'0 8px 24px rgba(0,0,0,.45)',zIndex:5}}>
+        style={{...fabBase,right:22}}>
         <GearIcon size={22}/>
       </button>
     </div>
@@ -6351,7 +6358,7 @@ function SettingsSubLayout({title,desc,icon,onBack,children}){
 }
 
 /* ─── Steuerung — Score-Gerät, Sprachansage, Timer-Klingelton ────── */
-function SettingsSteuerung({onBack,inputMode,setInputMode,voiceOn,setVoiceOn,
+function SettingsSteuerung({onBack,onHome,inputMode,setInputMode,voiceOn,setVoiceOn,
   ringId,setRingId}){
   const[showInfo,setShowInfo]=useState(false);
   const inputs=[
@@ -6365,7 +6372,7 @@ function SettingsSteuerung({onBack,inputMode,setInputMode,voiceOn,setVoiceOn,
     <SettingsSubLayout title="Steuerung"
       desc="Wie Punkte vergeben werden, Klang & Stimme."
       icon={<SteeringWheelIcon size={22} color="currentColor"/>}
-      onBack={onBack}>
+      onBack={onBack} onHome={onHome}>
 
       {/* Score-Gerät */}
       <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
@@ -6496,7 +6503,7 @@ function SettingsSteuerung({onBack,inputMode,setInputMode,voiceOn,setVoiceOn,
 }
 
 /* ─── Anpassung — Theme picker ──────────────────────────────────── */
-function SettingsAnpassung({onBack,theme,setTheme}){
+function SettingsAnpassung({onBack,onHome,theme,setTheme}){
   const themes=[
     {id:'dark',label:'RITMO BAUHAUS Dark',icon:'🌙',desc:'Schwarz, weiß, orange'},
     {id:'light',label:'Federleicht',icon:'☀️',desc:'Weiß, schwarz, blau'},
@@ -6508,7 +6515,7 @@ function SettingsAnpassung({onBack,theme,setTheme}){
     <SettingsSubLayout title="Anpassung"
       desc="Wähle dein Erscheinungsbild."
       icon={<PaletteIcon size={22} color="currentColor"/>}
-      onBack={onBack}>
+      onBack={onBack} onHome={onHome}>
       <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
         padding:'18px 18px 8px'}}>
         <div style={{color:T.o,fontSize:11,fontWeight:700,letterSpacing:1.3,
@@ -6534,9 +6541,10 @@ function SettingsAnpassung({onBack,theme,setTheme}){
 }
 
 /* ─── Generischer Coming-Soon Sub-Screen ───────────────────────── */
-function SettingsComingSoon({title,desc,icon,onBack,bullets=[]}){
+function SettingsComingSoon({title,desc,icon,onBack,onHome,bullets=[]}){
   return(
-    <SettingsSubLayout title={title} desc={desc} icon={icon} onBack={onBack}>
+    <SettingsSubLayout title={title} desc={desc} icon={icon}
+      onBack={onBack} onHome={onHome}>
       <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
         padding:'24px 22px',textAlign:'center'}}>
         <div style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:2.5,
@@ -6564,14 +6572,14 @@ function SettingsComingSoon({title,desc,icon,onBack,bullets=[]}){
 }
 
 /* ─── Konto löschen — Destructive sub-screen ────────────────────── */
-function SettingsKonto({onBack,onLogout}){
+function SettingsKonto({onBack,onHome,onLogout}){
   const[confirmText,setConfirmText]=useState('');
   const ready=confirmText.trim().toUpperCase()==='LÖSCHEN';
   return(
     <SettingsSubLayout title="Ich muss hier raus!"
       desc="Konto löschen — endgültig, ohne Wiederherstellung."
       icon={<DoorOutIcon size={22} color="currentColor"/>}
-      onBack={onBack}>
+      onBack={onBack} onHome={onHome}>
 
       <div style={{background:'rgba(232,69,69,0.08)',border:'1px solid rgba(232,69,69,0.35)',
         borderRadius:14,padding:'20px 22px',marginBottom:14}}>
@@ -6669,7 +6677,11 @@ function RitmoPost({onHome,profile}){
         </div>
       </div>
 
-      {/* Tab strip */}
+      {/* Tab strip — active button invertiert in der Theme-Farbe.
+          Text-Farbe nutzt T.bg, damit sie immer kontrastiert: in den
+          dunklen Themes (dark/padel/wimbledon/funky) wird der Text
+          dunkel, in 'light' (Federleicht) wird er weiß — kein
+          Black-on-Black mehr. */}
       <div style={{display:'flex',gap:8,padding:'0 22px 16px',flexShrink:0}}>
         {tabs.map(t=>{
           const active=tab===t.id;
@@ -6677,7 +6689,7 @@ function RitmoPost({onHome,profile}){
             <button key={t.id} onClick={()=>setTab(t.id)}
               style={{flex:1,padding:'10px 8px',
                 background:active?T.t1:'transparent',
-                color:active?'#000':T.t2,
+                color:active?T.bg:T.t2,
                 border:`1px solid ${active?T.t1:T.border}`,borderRadius:10,
                 fontSize:12,fontWeight:active?800:600,letterSpacing:.3,
                 cursor:'pointer',transition:'all .15s'}}>
@@ -6714,9 +6726,9 @@ function RitmoPost({onHome,profile}){
         )}
       </div>
 
-      {/* Floating Home-FAB → zurück */}
+      {/* Floating Home-FAB → zurück (links-unten) */}
       <button onClick={onHome} aria-label="Zurück zu Home"
-        style={{position:'absolute',right:22,bottom:'calc(env(safe-area-inset-bottom,0px) + 28px)',
+        style={{position:'absolute',left:22,bottom:'calc(env(safe-area-inset-bottom,0px) + 28px)',
           width:54,height:54,borderRadius:'50%',
           background:T.card,border:`1px solid ${T.border}`,
           color:T.t1,cursor:'pointer',
@@ -8901,15 +8913,15 @@ export default function App(){
     {scr==='settings'&&<Settings onHome={goHome} nav={nav}
       activeTab={activeTab} setActiveTab={handleTab}/>}
     {scr==='settings-steuerung'&&<SettingsSteuerung
-      onBack={()=>setScr('settings')}
+      onBack={()=>setScr('settings')} onHome={goHome}
       inputMode={inputMode} setInputMode={setInputMode}
       voiceOn={voiceOn} setVoiceOn={setVoiceOn}
       ringId={ringId} setRingId={setRingId}/>}
     {scr==='settings-anpassung'&&<SettingsAnpassung
-      onBack={()=>setScr('settings')}
+      onBack={()=>setScr('settings')} onHome={goHome}
       theme={theme} setTheme={setTheme}/>}
     {scr==='settings-privatsphaere'&&<SettingsComingSoon
-      onBack={()=>setScr('settings')}
+      onBack={()=>setScr('settings')} onHome={goHome}
       title="Privatsphäre"
       desc="Wer dich findet · wer deine Stats sieht."
       icon={<EyeIcon size={22} color="currentColor"/>}
@@ -8920,7 +8932,7 @@ export default function App(){
         'Datenexport und -löschung gemäß DSGVO',
       ]}/>}
     {scr==='settings-benachrichtigungen'&&<SettingsComingSoon
-      onBack={()=>setScr('settings')}
+      onBack={()=>setScr('settings')} onHome={goHome}
       title="Benachrichtigungen"
       desc="Match-Reminder, Turnier-Alerts, Chats."
       icon={<BellIcon size={22} color="currentColor"/>}
@@ -8931,7 +8943,7 @@ export default function App(){
         'Chat- und Community-Mitteilungen',
       ]}/>}
     {scr==='settings-sicherheit'&&<SettingsComingSoon
-      onBack={()=>setScr('settings')}
+      onBack={()=>setScr('settings')} onHome={goHome}
       title="Sicherheit"
       desc="Passwort, Sessions, Zwei-Faktor."
       icon={<LockIcon size={22} color="currentColor"/>}
@@ -8942,7 +8954,7 @@ export default function App(){
         'Login-Aktivitäts-Log',
       ]}/>}
     {scr==='settings-konto'&&<SettingsKonto
-      onBack={()=>setScr('settings')}
+      onBack={()=>setScr('settings')} onHome={goHome}
       onLogout={async()=>{
         try{await auth.signOut();}catch(e){}
         setLoggedIn(false);

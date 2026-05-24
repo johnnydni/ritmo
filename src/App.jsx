@@ -3,7 +3,13 @@ import { SKILL_DESCRIPTIONS } from "./skillDescriptions.js";
 import { loadProfile as dbLoadProfile, saveProfile as dbSaveProfile, logMatch as dbLogMatch, loadMatchStats as dbLoadMatchStats,
   createOnlineTournament, joinOnlineTournament, fetchOnlineTournament, updateOnlineTournament, subscribeToTournament,
   publishTournamentState, submitScore, approveScore, rejectScore, sendReadyCheck, confirmReady, clearReadyCheck,
-  checkBetaKey, redeemBetaKey } from "./db.js";
+  checkBetaKey, redeemBetaKey,
+  // Social layer
+  fetchPublicProfile, searchPlayers, followUser, unfollowUser, followCounts, isFollowing,
+  listFollowers, listFollowing,
+  listClubs, fetchClub, createClub, joinClub, leaveClub, clubMembers, isClubMember,
+  listBookings, fetchBooking, createBooking, bookingSlots, joinSlot, leaveSlot,
+  listIncomingInvites, sendInvite, respondInvite } from "./db.js";
 
 /* ── Refactor (Phase 1): pure modules extracted from App.jsx.
    Components, screens and routing remain colocated here for now;
@@ -2175,17 +2181,27 @@ function AvatarWithUpload({profile,setProfile,size=72}){
 }
 
 
-function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRitmoDNA}){
+function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRitmoDNA,
+  currentUid,onOpenFollowers,onOpenFollowing}){
   // Nur die Labels, die noch in der Tag-Reihe der Level-Karte gerendert werden.
-  // Spielniveau- und Spielstil-Detail-Karten wurden entfernt; die übrigen
-  // Mappings (years/freq/tourn/style/shot) sind dafür nicht mehr nötig.
   const handLabels={right:'Rechtshänder',left:'Linkshänder'};
   const sideLabels={left:'Ad-Seite (links)',right:'Deuce-Seite (rechts)',any:'Beides geht'};
 
   const[editingLevel,setEditingLevel]=useState(false);
+  // Follower-Counts werden bei jedem Mount frisch geladen, damit nach
+  // Follow/Unfollow im anderen Screen die Anzeige aktualisiert.
+  const[counts,setCounts]=useState({followers:0,following:0});
+  useEffect(()=>{
+    if(!currentUid) return;
+    let cancelled=false;
+    followCounts(currentUid).then(c=>{ if(!cancelled) setCounts(c); });
+    return()=>{cancelled=true;};
+  },[currentUid]);
 
   const lvl=profile.playtomicLevel??profile.estimatedLevel??estimateLevel(profile);
   const isEstimated=profile.playtomicLevel==null&&lvl!=null;
+  const isPublic=!profile.private;
+  const togglePublic=()=>setProfile(p=>({...p,private:!p.private?true:false}));
 
   return(
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
@@ -2360,6 +2376,55 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
           </div>
         )}
 
+        {/* Followers / Following — Counter-Karten, tap öffnet die Liste */}
+        <div className="fu" style={{display:'flex',gap:10,marginBottom:14,animationDelay:'.08s'}}>
+          <button onClick={()=>onOpenFollowers&&onOpenFollowers()}
+            style={{flex:1,background:T.card,border:`1px solid ${T.border}`,borderRadius:12,
+              padding:'14px 12px',textAlign:'center',cursor:'pointer',color:T.t1}}>
+            <div style={{fontSize:22,fontWeight:900,letterSpacing:-.3}}>{counts.followers}</div>
+            <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.3,
+              textTransform:'uppercase',marginTop:2}}>Follower</div>
+          </button>
+          <button onClick={()=>onOpenFollowing&&onOpenFollowing()}
+            style={{flex:1,background:T.card,border:`1px solid ${T.border}`,borderRadius:12,
+              padding:'14px 12px',textAlign:'center',cursor:'pointer',color:T.t1}}>
+            <div style={{fontSize:22,fontWeight:900,letterSpacing:-.3}}>{counts.following}</div>
+            <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.3,
+              textTransform:'uppercase',marginTop:2}}>Folgt</div>
+          </button>
+        </div>
+
+        {/* Sichtbarkeit — Public Profile Toggle.
+            Spiegelt profile.private; das Schema-Trigger synchronisiert
+            is_public beim Save, sodass das Profil in Suchen auftaucht. */}
+        <div className="fu" style={{background:T.card,border:`1px solid ${T.border}`,
+          borderRadius:14,padding:'14px 18px',marginBottom:14,animationDelay:'.1s',
+          display:'flex',alignItems:'center',gap:12}}>
+          <div style={{flexShrink:0,width:36,height:36,borderRadius:10,background:T.card2,
+            border:`1px solid ${T.border}`,color:isPublic?T.o:T.t3,
+            display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <EyeIcon size={20}/>
+          </div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{color:T.t1,fontSize:14,fontWeight:700}}>
+              {isPublic?'Profil öffentlich':'Profil privat'}
+            </div>
+            <div style={{color:T.t3,fontSize:11,marginTop:2,lineHeight:1.45}}>
+              {isPublic
+                ?'Andere Spieler:innen können dich finden und folgen.'
+                :'Niemand kann dich finden — nur du siehst dein Profil.'}
+            </div>
+          </div>
+          <div onClick={togglePublic}
+            style={{width:48,height:28,borderRadius:14,
+              background:isPublic?T.o:'rgba(120,120,128,.32)',
+              position:'relative',cursor:'pointer',transition:'background .25s',flexShrink:0}}>
+            <div style={{width:24,height:24,borderRadius:'50%',background:T.bg,
+              position:'absolute',top:2,left:isPublic?22:2,transition:'left .25s',
+              boxShadow:'0 1px 3px rgba(0,0,0,.3)'}}/>
+          </div>
+        </div>
+
         {/* Actions */}
         <div className="fu" style={{animationDelay:'.15s',
           display:'flex',flexDirection:'column',gap:8,marginBottom:16}}>
@@ -2508,6 +2573,52 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded}){
             <div style={{color:T.t3,fontSize:12,fontWeight:500}}>Americano | Mexicano</div>
           </div>
         </button>
+
+        {/* Matches buchen — offene Spielangebote */}
+        <button onClick={()=>nav('bookings')} className="fu"
+          style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:18,
+            padding:'18px 20px',display:'flex',alignItems:'center',gap:18,
+            cursor:'pointer',color:T.t1,textAlign:'left',transition:'background .15s',
+            animationDelay:'.08s'}}
+          onPointerDown={e=>e.currentTarget.style.background=T.card2}
+          onPointerUp={e=>e.currentTarget.style.background=T.card}
+          onPointerLeave={e=>e.currentTarget.style.background=T.card}>
+          <CourtIcon size={42}/>
+          <div style={{flex:1}}>
+            <div style={{color:T.o,fontSize:18,fontWeight:700,marginBottom:3}}>Match buchen</div>
+            <div style={{color:T.t3,fontSize:12,fontWeight:500}}>Offene Matches | Spieler einladen</div>
+          </div>
+        </button>
+
+        {/* Community: Spieler-Suche + Clubs in einer Zeile */}
+        <div className="fu" style={{display:'flex',gap:10,animationDelay:'.1s'}}>
+          <button onClick={()=>nav('player-search')}
+            style={{flex:1,background:'transparent',border:`1px solid ${T.border}`,borderRadius:16,
+              padding:'14px 14px',display:'flex',flexDirection:'column',alignItems:'flex-start',
+              gap:8,cursor:'pointer',color:T.t1,textAlign:'left',transition:'background .15s'}}
+            onPointerDown={e=>e.currentTarget.style.background=T.card2}
+            onPointerUp={e=>e.currentTarget.style.background='transparent'}
+            onPointerLeave={e=>e.currentTarget.style.background='transparent'}>
+            <SearchIcon size={22}/>
+            <div>
+              <div style={{color:T.o,fontSize:14,fontWeight:700,marginBottom:1}}>Spieler</div>
+              <div style={{color:T.t3,fontSize:11,fontWeight:500}}>Suchen | Folgen</div>
+            </div>
+          </button>
+          <button onClick={()=>nav('clubs')}
+            style={{flex:1,background:'transparent',border:`1px solid ${T.border}`,borderRadius:16,
+              padding:'14px 14px',display:'flex',flexDirection:'column',alignItems:'flex-start',
+              gap:8,cursor:'pointer',color:T.t1,textAlign:'left',transition:'background .15s'}}
+            onPointerDown={e=>e.currentTarget.style.background=T.card2}
+            onPointerUp={e=>e.currentTarget.style.background='transparent'}
+            onPointerLeave={e=>e.currentTarget.style.background='transparent'}>
+            <TrophyIcon size={22}/>
+            <div>
+              <div style={{color:T.o,fontSize:14,fontWeight:700,marginBottom:1}}>Clubs</div>
+              <div style={{color:T.t3,fontSize:11,fontWeight:500}}>Beitreten | Gründen</div>
+            </div>
+          </button>
+        </div>
 
         {/* Turnier beitreten */}
         <button onClick={()=>nav('remote')} className="fu"
@@ -6642,7 +6753,7 @@ function SettingsKonto({onBack,onHome,onLogout}){
    Phase 1: leere Posteingänge mit Empty-States. Inhalte folgen,
    sobald Real-Time-Notifications und Chats wired sind.
 ═══════════════════════════════════════════════════════════════ */
-function RitmoPost({onHome,profile}){
+function RitmoPost({onHome,profile,onOpenInvites,onOpenBookings}){
   const[tab,setTab]=useState('notify');
   const tabs=[
     {id:'notify',label:'Benachrichtigungen',short:'Updates'},
@@ -6706,8 +6817,9 @@ function RitmoPost({onHome,profile}){
         {tab==='notify'&&(
           <RitmoPostEmpty
             icon={<BellIcon size={28} color="currentColor"/>}
-            title="Noch keine Benachrichtigungen"
-            desc="Match-Reminder, Turnier-Alerts und Updates landen hier, sobald sie für dich relevant sind."/>
+            title="Match-Einladungen ansehen"
+            desc="Eingehende Einladungen zu offenen Matches findest du im eigenen Posteingang."
+            cta={{label:'Einladungen öffnen',onClick:onOpenInvites}}/>
         )}
 
         {tab==='chats'&&(
@@ -6719,10 +6831,10 @@ function RitmoPost({onHome,profile}){
 
         {tab==='events'&&(
           <RitmoPostEmpty
-            icon={<TrophyIcon size={28}/>}
-            title="Noch keine Events"
-            desc="RITMO Turniere, Open Days und Meetups in deiner Nähe — sobald die ersten Daten verfügbar sind."
-            cta={{label:'Mehr erfahren',onClick:onHome}}/>
+            icon={<CourtIcon size={28}/>}
+            title="Offene Matches ansehen"
+            desc="Buchbare Matches und Events findest du gebündelt unter „Match buchen“."
+            cta={{label:'Zu den Matches',onClick:onOpenBookings}}/>
         )}
       </div>
 
@@ -6762,6 +6874,1047 @@ function RitmoPostEmpty({icon,title,desc,cta}){
         </button>
       )}
     </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SOCIAL LAYER — Phase 1 Screens
+
+   PublicProfile, PlayerSearch, Clubs, ClubDetail, Bookings,
+   BookingDetail, BookingCreate, Invites.
+
+   Alle screens nutzen das gleiche SocialHeader-Layout (RITMO Eyebrow,
+   großer Titel, optionale Beschreibung) und einen floating Home-FAB
+   unten-links. Datenzugriffe gehen über die social-helpers in db.js.
+
+   Animationen: .fi/.fu CSS-Klassen (siehe theme.js) liefern die
+   stagger-fade-ins; einzelne Listen-Items bekommen animationDelay
+   über inline style.
+═══════════════════════════════════════════════════════════════ */
+
+/* ── Helper: Spieler-Listen-Item (Avatar + Name + Level + Style-Tag) */
+function PlayerListItem({profile,onClick,trailing}){
+  const data=profile?.data||{};
+  const name=profile?.display_name||data.name||'Spieler';
+  const lvl=data.playtomicLevel??data.estimatedLevel;
+  const styleType=data.styleType;
+  const style=styleType?PADEL_STYLES[styleType]:null;
+  return(
+    <button onClick={onClick}
+      style={{width:'100%',background:T.card,border:`1px solid ${T.border}`,borderRadius:12,
+        padding:'12px 14px',display:'flex',alignItems:'center',gap:12,
+        color:T.t1,textAlign:'left',cursor:'pointer',transition:'background .15s'}}
+      onPointerDown={e=>e.currentTarget.style.background=T.card2}
+      onPointerUp={e=>e.currentTarget.style.background=T.card}
+      onPointerLeave={e=>e.currentTarget.style.background=T.card}>
+      <ProfileAvatar name={name} avatar={data.avatar} size={42}/>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{color:T.t1,fontSize:14,fontWeight:700,letterSpacing:-.1,
+          whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{name}</div>
+        <div style={{display:'flex',alignItems:'center',gap:6,marginTop:3,flexWrap:'wrap'}}>
+          {lvl!=null&&(
+            <span style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:.3}}>
+              Lv {lvl.toFixed(2)}
+            </span>
+          )}
+          {style&&(
+            <span style={{padding:'1px 6px',background:`${style.accent}22`,
+              border:`1px solid ${style.accent}`,borderRadius:5,
+              color:style.accent,fontSize:9,fontWeight:800,letterSpacing:.4,
+              textTransform:'uppercase'}}>
+              {style.name}
+            </span>
+          )}
+        </div>
+      </div>
+      {trailing}
+    </button>
+  );
+}
+
+/* ── Generischer Screen-Wrapper (Header + Home-FAB) ──────────────── */
+function SocialScreen({eyebrow,title,desc,icon,onHome,children}){
+  return(
+    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',
+      position:'relative',overflow:'hidden'}}>
+      <div className="fi" style={{padding:'0 22px 14px'}}>
+        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
+          {icon&&(
+            <div style={{flexShrink:0,color:T.o,
+              width:36,height:36,background:T.card2,
+              border:`1px solid ${T.border}`,borderRadius:10,
+              display:'flex',alignItems:'center',justifyContent:'center'}}>{icon}</div>
+          )}
+          <div style={{flex:1,minWidth:0}}>
+            {eyebrow&&(
+              <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.5,
+                textTransform:'uppercase'}}>{eyebrow}</div>
+            )}
+            <div style={{color:T.t1,fontSize:24,fontWeight:800,letterSpacing:-.3,marginTop:2}}>
+              {title}
+            </div>
+          </div>
+        </div>
+        {desc&&<div style={{color:T.t3,fontSize:13,lineHeight:1.5,marginTop:6}}>{desc}</div>}
+      </div>
+      <div style={{flex:1,padding:'0 22px 140px',overflowY:'auto',
+        WebkitOverflowScrolling:'touch'}}>{children}</div>
+      <button onClick={onHome} aria-label="Zurück zur Startseite"
+        style={{position:'absolute',left:22,bottom:'calc(env(safe-area-inset-bottom,0px) + 28px)',
+          width:54,height:54,borderRadius:'50%',
+          background:T.card,border:`1px solid ${T.border}`,
+          color:T.t1,cursor:'pointer',
+          display:'flex',alignItems:'center',justifyContent:'center',
+          boxShadow:'0 8px 24px rgba(0,0,0,.45)',zIndex:5}}>
+        <HomeIcon size={22}/>
+      </button>
+    </div>
+  );
+}
+
+/* ═══ PlayerSearch — Suche nach öffentlichen Profilen ═══ */
+function PlayerSearch({onHome,onOpenPlayer}){
+  const[q,setQ]=useState('');
+  const[results,setResults]=useState([]);
+  const[busy,setBusy]=useState(false);
+  // Debounced Search — 250 ms nach letztem Tastendruck
+  useEffect(()=>{
+    const tq=q.trim();
+    if(!tq){setResults([]);return;}
+    const t=setTimeout(async()=>{
+      setBusy(true);
+      try{ setResults(await searchPlayers(tq,{limit:30})); }
+      finally{ setBusy(false); }
+    },250);
+    return()=>clearTimeout(t);
+  },[q]);
+  return(
+    <SocialScreen eyebrow="Community" title="Spieler suchen"
+      desc="Find Mitspieler — nach Name."
+      icon={<SearchIcon size={22}/>} onHome={onHome}>
+      <div className="fu" style={{marginBottom:14}}>
+        <input value={q} onChange={e=>setQ(e.target.value)}
+          autoCapitalize="off" autoCorrect="off" spellCheck={false}
+          placeholder="Name eingeben …"
+          style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
+            borderRadius:12,padding:'13px 16px',color:T.t1,fontSize:15,fontWeight:500,
+            outline:'none',boxSizing:'border-box'}}/>
+      </div>
+      {q.trim()===''?(
+        <RitmoPostEmpty icon={<SearchIcon size={28}/>}
+          title="Tipp einen Namen"
+          desc="Mindestens ein Buchstabe — du siehst sofort, wer öffentlich verfügbar ist."/>
+      ):busy?(
+        <div style={{color:T.t3,fontSize:13,padding:'24px 0',textAlign:'center'}}>Suche …</div>
+      ):results.length===0?(
+        <RitmoPostEmpty icon={<PersonGlyph size={28}/>}
+          title="Niemand gefunden"
+          desc="Kein öffentliches Profil entspricht der Suche."/>
+      ):(
+        <div style={{display:'flex',flexDirection:'column',gap:10}}>
+          {results.map((p,i)=>(
+            <div key={p.user_id} className="fu" style={{animationDelay:`${i*0.03}s`}}>
+              <PlayerListItem profile={p}
+                onClick={()=>onOpenPlayer(p.user_id)}
+                trailing={<ChevronRightIcon size={16} color={T.t3}/>}/>
+            </div>
+          ))}
+        </div>
+      )}
+    </SocialScreen>
+  );
+}
+
+/* ═══ PublicProfile — Profil eines anderen Spielers ═══ */
+function PublicProfile({userId,currentUid,onHome,onBack}){
+  const[prof,setProf]=useState(null);
+  const[counts,setCounts]=useState({followers:0,following:0});
+  const[following,setFollowing]=useState(false);
+  const[busy,setBusy]=useState(false);
+  const isSelf=userId===currentUid;
+
+  const refresh=useCallback(async()=>{
+    const [p,c,f]=await Promise.all([
+      fetchPublicProfile(userId),
+      followCounts(userId),
+      isSelf?false:isFollowing(userId),
+    ]);
+    setProf(p); setCounts(c); setFollowing(f);
+  },[userId,isSelf]);
+
+  useEffect(()=>{ refresh(); },[refresh]);
+
+  const toggle=async()=>{
+    if(busy||isSelf) return;
+    setBusy(true);
+    try{
+      const ok=await (following?unfollowUser(userId):followUser(userId));
+      if(ok){
+        setFollowing(!following);
+        setCounts(c=>({...c,followers:Math.max(0,c.followers+(following?-1:1))}));
+      }
+    }finally{ setBusy(false); }
+  };
+
+  const data=prof?.data||{};
+  const name=prof?.display_name||data.name||'Spieler';
+  const lvl=data.playtomicLevel??data.estimatedLevel;
+  const styleType=data.styleType;
+  const style=styleType?PADEL_STYLES[styleType]:null;
+
+  return(
+    <SocialScreen eyebrow="Profil" title={name}
+      icon={<PersonGlyph size={22}/>} onHome={onHome}>
+      {!prof?(
+        <RitmoPostEmpty icon={<EyeIcon size={28}/>}
+          title="Profil nicht verfügbar"
+          desc="Dieses Profil ist entweder privat oder existiert nicht."
+          cta={{label:'Zurück',onClick:onBack}}/>
+      ):(
+        <Fragment>
+          {/* Hero */}
+          <div className="fu" style={{background:T.card,border:`1px solid ${T.border}`,
+            borderRadius:16,padding:'24px 22px',marginBottom:12,
+            display:'flex',alignItems:'center',gap:16}}>
+            <ProfileAvatar name={name} avatar={data.avatar} size={72}/>
+            <div style={{flex:1,minWidth:0}}>
+              {lvl!=null&&(
+                <Fragment>
+                  <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.3,
+                    textTransform:'uppercase',marginBottom:2}}>
+                    {data.playtomicLevel!=null?'Playtomic Level':'RITMO Level'}
+                  </div>
+                  <div style={{color:T.o,fontSize:34,fontWeight:900,letterSpacing:-.6,lineHeight:1}}>
+                    {lvl.toFixed(2)}
+                  </div>
+                  <div style={{display:'flex',alignItems:'center',gap:8,marginTop:4}}>
+                    <span style={{color:T.o,fontSize:12,fontWeight:700}}>{getLevelLabel(lvl)}</span>
+                    <span style={{padding:'1px 6px',background:getLevelColor(lvl),color:'#fff',
+                      borderRadius:4,fontSize:9,fontWeight:900,letterSpacing:.5}}>
+                      {getLevelTier(lvl)}
+                    </span>
+                  </div>
+                </Fragment>
+              )}
+              {style&&(
+                <div style={{marginTop:8}}>
+                  <span style={{padding:'3px 8px',background:`${style.accent}22`,
+                    border:`1px solid ${style.accent}`,borderRadius:6,
+                    color:style.accent,fontSize:10,fontWeight:800,letterSpacing:.3,
+                    textTransform:'uppercase'}}>
+                    {style.name}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Follower / Following */}
+          <div className="fu" style={{display:'flex',gap:10,marginBottom:12,animationDelay:'.04s'}}>
+            <div style={{flex:1,background:T.card,border:`1px solid ${T.border}`,borderRadius:12,
+              padding:'14px 12px',textAlign:'center'}}>
+              <div style={{color:T.t1,fontSize:22,fontWeight:900,letterSpacing:-.3}}>{counts.followers}</div>
+              <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.3,
+                textTransform:'uppercase',marginTop:2}}>Follower</div>
+            </div>
+            <div style={{flex:1,background:T.card,border:`1px solid ${T.border}`,borderRadius:12,
+              padding:'14px 12px',textAlign:'center'}}>
+              <div style={{color:T.t1,fontSize:22,fontWeight:900,letterSpacing:-.3}}>{counts.following}</div>
+              <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.3,
+                textTransform:'uppercase',marginTop:2}}>Folgt</div>
+            </div>
+          </div>
+
+          {/* Follow button */}
+          {!isSelf&&(
+            <button onClick={toggle} disabled={busy} className="fu"
+              style={{width:'100%',marginBottom:12,padding:'14px 16px',
+                background:following?T.card:T.o,
+                border:following?`1px solid ${T.border}`:'none',borderRadius:12,
+                color:following?T.t1:'#000',fontSize:14,fontWeight:800,letterSpacing:.3,
+                cursor:busy?'not-allowed':'pointer',opacity:busy?.6:1,
+                animationDelay:'.08s'}}>
+              {following?'Du folgst':'Folgen'}
+            </button>
+          )}
+
+          {/* RITMO DNA Card (wenn vorhanden) */}
+          {style&&(
+            <div className="fu" style={{
+              background:'linear-gradient(135deg,#1A1A1A 0%,#000 100%)',
+              border:`1px solid ${style.accent}40`,borderRadius:16,
+              padding:'18px 20px',animationDelay:'.12s'}}>
+              <div style={{display:'flex',alignItems:'center',gap:14}}>
+                <div style={{width:48,height:48,borderRadius:'50%',flexShrink:0,
+                  background:`${style.accent}22`,
+                  border:`1.5px solid ${style.accent}`,
+                  display:'flex',alignItems:'center',justifyContent:'center',color:style.accent}}>
+                  <DNAIcon size={26} color="currentColor"/>
+                </div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{color:'#fff',fontSize:16,fontWeight:900,letterSpacing:-.3}}>
+                    RITMO <span style={{color:style.accent}}>DNA</span>
+                  </div>
+                  <div style={{color:'rgba(255,255,255,0.55)',fontSize:11,marginTop:3}}>
+                    {style.subtitle} · {style.tagline}
+                  </div>
+                </div>
+              </div>
+              <div style={{color:'rgba(255,255,255,0.75)',fontSize:12,lineHeight:1.6,marginTop:14}}>
+                {style.desc}
+              </div>
+            </div>
+          )}
+        </Fragment>
+      )}
+    </SocialScreen>
+  );
+}
+
+/* ═══ Clubs — List + Create entry ═══ */
+function Clubs({onHome,onOpenClub,onCreateClub}){
+  const[q,setQ]=useState('');
+  const[clubs,setClubs]=useState([]);
+  const[busy,setBusy]=useState(false);
+  const load=useCallback(async()=>{
+    setBusy(true);
+    try{ setClubs(await listClubs({query:q,limit:50})); }
+    finally{ setBusy(false); }
+  },[q]);
+  useEffect(()=>{
+    const t=setTimeout(load,200);
+    return()=>clearTimeout(t);
+  },[load]);
+
+  return(
+    <SocialScreen eyebrow="Community" title="Clubs"
+      desc="Find oder gründe deinen Club."
+      icon={<TrophyIcon size={22}/>} onHome={onHome}>
+      <div className="fu" style={{display:'flex',gap:8,marginBottom:14}}>
+        <input value={q} onChange={e=>setQ(e.target.value)}
+          placeholder="Name oder Stadt …"
+          style={{flex:1,background:T.card2,border:`1px solid ${T.border}`,
+            borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
+            outline:'none',boxSizing:'border-box',minWidth:0}}/>
+        <button onClick={onCreateClub}
+          style={{padding:'12px 14px',background:T.o,border:'none',borderRadius:10,
+            color:'#000',fontSize:13,fontWeight:800,letterSpacing:.3,cursor:'pointer',
+            flexShrink:0}}>
+          + Neu
+        </button>
+      </div>
+      {busy?(
+        <div style={{color:T.t3,fontSize:13,padding:'24px 0',textAlign:'center'}}>Lädt …</div>
+      ):clubs.length===0?(
+        <RitmoPostEmpty icon={<TrophyIcon size={28}/>}
+          title="Noch keine Clubs"
+          desc="Sei der/die Erste und gründe einen Club."
+          cta={{label:'Club gründen',onClick:onCreateClub}}/>
+      ):(
+        <div style={{display:'flex',flexDirection:'column',gap:10}}>
+          {clubs.map((c,i)=>(
+            <button key={c.id} onClick={()=>onOpenClub(c.id)} className="fu"
+              style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:12,
+                padding:'14px 16px',display:'flex',alignItems:'center',gap:12,
+                color:T.t1,textAlign:'left',cursor:'pointer',animationDelay:`${i*0.03}s`}}>
+              <div style={{flexShrink:0,width:40,height:40,borderRadius:10,
+                background:T.card2,border:`1px solid ${T.border}`,color:T.o,
+                display:'flex',alignItems:'center',justifyContent:'center'}}>
+                <TrophyIcon size={20}/>
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{color:T.t1,fontSize:14,fontWeight:700,letterSpacing:-.1}}>{c.name}</div>
+                {c.city&&<div style={{color:T.t3,fontSize:11,marginTop:2}}>{c.city}</div>}
+              </div>
+              <ChevronRightIcon size={16} color={T.t3}/>
+            </button>
+          ))}
+        </div>
+      )}
+    </SocialScreen>
+  );
+}
+
+/* ═══ ClubCreate — Formular ═══ */
+function ClubCreate({onHome,onDone,onCancel}){
+  const[name,setName]=useState('');
+  const[city,setCity]=useState('');
+  const[desc,setDesc]=useState('');
+  const[busy,setBusy]=useState(false);
+  const[err,setErr]=useState('');
+  const save=async()=>{
+    setErr(''); setBusy(true);
+    try{
+      const club=await createClub({name,city,description:desc});
+      onDone(club);
+    }catch(e){ setErr(e.message||'Fehler.'); }
+    finally{ setBusy(false); }
+  };
+  return(
+    <SocialScreen eyebrow="Clubs" title="Neuer Club"
+      desc="Leg den Namen fest — der Rest folgt."
+      icon={<TrophyIcon size={22}/>} onHome={onHome}>
+      <div className="fu" style={{display:'flex',flexDirection:'column',gap:12}}>
+        <div>
+          <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
+            textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Name *</div>
+          <input value={name} onChange={e=>setName(e.target.value)}
+            placeholder="z.B. Padelhaus München"
+            style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
+              borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:600,
+              outline:'none',boxSizing:'border-box'}}/>
+        </div>
+        <div>
+          <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
+            textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Stadt</div>
+          <input value={city} onChange={e=>setCity(e.target.value)}
+            placeholder="z.B. München"
+            style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
+              borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:600,
+              outline:'none',boxSizing:'border-box'}}/>
+        </div>
+        <div>
+          <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
+            textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Beschreibung</div>
+          <textarea value={desc} onChange={e=>setDesc(e.target.value)} rows={3}
+            placeholder="Was zeichnet euch aus?"
+            style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
+              borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
+              outline:'none',boxSizing:'border-box',resize:'vertical'}}/>
+        </div>
+        {err&&(
+          <div style={{background:'rgba(232,69,69,.12)',border:'1px solid rgba(232,69,69,.4)',
+            borderRadius:8,padding:'9px 12px',color:'#FF6B6B',fontSize:12,fontWeight:600}}>
+            {err}
+          </div>
+        )}
+        <button onClick={save} disabled={busy||!name.trim()}
+          style={{padding:'14px 16px',background:T.o,border:'none',borderRadius:12,
+            color:'#000',fontSize:14,fontWeight:800,letterSpacing:.3,
+            cursor:(busy||!name.trim())?'not-allowed':'pointer',
+            opacity:(busy||!name.trim())?.55:1,marginTop:6}}>
+          {busy?'…':'Club gründen'}
+        </button>
+        <button onClick={onCancel}
+          style={{padding:'12px 16px',background:'transparent',border:`1px solid ${T.border}`,
+            borderRadius:12,color:T.t2,fontSize:13,fontWeight:700,cursor:'pointer'}}>
+          Abbrechen
+        </button>
+      </div>
+    </SocialScreen>
+  );
+}
+
+/* ═══ ClubDetail ═══ */
+function ClubDetail({clubId,currentUid,onHome,onBack,onOpenPlayer}){
+  const[club,setClub]=useState(null);
+  const[members,setMembers]=useState([]);
+  const[joined,setJoined]=useState(false);
+  const[busy,setBusy]=useState(false);
+
+  const refresh=useCallback(async()=>{
+    const [c,m,j]=await Promise.all([
+      fetchClub(clubId), clubMembers(clubId,{limit:50}), isClubMember(clubId)
+    ]);
+    setClub(c); setMembers(m); setJoined(j);
+  },[clubId]);
+  useEffect(()=>{ refresh(); },[refresh]);
+
+  const toggle=async()=>{
+    if(busy) return;
+    setBusy(true);
+    try{
+      const ok=await (joined?leaveClub(clubId):joinClub(clubId));
+      if(ok) await refresh();
+    }finally{ setBusy(false); }
+  };
+
+  const isOwner=club?.owner_id===currentUid;
+
+  return(
+    <SocialScreen eyebrow="Club" title={club?.name||'Lädt …'}
+      desc={club?.city||''}
+      icon={<TrophyIcon size={22}/>} onHome={onHome}>
+      {!club?null:(
+        <Fragment>
+          {club.description&&(
+            <div className="fu" style={{background:T.card,border:`1px solid ${T.border}`,
+              borderRadius:14,padding:'16px 18px',marginBottom:12,
+              color:T.t2,fontSize:14,lineHeight:1.6}}>
+              {club.description}
+            </div>
+          )}
+
+          {!isOwner&&(
+            <button onClick={toggle} disabled={busy} className="fu"
+              style={{width:'100%',marginBottom:14,padding:'14px 16px',
+                background:joined?T.card:T.o,
+                border:joined?`1px solid ${T.border}`:'none',borderRadius:12,
+                color:joined?T.t1:'#000',fontSize:14,fontWeight:800,letterSpacing:.3,
+                cursor:busy?'not-allowed':'pointer',opacity:busy?.6:1,
+                animationDelay:'.05s'}}>
+              {joined?'Mitglied · Austreten':'Club beitreten'}
+            </button>
+          )}
+          {isOwner&&(
+            <div className="fu" style={{padding:'10px 14px',marginBottom:14,
+              background:T.oSoft,border:`1px solid ${T.o}`,borderRadius:10,
+              color:T.o,fontSize:11,fontWeight:800,letterSpacing:1.5,
+              textTransform:'uppercase',textAlign:'center',animationDelay:'.05s'}}>
+              Du bist Inhaber:in
+            </div>
+          )}
+
+          <div className="fu" style={{color:T.o,fontSize:11,fontWeight:700,letterSpacing:1.5,
+            textTransform:'uppercase',marginBottom:8,marginLeft:4,animationDelay:'.08s'}}>
+            Mitglieder · {members.length}
+          </div>
+          {members.length===0?(
+            <div style={{color:T.t3,fontSize:13,padding:14,textAlign:'center'}}>
+              Noch keine Mitglieder.
+            </div>
+          ):(
+            <div style={{display:'flex',flexDirection:'column',gap:10}}>
+              {members.map((m,i)=>(
+                <div key={m.user_id} className="fu" style={{animationDelay:`${0.1+i*0.03}s`}}>
+                  <PlayerListItem profile={m.profile||{user_id:m.user_id}}
+                    onClick={()=>onOpenPlayer(m.user_id)}
+                    trailing={m.role==='admin'?(
+                      <span style={{padding:'2px 6px',background:T.oSoft,color:T.o,borderRadius:4,
+                        fontSize:9,fontWeight:800,letterSpacing:.8,textTransform:'uppercase'}}>
+                        Admin
+                      </span>
+                    ):null}/>
+                </div>
+              ))}
+            </div>
+          )}
+        </Fragment>
+      )}
+    </SocialScreen>
+  );
+}
+
+/* ═══ Bookings — Liste offener Matches ═══ */
+function Bookings({onHome,onOpenBooking,onCreateBooking}){
+  const[mode,setMode]=useState('open'); // 'open' | 'mine'
+  const[items,setItems]=useState([]);
+  const[busy,setBusy]=useState(false);
+  const load=useCallback(async()=>{
+    setBusy(true);
+    try{ setItems(await listBookings({mine:mode==='mine',limit:50})); }
+    finally{ setBusy(false); }
+  },[mode]);
+  useEffect(()=>{ load(); },[load]);
+
+  const fmtDate=(iso)=>{
+    try{
+      const d=new Date(iso);
+      const opt={weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'};
+      return d.toLocaleString('de-DE',opt);
+    }catch(e){ return iso; }
+  };
+
+  return(
+    <SocialScreen eyebrow="Spiel" title="Buchen"
+      desc="Offene Matches finden oder selber anbieten."
+      icon={<CourtIcon size={22}/>} onHome={onHome}>
+      <div className="fu" style={{display:'flex',gap:8,marginBottom:14}}>
+        {[{id:'open',label:'Offen'},{id:'mine',label:'Meine'}].map(t=>{
+          const active=mode===t.id;
+          return(
+            <button key={t.id} onClick={()=>setMode(t.id)}
+              style={{flex:1,padding:'10px 8px',
+                background:active?T.t1:'transparent',color:active?T.bg:T.t2,
+                border:`1px solid ${active?T.t1:T.border}`,borderRadius:10,
+                fontSize:12,fontWeight:active?800:600,letterSpacing:.3,cursor:'pointer'}}>
+              {t.label}
+            </button>
+          );
+        })}
+        <button onClick={onCreateBooking}
+          style={{padding:'10px 14px',background:T.o,border:'none',borderRadius:10,
+            color:'#000',fontSize:13,fontWeight:800,letterSpacing:.3,cursor:'pointer',
+            flexShrink:0}}>
+          + Neu
+        </button>
+      </div>
+      {busy?(
+        <div style={{color:T.t3,fontSize:13,padding:'24px 0',textAlign:'center'}}>Lädt …</div>
+      ):items.length===0?(
+        <RitmoPostEmpty icon={<CourtIcon size={28}/>}
+          title={mode==='mine'?'Keine eigenen Matches':'Keine offenen Matches'}
+          desc={mode==='mine'
+            ?'Du hast aktuell kein Match angeboten.'
+            :'Niemand hat ein Match offen — sei der/die Erste.'}
+          cta={{label:'Match anlegen',onClick:onCreateBooking}}/>
+      ):(
+        <div style={{display:'flex',flexDirection:'column',gap:10}}>
+          {items.map((b,i)=>(
+            <button key={b.id} onClick={()=>onOpenBooking(b.id)} className="fu"
+              style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:12,
+                padding:'14px 16px',display:'flex',alignItems:'center',gap:12,
+                color:T.t1,textAlign:'left',cursor:'pointer',animationDelay:`${i*0.03}s`}}>
+              <div style={{flexShrink:0,width:40,height:40,borderRadius:10,
+                background:T.card2,border:`1px solid ${T.border}`,color:T.o,
+                display:'flex',alignItems:'center',justifyContent:'center'}}>
+                <CourtIcon size={20}/>
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{color:T.t1,fontSize:14,fontWeight:700,letterSpacing:-.1}}>
+                  {fmtDate(b.starts_at)}
+                </div>
+                <div style={{color:T.t3,fontSize:11,marginTop:2}}>
+                  {b.format==='bo3'?'Best-of-3':'Americano'} · {b.duration_min} Min
+                  {b.court_label?` · ${b.court_label}`:''}
+                  {b.level_min!=null&&b.level_max!=null
+                    ?` · Lv ${b.level_min.toFixed?.(1)||b.level_min}–${b.level_max.toFixed?.(1)||b.level_max}`
+                    :''}
+                </div>
+              </div>
+              <ChevronRightIcon size={16} color={T.t3}/>
+            </button>
+          ))}
+        </div>
+      )}
+    </SocialScreen>
+  );
+}
+
+/* ═══ BookingDetail ═══ */
+function BookingDetail({matchId,currentUid,onHome,onBack,onInvite}){
+  const[booking,setBooking]=useState(null);
+  const[slots,setSlots]=useState([]);
+  const[busy,setBusy]=useState(false);
+
+  const refresh=useCallback(async()=>{
+    const [b,s]=await Promise.all([fetchBooking(matchId),bookingSlots(matchId)]);
+    setBooking(b); setSlots(s);
+  },[matchId]);
+  useEffect(()=>{ refresh(); },[refresh]);
+
+  if(!booking) return(
+    <SocialScreen eyebrow="Match" title="Lädt …" onHome={onHome}>
+      <div style={{color:T.t3,fontSize:13,padding:'24px 0',textAlign:'center'}}>Lädt …</div>
+    </SocialScreen>
+  );
+
+  const total=booking.total_slots||4;
+  const slotMap=Object.fromEntries(slots.map(s=>[s.slot_index,s]));
+  const mySlot=slots.find(s=>s.user_id===currentUid);
+  const fmtDate=(iso)=>{
+    try{
+      return new Date(iso).toLocaleString('de-DE',
+        {weekday:'long',day:'2-digit',month:'long',hour:'2-digit',minute:'2-digit'});
+    }catch(e){ return iso; }
+  };
+
+  const join=async(idx)=>{
+    if(busy) return; setBusy(true);
+    try{ await joinSlot(matchId,idx); await refresh(); }
+    catch(e){ alert(e.message); }
+    finally{ setBusy(false); }
+  };
+  const leave=async()=>{
+    if(busy) return; setBusy(true);
+    try{ await leaveSlot(matchId); await refresh(); }
+    finally{ setBusy(false); }
+  };
+
+  return(
+    <SocialScreen eyebrow="Match" title={fmtDate(booking.starts_at)}
+      desc={`${booking.format==='bo3'?'Best-of-3':'Americano'} · ${booking.duration_min} Min`+
+        (booking.court_label?` · ${booking.court_label}`:'')}
+      icon={<CourtIcon size={22}/>} onHome={onHome}>
+
+      {booking.notes&&(
+        <div className="fu" style={{background:T.card,border:`1px solid ${T.border}`,
+          borderRadius:14,padding:'14px 16px',marginBottom:12,
+          color:T.t2,fontSize:13,lineHeight:1.55}}>
+          {booking.notes}
+        </div>
+      )}
+
+      <div className="fu" style={{color:T.o,fontSize:11,fontWeight:700,letterSpacing:1.5,
+        textTransform:'uppercase',marginBottom:8,marginLeft:4,animationDelay:'.04s'}}>
+        Plätze · {slots.length}/{total}
+      </div>
+
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14}}>
+        {Array.from({length:total},(_,i)=>{
+          const s=slotMap[i];
+          const isMe=s?.user_id===currentUid;
+          return(
+            <div key={i} className="fu" style={{animationDelay:`${0.08+i*0.04}s`,
+              background:s?T.card:T.card2,
+              border:`1px ${s?'solid':'dashed'} ${isMe?T.o:T.border}`,
+              borderRadius:12,padding:'14px 12px',
+              display:'flex',flexDirection:'column',alignItems:'center',gap:6,minHeight:120,
+              justifyContent:'center'}}>
+              {s?(
+                <Fragment>
+                  <ProfileAvatar name={s.profile?.display_name||s.profile?.data?.name||'?'}
+                    avatar={s.profile?.data?.avatar} size={44}/>
+                  <div style={{color:T.t1,fontSize:12,fontWeight:700,textAlign:'center',
+                    whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',
+                    maxWidth:'100%'}}>
+                    {s.profile?.display_name||s.profile?.data?.name||'Spieler'}
+                  </div>
+                  {isMe&&(
+                    <span style={{padding:'2px 6px',background:T.oSoft,color:T.o,borderRadius:4,
+                      fontSize:9,fontWeight:800,letterSpacing:.8,textTransform:'uppercase'}}>
+                      Du
+                    </span>
+                  )}
+                </Fragment>
+              ):(
+                <button onClick={()=>join(i)} disabled={busy||!!mySlot}
+                  style={{padding:'10px 12px',background:'transparent',
+                    border:`1px solid ${mySlot?T.border:T.o}`,borderRadius:8,
+                    color:mySlot?T.t4:T.o,fontSize:11,fontWeight:800,letterSpacing:.4,
+                    cursor:(busy||!!mySlot)?'not-allowed':'pointer'}}>
+                  + Beitreten
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {mySlot&&(
+        <button onClick={leave} className="fu"
+          style={{width:'100%',marginBottom:10,padding:'12px 16px',
+            background:'transparent',border:`1px solid ${T.border}`,borderRadius:12,
+            color:T.t2,fontSize:13,fontWeight:700,cursor:'pointer',animationDelay:'.2s'}}>
+          Platz frei geben
+        </button>
+      )}
+
+      <button onClick={()=>onInvite(matchId)} className="fu"
+        style={{width:'100%',padding:'12px 16px',
+          background:T.oSoft,border:`1px solid ${T.o}`,borderRadius:12,
+          color:T.o,fontSize:13,fontWeight:800,letterSpacing:.3,cursor:'pointer',
+          animationDelay:'.22s'}}>
+        Spieler einladen
+      </button>
+    </SocialScreen>
+  );
+}
+
+/* ═══ BookingCreate ═══ */
+function BookingCreate({onHome,onDone,onCancel}){
+  // Default-Startzeit: heute + 1 h, auf volle Stunde gerundet
+  const defaultStart=()=>{
+    const d=new Date(Date.now()+60*60*1000);
+    d.setMinutes(0,0,0);
+    // ins "datetime-local"-Format (yyyy-MM-ddThh:mm, lokale Zeitzone)
+    const pad=(n)=>String(n).padStart(2,'0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+  const[starts,setStarts]=useState(defaultStart());
+  const[duration,setDuration]=useState(90);
+  const[court,setCourt]=useState('');
+  const[format,setFormat]=useState('bo3');
+  const[total,setTotal]=useState(4);
+  const[lmin,setLmin]=useState('');
+  const[lmax,setLmax]=useState('');
+  const[notes,setNotes]=useState('');
+  const[busy,setBusy]=useState(false);
+  const[err,setErr]=useState('');
+
+  const save=async()=>{
+    setErr(''); setBusy(true);
+    try{
+      const b=await createBooking({
+        starts_at:new Date(starts).toISOString(),
+        duration_min:Number(duration)||90,
+        court_label:court,
+        format,
+        total_slots:Number(total)||4,
+        level_min:lmin?Number(lmin):null,
+        level_max:lmax?Number(lmax):null,
+        notes,
+      });
+      onDone(b);
+    }catch(e){ setErr(e.message||'Fehler.'); }
+    finally{ setBusy(false); }
+  };
+
+  return(
+    <SocialScreen eyebrow="Match" title="Neues Match"
+      desc="Leg die Eckdaten fest — Slot 1 ist automatisch deins."
+      icon={<CourtIcon size={22}/>} onHome={onHome}>
+      <div className="fu" style={{display:'flex',flexDirection:'column',gap:12}}>
+
+        <div>
+          <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
+            textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Startzeit *</div>
+          <input type="datetime-local" value={starts} onChange={e=>setStarts(e.target.value)}
+            style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
+              borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:600,
+              outline:'none',boxSizing:'border-box'}}/>
+        </div>
+
+        <div style={{display:'flex',gap:10}}>
+          <div style={{flex:1}}>
+            <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
+              textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Dauer (Min)</div>
+            <input type="number" min="30" step="15" value={duration}
+              onChange={e=>setDuration(e.target.value)}
+              style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
+                borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:600,
+                outline:'none',boxSizing:'border-box'}}/>
+          </div>
+          <div style={{flex:1}}>
+            <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
+              textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Plätze</div>
+            <input type="number" min="2" max="8" value={total}
+              onChange={e=>setTotal(e.target.value)}
+              style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
+                borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:600,
+                outline:'none',boxSizing:'border-box'}}/>
+          </div>
+        </div>
+
+        <div>
+          <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
+            textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Format</div>
+          <div style={{display:'flex',gap:8}}>
+            {[{id:'bo3',label:'Best-of-3'},{id:'americano',label:'Americano'}].map(f=>(
+              <button key={f.id} onClick={()=>setFormat(f.id)}
+                style={{flex:1,padding:'11px 8px',
+                  background:format===f.id?T.oSoft:T.card2,
+                  border:`1px solid ${format===f.id?T.o:T.border}`,borderRadius:10,
+                  color:format===f.id?T.o:T.t2,fontSize:13,
+                  fontWeight:format===f.id?800:600,cursor:'pointer'}}>
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{display:'flex',gap:10}}>
+          <div style={{flex:1}}>
+            <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
+              textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Level Min</div>
+            <input type="number" step="0.1" min="0" max="7" value={lmin}
+              onChange={e=>setLmin(e.target.value)} placeholder="z.B. 2.0"
+              style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
+                borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:600,
+                outline:'none',boxSizing:'border-box'}}/>
+          </div>
+          <div style={{flex:1}}>
+            <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
+              textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Level Max</div>
+            <input type="number" step="0.1" min="0" max="7" value={lmax}
+              onChange={e=>setLmax(e.target.value)} placeholder="z.B. 4.0"
+              style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
+                borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:600,
+                outline:'none',boxSizing:'border-box'}}/>
+          </div>
+        </div>
+
+        <div>
+          <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
+            textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Court / Notiz</div>
+          <input value={court} onChange={e=>setCourt(e.target.value)}
+            placeholder="z.B. Platz 3"
+            style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
+              borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:600,
+              outline:'none',boxSizing:'border-box',marginBottom:10}}/>
+          <textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={2}
+            placeholder="Optionale Notiz für Mitspieler …"
+            style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
+              borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
+              outline:'none',boxSizing:'border-box',resize:'vertical'}}/>
+        </div>
+
+        {err&&(
+          <div style={{background:'rgba(232,69,69,.12)',border:'1px solid rgba(232,69,69,.4)',
+            borderRadius:8,padding:'9px 12px',color:'#FF6B6B',fontSize:12,fontWeight:600}}>
+            {err}
+          </div>
+        )}
+
+        <button onClick={save} disabled={busy||!starts}
+          style={{padding:'14px 16px',background:T.o,border:'none',borderRadius:12,
+            color:'#000',fontSize:14,fontWeight:800,letterSpacing:.3,
+            cursor:busy?'not-allowed':'pointer',opacity:busy?.6:1,marginTop:6}}>
+          {busy?'…':'Match anlegen'}
+        </button>
+        <button onClick={onCancel}
+          style={{padding:'12px 16px',background:'transparent',border:`1px solid ${T.border}`,
+            borderRadius:12,color:T.t2,fontSize:13,fontWeight:700,cursor:'pointer'}}>
+          Abbrechen
+        </button>
+      </div>
+    </SocialScreen>
+  );
+}
+
+/* ═══ BookingInvite — Spielersuche mit "Einladen"-Button ═══ */
+function BookingInvite({matchId,onHome,onDone}){
+  const[q,setQ]=useState('');
+  const[results,setResults]=useState([]);
+  const[invited,setInvited]=useState({});
+  const[busy,setBusy]=useState(false);
+  useEffect(()=>{
+    const tq=q.trim();
+    if(!tq){setResults([]);return;}
+    const t=setTimeout(async()=>{
+      setBusy(true);
+      try{ setResults(await searchPlayers(tq,{limit:30})); }
+      finally{ setBusy(false); }
+    },250);
+    return()=>clearTimeout(t);
+  },[q]);
+  const invite=async(uid)=>{
+    try{
+      await sendInvite(matchId,uid);
+      setInvited(m=>({...m,[uid]:true}));
+    }catch(e){ alert(e.message); }
+  };
+  return(
+    <SocialScreen eyebrow="Einladen" title="Spieler suchen"
+      desc="Such Mitspieler über den Namen — sie bekommen die Einladung in ihrem RITMO Post."
+      icon={<RitmoPostIcon size={22}/>} onHome={onHome}>
+      <div className="fu" style={{marginBottom:14}}>
+        <input value={q} onChange={e=>setQ(e.target.value)}
+          placeholder="Name eingeben …"
+          style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
+            borderRadius:12,padding:'13px 16px',color:T.t1,fontSize:15,fontWeight:500,
+            outline:'none',boxSizing:'border-box'}}/>
+      </div>
+      {q.trim()===''?(
+        <RitmoPostEmpty icon={<SearchIcon size={28}/>}
+          title="Wen suchst du?"
+          desc="Tipp einen Namen und lade direkt aus den Suchergebnissen ein."/>
+      ):busy?(
+        <div style={{color:T.t3,fontSize:13,padding:'24px 0',textAlign:'center'}}>Suche …</div>
+      ):results.length===0?(
+        <RitmoPostEmpty icon={<PersonGlyph size={28}/>}
+          title="Niemand gefunden" desc="Anderen Namen probieren?"/>
+      ):(
+        <div style={{display:'flex',flexDirection:'column',gap:10}}>
+          {results.map((p,i)=>(
+            <div key={p.user_id} className="fu" style={{animationDelay:`${i*0.03}s`}}>
+              <PlayerListItem profile={p} onClick={()=>!invited[p.user_id]&&invite(p.user_id)}
+                trailing={
+                  <span style={{padding:'4px 10px',borderRadius:6,fontSize:10,fontWeight:800,
+                    letterSpacing:.5,textTransform:'uppercase',
+                    background:invited[p.user_id]?T.card2:T.oSoft,
+                    border:`1px solid ${invited[p.user_id]?T.border:T.o}`,
+                    color:invited[p.user_id]?T.t2:T.o}}>
+                    {invited[p.user_id]?'✓ Eingeladen':'Einladen'}
+                  </span>
+                }/>
+            </div>
+          ))}
+        </div>
+      )}
+      <div style={{marginTop:18}}>
+        <button onClick={onDone}
+          style={{width:'100%',padding:'12px 16px',background:'transparent',
+            border:`1px solid ${T.border}`,borderRadius:12,
+            color:T.t2,fontSize:13,fontWeight:700,cursor:'pointer'}}>
+          Fertig
+        </button>
+      </div>
+    </SocialScreen>
+  );
+}
+
+/* ═══ Invites — Eingehende Einladungen ═══ */
+function InvitesScreen({onHome,onOpenBooking}){
+  const[items,setItems]=useState([]);
+  const[busy,setBusy]=useState(true);
+  const load=useCallback(async()=>{
+    setBusy(true);
+    try{ setItems(await listIncomingInvites({limit:50})); }
+    finally{ setBusy(false); }
+  },[]);
+  useEffect(()=>{ load(); },[load]);
+  const respond=async(id,accept)=>{
+    await respondInvite(id,accept);
+    await load();
+  };
+  const fmtDate=(iso)=>{
+    try{ return new Date(iso).toLocaleString('de-DE',
+      {weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}); }
+    catch(e){ return iso; }
+  };
+  return(
+    <SocialScreen eyebrow="RITMO Post" title="Einladungen"
+      desc="Pending Match-Einladungen für dich."
+      icon={<RitmoPostIcon size={22}/>} onHome={onHome}>
+      {busy?(
+        <div style={{color:T.t3,fontSize:13,padding:'24px 0',textAlign:'center'}}>Lädt …</div>
+      ):items.length===0?(
+        <RitmoPostEmpty icon={<RitmoPostIcon size={28}/>}
+          title="Keine Einladungen"
+          desc="Sobald jemand dich zu einem Match einlädt, erscheint sie hier."/>
+      ):(
+        <div style={{display:'flex',flexDirection:'column',gap:12}}>
+          {items.map((inv,i)=>{
+            const from=inv.from_profile;
+            const m=inv.match;
+            const fromName=from?.display_name||from?.data?.name||'Spieler';
+            const pending=inv.status==='pending';
+            return(
+              <div key={inv.id} className="fu" style={{animationDelay:`${i*0.04}s`,
+                background:T.card,border:`1px solid ${pending?T.o:T.border}`,
+                borderRadius:14,padding:'16px 18px'}}>
+                <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:10}}>
+                  <ProfileAvatar name={fromName} avatar={from?.data?.avatar} size={42}/>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{color:T.t1,fontSize:14,fontWeight:700}}>{fromName}</div>
+                    <div style={{color:T.t3,fontSize:11,marginTop:2}}>
+                      lädt dich ein
+                    </div>
+                  </div>
+                  <span style={{padding:'2px 8px',borderRadius:4,fontSize:9,fontWeight:800,
+                    letterSpacing:.8,textTransform:'uppercase',
+                    background:pending?T.oSoft:T.card2,
+                    color:pending?T.o:T.t3}}>
+                    {inv.status==='accepted'?'Angenommen':inv.status==='declined'?'Abgelehnt':'Offen'}
+                  </span>
+                </div>
+                {m&&(
+                  <button onClick={()=>onOpenBooking(m.id)}
+                    style={{width:'100%',padding:'10px 12px',background:T.card2,
+                      border:`1px solid ${T.border}`,borderRadius:10,
+                      color:T.t2,fontSize:12,fontWeight:600,cursor:'pointer',
+                      display:'flex',alignItems:'center',gap:8,marginBottom:pending?10:0,textAlign:'left'}}>
+                    <CourtIcon size={18}/>
+                    <span style={{flex:1,minWidth:0}}>
+                      {fmtDate(m.starts_at)} · {m.format==='bo3'?'Best-of-3':'Americano'}
+                    </span>
+                    <ChevronRightIcon size={14} color={T.t3}/>
+                  </button>
+                )}
+                {pending&&(
+                  <div style={{display:'flex',gap:8}}>
+                    <button onClick={()=>respond(inv.id,true)}
+                      style={{flex:1,padding:'10px 14px',background:T.o,border:'none',
+                        borderRadius:10,color:'#000',fontSize:12,fontWeight:800,
+                        letterSpacing:.3,cursor:'pointer'}}>
+                      Annehmen
+                    </button>
+                    <button onClick={()=>respond(inv.id,false)}
+                      style={{flex:1,padding:'10px 14px',background:'transparent',
+                        border:`1px solid ${T.border}`,borderRadius:10,
+                        color:T.t2,fontSize:12,fontWeight:700,cursor:'pointer'}}>
+                      Ablehnen
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </SocialScreen>
   );
 }
 
@@ -8552,6 +9705,15 @@ export default function App(){
     }catch{}
   },[joinPinFromUrl]);
   const[pendingEmail,setPendingEmail]=useState('');
+  // Aktuelle Supabase User-ID — wird vom Auth-Listener gesetzt und
+  // an Social-Screens (PublicProfile, BookingDetail, …) durchgereicht.
+  const[currentUid,setCurrentUid]=useState(null);
+  // Social-Navigation-State: welcher Player/Club/Match wird gerade
+  // angezeigt? Wird beim setScr nicht zurückgesetzt — die jeweiligen
+  // Screens prüfen ihre IDs vor dem Mount.
+  const[viewPlayerId,setViewPlayerId]=useState(null);
+  const[viewClubId,setViewClubId]=useState(null);
+  const[viewBookingId,setViewBookingId]=useState(null);
   const[profile,setProfile]=useState(()=>lsGet('ritmo_profile',{
     name:'',
     playtomicLevel:null,
@@ -8655,10 +9817,16 @@ export default function App(){
     };
     // Initiale Session (Verify-Link auf Cold-Load) prüfen
     window.supabase.auth.getSession().then(({data})=>{
-      if(data?.session) enter();
+      if(data?.session){
+        setCurrentUid(data.session.user?.id||null);
+        enter();
+      }
     }).catch(()=>{});
     // Live-Updates (SIGNED_IN nach Verify-Klick im selben Tab)
-    const {data:sub}=window.supabase.auth.onAuthStateChange((event)=>{
+    const {data:sub}=window.supabase.auth.onAuthStateChange((event,session)=>{
+      // currentUid spiegelt die aktuelle Session — wird von Social-Screens
+      // benutzt (PublicProfile.isSelf, BookingDetail.mySlot, …).
+      setCurrentUid(session?.user?.id||null);
       if(event==='PASSWORD_RECOVERY'){
         // Supabase hat temporäre Recovery-Session gesetzt → User zum
         // Passwort-neu-setzen-Screen schicken. Nicht loggedIn=true setzen,
@@ -8817,8 +9985,10 @@ export default function App(){
       onComplete={()=>{setOnboarded(true);nav('home');}}/>}
     {scr==='home'&&<Home nav={nav} activeTab={activeTab} setActiveTab={handleTab} profile={profile} onboarded={onboarded}/>}
     {scr==='profile'&&<Profile profile={profile} setProfile={setProfile}
-      onHome={goHome}
+      onHome={goHome} currentUid={currentUid}
       onOpenRitmoDNA={()=>setScr('profile-ritmodna')}
+      onOpenFollowers={()=>{ if(currentUid){ setViewPlayerId(currentUid); setScr('public-profile'); } }}
+      onOpenFollowing={()=>{ if(currentUid){ setViewPlayerId(currentUid); setScr('public-profile'); } }}
       onResetOnboarding={()=>{setOnboarded(false);nav('welcome');}}
       onLogout={async()=>{
         try{await auth.signOut();}catch(e){}
@@ -8960,7 +10130,38 @@ export default function App(){
         setLoggedIn(false);
         nav('login');
       }}/>}
-    {scr==='ritmopost'&&<RitmoPost onHome={goHome} profile={profile}/>}
+    {scr==='ritmopost'&&<RitmoPost onHome={goHome} profile={profile}
+      onOpenInvites={()=>setScr('invites')}
+      onOpenBookings={()=>setScr('bookings')}/>}
+
+    {/* ─── Social Layer Screens ──────────────────────────────────── */}
+    {scr==='player-search'&&<PlayerSearch onHome={goHome}
+      onOpenPlayer={(uid)=>{ setViewPlayerId(uid); setScr('public-profile'); }}/>}
+    {scr==='public-profile'&&viewPlayerId&&<PublicProfile
+      userId={viewPlayerId} currentUid={currentUid}
+      onHome={goHome} onBack={()=>setScr('player-search')}/>}
+    {scr==='clubs'&&<Clubs onHome={goHome}
+      onOpenClub={(id)=>{ setViewClubId(id); setScr('club-detail'); }}
+      onCreateClub={()=>setScr('club-create')}/>}
+    {scr==='club-create'&&<ClubCreate onHome={goHome}
+      onDone={(club)=>{ setViewClubId(club.id); setScr('club-detail'); }}
+      onCancel={()=>setScr('clubs')}/>}
+    {scr==='club-detail'&&viewClubId&&<ClubDetail clubId={viewClubId}
+      currentUid={currentUid} onHome={goHome} onBack={()=>setScr('clubs')}
+      onOpenPlayer={(uid)=>{ setViewPlayerId(uid); setScr('public-profile'); }}/>}
+    {scr==='bookings'&&<Bookings onHome={goHome}
+      onOpenBooking={(id)=>{ setViewBookingId(id); setScr('booking-detail'); }}
+      onCreateBooking={()=>setScr('booking-create')}/>}
+    {scr==='booking-create'&&<BookingCreate onHome={goHome}
+      onDone={(b)=>{ setViewBookingId(b.id); setScr('booking-detail'); }}
+      onCancel={()=>setScr('bookings')}/>}
+    {scr==='booking-detail'&&viewBookingId&&<BookingDetail matchId={viewBookingId}
+      currentUid={currentUid} onHome={goHome} onBack={()=>setScr('bookings')}
+      onInvite={(id)=>{ setViewBookingId(id); setScr('booking-invite'); }}/>}
+    {scr==='booking-invite'&&viewBookingId&&<BookingInvite matchId={viewBookingId}
+      onHome={goHome} onDone={()=>setScr('booking-detail')}/>}
+    {scr==='invites'&&<InvitesScreen onHome={goHome}
+      onOpenBooking={(id)=>{ setViewBookingId(id); setScr('booking-detail'); }}/>}
     {scr==='single-setup'&&<SingleSetup nav={nav} onHome={goHome} cfg={cfg} setCfg={setCfg} profile={profile}/>}
     {scr==='match'&&<Match cfg={cfg} setCfg={setCfg} bo3={bo3} dBo3={dBo3} am={am} dAm={dAm}
       onHome={goHome} inputMode={inputMode} ringId={ringId}

@@ -613,7 +613,7 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
 
             <div style={{display:'flex',alignItems:'center',gap:8,marginTop:20,
               justifyContent:'center'}}>
-              <div style={{color:T.t3,fontSize:12}}>Schon Account?</div>
+              <div style={{color:T.t3,fontSize:12}}>Hast du schon einen Account?</div>
               <button onClick={onLogin}
                 style={{background:'none',border:'none',color:T.o,fontSize:13,
                   fontWeight:700,cursor:'pointer',padding:'4px 8px',textDecoration:'underline'}}>
@@ -730,7 +730,7 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
 
             <div style={{display:'flex',alignItems:'center',gap:8,marginTop:18,
               justifyContent:'center'}}>
-              <div style={{color:T.t3,fontSize:12}}>Schon Account?</div>
+              <div style={{color:T.t3,fontSize:12}}>Hast du schon einen Account?</div>
               <button onClick={onLogin}
                 style={{background:'none',border:'none',color:T.o,fontSize:13,
                   fontWeight:700,cursor:'pointer',padding:'4px 8px',textDecoration:'underline'}}>

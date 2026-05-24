@@ -22,6 +22,9 @@ import {
   FunkyFruitsRow, BookIcon, JourneyIcon, ArrowRightCircleIcon, WandIcon,
   MiniBall, BallSpinner, GoogleGlyph, AppleGlyph, PersonGlyph,
   HeroRulesVisual, HeroJourneyVisual,
+  // Settings + RITMO Post line-art icons
+  SteeringWheelIcon, PaletteIcon, EyeIcon, BellIcon, LockIcon, DoorOutIcon,
+  ChevronRightIcon, RitmoPostIcon,
 } from "./icons.jsx";
 import { PADEL_STYLES, PADEL_QUIZ, computeStyle, STYLE_IMAGES } from "./padelStyles.js";
 
@@ -2406,7 +2409,20 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded}){
         <div style={{display:'flex',alignItems:'center',
           justifyContent:'space-between',gap:14}}>
           <RitmoWordmark size={52} style={{marginLeft:-3}}/>
-          <div style={{marginRight:5}}>
+          {/* Rechts gruppiert: RITMO Post Icon + Profil-Avatar, vertikal
+              zentriert ausgerichtet zueinander. Beide stoppen die
+              Header-onClick-Propagation, damit der Tap nicht durch zum
+              DNA-Screen rutscht. */}
+          <div style={{display:'flex',alignItems:'center',gap:14,marginRight:5}}>
+            <button onClick={(e)=>{e?.stopPropagation?.();nav('ritmopost');}}
+              aria-label="RITMO Post"
+              style={{width:44,height:44,borderRadius:'50%',flexShrink:0,
+                background:'rgba(0,0,0,0.22)',border:'1px solid rgba(255,255,255,0.18)',
+                color:'#FFFFFF',cursor:'pointer',padding:0,
+                display:'flex',alignItems:'center',justifyContent:'center',
+                boxShadow:'0 2px 8px rgba(0,0,0,0.25)'}}>
+              <RitmoPostIcon size={22} color="currentColor"/>
+            </button>
             <ProfileAvatar name={profile?.name} avatar={profile?.avatar} size={88}
               onClick={(e)=>{e?.stopPropagation?.();nav('profile');}}/>
           </div>
@@ -6157,23 +6173,53 @@ function QuestionToggle({filled,onClick}){
 /* ═══════════════════════════════════════════════════════════════
    SETTINGS SCREEN
 ═══════════════════════════════════════════════════════════════ */
-function Settings({onHome,activeTab,setActiveTab,
-  ringId,setRingId,inputMode,setInputMode,voiceOn,setVoiceOn,
-  theme,setTheme,onResetOnboarding}){
+/* ═══════════════════════════════════════════════════════════════
+   SETTINGS — Top-Level Card-List
 
-  const[showInfo,setShowInfo]=useState(false);
-  // Such-Query — wird via TabBar gesetzt (siehe searchable / onSearch
-  // unten). Hl-Komponente highlightet alle Treffer in den UI-Strings.
+   Jede Karte führt in einen Sub-Screen (SettingsSubLayout) mit
+   einem floating Gear-Button unten-rechts, der zurück nach
+   /settings navigiert. Die einzelnen Inhalte (Steuerung,
+   Anpassung, Privatsphäre, …) leben in eigenen Komponenten
+   weiter unten.
+═══════════════════════════════════════════════════════════════ */
+
+function SettingsCard({icon,title,desc,onClick,destructive=false,q=''}){
+  const color   = destructive ? '#FF6B6B' : T.t1;
+  const accent  = destructive ? '#FF6B6B' : T.o;
+  const border  = destructive ? 'rgba(232,69,69,0.35)' : T.border;
+  const bg      = destructive ? 'rgba(232,69,69,0.08)' : T.card;
+  return(
+    <button onClick={onClick}
+      style={{width:'100%',background:bg,border:`1px solid ${border}`,borderRadius:14,
+        padding:'16px 18px',display:'flex',alignItems:'center',gap:16,
+        color,textAlign:'left',cursor:'pointer',transition:'background .15s'}}
+      onPointerDown={e=>e.currentTarget.style.background = destructive ? 'rgba(232,69,69,0.14)' : T.card2}
+      onPointerUp={e=>e.currentTarget.style.background = bg}
+      onPointerLeave={e=>e.currentTarget.style.background = bg}>
+      <div style={{flexShrink:0,color:accent,display:'flex',alignItems:'center',
+        justifyContent:'center',width:38,height:38,
+        background:destructive?'rgba(232,69,69,0.10)':T.card2,
+        border:`1px solid ${destructive?'rgba(232,69,69,0.25)':T.border}`,borderRadius:10}}>
+        {icon}
+      </div>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{color,fontSize:15,fontWeight:700,letterSpacing:-.1,marginBottom:2}}>
+          <Hl text={title} q={q}/>
+        </div>
+        <div style={{color:destructive?'rgba(255,107,107,0.7)':T.t3,fontSize:12,
+          fontWeight:500,lineHeight:1.45}}>
+          <Hl text={desc} q={q}/>
+        </div>
+      </div>
+      <ChevronRightIcon size={18} color={destructive?'rgba(255,107,107,0.7)':T.t3}/>
+    </button>
+  );
+}
+
+function Settings({onHome,activeTab,setActiveTab,nav}){
+  // Such-Query — TabBar setzt sie via onSearch.
   const[query,setQuery]=useState('');
   const q=query;
-
-  const inputs=[
-    {id:'smartphone',label:'Smartphone',icon:'📱',sub:'Tippen auf die Score-Karten'},
-    {id:'presenter',label:'Presenter',icon:'⌨️',sub:'Page Up / Page Down Tasten'},
-    {id:'ring',label:'Smart Ring',icon:'💍',sub:'Bluetooth Scroll-Ring am Finger'},
-    {id:'watch',label:'Smartwatch',icon:'⌚',sub:'Bald verfügbar'},
-    {id:'flic',label:'Flic Button',icon:'🔘',sub:'Bald verfügbar'},
-  ];
 
   return(
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
@@ -6186,195 +6232,523 @@ function Settings({onHome,activeTab,setActiveTab,
         </div>
       </div>
 
-      <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
+      <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:12,overflowY:'auto'}}>
 
-        {/* Steuerung */}
-        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
-          padding:'18px 18px 6px'}}>
-          <div style={{color:T.o,fontSize:18,fontWeight:800,marginBottom:4}}>
-            <Hl text="Steuerung" q={q}/>
-          </div>
-          <div style={{color:T.t3,fontSize:12,fontWeight:500,marginBottom:14,lineHeight:1.5}}>
-            <Hl text="Wie Punkte vergeben werden." q={q}/>
-          </div>
+        {/* Gruppe 1 — Funktionale Sub-Screens */}
+        <SettingsCard q={q}
+          icon={<SteeringWheelIcon size={22} color="currentColor"/>}
+          title="Steuerung"
+          desc="Score-Gerät, Sprachansagen und mehr."
+          onClick={()=>nav('settings-steuerung')}/>
 
-          {inputs.map((opt,i)=>{
-            const isSel=inputMode===opt.id;
-            const hasInfo=opt.id==='presenter'||opt.id==='ring';
-            const disabled=opt.id==='flic'||opt.id==='watch';
-            return(
-              <button key={opt.id} onClick={()=>!disabled&&setInputMode(opt.id)}
-                disabled={disabled}
-                style={{width:'100%',padding:'14px 0',background:'transparent',
-                  border:'none',borderTop:i>0?`1px solid ${T.sep}`:'none',
-                  display:'flex',alignItems:'center',gap:14,
-                  cursor:disabled?'not-allowed':'pointer',
-                  opacity:disabled?.45:1,textAlign:'left'}}>
-                <span style={{fontSize:24,width:32,textAlign:'center'}}>{opt.icon}</span>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{color:T.t1,fontSize:15,fontWeight:600}}><Hl text={opt.label} q={q}/></div>
-                  <div style={{color:T.t3,fontSize:11,marginTop:1,fontWeight:500}}><Hl text={opt.sub} q={q}/></div>
-                </div>
-                {isSel&&hasInfo&&(
-                  <QuestionToggle filled={showInfo} onClick={()=>setShowInfo(s=>!s)}/>
-                )}
-                {isSel&&<span style={{color:T.o,fontSize:18,fontWeight:700,paddingRight:4}}>✓</span>}
-              </button>
-            );
-          })}
+        <SettingsCard q={q}
+          icon={<PaletteIcon size={22} color="currentColor"/>}
+          title="Anpassung"
+          desc="Wähle dein Erscheinungsbild."
+          onClick={()=>nav('settings-anpassung')}/>
 
-          {/* Presenter sub-content: tester (default) or key mapping */}
-          {inputMode==='presenter'&&!showInfo&&<InputTester/>}
-          {inputMode==='presenter'&&showInfo&&(
-            <div style={{margin:'8px 0 14px',padding:'12px 14px',background:T.card2,borderRadius:10,
-              border:`1px solid ${T.border}`,color:T.t2,fontSize:12,lineHeight:1.7}}>
-              <div style={{color:T.t1,fontWeight:700,marginBottom:6}}><Hl text="Tasten-Belegung:" q={q}/></div>
-              <div><Hl text="Page Up → Punkt Team A" q={q}/></div>
-              <div><Hl text="Page Down → Punkt Team B" q={q}/></div>
-              <div><Hl text="Doppelklick Page Up → Letzten Punkt rückgängig" q={q}/></div>
-              <div><Hl text="Doppelklick Page Down → Spiel zurücksetzen" q={q}/></div>
-            </div>
-          )}
+        {/* Visueller Separator zwischen aktiven Sub-Screens und
+            den Coming-Soon-Karten (Privatsphäre, Notifications, …) */}
+        <div style={{height:6,flexShrink:0}}/>
 
-          {/* Ring sub-content: tester (default) or key mapping */}
-          {inputMode==='ring'&&!showInfo&&<InputTester/>}
-          {inputMode==='ring'&&showInfo&&(
-            <div style={{margin:'8px 0 14px',padding:'12px 14px',background:T.card2,borderRadius:10,
-              border:`1px solid ${T.border}`,color:T.t2,fontSize:12,lineHeight:1.7}}>
-              <div style={{color:T.t1,fontWeight:700,marginBottom:6}}><Hl text="Tasten-Belegung:" q={q}/></div>
-              <div><span style={{color:T.t1,fontWeight:700,fontFamily:'monospace'}}>2</span> <Hl text="→ Punkt Team A" q={q}/></div>
-              <div><span style={{color:T.t1,fontWeight:700,fontFamily:'monospace'}}>4</span> <Hl text="→ Punkt Team B" q={q}/></div>
-              <div><span style={{color:T.t1,fontWeight:700,fontFamily:'monospace'}}>Leertaste</span> <Hl text="→ Letzten Punkt rückgängig" q={q}/></div>
-              <div><span style={{color:T.t1,fontWeight:700,fontFamily:'monospace'}}>1</span> <Hl text="→ Spiel zurücksetzen" q={q}/></div>
-              <div style={{color:T.t1,fontWeight:700,marginTop:10,marginBottom:4}}><Hl text="Reset rückgängig:" q={q}/></div>
-              <div style={{color:T.t3}}>
-                <Hl text="Nach Reset hast du 1.5 Sekunden Zeit, durch erneutes Drücken von 1 den vorherigen Spielstand wiederherzustellen." q={q}/>
-              </div>
-              <div style={{marginTop:10,color:T.t3,fontStyle:'italic',fontSize:11}}>
-                <Hl text="Setup: Ring per Bluetooth koppeln, RITMO Padel öffnen, drücken — funktioniert sofort." q={q}/>
-              </div>
-            </div>
-          )}
+        {/* Gruppe 2 — Privacy / Notifications / Security */}
+        <SettingsCard q={q}
+          icon={<EyeIcon size={22} color="currentColor"/>}
+          title="Privatsphäre"
+          desc="Wer dich findet · wer deine Stats sieht."
+          onClick={()=>nav('settings-privatsphaere')}/>
 
-          {inputMode==='flic'&&(
-            <div style={{margin:'8px 0 14px',padding:'12px 14px',background:T.card2,borderRadius:10,
-              border:`1px solid ${T.border}`,color:T.t3,fontSize:12,lineHeight:1.6}}>
-              <Hl text="Flic Button Integration kommt in einer zukünftigen Version." q={q}/>
-            </div>
-          )}
+        <SettingsCard q={q}
+          icon={<BellIcon size={22} color="currentColor"/>}
+          title="Benachrichtigungen"
+          desc="Match-Reminder, Turnier-Alerts, Chats."
+          onClick={()=>nav('settings-benachrichtigungen')}/>
 
-          {inputMode==='watch'&&(
-            <div style={{margin:'8px 0 14px',padding:'12px 14px',background:T.card2,borderRadius:10,
-              border:`1px solid ${T.border}`,color:T.t3,fontSize:12,lineHeight:1.6}}>
-              <Hl text="Smartwatch Integration kommt in einer zukünftigen Version." q={q}/>
-            </div>
-          )}
-        </div>
+        <SettingsCard q={q}
+          icon={<LockIcon size={22} color="currentColor"/>}
+          title="Sicherheit"
+          desc="Passwort, Sessions, Zwei-Faktor."
+          onClick={()=>nav('settings-sicherheit')}/>
 
-        {/* Sprachansage — minimal: nur On/Off Toggle.
-            Details (Voice-URL, Datei-Liste, Hosting) sind in setup.txt
-            dokumentiert. URL wird über voiceBaseUrl-State gesetzt
-            (aktuell ohne UI-Eingabe). */}
-        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
-          padding:'14px 18px'}}>
-          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-            <div style={{color:T.t1,fontSize:15,fontWeight:600}}><Hl text="Sprachansage" q={q}/></div>
-            <div onClick={()=>setVoiceOn(!voiceOn)}
-              style={{width:48,height:28,borderRadius:14,
-                background:voiceOn?T.o:'rgba(120,120,128,.32)',
-                position:'relative',cursor:'pointer',transition:'background .25s',flexShrink:0}}>
-              <div style={{width:24,height:24,borderRadius:'50%',background:T.bg,
-                position:'absolute',top:2,left:voiceOn?22:2,transition:'left .25s',
-                boxShadow:'0 1px 3px rgba(0,0,0,.3)'}}/>
-            </div>
-          </div>
-        </div>
+        {/* Visueller Separator vor der Destruktiv-Karte */}
+        <div style={{height:14,flexShrink:0}}/>
 
-        {/* Klingelton */}
-        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,padding:'18px 18px 8px'}}>
-          <div style={{color:T.o,fontSize:18,fontWeight:800,marginBottom:4}}><Hl text="Timer-Klingelton" q={q}/></div>
-          <div style={{color:T.t3,fontSize:12,fontWeight:500,marginBottom:14,lineHeight:1.5}}>
-            <Hl text="Ton wenn Americano-Timer abläuft." q={q}/>
-          </div>
-          {RINGS.map((r,i)=>(
-            <div key={r.id} onClick={()=>setRingId(r.id)}
-              style={{display:'flex',alignItems:'center',padding:'12px 0',
-                borderBottom:i<RINGS.length-1?`1px solid ${T.sep}`:'none',cursor:'pointer'}}>
-              <div style={{flex:1}}>
-                <div style={{color:T.t1,fontSize:14,fontWeight:ringId===r.id?700:500}}><Hl text={r.label} q={q}/></div>
-                <div style={{color:T.t3,fontSize:11,marginTop:1}}><Hl text={r.desc} q={q}/></div>
-              </div>
-              <div style={{display:'flex',alignItems:'center',gap:10}}>
-                <button onClick={e=>{e.stopPropagation();playRing(r.id);}}
-                  style={{width:30,height:30,borderRadius:8,background:T.card2,
-                    border:`1px solid ${T.border}`,color:T.o,fontSize:11,
-                    cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',
-                    fontWeight:700}}>▶</button>
-                {ringId===r.id?<span style={{color:T.o,fontSize:16,width:16,textAlign:'center'}}>✓</span>:<span style={{width:16}}/>}
-              </div>
-            </div>
-          ))}
-        </div>
+        <SettingsCard q={q} destructive
+          icon={<DoorOutIcon size={22} color="currentColor"/>}
+          title="Ich muss hier raus!"
+          desc="Konto löschen. Endgültig — keine Wiederherstellung."
+          onClick={()=>nav('settings-konto')}/>
 
-        {/* Erscheinungsbild — Theme */}
-        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
-          padding:'18px 18px 8px'}}>
-          <div style={{color:T.o,fontSize:18,fontWeight:800,marginBottom:4}}><Hl text="Erscheinungsbild" q={q}/></div>
-          <div style={{color:T.t3,fontSize:12,fontWeight:500,marginBottom:14,lineHeight:1.5}}>
-            <Hl text="Farb-Theme der App." q={q}/>
-          </div>
-          {[
-            {id:'dark',label:'RITMO BAUHAUS Dark',icon:'🌙',desc:'Schwarz, weiß, orange'},
-            {id:'light',label:'Federleicht',icon:'☀️',desc:'Weiß, schwarz, blau'},
-            {id:'padel',label:'Padelhaus Blue',icon:'🎾',desc:'Elektroblau, weiß, gelb'},
-            {id:'wimbledon',label:'Wimbledon Green',icon:'🌿',desc:'Rolex-Grün, beige, bone white'},
-            {id:'funky',label:'RITMO BAUHAUS Funky',icon:'🦜',desc:'Tropisch — Gelb, Papageienrot, Kiwi'},
-          ].map((th,i,arr)=>(
-            <div key={th.id} onClick={()=>setTheme(th.id)}
-              style={{display:'flex',alignItems:'center',padding:'12px 0',
-                borderBottom:i<arr.length-1?`1px solid ${T.sep}`:'none',cursor:'pointer'}}>
-              <div style={{fontSize:18,marginRight:12,width:22,textAlign:'center'}}>{th.icon}</div>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{color:T.t1,fontSize:14,fontWeight:theme===th.id?700:500}}><Hl text={th.label} q={q}/></div>
-                <div style={{color:T.t3,fontSize:11,marginTop:1}}><Hl text={th.desc} q={q}/></div>
-                {th.id==='funky'&&(
-                  <div style={{marginTop:6}}><FunkyFruitsRow size={14} gap={6}/></div>
-                )}
-              </div>
-              {theme===th.id
-                ?<span style={{color:T.o,fontSize:16,width:16,textAlign:'center'}}>✓</span>
-                :<span style={{width:16}}/>}
-            </div>
-          ))}
-        </div>
-
-        {/* Profil — Test / Re-Setup */}
-        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
-          padding:'14px 18px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:14}}>
-          <div style={{flex:1,minWidth:0}}>
-            <div style={{color:T.t1,fontSize:14,fontWeight:600}}><Hl text="Onboarding wiederholen" q={q}/></div>
-            <div style={{color:T.t3,fontSize:11,marginTop:2,lineHeight:1.5}}>
-              <Hl text="Profil-Daten bleiben erhalten · du kannst sie überarbeiten." q={q}/>
-            </div>
-          </div>
-          <button onClick={onResetOnboarding}
-            style={{padding:'10px 14px',background:T.oSoft,
-              border:`1px solid ${T.o}`,borderRadius:10,
-              color:T.o,fontSize:12,fontWeight:700,letterSpacing:.3,
-              cursor:'pointer',flexShrink:0}}>
-            <Hl text="Starten" q={q}/>
-          </button>
-        </div>
-
-        {/* About */}
+        {/* About — schlichte Marker, kein Tap-Target */}
         <div style={{background:'transparent',border:`1px solid ${T.border}`,borderRadius:14,
-          padding:'14px 18px',color:T.t3,fontSize:11,lineHeight:1.6,textAlign:'center'}}>
+          padding:'14px 18px',color:T.t3,fontSize:11,lineHeight:1.6,textAlign:'center',
+          marginTop:10}}>
           <Hl text="Made by Team RITMO." q={q}/><br/><Hl text="With love for Padel ♡" q={q}/>
         </div>
+
+        <div style={{height:120,flexShrink:0}}/>
       </div>
 
       <TabBar active={activeTab} onTab={setActiveTab}
         searchable={true} onSearch={setQuery}/>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SETTINGS-SUB-LAYOUT — Wrapper für alle Sub-Screens.
+
+   Konsistente Chrome: Header mit Titel + Beschreibung, scrollbarer
+   Content-Bereich, floating Gear-FAB unten-rechts, der zurück zur
+   Einstellungs-Übersicht navigiert.
+═══════════════════════════════════════════════════════════════ */
+function SettingsSubLayout({title,desc,icon,onBack,children}){
+  return(
+    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',
+      position:'relative',overflow:'hidden'}}>
+
+      <div style={{padding:'0 22px 18px'}}>
+        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
+          {icon&&(
+            <div style={{flexShrink:0,color:T.o,
+              width:36,height:36,background:T.card2,
+              border:`1px solid ${T.border}`,borderRadius:10,
+              display:'flex',alignItems:'center',justifyContent:'center'}}>
+              {icon}
+            </div>
+          )}
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.5,
+              textTransform:'uppercase'}}>Einstellungen</div>
+            <div style={{color:T.t1,fontSize:24,fontWeight:800,letterSpacing:-.3,marginTop:2}}>
+              {title}
+            </div>
+          </div>
+        </div>
+        {desc&&(
+          <div style={{color:T.t3,fontSize:13,lineHeight:1.5,marginTop:8}}>{desc}</div>
+        )}
+      </div>
+
+      <div style={{flex:1,padding:'0 22px 140px',overflowY:'auto',
+        WebkitOverflowScrolling:'touch'}}>
+        {children}
+      </div>
+
+      {/* Floating Gear-FAB → zurück zur Settings-Übersicht */}
+      <button onClick={onBack} aria-label="Zurück zu Einstellungen"
+        style={{position:'absolute',right:22,bottom:'calc(env(safe-area-inset-bottom,0px) + 28px)',
+          width:54,height:54,borderRadius:'50%',
+          background:T.card,border:`1px solid ${T.border}`,
+          color:T.t1,cursor:'pointer',
+          display:'flex',alignItems:'center',justifyContent:'center',
+          boxShadow:'0 8px 24px rgba(0,0,0,.45)',zIndex:5}}>
+        <GearIcon size={22}/>
+      </button>
+    </div>
+  );
+}
+
+/* ─── Steuerung — Score-Gerät, Sprachansage, Timer-Klingelton ────── */
+function SettingsSteuerung({onBack,inputMode,setInputMode,voiceOn,setVoiceOn,
+  ringId,setRingId}){
+  const[showInfo,setShowInfo]=useState(false);
+  const inputs=[
+    {id:'smartphone',label:'Smartphone',icon:'📱',sub:'Tippen auf die Score-Karten'},
+    {id:'presenter',label:'Presenter',icon:'⌨️',sub:'Page Up / Page Down Tasten'},
+    {id:'ring',label:'Smart Ring',icon:'💍',sub:'Bluetooth Scroll-Ring am Finger'},
+    {id:'watch',label:'Smartwatch',icon:'⌚',sub:'Bald verfügbar'},
+    {id:'flic',label:'Flic Button',icon:'🔘',sub:'Bald verfügbar'},
+  ];
+  return(
+    <SettingsSubLayout title="Steuerung"
+      desc="Wie Punkte vergeben werden, Klang & Stimme."
+      icon={<SteeringWheelIcon size={22} color="currentColor"/>}
+      onBack={onBack}>
+
+      {/* Score-Gerät */}
+      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+        padding:'18px 18px 6px',marginBottom:12}}>
+        <div style={{color:T.o,fontSize:11,fontWeight:700,letterSpacing:1.3,
+          textTransform:'uppercase',marginBottom:8}}>Score-Gerät</div>
+        {inputs.map((opt,i)=>{
+          const isSel=inputMode===opt.id;
+          const hasInfo=opt.id==='presenter'||opt.id==='ring';
+          const disabled=opt.id==='flic'||opt.id==='watch';
+          return(
+            <button key={opt.id} onClick={()=>!disabled&&setInputMode(opt.id)}
+              disabled={disabled}
+              style={{width:'100%',padding:'14px 0',background:'transparent',
+                border:'none',borderTop:i>0?`1px solid ${T.sep}`:'none',
+                display:'flex',alignItems:'center',gap:14,
+                cursor:disabled?'not-allowed':'pointer',
+                opacity:disabled?.45:1,textAlign:'left'}}>
+              <span style={{fontSize:24,width:32,textAlign:'center'}}>{opt.icon}</span>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{color:T.t1,fontSize:15,fontWeight:600}}>{opt.label}</div>
+                <div style={{color:T.t3,fontSize:11,marginTop:1,fontWeight:500}}>{opt.sub}</div>
+              </div>
+              {isSel&&hasInfo&&(
+                <QuestionToggle filled={showInfo} onClick={()=>setShowInfo(s=>!s)}/>
+              )}
+              {isSel&&<span style={{color:T.o,fontSize:18,fontWeight:700,paddingRight:4}}>✓</span>}
+            </button>
+          );
+        })}
+
+        {/* Sub-Info pro Modus */}
+        {inputMode==='presenter'&&!showInfo&&<InputTester/>}
+        {inputMode==='presenter'&&showInfo&&(
+          <div style={{margin:'8px 0 14px',padding:'12px 14px',background:T.card2,borderRadius:10,
+            border:`1px solid ${T.border}`,color:T.t2,fontSize:12,lineHeight:1.7}}>
+            <div style={{color:T.t1,fontWeight:700,marginBottom:6}}>Tasten-Belegung:</div>
+            <div>Page Up → Punkt Team A</div>
+            <div>Page Down → Punkt Team B</div>
+            <div>Doppelklick Page Up → Letzten Punkt rückgängig</div>
+            <div>Doppelklick Page Down → Spiel zurücksetzen</div>
+          </div>
+        )}
+        {inputMode==='ring'&&!showInfo&&<InputTester/>}
+        {inputMode==='ring'&&showInfo&&(
+          <div style={{margin:'8px 0 14px',padding:'12px 14px',background:T.card2,borderRadius:10,
+            border:`1px solid ${T.border}`,color:T.t2,fontSize:12,lineHeight:1.7}}>
+            <div style={{color:T.t1,fontWeight:700,marginBottom:6}}>Tasten-Belegung:</div>
+            <div><span style={{color:T.t1,fontWeight:700,fontFamily:'monospace'}}>2</span> → Punkt Team A</div>
+            <div><span style={{color:T.t1,fontWeight:700,fontFamily:'monospace'}}>4</span> → Punkt Team B</div>
+            <div><span style={{color:T.t1,fontWeight:700,fontFamily:'monospace'}}>Leertaste</span> → Letzten Punkt rückgängig</div>
+            <div><span style={{color:T.t1,fontWeight:700,fontFamily:'monospace'}}>1</span> → Spiel zurücksetzen</div>
+            <div style={{color:T.t1,fontWeight:700,marginTop:10,marginBottom:4}}>Reset rückgängig:</div>
+            <div style={{color:T.t3}}>
+              Nach Reset hast du 1.5 Sekunden Zeit, durch erneutes Drücken von 1 den vorherigen Spielstand wiederherzustellen.
+            </div>
+            <div style={{marginTop:10,color:T.t3,fontStyle:'italic',fontSize:11}}>
+              Setup: Ring per Bluetooth koppeln, RITMO Padel öffnen, drücken — funktioniert sofort.
+            </div>
+          </div>
+        )}
+        {inputMode==='flic'&&(
+          <div style={{margin:'8px 0 14px',padding:'12px 14px',background:T.card2,borderRadius:10,
+            border:`1px solid ${T.border}`,color:T.t3,fontSize:12,lineHeight:1.6}}>
+            Flic Button Integration kommt in einer zukünftigen Version.
+          </div>
+        )}
+        {inputMode==='watch'&&(
+          <div style={{margin:'8px 0 14px',padding:'12px 14px',background:T.card2,borderRadius:10,
+            border:`1px solid ${T.border}`,color:T.t3,fontSize:12,lineHeight:1.6}}>
+            Smartwatch Integration kommt in einer zukünftigen Version.
+          </div>
+        )}
+      </div>
+
+      {/* Sprachansage */}
+      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+        padding:'14px 18px',marginBottom:12}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{color:T.t1,fontSize:15,fontWeight:600}}>Sprachansage</div>
+            <div style={{color:T.t3,fontSize:11,marginTop:2}}>
+              Score wird vom RITMO-Voice angesagt.
+            </div>
+          </div>
+          <div onClick={()=>setVoiceOn(!voiceOn)}
+            style={{width:48,height:28,borderRadius:14,
+              background:voiceOn?T.o:'rgba(120,120,128,.32)',
+              position:'relative',cursor:'pointer',transition:'background .25s',flexShrink:0}}>
+            <div style={{width:24,height:24,borderRadius:'50%',background:T.bg,
+              position:'absolute',top:2,left:voiceOn?22:2,transition:'left .25s',
+              boxShadow:'0 1px 3px rgba(0,0,0,.3)'}}/>
+          </div>
+        </div>
+      </div>
+
+      {/* Timer-Klingelton */}
+      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+        padding:'18px 18px 8px'}}>
+        <div style={{color:T.o,fontSize:11,fontWeight:700,letterSpacing:1.3,
+          textTransform:'uppercase',marginBottom:4}}>Timer-Klingelton</div>
+        <div style={{color:T.t3,fontSize:12,fontWeight:500,marginBottom:14,lineHeight:1.5}}>
+          Ton wenn Americano-Timer abläuft.
+        </div>
+        {RINGS.map((r,i)=>(
+          <div key={r.id} onClick={()=>setRingId(r.id)}
+            style={{display:'flex',alignItems:'center',padding:'12px 0',
+              borderBottom:i<RINGS.length-1?`1px solid ${T.sep}`:'none',cursor:'pointer'}}>
+            <div style={{flex:1}}>
+              <div style={{color:T.t1,fontSize:14,fontWeight:ringId===r.id?700:500}}>{r.label}</div>
+              <div style={{color:T.t3,fontSize:11,marginTop:1}}>{r.desc}</div>
+            </div>
+            <div style={{display:'flex',alignItems:'center',gap:10}}>
+              <button onClick={e=>{e.stopPropagation();playRing(r.id);}}
+                style={{width:30,height:30,borderRadius:8,background:T.card2,
+                  border:`1px solid ${T.border}`,color:T.o,fontSize:11,
+                  cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',
+                  fontWeight:700}}>▶</button>
+              {ringId===r.id
+                ?<span style={{color:T.o,fontSize:16,width:16,textAlign:'center'}}>✓</span>
+                :<span style={{width:16}}/>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </SettingsSubLayout>
+  );
+}
+
+/* ─── Anpassung — Theme picker ──────────────────────────────────── */
+function SettingsAnpassung({onBack,theme,setTheme}){
+  const themes=[
+    {id:'dark',label:'RITMO BAUHAUS Dark',icon:'🌙',desc:'Schwarz, weiß, orange'},
+    {id:'light',label:'Federleicht',icon:'☀️',desc:'Weiß, schwarz, blau'},
+    {id:'padel',label:'Padelhaus Blue',icon:'🎾',desc:'Elektroblau, weiß, gelb'},
+    {id:'wimbledon',label:'Wimbledon Green',icon:'🌿',desc:'Rolex-Grün, beige, bone white'},
+    {id:'funky',label:'RITMO BAUHAUS Funky',icon:'🦜',desc:'Tropisch — Gelb, Papageienrot, Kiwi'},
+  ];
+  return(
+    <SettingsSubLayout title="Anpassung"
+      desc="Wähle dein Erscheinungsbild."
+      icon={<PaletteIcon size={22} color="currentColor"/>}
+      onBack={onBack}>
+      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+        padding:'18px 18px 8px'}}>
+        <div style={{color:T.o,fontSize:11,fontWeight:700,letterSpacing:1.3,
+          textTransform:'uppercase',marginBottom:8}}>Theme</div>
+        {themes.map((th,i)=>(
+          <div key={th.id} onClick={()=>setTheme(th.id)}
+            style={{display:'flex',alignItems:'center',padding:'12px 0',
+              borderBottom:i<themes.length-1?`1px solid ${T.sep}`:'none',cursor:'pointer'}}>
+            <div style={{fontSize:18,marginRight:12,width:22,textAlign:'center'}}>{th.icon}</div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{color:T.t1,fontSize:14,fontWeight:theme===th.id?700:500}}>{th.label}</div>
+              <div style={{color:T.t3,fontSize:11,marginTop:1}}>{th.desc}</div>
+              {th.id==='funky'&&<div style={{marginTop:6}}><FunkyFruitsRow size={14} gap={6}/></div>}
+            </div>
+            {theme===th.id
+              ?<span style={{color:T.o,fontSize:16,width:16,textAlign:'center'}}>✓</span>
+              :<span style={{width:16}}/>}
+          </div>
+        ))}
+      </div>
+    </SettingsSubLayout>
+  );
+}
+
+/* ─── Generischer Coming-Soon Sub-Screen ───────────────────────── */
+function SettingsComingSoon({title,desc,icon,onBack,bullets=[]}){
+  return(
+    <SettingsSubLayout title={title} desc={desc} icon={icon} onBack={onBack}>
+      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+        padding:'24px 22px',textAlign:'center'}}>
+        <div style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:2.5,
+          textTransform:'uppercase',marginBottom:8}}>Coming Soon</div>
+        <div style={{color:T.t1,fontSize:18,fontWeight:800,letterSpacing:-.2,marginBottom:10}}>
+          Wir bauen gerade.
+        </div>
+        <div style={{color:T.t3,fontSize:13,lineHeight:1.6,marginBottom:bullets.length?20:0}}>
+          Diese Sektion wird bald freigeschaltet. Wir bauen sie aktiv — bei Wunsch melden wir uns, sobald sie live ist.
+        </div>
+        {bullets.length>0&&(
+          <div style={{marginTop:14,textAlign:'left',display:'flex',flexDirection:'column',gap:10}}>
+            {bullets.map((b,i)=>(
+              <div key={i} style={{display:'flex',alignItems:'flex-start',gap:10,
+                color:T.t2,fontSize:13,lineHeight:1.55}}>
+                <span style={{color:T.o,fontSize:14,lineHeight:1.4,flexShrink:0}}>·</span>
+                <span>{b}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </SettingsSubLayout>
+  );
+}
+
+/* ─── Konto löschen — Destructive sub-screen ────────────────────── */
+function SettingsKonto({onBack,onLogout}){
+  const[confirmText,setConfirmText]=useState('');
+  const ready=confirmText.trim().toUpperCase()==='LÖSCHEN';
+  return(
+    <SettingsSubLayout title="Ich muss hier raus!"
+      desc="Konto löschen — endgültig, ohne Wiederherstellung."
+      icon={<DoorOutIcon size={22} color="currentColor"/>}
+      onBack={onBack}>
+
+      <div style={{background:'rgba(232,69,69,0.08)',border:'1px solid rgba(232,69,69,0.35)',
+        borderRadius:14,padding:'20px 22px',marginBottom:14}}>
+        <div style={{color:'#FF6B6B',fontSize:11,fontWeight:800,letterSpacing:2,
+          textTransform:'uppercase',marginBottom:8}}>Achtung</div>
+        <div style={{color:T.t1,fontSize:15,fontWeight:700,marginBottom:8,letterSpacing:-.1}}>
+          Diese Aktion ist endgültig.
+        </div>
+        <div style={{color:T.t2,fontSize:13,lineHeight:1.6}}>
+          Profil, Matches, RITMO DNA, Turnier-Historie — alles wird unwiderruflich
+          gelöscht. Wir können das nicht rückgängig machen. Wenn du dir unsicher
+          bist, melde dich erstmal nur ab; dein Konto bleibt erhalten.
+        </div>
+      </div>
+
+      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+        padding:'18px 22px',marginBottom:14}}>
+        <div style={{color:T.t2,fontSize:12,lineHeight:1.6,marginBottom:10}}>
+          Zur Bestätigung tippe das Wort <strong style={{color:T.t1}}>LÖSCHEN</strong> in
+          das Feld:
+        </div>
+        <input value={confirmText} onChange={e=>setConfirmText(e.target.value)}
+          autoCapitalize="characters" autoCorrect="off" spellCheck={false}
+          placeholder="LÖSCHEN"
+          style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
+            borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:700,
+            letterSpacing:1,outline:'none',boxSizing:'border-box',
+            fontFamily:'-apple-system,SFMono-Regular,Menlo,monospace'}}/>
+        <button disabled={!ready}
+          onClick={()=>{
+            // Phase 1: nur Abmelden + Hinweis. Echte Konto-Löschung
+            // braucht eine Server-Route (Supabase admin.deleteUser via
+            // Edge Function); wird in einer separaten PR nachgereicht.
+            alert('Konto-Löschung steht serverseitig noch aus. Du wirst stattdessen abgemeldet — bitte melde dich beim Team RITMO, falls die endgültige Löschung gewünscht ist.');
+            if(onLogout) onLogout();
+          }}
+          style={{width:'100%',marginTop:12,padding:'14px 16px',
+            background:ready?'#E84545':'rgba(232,69,69,0.25)',
+            border:'none',borderRadius:12,
+            color:ready?'#FFFFFF':'rgba(255,255,255,0.5)',
+            fontSize:14,fontWeight:800,letterSpacing:.3,
+            cursor:ready?'pointer':'not-allowed',
+            transition:'background .15s'}}>
+          Konto endgültig löschen
+        </button>
+      </div>
+
+      <button onClick={onBack}
+        style={{width:'100%',padding:'14px 16px',background:'transparent',
+          border:`1px solid ${T.border}`,borderRadius:12,
+          color:T.t2,fontSize:13,fontWeight:700,cursor:'pointer'}}>
+        Doch nicht — zurück zu den Einstellungen
+      </button>
+    </SettingsSubLayout>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RITMO POST — drei Sektionen (Benachrichtigungen, Chats, Events).
+   Phase 1: leere Posteingänge mit Empty-States. Inhalte folgen,
+   sobald Real-Time-Notifications und Chats wired sind.
+═══════════════════════════════════════════════════════════════ */
+function RitmoPost({onHome,profile}){
+  const[tab,setTab]=useState('notify');
+  const tabs=[
+    {id:'notify',label:'Benachrichtigungen',short:'Updates'},
+    {id:'chats', label:'Chats',short:'Chats'},
+    {id:'events',label:'Events',short:'Events'},
+  ];
+
+  return(
+    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',
+      position:'relative',overflow:'hidden'}}>
+
+      {/* Header */}
+      <div style={{padding:'0 22px 14px'}}>
+        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
+          <div style={{flexShrink:0,color:T.o,
+            width:38,height:38,background:T.card2,
+            border:`1px solid ${T.border}`,borderRadius:10,
+            display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <RitmoPostIcon size={22} color="currentColor"/>
+          </div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.5,
+              textTransform:'uppercase'}}>RITMO</div>
+            <div style={{color:T.t1,fontSize:24,fontWeight:800,letterSpacing:-.3,marginTop:2}}>
+              Post
+            </div>
+          </div>
+        </div>
+        <div style={{color:T.t3,fontSize:13,lineHeight:1.5,marginTop:6}}>
+          Updates, Chats und Events an einem Ort.
+        </div>
+      </div>
+
+      {/* Tab strip */}
+      <div style={{display:'flex',gap:8,padding:'0 22px 16px',flexShrink:0}}>
+        {tabs.map(t=>{
+          const active=tab===t.id;
+          return(
+            <button key={t.id} onClick={()=>setTab(t.id)}
+              style={{flex:1,padding:'10px 8px',
+                background:active?T.t1:'transparent',
+                color:active?'#000':T.t2,
+                border:`1px solid ${active?T.t1:T.border}`,borderRadius:10,
+                fontSize:12,fontWeight:active?800:600,letterSpacing:.3,
+                cursor:'pointer',transition:'all .15s'}}>
+              {t.short}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Content area */}
+      <div style={{flex:1,padding:'0 22px 120px',overflowY:'auto',
+        WebkitOverflowScrolling:'touch'}}>
+
+        {tab==='notify'&&(
+          <RitmoPostEmpty
+            icon={<BellIcon size={28} color="currentColor"/>}
+            title="Noch keine Benachrichtigungen"
+            desc="Match-Reminder, Turnier-Alerts und Updates landen hier, sobald sie für dich relevant sind."/>
+        )}
+
+        {tab==='chats'&&(
+          <RitmoPostEmpty
+            icon={<RitmoPostIcon size={28} color="currentColor"/>}
+            title="Noch keine Chats"
+            desc="Schreib mit Mitspielern, Turnier-Hosts und der RITMO Community. Coming soon."/>
+        )}
+
+        {tab==='events'&&(
+          <RitmoPostEmpty
+            icon={<TrophyIcon size={28}/>}
+            title="Noch keine Events"
+            desc="RITMO Turniere, Open Days und Meetups in deiner Nähe — sobald die ersten Daten verfügbar sind."
+            cta={{label:'Mehr erfahren',onClick:onHome}}/>
+        )}
+      </div>
+
+      {/* Floating Home-FAB → zurück */}
+      <button onClick={onHome} aria-label="Zurück zu Home"
+        style={{position:'absolute',right:22,bottom:'calc(env(safe-area-inset-bottom,0px) + 28px)',
+          width:54,height:54,borderRadius:'50%',
+          background:T.card,border:`1px solid ${T.border}`,
+          color:T.t1,cursor:'pointer',
+          display:'flex',alignItems:'center',justifyContent:'center',
+          boxShadow:'0 8px 24px rgba(0,0,0,.45)',zIndex:5}}>
+        <HomeIcon size={22}/>
+      </button>
+    </div>
+  );
+}
+
+function RitmoPostEmpty({icon,title,desc,cta}){
+  return(
+    <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+      padding:'40px 28px',textAlign:'center',color:T.t2}}>
+      <div style={{display:'flex',justifyContent:'center',marginBottom:14,color:T.o}}>
+        {icon}
+      </div>
+      <div style={{color:T.t1,fontSize:16,fontWeight:800,letterSpacing:-.1,marginBottom:8}}>
+        {title}
+      </div>
+      <div style={{color:T.t3,fontSize:13,lineHeight:1.6,maxWidth:'34ch',margin:'0 auto'}}>
+        {desc}
+      </div>
+      {cta&&(
+        <button onClick={cta.onClick}
+          style={{marginTop:18,padding:'10px 18px',background:T.oSoft,
+            border:`1px solid ${T.o}`,borderRadius:10,
+            color:T.o,fontSize:12,fontWeight:800,letterSpacing:.3,cursor:'pointer'}}>
+          {cta.label}
+        </button>
+      )}
     </div>
   );
 }
@@ -8524,13 +8898,57 @@ export default function App(){
       onDeleteMatch={deleteMatch} onDeleteTourney={deleteTourney}
       joinedSession={joinedSession}
       onLeaveJoined={()=>setJoinedSession(null)}/>}
-    {scr==='settings'&&<Settings onHome={goHome}
-      activeTab={activeTab} setActiveTab={handleTab}
-      ringId={ringId} setRingId={setRingId}
+    {scr==='settings'&&<Settings onHome={goHome} nav={nav}
+      activeTab={activeTab} setActiveTab={handleTab}/>}
+    {scr==='settings-steuerung'&&<SettingsSteuerung
+      onBack={()=>setScr('settings')}
       inputMode={inputMode} setInputMode={setInputMode}
       voiceOn={voiceOn} setVoiceOn={setVoiceOn}
-      theme={theme} setTheme={setTheme}
-      onResetOnboarding={()=>{setOnboarded(false);nav('welcome');}}/>}
+      ringId={ringId} setRingId={setRingId}/>}
+    {scr==='settings-anpassung'&&<SettingsAnpassung
+      onBack={()=>setScr('settings')}
+      theme={theme} setTheme={setTheme}/>}
+    {scr==='settings-privatsphaere'&&<SettingsComingSoon
+      onBack={()=>setScr('settings')}
+      title="Privatsphäre"
+      desc="Wer dich findet · wer deine Stats sieht."
+      icon={<EyeIcon size={22} color="currentColor"/>}
+      bullets={[
+        'Profil-Sichtbarkeit (öffentlich / nur Freunde / privat)',
+        'RITMO DNA + Stats freigeben oder verstecken',
+        'Match-Historie als Privat markieren',
+        'Datenexport und -löschung gemäß DSGVO',
+      ]}/>}
+    {scr==='settings-benachrichtigungen'&&<SettingsComingSoon
+      onBack={()=>setScr('settings')}
+      title="Benachrichtigungen"
+      desc="Match-Reminder, Turnier-Alerts, Chats."
+      icon={<BellIcon size={22} color="currentColor"/>}
+      bullets={[
+        'Push-Benachrichtigungen aktivieren',
+        'Match-Reminder (1 Stunde · 15 Min vorher)',
+        'Turnier-Updates und Ready-Checks',
+        'Chat- und Community-Mitteilungen',
+      ]}/>}
+    {scr==='settings-sicherheit'&&<SettingsComingSoon
+      onBack={()=>setScr('settings')}
+      title="Sicherheit"
+      desc="Passwort, Sessions, Zwei-Faktor."
+      icon={<LockIcon size={22} color="currentColor"/>}
+      bullets={[
+        'Passwort ändern',
+        'Aktive Sessions einsehen und beenden',
+        'Zwei-Faktor-Authentifizierung (TOTP)',
+        'Login-Aktivitäts-Log',
+      ]}/>}
+    {scr==='settings-konto'&&<SettingsKonto
+      onBack={()=>setScr('settings')}
+      onLogout={async()=>{
+        try{await auth.signOut();}catch(e){}
+        setLoggedIn(false);
+        nav('login');
+      }}/>}
+    {scr==='ritmopost'&&<RitmoPost onHome={goHome} profile={profile}/>}
     {scr==='single-setup'&&<SingleSetup nav={nav} onHome={goHome} cfg={cfg} setCfg={setCfg} profile={profile}/>}
     {scr==='match'&&<Match cfg={cfg} setCfg={setCfg} bo3={bo3} dBo3={dBo3} am={am} dAm={dAm}
       onHome={goHome} inputMode={inputMode} ringId={ringId}

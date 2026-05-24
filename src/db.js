@@ -424,3 +424,54 @@ export async function clearReadyCheck(pin) {
   const { readyCheck, ...rest } = session;
   await updateOnlineTournament(pin, rest);
 }
+
+/* ───────── BETA KEYS ─────────
+   Zwei dünne Wrappers um die SECURITY-DEFINER-RPCs im Schema.
+   Die Tabelle ritmo_beta_keys ist nicht direkt erreichbar — alle
+   Lese- und Schreiboperationen laufen ausschließlich über diese
+   beiden Funktionen.
+
+   Flow im Register-Screen:
+     1. checkBetaKey(code) → true → User darf die E-Mail/Passwort-
+        Form ausfüllen.
+     2. auth.signUpWithEmail(...) → bei Erfolg:
+     3. redeemBetaKey(code, email) → Key wird atomar verbraucht.
+
+   Wenn (3) später durch eine Race schlägt, hat der User trotzdem
+   einen funktionierenden Account — der Key ist dann nur jemand
+   anderem zugutegekommen. Akzeptable Beta-Edge-Case.
+*/
+
+/** Normalisiert eine Eingabe: trim + uppercase. Liefert '' wenn leer. */
+function normalizeBetaCode(code) {
+  return (code || '').toString().trim().toUpperCase();
+}
+
+/** Prüft, ob ein Beta-Key existiert UND noch nicht eingelöst wurde.
+ *  Wirft bei fehlender Supabase-Konfig, damit der Register-Flow
+ *  nicht stillschweigend unter dem Beta-Gate hindurchrutscht. */
+export async function checkBetaKey(code) {
+  const c = sb();
+  if (!c) throw new Error('Verbindung nicht verfügbar.');
+  const norm = normalizeBetaCode(code);
+  if (!norm) throw new Error('Bitte Beta-Key eingeben.');
+  const { data, error } = await c.rpc('check_beta_key', { p_code: norm });
+  if (error) throw new Error(error.message || 'Beta-Key-Prüfung fehlgeschlagen.');
+  return data === true;
+}
+
+/** Löst einen Beta-Key atomar ein. Liefert true bei Erfolg, false
+ *  wenn der Key zwischen Check und Redeem von jemand anderem
+ *  verbraucht wurde. Niemals doppelt verbrauchbar. */
+export async function redeemBetaKey(code, email) {
+  const c = sb();
+  if (!c) throw new Error('Verbindung nicht verfügbar.');
+  const norm = normalizeBetaCode(code);
+  if (!norm) throw new Error('Bitte Beta-Key eingeben.');
+  const { data, error } = await c.rpc('redeem_beta_key', {
+    p_code: norm,
+    p_email: (email || '').toString().trim().toLowerCase(),
+  });
+  if (error) throw new Error(error.message || 'Beta-Key konnte nicht eingelöst werden.');
+  return data === true;
+}

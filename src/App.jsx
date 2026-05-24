@@ -6749,7 +6749,7 @@ function SettingsKonto({onBack,onHome,onLogout}){
    Phase 1: leere Posteingänge mit Empty-States. Inhalte folgen,
    sobald Real-Time-Notifications und Chats wired sind.
 ═══════════════════════════════════════════════════════════════ */
-function RitmoPost({onHome,profile,onOpenChat}){
+function RitmoPost({onHome,profile,onOpenChat,unread=0}){
   const[tab,setTab]=useState('notify');
   const[chats,setChats]=useState([]);
   const[chatsBusy,setChatsBusy]=useState(false);
@@ -6762,6 +6762,10 @@ function RitmoPost({onHome,profile,onOpenChat}){
     listMyChats().then(c=>{ if(!cancelled){ setChats(c); setChatsBusy(false); } });
     return()=>{cancelled=true;};
   },[tab]);
+  // Pro-Tab-Notification-Counts. Aktuell hat nur "chats" einen echten
+  // Wert (vom App-Level totalUnreadCount). updates/events bleiben 0
+  // bis es dort echte Events gibt.
+  const notifByTab={ notify: 0, chats: unread, events: 0 };
   const tabs=[
     {id:'notify',label:'Benachrichtigungen',short:'Updates'},
     {id:'chats', label:'Chats',short:'Chats'},
@@ -6809,10 +6813,15 @@ function RitmoPost({onHome,profile,onOpenChat}){
           Text-Farbe nutzt T.bg, damit sie immer kontrastiert: in den
           dunklen Themes (dark/padel/wimbledon/funky) wird der Text
           dunkel, in 'light' (Federleicht) wird er weiß — kein
-          Black-on-Black mehr. */}
+          Black-on-Black mehr.
+
+          Pro Tab kann ein roter Notification-Dot oben rechts gerendert
+          werden (notifByTab); aktuell nur "chats" bekommt einen, wenn
+          unread > 0. */}
       <div style={{display:'flex',gap:8,padding:'0 22px 16px',flexShrink:0}}>
         {tabs.map(t=>{
           const active=tab===t.id;
+          const n=notifByTab[t.id]||0;
           return(
             <button key={t.id} onClick={()=>setTab(t.id)}
               style={{flex:1,padding:'10px 8px',
@@ -6820,8 +6829,16 @@ function RitmoPost({onHome,profile,onOpenChat}){
                 color:active?T.bg:T.t2,
                 border:`1px solid ${active?T.t1:T.border}`,borderRadius:10,
                 fontSize:12,fontWeight:active?800:600,letterSpacing:.3,
-                cursor:'pointer',transition:'all .15s'}}>
+                cursor:'pointer',transition:'all .15s',
+                position:'relative'}}>
               {t.short}
+              {n>0&&(
+                <span aria-label={`${n} ungelesen`}
+                  style={{position:'absolute',top:5,right:7,
+                    minWidth:9,height:9,borderRadius:'50%',
+                    background:'#E84545',border:`2px solid ${active?T.t1:T.bg}`,
+                    boxShadow:'0 0 0 2px rgba(232,69,69,.30)'}}/>
+              )}
             </button>
           );
         })}
@@ -10073,6 +10090,7 @@ export default function App(){
         nav('login');
       }}/>}
     {scr==='ritmopost'&&<RitmoPost onHome={goHome} profile={profile}
+      unread={unreadTotal}
       onOpenChat={(id)=>{ setViewClubId(id); setScr('club-chat'); }}/>}
 
     {/* ─── Social Layer Screens ──────────────────────────────────── */}

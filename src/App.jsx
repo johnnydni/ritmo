@@ -2173,27 +2173,16 @@ function AvatarWithUpload({profile,setProfile,size=72}){
 
 
 function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRitmoDNA}){
-  const yearsLabels={lt6m:'Weniger als 6 Monate','6-12m':'6–12 Monate','1-2y':'1–2 Jahre','2-5y':'2–5 Jahre','5y+':'5+ Jahre'};
-  const freqLabels={rare:'Selten','1x':'1× pro Woche','2x':'2× pro Woche','3x+':'3× oder mehr'};
-  const tournLabels={never:'Nie',occasional:'Gelegentlich',regular:'Regelmäßig',competitive:'Wettkampf-orientiert'};
+  // Nur die Labels, die noch in der Tag-Reihe der Level-Karte gerendert werden.
+  // Spielniveau- und Spielstil-Detail-Karten wurden entfernt; die übrigen
+  // Mappings (years/freq/tourn/style/shot) sind dafür nicht mehr nötig.
   const handLabels={right:'Rechtshänder',left:'Linkshänder'};
   const sideLabels={left:'Ad-Seite (links)',right:'Deuce-Seite (rechts)',any:'Beides geht'};
-  const styleLabels={offensive:'Aggressiv',defensive:'Defensiv',strategic:'Strategisch',balanced:'Allround'};
-  const shotLabels={volley:'Volea',smash:'Smash',bandeja:'Bandeja',drive:'Drive',globo:'Globo',counter:'Konter'};
 
   const[editingLevel,setEditingLevel]=useState(false);
 
   const lvl=profile.playtomicLevel??profile.estimatedLevel??estimateLevel(profile);
   const isEstimated=profile.playtomicLevel==null&&lvl!=null;
-
-  const Row=({label,value})=>(
-    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',
-      padding:'10px 0',borderBottom:`1px solid ${T.sep}`,gap:14}}>
-      <div style={{color:T.t3,fontSize:12,fontWeight:500}}>{label}</div>
-      <div style={{color:value?T.t1:T.t4,fontSize:13,fontWeight:value?600:500,
-        textAlign:'right'}}>{value||'—'}</div>
-    </div>
-  );
 
   return(
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
@@ -2275,8 +2264,40 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
                     {getLevelTier(lvl)}
                   </div>
                 </div>
-                {isEstimated&&!editingLevel&&(
-                  <div style={{color:T.t3,fontSize:10,marginTop:2}}>aus Fragebogen</div>
+                {/* RITMO-DNA Tags: Hand · Seite · Spielstil-Archetyp.
+                    Jedes Tag wird nur gerendert, wenn der zugehörige
+                    Profil-Wert gesetzt ist — fehlt alles, fällt der
+                    ganze Block weg. */}
+                {(profile.handPreference||profile.courtSide||profile.styleType)&&(
+                  <div style={{display:'flex',flexWrap:'wrap',gap:6,marginTop:10}}>
+                    {profile.handPreference&&(
+                      <span style={{padding:'3px 8px',background:T.card2,
+                        border:`1px solid ${T.border}`,borderRadius:6,
+                        color:T.t2,fontSize:10,fontWeight:700,letterSpacing:.3,
+                        textTransform:'uppercase'}}>
+                        {handLabels[profile.handPreference]||profile.handPreference}
+                      </span>
+                    )}
+                    {profile.courtSide&&(
+                      <span style={{padding:'3px 8px',background:T.card2,
+                        border:`1px solid ${T.border}`,borderRadius:6,
+                        color:T.t2,fontSize:10,fontWeight:700,letterSpacing:.3,
+                        textTransform:'uppercase'}}>
+                        {sideLabels[profile.courtSide]||profile.courtSide}
+                      </span>
+                    )}
+                    {profile.styleType&&PADEL_STYLES[profile.styleType]&&(
+                      <span style={{padding:'3px 8px',
+                        background:`${PADEL_STYLES[profile.styleType].accent}22`,
+                        border:`1px solid ${PADEL_STYLES[profile.styleType].accent}`,
+                        borderRadius:6,
+                        color:PADEL_STYLES[profile.styleType].accent,
+                        fontSize:10,fontWeight:800,letterSpacing:.3,
+                        textTransform:'uppercase'}}>
+                        {PADEL_STYLES[profile.styleType].name}
+                      </span>
+                    )}
+                  </div>
                 )}
               </>
             ):(
@@ -2335,37 +2356,6 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
             </div>
           </div>
         )}
-
-        {/* Spielniveau details */}
-        <div className="fu" style={{animationDelay:'.05s',
-          background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
-          padding:'16px 18px',marginBottom:12}}>
-          <div style={{color:T.o,fontSize:11,fontWeight:700,letterSpacing:1.3,
-            textTransform:'uppercase',marginBottom:6}}>Spielniveau</div>
-          <Row label="Spielzeit" value={yearsLabels[profile.yearsPlaying]}/>
-          <Row label="Häufigkeit" value={freqLabels[profile.frequencyPerWeek]}/>
-          <Row label="Turniere" value={tournLabels[profile.playsTournaments]}/>
-          <Row label="Turnier-Anzahl"
-            value={profile.tournamentCount?({'1-3':'1–3','4-10':'4–10','10+':'10+'}[profile.tournamentCount]):null}/>
-          <Row label="Matches"
-            value={profile.matchesPlayed?`${profile.matchesPlayed} gespielt`:null}/>
-          <Row label="Siege"
-            value={(profile.winsCount!==''&&profile.winsCount!=null&&parseInt(profile.matchesPlayed)>0)
-              ?`${profile.winsCount} (${Math.round(parseInt(profile.winsCount)/parseInt(profile.matchesPlayed)*100)}%)`
-              :null}/>
-        </div>
-
-        {/* Spielstil details */}
-        <div className="fu" style={{animationDelay:'.1s',
-          background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
-          padding:'16px 18px',marginBottom:12}}>
-          <div style={{color:T.o,fontSize:11,fontWeight:700,letterSpacing:1.3,
-            textTransform:'uppercase',marginBottom:6}}>Spielstil</div>
-          <Row label="Hand" value={handLabels[profile.handPreference]}/>
-          <Row label="Position" value={sideLabels[profile.courtSide]}/>
-          <Row label="Stil" value={styleLabels[profile.playStyle]}/>
-          <Row label="Stärkster Schlag" value={shotLabels[profile.strongestShot]}/>
-        </div>
 
         {/* Actions */}
         <div className="fu" style={{animationDelay:'.15s',

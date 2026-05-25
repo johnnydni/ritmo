@@ -195,7 +195,134 @@ function ServiceIndicator({servingTeam,isDeuce}){
   );
 }
 
-// Tennis Ball mini (für Splash-Spinner)
+/* ═══════════════════════════════════════════════════════════════
+   BETA LANDING — Pre-Auth Marketing Screen
+
+   Wird nach dem Splash gezeigt, solange der User nicht eingeloggt ist.
+   Kommuniziert "Store-Release-Bald" + verweist Beta-Tester per Klick
+   auf Login / Registrierung. Im Browser-Build die erste echte Seite,
+   die ein neuer Besucher sieht.
+
+   Visuell: schwarzer Hintergrund + RITMO-Logo, dezent darunter die
+   beiden Store-"Badges" als Bauhaus-Style-Pillen (Play-Dreieck +
+   Apple-Logo) — keine offiziellen Store-Buttons, weil die App noch
+   nicht im jeweiligen Store liegt; es ist eine reine Ankündigung.
+═══════════════════════════════════════════════════════════════ */
+function BetaLanding({onLogin,onRegister}){
+  return(
+    <div style={{minHeight:'100dvh',background:T.bg,color:T.t1,
+      display:'flex',flexDirection:'column',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 40px)',
+      paddingBottom:'calc(env(safe-area-inset-bottom,0px) + 32px)',
+      paddingLeft:24,paddingRight:24,position:'relative',overflow:'hidden'}}>
+
+      {/* Hero — Logo + Coming-Soon Anchor */}
+      <div className="fi" style={{flex:1,display:'flex',flexDirection:'column',
+        alignItems:'center',justifyContent:'center',gap:34,textAlign:'center'}}>
+
+        <RitmoSplashLogo size={200}/>
+
+        <div style={{maxWidth:340,display:'flex',flexDirection:'column',gap:18}}>
+          <div style={{color:T.t3,fontSize:11,fontWeight:800,letterSpacing:2.5,
+            textTransform:'uppercase'}}>Coming Soon</div>
+          <div style={{color:T.t1,fontSize:24,fontWeight:900,letterSpacing:-.4,lineHeight:1.2,
+            fontStyle:'italic'}}>
+            Bald im Google Play Store<br/>und App Store erhältlich!
+          </div>
+        </div>
+
+        {/* Store-"Badges" — keine offiziellen Marken, sondern Bauhaus-Pillen
+            mit Play-Dreieck bzw. Apple-Logo. */}
+        <div className="fu" style={{display:'flex',gap:10,flexWrap:'wrap',
+          justifyContent:'center',animationDelay:'.1s'}}>
+          <div style={{display:'flex',alignItems:'center',gap:10,padding:'10px 16px',
+            background:T.card,border:`1px solid ${T.border}`,borderRadius:10,
+            color:T.t2,opacity:.85}}>
+            {/* Google Play Dreieck — multi-stop gradient als Hommage */}
+            <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+              <defs>
+                <linearGradient id="ritmo-play-a" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stopColor="#FFC107"/>
+                  <stop offset="1" stopColor="#FF7A1A"/>
+                </linearGradient>
+                <linearGradient id="ritmo-play-b" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stopColor="#0A84FF"/>
+                  <stop offset="1" stopColor="#7DD3FC"/>
+                </linearGradient>
+                <linearGradient id="ritmo-play-c" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0" stopColor="#34C759"/>
+                  <stop offset="1" stopColor="#A7F3D0"/>
+                </linearGradient>
+                <linearGradient id="ritmo-play-d" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stopColor="#FF375F"/>
+                  <stop offset="1" stopColor="#E84545"/>
+                </linearGradient>
+              </defs>
+              <path d="M4.5 2.5v19l8-9.5z" fill="url(#ritmo-play-b)"/>
+              <path d="M12.5 12L4.5 2.5l13.2 7.6z" fill="url(#ritmo-play-c)"/>
+              <path d="M12.5 12L4.5 21.5l13.2-7.6z" fill="url(#ritmo-play-d)"/>
+              <path d="M17.7 10.1l3.3 1.9-3.3 1.9-5.2-2z" fill="url(#ritmo-play-a)"/>
+            </svg>
+            <div style={{textAlign:'left'}}>
+              <div style={{fontSize:9,fontWeight:700,letterSpacing:.8,color:T.t3,
+                textTransform:'uppercase'}}>Bald auf</div>
+              <div style={{fontSize:13,fontWeight:800,color:T.t1,letterSpacing:.2}}>Google Play</div>
+            </div>
+          </div>
+
+          <div style={{display:'flex',alignItems:'center',gap:10,padding:'10px 16px',
+            background:T.card,border:`1px solid ${T.border}`,borderRadius:10,
+            color:T.t2,opacity:.85}}>
+            <AppleGlyph size={22}/>
+            <div style={{textAlign:'left'}}>
+              <div style={{fontSize:9,fontWeight:700,letterSpacing:.8,color:T.t3,
+                textTransform:'uppercase'}}>Bald auf</div>
+              <div style={{fontSize:13,fontWeight:800,color:T.t1,letterSpacing:.2}}>App Store</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Beta CTA — unten zentriert */}
+      <div className="fu" style={{flexShrink:0,display:'flex',flexDirection:'column',
+        alignItems:'center',gap:14,paddingTop:24,animationDelay:'.18s'}}>
+
+        <div style={{maxWidth:340,textAlign:'center'}}>
+          <div style={{color:T.o,fontSize:13,fontWeight:800,letterSpacing:.3,marginBottom:6}}>
+            Du hast einen Beta-Zugangscode?
+          </div>
+          <div style={{color:T.t2,fontSize:13,lineHeight:1.5,fontWeight:500}}>
+            Teste schon jetzt — hier geht es zu Login&nbsp;/&nbsp;Registrierung.
+          </div>
+        </div>
+
+        <div style={{display:'flex',gap:10,width:'100%',maxWidth:340}}>
+          <button onClick={onLogin}
+            style={{flex:1,padding:'14px 16px',background:T.card,
+              border:`1px solid ${T.border}`,borderRadius:12,
+              color:T.t1,fontSize:14,fontWeight:800,letterSpacing:.3,
+              cursor:'pointer',transition:'background .15s'}}
+            onPointerDown={e=>e.currentTarget.style.background=T.card2}
+            onPointerUp={e=>e.currentTarget.style.background=T.card}
+            onPointerLeave={e=>e.currentTarget.style.background=T.card}>
+            Login
+          </button>
+          <button onClick={onRegister}
+            style={{flex:1,padding:'14px 16px',background:T.o,border:'none',borderRadius:12,
+              color:'#000',fontSize:14,fontWeight:800,letterSpacing:.3,
+              cursor:'pointer',boxShadow:'0 6px 18px var(--oGlow)'}}>
+            Registrierung
+          </button>
+        </div>
+
+        <div style={{color:T.t3,fontSize:10,letterSpacing:.4,opacity:0.7,marginTop:6}}>
+          Made by Team RITMO · with love for Padel ♡
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ═══════════════════════════════════════════════════════════════
    SPLASH SCREEN
 ═══════════════════════════════════════════════════════════════ */
@@ -9856,7 +9983,7 @@ export default function App(){
         // localStorage-Werten geroutet hat. Andere Screens (match,
         // tournament-*, profile, etc.) bleiben unverändert.
         if(curr==='splash'||curr==='login'||curr==='register'||curr==='verify-email'
-          ||curr==='welcome'||curr==='home'){
+          ||curr==='beta-landing'||curr==='welcome'||curr==='home'){
           return isOnboarded?'home':'welcome';
         }
         return curr;
@@ -9990,10 +10117,16 @@ export default function App(){
       // ?join=PIN aus QR-Scan: direkt zur Join-Maske, auch ohne Login
       // (Auth-Pflicht wäre Reibung für den eingeladenen Spieler).
       if(joinPinFromUrl) return nav('remote');
-      if(!loggedIn) return nav('login');
+      // Vor Login zeigen wir die Beta-Landing-Page (Coming-Soon-
+      // Ankündigung + CTA-Buttons). Eingeloggte User springen direkt
+      // weiter zu welcome / home.
+      if(!loggedIn) return nav('beta-landing');
       if(!onboarded) return nav('welcome');
       return nav('home');
     }}/>}
+    {scr==='beta-landing'&&<BetaLanding
+      onLogin={()=>nav('login')}
+      onRegister={()=>nav('register')}/>}
     {scr==='login'&&<Login
       onSuccess={(result)=>{
         setLoggedIn(true);

@@ -8,7 +8,7 @@ import { loadProfile as dbLoadProfile, saveProfile as dbSaveProfile, logMatch as
   fetchPublicProfile, searchPlayers, followUser, unfollowUser, followCounts, isFollowing,
   listFollowers, listFollowing,
   listClubs, fetchClub, createClub, joinClub, leaveClub, clubMembers, isClubMember,
-  clubMemberCount, updateClub,
+  clubMemberCount, updateClub, myOwnedClubId,
   listClubMessages, sendClubMessage, markChatRead, listMyChats, totalUnreadCount,
   subscribeClubMessages
   } from "./db.js";
@@ -7280,6 +7280,13 @@ function Clubs({onHome,onOpenClub,onCreateClub}){
   const[q,setQ]=useState('');
   const[clubs,setClubs]=useState([]);
   const[busy,setBusy]=useState(false);
+  // Hat der User schon einen Club? Dann darf er keinen weiteren anlegen.
+  const[ownedId,setOwnedId]=useState(null);
+  useEffect(()=>{
+    let cancelled=false;
+    myOwnedClubId().then(id=>{ if(!cancelled) setOwnedId(id); });
+    return()=>{cancelled=true;};
+  },[]);
   const load=useCallback(async()=>{
     setBusy(true);
     try{ setClubs(await listClubs({query:q,limit:50})); }
@@ -7292,7 +7299,7 @@ function Clubs({onHome,onOpenClub,onCreateClub}){
 
   return(
     <SocialScreen eyebrow="Community" title="Clubs"
-      desc="Find oder gründe deinen Club."
+      desc={ownedId?'Du bist Inhaber:in eines Clubs.':'Find oder gründe deinen Club.'}
       icon={<TrophyIcon size={22}/>} onHome={onHome}>
       <div className="fu" style={{display:'flex',gap:8,marginBottom:14}}>
         <input value={q} onChange={e=>setQ(e.target.value)}
@@ -7300,40 +7307,103 @@ function Clubs({onHome,onOpenClub,onCreateClub}){
           style={{flex:1,background:T.card2,border:`1px solid ${T.border}`,
             borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
             outline:'none',boxSizing:'border-box',minWidth:0}}/>
-        <button onClick={onCreateClub}
-          style={{padding:'12px 14px',background:T.o,border:'none',borderRadius:10,
-            color:'#000',fontSize:13,fontWeight:800,letterSpacing:.3,cursor:'pointer',
-            flexShrink:0}}>
+        <button onClick={onCreateClub} disabled={!!ownedId}
+          title={ownedId?'Du hast bereits einen Club.':'Neuen Club gründen'}
+          style={{padding:'12px 14px',
+            background:ownedId?T.card2:T.o,
+            border:ownedId?`1px solid ${T.border}`:'none',borderRadius:10,
+            color:ownedId?T.t3:'#000',fontSize:13,fontWeight:800,letterSpacing:.3,
+            cursor:ownedId?'not-allowed':'pointer',flexShrink:0,
+            opacity:ownedId?.55:1}}>
           + Neu
         </button>
       </div>
+
+      {/* Mein Club als gepinnte Karte ganz oben */}
+      {ownedId&&clubs.some(c=>c.id===ownedId)&&(()=>{
+        const mine=clubs.find(c=>c.id===ownedId);
+        return(
+          <div className="fu" style={{marginBottom:14,animationDelay:'.02s'}}>
+            <div style={{color:T.o,fontSize:10,fontWeight:800,letterSpacing:2,
+              textTransform:'uppercase',marginBottom:6,marginLeft:4}}>Dein Club</div>
+            <button onClick={()=>onOpenClub(mine.id)}
+              style={{width:'100%',background:T.card,
+                border:`1px solid ${T.o}`,borderRadius:12,
+                padding:'14px 16px',display:'flex',alignItems:'center',gap:12,
+                color:T.t1,textAlign:'left',cursor:'pointer'}}>
+              {mine.cover?(
+                <img src={mine.cover} alt={mine.name}
+                  style={{width:40,height:40,borderRadius:10,objectFit:'cover',
+                    flexShrink:0,border:`1px solid ${T.border}`}}/>
+              ):(
+                <div style={{flexShrink:0,width:40,height:40,borderRadius:10,
+                  background:T.card2,border:`1px solid ${T.border}`,color:T.o,
+                  display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  <TrophyIcon size={20}/>
+                </div>
+              )}
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{color:T.t1,fontSize:14,fontWeight:700,letterSpacing:-.1}}>{mine.name}</div>
+                {mine.city&&<div style={{color:T.t3,fontSize:11,marginTop:2}}>{mine.city}</div>}
+              </div>
+              <span style={{padding:'2px 8px',background:T.oSoft,color:T.o,borderRadius:5,
+                fontSize:9,fontWeight:800,letterSpacing:.8,textTransform:'uppercase'}}>
+                Inhaber
+              </span>
+            </button>
+          </div>
+        );
+      })()}
+
       {busy?(
         <div style={{color:T.t3,fontSize:13,padding:'24px 0',textAlign:'center'}}>Lädt …</div>
       ):clubs.length===0?(
         <RitmoPostEmpty icon={<TrophyIcon size={28}/>}
           title="Noch keine Clubs"
-          desc="Sei der/die Erste und gründe einen Club."
-          cta={{label:'Club gründen',onClick:onCreateClub}}/>
+          desc={ownedId?'Andere Clubs werden hier aufgelistet.':'Sei der/die Erste und gründe einen Club.'}
+          cta={ownedId?null:{label:'Club gründen',onClick:onCreateClub}}/>
       ):(
-        <div style={{display:'flex',flexDirection:'column',gap:10}}>
-          {clubs.map((c,i)=>(
-            <button key={c.id} onClick={()=>onOpenClub(c.id)} className="fu"
-              style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:12,
-                padding:'14px 16px',display:'flex',alignItems:'center',gap:12,
-                color:T.t1,textAlign:'left',cursor:'pointer',animationDelay:`${i*0.03}s`}}>
-              <div style={{flexShrink:0,width:40,height:40,borderRadius:10,
-                background:T.card2,border:`1px solid ${T.border}`,color:T.o,
-                display:'flex',alignItems:'center',justifyContent:'center'}}>
-                <TrophyIcon size={20}/>
-              </div>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{color:T.t1,fontSize:14,fontWeight:700,letterSpacing:-.1}}>{c.name}</div>
-                {c.city&&<div style={{color:T.t3,fontSize:11,marginTop:2}}>{c.city}</div>}
-              </div>
-              <ChevronRightIcon size={16} color={T.t3}/>
-            </button>
-          ))}
-        </div>
+        (()=>{
+          // Eigenen Club aus der Haupt-Liste rausfiltern — er wird oben
+          // als gepinnte "Dein Club"-Karte separat gerendert.
+          const rest=clubs.filter(c=>c.id!==ownedId);
+          if(rest.length===0) return(
+            <div style={{color:T.t3,fontSize:13,padding:'18px 0',textAlign:'center'}}>
+              Keine weiteren Clubs gefunden.
+            </div>
+          );
+          return(
+            <div style={{display:'flex',flexDirection:'column',gap:10}}>
+              {ownedId&&(
+                <div style={{color:T.t3,fontSize:10,fontWeight:800,letterSpacing:2,
+                  textTransform:'uppercase',marginLeft:4,marginBottom:0}}>Andere Clubs</div>
+              )}
+              {rest.map((c,i)=>(
+                <button key={c.id} onClick={()=>onOpenClub(c.id)} className="fu"
+                  style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:12,
+                    padding:'14px 16px',display:'flex',alignItems:'center',gap:12,
+                    color:T.t1,textAlign:'left',cursor:'pointer',animationDelay:`${i*0.03}s`}}>
+                  {c.cover?(
+                    <img src={c.cover} alt={c.name}
+                      style={{width:40,height:40,borderRadius:10,objectFit:'cover',
+                        flexShrink:0,border:`1px solid ${T.border}`}}/>
+                  ):(
+                    <div style={{flexShrink:0,width:40,height:40,borderRadius:10,
+                      background:T.card2,border:`1px solid ${T.border}`,color:T.o,
+                      display:'flex',alignItems:'center',justifyContent:'center'}}>
+                      <TrophyIcon size={20}/>
+                    </div>
+                  )}
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{color:T.t1,fontSize:14,fontWeight:700,letterSpacing:-.1}}>{c.name}</div>
+                    {c.city&&<div style={{color:T.t3,fontSize:11,marginTop:2}}>{c.city}</div>}
+                  </div>
+                  <ChevronRightIcon size={16} color={T.t3}/>
+                </button>
+              ))}
+            </div>
+          );
+        })()
       )}
     </SocialScreen>
   );
@@ -7369,11 +7439,10 @@ function ClubCreate({onHome,onDone,onCancel,initial}){
         const c=await updateClub(initial.id,{name,city,description:desc,cover});
         onDone(c);
       } else {
-        const c=await createClub({name,city,description:desc});
-        // Cover separat patchen (createClub akzeptiert keinen Cover-Param)
-        if(cover){
-          try{ await updateClub(c.id,{cover}); c.cover=cover; }catch(e){ console.warn('[cover]',e); }
-        }
+        // Cover wird direkt mit createClub atomar gespeichert — kein
+        // separater updateClub-Call mehr, der bei Fehler den Cover
+        // verschluckt hätte.
+        const c=await createClub({name,city,description:desc,cover});
         onDone(c);
       }
     }catch(e){ setErr(e.message||'Fehler.'); }
@@ -7639,6 +7708,11 @@ function ClubChat({clubId,currentUid,onHome,onBack}){
   const[msgs,setMsgs]=useState([]);
   const[text,setText]=useState('');
   const[busy,setBusy]=useState(false);
+  // Defensive Membership-Gate: RLS verbietet das Lesen / Posten in
+  // Chats von Clubs in denen man nicht Mitglied ist — aber wenn jemand
+  // direkt zum Screen navigiert, zeigen wir lieber einen "kein Zugriff"-
+  // Zustand statt einer leeren Liste. State 'pending' | 'ok' | 'denied'.
+  const[access,setAccess]=useState('pending');
   const scrollRef=useRef(null);
   const scrollToBottom=()=>{
     requestAnimationFrame(()=>{
@@ -7649,27 +7723,42 @@ function ClubChat({clubId,currentUid,onHome,onBack}){
   // Initial load + Subscribe auf Realtime-Inserts
   useEffect(()=>{
     let cancelled=false;
+    let unsub=()=>{};
     (async()=>{
+      // Erst Membership prüfen, dann erst Daten + Realtime-Subscribe.
+      const member=await isClubMember(clubId);
+      if(cancelled) return;
+      if(!member){ setAccess('denied'); return; }
+      setAccess('ok');
       const [c,ms]=await Promise.all([fetchClub(clubId),listClubMessages(clubId,{limit:100})]);
       if(cancelled) return;
       setClub(c); setMsgs(ms);
       scrollToBottom();
       markChatRead(clubId);
-    })();
-    const unsub=subscribeClubMessages(clubId, async(row)=>{
-      // Bei neuer Nachricht: in die Liste hängen und Read-State aktualisieren.
-      // Wir holen das Profil zur Nachricht aus der bestehenden Liste oder
-      // fallen auf user_id-only zurück; ein Refetch passiert beim nächsten
-      // Open.
-      setMsgs(prev=>{
-        if(prev.some(m=>m.id===row.id)) return prev;
-        return [...prev,{...row,profile:null}];
+      unsub=subscribeClubMessages(clubId, async(row)=>{
+        setMsgs(prev=>{
+          if(prev.some(m=>m.id===row.id)) return prev;
+          return [...prev,{...row,profile:null}];
+        });
+        scrollToBottom();
+        markChatRead(clubId);
       });
-      scrollToBottom();
-      markChatRead(clubId);
-    });
+    })();
     return()=>{ cancelled=true; unsub(); };
   },[clubId]);
+
+  // Kein Zugriff → freundliche Sperr-Karte mit Zurück-Button.
+  if(access==='denied'){
+    return(
+      <SocialScreen eyebrow="Chat" title="Kein Zugriff"
+        icon={<LockIcon size={22}/>} onHome={onHome}
+        onBack={onBack} backLabel="Zurück">
+        <RitmoPostEmpty icon={<LockIcon size={28}/>}
+          title="Nur für Mitglieder"
+          desc="Tritt dem Club bei, um den Chat zu sehen und mitzuschreiben."/>
+      </SocialScreen>
+    );
+  }
 
   const send=async()=>{
     const body=text.trim();

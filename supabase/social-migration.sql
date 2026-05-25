@@ -231,10 +231,20 @@ CREATE POLICY "invites sender delete" ON ritmo_match_invites
   FOR DELETE USING (auth.uid() = from_user_id);
 
 -- ─── Club Cover Image ──────────────────────────────────────────
--- Base64-JPEG (resized ≤ 800 px client-seitig). Wer keinen Cover
+-- Base64-JPEG (resized ≤ 1200 px client-seitig). Wer keinen Cover
 -- hochlädt, hat NULL — die UI rendert ein Bauhaus-Fallback.
 ALTER TABLE ritmo_clubs
   ADD COLUMN IF NOT EXISTS cover TEXT;
+
+-- ─── Max 1 Club pro Account ────────────────────────────────────
+-- Unique-Index auf owner_id verhindert, dass ein User mehrere Clubs
+-- gleichzeitig betreibt. Der Client hat zusätzlich einen Pre-Check
+-- (myOwnedClubId), aber der DB-Index ist die endgültige Garantie
+-- gegen Race-Conditions. ACHTUNG: wenn ein Owner bereits mehrere
+-- Clubs hat (z.B. aus Dev-Daten), schlägt die Index-Anlage fehl —
+-- in dem Fall vorher alte Clubs manuell mergen / löschen.
+CREATE UNIQUE INDEX IF NOT EXISTS ritmo_clubs_one_per_owner
+  ON ritmo_clubs (owner_id);
 
 -- ─── Club Chat Messages ────────────────────────────────────────
 -- Eine Zeile pro gesendeter Nachricht in einem Club-Chat. Nur

@@ -3814,19 +3814,26 @@ function ScrollPicker({value,onChange,options,bgColor=T.card,width=86}){
     },80);
   };
 
+  // Schmaler Fade nur am oberen/unteren Rand — die innere Reihe
+  // (direkt über/unter der Auswahl) bleibt komplett lesbar, nur die
+  // äußerste fadet weich aus. `transparent` ist valides CSS und
+  // funktioniert auch wenn bgColor eine CSS-Variable ist.
+  const FADE_H=Math.round(ITEM_H*0.6);
+
   return(
     <div style={{position:'relative',height:HEIGHT,width,flexShrink:0}}>
       {/* Selection band */}
       <div style={{position:'absolute',top:PAD,left:0,right:0,height:ITEM_H,
         background:'var(--oSoft)',borderTop:`1px solid ${T.border}`,
         borderBottom:`1px solid ${T.border}`,pointerEvents:'none',borderRadius:8}}/>
-      {/* Top fade */}
-      <div style={{position:'absolute',top:0,left:0,right:0,height:PAD,
-        background:`linear-gradient(${bgColor},${bgColor}00)`,
+      {/* Top fade — kürzer + sanfter, damit die Reihe direkt über
+          der Auswahl klar lesbar bleibt. */}
+      <div style={{position:'absolute',top:0,left:0,right:0,height:FADE_H,
+        background:`linear-gradient(${bgColor},transparent)`,
         pointerEvents:'none',zIndex:2}}/>
-      {/* Bottom fade */}
-      <div style={{position:'absolute',bottom:0,left:0,right:0,height:PAD,
-        background:`linear-gradient(${bgColor}00,${bgColor})`,
+      {/* Bottom fade — symmetrisch */}
+      <div style={{position:'absolute',bottom:0,left:0,right:0,height:FADE_H,
+        background:`linear-gradient(transparent,${bgColor})`,
         pointerEvents:'none',zIndex:2}}/>
 
       <div ref={ref} onScroll={handleScroll}
@@ -3844,7 +3851,9 @@ function ScrollPicker({value,onChange,options,bgColor=T.card,width=86}){
               scrollSnapAlign:'start',
               fontSize:active?28:20,
               fontWeight:active?800:500,
-              color:active?T.t1:T.t3,
+              // Inaktive Zahlen heller (T.t2 statt T.t3) damit die
+              // Reihen über/unter der Auswahl gut lesbar sind.
+              color:active?T.t1:T.t2,
               transition:'color .15s,font-size .15s'}}>
               {o}
             </div>
@@ -9873,6 +9882,10 @@ export default function App(){
   const[followListInitial,setFollowListInitial]=useState('followers');
   // editClub: vorgefüllter Club beim Sprung in ClubCreate-Edit-Mode.
   const[editClub,setEditClub]=useState(null);
+  // chatBackTo: woher der User in den Club-Chat gekommen ist. Default
+  // 'club-detail'; wenn er aus RITMO Post Chats kam, setzen wir
+  // 'ritmopost'. Wird beim Schließen des Chats ausgewertet.
+  const[chatBackTo,setChatBackTo]=useState('club-detail');
   // Aggregierter Unread-Count für den Home-Post-Dot. Wird alle 30 s
   // refreshed plus beim Verlassen eines Chat-Screens. State auf App-Ebene
   // damit der Dot nicht erst beim Re-Mount aktualisiert.
@@ -10313,7 +10326,7 @@ export default function App(){
       }}/>}
     {scr==='ritmopost'&&<RitmoPost onHome={goHome} profile={profile}
       unread={unreadTotal}
-      onOpenChat={(id)=>{ setViewClubId(id); setScr('club-chat'); }}/>}
+      onOpenChat={(id)=>{ setViewClubId(id); setChatBackTo('ritmopost'); setScr('club-chat'); }}/>}
 
     {/* ─── Social Layer Screens ──────────────────────────────────── */}
     {scr==='player-search'&&<PlayerSearch onHome={goHome}
@@ -10336,11 +10349,11 @@ export default function App(){
     {scr==='club-detail'&&viewClubId&&<ClubDetail clubId={viewClubId}
       currentUid={currentUid} onHome={goHome} onBack={()=>setScr('clubs')}
       onOpenPlayer={(uid)=>{ setViewPlayerId(uid); setPlayerBackTo('club-detail'); setScr('public-profile'); }}
-      onOpenChat={(id)=>{ setViewClubId(id); setScr('club-chat'); }}
+      onOpenChat={(id)=>{ setViewClubId(id); setChatBackTo('club-detail'); setScr('club-chat'); }}
       onEdit={(club)=>{ setEditClub(club); setScr('club-create'); }}/>}
     {scr==='club-chat'&&viewClubId&&<ClubChat clubId={viewClubId}
       currentUid={currentUid} onHome={goHome}
-      onBack={()=>setScr('club-detail')}/>}
+      onBack={()=>setScr(chatBackTo||'club-detail')}/>}
     {scr==='single-setup'&&<SingleSetup nav={nav} onHome={goHome} cfg={cfg} setCfg={setCfg} profile={profile}/>}
     {scr==='match'&&<Match cfg={cfg} setCfg={setCfg} bo3={bo3} dBo3={dBo3} am={am} dAm={dAm}
       onHome={goHome} inputMode={inputMode} ringId={ringId}

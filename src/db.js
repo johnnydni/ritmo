@@ -651,17 +651,59 @@ export async function fetchClub(clubId) {
   } catch (e) { return null; }
 }
 
-export async function createClub({ name, city, description }) {
+/** Liefert die ID des Clubs den der aktuelle User besitzt, oder null. */
+export async function myOwnedClubId() {
+  const c = sb();
+  if (!c) return null;
+  const uid = await currentUserId();
+  if (!uid) return null;
+  try {
+    const { data, error } = await c.from('ritmo_clubs')
+      .select('id').eq('owner_id', uid).limit(1).maybeSingle();
+    if (error) { console.warn('[db] myOwnedClubId:', error.message); return null; }
+    return data?.id || null;
+  } catch (e) { return null; }
+}
+
+export async function createClub({ name, city, description, cover }) {
   const c = sb();
   if (!c) throw new Error('Verbindung nicht verfügbar.');
   const uid = await currentUserId();
   if (!uid) throw new Error('Bitte zuerst anmelden.');
   if (!name || !name.trim()) throw new Error('Club-Name fehlt.');
+
+  // Max 1 Club pro Account — client-seitiger Pre-Check für nette
+  // Fehlermeldung; das UNIQUE-Index im Schema fängt Race-Conditions ab.
+  const ownedId = await myOwnedClubId();
+  if (ownedId) {
+    throw new Error('Du hast bereits einen Club. Pro Account ist nur ein Club erlaubt.');
+  }
+
+  // Cover wird direkt mit insert geschrieben, damit nichts zwischen
+  // Insert und Update verlorengeht. Wenn die Datenbank das cover-Feld
+  // noch nicht hat (Migration nicht angewendet), schickt PostgREST
+  // einen 400er — wir surfacen das verständlich.
+  const payload = {
+    owner_id: uid,
+    name: name.trim(),
+    city: city?.trim() || null,
+    description: description?.trim() || null,
+  };
+  if (cover) payload.cover = cover;
+
   const { data, error } = await c.from('ritmo_clubs')
-    .insert({ owner_id: uid, name: name.trim(),
-              city: city?.trim() || null, description: description?.trim() || null })
-    .select('id,name,city,description,owner_id,created_at').single();
-  if (error) throw new Error(error.message || 'Club konnte nicht angelegt werden.');
+    .insert(payload)
+    .select('id,name,city,description,cover,owner_id,created_at').single();
+  if (error) {
+    const msg = (error.message || '').toLowerCase();
+    if (msg.includes('cover')) {
+      throw new Error('Cover-Bild konnte nicht gespeichert werden — Datenbank-Migration läuft noch nicht. Bitte supabase/social-migration.sql neu anwenden.');
+    }
+    if (msg.includes('one_per_owner') || msg.includes('unique')) {
+      throw new Error('Du hast bereits einen Club. Pro Account ist nur ein Club erlaubt.');
+    }
+    throw new Error(error.message || 'Club konnte nicht angelegt werden.');
+  }
   // Owner automatisch als admin-Member eintragen.
   await c.from('ritmo_club_members').insert({ club_id: data.id, user_id: uid, role: 'admin' });
   return data;

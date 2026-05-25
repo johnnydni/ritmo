@@ -8673,7 +8673,7 @@ function ChiquitaFigure(){
 }
 
 /* ───── Rules — Übersicht ───── */
-function Rules({onHome,onSelect,alreadyRead,onToggleRead}){
+function Rules({onHome,onSelect,alreadyRead,onToggleRead,onBibel}){
   const sections=[
     {id:'basics',    icon:'🎾',title:'Padel-Grundregeln', sub:'Aufschlag, Wände, Punktezählung'},
     {id:'bo3',       icon:'📜',title:'Best of 3',         sub:'Klassisches Tennis-Scoring, Tiebreak bei 6:6'},
@@ -8717,7 +8717,8 @@ function Rules({onHome,onSelect,alreadyRead,onToggleRead}){
           </button>
         ))}
       </div>
-      <MatchBar onHome={onHome}/>
+      <MatchBar onHome={onHome}
+        rightButtons={onBibel?[{icon:<BookIcon size={20}/>,onClick:onBibel}]:[]}/>
     </div>
   );
 }
@@ -9143,7 +9144,7 @@ function BaelleVisual(){
   );
 }
 
-function Journey({onHome,onSelect,alreadyRead,onToggleRead}){
+function Journey({onHome,onSelect,alreadyRead,onToggleRead,onBibel}){
   const sections=[
     {id:'ritmodna',     icon:'🧬',title:'RITMO DNA',     sub:'Stil · Chemie · Tier-Matching · Levels'},
     {id:'spielstile',   icon:'🎭',title:'Spielstile',    sub:'Die 6 Padel-Personalities'},
@@ -9189,7 +9190,8 @@ function Journey({onHome,onSelect,alreadyRead,onToggleRead}){
           </button>
         ))}
       </div>
-      <MatchBar onHome={onHome}/>
+      <MatchBar onHome={onHome}
+        rightButtons={onBibel?[{icon:<BookIcon size={20}/>,onClick:onBibel}]:[]}/>
     </div>
   );
 }
@@ -10284,7 +10286,8 @@ export default function App(){
     {scr==='rules-overview'&&<Rules onHome={goHome}
       onSelect={(id)=>setScr(`rules-${id}`)}
       alreadyRead={rulesRead}
-      onToggleRead={()=>setRulesRead(r=>!r)}/>}
+      onToggleRead={()=>setRulesRead(r=>!r)}
+      onBibel={()=>setScr('ritmo-bibel')}/>}
     {(()=>{
       const order=['basics','bo3','americano','mexicano','rotation','glossar'];
       const id=scr.startsWith('rules-')?scr.slice(6):null;
@@ -10310,7 +10313,8 @@ export default function App(){
     {scr==='journey-overview'&&<Journey onHome={goHome}
       onSelect={(id)=>setScr(id==='spielstile'?'journey-spielstile':`journey-${id}`)}
       alreadyRead={journeyRead}
-      onToggleRead={()=>setJourneyRead(r=>!r)}/>}
+      onToggleRead={()=>setJourneyRead(r=>!r)}
+      onBibel={()=>setScr('ritmo-bibel')}/>}
     {scr==='journey-spielstile'&&<JourneySpielstileList
       onBack={()=>setScr('journey-overview')}
       onHome={goHome}

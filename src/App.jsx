@@ -2697,8 +2697,8 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
           </div>
         </button>
 
-        {/* Turnier */}
-        <button onClick={()=>nav('tournament-setup')} className="fu"
+        {/* Turnier — neuer Hub mit "Starten" + "Beitreten" */}
+        <button onClick={()=>nav('tournament-hub')} className="fu"
           style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:18,
             padding:'18px 20px',display:'flex',alignItems:'center',gap:18,
             cursor:'pointer',color:T.t1,textAlign:'left',transition:'background .15s',
@@ -2709,7 +2709,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
           <TrophyIcon size={42}/>
           <div style={{flex:1}}>
             <div style={{color:T.o,fontSize:18,fontWeight:700,marginBottom:3}}>Turnier</div>
-            <div style={{color:T.t3,fontSize:12,fontWeight:500}}>Americano | Mexicano</div>
+            <div style={{color:T.t3,fontSize:12,fontWeight:500}}>Starten | Beitreten</div>
           </div>
         </button>
 
@@ -2743,24 +2743,8 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
           </button>
         </div>
 
-        {/* Turnier beitreten */}
-        <button onClick={()=>nav('remote')} className="fu"
-          style={{background:'transparent',border:`1px solid ${T.border}`,borderRadius:16,
-            padding:'14px 20px',display:'flex',alignItems:'center',gap:16,
-            cursor:'pointer',color:T.t1,textAlign:'left',transition:'background .15s',
-            animationDelay:'.12s'}}
-          onPointerDown={e=>e.currentTarget.style.background=T.card2}
-          onPointerUp={e=>e.currentTarget.style.background='transparent'}
-          onPointerLeave={e=>e.currentTarget.style.background='transparent'}>
-          <JoinIcon size={28}/>
-          <div style={{flex:1}}>
-            <div style={{color:T.o,fontSize:15,fontWeight:700,marginBottom:1}}>Turnier beitreten</div>
-            <div style={{color:T.t3,fontSize:11,fontWeight:500}}>PIN eingeben | Ergebnis übertragen</div>
-          </div>
-        </button>
-
-        {/* Regelwerk */}
-        <button onClick={()=>nav('rules')} className="fu"
+        {/* RITMO Bibel — gebündelt: Regelwerk + Journey */}
+        <button onClick={()=>nav('ritmo-bibel')} className="fu"
           style={{background:'transparent',border:`1px solid ${T.border}`,borderRadius:16,
             padding:'14px 20px',display:'flex',alignItems:'center',gap:16,
             cursor:'pointer',color:T.t1,textAlign:'left',transition:'background .15s',
@@ -2770,24 +2754,8 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
           onPointerLeave={e=>e.currentTarget.style.background='transparent'}>
           <BookIcon size={28}/>
           <div style={{flex:1}}>
-            <div style={{color:T.o,fontSize:15,fontWeight:700,marginBottom:1}}>Regelwerk</div>
-            <div style={{color:T.t3,fontSize:11,fontWeight:500}}>Padel-Regeln | Formate | Begriffe</div>
-          </div>
-        </button>
-
-        {/* Journey — Tipps & Tricks */}
-        <button onClick={()=>nav('journey')} className="fu"
-          style={{background:'transparent',border:`1px solid ${T.border}`,borderRadius:16,
-            padding:'14px 20px',display:'flex',alignItems:'center',gap:16,
-            cursor:'pointer',color:T.t1,textAlign:'left',transition:'background .15s',
-            animationDelay:'.22s'}}
-          onPointerDown={e=>e.currentTarget.style.background=T.card2}
-          onPointerUp={e=>e.currentTarget.style.background='transparent'}
-          onPointerLeave={e=>e.currentTarget.style.background='transparent'}>
-          <JourneyIcon size={28}/>
-          <div style={{flex:1}}>
-            <div style={{color:T.o,fontSize:15,fontWeight:700,marginBottom:1}}>Journey</div>
-            <div style={{color:T.t3,fontSize:11,fontWeight:500}}>Tipps & Tricks | Taktik | Material</div>
+            <div style={{color:T.o,fontSize:15,fontWeight:700,marginBottom:1}}>RITMO Bibel</div>
+            <div style={{color:T.t3,fontSize:11,fontWeight:500}}>Regelwerk | Journey</div>
           </div>
         </button>
 
@@ -3814,19 +3782,26 @@ function ScrollPicker({value,onChange,options,bgColor=T.card,width=86}){
     },80);
   };
 
+  // Schmaler Fade nur am oberen/unteren Rand — die innere Reihe
+  // (direkt über/unter der Auswahl) bleibt komplett lesbar, nur die
+  // äußerste fadet weich aus. `transparent` ist valides CSS und
+  // funktioniert auch wenn bgColor eine CSS-Variable ist.
+  const FADE_H=Math.round(ITEM_H*0.6);
+
   return(
     <div style={{position:'relative',height:HEIGHT,width,flexShrink:0}}>
       {/* Selection band */}
       <div style={{position:'absolute',top:PAD,left:0,right:0,height:ITEM_H,
         background:'var(--oSoft)',borderTop:`1px solid ${T.border}`,
         borderBottom:`1px solid ${T.border}`,pointerEvents:'none',borderRadius:8}}/>
-      {/* Top fade */}
-      <div style={{position:'absolute',top:0,left:0,right:0,height:PAD,
-        background:`linear-gradient(${bgColor},${bgColor}00)`,
+      {/* Top fade — kürzer + sanfter, damit die Reihe direkt über
+          der Auswahl klar lesbar bleibt. */}
+      <div style={{position:'absolute',top:0,left:0,right:0,height:FADE_H,
+        background:`linear-gradient(${bgColor},transparent)`,
         pointerEvents:'none',zIndex:2}}/>
-      {/* Bottom fade */}
-      <div style={{position:'absolute',bottom:0,left:0,right:0,height:PAD,
-        background:`linear-gradient(${bgColor}00,${bgColor})`,
+      {/* Bottom fade — symmetrisch */}
+      <div style={{position:'absolute',bottom:0,left:0,right:0,height:FADE_H,
+        background:`linear-gradient(transparent,${bgColor})`,
         pointerEvents:'none',zIndex:2}}/>
 
       <div ref={ref} onScroll={handleScroll}
@@ -3844,7 +3819,9 @@ function ScrollPicker({value,onChange,options,bgColor=T.card,width=86}){
               scrollSnapAlign:'start',
               fontSize:active?28:20,
               fontWeight:active?800:500,
-              color:active?T.t1:T.t3,
+              // Inaktive Zahlen heller (T.t2 statt T.t3) damit die
+              // Reihen über/unter der Auswahl gut lesbar sind.
+              color:active?T.t1:T.t2,
               transition:'color .15s,font-size .15s'}}>
               {o}
             </div>
@@ -8071,6 +8048,119 @@ function FollowList({userId,initial='followers',onHome,onBack,onOpenPlayer}){
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   HUB SCREENS — Tournament + RITMO Bibel
+
+   TournamentHub bündelt "Turnier starten" + "Turnier beitreten" als
+   zwei große Karten; das frühere "Turnier beitreten" auf dem Home-
+   Screen ist hierher umgezogen. RitmoBibel bündelt Regelwerk +
+   Journey unter einem gemeinsamen Dach.
+═══════════════════════════════════════════════════════════════ */
+
+/* Wiederverwendbare große Hub-Karte: Icon-Tile links, Titel + Desc,
+   Chevron rechts. Animationen erbt sie über className="fu". */
+function HubBigCard({icon,title,desc,onClick,accent,delay='0s'}){
+  return(
+    <button onClick={onClick} className="fu"
+      style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:18,
+        padding:'20px 22px',display:'flex',alignItems:'center',gap:18,
+        cursor:'pointer',color:T.t1,textAlign:'left',transition:'background .15s',
+        animationDelay:delay,width:'100%'}}
+      onPointerDown={e=>e.currentTarget.style.background=T.card2}
+      onPointerUp={e=>e.currentTarget.style.background=T.card}
+      onPointerLeave={e=>e.currentTarget.style.background=T.card}>
+      <div style={{flexShrink:0,width:54,height:54,borderRadius:14,
+        background:`${accent||T.o}22`,
+        border:`1px solid ${accent||T.o}`,
+        color:accent||T.o,
+        display:'flex',alignItems:'center',justifyContent:'center'}}>
+        {icon}
+      </div>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{color:accent||T.o,fontSize:18,fontWeight:800,letterSpacing:-.2,marginBottom:3}}>
+          {title}
+        </div>
+        <div style={{color:T.t3,fontSize:12,fontWeight:500,lineHeight:1.45}}>
+          {desc}
+        </div>
+      </div>
+      <ChevronRightIcon size={20} color={T.t3}/>
+    </button>
+  );
+}
+
+function TournamentHub({onHome,onStart,onJoin}){
+  return(
+    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+      position:'relative',overflow:'hidden',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
+      <div className="fi" style={{padding:'0 22px 22px'}}>
+        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
+          <TrophyIcon size={32}/>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{color:T.t1,fontSize:26,fontWeight:800,letterSpacing:-.3}}>Turnier</div>
+            <div style={{color:T.t2,fontSize:14,marginTop:2,fontWeight:400}}>
+              Spiele austragen oder einsteigen.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{flex:1,padding:'0 22px 120px',overflowY:'auto',
+        WebkitOverflowScrolling:'touch',display:'flex',flexDirection:'column',gap:14}}>
+        <HubBigCard
+          icon={<TrophyIcon size={28}/>}
+          title="Turnier starten"
+          desc="Americano oder Mexicano — du bist Host."
+          onClick={onStart} delay=".02s"/>
+        <HubBigCard
+          icon={<JoinIcon size={28}/>}
+          title="Turnier beitreten"
+          desc="PIN eingeben oder QR scannen, Ergebnisse übertragen."
+          onClick={onJoin} delay=".06s"/>
+      </div>
+
+      <MatchBar onHome={onHome}/>
+    </div>
+  );
+}
+
+function RitmoBibel({onHome,onRules,onJourney}){
+  return(
+    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+      position:'relative',overflow:'hidden',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
+      <div className="fi" style={{padding:'0 22px 22px'}}>
+        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
+          <BookIcon size={32}/>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{color:T.t1,fontSize:26,fontWeight:800,letterSpacing:-.3}}>RITMO Bibel</div>
+            <div style={{color:T.t2,fontSize:14,marginTop:2,fontWeight:400}}>
+              Regeln, Taktik und alles dazwischen.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{flex:1,padding:'0 22px 120px',overflowY:'auto',
+        WebkitOverflowScrolling:'touch',display:'flex',flexDirection:'column',gap:14}}>
+        <HubBigCard
+          icon={<BookIcon size={28}/>}
+          title="Regelwerk"
+          desc="Padel-Regeln, Formate, Begriffe."
+          onClick={onRules} delay=".02s"/>
+        <HubBigCard
+          icon={<JourneyIcon size={28}/>}
+          title="Journey"
+          desc="Tipps & Tricks, Taktik, Material."
+          onClick={onJourney} delay=".06s"/>
+      </div>
+
+      <MatchBar onHome={onHome}/>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
    REGELWERK (Rules) — Übersicht + Detail-Screens
 ═══════════════════════════════════════════════════════════════ */
 function RulesH({children}){
@@ -9873,6 +9963,10 @@ export default function App(){
   const[followListInitial,setFollowListInitial]=useState('followers');
   // editClub: vorgefüllter Club beim Sprung in ClubCreate-Edit-Mode.
   const[editClub,setEditClub]=useState(null);
+  // chatBackTo: woher der User in den Club-Chat gekommen ist. Default
+  // 'club-detail'; wenn er aus RITMO Post Chats kam, setzen wir
+  // 'ritmopost'. Wird beim Schließen des Chats ausgewertet.
+  const[chatBackTo,setChatBackTo]=useState('club-detail');
   // Aggregierter Unread-Count für den Home-Post-Dot. Wird alle 30 s
   // refreshed plus beim Verlassen eines Chat-Screens. State auf App-Ebene
   // damit der Dot nicht erst beim Re-Mount aktualisiert.
@@ -10313,7 +10407,7 @@ export default function App(){
       }}/>}
     {scr==='ritmopost'&&<RitmoPost onHome={goHome} profile={profile}
       unread={unreadTotal}
-      onOpenChat={(id)=>{ setViewClubId(id); setScr('club-chat'); }}/>}
+      onOpenChat={(id)=>{ setViewClubId(id); setChatBackTo('ritmopost'); setScr('club-chat'); }}/>}
 
     {/* ─── Social Layer Screens ──────────────────────────────────── */}
     {scr==='player-search'&&<PlayerSearch onHome={goHome}
@@ -10336,11 +10430,11 @@ export default function App(){
     {scr==='club-detail'&&viewClubId&&<ClubDetail clubId={viewClubId}
       currentUid={currentUid} onHome={goHome} onBack={()=>setScr('clubs')}
       onOpenPlayer={(uid)=>{ setViewPlayerId(uid); setPlayerBackTo('club-detail'); setScr('public-profile'); }}
-      onOpenChat={(id)=>{ setViewClubId(id); setScr('club-chat'); }}
+      onOpenChat={(id)=>{ setViewClubId(id); setChatBackTo('club-detail'); setScr('club-chat'); }}
       onEdit={(club)=>{ setEditClub(club); setScr('club-create'); }}/>}
     {scr==='club-chat'&&viewClubId&&<ClubChat clubId={viewClubId}
       currentUid={currentUid} onHome={goHome}
-      onBack={()=>setScr('club-detail')}/>}
+      onBack={()=>setScr(chatBackTo||'club-detail')}/>}
     {scr==='single-setup'&&<SingleSetup nav={nav} onHome={goHome} cfg={cfg} setCfg={setCfg} profile={profile}/>}
     {scr==='match'&&<Match cfg={cfg} setCfg={setCfg} bo3={bo3} dBo3={dBo3} am={am} dAm={dAm}
       onHome={goHome} inputMode={inputMode} ringId={ringId}
@@ -10373,6 +10467,16 @@ export default function App(){
       restored={joinedSession}
       onJoin={setJoinedSession}
       onHome={()=>{setJoinPinFromUrl(null);goHome();}}/>}
+
+    {/* Hub-Screens: Turnier-Auswahl + RITMO Bibel */}
+    {scr==='tournament-hub'&&<TournamentHub
+      onHome={goHome}
+      onStart={()=>setScr('tournament-setup')}
+      onJoin={()=>setScr('remote')}/>}
+    {scr==='ritmo-bibel'&&<RitmoBibel
+      onHome={goHome}
+      onRules={()=>nav('rules')}
+      onJourney={()=>nav('journey')}/>}
 
     {/* First-launch disclaimer — liegt über allen Screens, blockiert
         Interaktion bis OK gedrückt wurde */}

@@ -630,7 +630,7 @@ export async function listClubs({ query = '', limit = 50 } = {}) {
   const c = sb();
   if (!c) return [];
   try {
-    let q = c.from('ritmo_clubs').select('id,name,city,description,owner_id,created_at')
+    let q = c.from('ritmo_clubs').select('id,name,city,description,cover,owner_id,created_at')
       .order('created_at', { ascending: false }).limit(limit);
     if (query.trim()) q = q.or(`name.ilike.%${query.trim()}%,city.ilike.%${query.trim()}%`);
     const { data, error } = await q;
@@ -644,7 +644,7 @@ export async function fetchClub(clubId) {
   if (!c || !clubId) return null;
   try {
     const { data, error } = await c.from('ritmo_clubs')
-      .select('id,name,city,description,owner_id,created_at')
+      .select('id,name,city,description,cover,owner_id,created_at')
       .eq('id', clubId).maybeSingle();
     if (error) { console.warn('[db] fetchClub:', error.message); return null; }
     return data || null;

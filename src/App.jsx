@@ -10376,6 +10376,142 @@ function JourneyBaelle({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalSec
 }
 
 
+/* ═══════════════════════════════════════════════════════════════
+   FUNKY AMBIENT — Bauhaus Funky theme's living background layer.
+
+   Mounted only when theme === 'funky'. Renders four layers that
+   stack BEHIND the React app tree (z-index 0–3):
+     1) Pexels stock video (autoplay, muted, looped, low opacity,
+        blended over the conic-gradient defined in theme.js)
+     2) Vignette darkening the edges so foreground content stays
+        readable
+     3) Marquee strip at the very top — kinetic typography that
+        screams "this theme is different"
+     4) Floating tropical fruit sprites scattered across the
+        viewport, each on its own float keyframe
+
+   Plus: a document-level pointerdown listener that spawns
+   short-lived click ripples. All animations honour the global
+   prefers-reduced-motion media query (via theme.js CSS).
+
+   Stock-Video-URLs sind absichtlich an MEHRERE Kandidaten
+   gebunden — der erste der lädt gewinnt; bei Netz-/CSP-Problemen
+   degradiert die Komponente still zu "nur Gradient + Fruits".
+═══════════════════════════════════════════════════════════════ */
+const FUNKY_VIDEO_CANDIDATES = [
+  // Pexels CDN-Direktlinks (frei nutzbar gemäß Pexels License).
+  // SD-Auflösungen reichen, weil der Layer eh nur ~32% Opazität hat
+  // und ständig blendet — höhere Auflösung wäre Daten-Verschwendung.
+  'https://videos.pexels.com/video-files/3045163/3045163-sd_640_360_24fps.mp4',
+  'https://videos.pexels.com/video-files/3214448/3214448-sd_640_360_25fps.mp4',
+  'https://videos.pexels.com/video-files/2491284/2491284-sd_640_360_30fps.mp4',
+];
+
+const FUNKY_MARQUEE_TEXT = [
+  '★ RITMO PADEL', '◐ BAUHAUS FUNKY', '⚡ DISCO MODE',
+  '✦ TROPICAL VIBES', '◉ SPIEL HEISS', '☀ SUNSET COURT',
+  '♪ NEON SLAM', '✺ KIWI · KOKOSNUSS · ANANAS', '◆ EXPERIMENTAL THEME',
+];
+
+function FunkyAmbient(){
+  // useState mit Funktions-Initializer — wir würfeln Floater-Positionen
+  // einmal beim Mount; keine Re-Random-Loops, das wäre zu hektisch.
+  const[floaters]=useState(()=>{
+    const sprites=['kiwi','pineapple','coconut','ball','parrot'];
+    return Array.from({length:9},(_,i)=>({
+      key:i,
+      kind:sprites[i%sprites.length],
+      left:Math.floor(8+Math.random()*84),     // %
+      top: Math.floor(6+Math.random()*84),     // %
+      size:Math.floor(28+Math.random()*30),
+      rot: Math.floor(-25+Math.random()*50),
+      dur: (4+Math.random()*5).toFixed(1),
+      delay:(Math.random()*-6).toFixed(1),
+    }));
+  });
+
+  // Globaler Click-Ripple. Wir hängen den Handler an document, damit
+  // jeder Klick im App-Tree (Buttons, Karten, Hintergrund) einen Ripple
+  // produziert — ohne dass wir tausend onClick-Handler ändern müssen.
+  useEffect(()=>{
+    // Reduzierte-Bewegung-Präferenz respektieren.
+    const reduced=typeof window!=='undefined'
+      &&window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if(reduced) return;
+
+    const spawn=(x,y)=>{
+      const el=document.createElement('div');
+      el.className='funky-ripple';
+      el.style.left=x+'px';
+      el.style.top=y+'px';
+      document.body.appendChild(el);
+      // GC nach Animation — Ripple ist .65s
+      setTimeout(()=>{ try{el.remove();}catch{} },800);
+    };
+    const onDown=(e)=>{
+      // Touch + Maus: position aus PointerEvent
+      const x=e.clientX, y=e.clientY;
+      if(typeof x==='number'&&typeof y==='number') spawn(x,y);
+    };
+    document.addEventListener('pointerdown',onDown,{passive:true});
+    return()=>document.removeEventListener('pointerdown',onDown);
+  },[]);
+
+  // Video-Source rotieren wenn der erste Kandidat fehlschlägt.
+  const[srcIdx,setSrcIdx]=useState(0);
+  const onError=()=>{
+    setSrcIdx(i=>i+1<FUNKY_VIDEO_CANDIDATES.length?i+1:i);
+  };
+
+  // Marquee verdoppeln → nahtlose Schleife.
+  const marquee=[...FUNKY_MARQUEE_TEXT,...FUNKY_MARQUEE_TEXT];
+
+  return(
+    <Fragment>
+      {/* Layer 0 — Pexels Stock Video */}
+      <video key={srcIdx} className="funky-ambient-video"
+        autoPlay muted loop playsInline preload="auto"
+        onError={onError} aria-hidden="true">
+        <source src={FUNKY_VIDEO_CANDIDATES[srcIdx]} type="video/mp4"/>
+      </video>
+
+      {/* Layer 1 — Vignette */}
+      <div className="funky-ambient-vignette" aria-hidden="true"/>
+
+      {/* Layer 2 — Marquee-Strip ganz oben */}
+      <div className="funky-ambient-marquee" aria-hidden="true">
+        <div className="funky-marquee" style={{paddingLeft:24}}>
+          {marquee.map((t,i)=>(
+            <span key={i} style={{display:'inline-flex',alignItems:'center',gap:8}}>
+              {t}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Layer 3 — Floating Tropical Sprites */}
+      {floaters.map(f=>(
+        <div key={f.key} className="funky-floater"
+          style={{
+            left:f.left+'%',
+            top:f.top+'%',
+            '--funky-rot':f.rot+'deg',
+            '--funky-dur':f.dur+'s',
+            animationDelay:f.delay+'s',
+            transform:`rotate(${f.rot}deg)`,
+          }}
+          aria-hidden="true">
+          {f.kind==='kiwi'      &&<KiwiIcon       size={f.size}/>}
+          {f.kind==='pineapple' &&<PineappleIcon  size={f.size}/>}
+          {f.kind==='coconut'   &&<CoconutIcon    size={f.size}/>}
+          {f.kind==='ball'      &&<TennisBallIcon size={f.size}/>}
+          {f.kind==='parrot'    &&<ParrotIcon     size={f.size}/>}
+        </div>
+      ))}
+    </Fragment>
+  );
+}
+
 export default function App(){
   const[scr,setScr]=useState('splash');
   const[activeTab,setActiveTab]=useState('home');
@@ -10691,6 +10827,12 @@ export default function App(){
 
   return(<>
     <style>{CSS}</style>
+
+    {/* Funky-Theme-Ambient-Layer — Stock-Video + Marquee + Fruits +
+        Click-Ripples. Wird NUR gemountet wenn das Bauhaus-Funky-
+        Theme aktiv ist, sodass andere Themes 0 externe Requests
+        und 0 zusätzliche DOM-Knoten haben. */}
+    {theme==='funky'&&<FunkyAmbient/>}
 
     {/* App-level KeyCapture — never unmounts when Match re-renders (e.g. bigScreen toggle).
         Active only on Match screen with ring/presenter input mode. */}

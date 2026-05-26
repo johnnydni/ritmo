@@ -6485,11 +6485,10 @@ function Settings({onHome,activeTab,setActiveTab,nav}){
           desc="Passwort, Sessions, Zwei-Faktor."
           onClick={()=>nav('settings-sicherheit')}/>
 
-        <SettingsCard q={q} destructive
-          icon={<DoorOutIcon size={22} color="currentColor"/>}
-          title="Ich muss hier raus!"
-          desc="Konto löschen. Endgültig — keine Wiederherstellung."
-          onClick={()=>nav('settings-konto')}/>
+        {/* Konto-Löschung wird bewusst NICHT als eigene Top-Level-Karte
+            angeboten — sie liegt ausschließlich unter
+            Privatsphäre → "Konto und Daten löschen", damit User vor
+            dem Schritt erst die DSGVO-Konsequenzen sehen. */}
 
         {/* About — schlichte Marker, kein Tap-Target */}
         <div style={{background:'transparent',border:`1px solid ${T.border}`,borderRadius:14,
@@ -7094,8 +7093,6 @@ function SettingsBenachrichtigungen({onBack,onHome,notify,setNotify}){
 function SettingsSicherheit({onBack,onHome}){
   const[email,setEmail]=useState('');
   const[lastSignIn,setLastSignIn]=useState(null);
-  const[pw,setPw]=useState('');
-  const[pw2,setPw2]=useState('');
   const[busy,setBusy]=useState(false);
   const[flash,setFlash]=useState(null);
 
@@ -7118,25 +7115,17 @@ function SettingsSicherheit({onBack,onHome}){
     setTimeout(()=>setFlash(null),ms);
   };
 
-  const changePw=async()=>{
-    if(busy) return;
-    if(pw!==pw2) return showFlash('err','Passwörter stimmen nicht überein.');
-    setBusy(true);
-    try{
-      await auth.updatePassword(pw);
-      setPw(''); setPw2('');
-      showFlash('ok','Passwort aktualisiert.');
-    }catch(e){
-      showFlash('err',e?.message||'Passwort konnte nicht aktualisiert werden.');
-    }finally{ setBusy(false); }
-  };
-
+  // Passwort-Änderung läuft bewusst NUR über den E-Mail-Reset-Flow.
+  // Das verhindert, dass jemand mit Zugriff auf eine offene Session
+  // (gestohlenes Handy, vergessen abzumelden) das Passwort still
+  // umschreibt und den Account übernimmt — der Mail-Link erzwingt
+  // Besitz der hinterlegten Mailbox.
   const sendReset=async()=>{
     if(busy||!email) return;
     setBusy(true);
     try{
       await auth.requestPasswordReset(email);
-      showFlash('ok','Reset-Link an '+email+' gesendet.');
+      showFlash('ok','Reset-Link an '+email+' gesendet. Schau in dein Postfach.');
     }catch(e){
       showFlash('err',e?.message||'Reset-Link konnte nicht gesendet werden.');
     }finally{ setBusy(false); }
@@ -7168,8 +7157,6 @@ function SettingsSicherheit({onBack,onHome}){
     }catch{ return '—'; }
   };
 
-  const pwReady=pw.length>=10&&pw===pw2;
-
   return(
     <SettingsSubLayout title="Sicherheit"
       desc="Passwort, aktive Sessions und Konto-Schutz."
@@ -7196,52 +7183,33 @@ function SettingsSicherheit({onBack,onHome}){
         </div>
       </SettingsSection>
 
-      {/* Passwort ändern */}
-      <SettingsSection eyebrow="Passwort ändern">
-        <div style={{padding:'4px 0 14px'}}>
-          <div style={{color:T.t3,fontSize:11,lineHeight:1.55,marginBottom:10}}>
-            Min. 10 Zeichen, mit Ziffer und Buchstaben.
-          </div>
-          <input type="password" value={pw} onChange={e=>setPw(e.target.value)}
-            placeholder="Neues Passwort" autoComplete="new-password"
-            style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-              borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
-              outline:'none',boxSizing:'border-box',marginBottom:8}}/>
-          <input type="password" value={pw2} onChange={e=>setPw2(e.target.value)}
-            placeholder="Passwort bestätigen" autoComplete="new-password"
-            style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-              borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
-              outline:'none',boxSizing:'border-box',marginBottom:12}}/>
-          <button onClick={changePw} disabled={!pwReady||busy}
-            style={{width:'100%',padding:'12px 14px',
-              background:pwReady&&!busy?T.o:T.card2,
-              border:pwReady&&!busy?'none':`1px solid ${T.border}`,
-              borderRadius:10,
-              color:pwReady&&!busy?'#000':T.t3,
-              fontSize:13,fontWeight:800,letterSpacing:.3,
-              cursor:pwReady&&!busy?'pointer':'not-allowed'}}>
-            Passwort speichern
-          </button>
-        </div>
-      </SettingsSection>
-
-      {/* Passwort vergessen / Reset */}
+      {/* Reset per E-Mail — einziger Pfad, ein Passwort zu setzen.
+          Erzwingt Postfach-Besitz und schließt damit den Vector
+          "offene Session → stille Passwort-Übernahme". */}
       <SettingsSection eyebrow="Reset per E-Mail">
         <div style={{padding:'4px 0 14px'}}>
-          <div style={{color:T.t3,fontSize:11,lineHeight:1.55,marginBottom:10}}>
-            Wir senden dir einen Link, mit dem du dein Passwort zurücksetzen kannst.
-            Praktisch, falls du das aktuelle Passwort vergessen hast.
+          <div style={{color:T.t2,fontSize:13,lineHeight:1.6,marginBottom:12}}>
+            Wir senden dir einen Link an deine E-Mail, mit dem du ein
+            neues Passwort setzen kannst. So stellen wir sicher, dass
+            wirklich nur du es ändern kannst.
           </div>
           <button onClick={sendReset} disabled={!email||busy}
             style={{width:'100%',padding:'12px 14px',
-              background:T.card2,border:`1px solid ${T.border}`,borderRadius:10,
-              color:T.t1,fontSize:13,fontWeight:700,letterSpacing:.2,
+              background:!email||busy?T.card2:T.o,
+              border:!email||busy?`1px solid ${T.border}`:'none',borderRadius:10,
+              color:!email||busy?T.t3:'#000',
+              fontSize:13,fontWeight:800,letterSpacing:.3,
               cursor:!email||busy?'not-allowed':'pointer',
-              opacity:!email||busy?.6:1,textAlign:'left',
+              textAlign:'left',
               display:'flex',alignItems:'center',justifyContent:'space-between'}}>
             <span>Reset-Link senden</span>
-            <ChevronRightIcon size={16} color="currentColor"/>
+            <ChevronRightIcon size={16} color={!email||busy?T.t3:'#000'}/>
           </button>
+          {email&&!busy&&(
+            <div style={{color:T.t3,fontSize:11,marginTop:8,lineHeight:1.5}}>
+              Der Link geht an <strong style={{color:T.t2}}>{email}</strong>.
+            </div>
+          )}
         </div>
       </SettingsSection>
 
@@ -7295,8 +7263,8 @@ function SettingsKonto({onBack,onHome,onLogout}){
   const[confirmText,setConfirmText]=useState('');
   const ready=confirmText.trim().toUpperCase()==='LÖSCHEN';
   return(
-    <SettingsSubLayout title="Ich muss hier raus!"
-      desc="Konto löschen — endgültig, ohne Wiederherstellung."
+    <SettingsSubLayout title="Konto und Daten löschen"
+      desc="Endgültig, ohne Wiederherstellung."
       icon={<DoorOutIcon size={22} color="currentColor"/>}
       onBack={onBack} onHome={onHome}>
 
@@ -10408,6 +10376,142 @@ function JourneyBaelle({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalSec
 }
 
 
+/* ═══════════════════════════════════════════════════════════════
+   FUNKY AMBIENT — Bauhaus Funky theme's living background layer.
+
+   Mounted only when theme === 'funky'. Renders four layers that
+   stack BEHIND the React app tree (z-index 0–3):
+     1) Pexels stock video (autoplay, muted, looped, low opacity,
+        blended over the conic-gradient defined in theme.js)
+     2) Vignette darkening the edges so foreground content stays
+        readable
+     3) Marquee strip at the very top — kinetic typography that
+        screams "this theme is different"
+     4) Floating tropical fruit sprites scattered across the
+        viewport, each on its own float keyframe
+
+   Plus: a document-level pointerdown listener that spawns
+   short-lived click ripples. All animations honour the global
+   prefers-reduced-motion media query (via theme.js CSS).
+
+   Stock-Video-URLs sind absichtlich an MEHRERE Kandidaten
+   gebunden — der erste der lädt gewinnt; bei Netz-/CSP-Problemen
+   degradiert die Komponente still zu "nur Gradient + Fruits".
+═══════════════════════════════════════════════════════════════ */
+const FUNKY_VIDEO_CANDIDATES = [
+  // Pexels CDN-Direktlinks (frei nutzbar gemäß Pexels License).
+  // SD-Auflösungen reichen, weil der Layer eh nur ~32% Opazität hat
+  // und ständig blendet — höhere Auflösung wäre Daten-Verschwendung.
+  'https://videos.pexels.com/video-files/3045163/3045163-sd_640_360_24fps.mp4',
+  'https://videos.pexels.com/video-files/3214448/3214448-sd_640_360_25fps.mp4',
+  'https://videos.pexels.com/video-files/2491284/2491284-sd_640_360_30fps.mp4',
+];
+
+const FUNKY_MARQUEE_TEXT = [
+  '★ RITMO PADEL', '◐ BAUHAUS FUNKY', '⚡ DISCO MODE',
+  '✦ TROPICAL VIBES', '◉ SPIEL HEISS', '☀ SUNSET COURT',
+  '♪ NEON SLAM', '✺ KIWI · KOKOSNUSS · ANANAS', '◆ EXPERIMENTAL THEME',
+];
+
+function FunkyAmbient(){
+  // useState mit Funktions-Initializer — wir würfeln Floater-Positionen
+  // einmal beim Mount; keine Re-Random-Loops, das wäre zu hektisch.
+  const[floaters]=useState(()=>{
+    const sprites=['kiwi','pineapple','coconut','ball','parrot'];
+    return Array.from({length:9},(_,i)=>({
+      key:i,
+      kind:sprites[i%sprites.length],
+      left:Math.floor(8+Math.random()*84),     // %
+      top: Math.floor(6+Math.random()*84),     // %
+      size:Math.floor(28+Math.random()*30),
+      rot: Math.floor(-25+Math.random()*50),
+      dur: (4+Math.random()*5).toFixed(1),
+      delay:(Math.random()*-6).toFixed(1),
+    }));
+  });
+
+  // Globaler Click-Ripple. Wir hängen den Handler an document, damit
+  // jeder Klick im App-Tree (Buttons, Karten, Hintergrund) einen Ripple
+  // produziert — ohne dass wir tausend onClick-Handler ändern müssen.
+  useEffect(()=>{
+    // Reduzierte-Bewegung-Präferenz respektieren.
+    const reduced=typeof window!=='undefined'
+      &&window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if(reduced) return;
+
+    const spawn=(x,y)=>{
+      const el=document.createElement('div');
+      el.className='funky-ripple';
+      el.style.left=x+'px';
+      el.style.top=y+'px';
+      document.body.appendChild(el);
+      // GC nach Animation — Ripple ist .65s
+      setTimeout(()=>{ try{el.remove();}catch{} },800);
+    };
+    const onDown=(e)=>{
+      // Touch + Maus: position aus PointerEvent
+      const x=e.clientX, y=e.clientY;
+      if(typeof x==='number'&&typeof y==='number') spawn(x,y);
+    };
+    document.addEventListener('pointerdown',onDown,{passive:true});
+    return()=>document.removeEventListener('pointerdown',onDown);
+  },[]);
+
+  // Video-Source rotieren wenn der erste Kandidat fehlschlägt.
+  const[srcIdx,setSrcIdx]=useState(0);
+  const onError=()=>{
+    setSrcIdx(i=>i+1<FUNKY_VIDEO_CANDIDATES.length?i+1:i);
+  };
+
+  // Marquee verdoppeln → nahtlose Schleife.
+  const marquee=[...FUNKY_MARQUEE_TEXT,...FUNKY_MARQUEE_TEXT];
+
+  return(
+    <Fragment>
+      {/* Layer 0 — Pexels Stock Video */}
+      <video key={srcIdx} className="funky-ambient-video"
+        autoPlay muted loop playsInline preload="auto"
+        onError={onError} aria-hidden="true">
+        <source src={FUNKY_VIDEO_CANDIDATES[srcIdx]} type="video/mp4"/>
+      </video>
+
+      {/* Layer 1 — Vignette */}
+      <div className="funky-ambient-vignette" aria-hidden="true"/>
+
+      {/* Layer 2 — Marquee-Strip ganz oben */}
+      <div className="funky-ambient-marquee" aria-hidden="true">
+        <div className="funky-marquee" style={{paddingLeft:24}}>
+          {marquee.map((t,i)=>(
+            <span key={i} style={{display:'inline-flex',alignItems:'center',gap:8}}>
+              {t}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Layer 3 — Floating Tropical Sprites */}
+      {floaters.map(f=>(
+        <div key={f.key} className="funky-floater"
+          style={{
+            left:f.left+'%',
+            top:f.top+'%',
+            '--funky-rot':f.rot+'deg',
+            '--funky-dur':f.dur+'s',
+            animationDelay:f.delay+'s',
+            transform:`rotate(${f.rot}deg)`,
+          }}
+          aria-hidden="true">
+          {f.kind==='kiwi'      &&<KiwiIcon       size={f.size}/>}
+          {f.kind==='pineapple' &&<PineappleIcon  size={f.size}/>}
+          {f.kind==='coconut'   &&<CoconutIcon    size={f.size}/>}
+          {f.kind==='ball'      &&<TennisBallIcon size={f.size}/>}
+          {f.kind==='parrot'    &&<ParrotIcon     size={f.size}/>}
+        </div>
+      ))}
+    </Fragment>
+  );
+}
+
 export default function App(){
   const[scr,setScr]=useState('splash');
   const[activeTab,setActiveTab]=useState('home');
@@ -10723,6 +10827,12 @@ export default function App(){
 
   return(<>
     <style>{CSS}</style>
+
+    {/* Funky-Theme-Ambient-Layer — Stock-Video + Marquee + Fruits +
+        Click-Ripples. Wird NUR gemountet wenn das Bauhaus-Funky-
+        Theme aktiv ist, sodass andere Themes 0 externe Requests
+        und 0 zusätzliche DOM-Knoten haben. */}
+    {theme==='funky'&&<FunkyAmbient/>}
 
     {/* App-level KeyCapture — never unmounts when Match re-renders (e.g. bigScreen toggle).
         Active only on Match screen with ring/presenter input mode. */}

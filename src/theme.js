@@ -121,27 +121,285 @@ export const CSS = `
   --headerGrad: linear-gradient(90deg, #D4B98F 0%, #006039 100%);
 }
 
+/* ════ BAUHAUS FUNKY — Tropical Disco × Vaporwave × Brutalism ════
+   Fusion aus 4 Style-Welten:
+     • Bauhaus-Primärfarben (Gelb · Magenta · Cyan · Schwarz)
+     • Vaporwave-Sunset-Gradient (Pink · Cyan · Purple)
+     • Brutalismus (harte 0px-Radien, dicke Outlines, offset-Drop-Shadows)
+     • Gen-Z-Chaos (Sticker-Tilts, Marquee, Glitch, Konfetti)
+   Stock-Assets (Pexels-Video + Unsplash-Stills) werden über die
+   <FunkyAmbient/>-React-Komponente eingehängt — CSS hier liefert
+   Variablen, Layer-Overlays, Keyframes und Utility-Klassen.
+═══════════════════════════════════════════════════════════════ */
 :root[data-theme="funky"] {
-  --bg: #1A0918;
-  --card: #2A1530;
-  --card2: #3D1F45;
-  --border: rgba(255,229,45,0.20);
-  --sep: rgba(255,229,45,0.10);
-  --t1: #FFF4D9;
-  --t2: rgba(255,244,217,0.78);
-  --t3: rgba(255,244,217,0.52);
-  --t4: rgba(255,244,217,0.28);
-  --o: #FFE52D;
-  --oSoft: rgba(255,229,45,0.16);
-  --oGlow: rgba(255,229,45,0.55);
-  --oFlash: rgba(255,229,45,0.16);
-  --g: #00C896;
-  --r: #FF6B4A;
-  --blue: #FF3D5A;
-  --blueSoft: rgba(255,61,90,0.18);
-  --blueGlow: rgba(255,61,90,0.55);
-  --gold: #FFE52D;
-  --headerGrad: linear-gradient(90deg, #FFE52D 0%, #FF3D5A 100%);
+  --bg: #0A0014;             /* tiefes Nacht-Magenta — sitzt unter Sunset-Layer */
+  --card: rgba(20,8,30,0.78); /* halbtransparent, damit Video-BG durchschimmert */
+  --card2: rgba(34,16,50,0.82);
+  --border: #00F0FF;          /* Cyan-Outline — Bauhaus-Knaller */
+  --sep: rgba(0,240,255,0.22);
+  --t1: #FFFFFF;
+  --t2: rgba(255,255,255,0.85);
+  --t3: rgba(255,236,170,0.78);
+  --t4: rgba(255,236,170,0.42);
+  --o: #FFE800;               /* Electric Yellow — Bauhaus-Primärfarbe */
+  --oSoft: rgba(255,232,0,0.18);
+  --oGlow: rgba(255,232,0,0.65);
+  --oFlash: rgba(255,232,0,0.20);
+  --g: #B8FF3E;               /* Lime-Mint */
+  --r: #FF006E;               /* Magenta-Rot */
+  --blue: #FF1A8C;            /* Hot Pink (statt Blau — disco) */
+  --blueSoft: rgba(255,26,140,0.20);
+  --blueGlow: rgba(255,26,140,0.60);
+  --gold: #FFE800;
+  --headerGrad: linear-gradient(90deg, #FFE800 0%, #FF006E 50%, #00F0FF 100%);
+  /* Funky-only Sub-Tokens */
+  --funky-magenta: #FF006E;
+  --funky-cyan:    #00F0FF;
+  --funky-lime:    #B8FF3E;
+  --funky-orange:  #FF6B00;
+  --funky-purple:  #B967FF;
+  --funky-hot:     #FF1A8C;
+}
+
+/* ════ Funky Globals — Body, Headings, Cards ════════════════════
+   Scoped: nur aktiv wenn data-theme="funky" am :root sitzt.
+═══════════════════════════════════════════════════════════════ */
+
+/* Animated sunset gradient als full-viewport-Layer hinter allem.
+   Sitzt am body::before, damit React-Tree die normalen z-Indizes
+   behält. Conic + radial gemischt für ungleichmäßigen Disco-Look. */
+[data-theme="funky"] body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 10%, rgba(255,26,140,0.55), transparent 60%),
+    radial-gradient(ellipse 70% 70% at 90% 30%, rgba(0,240,255,0.42), transparent 60%),
+    radial-gradient(ellipse 90% 60% at 50% 100%, rgba(255,232,0,0.40), transparent 65%),
+    conic-gradient(from 0deg at 50% 50%,
+      #FF006E 0%, #FF1A8C 12%, #B967FF 25%, #00F0FF 38%,
+      #B8FF3E 50%, #FFE800 62%, #FF6B00 75%, #FF006E 100%);
+  background-blend-mode: screen, screen, screen, normal;
+  filter: saturate(1.4) blur(0px);
+  animation: funky-bg-drift 38s linear infinite;
+  opacity: 0.55;
+}
+
+/* Grain/Noise SVG-Layer + CRT-Scanlines obenauf. Die Scanlines
+   sind sehr subtil (alpha .04) — nur ein Hauch CRT-Atmosphäre. */
+[data-theme="funky"] body::after {
+  content: '';
+  position: fixed; inset: 0; z-index: 1; pointer-events: none;
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.55 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.45'/></svg>"),
+    repeating-linear-gradient(to bottom,
+      transparent 0px, transparent 2px,
+      rgba(0,0,0,0.13) 2px, rgba(0,0,0,0.13) 3px);
+  mix-blend-mode: overlay;
+  opacity: 0.85;
+}
+
+/* Sub-Elemente sitzen über den body-Layern. */
+[data-theme="funky"] #root { position: relative; z-index: 2; }
+
+/* Bauhaus-Brutalism — alle Karten, Buttons und Inputs bekommen
+   feste 0px-Radien aufgezwungen. Wir machen das per attribute-
+   Selektor, damit Inline-Styles mit borderRadius weiter funktionieren,
+   wo sie wichtig sind (Avatar runde Kreise z. B. — die nutzen 50%
+   und überschreiben). Hier targeten wir nur generische divs/buttons
+   ohne explicit border-radius wäre zu invasiv. Daher: nur unsere
+   Funky-Utility-Klassen erzwingen Brutalismus.
+
+   Wir lassen die App-Layout-Inline-Styles in Ruhe und liefern stattdessen
+   schmuckhafte zusätzliche Effekte: starker Outline-Ring + offset-Shadow
+   auf den Top-Level Karten via einer .fu-Klasse, die bereits an vielen
+   Karten hängt. */
+[data-theme="funky"] .fu {
+  box-shadow:
+    6px 6px 0 0 var(--funky-magenta),
+    -2px -2px 0 0 var(--funky-cyan);
+  transition: transform .18s cubic-bezier(.34,1.56,.64,1), box-shadow .18s;
+}
+[data-theme="funky"] .fu:hover {
+  transform: translate(-2px,-2px) rotate(-0.4deg);
+  box-shadow:
+    10px 10px 0 0 var(--funky-magenta),
+    -4px -4px 0 0 var(--funky-cyan);
+}
+
+/* Inputs + Buttons: dicker, kontrastreicher, Bauhaus-Bold. */
+[data-theme="funky"] input,
+[data-theme="funky"] button {
+  letter-spacing: 0.5px;
+}
+[data-theme="funky"] input:focus {
+  outline: 2px solid var(--funky-cyan);
+  outline-offset: 2px;
+}
+
+/* Tabs/Active-Pills: stickerartiges Tilt + Magenta-Outline. */
+[data-theme="funky"] button:hover {
+  filter: saturate(1.1);
+}
+
+/* ════ Funky Keyframes ══════════════════════════════════════════ */
+@keyframes funky-bg-drift {
+  0%   { transform: rotate(0deg) scale(1.05); }
+  50%  { transform: rotate(180deg) scale(1.12); }
+  100% { transform: rotate(360deg) scale(1.05); }
+}
+@keyframes funky-jitter {
+  0%,100% { transform: translate(0,0) rotate(0deg); }
+  25%     { transform: translate(-0.5px, 0.5px) rotate(-0.3deg); }
+  50%     { transform: translate(0.5px, -0.5px) rotate(0.4deg); }
+  75%     { transform: translate(-0.3px, 0.3px) rotate(-0.2deg); }
+}
+@keyframes funky-glitch {
+  0%,100% { transform: translate(0,0); text-shadow: 2px 0 var(--funky-magenta), -2px 0 var(--funky-cyan); }
+  20%     { transform: translate(-1px,1px); text-shadow: 3px 0 var(--funky-magenta), -3px 0 var(--funky-cyan); }
+  40%     { transform: translate(1px,-1px); text-shadow: -2px 0 var(--funky-magenta), 2px 0 var(--funky-cyan); }
+  60%     { transform: translate(-1px,-1px); text-shadow: 2px 1px var(--funky-magenta), -2px -1px var(--funky-cyan); }
+  80%     { transform: translate(1px,1px); text-shadow: -3px 0 var(--funky-magenta), 3px 0 var(--funky-cyan); }
+}
+@keyframes funky-pulse-glow {
+  0%,100% { box-shadow: 0 0 12px var(--funky-cyan), 0 0 24px rgba(0,240,255,0.4); }
+  50%     { box-shadow: 0 0 20px var(--funky-magenta), 0 0 40px rgba(255,0,110,0.55); }
+}
+@keyframes funky-marquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+@keyframes funky-float {
+  0%,100% { transform: translateY(0) rotate(var(--funky-rot,0deg)); }
+  50%     { transform: translateY(-12px) rotate(calc(var(--funky-rot,0deg) + 8deg)); }
+}
+@keyframes funky-shimmer {
+  0%   { background-position: -200% 50%; }
+  100% { background-position: 200% 50%; }
+}
+@keyframes funky-ripple {
+  0%   { transform: scale(0); opacity: 0.85; }
+  100% { transform: scale(28); opacity: 0; }
+}
+@keyframes funky-hue-spin {
+  0%   { filter: hue-rotate(0deg) saturate(1.1); }
+  100% { filter: hue-rotate(360deg) saturate(1.1); }
+}
+
+/* ════ Funky Utility Classes ════════════════════════════════════ */
+
+/* Sticker-Tilt + Neon-Glow für Eyebrows / Section-Headlines. */
+[data-theme="funky"] .funky-sticker {
+  display: inline-block;
+  background: var(--o);
+  color: #000;
+  padding: 4px 10px;
+  font-weight: 900;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  transform: rotate(-2deg);
+  box-shadow: 3px 3px 0 0 var(--funky-magenta);
+  border: 2px solid #000;
+}
+
+/* Animiertes Gradient-Text-Highlight für Hero-Headlines. */
+[data-theme="funky"] .funky-gradient-text {
+  background: linear-gradient(90deg, #FFE800, #FF006E, #00F0FF, #B8FF3E, #FFE800);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+          background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: funky-shimmer 4s linear infinite;
+  font-weight: 900;
+  letter-spacing: -0.5px;
+}
+
+/* Neon-Glow um RITMO-Wordmark / Logo-Headlines. */
+[data-theme="funky"] .funky-glow {
+  text-shadow:
+    0 0 8px var(--o),
+    0 0 16px var(--funky-magenta),
+    0 0 32px var(--funky-cyan);
+  animation: funky-pulse-glow 3.5s ease-in-out infinite;
+}
+
+/* Glitch-Text (sparsam einsetzen — flackert). */
+[data-theme="funky"] .funky-glitch {
+  animation: funky-glitch 2.4s steps(2, end) infinite;
+}
+
+/* Marquee-Strip oben am Bildschirm. */
+.funky-marquee {
+  display: flex; gap: 32px;
+  white-space: nowrap;
+  animation: funky-marquee 28s linear infinite;
+  will-change: transform;
+}
+
+/* Floating Tropical Sprites — von <FunkyAmbient/> gestreut. */
+.funky-floater {
+  position: fixed;
+  pointer-events: none;
+  z-index: 1;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.35));
+  animation: funky-float var(--funky-dur, 6s) ease-in-out infinite;
+  will-change: transform;
+}
+
+/* Click-Ripple — Punkt am Pointer-Down explodiert. */
+.funky-ripple {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  width: 18px; height: 18px;
+  margin-left: -9px; margin-top: -9px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--funky-cyan) 0%, var(--funky-magenta) 50%, transparent 80%);
+  mix-blend-mode: screen;
+  animation: funky-ripple .65s cubic-bezier(.2,.7,.4,1) forwards;
+}
+
+/* Scanline-/Vignette-Layer für FunkyAmbient. */
+.funky-ambient-video {
+  position: fixed; inset: 0;
+  width: 100vw; height: 100dvh;
+  object-fit: cover;
+  z-index: 0;
+  opacity: 0.32;
+  mix-blend-mode: screen;
+  pointer-events: none;
+  filter: contrast(1.1) saturate(1.3);
+}
+.funky-ambient-vignette {
+  position: fixed; inset: 0; z-index: 1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at center, transparent 30%, rgba(10,0,20,0.55) 100%);
+}
+.funky-ambient-marquee {
+  position: fixed; top: 0; left: 0; right: 0;
+  z-index: 3;
+  height: 28px;
+  background: #000;
+  border-bottom: 2px solid var(--funky-cyan);
+  color: var(--o);
+  font-weight: 900;
+  font-size: 12px;
+  letter-spacing: 2px;
+  display: flex; align-items: center;
+  overflow: hidden;
+  text-transform: uppercase;
+  font-family: 'Courier New', Courier, monospace;
+  pointer-events: none;
+}
+
+/* prefers-reduced-motion → alle Funky-Animationen einfrieren */
+@media (prefers-reduced-motion: reduce) {
+  [data-theme="funky"] body::before { animation: none; }
+  [data-theme="funky"] .funky-gradient-text,
+  [data-theme="funky"] .funky-glow,
+  [data-theme="funky"] .funky-glitch,
+  .funky-floater,
+  .funky-marquee { animation: none; }
 }
 
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}

@@ -358,6 +358,67 @@ export const CSS = `
   animation: funky-ripple .65s cubic-bezier(.2,.7,.4,1) forwards;
 }
 
+/* ════ Fruit-Ninja Modus — Racket folgt dem Pointer, schneidet Floater ═══
+   Der Schläger sitzt fixed über allem (pointer-events:none, damit Klicks
+   durch ihn hindurch auf die echten Buttons gehen). Die Sprite-Rotation
+   wird per --racket-rot CSS-Variable aus React-State diktiert, damit die
+   Schwingung der Bewegungsrichtung folgt. */
+.funky-racket {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9998;
+  width: 104px; height: 104px;
+  margin-left: -52px; margin-top: -52px;
+  transform: rotate(var(--racket-rot, -30deg));
+  transition: transform .06s linear, opacity .25s;
+  filter: drop-shadow(0 6px 18px rgba(0,0,0,.55));
+  will-change: transform, left, top;
+  opacity: 0;
+}
+.funky-racket.is-active { opacity: 1; }
+.funky-racket img,
+.funky-racket svg { width:100%; height:100%; display:block; }
+
+/* Slice-Trail — Neon-Streifen, der jeden Treffer markiert.
+   Wird kurzlebig ans body angehängt und nach .35s entfernt. */
+.funky-slice-trail {
+  position: fixed; pointer-events: none; z-index: 9997;
+  width: 78px; height: 8px;
+  margin-left: -39px; margin-top: -4px;
+  background: linear-gradient(90deg, transparent 0%, var(--funky-cyan) 35%, var(--funky-magenta) 65%, transparent 100%);
+  border-radius: 4px;
+  mix-blend-mode: screen;
+  filter: blur(.6px);
+  animation: funky-trail-fade .42s cubic-bezier(.2,.8,.3,1) forwards;
+}
+@keyframes funky-trail-fade {
+  from { opacity: .95; transform: rotate(var(--trail-rot,0deg)) scaleX(1.05); }
+  to   { opacity: 0;   transform: rotate(var(--trail-rot,0deg)) scaleX(.35); }
+}
+
+/* Geschnittenes Sprite: pulsiert auf, dreht sich, fällt in den unteren
+   Bildschirmrand und verblasst. Die rotate-Variable wird vom Float-
+   Initial-State übernommen, damit die Rotation organisch fortgesetzt
+   aussieht. */
+.funky-floater-sliced {
+  animation: funky-slice .85s cubic-bezier(.4,.6,.6,1) forwards !important;
+  pointer-events: none;
+}
+@keyframes funky-slice {
+  0%   { transform: rotate(var(--funky-rot,0deg)) scale(1);
+         opacity: 1; filter: brightness(1) saturate(1.3); }
+  18%  { transform: rotate(calc(var(--funky-rot,0deg) + 32deg)) scale(1.18);
+         opacity: 1; filter: brightness(2.2) saturate(1.7); }
+  100% { transform: translateY(120vh) rotate(calc(var(--funky-rot,0deg) + 540deg)) scale(.55);
+         opacity: 0; filter: brightness(.5) saturate(.8); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .funky-racket { display: none; }
+  .funky-slice-trail,
+  .funky-floater-sliced { animation: none; opacity: 0; }
+}
+
 /* Scanline-/Vignette-Layer für FunkyAmbient. */
 .funky-ambient-video {
   position: fixed; inset: 0;

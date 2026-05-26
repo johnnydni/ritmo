@@ -3355,6 +3355,13 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
     // nicht über 100vh hinausgehen (vertikales Budget: ~85vh nach
     // Top-Header). Bei m≤1.5 wirkt der Cap nicht; bei m=2 schon.
     const vh=(base,cap)=>Math.min(base*m,cap);
+    // vw-Helper analog für die horizontale Achse: kappt die vw-
+    // Komponente des Score-fontSize-clamp, damit zweistellige Werte
+    // (z. B. "40") auf schmalen Geräten nicht über die Hälfte der
+    // Screen-Breite hinausragen. Jede Score-Spalte hat ~50vw minus
+    // Padding zur Verfügung; mit letterSpacing:-12 passen ~38vw als
+    // Schrift-Höhe (Glyphen-Breite ≈ 0.55 × Höhe).
+    const vwCap=(base,cap)=>Math.min(base*m,cap);
     // Horizontal-Padding der Score-Buttons: bei höherem Zoom etwas
     // schmaler, damit die großen Zahlen mehr Platz haben und nicht
     // seitlich an Geschwister-Spalten anstoßen.
@@ -3443,7 +3450,19 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
                   </>
                 ) : (
                   <div style={{
-                    fontSize:`clamp(${9*m}rem,${vh(36,60)}vh,${22*m}rem)`,
+                    // clamp(MIN, PREFERRED, MAX). Bei m=1.5 / m=2 darf
+                    // die PREFERRED nicht stur an vh hängen, sonst werden
+                    // zweistellige Scores breiter als die halbe Screen-
+                    // Breite und kollidieren mit dem overflow:hidden des
+                    // Buttons (→ Ziffern abgeschnitten).
+                    //   - MIN gesenkt auf ${4*m}rem (sonst forciert clamp
+                    //     einen Wert, den der Container nie tragen kann)
+                    //   - PREFERRED = min(vh, vw) → das Geringere gewinnt,
+                    //     unabhängig ob das Gerät hoch oder breit ist
+                    //   - vw-Cap 38vw entspricht ~38% der Screen-Breite,
+                    //     was bei zweistelligen Werten mit letterSpacing
+                    //     -12 sauber in eine 50%-Spalte passt
+                    fontSize:`clamp(${4*m}rem, min(${vh(36,52)}vh, ${vwCap(22,38)}vw), ${22*m}rem)`,
                     fontWeight:900,color:T.t1,lineHeight:.95,letterSpacing:-12,
                     whiteSpace:'nowrap'}}>
                     {big}
@@ -10413,49 +10432,167 @@ const FUNKY_MARQUEE_TEXT = [
   '♪ NEON SLAM', '✺ KIWI · KOKOSNUSS · ANANAS', '◆ EXPERIMENTAL THEME',
 ];
 
-function FunkyAmbient(){
-  // useState mit Funktions-Initializer — wir würfeln Floater-Positionen
-  // einmal beim Mount; keine Re-Random-Loops, das wäre zu hektisch.
-  const[floaters]=useState(()=>{
-    const sprites=['kiwi','pineapple','coconut','ball','parrot'];
-    return Array.from({length:9},(_,i)=>({
-      key:i,
-      kind:sprites[i%sprites.length],
-      left:Math.floor(8+Math.random()*84),     // %
-      top: Math.floor(6+Math.random()*84),     // %
-      size:Math.floor(28+Math.random()*30),
-      rot: Math.floor(-25+Math.random()*50),
-      dur: (4+Math.random()*5).toFixed(1),
-      delay:(Math.random()*-6).toFixed(1),
-    }));
-  });
+/* Generiert einen frischen Schwarm Tropical-Floaters mit zufälligen
+   Positionen, Größen, Rotationen + Float-Timings. Wird beim Mount
+   und nach jedem "Clear" (alle 9 sliced) neu aufgerufen. */
+function buildFunkyFloaters(){
+  const sprites=['kiwi','pineapple','coconut','ball','parrot'];
+  return Array.from({length:9},(_,i)=>({
+    key:Date.now()+'_'+i,                    // unique key über Respawns hinweg
+    kind:sprites[i%sprites.length],
+    left:Math.floor(8+Math.random()*84),     // %
+    top: Math.floor(6+Math.random()*84),     // %
+    size:Math.floor(28+Math.random()*30),
+    rot: Math.floor(-25+Math.random()*50),
+    dur: (4+Math.random()*5).toFixed(1),
+    delay:(Math.random()*-6).toFixed(1),
+    sliced:false,
+  }));
+}
 
-  // Globaler Click-Ripple. Wir hängen den Handler an document, damit
-  // jeder Klick im App-Tree (Buttons, Karten, Hintergrund) einen Ripple
-  // produziert — ohne dass wir tausend onClick-Handler ändern müssen.
+function FunkyAmbient(){
+  // Floater-Schwarm jetzt stateful — Slice-Aktionen schalten einzelne
+  // Sprites auf sliced:true, was die .funky-floater-sliced-Animation
+  // triggert. Nach einer Cooldown-Pause wird der ganze Schwarm
+  // erneuert (Respawn), damit "Fruit Ninja"-Modus wiederholbar bleibt.
+  const[floaters,setFloaters]=useState(buildFunkyFloaters);
+
+  // Racket-Position + Rotation für den Pointer-folgenden Schläger.
+  // null = inaktiv (auf Desktop bleibt der Schläger zwischen Bewegungen
+  // sichtbar; auf Touch ohne Pointer ist null → fade-out).
+  const racketRef=useRef(null);
+  const lastPosRef=useRef(null);
+  const lastSliceAtRef=useRef(0);
+  // Floater-Live-Ref → der Pointer-Listener liest immer den aktuellen
+  // Stand, ohne dass wir ihn bei jedem setFloaters neu anmelden müssen.
+  const floatersRef=useRef(floaters);
+  useEffect(()=>{ floatersRef.current=floaters; },[floaters]);
+
+  // Globaler Pointer-Handler:
+  //   pointerdown  → Klick-Ripple spawnen
+  //   pointermove  → Racket nachführen + Floater-Kollisionen prüfen
+  //   pointerleave → Racket ausblenden (Desktop)
   useEffect(()=>{
-    // Reduzierte-Bewegung-Präferenz respektieren.
     const reduced=typeof window!=='undefined'
       &&window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if(reduced) return;
 
-    const spawn=(x,y)=>{
+    const spawnRipple=(x,y)=>{
       const el=document.createElement('div');
       el.className='funky-ripple';
       el.style.left=x+'px';
       el.style.top=y+'px';
       document.body.appendChild(el);
-      // GC nach Animation — Ripple ist .65s
       setTimeout(()=>{ try{el.remove();}catch{} },800);
     };
-    const onDown=(e)=>{
-      // Touch + Maus: position aus PointerEvent
-      const x=e.clientX, y=e.clientY;
-      if(typeof x==='number'&&typeof y==='number') spawn(x,y);
+
+    const spawnTrail=(x,y,rot)=>{
+      const el=document.createElement('div');
+      el.className='funky-slice-trail';
+      el.style.left=x+'px';
+      el.style.top=y+'px';
+      el.style.setProperty('--trail-rot',rot+'deg');
+      document.body.appendChild(el);
+      setTimeout(()=>{ try{el.remove();}catch{} },500);
     };
+
+    /* Hit-Test: ist (x,y) innerhalb des Bounding-Box eines Floaters?
+       Floater-Position kommt aus der CSS-%-Angabe — wir rechnen sie
+       hier in Pixel um. Padding (16px) toleranter als die Sprite-Größe,
+       damit Slicing nicht haarscharf sein muss. */
+    const hitTest=(x,y,vw,vh)=>{
+      const hits=[];
+      for(const f of floatersRef.current){
+        if(f.sliced) continue;
+        const fx=f.left*vw/100;
+        const fy=f.top *vh/100;
+        const r=f.size/2 + 16;
+        if(Math.abs(x-fx)<=r && Math.abs(y-fy)<=r) hits.push(f.key);
+      }
+      return hits;
+    };
+
+    const onDown=(e)=>{
+      const x=e.clientX, y=e.clientY;
+      if(typeof x!=='number'||typeof y!=='number') return;
+      spawnRipple(x,y);
+      // Beim ersten Touch sofort auch den Schläger zeigen.
+      if(racketRef.current){
+        racketRef.current.classList.add('is-active');
+        racketRef.current.style.left=x+'px';
+        racketRef.current.style.top=y+'px';
+      }
+      lastPosRef.current={x,y,t:performance.now()};
+    };
+
+    const onMove=(e)=>{
+      const x=e.clientX, y=e.clientY;
+      if(typeof x!=='number'||typeof y!=='number') return;
+
+      // Bewegungsrichtung → Racket-Rotation. Wenn keine vorige Position
+      // existiert, schwingt der Schläger einfach im Default-Winkel.
+      let rot=-30;
+      const last=lastPosRef.current;
+      if(last){
+        const dx=x-last.x, dy=y-last.y;
+        if(Math.abs(dx)+Math.abs(dy)>2){
+          // atan2 in Grad. Offset -30° lässt den Schläger natürlich
+          // in Schwung-Richtung fliegen.
+          rot=Math.atan2(dy,dx)*180/Math.PI - 30;
+        }
+      }
+
+      // Racket-DOM direkt anstoßen — kein React-Re-render pro Move.
+      const r=racketRef.current;
+      if(r){
+        r.classList.add('is-active');
+        r.style.left=x+'px';
+        r.style.top=y+'px';
+        r.style.setProperty('--racket-rot',rot+'deg');
+      }
+
+      // Slice-Logik: prüfen, ob die Bewegung über einen lebenden Floater
+      // gestrichen ist. Throttle auf 30ms damit wir nicht jedes mickrige
+      // Pixel-Tick spammen.
+      const now=performance.now();
+      if(now-lastSliceAtRef.current<30){ lastPosRef.current={x,y,t:now}; return; }
+      const vw=window.innerWidth||0, vh=window.innerHeight||0;
+      const hits=hitTest(x,y,vw,vh);
+      if(hits.length>0){
+        lastSliceAtRef.current=now;
+        // Trail markiert die Schnittlinie senkrecht zur Bewegung.
+        spawnTrail(x,y,rot+90);
+        setFloaters(prev=>prev.map(f=>hits.includes(f.key)?{...f,sliced:true}:f));
+      }
+      lastPosRef.current={x,y,t:now};
+    };
+
+    const onLeave=()=>{
+      if(racketRef.current) racketRef.current.classList.remove('is-active');
+    };
+
     document.addEventListener('pointerdown',onDown,{passive:true});
-    return()=>document.removeEventListener('pointerdown',onDown);
+    document.addEventListener('pointermove',onMove,{passive:true});
+    document.addEventListener('pointerleave',onLeave);
+    document.addEventListener('pointercancel',onLeave);
+    return()=>{
+      document.removeEventListener('pointerdown',onDown);
+      document.removeEventListener('pointermove',onMove);
+      document.removeEventListener('pointerleave',onLeave);
+      document.removeEventListener('pointercancel',onLeave);
+    };
+    // Eslint-Disable für deps: floaters wird über floatersRef gelesen,
+    // damit Listener stabil bleiben (siehe oben).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   },[]);
+
+  // Respawn: wenn alle Floater sliced sind, nach kurzer Pause neuen Schwarm
+  // erzeugen. So bleibt das Mini-Spiel wiederholbar.
+  useEffect(()=>{
+    if(floaters.length===0||floaters.some(f=>!f.sliced)) return;
+    const t=setTimeout(()=>setFloaters(buildFunkyFloaters()),1800);
+    return()=>clearTimeout(t);
+  },[floaters]);
 
   // Video-Source rotieren wenn der erste Kandidat fehlschlägt.
   const[srcIdx,setSrcIdx]=useState(0);
@@ -10465,6 +10602,12 @@ function FunkyAmbient(){
 
   // Marquee verdoppeln → nahtlose Schleife.
   const marquee=[...FUNKY_MARQUEE_TEXT,...FUNKY_MARQUEE_TEXT];
+
+  // Padel-Racket-Asset. Wenn das PNG fehlt (z. B. lokal noch nicht
+  // committed), fällt der <img>-onError-Handler auf ein inline-SVG
+  // zurück, sodass das Feature trotzdem funktioniert.
+  const racketUrl=getAssetBase()+'assets/padelracket.png';
+  const[racketBroken,setRacketBroken]=useState(false);
 
   return(
     <Fragment>
@@ -10491,13 +10634,14 @@ function FunkyAmbient(){
 
       {/* Layer 3 — Floating Tropical Sprites */}
       {floaters.map(f=>(
-        <div key={f.key} className="funky-floater"
+        <div key={f.key}
+          className={f.sliced?'funky-floater funky-floater-sliced':'funky-floater'}
           style={{
             left:f.left+'%',
             top:f.top+'%',
             '--funky-rot':f.rot+'deg',
             '--funky-dur':f.dur+'s',
-            animationDelay:f.delay+'s',
+            animationDelay:f.sliced?'0s':f.delay+'s',
             transform:`rotate(${f.rot}deg)`,
           }}
           aria-hidden="true">
@@ -10508,6 +10652,42 @@ function FunkyAmbient(){
           {f.kind==='parrot'    &&<ParrotIcon     size={f.size}/>}
         </div>
       ))}
+
+      {/* Layer 4 — Padel-Racket folgt dem Pointer (Fruit-Ninja-Modus) */}
+      <div ref={racketRef} className="funky-racket" aria-hidden="true">
+        {racketBroken?(
+          /* Fallback-SVG: schmaler Padel-Schläger im Bauhaus-Stil.
+             Bewahrt das Feature wenn die PNG-Datei fehlt. */
+          <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <radialGradient id="racket-head" cx=".4" cy=".35" r=".7">
+                <stop offset="0" stopColor="#FFE800"/>
+                <stop offset=".6" stopColor="#FF1A8C"/>
+                <stop offset="1" stopColor="#00F0FF"/>
+              </radialGradient>
+            </defs>
+            {/* Griff */}
+            <rect x="46" y="55" width="8" height="40" rx="2" fill="#1a0014" stroke="#FFE800" strokeWidth="2"/>
+            <rect x="44" y="92" width="12" height="4" fill="#FFE800"/>
+            {/* Kopf */}
+            <ellipse cx="50" cy="36" rx="32" ry="34"
+              fill="url(#racket-head)" stroke="#000" strokeWidth="3"/>
+            {/* Bespannung */}
+            <g stroke="#000" strokeWidth="1" opacity=".6">
+              <line x1="22" y1="36" x2="78" y2="36"/>
+              <line x1="30" y1="20" x2="30" y2="55"/>
+              <line x1="50" y1="6"  x2="50" y2="66"/>
+              <line x1="70" y1="20" x2="70" y2="55"/>
+              <line x1="22" y1="22" x2="78" y2="22"/>
+              <line x1="22" y1="50" x2="78" y2="50"/>
+            </g>
+          </svg>
+        ):(
+          <img src={racketUrl} alt=""
+            onError={()=>setRacketBroken(true)}
+            draggable={false}/>
+        )}
+      </div>
     </Fragment>
   );
 }

@@ -7093,6 +7093,8 @@ function SettingsBenachrichtigungen({onBack,onHome,notify,setNotify}){
 function SettingsSicherheit({onBack,onHome}){
   const[email,setEmail]=useState('');
   const[lastSignIn,setLastSignIn]=useState(null);
+  const[pw,setPw]=useState('');
+  const[pw2,setPw2]=useState('');
   const[busy,setBusy]=useState(false);
   const[flash,setFlash]=useState(null);
 
@@ -7115,17 +7117,25 @@ function SettingsSicherheit({onBack,onHome}){
     setTimeout(()=>setFlash(null),ms);
   };
 
-  // Passwort-Änderung läuft bewusst NUR über den E-Mail-Reset-Flow.
-  // Das verhindert, dass jemand mit Zugriff auf eine offene Session
-  // (gestohlenes Handy, vergessen abzumelden) das Passwort still
-  // umschreibt und den Account übernimmt — der Mail-Link erzwingt
-  // Besitz der hinterlegten Mailbox.
+  const changePw=async()=>{
+    if(busy) return;
+    if(pw!==pw2) return showFlash('err','Passwörter stimmen nicht überein.');
+    setBusy(true);
+    try{
+      await auth.updatePassword(pw);
+      setPw(''); setPw2('');
+      showFlash('ok','Passwort aktualisiert.');
+    }catch(e){
+      showFlash('err',e?.message||'Passwort konnte nicht aktualisiert werden.');
+    }finally{ setBusy(false); }
+  };
+
   const sendReset=async()=>{
     if(busy||!email) return;
     setBusy(true);
     try{
       await auth.requestPasswordReset(email);
-      showFlash('ok','Reset-Link an '+email+' gesendet. Schau in dein Postfach.');
+      showFlash('ok','Reset-Link an '+email+' gesendet.');
     }catch(e){
       showFlash('err',e?.message||'Reset-Link konnte nicht gesendet werden.');
     }finally{ setBusy(false); }
@@ -7157,6 +7167,8 @@ function SettingsSicherheit({onBack,onHome}){
     }catch{ return '—'; }
   };
 
+  const pwReady=pw.length>=10&&pw===pw2;
+
   return(
     <SettingsSubLayout title="Sicherheit"
       desc="Passwort, aktive Sessions und Konto-Schutz."
@@ -7183,34 +7195,52 @@ function SettingsSicherheit({onBack,onHome}){
         </div>
       </SettingsSection>
 
-      {/* Passwort ändern — bewusst nur via E-Mail-Reset.
-          Kein In-App-Formular, weil es eine offene Session in eine
-          stille Account-Übernahme verwandeln würde. */}
+      {/* Passwort ändern */}
       <SettingsSection eyebrow="Passwort ändern">
         <div style={{padding:'4px 0 14px'}}>
-          <div style={{color:T.t2,fontSize:13,lineHeight:1.6,marginBottom:12}}>
-            Aus Sicherheitsgründen ändern wir Passwörter ausschließlich
-            über einen Bestätigungs-Link, den wir dir per E-Mail senden.
-            So stellen wir sicher, dass nur die echten Konto-Inhaber:innen
-            das Passwort setzen können.
+          <div style={{color:T.t3,fontSize:11,lineHeight:1.55,marginBottom:10}}>
+            Min. 10 Zeichen, mit Ziffer und Buchstaben.
+          </div>
+          <input type="password" value={pw} onChange={e=>setPw(e.target.value)}
+            placeholder="Neues Passwort" autoComplete="new-password"
+            style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
+              borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
+              outline:'none',boxSizing:'border-box',marginBottom:8}}/>
+          <input type="password" value={pw2} onChange={e=>setPw2(e.target.value)}
+            placeholder="Passwort bestätigen" autoComplete="new-password"
+            style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
+              borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
+              outline:'none',boxSizing:'border-box',marginBottom:12}}/>
+          <button onClick={changePw} disabled={!pwReady||busy}
+            style={{width:'100%',padding:'12px 14px',
+              background:pwReady&&!busy?T.o:T.card2,
+              border:pwReady&&!busy?'none':`1px solid ${T.border}`,
+              borderRadius:10,
+              color:pwReady&&!busy?'#000':T.t3,
+              fontSize:13,fontWeight:800,letterSpacing:.3,
+              cursor:pwReady&&!busy?'pointer':'not-allowed'}}>
+            Passwort speichern
+          </button>
+        </div>
+      </SettingsSection>
+
+      {/* Passwort vergessen / Reset */}
+      <SettingsSection eyebrow="Reset per E-Mail">
+        <div style={{padding:'4px 0 14px'}}>
+          <div style={{color:T.t3,fontSize:11,lineHeight:1.55,marginBottom:10}}>
+            Wir senden dir einen Link, mit dem du dein Passwort zurücksetzen kannst.
+            Praktisch, falls du das aktuelle Passwort vergessen hast.
           </div>
           <button onClick={sendReset} disabled={!email||busy}
             style={{width:'100%',padding:'12px 14px',
-              background:!email||busy?T.card2:T.o,
-              border:!email||busy?`1px solid ${T.border}`:'none',borderRadius:10,
-              color:!email||busy?T.t3:'#000',
-              fontSize:13,fontWeight:800,letterSpacing:.3,
+              background:T.card2,border:`1px solid ${T.border}`,borderRadius:10,
+              color:T.t1,fontSize:13,fontWeight:700,letterSpacing:.2,
               cursor:!email||busy?'not-allowed':'pointer',
-              textAlign:'left',
+              opacity:!email||busy?.6:1,textAlign:'left',
               display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-            <span>Passwort-Reset-Link senden</span>
-            <ChevronRightIcon size={16} color={!email||busy?T.t3:'#000'}/>
+            <span>Reset-Link senden</span>
+            <ChevronRightIcon size={16} color="currentColor"/>
           </button>
-          {email&&!busy&&(
-            <div style={{color:T.t3,fontSize:11,marginTop:8,lineHeight:1.5}}>
-              Der Link geht an <strong style={{color:T.t2}}>{email}</strong>.
-            </div>
-          )}
         </div>
       </SettingsSection>
 

@@ -5904,7 +5904,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='soft',onEdit,onMa
                 </div>
               </div>
               <button onClick={()=>confirmCourt(court.id)}
-                style={{width:'100%',marginTop:12,padding:'9px',borderRadius:10,border:'none',
+                style={{width:'100%',marginTop:12,padding:'9px',borderRadius:10,
                   background:court.done?T.card2:T.oSoft,
                   color:court.done?T.t2:T.o,fontSize:12,fontWeight:700,cursor:'pointer',
                   border:`1px solid ${court.done?T.border:T.o}`}}>
@@ -6758,32 +6758,533 @@ function SettingsAnpassung({onBack,onHome,theme,setTheme}){
   );
 }
 
-/* ─── Generischer Coming-Soon Sub-Screen ───────────────────────── */
-function SettingsComingSoon({title,desc,icon,onBack,onHome,bullets=[]}){
+/* ─── Wiederverwendbare iOS-Style Toggle ────────────────────────
+   Settings-Sub-Screens nutzen alle das gleiche Switch-Pattern.
+   Wir bündeln es hier, damit die Sub-Screens nur noch Reihen
+   beschreiben und sich nicht um Layout-Kram kümmern müssen.
+═══════════════════════════════════════════════════════════════ */
+function SettingsToggle({on,onToggle,disabled=false}){
   return(
-    <SettingsSubLayout title={title} desc={desc} icon={icon}
+    <div onClick={()=>!disabled&&onToggle&&onToggle()}
+      role="switch" aria-checked={!!on} aria-disabled={disabled||undefined}
+      style={{width:48,height:28,borderRadius:14,
+        background:on?T.o:'rgba(120,120,128,.32)',
+        position:'relative',cursor:disabled?'not-allowed':'pointer',
+        opacity:disabled?.5:1,
+        transition:'background .25s',flexShrink:0}}>
+      <div style={{width:24,height:24,borderRadius:'50%',background:T.bg,
+        position:'absolute',top:2,left:on?22:2,transition:'left .25s',
+        boxShadow:'0 1px 3px rgba(0,0,0,.3)'}}/>
+    </div>
+  );
+}
+
+function SettingsToggleRow({title,desc,on,onToggle,first=false,disabled=false}){
+  return(
+    <div style={{display:'flex',alignItems:'center',padding:'14px 0',gap:12,
+      borderTop:first?'none':`1px solid ${T.sep}`}}>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{color:disabled?T.t3:T.t1,fontSize:14,fontWeight:600}}>{title}</div>
+        {desc&&(
+          <div style={{color:T.t3,fontSize:11,marginTop:2,lineHeight:1.45}}>{desc}</div>
+        )}
+      </div>
+      <SettingsToggle on={on} onToggle={onToggle} disabled={disabled}/>
+    </div>
+  );
+}
+
+function SettingsSection({eyebrow,children,style}){
+  return(
+    <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+      padding:'18px 18px 6px',marginBottom:12,...(style||{})}}>
+      {eyebrow&&(
+        <div style={{color:T.o,fontSize:11,fontWeight:700,letterSpacing:1.3,
+          textTransform:'uppercase',marginBottom:8}}>{eyebrow}</div>
+      )}
+      {children}
+    </div>
+  );
+}
+
+/* Kleines Inline-Flash für Erfolg/Fehler. Verschwindet nach ~4s. */
+function SettingsFlash({kind,text}){
+  if(!text) return null;
+  const ok=kind==='ok';
+  return(
+    <div style={{
+      padding:'10px 14px',marginBottom:12,borderRadius:10,
+      background:ok?'rgba(34,180,90,0.10)':'rgba(232,69,69,0.10)',
+      border:`1px solid ${ok?'rgba(34,180,90,0.4)':'rgba(232,69,69,0.4)'}`,
+      color:ok?'#7ED39C':'#FF8A8A',fontSize:12,fontWeight:600,lineHeight:1.5}}>
+      {text}
+    </div>
+  );
+}
+
+/* ─── Privatsphäre — Wer sieht was vom Profil ──────────────────
+   Spiegelt profile.private (Public-Profile-Toggle) und führt drei
+   neue Hide-Flags ein (hideStats / hideDna / hideMatches), die im
+   Profile-Blob persistiert werden. Public-Profile-Konsumenten
+   (PublicProfile, PlayerSearch) können diese Flags respektieren —
+   default ist "alles teilen", damit Bestands-User keine
+   versteckten Profile bekommen.
+═══════════════════════════════════════════════════════════════ */
+function SettingsPrivatsphaere({onBack,onHome,profile,setProfile,onOpenDelete}){
+  const[flash,setFlash]=useState(null);
+  const isPublic=!profile.private;
+  const togglePublic =()=>setProfile(p=>({...p,private:!p.private}));
+  const toggleHide   =(k)=>setProfile(p=>({...p,[k]:!p[k]}));
+
+  /* DSGVO — User darf eine vollständige Kopie seiner Daten als JSON
+     herunterladen. Wir sammeln das Profil + alle ritmo_*-Keys aus
+     localStorage und triggern einen Download. */
+  const onExport=()=>{
+    try{
+      const dump={
+        exportedAt:new Date().toISOString(),
+        app:'RITMO Padel',
+        profile,
+        localStorage:Object.keys(localStorage)
+          .filter(k=>k.startsWith('ritmo_'))
+          .reduce((acc,k)=>{
+            try{ acc[k]=JSON.parse(localStorage.getItem(k)); }
+            catch{ acc[k]=localStorage.getItem(k); }
+            return acc;
+          },{}),
+      };
+      const blob=new Blob([JSON.stringify(dump,null,2)],{type:'application/json'});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a');
+      a.href=url;
+      a.download=`ritmo-export-${new Date().toISOString().slice(0,10)}.json`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setFlash({kind:'ok',text:'Export gestartet — schau in deine Downloads.'});
+      setTimeout(()=>setFlash(null),4000);
+    }catch(e){
+      setFlash({kind:'err',text:'Export fehlgeschlagen: '+(e?.message||'unbekannt')});
+      setTimeout(()=>setFlash(null),4000);
+    }
+  };
+
+  return(
+    <SettingsSubLayout title="Privatsphäre"
+      desc="Wer dich findet, wer deine Stats sieht."
+      icon={<EyeIcon size={22} color="currentColor"/>}
       onBack={onBack} onHome={onHome}>
-      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
-        padding:'24px 22px',textAlign:'center'}}>
-        <div style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:2.5,
-          textTransform:'uppercase',marginBottom:8}}>Coming Soon</div>
-        <div style={{color:T.t1,fontSize:18,fontWeight:800,letterSpacing:-.2,marginBottom:10}}>
-          Wir bauen gerade.
+
+      {flash&&<SettingsFlash kind={flash.kind} text={flash.text}/>}
+
+      {/* Sichtbarkeit */}
+      <SettingsSection eyebrow="Sichtbarkeit">
+        <SettingsToggleRow first
+          title={isPublic?'Profil öffentlich':'Profil privat'}
+          desc={isPublic
+            ?'Andere können dich in der Spielersuche finden und dir folgen.'
+            :'Niemand findet dich — nur du siehst dein Profil.'}
+          on={isPublic} onToggle={togglePublic}/>
+        <SettingsToggleRow
+          title="RITMO DNA teilen"
+          desc="Spielstil-Karte (z. B. Motor, Architekt) im öffentlichen Profil."
+          on={!profile.hideDna} onToggle={()=>toggleHide('hideDna')}
+          disabled={!isPublic}/>
+        <SettingsToggleRow
+          title="Stats teilen"
+          desc="Level, Siegquote und Match-Count auf deinem öffentlichen Profil."
+          on={!profile.hideStats} onToggle={()=>toggleHide('hideStats')}
+          disabled={!isPublic}/>
+        <SettingsToggleRow
+          title="Match-Historie teilen"
+          desc="Deine letzten Matches sind für Follower sichtbar."
+          on={!profile.hideMatches} onToggle={()=>toggleHide('hideMatches')}
+          disabled={!isPublic}/>
+      </SettingsSection>
+
+      {/* DSGVO */}
+      <SettingsSection eyebrow="Deine Daten (DSGVO)">
+        <div style={{color:T.t2,fontSize:12,lineHeight:1.6,padding:'6px 0 14px'}}>
+          Du hast jederzeit Anspruch auf eine Kopie deiner Daten und auf
+          deren Löschung. Der Export enthält dein Profil + alle lokal
+          gespeicherten Einstellungen als JSON-Datei.
         </div>
-        <div style={{color:T.t3,fontSize:13,lineHeight:1.6,marginBottom:bullets.length?20:0}}>
-          Diese Sektion wird bald freigeschaltet. Wir bauen sie aktiv — bei Wunsch melden wir uns, sobald sie live ist.
+        <button onClick={onExport}
+          style={{width:'100%',marginBottom:10,padding:'12px 14px',
+            background:T.card2,border:`1px solid ${T.border}`,borderRadius:10,
+            color:T.t1,fontSize:13,fontWeight:700,letterSpacing:.2,
+            cursor:'pointer',textAlign:'left',
+            display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+          <span>Meine Daten exportieren</span>
+          <span style={{color:T.o,fontSize:18,fontWeight:900}}>↓</span>
+        </button>
+        <button onClick={onOpenDelete}
+          style={{width:'100%',marginBottom:12,padding:'12px 14px',
+            background:'rgba(232,69,69,0.08)',border:'1px solid rgba(232,69,69,0.35)',
+            borderRadius:10,color:'#FF6B6B',fontSize:13,fontWeight:700,letterSpacing:.2,
+            cursor:'pointer',textAlign:'left',
+            display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+          <span>Konto und Daten löschen</span>
+          <ChevronRightIcon size={16} color="currentColor"/>
+        </button>
+      </SettingsSection>
+
+      <div style={{padding:'4px 14px 16px',color:T.t3,fontSize:11,lineHeight:1.6}}>
+        Profil-Daten liegen Ende-zu-Ende auf Supabase (EU). Row-Level-Security
+        stellt sicher: nur du kannst dein Profil schreiben. Andere können nur
+        Profile sehen, die du explizit öffentlich gestellt hast.
+      </div>
+    </SettingsSubLayout>
+  );
+}
+
+/* ─── Benachrichtigungen — Push + In-App Mitteilungen ─────────
+   Speichert Präferenzen in localStorage (ritmo_notify). Der Push-
+   Permission-Status wird live aus window.Notification gelesen,
+   damit System-Settings (z. B. iOS-Sperre) sofort sichtbar sind.
+═══════════════════════════════════════════════════════════════ */
+function SettingsBenachrichtigungen({onBack,onHome,notify,setNotify}){
+  // Live-Spiegel von Notification.permission (kann sich durch System
+  // ändern, ohne dass die App re-rendert — wir aktualisieren bei jedem
+  // Mount).
+  const[perm,setPerm]=useState(()=>{
+    if(typeof window==='undefined'||!('Notification' in window)) return 'unsupported';
+    return Notification.permission;
+  });
+  const[busy,setBusy]=useState(false);
+  const[flash,setFlash]=useState(null);
+
+  const requestPush=async()=>{
+    if(busy) return;
+    if(perm==='unsupported'){
+      setFlash({kind:'err',text:'Dein Browser unterstützt keine Push-Benachrichtigungen.'});
+      setTimeout(()=>setFlash(null),4000);
+      return;
+    }
+    if(perm==='denied'){
+      setFlash({kind:'err',text:'Benachrichtigungen sind blockiert — bitte in den System-Einstellungen freigeben.'});
+      setTimeout(()=>setFlash(null),5000);
+      return;
+    }
+    setBusy(true);
+    try{
+      const r=await Notification.requestPermission();
+      setPerm(r);
+      if(r==='granted'){
+        setFlash({kind:'ok',text:'Push aktiviert. Wir melden uns nur, wenn es wichtig ist.'});
+      } else if(r==='denied'){
+        setFlash({kind:'err',text:'Push wurde abgelehnt.'});
+      }
+      setTimeout(()=>setFlash(null),4000);
+    }catch(e){
+      setFlash({kind:'err',text:'Konnte nicht angefragt werden: '+(e?.message||'unbekannt')});
+      setTimeout(()=>setFlash(null),4000);
+    }finally{ setBusy(false); }
+  };
+
+  const set=(k,v)=>setNotify(n=>({...n,[k]:v}));
+  const tog=(k)=>setNotify(n=>({...n,[k]:!n[k]}));
+
+  // Wenn Push nicht aktiv ist, sind die Kategorie-Toggles "Push" gedämpft.
+  // In-App-Toggles (Sound, Vibration) bleiben unabhängig nutzbar.
+  const pushOn=perm==='granted';
+
+  const permLabel=
+    perm==='granted'?'Aktiv':
+    perm==='denied' ?'Blockiert':
+    perm==='unsupported'?'Nicht verfügbar':'Nicht aktiviert';
+  const permColor=
+    perm==='granted'?'#7ED39C':
+    perm==='denied' ?'#FF8A8A':T.t3;
+
+  return(
+    <SettingsSubLayout title="Benachrichtigungen"
+      desc="Push, In-App-Hinweise, Sound & Vibration."
+      icon={<BellIcon size={22} color="currentColor"/>}
+      onBack={onBack} onHome={onHome}>
+
+      {flash&&<SettingsFlash kind={flash.kind} text={flash.text}/>}
+
+      {/* Push-Status */}
+      <SettingsSection eyebrow="Push-Status">
+        <div style={{display:'flex',alignItems:'center',gap:14,padding:'6px 0 14px'}}>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{color:T.t1,fontSize:14,fontWeight:700,marginBottom:2}}>
+              Push-Benachrichtigungen
+            </div>
+            <div style={{display:'flex',alignItems:'center',gap:8,marginTop:6}}>
+              <span style={{width:8,height:8,borderRadius:'50%',background:permColor,
+                display:'inline-block',flexShrink:0}}/>
+              <span style={{color:permColor,fontSize:11,fontWeight:800,
+                letterSpacing:1,textTransform:'uppercase'}}>{permLabel}</span>
+            </div>
+          </div>
+          {perm!=='granted'&&perm!=='unsupported'&&(
+            <button onClick={requestPush} disabled={busy}
+              style={{padding:'10px 14px',background:T.o,border:'none',borderRadius:10,
+                color:'#000',fontSize:12,fontWeight:800,letterSpacing:.3,
+                cursor:busy?'not-allowed':'pointer',opacity:busy?.6:1,flexShrink:0}}>
+              Aktivieren
+            </button>
+          )}
         </div>
-        {bullets.length>0&&(
-          <div style={{marginTop:14,textAlign:'left',display:'flex',flexDirection:'column',gap:10}}>
-            {bullets.map((b,i)=>(
-              <div key={i} style={{display:'flex',alignItems:'flex-start',gap:10,
-                color:T.t2,fontSize:13,lineHeight:1.55}}>
-                <span style={{color:T.o,fontSize:14,lineHeight:1.4,flexShrink:0}}>·</span>
-                <span>{b}</span>
-              </div>
-            ))}
+        {perm==='denied'&&(
+          <div style={{padding:'10px 12px',background:T.card2,borderRadius:10,
+            border:`1px solid ${T.border}`,color:T.t3,fontSize:11,lineHeight:1.55,marginBottom:10}}>
+            Browser/System hat Push blockiert. Du musst es in den System-Einstellungen
+            wieder freigeben, bevor wir dir senden dürfen.
           </div>
         )}
+      </SettingsSection>
+
+      {/* Kategorien — was wir senden dürfen */}
+      <SettingsSection eyebrow="Was wir senden dürfen">
+        <SettingsToggleRow first
+          title="Match-Reminder"
+          desc="15 Minuten und 1 Stunde vor einem geplanten Match."
+          on={notify.matchReminder} onToggle={()=>tog('matchReminder')}
+          disabled={!pushOn}/>
+        <SettingsToggleRow
+          title="Turnier-Updates"
+          desc="Ready-Check, neue Runde, Score-Approval."
+          on={notify.tournamentAlerts} onToggle={()=>tog('tournamentAlerts')}
+          disabled={!pushOn}/>
+        <SettingsToggleRow
+          title="Chat-Mitteilungen"
+          desc="Neue Nachrichten in deinen Club-Chats."
+          on={notify.chatMessages} onToggle={()=>tog('chatMessages')}
+          disabled={!pushOn}/>
+        <SettingsToggleRow
+          title="Follower & Soziales"
+          desc="Wenn dir jemand folgt oder dich erwähnt."
+          on={notify.social} onToggle={()=>tog('social')}
+          disabled={!pushOn}/>
+      </SettingsSection>
+
+      {/* Wie wir benachrichtigen — funktioniert auch in-App, daher
+          unabhängig vom Push-Status. */}
+      <SettingsSection eyebrow="In-App-Verhalten">
+        <SettingsToggleRow first
+          title="Sound"
+          desc="Kurzer Ton bei neuen In-App-Mitteilungen."
+          on={notify.sound} onToggle={()=>tog('sound')}/>
+        <SettingsToggleRow
+          title="Vibration"
+          desc="Haptisches Feedback (sofern vom Gerät unterstützt)."
+          on={notify.vibration} onToggle={()=>tog('vibration')}/>
+        <SettingsToggleRow
+          title="Roter Marker im RITMO Post"
+          desc="Zeige ungelesene Chats mit einem roten Punkt am Tab-Icon."
+          on={notify.redDot} onToggle={()=>tog('redDot')}/>
+      </SettingsSection>
+
+      <div style={{padding:'4px 14px 16px',color:T.t3,fontSize:11,lineHeight:1.6}}>
+        Push-Benachrichtigungen laufen über deinen Browser bzw. dein OS — RITMO
+        speichert nur die Präferenzen, keine eigenen Push-Tokens auf dem Server.
+      </div>
+    </SettingsSubLayout>
+  );
+}
+
+/* ─── Sicherheit — Passwort, Sessions, Konto-Info ─────────────
+   Echte Auth-Operationen via auth.* und window.supabase.auth.
+   2FA ist als Roadmap-Sektion markiert: Supabase MFA-Setup
+   erfordert eigenen Flow (Enrollment, QR-Render, TOTP-Verify),
+   den wir in einer separaten PR liefern.
+═══════════════════════════════════════════════════════════════ */
+function SettingsSicherheit({onBack,onHome}){
+  const[email,setEmail]=useState('');
+  const[lastSignIn,setLastSignIn]=useState(null);
+  const[pw,setPw]=useState('');
+  const[pw2,setPw2]=useState('');
+  const[busy,setBusy]=useState(false);
+  const[flash,setFlash]=useState(null);
+
+  useEffect(()=>{
+    let cancelled=false;
+    (async()=>{
+      try{
+        if(typeof window==='undefined'||!window.supabase) return;
+        const{data}=await window.supabase.auth.getUser();
+        if(cancelled) return;
+        setEmail(data?.user?.email||'');
+        setLastSignIn(data?.user?.last_sign_in_at||null);
+      }catch{}
+    })();
+    return()=>{cancelled=true;};
+  },[]);
+
+  const showFlash=(kind,text,ms=4000)=>{
+    setFlash({kind,text});
+    setTimeout(()=>setFlash(null),ms);
+  };
+
+  const changePw=async()=>{
+    if(busy) return;
+    if(pw!==pw2) return showFlash('err','Passwörter stimmen nicht überein.');
+    setBusy(true);
+    try{
+      await auth.updatePassword(pw);
+      setPw(''); setPw2('');
+      showFlash('ok','Passwort aktualisiert.');
+    }catch(e){
+      showFlash('err',e?.message||'Passwort konnte nicht aktualisiert werden.');
+    }finally{ setBusy(false); }
+  };
+
+  const sendReset=async()=>{
+    if(busy||!email) return;
+    setBusy(true);
+    try{
+      await auth.requestPasswordReset(email);
+      showFlash('ok','Reset-Link an '+email+' gesendet.');
+    }catch(e){
+      showFlash('err',e?.message||'Reset-Link konnte nicht gesendet werden.');
+    }finally{ setBusy(false); }
+  };
+
+  const signOutAll=async()=>{
+    if(busy) return;
+    setBusy(true);
+    try{
+      // scope:'global' beendet alle Sessions des Users auf allen
+      // Geräten — der refresh_token wird invalidiert.
+      if(window.supabase) await window.supabase.auth.signOut({scope:'global'});
+      showFlash('ok','Alle Sessions beendet. Du wirst gleich abgemeldet …',2500);
+      setTimeout(()=>{
+        try{ if(typeof window!=='undefined') window.location.reload(); }catch{}
+      },1500);
+    }catch(e){
+      showFlash('err',e?.message||'Sessions konnten nicht beendet werden.');
+      setBusy(false);
+    }
+  };
+
+  const fmtDate=(iso)=>{
+    if(!iso) return '—';
+    try{
+      const d=new Date(iso);
+      return d.toLocaleString('de-DE',{day:'2-digit',month:'2-digit',
+        year:'numeric',hour:'2-digit',minute:'2-digit'});
+    }catch{ return '—'; }
+  };
+
+  const pwReady=pw.length>=10&&pw===pw2;
+
+  return(
+    <SettingsSubLayout title="Sicherheit"
+      desc="Passwort, aktive Sessions und Konto-Schutz."
+      icon={<LockIcon size={22} color="currentColor"/>}
+      onBack={onBack} onHome={onHome}>
+
+      {flash&&<SettingsFlash kind={flash.kind} text={flash.text}/>}
+
+      {/* Konto-Info */}
+      <SettingsSection eyebrow="Konto">
+        <div style={{padding:'4px 0 14px'}}>
+          <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1,
+            textTransform:'uppercase',marginBottom:4}}>E-Mail</div>
+          <div style={{color:T.t1,fontSize:14,fontWeight:600,wordBreak:'break-all'}}>
+            {email||'—'}
+          </div>
+          <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1,
+            textTransform:'uppercase',marginTop:12,marginBottom:4}}>
+            Letzter Login
+          </div>
+          <div style={{color:T.t2,fontSize:13,fontWeight:500,fontVariantNumeric:'tabular-nums'}}>
+            {fmtDate(lastSignIn)}
+          </div>
+        </div>
+      </SettingsSection>
+
+      {/* Passwort ändern */}
+      <SettingsSection eyebrow="Passwort ändern">
+        <div style={{padding:'4px 0 14px'}}>
+          <div style={{color:T.t3,fontSize:11,lineHeight:1.55,marginBottom:10}}>
+            Min. 10 Zeichen, mit Ziffer und Buchstaben.
+          </div>
+          <input type="password" value={pw} onChange={e=>setPw(e.target.value)}
+            placeholder="Neues Passwort" autoComplete="new-password"
+            style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
+              borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
+              outline:'none',boxSizing:'border-box',marginBottom:8}}/>
+          <input type="password" value={pw2} onChange={e=>setPw2(e.target.value)}
+            placeholder="Passwort bestätigen" autoComplete="new-password"
+            style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
+              borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
+              outline:'none',boxSizing:'border-box',marginBottom:12}}/>
+          <button onClick={changePw} disabled={!pwReady||busy}
+            style={{width:'100%',padding:'12px 14px',
+              background:pwReady&&!busy?T.o:T.card2,
+              border:pwReady&&!busy?'none':`1px solid ${T.border}`,
+              borderRadius:10,
+              color:pwReady&&!busy?'#000':T.t3,
+              fontSize:13,fontWeight:800,letterSpacing:.3,
+              cursor:pwReady&&!busy?'pointer':'not-allowed'}}>
+            Passwort speichern
+          </button>
+        </div>
+      </SettingsSection>
+
+      {/* Passwort vergessen / Reset */}
+      <SettingsSection eyebrow="Reset per E-Mail">
+        <div style={{padding:'4px 0 14px'}}>
+          <div style={{color:T.t3,fontSize:11,lineHeight:1.55,marginBottom:10}}>
+            Wir senden dir einen Link, mit dem du dein Passwort zurücksetzen kannst.
+            Praktisch, falls du das aktuelle Passwort vergessen hast.
+          </div>
+          <button onClick={sendReset} disabled={!email||busy}
+            style={{width:'100%',padding:'12px 14px',
+              background:T.card2,border:`1px solid ${T.border}`,borderRadius:10,
+              color:T.t1,fontSize:13,fontWeight:700,letterSpacing:.2,
+              cursor:!email||busy?'not-allowed':'pointer',
+              opacity:!email||busy?.6:1,textAlign:'left',
+              display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+            <span>Reset-Link senden</span>
+            <ChevronRightIcon size={16} color="currentColor"/>
+          </button>
+        </div>
+      </SettingsSection>
+
+      {/* Sessions */}
+      <SettingsSection eyebrow="Sessions">
+        <div style={{padding:'4px 0 14px'}}>
+          <div style={{color:T.t3,fontSize:11,lineHeight:1.55,marginBottom:10}}>
+            Beendet alle aktiven RITMO-Sessions auf allen Geräten. Du musst
+            dich danach neu anmelden.
+          </div>
+          <button onClick={signOutAll} disabled={busy}
+            style={{width:'100%',padding:'12px 14px',
+              background:'rgba(232,69,69,0.08)',
+              border:'1px solid rgba(232,69,69,0.35)',borderRadius:10,
+              color:'#FF6B6B',fontSize:13,fontWeight:700,letterSpacing:.2,
+              cursor:busy?'not-allowed':'pointer',opacity:busy?.6:1,textAlign:'left',
+              display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+            <span>Auf allen Geräten abmelden</span>
+            <ChevronRightIcon size={16} color="rgba(255,107,107,0.7)"/>
+          </button>
+        </div>
+      </SettingsSection>
+
+      {/* 2FA — Roadmap */}
+      <SettingsSection eyebrow="Zwei-Faktor (Coming Soon)">
+        <div style={{padding:'4px 0 14px'}}>
+          <div style={{color:T.t2,fontSize:13,lineHeight:1.55,marginBottom:8}}>
+            TOTP-basierte Zwei-Faktor-Authentifizierung (Google Authenticator,
+            1Password, Authy) ist in Vorbereitung.
+          </div>
+          <div style={{display:'flex',alignItems:'center',gap:8,
+            color:T.o,fontSize:10,fontWeight:800,letterSpacing:1.5,
+            textTransform:'uppercase'}}>
+            <span style={{width:6,height:6,borderRadius:'50%',background:T.o,
+              display:'inline-block'}}/>
+            <span>In Entwicklung</span>
+          </div>
+        </div>
+      </SettingsSection>
+
+      <div style={{padding:'4px 14px 16px',color:T.t3,fontSize:11,lineHeight:1.6}}>
+        RITMO speichert keine Klartext-Passwörter — die Hash-Berechnung (bcrypt)
+        und Rate-Limiting laufen serverseitig bei Supabase.
       </div>
     </SettingsSubLayout>
   );
@@ -10018,6 +10519,19 @@ export default function App(){
   const[voiceOn,setVoiceOn]=useState(()=>lsGet('ritmo_voice',false));
   const[voiceBaseUrl,setVoiceBaseUrl]=useState(()=>lsGet('ritmo_voice_url',''));
   const[theme,setTheme]=useState(()=>lsGet('ritmo_theme','dark'));
+  // Benachrichtigungs-Präferenzen — werden in den Settings gepflegt
+  // und hier zentral gehalten, damit sie an mehreren Stellen (z. B.
+  // RITMO Post, Home-Badge) ausgelesen werden können.
+  const[notify,setNotify]=useState(()=>lsGet('ritmo_notify',{
+    matchReminder:true,
+    tournamentAlerts:true,
+    chatMessages:true,
+    social:true,
+    sound:true,
+    vibration:true,
+    redDot:true,
+  }));
+  useEffect(()=>{ lsSet('ritmo_notify',notify); },[notify]);
 
   // Apply theme to document root → CSS vars cascade everywhere
   // Also sync the theme-color meta tag so iOS/Android system UI matches
@@ -10376,39 +10890,15 @@ export default function App(){
     {scr==='settings-anpassung'&&<SettingsAnpassung
       onBack={()=>setScr('settings')} onHome={goHome}
       theme={theme} setTheme={setTheme}/>}
-    {scr==='settings-privatsphaere'&&<SettingsComingSoon
+    {scr==='settings-privatsphaere'&&<SettingsPrivatsphaere
       onBack={()=>setScr('settings')} onHome={goHome}
-      title="Privatsphäre"
-      desc="Wer dich findet · wer deine Stats sieht."
-      icon={<EyeIcon size={22} color="currentColor"/>}
-      bullets={[
-        'Profil-Sichtbarkeit (öffentlich / nur Freunde / privat)',
-        'RITMO DNA + Stats freigeben oder verstecken',
-        'Match-Historie als Privat markieren',
-        'Datenexport und -löschung gemäß DSGVO',
-      ]}/>}
-    {scr==='settings-benachrichtigungen'&&<SettingsComingSoon
+      profile={profile} setProfile={setProfile}
+      onOpenDelete={()=>setScr('settings-konto')}/>}
+    {scr==='settings-benachrichtigungen'&&<SettingsBenachrichtigungen
       onBack={()=>setScr('settings')} onHome={goHome}
-      title="Benachrichtigungen"
-      desc="Match-Reminder, Turnier-Alerts, Chats."
-      icon={<BellIcon size={22} color="currentColor"/>}
-      bullets={[
-        'Push-Benachrichtigungen aktivieren',
-        'Match-Reminder (1 Stunde · 15 Min vorher)',
-        'Turnier-Updates und Ready-Checks',
-        'Chat- und Community-Mitteilungen',
-      ]}/>}
-    {scr==='settings-sicherheit'&&<SettingsComingSoon
-      onBack={()=>setScr('settings')} onHome={goHome}
-      title="Sicherheit"
-      desc="Passwort, Sessions, Zwei-Faktor."
-      icon={<LockIcon size={22} color="currentColor"/>}
-      bullets={[
-        'Passwort ändern',
-        'Aktive Sessions einsehen und beenden',
-        'Zwei-Faktor-Authentifizierung (TOTP)',
-        'Login-Aktivitäts-Log',
-      ]}/>}
+      notify={notify} setNotify={setNotify}/>}
+    {scr==='settings-sicherheit'&&<SettingsSicherheit
+      onBack={()=>setScr('settings')} onHome={goHome}/>}
     {scr==='settings-konto'&&<SettingsKonto
       onBack={()=>setScr('settings')} onHome={goHome}
       onLogout={async()=>{

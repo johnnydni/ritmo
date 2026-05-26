@@ -16,6 +16,21 @@ export const SUPA_MISSING='Authentifizierung nicht verfügbar. Bitte später ern
 
 const EMAIL_RE=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/**
+ * Passwort-Policy (clientseitig).
+ *  - Mindestens 10 Zeichen
+ *  - Mindestens eine Ziffer
+ *  - Mindestens ein Buchstabe
+ * Schützt gegen triviale Brute-Force-Kandidaten wie "12345678" oder
+ * "password". Supabase kümmert sich serverseitig um das Hashing
+ * (bcrypt) und Rate-Limiting; das hier ist UX + Defense-in-Depth.
+ */
+function validatePassword(pw) {
+  if (!pw || pw.length < 10) throw new Error('Passwort min. 10 Zeichen.');
+  if (!/[0-9]/.test(pw)) throw new Error('Passwort muss mindestens eine Ziffer enthalten.');
+  if (!/[a-zA-Z]/.test(pw)) throw new Error('Passwort muss mindestens einen Buchstaben enthalten.');
+}
+
 export function sb(){
   if(typeof window==='undefined'||!window.supabase) throw new Error(SUPA_MISSING);
   return window.supabase;
@@ -29,7 +44,7 @@ export const auth={
   async signUpWithEmail(email,password){
     const e=(email||'').trim().toLowerCase();
     if(!e||!EMAIL_RE.test(e)) throw new Error('Bitte gültige E-Mail eingeben');
-    if(!password||password.length<8) throw new Error('Passwort min. 8 Zeichen');
+    validatePassword(password);
     // ?verified=1 schaltet in der App die VerifiedLanding-Page frei,
     // statt direkt ins Onboarding zu springen.
     const {data,error}=await sb().auth.signUp({
@@ -43,9 +58,11 @@ export const auth={
   async signInWithEmail(email,password){
     const e=(email||'').trim().toLowerCase();
     if(!e||!password) throw new Error('Bitte alle Felder ausfüllen');
-    // Test-User-Bypass für Demo/Dev-Zugang ohne Supabase-Konto.
-    // Bewusst gelassen — der einzige Nicht-Supabase-Pfad in der Auth.
-    if(e==='ritmo'&&password==='padelhaus'){
+    // Test-User-Bypass: NUR im Dev-Build aktiv. import.meta.env.DEV ist
+    // bei `npm run build` false → der gesamte Branch wird vom Bundler
+    // tree-shaken. So bleibt die Hintertür für lokale Entwicklung
+    // erhalten, kommt aber nie in den ausgelieferten Production-Code.
+    if(import.meta.env.DEV&&e==='ritmo'&&password==='padelhaus'){
       return {user:{email:'ritmo@test.local',provider:'test'}};
     }
     const {data,error}=await sb().auth.signInWithPassword({email:e,password});
@@ -79,7 +96,7 @@ export const auth={
   },
 
   async updatePassword(newPassword){
-    if(!newPassword||newPassword.length<8) throw new Error('Passwort min. 8 Zeichen');
+    validatePassword(newPassword);
     const {error}=await sb().auth.updateUser({password:newPassword});
     if(error) throw new Error(error.message||'Passwort konnte nicht aktualisiert werden');
     return true;

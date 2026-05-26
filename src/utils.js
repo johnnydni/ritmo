@@ -57,6 +57,23 @@ export function readImageAsDataUrl(file){
   });
 }
 
+/** Defensive guard für User-generierte Bild-DataURLs.
+ *  Wir akzeptieren ausschließlich JPEG/PNG/WebP-DataURLs — alles
+ *  andere (insbesondere `data:image/svg+xml;...`) könnte XSS via
+ *  inline-Skript transportieren. Der Canvas-Re-Encoder in
+ *  resizeImage() produziert immer `data:image/jpeg;base64,...`,
+ *  alle anderen Quellen kommen direkt aus dem DB-Profil und sind
+ *  damit suspekt. */
+const SAFE_IMAGE_PREFIX = /^data:image\/(jpeg|png|webp);base64,/i;
+export function safeImageSrc(src) {
+  if (!src) return null;
+  if (typeof src !== 'string') return null;
+  // External HTTPS URLs sind zulässig (z.B. Assets aus /public),
+  // aber http: + javascript: + data:image/svg+xml werden geblockt.
+  if (src.startsWith('https://') || src.startsWith('/')) return src;
+  return SAFE_IMAGE_PREFIX.test(src) ? src : null;
+}
+
 // Zeichnet die Source-DataURL auf ein Canvas <= maxDim x maxDim und
 // gibt eine JPEG-DataURL zurück. Klein genug für JSONB-Persistenz
 // und das Re-Encoding entfernt EXIF/Geo-Daten aus User-Uploads.

@@ -504,11 +504,20 @@ export async function fetchPublicProfile(userId) {
   } catch (e) { console.warn('[db] fetchPublicProfile threw:', e?.message); return null; }
 }
 
+/** Striped User-Input für LIKE/.or()-Filter:
+ *  - %, _  → SQL-LIKE-Wildcards; ungestrippt könnten sie DoS-Queries
+ *           gegen den lower(display_name)-Index erzeugen.
+ *  - , ()  → brechen PostgREST's .or()-Filter-Parser; .or-Bypass möglich.
+ *  - Limit auf 64 Zeichen verhindert outsized payloads. */
+function sanitizeSearch(s) {
+  return (s || '').toString().replace(/[%_,()]/g, '').slice(0, 64).trim();
+}
+
 /** Player-Search nach Display-Name (case-insensitive substring). */
 export async function searchPlayers(query, { limit = 20 } = {}) {
   const c = sb();
   if (!c) return [];
-  const q = (query || '').trim();
+  const q = sanitizeSearch(query);
   if (!q) return [];
   try {
     const { data, error } = await c
@@ -632,7 +641,11 @@ export async function listClubs({ query = '', limit = 50 } = {}) {
   try {
     let q = c.from('ritmo_clubs').select('id,name,city,description,cover,owner_id,created_at')
       .order('created_at', { ascending: false }).limit(limit);
-    if (query.trim()) q = q.or(`name.ilike.%${query.trim()}%,city.ilike.%${query.trim()}%`);
+    // sanitizeSearch entfernt LIKE-Wildcards UND die .or()-Filter-Sonderzeichen
+    // (",()"). Ohne das könnte `query='evil),(name.eq.something'` den
+    // PostgREST-Filter-Parser hijacken und ein anderes Statement erzwingen.
+    const qs = sanitizeSearch(query);
+    if (qs) q = q.or(`name.ilike.%${qs}%,city.ilike.%${qs}%`);
     const { data, error } = await q;
     if (error) { console.warn('[db] listClubs:', error.message); return []; }
     return data || [];

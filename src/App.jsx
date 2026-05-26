@@ -17,7 +17,7 @@ import { loadProfile as dbLoadProfile, saveProfile as dbSaveProfile, logMatch as
    Components, screens and routing remain colocated here for now;
    only side-effect-free units are split out. See CLAUDE.md. */
 import { T, CSS } from "./theme.js";
-import { lsGet, lsSet, getAssetBase, getInitials, readImageAsDataUrl, resizeImage } from "./utils.js";
+import { lsGet, lsSet, getAssetBase, getInitials, readImageAsDataUrl, resizeImage, safeImageSrc } from "./utils.js";
 import { getLevelLabel, getLevelTier, getLevelColor, estimateLevel } from "./levels.js";
 import { B0, A0, PL, ptD, wG, bo3R, amR } from "./game.js";
 import { PCOLS, shuffle, genAmericanoRound, genMexicanoRound, calcLeaderboard } from "./tournament.js";
@@ -831,7 +831,7 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
               <input type="password" value={password}
                 onChange={e=>{setPassword(e.target.value);setError('');}}
                 onKeyDown={onKeyDown} autoComplete="new-password"
-                placeholder="Mindestens 8 Zeichen"
+                placeholder="Min. 10 Zeichen, mit Ziffer"
                 style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
                   borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
                   outline:'none',boxSizing:'border-box'}}/>
@@ -1018,7 +1018,7 @@ function PasswordRecovery({onDone}){
           <input type="password" value={pw}
             onChange={e=>{setPw(e.target.value);setError('');}}
             autoComplete="new-password"
-            placeholder="Mindestens 8 Zeichen"
+            placeholder="Min. 10 Zeichen, mit Ziffer"
             style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
               borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
               outline:'none',boxSizing:'border-box'}}/>
@@ -2259,10 +2259,17 @@ function ProfileAvatar({name,avatar,size=40,onClick,emphasize=false}){
         padding:0,letterSpacing:.5,flexShrink:0,overflow:'hidden',
         transition:'transform .15s, border-color .15s',
         boxShadow:emphasize?'0 4px 14px var(--oGlow)':'0 1px 3px rgba(0,0,0,.25)'}}>
-      {avatar
-        ?<img src={avatar} alt={name||'Profil'}
-          style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>
-        :(init||<span style={{color:T.t2}}><PersonGlyph size={size*0.55}/></span>)}
+      {(()=>{
+        // Defensive: avatar kommt aus User-Upload via Canvas-Re-Encoding →
+        // immer data:image/jpeg. Wenn etwas Anderes drinsteht (DB-Tampering,
+        // älteres Profil mit fremder URL), fallen wir auf die Initialen
+        // zurück statt arbitrary content zu rendern.
+        const safe=safeImageSrc(avatar);
+        return safe
+          ?<img src={safe} alt={name||'Profil'}
+            style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>
+          :(init||<span style={{color:T.t2}}><PersonGlyph size={size*0.55}/></span>);
+      })()}
     </button>
   );
 }
@@ -2303,7 +2310,7 @@ function AvatarWithUpload({profile,setProfile,size=72}){
           <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
         </svg>
       </button>
-      <input ref={inputRef} type="file" accept="image/*"
+      <input ref={inputRef} type="file" accept="image/png,image/jpeg,image/webp"
         onChange={onPick} style={{display:'none'}}/>
     </div>
   );
@@ -6977,8 +6984,8 @@ function RitmoPost({onHome,profile,onOpenChat,unread=0}){
                     cursor:'pointer',color:T.t1,textAlign:'left',
                     animationDelay:`${i*0.03}s`}}>
                   {/* Mini-Cover */}
-                  {c.club.cover?(
-                    <img src={c.club.cover} alt={c.club.name}
+                  {(()=>{const safe=safeImageSrc(c.club.cover);return safe?(
+                    <img src={safe} alt={c.club.name}
                       style={{width:42,height:42,borderRadius:10,objectFit:'cover',
                         flexShrink:0,border:`1px solid ${T.border}`}}/>
                   ):(
@@ -6987,7 +6994,7 @@ function RitmoPost({onHome,profile,onOpenChat,unread=0}){
                       display:'flex',alignItems:'center',justifyContent:'center'}}>
                       <TrophyIcon size={20}/>
                     </div>
-                  )}
+                  );})()}
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{display:'flex',alignItems:'baseline',gap:8}}>
                       <div style={{color:T.t1,fontSize:14,fontWeight:c.unread>0?800:700,
@@ -7435,8 +7442,8 @@ function Clubs({onHome,onOpenClub,onCreateClub}){
                 border:`1px solid ${T.o}`,borderRadius:12,
                 padding:'14px 16px',display:'flex',alignItems:'center',gap:12,
                 color:T.t1,textAlign:'left',cursor:'pointer'}}>
-              {mine.cover?(
-                <img src={mine.cover} alt={mine.name}
+              {(()=>{const safe=safeImageSrc(mine.cover);return safe?(
+                <img src={safe} alt={mine.name}
                   style={{width:40,height:40,borderRadius:10,objectFit:'cover',
                     flexShrink:0,border:`1px solid ${T.border}`}}/>
               ):(
@@ -7445,7 +7452,7 @@ function Clubs({onHome,onOpenClub,onCreateClub}){
                   display:'flex',alignItems:'center',justifyContent:'center'}}>
                   <TrophyIcon size={20}/>
                 </div>
-              )}
+              );})()}
               <div style={{flex:1,minWidth:0}}>
                 <div style={{color:T.t1,fontSize:14,fontWeight:700,letterSpacing:-.1}}>{mine.name}</div>
                 {mine.city&&<div style={{color:T.t3,fontSize:11,marginTop:2}}>{mine.city}</div>}
@@ -7487,8 +7494,8 @@ function Clubs({onHome,onOpenClub,onCreateClub}){
                   style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:12,
                     padding:'14px 16px',display:'flex',alignItems:'center',gap:12,
                     color:T.t1,textAlign:'left',cursor:'pointer',animationDelay:`${i*0.03}s`}}>
-                  {c.cover?(
-                    <img src={c.cover} alt={c.name}
+                  {(()=>{const safe=safeImageSrc(c.cover);return safe?(
+                    <img src={safe} alt={c.name}
                       style={{width:40,height:40,borderRadius:10,objectFit:'cover',
                         flexShrink:0,border:`1px solid ${T.border}`}}/>
                   ):(
@@ -7497,7 +7504,7 @@ function Clubs({onHome,onOpenClub,onCreateClub}){
                       display:'flex',alignItems:'center',justifyContent:'center'}}>
                       <TrophyIcon size={20}/>
                     </div>
-                  )}
+                  );})()}
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{color:T.t1,fontSize:14,fontWeight:700,letterSpacing:-.1}}>{c.name}</div>
                     {c.city&&<div style={{color:T.t3,fontSize:11,marginTop:2}}>{c.city}</div>}
@@ -7567,8 +7574,8 @@ function ClubCreate({onHome,onDone,onCancel,initial}){
             style={{width:'100%',position:'relative',aspectRatio:'16/9',
               background:T.card2,border:`1px dashed ${T.border}`,borderRadius:12,
               overflow:'hidden',cursor:'pointer',color:T.t2,padding:0}}>
-            {cover?(
-              <img src={cover} alt="Cover"
+            {(()=>{const safe=safeImageSrc(cover);return safe?(
+              <img src={safe} alt="Cover"
                 style={{position:'absolute',inset:0,width:'100%',height:'100%',
                   objectFit:'cover',display:'block'}}/>
             ):(
@@ -7577,7 +7584,7 @@ function ClubCreate({onHome,onDone,onCancel,initial}){
                 <TrophyIcon size={28}/>
                 <div style={{fontSize:12,fontWeight:600,letterSpacing:.3}}>Cover-Bild wählen</div>
               </div>
-            )}
+            );})()}
             {cover&&(
               <div style={{position:'absolute',right:10,top:10,
                 padding:'4px 10px',background:'rgba(0,0,0,.55)',color:'#fff',
@@ -7585,7 +7592,7 @@ function ClubCreate({onHome,onDone,onCancel,initial}){
                 textTransform:'uppercase'}}>Ändern</div>
             )}
           </button>
-          <input ref={coverInput} type="file" accept="image/*"
+          <input ref={coverInput} type="file" accept="image/png,image/jpeg,image/webp"
             onChange={pickCover} style={{display:'none'}}/>
         </div>
 
@@ -7684,8 +7691,8 @@ function ClubDetail({clubId,currentUid,onHome,onBack,onOpenPlayer,onOpenChat,onE
           <div className="fu" style={{position:'relative',width:'100%',aspectRatio:'16/9',
             borderRadius:14,overflow:'hidden',marginBottom:12,
             background:T.card2,border:`1px solid ${T.border}`}}>
-            {cover?(
-              <img src={cover} alt={club.name}
+            {(()=>{const safe=safeImageSrc(cover);return safe?(
+              <img src={safe} alt={club.name}
                 style={{position:'absolute',inset:0,width:'100%',height:'100%',
                   objectFit:'cover',display:'block'}}/>
             ):(
@@ -7698,7 +7705,7 @@ function ClubDetail({clubId,currentUid,onHome,onBack,onOpenPlayer,onOpenChat,onE
                 <polygon points="60,180 260,180 160,80" fill="#E84545" opacity=".85"/>
                 <rect x="20" y="195" width="360" height="6" fill="#FF7A1A"/>
               </svg>
-            )}
+            );})()}
             {/* Untere Verdunkelung für Lesbarkeit des Titel-Overlays */}
             <div style={{position:'absolute',left:0,right:0,bottom:0,height:'55%',
               background:'linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,.72) 100%)',
@@ -7897,8 +7904,8 @@ function ClubChat({clubId,currentUid,onHome,onBack}){
             <ChevronRightIcon size={16} color="currentColor"/>
           </span>
         </button>
-        {club?.cover?(
-          <img src={club.cover} alt={club.name}
+        {(()=>{const safe=safeImageSrc(club?.cover);return safe?(
+          <img src={safe} alt={club.name}
             style={{width:38,height:38,borderRadius:10,objectFit:'cover',flexShrink:0,
               border:`1px solid ${T.border}`}}/>
         ):(
@@ -7907,7 +7914,7 @@ function ClubChat({clubId,currentUid,onHome,onBack}){
             display:'flex',alignItems:'center',justifyContent:'center'}}>
             <TrophyIcon size={20}/>
           </div>
-        )}
+        );})()}
         <div style={{flex:1,minWidth:0}}>
           <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.3,
             textTransform:'uppercase'}}>Club Chat</div>

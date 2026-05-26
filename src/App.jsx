@@ -6485,11 +6485,10 @@ function Settings({onHome,activeTab,setActiveTab,nav}){
           desc="Passwort, Sessions, Zwei-Faktor."
           onClick={()=>nav('settings-sicherheit')}/>
 
-        <SettingsCard q={q} destructive
-          icon={<DoorOutIcon size={22} color="currentColor"/>}
-          title="Ich muss hier raus!"
-          desc="Konto löschen. Endgültig — keine Wiederherstellung."
-          onClick={()=>nav('settings-konto')}/>
+        {/* Konto-Löschung wird bewusst NICHT als eigene Top-Level-Karte
+            angeboten — sie liegt ausschließlich unter
+            Privatsphäre → "Konto und Daten löschen", damit User vor
+            dem Schritt erst die DSGVO-Konsequenzen sehen. */}
 
         {/* About — schlichte Marker, kein Tap-Target */}
         <div style={{background:'transparent',border:`1px solid ${T.border}`,borderRadius:14,
@@ -7295,8 +7294,8 @@ function SettingsKonto({onBack,onHome,onLogout}){
   const[confirmText,setConfirmText]=useState('');
   const ready=confirmText.trim().toUpperCase()==='LÖSCHEN';
   return(
-    <SettingsSubLayout title="Ich muss hier raus!"
-      desc="Konto löschen — endgültig, ohne Wiederherstellung."
+    <SettingsSubLayout title="Konto und Daten löschen"
+      desc="Endgültig, ohne Wiederherstellung."
       icon={<DoorOutIcon size={22} color="currentColor"/>}
       onBack={onBack} onHome={onHome}>
 

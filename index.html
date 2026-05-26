@@ -9,6 +9,29 @@
     <meta name="apple-mobile-web-app-title" content="RITMO" />
     <meta name="theme-color" id="theme-color-meta" content="#000000" />
     <meta name="format-detection" content="telephone=no" />
+    <!--
+      Content-Security-Policy — Defense-in-depth gegen XSS. GitHub
+      Pages erlaubt keine HTTP-Header, deshalb als <meta>. Wichtige
+      Hosts:
+        - Supabase REST + Realtime (HTTPS + WebSocket)
+        - api.qrserver.com für QR-Code-Generierung im Online-Turnier
+        - data: + blob: für Image-Previews + Worker-Bundles
+      'unsafe-inline' bei style-src ist nötig, weil React Inline-Styles
+      benutzt. 'unsafe-eval' wird bewusst NICHT erlaubt.
+    -->
+    <meta http-equiv="Content-Security-Policy"
+      content="default-src 'self';
+               script-src 'self';
+               style-src 'self' 'unsafe-inline';
+               img-src 'self' data: blob: https://api.qrserver.com;
+               font-src 'self' data:;
+               connect-src 'self' https://*.supabase.co wss://*.supabase.co;
+               worker-src 'self' blob:;
+               object-src 'none';
+               base-uri 'self';
+               frame-ancestors 'none';
+               form-action 'self'" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <link rel="apple-touch-icon" href="./favicon.svg" />
     <!-- __BASE_INJECTION__ -->

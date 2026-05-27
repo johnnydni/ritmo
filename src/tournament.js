@@ -58,7 +58,7 @@ export function genAmericanoRound(playerIds,history=[],maxCourts=null){
       const p1=[s[i],s[i+1]].sort((a,b)=>a-b),p2=[s[i+2],s[i+3]].sort((a,b)=>a-b);
       const k1=`${p1[0]}_${p1[1]}`,k2=`${p2[0]}_${p2[1]}`;
       if(used.has(k1)||used.has(k2)){ok=false;break;}
-      courts.push({id:`c${i/4}`,t1:[s[i],s[i+1]],t2:[s[i+2],s[i+3]],s1:0,s2:0,done:false});
+      courts.push({id:`c${i/4}`,t1:[s[i],s[i+1]],t2:[s[i+2],s[i+3]],s1:null,s2:null,done:false});
     }
     if(ok) return {courts,sitOut};
   }
@@ -66,7 +66,7 @@ export function genAmericanoRound(playerIds,history=[],maxCourts=null){
   const s=shuffle(playing);
   const courts=[];
   for(let i=0;i<playingCount;i+=4){
-    courts.push({id:`c${i/4}`,t1:[s[i],s[i+1]],t2:[s[i+2],s[i+3]],s1:0,s2:0,done:false});
+    courts.push({id:`c${i/4}`,t1:[s[i],s[i+1]],t2:[s[i+2],s[i+3]],s1:null,s2:null,done:false});
   }
   return {courts,sitOut};
 }
@@ -95,7 +95,7 @@ export function genMexicanoRound(playerIds,leaderboard,maxCourts=null,history=[]
   const courts=[];
   for(let i=0;i<playingCount;i+=4){
     const g=sorted.slice(i,i+4);
-    courts.push({id:`c${i/4}`,t1:[g[0],g[3]],t2:[g[1],g[2]],s1:0,s2:0,done:false});
+    courts.push({id:`c${i/4}`,t1:[g[0],g[3]],t2:[g[1],g[2]],s1:null,s2:null,done:false});
   }
   return {courts,sitOut};
 }

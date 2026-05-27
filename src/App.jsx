@@ -32,7 +32,7 @@ import {
   HeroRulesVisual, HeroJourneyVisual,
   // Settings + RITMO Post line-art icons
   SteeringWheelIcon, PaletteIcon, EyeIcon, BellIcon, LockIcon, DoorOutIcon,
-  ChevronRightIcon, RitmoPostIcon, AirPlayIcon,
+  ChevronRightIcon, RitmoPostIcon, AirPlayIcon, CoffeeCupIcon,
 } from "./icons.jsx";
 import { PADEL_STYLES, PADEL_QUIZ, computeStyle, STYLE_IMAGES } from "./padelStyles.js";
 
@@ -2845,7 +2845,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
             onPointerDown={e=>e.currentTarget.style.background=T.card2}
             onPointerUp={e=>e.currentTarget.style.background='transparent'}
             onPointerLeave={e=>e.currentTarget.style.background='transparent'}>
-            <TrophyIcon size={22}/>
+            <CoffeeCupIcon size={22} color={T.o}/>
             <div>
               <div style={{color:T.o,fontSize:14,fontWeight:700,marginBottom:1}}>Clubs</div>
               <div style={{color:T.t3,fontSize:11,fontWeight:500}}>Beitreten | Gründen</div>
@@ -6820,14 +6820,18 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='soft',onEdit,onMa
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
-      <div style={{padding:'0 22px 14px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
-        <div>
+      {/* Header — RITMO-Logo + Trophy mittig in einer Zeile, der
+          Subtitle "Americano · Runde N" hängt darunter. Vorher saß
+          die Trophy am oberen Rand (alignItems:'flex-start') und
+          wirkte optisch versetzt zur Logo-Höhe. */}
+      <div style={{padding:'0 22px 14px'}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
           <RitmoWordmark size={52} style={{marginLeft:-3}}/>
-          <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>
-            {tourney.format==='mexicano'?'Mexicano':'Americano'} · Runde {tourney.current+1}
-          </div>
+          <TrophyIcon size={36}/>
         </div>
-        <TrophyIcon size={36}/>
+        <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>
+          {tourney.format==='mexicano'?'Mexicano':'Americano'} · Runde {tourney.current+1}
+        </div>
       </div>
 
       {/* Timer + Leaderboard Toggle */}
@@ -8900,7 +8904,7 @@ function Clubs({onHome,onOpenClub,onCreateClub}){
   return(
     <SocialScreen eyebrow="Community" title="Clubs"
       desc={ownedId?'Du bist Inhaber:in eines Clubs.':'Find oder gründe deinen Club.'}
-      icon={<TrophyIcon size={22}/>} onHome={onHome}>
+      icon={<CoffeeCupIcon size={22}/>} onHome={onHome}>
       <div className="fu" style={{display:'flex',gap:8,marginBottom:14}}>
         <input value={q} onChange={e=>setQ(e.target.value)}
           placeholder="Name oder Stadt …"

@@ -2140,10 +2140,22 @@ function TabBar({active,onTab,rightAction,searchable=false,onSearch}){
                 background:isActive?T.blueSoft:'transparent',
                 color:isActive?T.blue:T.t2,
                 fontSize:11,fontWeight:600,
-                transition:'max-width .25s ease, padding .25s ease, opacity .2s ease'}}>
-              <Icon active={isActive} size={20}/>
+                /* Globaler button-Transition kümmert sich um Farbwechsel;
+                   die Search-Mode-Effekte (max-width/padding/opacity)
+                   bleiben explizit, weil sie nicht zur Default-Liste
+                   gehören. */
+                transition:'max-width .25s ease, padding .25s ease, opacity .2s ease, background-color var(--anim-base), color var(--anim-base)'}}>
+              {/* key=isActive zwingt das Icon-Wrapper-Element zum Remount
+                  beim Tab-Wechsel, sodass die Bounce-Animation jedes Mal
+                  neu durchläuft. */}
+              <span key={isActive?'on':'off'}
+                className={isActive?'nav-icon-active':''}
+                style={{display:'inline-flex',transformOrigin:'center'}}>
+                <Icon active={isActive} size={20}/>
+              </span>
               <span style={{fontSize:11,color:isActive?T.blue:T.t3,
-                fontWeight:isActive?700:500,whiteSpace:'nowrap'}}>{label}</span>
+                fontWeight:isActive?700:500,whiteSpace:'nowrap',
+                transition:'color var(--anim-base)'}}>{label}</span>
             </button>
           );
         })}
@@ -2181,13 +2193,13 @@ function TabBar({active,onTab,rightAction,searchable=false,onSearch}){
           </button>
         )}
       </div>
-      <button onClick={rightClick} title={rightTitle}
+      <button onClick={rightClick} title={rightTitle} data-lift
+        className={rightHighlight?'glow-pulse':''}
         style={{width:48,height:48,borderRadius:'50%',
           background:T.card,
           border:`1px solid ${rightHighlight?T.o:T.border}`,
           display:'flex',alignItems:'center',justifyContent:'center',
           cursor:rightClick?'pointer':'default',pointerEvents:'auto',
-          transition:'border-color .2s ease, box-shadow .2s ease',
           boxShadow:rightHighlight
             ?`0 4px 20px rgba(0,0,0,.6), 0 0 0 2px ${T.o}33`
             :'0 4px 20px rgba(0,0,0,.6)'}}>
@@ -2690,10 +2702,10 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
         )}
 
         {/* Single Match */}
-        <button onClick={()=>nav('single-setup')} className="fu"
+        <button onClick={()=>nav('single-setup')} className="fu" data-lift
           style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:18,
             padding:'18px 20px',display:'flex',alignItems:'center',gap:18,
-            cursor:'pointer',color:T.t1,textAlign:'left',transition:'background .15s'}}
+            cursor:'pointer',color:T.t1,textAlign:'left'}}
           onPointerDown={e=>e.currentTarget.style.background=T.card2}
           onPointerUp={e=>e.currentTarget.style.background=T.card}
           onPointerLeave={e=>e.currentTarget.style.background=T.card}>
@@ -2705,10 +2717,10 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
         </button>
 
         {/* Turnier — neuer Hub mit "Starten" + "Beitreten" */}
-        <button onClick={()=>nav('tournament-hub')} className="fu"
+        <button onClick={()=>nav('tournament-hub')} className="fu" data-lift
           style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:18,
             padding:'18px 20px',display:'flex',alignItems:'center',gap:18,
-            cursor:'pointer',color:T.t1,textAlign:'left',transition:'background .15s',
+            cursor:'pointer',color:T.t1,textAlign:'left',
             animationDelay:'.06s'}}
           onPointerDown={e=>e.currentTarget.style.background=T.card2}
           onPointerUp={e=>e.currentTarget.style.background=T.card}
@@ -7123,10 +7135,10 @@ function SettingsCard({icon,title,desc,onClick,destructive=false,q=''}){
   const border  = destructive ? 'rgba(232,69,69,0.35)' : T.border;
   const bg      = destructive ? 'rgba(232,69,69,0.08)' : T.card;
   return(
-    <button onClick={onClick}
+    <button onClick={onClick} data-lift
       style={{width:'100%',background:bg,border:`1px solid ${border}`,borderRadius:14,
         padding:'16px 18px',display:'flex',alignItems:'center',gap:16,
-        color,textAlign:'left',cursor:'pointer',transition:'background .15s'}}
+        color,textAlign:'left',cursor:'pointer'}}
       onPointerDown={e=>e.currentTarget.style.background = destructive ? 'rgba(232,69,69,0.14)' : T.card2}
       onPointerUp={e=>e.currentTarget.style.background = bg}
       onPointerLeave={e=>e.currentTarget.style.background = bg}>
@@ -9275,10 +9287,10 @@ function FollowList({userId,initial='followers',onHome,onBack,onOpenPlayer}){
    Chevron rechts. Animationen erbt sie über className="fu". */
 function HubBigCard({icon,title,desc,onClick,accent,delay='0s'}){
   return(
-    <button onClick={onClick} className="fu"
+    <button onClick={onClick} className="fu" data-lift
       style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:18,
         padding:'20px 22px',display:'flex',alignItems:'center',gap:18,
-        cursor:'pointer',color:T.t1,textAlign:'left',transition:'background .15s',
+        cursor:'pointer',color:T.t1,textAlign:'left',
         animationDelay:delay,width:'100%'}}
       onPointerDown={e=>e.currentTarget.style.background=T.card2}
       onPointerUp={e=>e.currentTarget.style.background=T.card}

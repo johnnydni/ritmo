@@ -71,6 +71,7 @@ export async function saveProfile(profile) {
  * Loggt ein abgeschlossenes Match.
  * @param {object} match
  *   - format: 'bo3' | 'americano' | 'tournament-americano' | 'tournament-mexicano'
+ *   - match_type: 'friendly' | 'competitive' (default 'friendly')
  *   - player_names: string[]
  *   - score_a, score_b: number
  *   - sets: array (bo3) | null
@@ -78,16 +79,25 @@ export async function saveProfile(profile) {
  *   - user_won: boolean | null
  *   - tournament_id?: string
  *   - round_index?: number
+ *
+ * match_type entscheidet, ob das Match in Spielniveau-/DNA-Aggregate
+ * einfließt. Nur 'competitive' zählt — 'friendly' bleibt nur Historie.
+ * Tournament-Matches gelten automatisch als competitive.
  */
 export async function logMatch(match) {
   const c = sb();
   if (!c) return;
   const uid = await currentUserId();
   if (!uid) return;
+  // Tournament-Runden zählen immer als competitive; Singles erben
+  // das explizite Flag oder fallen auf 'friendly' zurück.
+  const matchType = match.match_type
+    || (String(match.format||'').startsWith('tournament-') ? 'competitive' : 'friendly');
   try {
     const { error } = await c.from('ritmo_matches').insert({
       user_id: uid,
       format: match.format,
+      match_type: matchType,
       player_names: match.player_names || [],
       score_a: match.score_a ?? null,
       score_b: match.score_b ?? null,
@@ -98,7 +108,29 @@ export async function logMatch(match) {
       round_index: match.round_index ?? null,
       finished_at: new Date().toISOString(),
     });
-    if (error) console.warn('[db] logMatch failed:', error.message);
+    if (error) {
+      // Wenn die Spalte match_type in der DB fehlt (Migration noch
+      // nicht ausgeführt), versuchen wir den Insert ohne sie. So
+      // bleibt die App auch vor dem Apply funktional.
+      if (/column .*match_type/i.test(error.message)) {
+        const retry = await c.from('ritmo_matches').insert({
+          user_id: uid,
+          format: match.format,
+          player_names: match.player_names || [],
+          score_a: match.score_a ?? null,
+          score_b: match.score_b ?? null,
+          sets: match.sets ?? null,
+          user_team: match.user_team || null,
+          user_won: match.user_won ?? null,
+          tournament_id: match.tournament_id || null,
+          round_index: match.round_index ?? null,
+          finished_at: new Date().toISOString(),
+        });
+        if (retry.error) console.warn('[db] logMatch fallback failed:', retry.error.message);
+      } else {
+        console.warn('[db] logMatch failed:', error.message);
+      }
+    }
   } catch (e) {
     console.warn('[db] logMatch exception:', e?.message || e);
   }
@@ -116,12 +148,25 @@ export async function loadMatchStats() {
   const uid = await currentUserId();
   if (!uid) return null;
   try {
-    const { data, error } = await c
+    // match_type wird mitselektiert; falls die Spalte fehlt (Migration
+    // nicht ausgeführt), kommt der Fehler hier — wir fallen dann auf
+    // den alten SELECT zurück, damit ältere DBs nicht brechen.
+    let { data, error } = await c
       .from('ritmo_matches')
-      .select('format,score_a,score_b,user_team,user_won,sets,finished_at')
+      .select('format,match_type,score_a,score_b,user_team,user_won,sets,finished_at')
       .eq('user_id', uid)
       .order('finished_at', { ascending: false })
       .limit(200);
+    if (error && /column .*match_type/i.test(error.message)) {
+      const retry = await c
+        .from('ritmo_matches')
+        .select('format,score_a,score_b,user_team,user_won,sets,finished_at')
+        .eq('user_id', uid)
+        .order('finished_at', { ascending: false })
+        .limit(200);
+      data = retry.data;
+      error = retry.error;
+    }
     if (error || !data) {
       if (error) console.warn('[db] loadMatchStats failed:', error.message);
       return null;
@@ -134,10 +179,27 @@ export async function loadMatchStats() {
 }
 
 function computeStats(rows) {
+  // Competitive-Subset = Datenbasis für Spielniveau + RITMO DNA.
+  // Wenn die match_type-Spalte fehlt (alte DB), gelten alle Bo3+
+  // Tournament-Matches als competitive — das matched das frühere
+  // Verhalten und kippt keine bestehenden Profile.
+  const isCompetitive = (r) => {
+    if (typeof r.match_type === 'string') return r.match_type === 'competitive';
+    return r.format === 'bo3' || String(r.format||'').startsWith('tournament-');
+  };
+  const competitiveRows = rows.filter(isCompetitive);
+
   const total = rows.length;
   const wins = rows.filter(r => r.user_won === true).length;
   const losses = rows.filter(r => r.user_won === false).length;
   const winRate = total > 0 ? Math.round((wins / total) * 100) : 0;
+
+  // Competitive-Aggregate — getrennt geführt, damit die DNA-Schätzung
+  // nur darauf zugreift.
+  const cMatches = competitiveRows.length;
+  const cWins = competitiveRows.filter(r => r.user_won === true).length;
+  const cLosses = competitiveRows.filter(r => r.user_won === false).length;
+  const cWinRate = cMatches > 0 ? Math.round((cWins / cMatches) * 100) : 0;
 
   // Form trend: last 12 matches (oldest → newest), Sieg=5, Niederlage=1, sonst 3.
   const last12 = rows.slice(0, 12).reverse();
@@ -167,6 +229,11 @@ function computeStats(rows) {
     wins,
     losses,
     winRate,
+    // Competitive-only Spiegel für DNA-Konsumenten.
+    competitiveMatches: cMatches,
+    competitiveWins: cWins,
+    competitiveLosses: cLosses,
+    competitiveWinRate: cWinRate,
     formTrend,
     weeklyMatches: weeks,
     weekDays,

@@ -3870,78 +3870,207 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
 
    Browser können nicht programmatisch eine OS-weite Bildschirm-
    spiegelung auslösen — AirPlay (iOS/macOS), Cast (Android/Chrome)
-   und Miracast (Windows) sind System-Features. Wir bieten daher:
-     1. Plattform-Erkennung via userAgent → markieren die für den User
-        relevante Anleitung visuell.
-     2. Best-Effort-Versuch via Presentation API / Remote Playback API
-        (funktioniert auf Chrome mit ausgewähltem Cast-Receiver).
-     3. Schritt-für-Schritt-Hinweise für alle drei OS-Familien.
-     4. Direkt-Tip: BigScreen-Modus aktivieren, *bevor* gemirrort wird —
-        so erscheint auf der Anzeigetafel sofort das große Layout.
+   und Miracast (Windows) sind System-Features. Unser Sheet:
+
+     1. Geräte-Carousel: vier Plattform-Kacheln (iPhone, Mac, Android,
+        Windows), nach links/rechts swipebar via scroll-snap. Initial-
+        Auswahl folgt der userAgent-Erkennung, lässt sich aber frei
+        wechseln (z. B. wenn der User vom Phone aus für einen Mac
+        nachschlagen will).
+     2. Pro-Tip + BigScreen-Direktaktion.
+     3. Best-Effort Cast via Presentation API (BETA, Chrome/Edge).
+     4. Schritte für das gewählte Gerät — mit Inline-Icons der System-
+        Symbole, die der User tappen muss.
+     5. Konstanter Receiver-Name: "Court 1" bzw.
+        "RITMO Score Tafel | Court 1" wird in jeder Anleitung
+        prominent genannt.
 ═══════════════════════════════════════════════════════════════ */
+
+/* Inline-Glyphs für die Schritt-Anleitungen — kleine SVGs, die genau
+   wie die System-Icons aussehen, die der User tappen muss.
+   Bewusst hier lokal definiert (statt in icons.jsx), weil sie nur im
+   CastSheet benutzt werden und keinen separaten Export rechtfertigen. */
+
+// iOS-Kontrollzentrum: zwei sich überlappende abgerundete Rechtecke
+// (so wie Apple es im Status-Bar zeigt).
+function GlyphControlCenter({size=16}){
+  return(<svg width={size} height={size} viewBox="0 0 18 18" fill="none"
+    stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"
+    style={{verticalAlign:'-3px'}}>
+    <rect x="2" y="2" width="9" height="9" rx="2"/>
+    <rect x="7" y="7" width="9" height="9" rx="2"/>
+  </svg>);
+}
+
+// "Bildschirmsynchronisierung" / AirPlay-Mirror — zwei sich
+// überlappende Rechtecke (Apples eigenes Symbol). Klar erkennbar.
+function GlyphAirPlayMirror({size=16}){
+  return(<svg width={size} height={size} viewBox="0 0 18 18" fill="none"
+    stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"
+    style={{verticalAlign:'-3px'}}>
+    <rect x="1.5" y="3" width="11" height="9" rx="1.5"/>
+    <rect x="5.5" y="6" width="11" height="9" rx="1.5" fill="var(--bg)"/>
+  </svg>);
+}
+
+// Android-Cast — Bildschirmrahmen mit drei Wellen-Strahlen unten-links
+// (Chromecast-Logo).
+function GlyphAndroidCast({size=16}){
+  return(<svg width={size} height={size} viewBox="0 0 18 18" fill="none"
+    stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"
+    style={{verticalAlign:'-3px'}}>
+    <path d="M1 13a3 3 0 0 1 3 3"/>
+    <path d="M1 10a6 6 0 0 1 6 6"/>
+    <path d="M1 7a9 9 0 0 1 9 9"/>
+    <path d="M1 4h15a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-4"/>
+  </svg>);
+}
+
+// Windows-Logo (4 Kacheln) — für den "Windows-Taste + K"-Hinweis.
+function GlyphWindowsKey({size=16}){
+  return(<svg width={size} height={size} viewBox="0 0 18 18" fill="currentColor"
+    style={{verticalAlign:'-3px'}}>
+    <rect x="2" y="2" width="6" height="6"/>
+    <rect x="10" y="2" width="6" height="6"/>
+    <rect x="2" y="10" width="6" height="6"/>
+    <rect x="10" y="10" width="6" height="6"/>
+  </svg>);
+}
+
+// Swipe-Down-Gesten-Glyph für Android-Schnelleinstellungen.
+function GlyphSwipeDown({size=16}){
+  return(<svg width={size} height={size} viewBox="0 0 18 18" fill="none"
+    stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"
+    style={{verticalAlign:'-3px'}}>
+    <path d="M9 2v12"/>
+    <polyline points="4 9 9 14 14 9"/>
+  </svg>);
+}
+
+// Wiederverwendbarer „Token" für Inline-Icon-Refs in den Schritten
+// (z. B. „Tippe auf [ICON]"). Rendert einen kleinen Pill-Container
+// mit Outline.
+function StepIcon({children}){
+  return(
+    <span style={{display:'inline-flex',alignItems:'center',
+      padding:'1px 7px',margin:'0 2px',gap:5,
+      borderRadius:6,background:'var(--card2)',
+      border:`1px solid var(--border)`,color:'var(--t1)',
+      fontSize:11,fontWeight:700,verticalAlign:'baseline'}}>
+      {children}
+    </span>
+  );
+}
+
+const CAST_DEVICE_NAME='Court 1';
+const CAST_DEVICE_FULL='RITMO Score Tafel | Court 1';
+
 function CastSheet({onClose,onEnterBigScreen}){
   // Plattform-Erkennung — bewusst defensiv (userAgent kann gefälscht
-  // sein), nur für UI-Highlight. Die Hinweise selbst zeigen wir immer
-  // alle drei an, damit auch falsch erkannte Geräte nichts vermissen.
+  // sein). Wir setzen sie nur als Initial-Index des Carousels; der
+  // User kann frei swipen.
   const ua=typeof navigator!=='undefined'?(navigator.userAgent||''):'';
-  const isIOS=/iPad|iPhone|iPod/.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  const isIOS=/iPad|iPhone|iPod/.test(ua)||(typeof navigator!=='undefined'&&navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
   const isMac=!isIOS&&/Macintosh/.test(ua);
   const isAndroid=/Android/i.test(ua);
   const isWin=/Windows/i.test(ua);
 
-  // Detected family — used to bump one card to the top of the list.
-  const family=isIOS?'apple':isMac?'apple':isAndroid?'android':isWin?'windows':'unknown';
+  // Devices — Reihenfolge ist die Carousel-Reihenfolge.
+  const devices=[
+    {id:'ios',     label:'iPhone / iPad', emoji:'📱', detected:isIOS},
+    {id:'mac',     label:'Mac',           emoji:'💻', detected:isMac},
+    {id:'android', label:'Android',       emoji:'🤖', detected:isAndroid},
+    {id:'windows', label:'Windows',       emoji:'🖥️', detected:isWin},
+  ];
+  const defaultIndex=Math.max(0,devices.findIndex(d=>d.detected));
+  const[idx,setIdx]=useState(defaultIndex);
+  const railRef=useRef(null);
+
+  // Scroll-Snap → idx-Sync: wenn der User swiped, wird die nächste
+  // Karte automatisch eingerastet, wir lesen die Position zurück und
+  // aktualisieren idx (für Pagination-Dots + Schritte unten).
+  const onRailScroll=()=>{
+    const el=railRef.current;
+    if(!el) return;
+    const i=Math.round(el.scrollLeft/el.clientWidth);
+    if(i!==idx) setIdx(Math.max(0,Math.min(devices.length-1,i)));
+  };
+
+  // Programmatic snap to a specific index (Pfeil-Buttons + Dot-Tap).
+  const snapTo=(i)=>{
+    const el=railRef.current;
+    if(!el) return;
+    el.scrollTo({left:i*el.clientWidth,behavior:'smooth'});
+  };
 
   const[busy,setBusy]=useState(false);
   const[err,setErr]=useState('');
 
-  // Best-Effort-Cast-Versuch: Presentation API fragt Chromecast-Receiver
-  // im LAN ab. Auf iOS Safari ist die API nicht implementiert — dort
-  // bleibt nur der Hinweis "Kontrollzentrum öffnen".
   const tryPresentation=async()=>{
     if(busy) return;
     setErr('');
     setBusy(true);
     try{
       if(typeof window==='undefined'||!('PresentationRequest' in window)){
-        setErr('Dein Browser unterstützt keinen direkten Bildschirm-Stream. Nutze die OS-Anleitung unten.');
+        setErr('Dein Browser unterstützt keinen direkten Bildschirm-Stream. Folge der Anleitung unten.');
         return;
       }
-      // Wir würden eigentlich eine zweite "Receiver-Page" URL brauchen;
-      // als Fallback streamen wir die aktuelle URL (Receiver lädt die
-      // App als Mirror neu). Mehr Aufwand wäre nötig für eine echte
-      // Cast-Receiver-App.
       const req=new window.PresentationRequest([window.location.href]);
       await req.start();
       setBusy(false);
       onClose();
     }catch(e){
-      setErr(e?.message||'Kein Bildschirm gefunden. Nutze die OS-Anleitung.');
+      setErr(e?.message||'Kein Bildschirm gefunden. Folge der Anleitung unten.');
       setBusy(false);
     }
   };
 
-  const Card=({platform,title,steps,highlighted})=>(
-    <div style={{
-      background:highlighted?T.card2:T.card,
-      border:`1px solid ${highlighted?T.o:T.border}`,
-      borderRadius:12,padding:'14px 16px',marginBottom:10}}>
-      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
-        <span style={{fontSize:16}}>{platform}</span>
-        <div style={{color:T.t1,fontSize:13,fontWeight:800,letterSpacing:.2,flex:1}}>{title}</div>
-        {highlighted&&(
-          <span style={{color:T.o,fontSize:9,fontWeight:900,letterSpacing:1.4,
-            textTransform:'uppercase',padding:'2px 7px',background:T.oSoft,
-            border:`1px solid ${T.o}`,borderRadius:6}}>
-            Dein Gerät
-          </span>
-        )}
-      </div>
-      <ol style={{margin:0,paddingLeft:18,color:T.t2,fontSize:12,lineHeight:1.6}}>
-        {steps.map((s,i)=>(<li key={i} style={{marginBottom:3}}>{s}</li>))}
-      </ol>
-    </div>
+  // Pro-Device-Schritte. Jeder Schritt-Eintrag ist React-Node-fähig,
+  // damit wir Inline-Icons rendern können. Der Receiver-Name wird
+  // konsistent als <strong>Court 1</strong> ausgegeben — der lange
+  // Name folgt direkt als Klammer-Hinweis.
+  const receiverName=(<strong style={{color:T.o,fontWeight:900}}>{CAST_DEVICE_NAME}</strong>);
+  const receiverLongHint=(
+    <span style={{color:T.t3,fontStyle:'italic'}}> (oder „{CAST_DEVICE_FULL}")</span>
   );
+
+  const stepsByDevice={
+    ios:[
+      <>Wisch vom oberen rechten Eck nach unten → Kontrollzentrum
+        <StepIcon><GlyphControlCenter size={14}/></StepIcon> öffnet sich.</>,
+      <>Tippe auf „Bildschirmsynchronisierung"
+        <StepIcon><GlyphAirPlayMirror size={14}/> Sync</StepIcon>.</>,
+      <>Wähle {receiverName}{receiverLongHint} aus der Geräteliste.</>,
+      <>Falls Code abgefragt: am TV-Bildschirm ablesen und am iPhone eingeben.</>,
+    ],
+    mac:[
+      <>Klick auf das Kontrollzentrum-Symbol
+        <StepIcon><GlyphControlCenter size={14}/></StepIcon>
+        oben rechts in der Menüleiste.</>,
+      <>Wähle „Bildschirmsynchronisierung"
+        <StepIcon><GlyphAirPlayMirror size={14}/> Sync</StepIcon>.</>,
+      <>Wähle {receiverName}{receiverLongHint} und bestätige den Code, falls Apple TV einen anzeigt.</>,
+    ],
+    android:[
+      <>Schnelleinstellungen aufziehen
+        <StepIcon><GlyphSwipeDown size={14}/></StepIcon>
+        (zweimal vom oberen Rand nach unten wischen).</>,
+      <>Tippe auf „Streamen" / „Smart View" / „Cast"
+        <StepIcon><GlyphAndroidCast size={14}/> Cast</StepIcon>.</>,
+      <>Wähle {receiverName}{receiverLongHint} aus der Empfänger-Liste.</>,
+      <>Bestätige am TV, falls eine Pairing-Aufforderung erscheint.</>,
+    ],
+    windows:[
+      <>Drücke
+        <StepIcon><GlyphWindowsKey size={13}/> Win</StepIcon> +
+        <StepIcon>K</StepIcon> — das Casten-Panel öffnet sich.</>,
+      <>Wähle {receiverName}{receiverLongHint} aus der Liste.</>,
+      <>Falls dein TV nicht erscheint: PC + TV im selben WLAN, Miracast-Empfänger am TV aktivieren.</>,
+    ],
+  };
+
+  const currentDevice=devices[idx];
+  const currentSteps=stepsByDevice[currentDevice.id];
 
   return(
     <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:220,
@@ -3951,7 +4080,7 @@ function CastSheet({onClose,onEnterBigScreen}){
       <div onClick={e=>e.stopPropagation()} className="si"
         style={{background:T.bg,border:`1px solid ${T.border}`,
           borderTopLeftRadius:20,borderTopRightRadius:20,
-          width:'100%',maxWidth:520,maxHeight:'88vh',overflowY:'auto',
+          width:'100%',maxWidth:520,maxHeight:'92vh',overflowY:'auto',
           padding:'20px 22px calc(env(safe-area-inset-bottom,0px) + 22px)',
           boxShadow:'0 -8px 30px rgba(0,0,0,.5)'}}>
 
@@ -3976,14 +4105,28 @@ function CastSheet({onClose,onEnterBigScreen}){
           </div>
         </div>
 
+        {/* Einleitung mit Icon-Token-Vorschau — der User sieht direkt,
+            welche System-Symbole gleich in der Anleitung erscheinen. */}
+        <div style={{color:T.t2,fontSize:12,lineHeight:1.65,marginBottom:14,padding:'0 2px'}}>
+          Wähle dein Gerät, dann folge den drei Schritten. Such in der
+          Empfänger-Liste deines Geräts nach&nbsp;{receiverName}{receiverLongHint}.
+          <div style={{marginTop:8,display:'flex',flexWrap:'wrap',gap:6,alignItems:'center'}}>
+            <span style={{color:T.t3,fontSize:11}}>Du tippst auf:</span>
+            <StepIcon><GlyphControlCenter size={13}/> iOS/Mac</StepIcon>
+            <StepIcon><GlyphAirPlayMirror size={13}/> Sync</StepIcon>
+            <StepIcon><GlyphAndroidCast size={13}/> Cast</StepIcon>
+            <StepIcon><GlyphWindowsKey size={12}/> Win+K</StepIcon>
+          </div>
+        </div>
+
         {/* Pro-Tip: BigScreen zuerst */}
         <div style={{background:T.oSoft,border:`1px solid ${T.o}`,borderRadius:12,
-          padding:'12px 14px',marginBottom:14,display:'flex',alignItems:'flex-start',gap:10}}>
+          padding:'12px 14px',marginBottom:16,display:'flex',alignItems:'flex-start',gap:10}}>
           <span style={{color:T.o,fontSize:14,lineHeight:1.4,flexShrink:0}}>★</span>
-          <div style={{color:T.t1,fontSize:12,lineHeight:1.55}}>
-            <strong style={{color:T.o,fontWeight:800}}>Tipp:</strong> Aktiviere
-            zuerst den BigScreen-Modus, dann starte die Bildschirmspiegelung.
-            So zeigt die Anzeigetafel direkt die XXL-Score-Optik.
+          <div style={{color:T.t1,fontSize:12,lineHeight:1.55,flex:1}}>
+            <strong style={{color:T.o,fontWeight:800}}>Tipp:</strong> Erst
+            BigScreen einschalten, dann spiegeln — so erscheint sofort die
+            XXL-Score-Optik auf der Tafel.
             <div style={{marginTop:8}}>
               <button onClick={onEnterBigScreen}
                 style={{background:T.o,border:'none',borderRadius:8,
@@ -3995,9 +4138,109 @@ function CastSheet({onClose,onEnterBigScreen}){
           </div>
         </div>
 
+        {/* Device-Carousel — swipeable rail mit scroll-snap.
+            Jede Karte = 100% Breite des Containers, snap-mandatory
+            rastet sauber ein. Pfeile + Pagination unten. */}
+        <div style={{color:T.t3,fontSize:10,fontWeight:800,letterSpacing:1.5,
+          textTransform:'uppercase',marginBottom:8,padding:'0 2px',
+          display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+          <span>Dein Gerät</span>
+          <span style={{color:T.t3,fontSize:10,fontWeight:600,letterSpacing:.5}}>
+            ‹ swipe ›
+          </span>
+        </div>
+
+        <div style={{position:'relative',marginBottom:14}}>
+          {/* Pfeil links */}
+          <button onClick={()=>snapTo(Math.max(0,idx-1))}
+            disabled={idx===0}
+            aria-label="Vorheriges Gerät"
+            style={{position:'absolute',top:'50%',left:-2,transform:'translateY(-50%)',
+              zIndex:2,width:32,height:32,borderRadius:'50%',
+              background:T.card,border:`1px solid ${T.border}`,
+              color:idx===0?T.t3:T.t1,
+              cursor:idx===0?'not-allowed':'pointer',opacity:idx===0?.4:1,
+              display:'flex',alignItems:'center',justifyContent:'center',
+              boxShadow:'0 2px 8px rgba(0,0,0,.4)'}}>
+            <span style={{transform:'rotate(180deg)',lineHeight:0}}>
+              <ChevronRightIcon size={16} color="currentColor"/>
+            </span>
+          </button>
+          {/* Pfeil rechts */}
+          <button onClick={()=>snapTo(Math.min(devices.length-1,idx+1))}
+            disabled={idx===devices.length-1}
+            aria-label="Nächstes Gerät"
+            style={{position:'absolute',top:'50%',right:-2,transform:'translateY(-50%)',
+              zIndex:2,width:32,height:32,borderRadius:'50%',
+              background:T.card,border:`1px solid ${T.border}`,
+              color:idx===devices.length-1?T.t3:T.t1,
+              cursor:idx===devices.length-1?'not-allowed':'pointer',
+              opacity:idx===devices.length-1?.4:1,
+              display:'flex',alignItems:'center',justifyContent:'center',
+              boxShadow:'0 2px 8px rgba(0,0,0,.4)'}}>
+            <ChevronRightIcon size={16} color="currentColor"/>
+          </button>
+
+          <div ref={railRef} onScroll={onRailScroll}
+            style={{display:'flex',overflowX:'auto',
+              scrollSnapType:'x mandatory',
+              WebkitOverflowScrolling:'touch',
+              scrollbarWidth:'none',
+              msOverflowStyle:'none'}}>
+            {devices.map((d,i)=>(
+              <div key={d.id}
+                style={{flex:'0 0 100%',scrollSnapAlign:'center',
+                  padding:'2px 40px',boxSizing:'border-box'}}>
+                <div style={{background:i===idx?T.card2:T.card,
+                  border:`1px solid ${i===idx?T.o:T.border}`,borderRadius:14,
+                  padding:'22px 14px',display:'flex',flexDirection:'column',
+                  alignItems:'center',gap:8,transition:'border-color .2s,background .2s'}}>
+                  <div style={{fontSize:48,lineHeight:1}}>{d.emoji}</div>
+                  <div style={{color:T.t1,fontSize:14,fontWeight:800,letterSpacing:-.1}}>
+                    {d.label}
+                  </div>
+                  {d.detected&&(
+                    <span style={{color:T.o,fontSize:9,fontWeight:900,letterSpacing:1.4,
+                      textTransform:'uppercase',padding:'2px 7px',background:T.oSoft,
+                      border:`1px solid ${T.o}`,borderRadius:6}}>
+                      Dein Gerät
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Pagination-Dots */}
+          <div style={{display:'flex',justifyContent:'center',gap:7,marginTop:10}}>
+            {devices.map((_,i)=>(
+              <button key={i} onClick={()=>snapTo(i)}
+                aria-label={`Gerät ${i+1}`}
+                style={{width:i===idx?22:7,height:7,borderRadius:4,
+                  background:i===idx?T.o:T.border,
+                  border:'none',cursor:'pointer',padding:0,
+                  transition:'width .2s,background .2s'}}/>
+            ))}
+          </div>
+        </div>
+
+        {/* Schritte fürs gewählte Gerät — animation:fadeIn via key,
+            damit der Inhalt beim Wechseln „neu reinkommt". */}
+        <div key={currentDevice.id} className="fi" style={{marginBottom:12}}>
+          <div style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:1.4,
+            textTransform:'uppercase',marginBottom:8,padding:'0 2px'}}>
+            So verbindest du dein {currentDevice.label}
+          </div>
+          <ol style={{margin:0,paddingLeft:22,color:T.t2,fontSize:13,lineHeight:1.7}}>
+            {currentSteps.map((step,i)=>(
+              <li key={i} style={{marginBottom:6}}>{step}</li>
+            ))}
+          </ol>
+        </div>
+
         {/* Versuch: Presentation API */}
         <button onClick={tryPresentation} disabled={busy}
-          style={{width:'100%',padding:'12px 14px',marginBottom:6,
+          style={{width:'100%',padding:'12px 14px',marginTop:6,marginBottom:6,
             background:busy?T.card2:T.card,
             border:`1px solid ${T.border}`,borderRadius:10,
             color:T.t1,fontSize:13,fontWeight:700,letterSpacing:.2,
@@ -4008,44 +4251,14 @@ function CastSheet({onClose,onEnterBigScreen}){
           <span style={{color:T.o,fontSize:11,fontWeight:900,letterSpacing:1}}>BETA</span>
         </button>
         {err&&(
-          <div style={{color:T.t3,fontSize:11,lineHeight:1.55,marginBottom:12,padding:'0 4px'}}>
+          <div style={{color:T.t3,fontSize:11,lineHeight:1.55,marginBottom:8,padding:'0 4px'}}>
             {err}
           </div>
         )}
         <div style={{color:T.t3,fontSize:10,lineHeight:1.6,marginBottom:14,padding:'0 4px'}}>
-          Funktioniert auf Chrome / Edge im selben WLAN. Auf iOS und macOS
-          läuft Mirroring nur via System-Menü — siehe unten.
+          Funktioniert auf Chrome / Edge im selben WLAN. iOS / macOS nutzen
+          das System-Menü (siehe Anleitung oben).
         </div>
-
-        {/* OS-Anleitungen */}
-        <Card platform="" title="iPhone / iPad — AirPlay"
-          highlighted={family==='apple'&&isIOS}
-          steps={[
-            'Wisch vom oberen rechten Eck nach unten → Kontrollzentrum.',
-            'Tippe auf "Bildschirmsynchronisierung" (zwei sich überlappende Rechtecke).',
-            'Wähle deinen Apple TV / AirPlay-Empfänger aus der Liste.',
-          ]}/>
-        <Card platform="" title="Mac — AirPlay zum Apple TV"
-          highlighted={family==='apple'&&isMac}
-          steps={[
-            'Klick auf das Kontrollzentrum-Icon oben rechts in der Menüleiste.',
-            'Wähle "Bildschirmsynchronisierung".',
-            'Wähle den AirPlay-Empfänger und stimme ggf. den Code ab.',
-          ]}/>
-        <Card platform="" title="Android — Cast / Streamen"
-          highlighted={family==='android'}
-          steps={[
-            'Schnelleinstellungen aufziehen (zweimal von oben wischen).',
-            'Tippe auf "Streamen" / "Smart View" / "Cast".',
-            'Wähle deinen Chromecast oder Smart-TV.',
-          ]}/>
-        <Card platform="" title="Windows — Miracast / Mit Anzeige verbinden"
-          highlighted={family==='windows'}
-          steps={[
-            'Drücke Windows-Taste + K.',
-            'Wähle deinen drahtlosen Bildschirm aus der Liste.',
-            'Falls deine Anzeige nicht erscheint: PC + TV im selben WLAN, Miracast-Empfänger aktivieren.',
-          ]}/>
 
         <button onClick={onClose}
           style={{width:'100%',marginTop:6,padding:'12px',background:T.card2,

@@ -1,4 +1,4 @@
-import { useState, useEffect, useReducer, useCallback, useRef, Fragment } from "react";
+import { useState, useEffect, useLayoutEffect, useReducer, useCallback, useRef, Fragment } from "react";
 import { SKILL_DESCRIPTIONS } from "./skillDescriptions.js";
 import { loadProfile as dbLoadProfile, saveProfile as dbSaveProfile, logMatch as dbLogMatch, loadMatchStats as dbLoadMatchStats,
   createOnlineTournament, joinOnlineTournament, fetchOnlineTournament, updateOnlineTournament, subscribeToTournament,
@@ -2070,6 +2070,46 @@ function TabBar({active,onTab,rightAction,searchable=false,onSearch}){
   const[searchValue,setSearchValue]=useState('');
   const inputRef=useRef(null);
 
+  // ── Liquid-Glass-Pill ──
+  // Refs auf jeden Tab-Button + Container, damit wir die exakte
+  // Position der aktiven Karte messen können. Mouse-Hover (NICHT
+  // Touch) zeigt eine Preview-Position der Pill, damit das Glas
+  // dem Finger/Cursor folgt — analog iOS 26.
+  const navRef=useRef(null);
+  const tabRefs=useRef({});
+  const[hovered,setHovered]=useState(null);
+  const[pill,setPill]=useState({left:0,top:0,width:0,height:0,ready:false});
+  const targetTab=hovered||active;
+
+  // useLayoutEffect, damit die Pill schon im ersten Frame korrekt
+  // sitzt — sonst sähe man sie 1 Tick lang an der falschen Stelle.
+  useLayoutEffect(()=>{
+    const el=tabRefs.current[targetTab];
+    if(!el) return;
+    setPill({
+      left:el.offsetLeft,
+      top:el.offsetTop,
+      width:el.offsetWidth,
+      height:el.offsetHeight,
+      ready:true,
+    });
+  },[targetTab,searchMode]);
+
+  // Resize: TabBar-Layout kann sich z. B. bei Theme-Wechsel oder
+  // Rotation ändern — Pill nachjustieren. ResizeObserver wäre sauberer,
+  // aber window-resize reicht für unser Inline-Layout.
+  useEffect(()=>{
+    const onResize=()=>{
+      const el=tabRefs.current[targetTab];
+      if(!el) return;
+      setPill(p=>({...p,
+        left:el.offsetLeft,top:el.offsetTop,
+        width:el.offsetWidth,height:el.offsetHeight}));
+    };
+    window.addEventListener('resize',onResize);
+    return()=>window.removeEventListener('resize',onResize);
+  },[targetTab]);
+
   // Beim Verlassen des suchbaren Screens: Mode + Query zurücksetzen.
   useEffect(()=>{
     if(!searchable||active!=='settings'){
@@ -2119,11 +2159,24 @@ function TabBar({active,onTab,rightAction,searchable=false,onSearch}){
       bottom:'max(1px, calc(env(safe-area-inset-bottom,0px) - 2px))',
       left:0,right:0,display:'flex',alignItems:'center',justifyContent:'center',gap:10,
       padding:'0 20px',pointerEvents:'none',zIndex:5}}>
-      <div style={{display:'flex',alignItems:'center',gap:2,
+      <div ref={navRef} style={{position:'relative',display:'flex',alignItems:'center',gap:2,
         background:T.card,borderRadius:30,padding:'5px',
         border:`1px solid ${T.border}`,pointerEvents:'auto',
         boxShadow:'0 4px 20px rgba(0,0,0,.6)',
         transition:'padding .25s ease'}}>
+
+        {/* Liquid-Glass-Pill — folgt dem aktiven (bzw. hovered) Tab.
+            position:absolute über transform/width animiert, damit GPU
+            sie übernimmt; spring-easing für das iOS-26-Gefühl. */}
+        <div className="liquid-pill"
+          data-hover={hovered!=null?'true':'false'}
+          style={{
+            transform:`translate(${pill.left}px, ${pill.top}px)`,
+            width:pill.width,
+            height:pill.height,
+            opacity:pill.ready?1:0,
+          }}/>
+
         {tabs.map(({id,label,Icon})=>{
           const isActive=active===id;
           // Im Search-Mode bleibt nur Home sichtbar; Live + Settings
@@ -2131,20 +2184,29 @@ function TabBar({active,onTab,rightAction,searchable=false,onSearch}){
           const hidden=isSearching&&id!=='home';
           return(
             <button key={id} onClick={()=>onTab(id)}
+              ref={el=>{tabRefs.current[id]=el;}}
+              onPointerEnter={e=>{
+                // Nur Maus-Hover → Preview-Position der Pill.
+                // Touch-Devices triggern pointerEnter beim ersten
+                // Berühren — das wäre ein versehentlicher Preview.
+                if(e.pointerType==='mouse'&&!hidden) setHovered(id);
+              }}
+              onPointerLeave={e=>{
+                if(e.pointerType==='mouse') setHovered(null);
+              }}
               style={{display:'flex',alignItems:'center',gap:7,
                 padding:hidden?'10px 0':'10px 14px',
                 maxWidth:hidden?0:200,
                 opacity:hidden?0:1,
                 overflow:'hidden',
                 borderRadius:24,border:'none',cursor:'pointer',
-                background:isActive?T.blueSoft:'transparent',
+                /* Hintergrund ist transparent — die Pill übernimmt
+                   das "Active"-Indicator-Bild. */
+                background:'transparent',
                 color:isActive?T.blue:T.t2,
                 fontSize:11,fontWeight:600,
-                /* Globaler button-Transition kümmert sich um Farbwechsel;
-                   die Search-Mode-Effekte (max-width/padding/opacity)
-                   bleiben explizit, weil sie nicht zur Default-Liste
-                   gehören. */
-                transition:'max-width .25s ease, padding .25s ease, opacity .2s ease, background-color var(--anim-base), color var(--anim-base)'}}>
+                position:'relative',zIndex:1,
+                transition:'max-width .25s ease, padding .25s ease, opacity .2s ease, color var(--anim-base)'}}>
               {/* key=isActive zwingt das Icon-Wrapper-Element zum Remount
                   beim Tab-Wechsel, sodass die Bounce-Animation jedes Mal
                   neu durchläuft. */}
@@ -4861,6 +4923,16 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit,profile,onCreat
   const[numCourts,setNumCourts]=useState(saved?.numCourts||1);
   const[roundDur,setRoundDur]=useState(saved?.roundDurationMin||10);
   const[creatingOnline,setCreatingOnline]=useState(false);
+
+  // Refs auf alle Spieler-Inputs — Enter springt zum nächsten Slot,
+  // damit man die Liste in einem Rutsch durchtippen kann.
+  const playerInputRefs=useRef({});
+  const focusPlayer=(playerId)=>{
+    const el=playerInputRefs.current[playerId];
+    if(!el) return;
+    el.focus();
+    el.select?.();
+  };
   const[onlineError,setOnlineError]=useState('');
   const nextId=useRef(players.reduce((m,p)=>Math.max(m,p.id),0)+1);
 
@@ -5031,6 +5103,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit,profile,onCreat
               borderBottom:i<players.length-1?`1px solid ${T.sep}`:'none',gap:10}}>
               <div style={{width:10,height:10,borderRadius:'50%',background:p.color,flexShrink:0}}/>
               <input value={p.name}
+                ref={el=>{playerInputRefs.current[p.id]=el;}}
                 onChange={e=>renamePlayer(p.id,e.target.value)}
                 onFocus={e=>{
                   // Default-Namen ("Spieler N") räumen wir beim ersten
@@ -5044,6 +5117,22 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit,profile,onCreat
                     // automatisch am Anfang.
                   } else {
                     e.currentTarget.select();
+                  }
+                }}
+                onKeyDown={e=>{
+                  // Enter → zum nächsten Spieler-Slot springen, damit
+                  // man die Liste in einem Rutsch durchtippen kann.
+                  // Beim letzten Slot tut Enter nichts (oder
+                  // blur-aus), damit man nicht versehentlich „Start"
+                  // triggert. Tab funktioniert weiterhin nativ.
+                  if(e.key==='Enter'){
+                    e.preventDefault();
+                    const next=players[i+1];
+                    if(next){
+                      focusPlayer(next.id);
+                    } else {
+                      e.currentTarget.blur();
+                    }
                   }
                 }}
                 placeholder={`Spieler ${i+1}`}

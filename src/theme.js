@@ -510,31 +510,100 @@ input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
    Layout-Reflow auftritt.
 ═══════════════════════════════════════════════════════════════ */
 
-/* Animation-Tokens — Easings + Durations zentralisiert. */
+/* Animation-Tokens — Easings + Durations zentralisiert.
+   Die Easing-Kurven sind so gewählt, dass jede Interaktion sich
+   "fluid" anfühlt — Apple-typisch: schneller Start, sanftes
+   Ausklingen mit minimalem Overshoot. */
 :root{
-  --anim-fast:120ms cubic-bezier(.2,.9,.3,1.2);
-  --anim-base:200ms cubic-bezier(.2,.9,.3,1.05);
-  --anim-slow:320ms cubic-bezier(.16,.84,.44,1);
-  --anim-spring:280ms cubic-bezier(.34,1.56,.64,1);
+  /* Easings */
+  --ease-out-expo:cubic-bezier(.16,1,.3,1);
+  --ease-in-out:cubic-bezier(.65,0,.35,1);
+  --ease-out-back:cubic-bezier(.34,1.56,.64,1);
+  --ease-out-smooth:cubic-bezier(.22,.95,.34,1);
+  /* Komposite Duration-Easing Pairs */
+  --anim-fast:140ms var(--ease-out-smooth);
+  --anim-base:220ms var(--ease-out-expo);
+  --anim-slow:380ms var(--ease-out-expo);
+  --anim-spring:320ms var(--ease-out-back);
+  --anim-pill:420ms var(--ease-out-back);
 }
 
 /* Jeder Button bekommt smooth transitions auf seinen visuellen
    Eigenschaften, plus einen Press-Scale beim active-State. Inline-
    Styles in App.jsx ändern Farbe/Border/Background per onPointerDown
-   — der globale transition-Eintrag macht jeden dieser Wechsel weich. */
+   — der globale transition-Eintrag macht jeden dieser Wechsel weich.
+
+   Easings sind unterschiedlich pro Property:
+     - transform → spring-back (Drücken/Loslassen fühlt sich elastisch an)
+     - background/border/color → schneller smooth-out (200ms)
+     - box-shadow → etwas langsamer (snobby Tiefenwechsel) */
 button{
   transition:
-    transform var(--anim-fast),
-    background-color var(--anim-base),
-    color var(--anim-base),
-    border-color var(--anim-base),
-    box-shadow var(--anim-base),
-    opacity var(--anim-base);
+    transform 180ms var(--ease-out-back),
+    background-color 220ms var(--ease-out-expo),
+    color 220ms var(--ease-out-expo),
+    border-color 220ms var(--ease-out-expo),
+    box-shadow 260ms var(--ease-out-expo),
+    opacity 200ms var(--ease-out-expo);
   -webkit-tap-highlight-color:transparent;
   touch-action:manipulation;
+  will-change:transform;
 }
-button:active:not(:disabled){transform:scale(.97);}
+button:active:not(:disabled){transform:scale(.96);}
 button:disabled{cursor:not-allowed;opacity:.55;}
+
+/* Liquid-Glass-Pill für die TabBar:
+   - backdrop-filter: glas-getönt mit erhöhter Sättigung
+   - subtle Highlight an der Oberkante (innen),
+   - sanfte Lichtbrechung über Glas-Gradient,
+   - weiche Drop-Shadow trägt das Element optisch nach vorne.
+   Position+Größe werden in App.jsx via Refs auf den aktiven Tab
+   gemessen und mit transform/width animiert. */
+.liquid-pill{
+  position:absolute;
+  border-radius:24px;
+  background:linear-gradient(135deg,
+    rgba(255,255,255,.10) 0%,
+    rgba(255,255,255,.04) 50%,
+    rgba(255,255,255,.08) 100%);
+  border:1px solid rgba(255,255,255,.16);
+  backdrop-filter:blur(20px) saturate(180%);
+  -webkit-backdrop-filter:blur(20px) saturate(180%);
+  box-shadow:
+    0 4px 14px rgba(0,0,0,.25),
+    inset 0 1px 0 rgba(255,255,255,.28),
+    inset 0 -1px 0 rgba(0,0,0,.18);
+  pointer-events:none;
+  transition:
+    transform var(--anim-pill),
+    width var(--anim-pill),
+    opacity 220ms var(--ease-out-expo),
+    box-shadow 260ms var(--ease-out-expo);
+  will-change:transform,width;
+}
+.liquid-pill[data-hover="true"]{
+  box-shadow:
+    0 6px 22px rgba(0,0,0,.32),
+    inset 0 1px 0 rgba(255,255,255,.42),
+    inset 0 -1px 0 rgba(0,0,0,.14);
+}
+/* Themed tint — light themes brauchen einen dunkleren Tönungsanteil,
+   damit das Glas nicht weiß-auf-weiß wäre. Die App setzt data-theme
+   am html-Element; wir hängen den Tönungs-Override daran. */
+:root[data-theme="light"] .liquid-pill,
+:root[data-theme="padel"] .liquid-pill,
+:root[data-theme="wimbledon"] .liquid-pill,
+:root[data-theme="funky"] .liquid-pill{
+  background:linear-gradient(135deg,
+    rgba(0,0,0,.06) 0%,
+    rgba(0,0,0,.02) 50%,
+    rgba(0,0,0,.06) 100%);
+  border:1px solid rgba(0,0,0,.10);
+  box-shadow:
+    0 4px 14px rgba(0,0,0,.10),
+    inset 0 1px 0 rgba(255,255,255,.55),
+    inset 0 -1px 0 rgba(0,0,0,.06);
+}
 
 /* Inputs animieren ihren Focus-State sanft. */
 input,textarea,select{

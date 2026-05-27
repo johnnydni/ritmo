@@ -32,7 +32,7 @@ import {
   HeroRulesVisual, HeroJourneyVisual,
   // Settings + RITMO Post line-art icons
   SteeringWheelIcon, PaletteIcon, EyeIcon, BellIcon, LockIcon, DoorOutIcon,
-  ChevronRightIcon, RitmoPostIcon,
+  ChevronRightIcon, RitmoPostIcon, AirPlayIcon,
 } from "./icons.jsx";
 import { PADEL_STYLES, PADEL_QUIZ, computeStyle, STYLE_IMAGES } from "./padelStyles.js";
 
@@ -3026,6 +3026,7 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
   const isB=cfg.format==='bo3';
   const[flA,setFA]=useState(false);const[flB,setFB]=useState(false);
   const[confReset,setConfReset]=useState(false);
+  const[castSheet,setCastSheet]=useState(false);
   const[bigScreen,setBigScreen]=useState(false);
   // Zoom-Level im BigScreen: skaliert alle Anzeige-Größen (Score, Sätze,
   // Game-Count, Service-Indikator). Zyklus 1 → 1.5 → 2 → 0.5 → 1.
@@ -3800,6 +3801,34 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
           );
         })()}
 
+        {/* Anzeigetafel verbinden — öffnet ein Sheet mit AirPlay / Cast /
+            Miracast-Anleitung, weil Browser keinen direkten Mirror-API-
+            Aufruf erlauben. Die Card bleibt zwischen Verlauf und Timer
+            sichtbar; tap → CastSheet. */}
+        <button onClick={()=>setCastSheet(true)}
+          style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:12,
+            padding:'12px 14px',display:'flex',alignItems:'center',gap:12,
+            color:T.t1,textAlign:'left',cursor:'pointer',
+            transition:'background .15s'}}
+          onPointerDown={e=>e.currentTarget.style.background=T.card2}
+          onPointerUp={e=>e.currentTarget.style.background=T.card}
+          onPointerLeave={e=>e.currentTarget.style.background=T.card}>
+          <div style={{flexShrink:0,width:38,height:38,borderRadius:10,
+            background:T.card2,border:`1px solid ${T.border}`,color:T.o,
+            display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <AirPlayIcon size={20} color="currentColor"/>
+          </div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{color:T.t1,fontSize:14,fontWeight:700,letterSpacing:-.1,marginBottom:2}}>
+              Anzeigetafel verbinden
+            </div>
+            <div style={{color:T.t3,fontSize:11,fontWeight:500,lineHeight:1.45}}>
+              Score per AirPlay · Cast · Miracast auf einen großen Bildschirm spiegeln.
+            </div>
+          </div>
+          <ChevronRightIcon size={18} color={T.t3}/>
+        </button>
+
         {/* Timer (Americano only) */}
         {!isB&&(
           <TimerCard
@@ -3830,7 +3859,201 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
         ]}/>
 
       {confReset&&<ResetModal onCancel={()=>setConfReset(false)} onConfirm={()=>{reset();setConfReset(false);}}/>}
+      {castSheet&&<CastSheet onClose={()=>setCastSheet(false)} onEnterBigScreen={()=>{setCastSheet(false);setBigScreen(true);}}/>}
       <HintToast/>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CAST SHEET — "Anzeigetafel verbinden"
+
+   Browser können nicht programmatisch eine OS-weite Bildschirm-
+   spiegelung auslösen — AirPlay (iOS/macOS), Cast (Android/Chrome)
+   und Miracast (Windows) sind System-Features. Wir bieten daher:
+     1. Plattform-Erkennung via userAgent → markieren die für den User
+        relevante Anleitung visuell.
+     2. Best-Effort-Versuch via Presentation API / Remote Playback API
+        (funktioniert auf Chrome mit ausgewähltem Cast-Receiver).
+     3. Schritt-für-Schritt-Hinweise für alle drei OS-Familien.
+     4. Direkt-Tip: BigScreen-Modus aktivieren, *bevor* gemirrort wird —
+        so erscheint auf der Anzeigetafel sofort das große Layout.
+═══════════════════════════════════════════════════════════════ */
+function CastSheet({onClose,onEnterBigScreen}){
+  // Plattform-Erkennung — bewusst defensiv (userAgent kann gefälscht
+  // sein), nur für UI-Highlight. Die Hinweise selbst zeigen wir immer
+  // alle drei an, damit auch falsch erkannte Geräte nichts vermissen.
+  const ua=typeof navigator!=='undefined'?(navigator.userAgent||''):'';
+  const isIOS=/iPad|iPhone|iPod/.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  const isMac=!isIOS&&/Macintosh/.test(ua);
+  const isAndroid=/Android/i.test(ua);
+  const isWin=/Windows/i.test(ua);
+
+  // Detected family — used to bump one card to the top of the list.
+  const family=isIOS?'apple':isMac?'apple':isAndroid?'android':isWin?'windows':'unknown';
+
+  const[busy,setBusy]=useState(false);
+  const[err,setErr]=useState('');
+
+  // Best-Effort-Cast-Versuch: Presentation API fragt Chromecast-Receiver
+  // im LAN ab. Auf iOS Safari ist die API nicht implementiert — dort
+  // bleibt nur der Hinweis "Kontrollzentrum öffnen".
+  const tryPresentation=async()=>{
+    if(busy) return;
+    setErr('');
+    setBusy(true);
+    try{
+      if(typeof window==='undefined'||!('PresentationRequest' in window)){
+        setErr('Dein Browser unterstützt keinen direkten Bildschirm-Stream. Nutze die OS-Anleitung unten.');
+        return;
+      }
+      // Wir würden eigentlich eine zweite "Receiver-Page" URL brauchen;
+      // als Fallback streamen wir die aktuelle URL (Receiver lädt die
+      // App als Mirror neu). Mehr Aufwand wäre nötig für eine echte
+      // Cast-Receiver-App.
+      const req=new window.PresentationRequest([window.location.href]);
+      await req.start();
+      setBusy(false);
+      onClose();
+    }catch(e){
+      setErr(e?.message||'Kein Bildschirm gefunden. Nutze die OS-Anleitung.');
+      setBusy(false);
+    }
+  };
+
+  const Card=({platform,title,steps,highlighted})=>(
+    <div style={{
+      background:highlighted?T.card2:T.card,
+      border:`1px solid ${highlighted?T.o:T.border}`,
+      borderRadius:12,padding:'14px 16px',marginBottom:10}}>
+      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
+        <span style={{fontSize:16}}>{platform}</span>
+        <div style={{color:T.t1,fontSize:13,fontWeight:800,letterSpacing:.2,flex:1}}>{title}</div>
+        {highlighted&&(
+          <span style={{color:T.o,fontSize:9,fontWeight:900,letterSpacing:1.4,
+            textTransform:'uppercase',padding:'2px 7px',background:T.oSoft,
+            border:`1px solid ${T.o}`,borderRadius:6}}>
+            Dein Gerät
+          </span>
+        )}
+      </div>
+      <ol style={{margin:0,paddingLeft:18,color:T.t2,fontSize:12,lineHeight:1.6}}>
+        {steps.map((s,i)=>(<li key={i} style={{marginBottom:3}}>{s}</li>))}
+      </ol>
+    </div>
+  );
+
+  return(
+    <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:220,
+      background:'rgba(0,0,0,.7)',backdropFilter:'blur(4px)',
+      display:'flex',alignItems:'flex-end',justifyContent:'center',
+      animation:'fadeIn .15s ease'}}>
+      <div onClick={e=>e.stopPropagation()} className="si"
+        style={{background:T.bg,border:`1px solid ${T.border}`,
+          borderTopLeftRadius:20,borderTopRightRadius:20,
+          width:'100%',maxWidth:520,maxHeight:'88vh',overflowY:'auto',
+          padding:'20px 22px calc(env(safe-area-inset-bottom,0px) + 22px)',
+          boxShadow:'0 -8px 30px rgba(0,0,0,.5)'}}>
+
+        {/* Drag handle */}
+        <div style={{width:38,height:4,borderRadius:2,background:T.border,
+          margin:'0 auto 14px'}}/>
+
+        {/* Hero */}
+        <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:14}}>
+          <div style={{width:48,height:48,borderRadius:12,background:T.card,
+            border:`1px solid ${T.border}`,color:T.o,
+            display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <AirPlayIcon size={26} color="currentColor"/>
+          </div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{color:T.t1,fontSize:18,fontWeight:800,letterSpacing:-.2}}>
+              Anzeigetafel verbinden
+            </div>
+            <div style={{color:T.t3,fontSize:12,marginTop:2,lineHeight:1.5}}>
+              Spiegel den Score auf TV, Beamer oder zweiten Monitor.
+            </div>
+          </div>
+        </div>
+
+        {/* Pro-Tip: BigScreen zuerst */}
+        <div style={{background:T.oSoft,border:`1px solid ${T.o}`,borderRadius:12,
+          padding:'12px 14px',marginBottom:14,display:'flex',alignItems:'flex-start',gap:10}}>
+          <span style={{color:T.o,fontSize:14,lineHeight:1.4,flexShrink:0}}>★</span>
+          <div style={{color:T.t1,fontSize:12,lineHeight:1.55}}>
+            <strong style={{color:T.o,fontWeight:800}}>Tipp:</strong> Aktiviere
+            zuerst den BigScreen-Modus, dann starte die Bildschirmspiegelung.
+            So zeigt die Anzeigetafel direkt die XXL-Score-Optik.
+            <div style={{marginTop:8}}>
+              <button onClick={onEnterBigScreen}
+                style={{background:T.o,border:'none',borderRadius:8,
+                  padding:'8px 12px',color:'#000',fontSize:11,fontWeight:800,
+                  letterSpacing:.3,cursor:'pointer'}}>
+                BigScreen einschalten →
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Versuch: Presentation API */}
+        <button onClick={tryPresentation} disabled={busy}
+          style={{width:'100%',padding:'12px 14px',marginBottom:6,
+            background:busy?T.card2:T.card,
+            border:`1px solid ${T.border}`,borderRadius:10,
+            color:T.t1,fontSize:13,fontWeight:700,letterSpacing:.2,
+            cursor:busy?'not-allowed':'pointer',opacity:busy?.6:1,
+            textAlign:'left',
+            display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
+          <span>{busy?'Suche Geräte …':'Geräte im Netzwerk suchen'}</span>
+          <span style={{color:T.o,fontSize:11,fontWeight:900,letterSpacing:1}}>BETA</span>
+        </button>
+        {err&&(
+          <div style={{color:T.t3,fontSize:11,lineHeight:1.55,marginBottom:12,padding:'0 4px'}}>
+            {err}
+          </div>
+        )}
+        <div style={{color:T.t3,fontSize:10,lineHeight:1.6,marginBottom:14,padding:'0 4px'}}>
+          Funktioniert auf Chrome / Edge im selben WLAN. Auf iOS und macOS
+          läuft Mirroring nur via System-Menü — siehe unten.
+        </div>
+
+        {/* OS-Anleitungen */}
+        <Card platform="" title="iPhone / iPad — AirPlay"
+          highlighted={family==='apple'&&isIOS}
+          steps={[
+            'Wisch vom oberen rechten Eck nach unten → Kontrollzentrum.',
+            'Tippe auf "Bildschirmsynchronisierung" (zwei sich überlappende Rechtecke).',
+            'Wähle deinen Apple TV / AirPlay-Empfänger aus der Liste.',
+          ]}/>
+        <Card platform="" title="Mac — AirPlay zum Apple TV"
+          highlighted={family==='apple'&&isMac}
+          steps={[
+            'Klick auf das Kontrollzentrum-Icon oben rechts in der Menüleiste.',
+            'Wähle "Bildschirmsynchronisierung".',
+            'Wähle den AirPlay-Empfänger und stimme ggf. den Code ab.',
+          ]}/>
+        <Card platform="" title="Android — Cast / Streamen"
+          highlighted={family==='android'}
+          steps={[
+            'Schnelleinstellungen aufziehen (zweimal von oben wischen).',
+            'Tippe auf "Streamen" / "Smart View" / "Cast".',
+            'Wähle deinen Chromecast oder Smart-TV.',
+          ]}/>
+        <Card platform="" title="Windows — Miracast / Mit Anzeige verbinden"
+          highlighted={family==='windows'}
+          steps={[
+            'Drücke Windows-Taste + K.',
+            'Wähle deinen drahtlosen Bildschirm aus der Liste.',
+            'Falls deine Anzeige nicht erscheint: PC + TV im selben WLAN, Miracast-Empfänger aktivieren.',
+          ]}/>
+
+        <button onClick={onClose}
+          style={{width:'100%',marginTop:6,padding:'12px',background:T.card2,
+            border:`1px solid ${T.border}`,borderRadius:10,
+            color:T.t2,fontSize:13,fontWeight:700,cursor:'pointer'}}>
+          Schließen
+        </button>
+      </div>
     </div>
   );
 }

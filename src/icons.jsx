@@ -510,6 +510,20 @@ export function ChevronRightIcon({size=18,color='currentColor'}){
   </svg>);
 }
 
+// AirPlay-Style "Cast"-Icon — Rechteck oben (Bildschirm) + Dreieck
+// unten (Stream-Pfeil). Funktioniert auch ohne Vendor-Brand-Kontext
+// als "Display-Mirror"-Sigil; auf Android/Win wird dieselbe Card für
+// Miracast/Cast-to-Device verwendet.
+export function AirPlayIcon({size=22,color='currentColor'}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke={color} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+    {/* TV-Rahmen oben — offen an der Unterkante, damit das Dreieck "rein-streamt" */}
+    <path d="M5 16H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-1"/>
+    {/* Stream-Dreieck */}
+    <polygon points="12 14 17 20 7 20" fill={color} stroke="none"/>
+  </svg>);
+}
+
 // RITMO Post — Mash aus Glocke + Chat-Bubble, line art.
 // Die Glocke sitzt rechts-unten als Notification-Sigil über der Chat-Bubble.
 export function RitmoPostIcon({size=24,color='currentColor'}){

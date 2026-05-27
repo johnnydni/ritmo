@@ -3543,8 +3543,61 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
           )}
         </div>
 
-        {/* Home bottom-left */}
-        <div style={{position:'absolute',bottom:18,left:18}}>
+        {/* Padelhaus-Sponsor-Banner — nur im Padelhaus-Blue-Theme.
+            Sitzt am unteren Rand wie ein Court-Werbebanner, full-width.
+            Die Bottom-Buttons (Home / Reset / Zoom / Exit) sind 42 px
+            hoch und 18 px vom Rand — schweben damit visuell über dem
+            Banner an den Ecken, wie Schiedsrichter, die am LED-Strip
+            vorbeilaufen. pointer-events:none, damit es nichts blockt. */}
+        {theme==='padel'&&(
+          <div aria-hidden="true"
+            style={{position:'absolute',left:0,right:0,bottom:0,height:44,
+              background:T.o,color:'#000018',
+              display:'flex',alignItems:'center',justifyContent:'center',
+              gap:14,
+              borderTop:'2px solid #000018',
+              borderBottom:'2px solid #000018',
+              boxShadow:'0 -6px 24px rgba(0,0,0,0.35)',
+              fontFamily:'-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Neue",sans-serif',
+              letterSpacing:0.4,
+              pointerEvents:'none',
+              zIndex:0,
+              overflow:'hidden'}}>
+            {/* LED-Punkte links — kleines Detail, das den Stadion-Look
+                trägt ohne abzulenken. */}
+            <div style={{display:'flex',gap:5,opacity:0.55}}>
+              <span style={{width:6,height:6,background:'#000018',borderRadius:'50%'}}/>
+              <span style={{width:6,height:6,background:'#000018',borderRadius:'50%'}}/>
+              <span style={{width:6,height:6,background:'#000018',borderRadius:'50%'}}/>
+            </div>
+
+            {/* RITMO Wordmark — bewusst inline-stilisiert (statt der
+                normalen RitmoWordmark-PNG), damit das italic-Bold sicher
+                über dem gelben Strip in tiefem Padelhaus-Blau sitzt. */}
+            <span style={{fontWeight:900,fontStyle:'italic',fontSize:22,
+              letterSpacing:1.5,lineHeight:1}}>RITMO</span>
+
+            {/* Cross-Symbol — normale Schrift, etwas kleiner. */}
+            <span style={{fontWeight:500,fontSize:18,opacity:0.65,lineHeight:1}}>×</span>
+
+            {/* "Padel Haus" — explizit normale Schriftweite gemäß Wunsch. */}
+            <span style={{fontWeight:400,fontSize:18,letterSpacing:1.2,lineHeight:1}}>
+              Padel&nbsp;Haus
+            </span>
+
+            <div style={{display:'flex',gap:5,opacity:0.55}}>
+              <span style={{width:6,height:6,background:'#000018',borderRadius:'50%'}}/>
+              <span style={{width:6,height:6,background:'#000018',borderRadius:'50%'}}/>
+              <span style={{width:6,height:6,background:'#000018',borderRadius:'50%'}}/>
+            </div>
+          </div>
+        )}
+
+        {/* Home bottom-left.
+            Im Padelhaus-Theme rutschen die Bottom-Controls 40 px nach
+            oben, damit sie über dem 44 px Werbebanner schweben statt
+            ihn anzufressen. */}
+        <div style={{position:'absolute',bottom:theme==='padel'?58:18,left:18}}>
           <button onClick={onHome}
             style={{width:42,height:42,borderRadius:'50%',
               background:T.card,border:`1px solid ${T.border}`,
@@ -3556,7 +3609,7 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
         </div>
 
         {/* Reset + Max + Exit Big Screen bottom-right */}
-        <div style={{position:'absolute',bottom:18,right:18,display:'flex',gap:10}}>
+        <div style={{position:'absolute',bottom:theme==='padel'?58:18,right:18,display:'flex',gap:10}}>
           <button onClick={()=>setConfReset(true)}
             style={{width:42,height:42,borderRadius:'50%',
               background:'rgba(232,69,69,0.12)',border:`1px solid rgba(232,69,69,0.5)`,

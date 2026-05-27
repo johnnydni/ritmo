@@ -2806,7 +2806,7 @@ function SetupHero({icon,title,desc,accent}){
   );
 }
 
-function SingleSetup({nav,onHome,cfg,setCfg,profile}){
+function SingleSetup({nav,onHome,cfg,setCfg,profile,currentUid}){
   const userName=profile?.name||'';
   // Spielername-Slots: User belegt Slot 0 (sein Profil), die übrigen
   // bleiben leer und zeigen als „Beitreten"-Slot mit + und Invite-CTA.
@@ -2824,7 +2824,33 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
     }
     return [userName,'','',''];
   });
-  const setPlayer=(idx,val)=>setPlayers(p=>p.map((v,i)=>i===idx?val:v));
+  // Pro Slot ein optionaler user_id-String (wenn der eingeladene
+  // Spieler ein Account in der App hat). Wird beim Auswählen aus den
+  // Folger-Vorschlägen gefüllt — damit das Match später auch für die
+  // Mitspieler:innen geloggt werden kann (Cross-Device-Logging).
+  const[playerUserIds,setPlayerUserIds]=useState(()=>{
+    if(cfg.playerUserIds&&cfg.playerUserIds.length===4) return [...cfg.playerUserIds];
+    // Slot 0 ist immer der eingeloggte User
+    return [currentUid||null,null,null,null];
+  });
+  // currentUid kann sich nach Login aktualisieren — Slot 0 stets
+  // synchron halten.
+  useEffect(()=>{
+    if(!currentUid) return;
+    setPlayerUserIds(arr=>{
+      if(arr[0]===currentUid) return arr;
+      const next=[...arr]; next[0]=currentUid; return next;
+    });
+  },[currentUid]);
+  const setPlayer=(idx,val,uid=undefined)=>{
+    setPlayers(p=>p.map((v,i)=>i===idx?val:v));
+    if(uid!==undefined){
+      setPlayerUserIds(arr=>arr.map((v,i)=>i===idx?(uid||null):v));
+    } else if(!val){
+      // Wenn der Name gelöscht wird, auch das user_id-Mapping leeren
+      setPlayerUserIds(arr=>arr.map((v,i)=>i===idx?(i===0?currentUid||null:null):v));
+    }
+  };
 
   const[fmt,setFmt]=useState(cfg.format||'bo3');
   const[amLim,setAmLim]=useState(cfg.amLimit??21);
@@ -2834,8 +2860,24 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
   // damit der Match-Screen es auswerten kann.
   const[matchType,setMatchType]=useState(cfg.matchType||'friendly');
 
+  // Eindeutige Match-Session-ID — bestückt die QR-/Deep-Link-URL.
+  // Bleibt stabil über die gesamte SingleSetup-Mount-Dauer, damit ein
+  // bereits geteilter Code beim erneuten Öffnen eines Slots NICHT
+  // ungültig wird. crypto.randomUUID() ist in modernen Browsern
+  // verfügbar; Fallback auf eine kurze Random-Hex-Konstruktion.
+  const[matchSessionId]=useState(()=>{
+    if(cfg.matchSessionId) return cfg.matchSessionId;
+    try{
+      if(typeof crypto!=='undefined'&&crypto.randomUUID) return crypto.randomUUID();
+    }catch{}
+    return 'm-'+Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);
+  });
+
   // Slot, der gerade editiert/eingeladen wird (für InviteModal).
   const[inviteSlot,setInviteSlot]=useState(null);
+  // QR-Scanner Overlay-Status (host-side für Scan eines fremden QR).
+  const[scannerOpen,setScannerOpen]=useState(false);
+  const[scanInfo,setScanInfo]=useState('');
 
   // Computed team display names (used during scoring). Leere Slots
   // fallen auf eine generische Beschriftung zurück, damit das Match-
@@ -3055,8 +3097,9 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
           // Americano ist immer friendly — egal was der User vorher
           // im Wettkampf/Friendly-Picker gewählt hatte.
           const finalMatchType = fmt==='bo3' ? matchType : 'friendly';
-          setCfg({players,nameA:teamA,nameB:teamB,format:fmt,amLimit:amLim,
-            goldenPointAfter:gpAfter,matchType:finalMatchType});
+          setCfg({players,playerUserIds,nameA:teamA,nameB:teamB,format:fmt,
+            amLimit:amLim,goldenPointAfter:gpAfter,
+            matchType:finalMatchType,matchSessionId});
           nav('match');
         },
         style:{
@@ -3073,11 +3116,78 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
           slotIndex={inviteSlot}
           isUserSlot={inviteSlot===0}
           currentName={players[inviteSlot]||''}
+          matchSessionId={matchSessionId}
+          currentUid={currentUid}
+          // Slots, die bereits belegt sind (mit user_id) — diese
+          // werden in der Vorschlagsliste ausgeblendet, damit man
+          // niemanden zweimal einlädt.
+          excludeUserIds={playerUserIds.filter(u=>u&&u!==playerUserIds[inviteSlot])}
+          onOpenScanner={()=>{setInviteSlot(null);setScannerOpen(true);}}
           onClose={()=>setInviteSlot(null)}
-          onSetName={(n)=>{setPlayer(inviteSlot,n);setInviteSlot(null);}}/>
+          onPickPlayer={(name,uid)=>{setPlayer(inviteSlot,name,uid||null);setInviteSlot(null);}}/>
+      )}
+
+      {scannerOpen&&(
+        <QRScannerModal
+          onResult={(text)=>{
+            // Match-Session-ID aus dem Scan rauspuhlen — akzeptiert
+            // sowohl `?match=<id>` als auch eine rohe Session-ID.
+            const sid=extractMatchSessionFromScan(text);
+            setScannerOpen(false);
+            if(sid){
+              if(sid===matchSessionId){
+                setScanInfo('Das ist deine eigene Session.');
+              } else {
+                // Cross-Device-Join — wird in einer Folge-PR mit
+                // Realtime-Sync umgesetzt; aktuell zeigen wir nur
+                // einen Hinweis. URL-basiertes Routing greift, wenn
+                // der User die URL in seiner installierten Web.App
+                // öffnet.
+                setScanInfo(`Match-Session erkannt: ${sid.slice(0,8)}… — öffne den Einladungslink in deiner App, um beizutreten.`);
+              }
+              setTimeout(()=>setScanInfo(''),5000);
+            } else {
+              setScanInfo('Kein RITMO-Match in diesem QR.');
+              setTimeout(()=>setScanInfo(''),3500);
+            }
+          }}
+          onClose={()=>setScannerOpen(false)}/>
+      )}
+
+      {scanInfo&&(
+        <div style={{position:'fixed',
+          bottom:'calc(env(safe-area-inset-bottom,0px) + 90px)',
+          left:'50%',transform:'translateX(-50%)',zIndex:240,
+          background:T.card,border:`1px solid ${T.o}`,borderRadius:10,
+          padding:'10px 14px',color:T.t1,fontSize:12,fontWeight:600,
+          maxWidth:340,textAlign:'center',
+          boxShadow:'0 8px 30px rgba(0,0,0,.5)'}}>
+          {scanInfo}
+        </div>
       )}
     </div>
   );
+}
+
+/* Hilfsfunktion: Match-Session-ID aus dem QR-Decode rauspuhlen.
+   Akzeptiert sowohl die App-URL mit ?match=<id> (inkl. ggf.
+   ?join=match&session=<id>) als auch eine rohe UUID/Random-ID. */
+function extractMatchSessionFromScan(text){
+  if(!text) return null;
+  const candidate=String(text).trim();
+  try{
+    const u=new URL(candidate);
+    const direct=u.searchParams.get('match');
+    if(direct) return direct.trim();
+    if(u.searchParams.get('join')==='match'){
+      const sess=u.searchParams.get('session');
+      if(sess) return sess.trim();
+    }
+  }catch{}
+  // Roh — UUID-like (8-4-4-4-12) oder m-<random>
+  if(/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(candidate)) return candidate;
+  if(/^m-[a-z0-9]{6,}$/.test(candidate)) return candidate;
+  return null;
 }
 
 /* ─── MatchTypePicker — swipeable Wettkampf vs Friendly Karte ────
@@ -3206,40 +3316,70 @@ function MatchTypePicker({value,onChange}){
 
 /* ─── InviteSlotSheet — Modal für Player-Slot ────────────────────
    Tap auf einen leeren oder gefüllten Slot öffnet dieses Sheet.
-   - User-Slot (0): nur Hinweis, dass das der eigene Account ist
-     (sonst ist der User-Avatar weg)
-   - andere Slots: Name eingeben ODER Einladungslink teilen
-═══════════════════════════════════════════════════════════════ */
-function InviteSlotSheet({slotIndex,isUserSlot,currentName,onClose,onSetName}){
-  const[name,setName]=useState(currentName||'');
-  const[copied,setCopied]=useState(false);
 
-  // Einladungslink — derzeit eine simple Deep-Link-URL auf den App-
-  // Origin mit ?join=<slot>. Echte Invite-Mechanik (Pairing,
-  // Counter) folgt; für jetzt teilbar als Hinweis-Link.
+   Reihenfolge (Top→Bottom):
+     1. Name-Eingabefeld + Übernehmen-Button
+     2. Vorschlagsliste — als Erstes Accounts, denen man folgt;
+        Tap → Slot wird mit Name + user_id gefüllt
+     3. QR-Code mit der eindeutigen Match-Session-URL
+     4. QR-Scanner-Icon (öffnet die Kamera in-app, nicht Browser)
+   Der frühere „Einladungslink teilen"-Button ist entfernt.
+═══════════════════════════════════════════════════════════════ */
+function InviteSlotSheet({slotIndex,isUserSlot,currentName,matchSessionId,
+  currentUid,excludeUserIds=[],onClose,onPickPlayer,onOpenScanner}){
+  const[name,setName]=useState(currentName||'');
+  const[following,setFollowing]=useState([]);
+  const[followLoading,setFollowLoading]=useState(false);
+
+  // Followed Accounts laden — Slot 0 ist das eigene Profil, dort
+  // brauchen wir keine Vorschläge.
+  useEffect(()=>{
+    if(isUserSlot||!currentUid) return;
+    let cancelled=false;
+    setFollowLoading(true);
+    listFollowing(currentUid,{limit:100})
+      .then(rows=>{ if(!cancelled){
+        // _attachProfiles hängt das Profil unter `profile` an — wir
+        // brauchen user_id + display_name + avatar.
+        const exclude=new Set(excludeUserIds.filter(Boolean));
+        const list=(rows||[])
+          .map(r=>({
+            user_id:r.followee_id,
+            name:r.profile?.display_name||r.profile?.data?.name||'',
+            avatar:r.profile?.data?.avatar||null,
+          }))
+          .filter(p=>p.user_id&&p.name&&!exclude.has(p.user_id));
+        setFollowing(list);
+      } })
+      .finally(()=>{ if(!cancelled) setFollowLoading(false); });
+    return()=>{cancelled=true;};
+  // excludeUserIds intentionally not a dep — sonst flackert die Liste
+  // bei jeder Sheet-Öffnung neu. Mount-once reicht.
+  // eslint-disable-next-line
+  },[isUserSlot,currentUid]);
+
+  // Unique Invite-URL — bindet die Session-ID an, sodass der Empfänger
+  // beim Scannen direkt in dieser Match-Session landet (Routing in
+  // einer Folge-PR).
   const inviteUrl=(()=>{
     try{
       const origin=typeof window!=='undefined'?window.location.origin:'';
       const base=(typeof window!=='undefined'&&window.__BASE__)||'/';
-      return `${origin}${base}?join=match&slot=${slotIndex+1}`;
+      return `${origin}${base}?match=${encodeURIComponent(matchSessionId||'')}&slot=${slotIndex+1}`;
     }catch{ return ''; }
   })();
 
-  const share=async()=>{
-    if(typeof navigator==='undefined') return;
-    const payload={
-      title:'RITMO Match',
-      text:`Komm spiel mit — du bist als Spieler ${slotIndex+1} eingeladen.`,
-      url:inviteUrl,
-    };
-    try{
-      if(navigator.share) await navigator.share(payload);
-      else if(navigator.clipboard){
-        await navigator.clipboard.writeText(inviteUrl);
-        setCopied(true);
-        setTimeout(()=>setCopied(false),1600);
-      }
-    }catch{}
+  // QR-Image via api.qrserver.com (bereits in CSP whitelist). Render
+  // mit weißem Hintergrund + schwarzen Modulen für maximale
+  // Scan-Robustheit, egal welches Theme aktiv ist.
+  const qrSrc=inviteUrl
+    ? `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(inviteUrl)}&size=220x220&bgcolor=ffffff&color=000000&margin=8`
+    : '';
+
+  const finishWith=(n,uid)=>{
+    const trimmed=(n||'').trim();
+    if(!trimmed) return;
+    onPickPlayer(trimmed,uid||null);
   };
 
   return(
@@ -3250,7 +3390,7 @@ function InviteSlotSheet({slotIndex,isUserSlot,currentName,onClose,onSetName}){
       <div onClick={e=>e.stopPropagation()} className="si"
         style={{background:T.bg,border:`1px solid ${T.border}`,
           borderTopLeftRadius:20,borderTopRightRadius:20,
-          width:'100%',maxWidth:520,
+          width:'100%',maxWidth:520,maxHeight:'92vh',overflowY:'auto',
           padding:'20px 22px calc(env(safe-area-inset-bottom,0px) + 22px)',
           boxShadow:'0 -8px 30px rgba(0,0,0,.5)'}}>
 
@@ -3263,9 +3403,10 @@ function InviteSlotSheet({slotIndex,isUserSlot,currentName,onClose,onSetName}){
         <div style={{color:T.t3,fontSize:12,lineHeight:1.5,marginBottom:14}}>
           {isUserSlot
             ?'Slot 1 ist dein Account. Du kannst den Namen anpassen, wie er im Match angezeigt wird.'
-            :'Trag den Namen ein oder teile einen Einladungslink.'}
+            :'Tippe einen Account aus deinen Folgen an, scanne einen QR-Code, oder trag den Namen manuell ein.'}
         </div>
 
+        {/* Name + Übernehmen */}
         <div style={{color:T.o,fontSize:10,fontWeight:800,letterSpacing:1.4,
           textTransform:'uppercase',marginBottom:6}}>Name</div>
         <input value={name} onChange={e=>setName(e.target.value)}
@@ -3274,10 +3415,9 @@ function InviteSlotSheet({slotIndex,isUserSlot,currentName,onClose,onSetName}){
           placeholder={isUserSlot?'Dein Name':'Name eingeben'}
           style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
             borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:15,fontWeight:600,
-            outline:'none',boxSizing:'border-box',marginBottom:12}}/>
-
-        <button onClick={()=>onSetName(name.trim())} disabled={!name.trim()}
-          style={{width:'100%',padding:'12px 14px',marginBottom:isUserSlot?12:8,
+            outline:'none',boxSizing:'border-box',marginBottom:10}}/>
+        <button onClick={()=>finishWith(name)} disabled={!name.trim()}
+          style={{width:'100%',padding:'12px 14px',marginBottom:14,
             background:name.trim()?T.o:T.card2,
             border:name.trim()?'none':`1px solid ${T.border}`,borderRadius:10,
             color:name.trim()?'#000':T.t3,
@@ -3288,37 +3428,122 @@ function InviteSlotSheet({slotIndex,isUserSlot,currentName,onClose,onSetName}){
 
         {!isUserSlot&&(
           <>
-            <div style={{height:1,background:T.sep,margin:'10px 0 14px'}}/>
+            {/* Vorschläge: zuerst gefolgte Accounts. Echte Spieler
+                haben einen Account-Eintrag, sodass das Match später
+                auch für sie geloggt werden kann. */}
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',
+              marginBottom:8,marginTop:4}}>
+              <div style={{color:T.o,fontSize:10,fontWeight:800,letterSpacing:1.4,
+                textTransform:'uppercase'}}>
+                Vorschläge · du folgst
+              </div>
+              {followLoading&&(
+                <div style={{color:T.t3,fontSize:10,letterSpacing:.4}}>lädt …</div>
+              )}
+            </div>
+            {(!followLoading&&following.length===0)?(
+              <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:12,
+                padding:'14px 16px',color:T.t3,fontSize:12,lineHeight:1.5,marginBottom:14}}>
+                Folge anderen Spieler:innen, damit sie hier als Vorschlag erscheinen.
+                Bis dahin kannst du den Namen manuell eintragen oder den QR-Code unten teilen.
+              </div>
+            ):(
+              <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:12,
+                overflow:'hidden',marginBottom:14}}>
+                {following.slice(0,8).map((p,i)=>(
+                  <button key={p.user_id}
+                    onClick={()=>finishWith(p.name,p.user_id)}
+                    style={{width:'100%',background:'transparent',border:'none',
+                      borderTop:i>0?`1px solid ${T.sep}`:'none',
+                      padding:'10px 14px',display:'flex',alignItems:'center',gap:12,
+                      cursor:'pointer',textAlign:'left',color:T.t1}}
+                    onPointerDown={e=>e.currentTarget.style.background=T.card2}
+                    onPointerUp={e=>e.currentTarget.style.background='transparent'}
+                    onPointerLeave={e=>e.currentTarget.style.background='transparent'}>
+                    <ProfileAvatar name={p.name} avatar={p.avatar} size={36}/>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{color:T.t1,fontSize:14,fontWeight:700,letterSpacing:-.1,
+                        overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                        {p.name}
+                      </div>
+                      <div style={{color:T.t3,fontSize:10,fontWeight:600,letterSpacing:.5,
+                        textTransform:'uppercase',marginTop:1}}>
+                        Account · wird mitgewertet
+                      </div>
+                    </div>
+                    <div style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:.5,
+                      padding:'4px 10px',background:T.oSoft,border:`1px solid ${T.o}`,
+                      borderRadius:6}}>
+                      Einladen
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* QR-Code */}
             <div style={{color:T.o,fontSize:10,fontWeight:800,letterSpacing:1.4,
-              textTransform:'uppercase',marginBottom:6}}>Einladungslink</div>
-            <div style={{color:T.t3,fontSize:11,lineHeight:1.55,marginBottom:8}}>
-              Teile diesen Link mit deinem Mitspieler. Sobald er beitritt,
-              wird sein Name automatisch in diesen Slot übernommen.
+              textTransform:'uppercase',marginBottom:8}}>
+              Per QR einladen
             </div>
-            <div style={{background:T.card2,border:`1px solid ${T.border}`,borderRadius:10,
-              padding:'10px 12px',color:T.t2,fontSize:11,fontWeight:500,
-              fontFamily:'-apple-system,SFMono-Regular,Menlo,monospace',
-              wordBreak:'break-all',marginBottom:10}}>
-              {inviteUrl||'—'}
+            <div style={{color:T.t3,fontSize:11,lineHeight:1.55,marginBottom:10}}>
+              Der QR enthält einen Direkt-Link in dein Match. Wer den
+              Code scannt, landet in deiner Session — am besten direkt
+              aus der installierten RITMO Web.App heraus.
             </div>
-            <button onClick={share}
-              style={{width:'100%',padding:'12px 14px',marginBottom:8,
-                background:T.card,border:`1px solid ${T.border}`,borderRadius:10,
-                color:T.t1,fontSize:13,fontWeight:700,letterSpacing:.2,
-                cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
-              <span style={{color:T.o,fontSize:14,fontWeight:900}}>↗</span>
-              <span>{copied?'Link kopiert!':'Einladungslink teilen'}</span>
-            </button>
-            <div style={{color:T.t3,fontSize:10,lineHeight:1.5,marginBottom:6}}>
-              Tipp: Das Beitritt-Pairing ist in Entwicklung — derzeit
-              übernimmst du den Namen noch manuell, sobald dein Mitspieler
-              da ist.
+            <div style={{display:'flex',justifyContent:'center',marginBottom:10}}>
+              <div style={{padding:8,background:'#fff',borderRadius:14,
+                border:`1px solid ${T.border}`,
+                boxShadow:'0 6px 20px rgba(0,0,0,.45)'}}>
+                {qrSrc
+                  ?<img src={qrSrc} alt="QR-Einladung"
+                    width={220} height={220}
+                    style={{display:'block',width:220,height:220}}/>
+                  :<div style={{width:220,height:220,
+                    display:'flex',alignItems:'center',justifyContent:'center',
+                    color:'#888',fontSize:12}}>—</div>}
+              </div>
+            </div>
+
+            {/* QR-Scanner-Icon — öffnet die Kamera für den Fall, dass
+                der Slot-Besitzer selbst einen QR-Code einscannen will
+                (z. B. von einem anderen Host). Bewusst klein und
+                zentriert direkt unter dem QR. */}
+            <div style={{display:'flex',justifyContent:'center',marginBottom:14}}>
+              <button onClick={()=>{onOpenScanner&&onOpenScanner();}}
+                aria-label="QR-Code scannen"
+                title="QR-Code scannen — öffnet die Kamera"
+                style={{width:48,height:48,borderRadius:'50%',
+                  background:T.card,border:`1.5px solid ${T.o}`,
+                  color:T.o,cursor:'pointer',
+                  display:'flex',alignItems:'center',justifyContent:'center',
+                  boxShadow:'0 4px 16px rgba(0,0,0,.4)'}}>
+                {/* Mini-QR-Glyph (4 Eck-Marker + Mittelblock). */}
+                <svg width="22" height="22" viewBox="0 0 22 22" fill="none"
+                  stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+                  <rect x="2"  y="2"  width="6" height="6" rx="1"/>
+                  <rect x="14" y="2"  width="6" height="6" rx="1"/>
+                  <rect x="2"  y="14" width="6" height="6" rx="1"/>
+                  <rect x="4"  y="4"  width="2" height="2" fill="currentColor" stroke="none"/>
+                  <rect x="16" y="4"  width="2" height="2" fill="currentColor" stroke="none"/>
+                  <rect x="4"  y="16" width="2" height="2" fill="currentColor" stroke="none"/>
+                  <rect x="13" y="13" width="3" height="3"/>
+                  <rect x="18" y="14" width="2" height="1"/>
+                  <rect x="14" y="18" width="1" height="2"/>
+                  <rect x="17" y="17" width="3" height="3"/>
+                </svg>
+              </button>
+            </div>
+            <div style={{color:T.t3,fontSize:10,lineHeight:1.5,
+              textAlign:'center',marginBottom:6}}>
+              Tipp: Eingeladene RITMO-Accounts bekommen das Match
+              automatisch in ihre Statistik geloggt.
             </div>
           </>
         )}
 
         <button onClick={onClose}
-          style={{width:'100%',marginTop:6,padding:'12px',background:T.card2,
+          style={{width:'100%',marginTop:10,padding:'12px',background:T.card2,
             border:`1px solid ${T.border}`,borderRadius:10,
             color:T.t2,fontSize:13,fontWeight:700,cursor:'pointer'}}>
           Schließen
@@ -12123,7 +12348,7 @@ export default function App(){
     {scr==='club-chat'&&viewClubId&&<ClubChat clubId={viewClubId}
       currentUid={currentUid} onHome={goHome}
       onBack={()=>setScr(chatBackTo||'club-detail')}/>}
-    {scr==='single-setup'&&<SingleSetup nav={nav} onHome={goHome} cfg={cfg} setCfg={setCfg} profile={profile}/>}
+    {scr==='single-setup'&&<SingleSetup nav={nav} onHome={goHome} cfg={cfg} setCfg={setCfg} profile={profile} currentUid={currentUid}/>}
     {scr==='match'&&<Match cfg={cfg} setCfg={setCfg} bo3={bo3} dBo3={dBo3} am={am} dAm={dAm}
       onHome={goHome} inputMode={inputMode} ringId={ringId}
       matchKeyRef={matchKeyRef} theme={theme}

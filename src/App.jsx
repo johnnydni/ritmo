@@ -10450,7 +10450,7 @@ function buildFunkyFloaters(){
   }));
 }
 
-function FunkyAmbient(){
+function FunkyAmbient({scr}){
   // Floater-Schwarm jetzt stateful — Slice-Aktionen schalten einzelne
   // Sprites auf sliced:true, was die .funky-floater-sliced-Animation
   // triggert. Nach einer Cooldown-Pause wird der ganze Schwarm
@@ -10586,13 +10586,14 @@ function FunkyAmbient(){
     // eslint-disable-next-line react-hooks/exhaustive-deps
   },[]);
 
-  // Respawn: wenn alle Floater sliced sind, nach kurzer Pause neuen Schwarm
-  // erzeugen. So bleibt das Mini-Spiel wiederholbar.
+  // Respawn nur bei Screen-Wechsel. Wenn der User alle Floater
+  // weggesliced hat, bleibt der Screen "clean" — erst wenn er auf
+  // einen anderen Screen navigiert (scr-Prop ändert sich), wird ein
+  // neuer Schwarm gewürfelt. Macht das Mini-Spiel zu einer kleinen
+  // Belohnung pro Screen statt eines Endlos-Loops.
   useEffect(()=>{
-    if(floaters.length===0||floaters.some(f=>!f.sliced)) return;
-    const t=setTimeout(()=>setFloaters(buildFunkyFloaters()),1800);
-    return()=>clearTimeout(t);
-  },[floaters]);
+    setFloaters(buildFunkyFloaters());
+  },[scr]);
 
   // Video-Source rotieren wenn der erste Kandidat fehlschlägt.
   const[srcIdx,setSrcIdx]=useState(0);
@@ -11012,7 +11013,7 @@ export default function App(){
         Click-Ripples. Wird NUR gemountet wenn das Bauhaus-Funky-
         Theme aktiv ist, sodass andere Themes 0 externe Requests
         und 0 zusätzliche DOM-Knoten haben. */}
-    {theme==='funky'&&<FunkyAmbient/>}
+    {theme==='funky'&&<FunkyAmbient scr={scr}/>}
 
     {/* App-level KeyCapture — never unmounts when Match re-renders (e.g. bigScreen toggle).
         Active only on Match screen with ring/presenter input mode. */}

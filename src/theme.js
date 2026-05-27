@@ -495,6 +495,161 @@ input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
 .court-live-border{animation:courtBorderPulse 2s ease-in-out infinite;}
 .court-vs{animation:vsPulse 2.6s ease-in-out infinite;}
 .court-score-pop{animation:scorePop .35s cubic-bezier(.22,.95,.34,1) both;}
+
+/* ═══════════════════════════════════════════════════════════════
+   GLOBAL MICRO-INTERACTIONS
+
+   Universelle Animationsebene für die gesamte App. Greift via
+   Element-Selector (button, input, a) auf alle Komponenten zu — die
+   Inline-Styles in App.jsx werden NICHT überschrieben, sondern nur
+   um Übergangszeiten + State-Animationen ergänzt.
+
+   Timings folgen den UI/UX Pro Max-Empfehlungen (150–300ms für
+   Micro-Interactions, niemals > 500ms). Animiert wird ausschließlich
+   transform + opacity + color/background/border/shadow, damit kein
+   Layout-Reflow auftritt.
+═══════════════════════════════════════════════════════════════ */
+
+/* Animation-Tokens — Easings + Durations zentralisiert. */
+:root{
+  --anim-fast:120ms cubic-bezier(.2,.9,.3,1.2);
+  --anim-base:200ms cubic-bezier(.2,.9,.3,1.05);
+  --anim-slow:320ms cubic-bezier(.16,.84,.44,1);
+  --anim-spring:280ms cubic-bezier(.34,1.56,.64,1);
+}
+
+/* Jeder Button bekommt smooth transitions auf seinen visuellen
+   Eigenschaften, plus einen Press-Scale beim active-State. Inline-
+   Styles in App.jsx ändern Farbe/Border/Background per onPointerDown
+   — der globale transition-Eintrag macht jeden dieser Wechsel weich. */
+button{
+  transition:
+    transform var(--anim-fast),
+    background-color var(--anim-base),
+    color var(--anim-base),
+    border-color var(--anim-base),
+    box-shadow var(--anim-base),
+    opacity var(--anim-base);
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+}
+button:active:not(:disabled){transform:scale(.97);}
+button:disabled{cursor:not-allowed;opacity:.55;}
+
+/* Inputs animieren ihren Focus-State sanft. */
+input,textarea,select{
+  transition:
+    border-color var(--anim-base),
+    background-color var(--anim-base),
+    box-shadow var(--anim-base),
+    color var(--anim-base);
+  -webkit-tap-highlight-color:transparent;
+}
+
+/* Sichtbare Focus-Ringe für Keyboard-Nutzer — aber ONLY :focus-visible
+   damit Maus-Klicks keinen Ring hinterlassen. */
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+a:focus-visible{
+  outline:2px solid var(--o);
+  outline-offset:2px;
+  border-radius:inherit;
+}
+
+/* Cards mit data-lift bekommen auf Desktop-Hover einen kleinen Lift.
+   Touch-Devices (hover:none) sehen den Lift NIE — dort gilt nur der
+   Press-Scale. So gibt's keinen "klebrigen" Hover-Status auf Mobile. */
+@media (hover:hover) and (pointer:fine){
+  button[data-lift]:hover:not(:disabled),
+  a[data-lift]:hover{
+    transform:translateY(-1px);
+    box-shadow:0 6px 22px rgba(0,0,0,.32);
+  }
+}
+
+/* ── Keyframes ── */
+
+/* Shimmer für Skeleton-Loader. */
+@keyframes shimmer{
+  0%{background-position:-220% 0;}
+  100%{background-position:220% 0;}
+}
+/* Bounce-In für aktivierte Nav-Icons. */
+@keyframes navIconBounce{
+  0%{transform:scale(.85) translateY(2px);}
+  55%{transform:scale(1.18) translateY(-2px);}
+  100%{transform:scale(1) translateY(0);}
+}
+/* Dot-Pop — kleiner Spring beim Erscheinen, z. B. Notification-Marker. */
+@keyframes dotPop{
+  0%{transform:scale(0);opacity:0;}
+  60%{transform:scale(1.25);opacity:1;}
+  100%{transform:scale(1);}
+}
+/* Slide-Varianten für Banner/Toast/Chips. */
+@keyframes slideUp{
+  from{opacity:0;transform:translateY(20px);}
+  to{opacity:1;transform:translateY(0);}
+}
+@keyframes slideDown{
+  from{opacity:0;transform:translateY(-20px);}
+  to{opacity:1;transform:translateY(0);}
+}
+@keyframes slideInRight{
+  from{opacity:0;transform:translateX(20px);}
+  to{opacity:1;transform:translateX(0);}
+}
+/* Press-Pop — Bestätigungs-Spring nach erfolgreichem Tap (optional). */
+@keyframes pressPop{
+  0%{transform:scale(.92);}
+  60%{transform:scale(1.04);}
+  100%{transform:scale(1);}
+}
+/* Glow-Pulse für "Aufmerksamkeit"-Badges (z. B. Live-Indikator). */
+@keyframes glowPulse{
+  0%,100%{box-shadow:0 0 0 0 var(--oGlow);}
+  50%{box-shadow:0 0 0 8px transparent;}
+}
+/* Floating-Wobble für Hero-Elemente (sehr subtil). */
+@keyframes floatY{
+  0%,100%{transform:translateY(0);}
+  50%{transform:translateY(-3px);}
+}
+
+/* ── Utility-Klassen ── */
+.nav-icon-active{animation:navIconBounce var(--anim-spring) ease both;}
+.dot-pop{animation:dotPop var(--anim-spring) ease both;}
+.slide-up{animation:slideUp var(--anim-base) ease both;}
+.slide-down{animation:slideDown var(--anim-base) ease both;}
+.slide-in-right{animation:slideInRight var(--anim-base) ease both;}
+.press-pop{animation:pressPop var(--anim-spring) ease both;}
+.glow-pulse{animation:glowPulse 1.8s ease-in-out infinite;}
+.float-y{animation:floatY 3.2s ease-in-out infinite;}
+.skeleton{
+  background:linear-gradient(90deg,var(--card) 0%,var(--card2) 50%,var(--card) 100%);
+  background-size:220% 100%;
+  animation:shimmer 1.8s linear infinite;
+  border-radius:8px;
+}
+
+/* Stagger-Helper: setze inline --i: <index>, der Delay rechnet sich
+   automatisch (z. B. style={{'--i':2}}). Spart pro-Element delay. */
+.stagger > *{animation-delay:calc(var(--i,0) * 50ms);}
+
+/* ── prefers-reduced-motion Killswitch ──
+   Respektiert OS-/Browser-Setting; deaktiviert ALLE App-Animationen
+   inklusive Transitions, damit motion-sensitive User nichts wackeln
+   sehen. Form-Funktionen bleiben unverändert. */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{
+    animation-duration:.01ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:.01ms !important;
+    scroll-behavior:auto !important;
+  }
+}
 `;
 
 /* ───── Color helpers (for custom themes) ───── */

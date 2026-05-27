@@ -1,7 +1,6 @@
 import { useState, useEffect, useReducer, useCallback, useRef, Fragment } from "react";
 import { SKILL_DESCRIPTIONS } from "./skillDescriptions.js";
-import { loadProfile as dbLoadProfile, saveProfile as dbSaveProfile, logMatch as dbLogMatch,
-  logMatchForParticipants as dbLogMatchForParticipants, loadMatchStats as dbLoadMatchStats,
+import { loadProfile as dbLoadProfile, saveProfile as dbSaveProfile, logMatch as dbLogMatch, loadMatchStats as dbLoadMatchStats,
   createOnlineTournament, joinOnlineTournament, fetchOnlineTournament, updateOnlineTournament, subscribeToTournament,
   publishTournamentState, submitScore, approveScore, rejectScore, sendReadyCheck, confirmReady, clearReadyCheck,
   checkBetaKey, redeemBetaKey,
@@ -11,10 +10,7 @@ import { loadProfile as dbLoadProfile, saveProfile as dbSaveProfile, logMatch as
   listClubs, fetchClub, createClub, joinClub, leaveClub, clubMembers, isClubMember,
   clubMemberCount, updateClub, myOwnedClubId,
   listClubMessages, sendClubMessage, markChatRead, listMyChats, totalUnreadCount,
-  subscribeClubMessages,
-  // Match-Sessions: Single-Match-Realtime-Pairing
-  createMatchSession, updateMatchSession, fetchMatchSession,
-  joinMatchSession, subscribeMatchSession,
+  subscribeClubMessages
   } from "./db.js";
 
 /* ── Refactor (Phase 1): pure modules extracted from App.jsx.
@@ -2693,10 +2689,8 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
           </button>
         )}
 
-        {/* Single Match — Hub mit "Starten" + "Beitreten", analog
-            zur Turnier-Karte. Direkter Sprung in single-setup ist raus
-            damit der Join-Pfad gleichwertig auffindbar ist. */}
-        <button onClick={()=>nav('single-hub')} className="fu"
+        {/* Single Match */}
+        <button onClick={()=>nav('single-setup')} className="fu"
           style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:18,
             padding:'18px 20px',display:'flex',alignItems:'center',gap:18,
             cursor:'pointer',color:T.t1,textAlign:'left',transition:'background .15s'}}
@@ -2706,7 +2700,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
           <CourtIcon size={42}/>
           <div style={{flex:1}}>
             <div style={{color:T.o,fontSize:18,fontWeight:700,marginBottom:3}}>Single Match</div>
-            <div style={{color:T.t3,fontSize:12,fontWeight:500}}>Starten | Beitreten</div>
+            <div style={{color:T.t3,fontSize:12,fontWeight:500}}>Best of 3 | Americano (Freestyle)</div>
           </div>
         </button>
 
@@ -2812,179 +2806,24 @@ function SetupHero({icon,title,desc,accent}){
   );
 }
 
-function SingleSetup({nav,onHome,cfg,setCfg,profile,currentUid}){
+function SingleSetup({nav,onHome,cfg,setCfg,profile}){
   const userName=profile?.name||'';
-  // Spielername-Slots: User belegt Slot 0 (sein Profil), die übrigen
-  // bleiben leer und zeigen als „Beitreten"-Slot mit + und Invite-CTA.
+  // Spielername-Slots: User belegt Slot 0 (sein Profil), die uebrigen
+  // bekommen Default-Namen, damit das Setup ohne Tippen startbar ist.
   const[players,setPlayers]=useState(()=>{
     const stored=cfg.players;
-    if(stored&&stored.length===4){
-      // Bestehende Defaultnamen ("Spieler 2/3/4") aus dem alten Setup
-      // auf leere Strings normalisieren — sonst zeigt der neue Empty-
-      // Slot-Modus nie sein + + „Beitreten".
-      return stored.map((n,i)=>{
-        if(i===0) return n||userName;
-        if(/^Spieler\s*\d+$/i.test(n||'')) return '';
-        return n||'';
-      });
-    }
-    return [userName,'','',''];
+    if(stored&&stored.length===4) return stored;
+    return [userName,'Spieler 2','Spieler 3','Spieler 4'];
   });
-  // Pro Slot ein optionaler user_id-String (wenn der eingeladene
-  // Spieler ein Account in der App hat). Wird beim Auswählen aus den
-  // Folger-Vorschlägen gefüllt — damit das Match später auch für die
-  // Mitspieler:innen geloggt werden kann (Cross-Device-Logging).
-  const[playerUserIds,setPlayerUserIds]=useState(()=>{
-    if(cfg.playerUserIds&&cfg.playerUserIds.length===4) return [...cfg.playerUserIds];
-    // Slot 0 ist immer der eingeloggte User
-    return [currentUid||null,null,null,null];
-  });
-  // currentUid kann sich nach Login aktualisieren — Slot 0 stets
-  // synchron halten.
-  useEffect(()=>{
-    if(!currentUid) return;
-    setPlayerUserIds(arr=>{
-      if(arr[0]===currentUid) return arr;
-      const next=[...arr]; next[0]=currentUid; return next;
-    });
-  },[currentUid]);
-  const setPlayer=(idx,val,uid=undefined)=>{
-    setPlayers(p=>p.map((v,i)=>i===idx?val:v));
-    if(uid!==undefined){
-      setPlayerUserIds(arr=>arr.map((v,i)=>i===idx?(uid||null):v));
-    } else if(!val){
-      // Wenn der Name gelöscht wird, auch das user_id-Mapping leeren
-      setPlayerUserIds(arr=>arr.map((v,i)=>i===idx?(i===0?currentUid||null:null):v));
-    }
-  };
+  const setPlayer=(idx,val)=>setPlayers(p=>p.map((v,i)=>i===idx?val:v));
 
   const[fmt,setFmt]=useState(cfg.format||'bo3');
   const[amLim,setAmLim]=useState(cfg.amLimit??21);
   const[gpAfter,setGpAfter]=useState(cfg.goldenPointAfter??null);
-  // Wettkampf vs Friendly. Nur Bo3 nutzt diesen Wert; Americano ist
-  // per Definition Freestyle und never competitive. Persistiert in cfg
-  // damit der Match-Screen es auswerten kann.
-  const[matchType,setMatchType]=useState(cfg.matchType||'friendly');
 
-  // Eindeutige Match-Session-ID — bestückt die QR-/Deep-Link-URL.
-  // Bleibt stabil über die gesamte SingleSetup-Mount-Dauer, damit ein
-  // bereits geteilter Code beim erneuten Öffnen eines Slots NICHT
-  // ungültig wird. crypto.randomUUID() ist in modernen Browsern
-  // verfügbar; Fallback auf eine kurze Random-Hex-Konstruktion.
-  const[matchSessionId]=useState(()=>{
-    if(cfg.matchSessionId) return cfg.matchSessionId;
-    try{
-      if(typeof crypto!=='undefined'&&crypto.randomUUID) return crypto.randomUUID();
-    }catch{}
-    return 'm-'+Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);
-  });
-
-  // Slot, der gerade editiert/eingeladen wird (für InviteModal).
-  const[inviteSlot,setInviteSlot]=useState(null);
-  // QR-Scanner Overlay-Status (host-side für Scan eines fremden QR).
-  const[scannerOpen,setScannerOpen]=useState(false);
-  const[scanInfo,setScanInfo]=useState('');
-
-  // Computed team display names (used during scoring). Leere Slots
-  // fallen auf eine generische Beschriftung zurück, damit das Match-
-  // Display nicht „& " als Namen anzeigt.
-  const labelFor=(idx)=>players[idx]||`Spieler ${idx+1}`;
-  const teamA=[labelFor(0),labelFor(1)].join(' & ');
-  const teamB=[labelFor(2),labelFor(3)].join(' & ');
-
-  // ── Match-Session auf der DB anlegen + Realtime-Subscription ──
-  // Sobald der User auf SingleSetup landet, registrieren wir eine
-  // Session-Row in ritmo_match_sessions. Dadurch ist die QR-URL
-  // sofort beitrittsfähig — Joiner brauchen nicht auf „Start"
-  // zu warten, sondern können sich schon in offene Slots eintragen
-  // während der Host noch konfiguriert.
-  //
-  // Wir subscriben auf UPDATE-Events: wenn ein Joiner einen Slot
-  // claimt, kommt der neue State zurück und wir spiegeln Namen +
-  // user_ids ins lokale Setup. Bestehende Host-Inputs werden NICHT
-  // überschrieben — nur leere Slots werden gefüllt.
-  useEffect(()=>{
-    if(!currentUid||!matchSessionId) return;
-    let cancelled=false;
-    let unsubscribe=()=>{};
-
-    (async()=>{
-      // Initiale Session-Row (idempotent — upsert). Wir nehmen die
-      // aktuell sichtbaren Slots als Startwert; Updates während
-      // Setup spielen wir gleich noch via Side-Effect zurück.
-      await createMatchSession({
-        session_id:matchSessionId,
-        format:fmt,
-        match_type:fmt==='bo3'?matchType:'friendly',
-        golden_point_after:gpAfter,
-        players_names:players,
-        players_user_ids:playerUserIds,
-        team_a_label:teamA,
-        team_b_label:teamB,
-      });
-
-      if(cancelled) return;
-      unsubscribe=subscribeMatchSession(matchSessionId,(row)=>{
-        if(!row) return;
-        // Joiner-Update: Slot 2..4. Nur leere lokale Slots werden
-        // überschrieben — wenn der Host parallel jemanden manuell
-        // eintippt, gewinnt die lokale Eingabe.
-        const incomingNames=row.players_names||[];
-        const incomingUids =row.players_user_ids||[];
-        let touched=false;
-        setPlayers(prev=>{
-          const next=[...prev];
-          for(let i=1;i<4;i++){
-            if(!next[i]&&incomingNames[i]&&incomingUids[i]){
-              next[i]=incomingNames[i];
-              touched=true;
-            }
-          }
-          return touched?next:prev;
-        });
-        setPlayerUserIds(prev=>{
-          const next=[...prev];
-          let changed=false;
-          for(let i=1;i<4;i++){
-            if(!next[i]&&incomingUids[i]){
-              next[i]=incomingUids[i];
-              changed=true;
-            }
-          }
-          return changed?next:prev;
-        });
-      });
-    })();
-
-    return()=>{
-      cancelled=true;
-      try{ unsubscribe(); }catch{}
-    };
-  // Wir wollen die Subscription stabil halten — nur an currentUid +
-  // sessionId binden, nicht an Player-Arrays (die ändern sich oft).
-  // eslint-disable-next-line
-  },[currentUid,matchSessionId]);
-
-  // Wenn der Host etwas am Setup ändert (Name eintippen, Format
-  // wechseln), aktualisieren wir die Session-Row debounced, damit
-  // Joiner immer den aktuellen Roster + die richtigen Match-Regeln
-  // sehen.
-  useEffect(()=>{
-    if(!currentUid||!matchSessionId) return;
-    const t=setTimeout(()=>{
-      updateMatchSession(matchSessionId,{
-        format:fmt,
-        match_type:fmt==='bo3'?matchType:'friendly',
-        golden_point_after:gpAfter,
-        players_names:players,
-        players_user_ids:playerUserIds,
-        team_a_label:teamA,
-        team_b_label:teamB,
-      });
-    },350);
-    return()=>clearTimeout(t);
-  // eslint-disable-next-line
-  },[fmt,matchType,gpAfter,players,playerUserIds,teamA,teamB]);
+  // Anzeige-Namen fuer die Match-Screen (Team A & Team B).
+  const teamA=[players[0]||'Spieler 1',players[1]||'Spieler 2'].join(' & ');
+  const teamB=[players[2]||'Spieler 3',players[3]||'Spieler 4'].join(' & ');
 
   return(
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
@@ -3000,102 +2839,70 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile,currentUid}){
 
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
 
-        {/* Wettkampf vs Friendly — oberste Karte mit swipebaren Icons.
-            Nur sichtbar für Bo3; Americano (Freestyle) ist per
-            Definition friendly und zeigt diese Wahl nicht.
-            Friendly = lockerer Match, kein Stats-Impact.
-            Wettkampf = zählt in Spielerstatistik + RITMO DNA. */}
-        {fmt==='bo3'&&(
-          <MatchTypePicker value={matchType} onChange={setMatchType}/>
-        )}
+        <SetupHero
+          icon={<CourtIcon size={36}/>}
+          title="Schnelles Match"
+          desc="Du, dein Partner, zwei Gegner. Waehle Best-of-3 oder Americano (Freestyle) und leg los."/>
 
-        {/* Spielerkarten — 2×2 Grid, vertikal pro Slot.
-            Slot 0 = User (Profilbild aus profile.avatar);
-            leere Slots zeigen + + „Beitreten" → öffnet InviteModal
-            zum Namen-Eingeben oder Link teilen. */}
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
-          {[0,1,2,3].map(idx=>{
+        {/* Team 1 */}
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14}}>
+          <div style={{padding:'14px 18px 6px',color:T.o,fontSize:11,fontWeight:700,
+            letterSpacing:1.3,textTransform:'uppercase'}}>
+            Team 1
+          </div>
+          {[0,1].map(idx=>{
             const isUser=idx===0;
-            const isTeamA=idx<2;
-            const accent=isTeamA?T.o:T.blue;
-            const accentGlow=isTeamA?T.oGlow:T.blueGlow;
-            const name=players[idx];
-            const filled=!!(name&&name.trim());
-            const userAvatar=isUser?profile?.avatar:null;
             return(
-              <button key={idx} onClick={()=>setInviteSlot(idx)}
-                style={{background:T.card,
-                  border:`1.5px solid ${filled?accent:T.border}`,
-                  borderRadius:14,padding:'18px 12px 16px',
-                  display:'flex',flexDirection:'column',alignItems:'center',gap:8,
-                  cursor:'pointer',textAlign:'center',
-                  transition:'border-color .2s,background .2s',
-                  minHeight:170,position:'relative',
-                  boxShadow:filled?`0 0 0 1px ${accent}22 inset`:'none'}}>
-                {/* Team-Pill oben */}
-                <div style={{position:'absolute',top:8,left:8,
-                  padding:'2px 8px',borderRadius:6,
-                  background:`${accent}1F`,border:`1px solid ${accent}66`,
-                  color:accent,fontSize:9,fontWeight:900,letterSpacing:1.4,
-                  textTransform:'uppercase'}}>
-                  Team {isTeamA?'A':'B'}
-                </div>
-
-                {/* Avatar / Empty-Slot-Icon */}
-                {filled?(
-                  <ProfileAvatar name={name} avatar={isUser?userAvatar:null}
-                    size={62} emphasize={isUser}/>
-                ):(
-                  <div style={{width:62,height:62,borderRadius:'50%',
-                    background:T.card2,border:`1.5px dashed ${T.border}`,
-                    display:'flex',alignItems:'center',justifyContent:'center',
-                    color:T.t3,fontSize:30,fontWeight:300,lineHeight:1}}>
-                    +
-                  </div>
-                )}
-
-                {/* Name oder Beitreten-Label */}
-                <div style={{minHeight:34,display:'flex',flexDirection:'column',
-                  alignItems:'center',justifyContent:'center'}}>
-                  {filled?(
-                    <>
-                      <div style={{color:T.t1,fontSize:13,fontWeight:700,
-                        letterSpacing:-.1,maxWidth:120,overflow:'hidden',
-                        textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                        {name}
-                      </div>
-                      {isUser&&(
-                        <div style={{color:accent,fontSize:9,fontWeight:900,
-                          letterSpacing:1.2,textTransform:'uppercase',marginTop:2}}>
-                          Du
-                        </div>
-                      )}
-                    </>
-                  ):(
-                    <div style={{color:T.t2,fontSize:12,fontWeight:700,
-                      letterSpacing:.1}}>
-                      Beitreten
-                    </div>
-                  )}
-                </div>
-
-                {/* Clear-Knopf rechts oben, nur wenn Name gesetzt und
-                    nicht User-Slot (User-Avatar bleibt). */}
-                {filled&&!isUser&&(
-                  <button onClick={e=>{e.stopPropagation();setPlayer(idx,'');}}
-                    aria-label="Slot leeren"
-                    style={{position:'absolute',top:6,right:6,
-                      width:22,height:22,borderRadius:'50%',background:T.card2,
-                      border:`1px solid ${T.border}`,color:T.t2,
-                      fontSize:11,fontWeight:700,cursor:'pointer',
-                      display:'flex',alignItems:'center',justifyContent:'center',padding:0}}>×</button>
-                )}
-              </button>
+              <div key={idx} style={{display:'flex',alignItems:'center',
+                padding:'14px 18px',borderTop:`1px solid ${T.sep}`,gap:12}}>
+                <span style={{color:T.t1,fontSize:14,fontWeight:600,
+                  width:94,flexShrink:0,display:'flex',alignItems:'center',gap:5}}>
+                  Spieler {idx+1}
+                  {isUser&&<span style={{color:T.o,fontWeight:700}}>(Du)</span>}
+                </span>
+                <input value={players[idx]}
+                  onChange={e=>setPlayer(idx,e.target.value)}
+                  placeholder={isUser?'Dein Name':`Spieler ${idx+1}`}
+                  autoCapitalize="words" autoCorrect="off" spellCheck={false}
+                  style={{flex:1,fontSize:14,color:T.t2,fontWeight:500,textAlign:'right',
+                    background:'transparent',border:'none',outline:'none'}}/>
+                <button onClick={()=>setPlayer(idx,'')}
+                  style={{width:20,height:20,borderRadius:'50%',background:T.t4,border:'none',
+                    color:T.t1,fontSize:12,cursor:'pointer',display:'flex',alignItems:'center',
+                    justifyContent:'center',fontWeight:700,flexShrink:0}}>{'×'}</button>
+              </div>
             );
           })}
         </div>
 
-        {/* Format-Karte (Bo3 / Americano (Freestyle)) */}
+        {/* Team 2 */}
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14}}>
+          <div style={{padding:'14px 18px 6px',color:T.o,fontSize:11,fontWeight:700,
+            letterSpacing:1.3,textTransform:'uppercase'}}>
+            Team 2
+          </div>
+          {[2,3].map(idx=>(
+            <div key={idx} style={{display:'flex',alignItems:'center',
+              padding:'14px 18px',borderTop:`1px solid ${T.sep}`,gap:12}}>
+              <span style={{color:T.t1,fontSize:14,fontWeight:600,
+                width:94,flexShrink:0}}>
+                Spieler {idx+1}
+              </span>
+              <input value={players[idx]}
+                onChange={e=>setPlayer(idx,e.target.value)}
+                placeholder={`Spieler ${idx+1}`}
+                autoCapitalize="words" autoCorrect="off" spellCheck={false}
+                style={{flex:1,fontSize:14,color:T.t2,fontWeight:500,textAlign:'right',
+                  background:'transparent',border:'none',outline:'none'}}/>
+              <button onClick={()=>setPlayer(idx,'')}
+                style={{width:20,height:20,borderRadius:'50%',background:T.t4,border:'none',
+                  color:T.t1,fontSize:12,cursor:'pointer',display:'flex',alignItems:'center',
+                  justifyContent:'center',fontWeight:700,flexShrink:0}}>{'×'}</button>
+            </div>
+          ))}
+        </div>
+
+        {/* Spielmodus */}
         <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
           padding:'18px 18px 20px'}}>
           <div style={{color:T.o,fontSize:21,fontWeight:800,marginBottom:14}}>Spielmodus</div>
@@ -3107,7 +2914,7 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile,currentUid}){
                 background:fmt==='bo3'?T.t4:'transparent',
                 display:'flex',alignItems:'center',justifyContent:'center',
                 transition:'background .2s'}}>
-              <span style={{fontSize:18,fontWeight:800,color:T.t1,letterSpacing:2}}>•••</span>
+              <span style={{fontSize:18,fontWeight:800,color:T.t1,letterSpacing:2}}>{'•••'}</span>
             </button>
             <button onClick={()=>setFmt('americano')}
               style={{flex:1,padding:'10px',borderRadius:24,border:'none',cursor:'pointer',
@@ -3121,13 +2928,12 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile,currentUid}){
           {fmt==='bo3'&&(
             <div>
               <div style={{color:T.t1,fontSize:15,fontWeight:700,marginBottom:6}}>Best of Three</div>
-              <div style={{color:T.t1,fontSize:14,fontWeight:700,marginBottom:6,letterSpacing:2}}>•••</div>
+              <div style={{color:T.t1,fontSize:14,fontWeight:700,marginBottom:6,letterSpacing:2}}>{'•••'}</div>
               <div style={{color:T.t3,fontSize:12,lineHeight:1.6,fontWeight:500,marginBottom:14}}>
                 Klassisches Scoring:<br/>
                 15 - 30 - 40 | Einstand - Vorteil<br/>
-                2 Sätze zum Sieg
+                2 Saetze zum Sieg
               </div>
-              {/* Golden Point picker */}
               <div style={{borderTop:`1px solid ${T.sep}`,paddingTop:10}}>
                 <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
                   textTransform:'uppercase',marginBottom:6}}>Golden Point</div>
@@ -3150,8 +2956,8 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile,currentUid}){
                 </div>
                 <div style={{color:T.t3,fontSize:10,marginTop:6,lineHeight:1.4}}>
                   {gpAfter===null?'Traditionell: Vorteil → 2 Punkte Vorsprung'
-                    :gpAfter===0?'Beim 1. Einstand entscheidet der nächste Punkt'
-                    :`Ab dem ${gpAfter+1}. Einstand entscheidet der nächste Punkt`}
+                    :gpAfter===0?'Beim 1. Einstand entscheidet der naechste Punkt'
+                    :`Ab dem ${gpAfter+1}. Einstand entscheidet der naechste Punkt`}
                 </div>
               </div>
             </div>
@@ -3164,8 +2970,7 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile,currentUid}){
               </div>
               <div style={{marginBottom:6}}><RacketMini size={18}/></div>
               <div style={{color:T.t3,fontSize:12,lineHeight:1.6,fontWeight:500,marginBottom:14}}>
-                Punkte zählen pro Team. Optional mit Timer.
-                Freestyle — fließt nicht in deine Wertung.
+                Punkte zaehlen pro Team. Optional mit Timer.
               </div>
               <div style={{display:'flex',justifyContent:'flex-end'}}>
                 <div style={{display:'flex',background:T.card2,borderRadius:24,padding:3,
@@ -3181,7 +2986,7 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile,currentUid}){
                       background:amLim===0?T.t4:'transparent',
                       color:T.t1,fontSize:14,fontWeight:600,transition:'background .2s',
                       display:'flex',alignItems:'center'}}>
-                    ∞
+                    {'∞'}
                   </button>
                 </div>
               </div>
@@ -3194,12 +2999,7 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile,currentUid}){
       <MatchBar onHome={onHome} rightButtons={[{
         icon:'Start',
         onClick:()=>{
-          // Americano ist immer friendly — egal was der User vorher
-          // im Wettkampf/Friendly-Picker gewählt hatte.
-          const finalMatchType = fmt==='bo3' ? matchType : 'friendly';
-          setCfg({players,playerUserIds,nameA:teamA,nameB:teamB,format:fmt,
-            amLimit:amLim,goldenPointAfter:gpAfter,
-            matchType:finalMatchType,matchSessionId});
+          setCfg({players,nameA:teamA,nameB:teamB,format:fmt,amLimit:amLim,goldenPointAfter:gpAfter});
           nav('match');
         },
         style:{
@@ -3210,448 +3010,10 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile,currentUid}){
           fontSize:13,fontWeight:800,
         }
       }]}/>
-
-      {inviteSlot!==null&&(
-        <InviteSlotSheet
-          slotIndex={inviteSlot}
-          isUserSlot={inviteSlot===0}
-          currentName={players[inviteSlot]||''}
-          matchSessionId={matchSessionId}
-          currentUid={currentUid}
-          // Slots, die bereits belegt sind (mit user_id) — diese
-          // werden in der Vorschlagsliste ausgeblendet, damit man
-          // niemanden zweimal einlädt.
-          excludeUserIds={playerUserIds.filter(u=>u&&u!==playerUserIds[inviteSlot])}
-          onOpenScanner={()=>{setInviteSlot(null);setScannerOpen(true);}}
-          onClose={()=>setInviteSlot(null)}
-          onPickPlayer={(name,uid)=>{setPlayer(inviteSlot,name,uid||null);setInviteSlot(null);}}/>
-      )}
-
-      {scannerOpen&&(
-        <QRScannerModal
-          onResult={(text)=>{
-            // Match-Session-ID aus dem Scan rauspuhlen — akzeptiert
-            // sowohl `?match=<id>` als auch eine rohe Session-ID.
-            const sid=extractMatchSessionFromScan(text);
-            setScannerOpen(false);
-            if(sid){
-              if(sid===matchSessionId){
-                setScanInfo('Das ist deine eigene Session.');
-              } else {
-                // Cross-Device-Join — wird in einer Folge-PR mit
-                // Realtime-Sync umgesetzt; aktuell zeigen wir nur
-                // einen Hinweis. URL-basiertes Routing greift, wenn
-                // der User die URL in seiner installierten Web.App
-                // öffnet.
-                setScanInfo(`Match-Session erkannt: ${sid.slice(0,8)}… — öffne den Einladungslink in deiner App, um beizutreten.`);
-              }
-              setTimeout(()=>setScanInfo(''),5000);
-            } else {
-              setScanInfo('Kein RITMO-Match in diesem QR.');
-              setTimeout(()=>setScanInfo(''),3500);
-            }
-          }}
-          onClose={()=>setScannerOpen(false)}/>
-      )}
-
-      {scanInfo&&(
-        <div style={{position:'fixed',
-          bottom:'calc(env(safe-area-inset-bottom,0px) + 90px)',
-          left:'50%',transform:'translateX(-50%)',zIndex:240,
-          background:T.card,border:`1px solid ${T.o}`,borderRadius:10,
-          padding:'10px 14px',color:T.t1,fontSize:12,fontWeight:600,
-          maxWidth:340,textAlign:'center',
-          boxShadow:'0 8px 30px rgba(0,0,0,.5)'}}>
-          {scanInfo}
-        </div>
-      )}
     </div>
   );
 }
 
-/* Hilfsfunktion: Match-Session-ID aus dem QR-Decode rauspuhlen.
-   Akzeptiert sowohl die App-URL mit ?match=<id> (inkl. ggf.
-   ?join=match&session=<id>) als auch eine rohe UUID/Random-ID. */
-function extractMatchSessionFromScan(text){
-  if(!text) return null;
-  const candidate=String(text).trim();
-  try{
-    const u=new URL(candidate);
-    const direct=u.searchParams.get('match');
-    if(direct) return direct.trim();
-    if(u.searchParams.get('join')==='match'){
-      const sess=u.searchParams.get('session');
-      if(sess) return sess.trim();
-    }
-  }catch{}
-  // Roh — UUID-like (8-4-4-4-12) oder m-<random>
-  if(/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(candidate)) return candidate;
-  if(/^m-[a-z0-9]{6,}$/.test(candidate)) return candidate;
-  return null;
-}
-
-/* ─── MatchTypePicker — swipeable Wettkampf vs Friendly Karte ────
-   Identisches Scroll-Snap-Pattern wie das Cast-Sheet-Carousel.
-   Zwei vertikale Tiles, links/rechts swipebar, Pagination + Pfeile.
-═══════════════════════════════════════════════════════════════ */
-function MatchTypePicker({value,onChange}){
-  const types=[
-    {id:'competitive', emoji:'🏆', label:'Wettkampf',
-      desc:'Zählt in deine Statistik und RITMO DNA.'},
-    {id:'friendly',    emoji:'🤝', label:'Friendly',
-      desc:'Locker spielen, ohne Stats-Impact.'},
-  ];
-  const idx=Math.max(0,types.findIndex(t=>t.id===value));
-  const railRef=useRef(null);
-
-  // Beim Mount auf die richtige Position scrollen (z. B. wenn der
-  // User mit value='friendly' wiederkommt). useLayoutEffect wäre
-  // sauberer, aber useEffect reicht — initialer Render zeigt die
-  // erste Karte für ~1 Frame, dann snappt es.
-  useEffect(()=>{
-    const el=railRef.current;
-    if(!el) return;
-    el.scrollLeft=idx*el.clientWidth;
-  // eslint-disable-next-line
-  },[]);
-
-  const onScroll=()=>{
-    const el=railRef.current;
-    if(!el) return;
-    const i=Math.round(el.scrollLeft/el.clientWidth);
-    const t=types[Math.max(0,Math.min(types.length-1,i))];
-    if(t&&t.id!==value) onChange(t.id);
-  };
-
-  const snapTo=(i)=>{
-    const el=railRef.current;
-    if(!el) return;
-    el.scrollTo({left:i*el.clientWidth,behavior:'smooth'});
-  };
-
-  return(
-    <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
-      padding:'14px 14px 10px',position:'relative'}}>
-      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',
-        marginBottom:10,padding:'0 4px'}}>
-        <div style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:1.4,
-          textTransform:'uppercase'}}>Match-Art</div>
-        <div style={{color:T.t3,fontSize:10,fontWeight:600,letterSpacing:.5}}>
-          ‹ swipe ›
-        </div>
-      </div>
-
-      {/* Pfeile */}
-      <button onClick={()=>snapTo(Math.max(0,idx-1))} disabled={idx===0}
-        aria-label="Vorherige Match-Art"
-        style={{position:'absolute',top:'56%',left:2,transform:'translateY(-50%)',
-          zIndex:2,width:28,height:28,borderRadius:'50%',
-          background:T.card,border:`1px solid ${T.border}`,
-          color:idx===0?T.t3:T.t1,cursor:idx===0?'not-allowed':'pointer',
-          opacity:idx===0?.4:1,
-          display:'flex',alignItems:'center',justifyContent:'center',
-          boxShadow:'0 2px 8px rgba(0,0,0,.4)'}}>
-        <span style={{transform:'rotate(180deg)',lineHeight:0}}>
-          <ChevronRightIcon size={14} color="currentColor"/>
-        </span>
-      </button>
-      <button onClick={()=>snapTo(Math.min(types.length-1,idx+1))} disabled={idx===types.length-1}
-        aria-label="Nächste Match-Art"
-        style={{position:'absolute',top:'56%',right:2,transform:'translateY(-50%)',
-          zIndex:2,width:28,height:28,borderRadius:'50%',
-          background:T.card,border:`1px solid ${T.border}`,
-          color:idx===types.length-1?T.t3:T.t1,
-          cursor:idx===types.length-1?'not-allowed':'pointer',
-          opacity:idx===types.length-1?.4:1,
-          display:'flex',alignItems:'center',justifyContent:'center',
-          boxShadow:'0 2px 8px rgba(0,0,0,.4)'}}>
-        <ChevronRightIcon size={14} color="currentColor"/>
-      </button>
-
-      <div ref={railRef} onScroll={onScroll}
-        style={{display:'flex',overflowX:'auto',
-          scrollSnapType:'x mandatory',
-          WebkitOverflowScrolling:'touch',
-          scrollbarWidth:'none',msOverflowStyle:'none'}}>
-        {types.map((t,i)=>{
-          const active=t.id===value;
-          return(
-            <div key={t.id}
-              style={{flex:'0 0 100%',scrollSnapAlign:'center',
-                padding:'0 36px',boxSizing:'border-box'}}>
-              <div onClick={()=>onChange(t.id)}
-                style={{background:active?T.card2:'transparent',
-                  border:`1.5px solid ${active?T.o:T.border}`,borderRadius:12,
-                  padding:'14px 12px',cursor:'pointer',
-                  display:'flex',flexDirection:'column',alignItems:'center',gap:6,
-                  transition:'border-color .2s,background .2s'}}>
-                <div style={{fontSize:38,lineHeight:1}}>{t.emoji}</div>
-                <div style={{color:T.t1,fontSize:15,fontWeight:800,letterSpacing:-.1}}>
-                  {t.label}
-                </div>
-                <div style={{color:T.t3,fontSize:11,lineHeight:1.45,textAlign:'center',
-                  maxWidth:240}}>
-                  {t.desc}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Pagination-Dots */}
-      <div style={{display:'flex',justifyContent:'center',gap:6,marginTop:10}}>
-        {types.map((_,i)=>(
-          <button key={i} onClick={()=>snapTo(i)}
-            aria-label={`Match-Art ${i+1}`}
-            style={{width:i===idx?20:6,height:6,borderRadius:3,
-              background:i===idx?T.o:T.border,
-              border:'none',cursor:'pointer',padding:0,
-              transition:'width .2s,background .2s'}}/>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/* ─── InviteSlotSheet — Modal für Player-Slot ────────────────────
-   Tap auf einen leeren oder gefüllten Slot öffnet dieses Sheet.
-
-   Reihenfolge (Top→Bottom):
-     1. Name-Eingabefeld + Übernehmen-Button
-     2. Vorschlagsliste — als Erstes Accounts, denen man folgt;
-        Tap → Slot wird mit Name + user_id gefüllt
-     3. QR-Code mit der eindeutigen Match-Session-URL
-     4. QR-Scanner-Icon (öffnet die Kamera in-app, nicht Browser)
-   Der frühere „Einladungslink teilen"-Button ist entfernt.
-═══════════════════════════════════════════════════════════════ */
-function InviteSlotSheet({slotIndex,isUserSlot,currentName,matchSessionId,
-  currentUid,excludeUserIds=[],onClose,onPickPlayer,onOpenScanner}){
-  const[name,setName]=useState(currentName||'');
-  const[following,setFollowing]=useState([]);
-  const[followLoading,setFollowLoading]=useState(false);
-
-  // Followed Accounts laden — Slot 0 ist das eigene Profil, dort
-  // brauchen wir keine Vorschläge.
-  useEffect(()=>{
-    if(isUserSlot||!currentUid) return;
-    let cancelled=false;
-    setFollowLoading(true);
-    listFollowing(currentUid,{limit:100})
-      .then(rows=>{ if(!cancelled){
-        // _attachProfiles hängt das Profil unter `profile` an — wir
-        // brauchen user_id + display_name + avatar.
-        const exclude=new Set(excludeUserIds.filter(Boolean));
-        const list=(rows||[])
-          .map(r=>({
-            user_id:r.followee_id,
-            name:r.profile?.display_name||r.profile?.data?.name||'',
-            avatar:r.profile?.data?.avatar||null,
-          }))
-          .filter(p=>p.user_id&&p.name&&!exclude.has(p.user_id));
-        setFollowing(list);
-      } })
-      .finally(()=>{ if(!cancelled) setFollowLoading(false); });
-    return()=>{cancelled=true;};
-  // excludeUserIds intentionally not a dep — sonst flackert die Liste
-  // bei jeder Sheet-Öffnung neu. Mount-once reicht.
-  // eslint-disable-next-line
-  },[isUserSlot,currentUid]);
-
-  // Unique Invite-URL — bindet die Session-ID an, sodass der Empfänger
-  // beim Scannen direkt in dieser Match-Session landet (Routing in
-  // einer Folge-PR).
-  const inviteUrl=(()=>{
-    try{
-      const origin=typeof window!=='undefined'?window.location.origin:'';
-      const base=(typeof window!=='undefined'&&window.__BASE__)||'/';
-      return `${origin}${base}?match=${encodeURIComponent(matchSessionId||'')}&slot=${slotIndex+1}`;
-    }catch{ return ''; }
-  })();
-
-  // QR-Image via api.qrserver.com (bereits in CSP whitelist). Render
-  // mit weißem Hintergrund + schwarzen Modulen für maximale
-  // Scan-Robustheit, egal welches Theme aktiv ist.
-  const qrSrc=inviteUrl
-    ? `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(inviteUrl)}&size=220x220&bgcolor=ffffff&color=000000&margin=8`
-    : '';
-
-  const finishWith=(n,uid)=>{
-    const trimmed=(n||'').trim();
-    if(!trimmed) return;
-    onPickPlayer(trimmed,uid||null);
-  };
-
-  return(
-    <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:220,
-      background:'rgba(0,0,0,.7)',backdropFilter:'blur(4px)',
-      display:'flex',alignItems:'flex-end',justifyContent:'center',
-      animation:'fadeIn .15s ease'}}>
-      <div onClick={e=>e.stopPropagation()} className="si"
-        style={{background:T.bg,border:`1px solid ${T.border}`,
-          borderTopLeftRadius:20,borderTopRightRadius:20,
-          width:'100%',maxWidth:520,maxHeight:'92vh',overflowY:'auto',
-          padding:'20px 22px calc(env(safe-area-inset-bottom,0px) + 22px)',
-          boxShadow:'0 -8px 30px rgba(0,0,0,.5)'}}>
-
-        <div style={{width:38,height:4,borderRadius:2,background:T.border,
-          margin:'0 auto 14px'}}/>
-
-        <div style={{color:T.t1,fontSize:17,fontWeight:800,letterSpacing:-.2,marginBottom:4}}>
-          {isUserSlot?'Das bist du':`Spieler ${slotIndex+1}`}
-        </div>
-        <div style={{color:T.t3,fontSize:12,lineHeight:1.5,marginBottom:14}}>
-          {isUserSlot
-            ?'Slot 1 ist dein Account. Du kannst den Namen anpassen, wie er im Match angezeigt wird.'
-            :'Tippe einen Account aus deinen Folgen an, scanne einen QR-Code, oder trag den Namen manuell ein.'}
-        </div>
-
-        {/* Name + Übernehmen */}
-        <div style={{color:T.o,fontSize:10,fontWeight:800,letterSpacing:1.4,
-          textTransform:'uppercase',marginBottom:6}}>Name</div>
-        <input value={name} onChange={e=>setName(e.target.value)}
-          autoFocus={!isUserSlot}
-          autoCapitalize="words" autoCorrect="off" spellCheck={false}
-          placeholder={isUserSlot?'Dein Name':'Name eingeben'}
-          style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-            borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:15,fontWeight:600,
-            outline:'none',boxSizing:'border-box',marginBottom:10}}/>
-        <button onClick={()=>finishWith(name)} disabled={!name.trim()}
-          style={{width:'100%',padding:'12px 14px',marginBottom:14,
-            background:name.trim()?T.o:T.card2,
-            border:name.trim()?'none':`1px solid ${T.border}`,borderRadius:10,
-            color:name.trim()?'#000':T.t3,
-            fontSize:13,fontWeight:800,letterSpacing:.3,
-            cursor:name.trim()?'pointer':'not-allowed'}}>
-          Übernehmen
-        </button>
-
-        {!isUserSlot&&(
-          <>
-            {/* Vorschläge: zuerst gefolgte Accounts. Echte Spieler
-                haben einen Account-Eintrag, sodass das Match später
-                auch für sie geloggt werden kann. */}
-            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',
-              marginBottom:8,marginTop:4}}>
-              <div style={{color:T.o,fontSize:10,fontWeight:800,letterSpacing:1.4,
-                textTransform:'uppercase'}}>
-                Vorschläge · du folgst
-              </div>
-              {followLoading&&(
-                <div style={{color:T.t3,fontSize:10,letterSpacing:.4}}>lädt …</div>
-              )}
-            </div>
-            {(!followLoading&&following.length===0)?(
-              <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:12,
-                padding:'14px 16px',color:T.t3,fontSize:12,lineHeight:1.5,marginBottom:14}}>
-                Folge anderen Spieler:innen, damit sie hier als Vorschlag erscheinen.
-                Bis dahin kannst du den Namen manuell eintragen oder den QR-Code unten teilen.
-              </div>
-            ):(
-              <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:12,
-                overflow:'hidden',marginBottom:14}}>
-                {following.slice(0,8).map((p,i)=>(
-                  <button key={p.user_id}
-                    onClick={()=>finishWith(p.name,p.user_id)}
-                    style={{width:'100%',background:'transparent',border:'none',
-                      borderTop:i>0?`1px solid ${T.sep}`:'none',
-                      padding:'10px 14px',display:'flex',alignItems:'center',gap:12,
-                      cursor:'pointer',textAlign:'left',color:T.t1}}
-                    onPointerDown={e=>e.currentTarget.style.background=T.card2}
-                    onPointerUp={e=>e.currentTarget.style.background='transparent'}
-                    onPointerLeave={e=>e.currentTarget.style.background='transparent'}>
-                    <ProfileAvatar name={p.name} avatar={p.avatar} size={36}/>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{color:T.t1,fontSize:14,fontWeight:700,letterSpacing:-.1,
-                        overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                        {p.name}
-                      </div>
-                      <div style={{color:T.t3,fontSize:10,fontWeight:600,letterSpacing:.5,
-                        textTransform:'uppercase',marginTop:1}}>
-                        Account · wird mitgewertet
-                      </div>
-                    </div>
-                    <div style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:.5,
-                      padding:'4px 10px',background:T.oSoft,border:`1px solid ${T.o}`,
-                      borderRadius:6}}>
-                      Einladen
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* QR-Code */}
-            <div style={{color:T.o,fontSize:10,fontWeight:800,letterSpacing:1.4,
-              textTransform:'uppercase',marginBottom:8}}>
-              Per QR einladen
-            </div>
-            <div style={{color:T.t3,fontSize:11,lineHeight:1.55,marginBottom:10}}>
-              Der QR enthält einen Direkt-Link in dein Match. Wer den
-              Code scannt, landet in deiner Session — am besten direkt
-              aus der installierten RITMO Web.App heraus.
-            </div>
-            <div style={{display:'flex',justifyContent:'center',marginBottom:10}}>
-              <div style={{padding:8,background:'#fff',borderRadius:14,
-                border:`1px solid ${T.border}`,
-                boxShadow:'0 6px 20px rgba(0,0,0,.45)'}}>
-                {qrSrc
-                  ?<img src={qrSrc} alt="QR-Einladung"
-                    width={220} height={220}
-                    style={{display:'block',width:220,height:220}}/>
-                  :<div style={{width:220,height:220,
-                    display:'flex',alignItems:'center',justifyContent:'center',
-                    color:'#888',fontSize:12}}>—</div>}
-              </div>
-            </div>
-
-            {/* QR-Scanner-Icon — öffnet die Kamera für den Fall, dass
-                der Slot-Besitzer selbst einen QR-Code einscannen will
-                (z. B. von einem anderen Host). Bewusst klein und
-                zentriert direkt unter dem QR. */}
-            <div style={{display:'flex',justifyContent:'center',marginBottom:14}}>
-              <button onClick={()=>{onOpenScanner&&onOpenScanner();}}
-                aria-label="QR-Code scannen"
-                title="QR-Code scannen — öffnet die Kamera"
-                style={{width:48,height:48,borderRadius:'50%',
-                  background:T.card,border:`1.5px solid ${T.o}`,
-                  color:T.o,cursor:'pointer',
-                  display:'flex',alignItems:'center',justifyContent:'center',
-                  boxShadow:'0 4px 16px rgba(0,0,0,.4)'}}>
-                {/* Mini-QR-Glyph (4 Eck-Marker + Mittelblock). */}
-                <svg width="22" height="22" viewBox="0 0 22 22" fill="none"
-                  stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-                  <rect x="2"  y="2"  width="6" height="6" rx="1"/>
-                  <rect x="14" y="2"  width="6" height="6" rx="1"/>
-                  <rect x="2"  y="14" width="6" height="6" rx="1"/>
-                  <rect x="4"  y="4"  width="2" height="2" fill="currentColor" stroke="none"/>
-                  <rect x="16" y="4"  width="2" height="2" fill="currentColor" stroke="none"/>
-                  <rect x="4"  y="16" width="2" height="2" fill="currentColor" stroke="none"/>
-                  <rect x="13" y="13" width="3" height="3"/>
-                  <rect x="18" y="14" width="2" height="1"/>
-                  <rect x="14" y="18" width="1" height="2"/>
-                  <rect x="17" y="17" width="3" height="3"/>
-                </svg>
-              </button>
-            </div>
-            <div style={{color:T.t3,fontSize:10,lineHeight:1.5,
-              textAlign:'center',marginBottom:6}}>
-              Tipp: Eingeladene RITMO-Accounts bekommen das Match
-              automatisch in ihre Statistik geloggt.
-            </div>
-          </>
-        )}
-
-        <button onClick={onClose}
-          style={{width:'100%',marginTop:10,padding:'12px',background:T.card2,
-            border:`1px solid ${T.border}`,borderRadius:10,
-            color:T.t2,fontSize:13,fontWeight:700,cursor:'pointer'}}>
-          Schließen
-        </button>
-      </div>
-    </div>
-  );
-}
 
 /* ═══════════════════════════════════════════════════════════════
    MATCH SCREEN
@@ -3940,96 +3302,22 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
     if(win&&!loggedWinRef.current){
       loggedWinRef.current=win;
       const userWon=win==='A';
-      // matchType: explizit aus cfg, default 'friendly'. Americano-
-      // Single-Matches sind per Definition nie competitive (das Format
-      // ist Freestyle); nur Best-of-Three darf gewertet werden.
-      const isCompetitive = isB && cfg.matchType==='competitive';
-      // Nur Bo3 wird überhaupt geloggt — Americano (Freestyle) fließt
-      // weder in History noch DNA ein.
-      if(isB){
-        // playerUserIds steckt für jeden eingeladenen RITMO-Account
-        // eine user_id; nicht-registrierte Slots bleiben null. Wenn
-        // mindestens ein Account dabei ist, schreiben wir via RPC
-        // für ALLE Teilnehmer auf einmal — so taucht das Match auch
-        // in den Statistiken der Mitspieler:innen auf.
-        const uids = cfg.playerUserIds||[];
-        const hasAccounts = uids.some(Boolean);
-        const playerNames = cfg.players || [cfg.nameA,cfg.nameB];
-        const finalSets = sets;
-        const matchTypeStr = isCompetitive?'competitive':'friendly';
-        const winnerLetter = win; // 'A' | 'B'
-
-        if(hasAccounts){
-          dbLogMatchForParticipants({
-            format:'bo3',
-            match_type:matchTypeStr,
-            player_names:playerNames,
-            player_user_ids:uids,
-            score_a:sA,score_b:sB,
-            sets:finalSets,
-            winner:winnerLetter,
-            // Fallback-Felder, falls die RPC nicht greift (Migration
-            // fehlt) — der Host bekommt zumindest seinen eigenen Row.
-            user_team:'A',
-            user_won:userWon,
-          }).catch(()=>{});
-        } else {
-          // Klassischer Solo-/Test-User-Pfad ohne RPC.
-          dbLogMatch({
-            format:'bo3',
-            match_type:matchTypeStr,
-            player_names:playerNames,
-            score_a:sA,score_b:sB,
-            sets:finalSets,
-            user_team:'A',
-            user_won:userWon,
-          }).catch(()=>{});
-        }
-      }
-      // Counter im Profil hochzählen (matchesPlayed + ggf. winsCount)
-      // ausschließlich für gewertete Bo3-Matches. Friendly + Americano
-      // bleiben damit ohne Einfluss auf das geschätzte Niveau.
-      if(isCompetitive){
-        onMatchLogged?.({userWon});
-      }
-      // Match-Session als finished markieren — Joiner-Devices
-      // bekommen den finalen Score + Winner und können die View
-      // schließen.
-      if(isB&&cfg.matchSessionId){
-        updateMatchSession(cfg.matchSessionId,{
-          status:'finished',
-          state:{pA,pB,gA,gB,sA,sB,tb,tA,tB,sets,winner:win,deuces},
-          winner:win,
-        });
-      }
+      dbLogMatch({
+        format:isB?'bo3':'americano',
+        player_names:cfg.players||[cfg.nameA,cfg.nameB],
+        score_a:isB?sA:am.pA,
+        score_b:isB?sB:am.pB,
+        sets:isB?sets:null,
+        user_team:'A', // Konvention: User ist im Single immer Team A
+        user_won:userWon,
+      }).catch(()=>{});
+      // Counter im Profil hochzählen (matchesPlayed + ggf. winsCount),
+      // damit App-Matches in den Spielniveau-Estimate einfließen.
+      onMatchLogged?.({userWon});
     } else if(!win){
       loggedWinRef.current=null;
     }
   },[win]);// eslint-disable-line
-
-  // ── Live-Session: Score-Snapshots publishen (Host) ──
-  // Sobald sich der bo3-State ändert, schreiben wir den aktuellen
-  // Snapshot in ritmo_match_sessions.state. Debounced (250ms), damit
-  // schnelle Tap-Folgen nicht in Network-Spam ausarten. Erste
-  // Punktewertung schaltet status auf 'started' — Joiner-Devices
-  // wechseln dadurch in den Live-View.
-  const liveStartedRef=useRef(false);
-  useEffect(()=>{
-    if(!isB||!cfg.matchSessionId) return;
-    if(win) return; // finaler Update lief schon im winner-Block oben
-    const snapshot={pA,pB,gA,gB,sA,sB,tb,tA,tB,sets,winner:null,deuces};
-    const hasAnyPoint = pA>0||pB>0||gA>0||gB>0||sA>0||sB>0||sets.length>0;
-    const t=setTimeout(()=>{
-      const patch={state:snapshot};
-      if(hasAnyPoint&&!liveStartedRef.current){
-        patch.status='started';
-        liveStartedRef.current=true;
-      }
-      updateMatchSession(cfg.matchSessionId,patch);
-    },250);
-    return()=>clearTimeout(t);
-  // eslint-disable-next-line
-  },[pA,pB,gA,gB,sA,sB,tb,tA,tB,sets.length,deuces,isB,cfg.matchSessionId,win]);
 
   // ── Serving team + side (Padel rules) ──
   // Total completed games across all sets (excludes current in-progress game)
@@ -4375,7 +3663,7 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
         <div>
           <RitmoWordmark size={Math.round(52*tm)} style={{marginLeft:-3}}/>
           <div style={{color:T.t1,fontSize:Math.round(40*tm),marginTop:4,marginLeft:10,fontWeight:900}}>
-            {isB?(cfg.matchType==='competitive'?'Best of Three · Wettkampf':'Best of Three'):'Americano (Freestyle)'}
+            {isB?'Best of Three':'Americano (Freestyle)'}
           </div>
         </div>
         <div style={{display:'flex',alignItems:'center',gap:10}}>
@@ -9893,530 +9181,6 @@ function TournamentHub({onHome,onStart,onJoin}){
   );
 }
 
-function SingleMatchHub({onHome,onStart,onJoin}){
-  return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
-      position:'relative',overflow:'hidden',
-      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
-      <div className="fi" style={{padding:'0 22px 22px'}}>
-        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
-          <CourtIcon size={32}/>
-          <div style={{flex:1,minWidth:0}}>
-            <div style={{color:T.t1,fontSize:26,fontWeight:800,letterSpacing:-.3}}>Single Match</div>
-            <div style={{color:T.t2,fontSize:14,marginTop:2,fontWeight:400}}>
-              Eigenes Match aufsetzen oder beitreten.
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div style={{flex:1,padding:'0 22px 120px',overflowY:'auto',
-        WebkitOverflowScrolling:'touch',display:'flex',flexDirection:'column',gap:14}}>
-        <HubBigCard
-          icon={<CourtIcon size={28}/>}
-          title="Match starten"
-          desc="Best of 3 oder Americano — du bist Host."
-          onClick={onStart} delay=".02s"/>
-        <HubBigCard
-          icon={<JoinIcon size={28}/>}
-          title="Match beitreten"
-          desc="QR-Code scannen oder Session-ID eingeben."
-          onClick={onJoin} delay=".06s"/>
-      </div>
-
-      <MatchBar onHome={onHome}/>
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   JOIN MATCH
-
-   Spieler:innen, die zu einer fremden Match-Session beitreten.
-   - Primärer Pfad: QR-Code des Hosts scannen → Session-ID landet
-     hier und der User landet in der Session.
-   - Sekundär: Session-ID manuell eintippen (für Fälle ohne QR).
-
-   Echtes Realtime-Pairing (joinende User taucht beim Host als
-   gefüllter Slot auf) folgt in einer separaten PR — dieses Screen
-   ist die UI-Eingangstür und bindet bereits an die Session-ID, die
-   der Host in seinem InviteSlotSheet teilt.
-═══════════════════════════════════════════════════════════════ */
-function JoinMatch({onHome,onBack,onJoined,initialSessionId,profile,currentUid}){
-  const[sessionId,setSessionId]=useState(initialSessionId||'');
-  const[scannerOpen,setScannerOpen]=useState(false);
-  const[busy,setBusy]=useState(false);
-  const[msg,setMsg]=useState('');
-  const[msgKind,setMsgKind]=useState('info');
-
-  // Beim ersten Render mit übergebener ID: Status-Hinweis anzeigen.
-  useEffect(()=>{
-    if(initialSessionId){
-      setMsgKind('ok');
-      setMsg('Session-ID aus QR-Scan übernommen.');
-    }
-  },[initialSessionId]);
-
-  const flash=(kind,text,ms=4000)=>{
-    setMsgKind(kind); setMsg(text);
-    setTimeout(()=>{setMsg('');},ms);
-  };
-
-  const handleScan=(text)=>{
-    const sid=extractMatchSessionFromScan(text);
-    setScannerOpen(false);
-    if(!sid){
-      flash('err','Kein RITMO-Match in diesem QR.');
-      return;
-    }
-    setSessionId(sid);
-    flash('ok','Session-ID erkannt.');
-  };
-
-  const join=async()=>{
-    const sid=sessionId.trim();
-    if(!sid||busy) return;
-    setBusy(true);
-    try{
-      // Ohne Account-Login können wir die RPC nicht aufrufen — die
-      // Spieler-Statistik braucht aber zwingend eine user_id. Wir
-      // merken die ID lokal und weisen den User darauf hin.
-      if(!currentUid){
-        lsSet('ritmo_joined_match',{sessionId:sid,joinedAt:Date.now()});
-        flash('err','Melde dich an, damit das Match in deine Statistik einfließen kann.');
-        return;
-      }
-      const res = await joinMatchSession(sid, profile?.name);
-      if(!res||res.error){
-        const m=res?.error||'Beitritt fehlgeschlagen.';
-        if(/not found/i.test(m)) flash('err','Session nicht gefunden — Code prüfen.');
-        else if(/not joinable/i.test(m)) flash('err','Session ist bereits abgeschlossen.');
-        else if(/no open slot/i.test(m)) flash('err','Alle Plätze sind belegt.');
-        else flash('err',m);
-        return;
-      }
-      lsSet('ritmo_joined_match',{
-        sessionId:sid,
-        slot:res.slot,
-        joinedAt:Date.now(),
-      });
-      if(res.already_in){
-        flash('ok',`Du bist bereits in Slot ${res.slot}. Wechsel zu Live-View …`);
-      } else {
-        flash('ok',`In Slot ${res.slot} eingetragen. Wechsel zu Live-View …`);
-      }
-      // Kleine Verzögerung damit der User den Toast noch sieht
-      setTimeout(()=>{ onJoined?.({sessionId:sid,slot:res.slot}); }, 600);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
-      position:'relative',overflow:'hidden',
-      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
-
-      <div className="fi" style={{padding:'0 22px 18px'}}>
-        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
-          <JoinIcon size={32}/>
-          <div style={{flex:1,minWidth:0}}>
-            <div style={{color:T.t1,fontSize:24,fontWeight:800,letterSpacing:-.3}}>
-              Match beitreten
-            </div>
-            <div style={{color:T.t2,fontSize:13,marginTop:2,fontWeight:400}}>
-              Scan den QR-Code deines Hosts oder tipp die Session-ID ein.
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div style={{flex:1,padding:'0 22px 120px',overflowY:'auto',
-        WebkitOverflowScrolling:'touch',display:'flex',flexDirection:'column',gap:14}}>
-
-        {msg&&(
-          <div style={{
-            padding:'10px 14px',borderRadius:10,
-            background:msgKind==='ok'?'rgba(34,180,90,0.10)':msgKind==='err'?'rgba(232,69,69,0.10)':T.card,
-            border:`1px solid ${msgKind==='ok'?'rgba(34,180,90,0.4)':msgKind==='err'?'rgba(232,69,69,0.4)':T.border}`,
-            color:msgKind==='ok'?'#7ED39C':msgKind==='err'?'#FF8A8A':T.t2,
-            fontSize:12,fontWeight:600,lineHeight:1.5}}>
-            {msg}
-          </div>
-        )}
-
-        {/* Primärer CTA: QR-Scanner */}
-        <button onClick={()=>setScannerOpen(true)} className="fu"
-          style={{background:T.card,border:`1.5px solid ${T.o}`,borderRadius:18,
-            padding:'24px 20px',display:'flex',flexDirection:'column',alignItems:'center',
-            gap:12,cursor:'pointer',color:T.t1,textAlign:'center',
-            transition:'background .15s',
-            boxShadow:`0 0 0 1px ${T.o}22 inset`}}>
-          <div style={{width:72,height:72,borderRadius:18,
-            background:T.oSoft,border:`1.5px solid ${T.o}`,color:T.o,
-            display:'flex',alignItems:'center',justifyContent:'center'}}>
-            {/* Größeres QR-Glyph für die Hero-Card */}
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
-              <rect x="3"  y="3"  width="7" height="7" rx="1"/>
-              <rect x="14" y="3"  width="7" height="7" rx="1"/>
-              <rect x="3"  y="14" width="7" height="7" rx="1"/>
-              <rect x="5"  y="5"  width="3" height="3" fill="currentColor" stroke="none"/>
-              <rect x="16" y="5"  width="3" height="3" fill="currentColor" stroke="none"/>
-              <rect x="5"  y="16" width="3" height="3" fill="currentColor" stroke="none"/>
-              <rect x="14" y="14" width="3" height="3"/>
-              <rect x="19" y="15" width="2" height="2"/>
-              <rect x="15" y="19" width="2" height="2"/>
-              <rect x="18" y="18" width="3" height="3"/>
-            </svg>
-          </div>
-          <div style={{color:T.o,fontSize:18,fontWeight:800,letterSpacing:-.2}}>
-            QR-Code scannen
-          </div>
-          <div style={{color:T.t3,fontSize:12,fontWeight:500,lineHeight:1.5,maxWidth:300}}>
-            Kamera öffnet sich in der App. Halte den QR aus dem Slot
-            deines Hosts in den Rahmen.
-          </div>
-        </button>
-
-        {/* Alternative: manuelle Eingabe */}
-        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
-          padding:'18px 18px'}}>
-          <div style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:1.4,
-            textTransform:'uppercase',marginBottom:8}}>Oder Session-ID eingeben</div>
-          <input value={sessionId} onChange={e=>setSessionId(e.target.value)}
-            placeholder="z. B. 4f8a-c1…"
-            autoCapitalize="off" autoCorrect="off" spellCheck={false}
-            style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-              borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:600,
-              outline:'none',boxSizing:'border-box',marginBottom:12,
-              fontFamily:'-apple-system,SFMono-Regular,Menlo,monospace'}}/>
-          <button onClick={join} disabled={!sessionId.trim()||busy}
-            style={{width:'100%',padding:'12px 14px',
-              background:sessionId.trim()&&!busy?T.o:T.card2,
-              border:sessionId.trim()&&!busy?'none':`1px solid ${T.border}`,borderRadius:10,
-              color:sessionId.trim()&&!busy?'#000':T.t3,
-              fontSize:13,fontWeight:800,letterSpacing:.3,
-              cursor:sessionId.trim()&&!busy?'pointer':'not-allowed'}}>
-            {busy?'Trete bei …':'Beitreten'}
-          </button>
-        </div>
-
-        {/* Hinweis für den User: was passiert nach dem Beitritt */}
-        <div style={{background:T.card2,border:`1px dashed ${T.border}`,borderRadius:12,
-          padding:'14px 16px',color:T.t3,fontSize:11,lineHeight:1.6}}>
-          <div style={{color:T.t2,fontSize:12,fontWeight:700,marginBottom:6}}>
-            So funktioniert's
-          </div>
-          1. Host öffnet einen Slot in seinem Setup → QR erscheint.<br/>
-          2. Du scannst den QR oder tippst die Session-ID hier ein.<br/>
-          3. Sobald der Host startet, läuft das Match auf seinem Gerät.<br/>
-          4. Am Match-Ende landet das Ergebnis automatisch in deiner Statistik.
-        </div>
-      </div>
-
-      <MatchBar onHome={onBack||onHome}/>
-
-      {scannerOpen&&(
-        <QRScannerModal
-          onResult={handleScan}
-          onClose={()=>setScannerOpen(false)}/>
-      )}
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   LIVE MATCH VIEW
-
-   Read-only Score-Anzeige für eingeladene Spieler:innen, die einer
-   Match-Session beigetreten sind. Liest den Live-State via
-   subscribeMatchSession und rendert eine kompakte Match-Karte.
-
-   States, die wir abdecken:
-     - status='open'      → „Warte auf Host (Aufstellung läuft)"
-     - status='started'   → Live-Score
-     - status='finished'  → Endstand + Sieger-Banner
-     - session weg / Fehler → Fehler-Hinweis + Zurück-Button
-═══════════════════════════════════════════════════════════════ */
-function LiveMatchView({sessionId,onHome,onLeave}){
-  const[session,setSession]=useState(null);
-  const[loading,setLoading]=useState(true);
-  const[error,setError]=useState('');
-
-  useEffect(()=>{
-    if(!sessionId) return;
-    let cancelled=false;
-    let unsubscribe=()=>{};
-
-    (async()=>{
-      const initial=await fetchMatchSession(sessionId);
-      if(cancelled) return;
-      if(!initial){
-        setError('Session nicht gefunden.');
-        setLoading(false);
-        return;
-      }
-      setSession(initial);
-      setLoading(false);
-      unsubscribe=subscribeMatchSession(sessionId,(row)=>{
-        if(cancelled||!row) return;
-        setSession(row);
-      });
-    })();
-
-    return()=>{
-      cancelled=true;
-      try{ unsubscribe(); }catch{}
-    };
-  },[sessionId]);
-
-  if(loading){
-    return(
-      <div style={{height:'100dvh',background:T.bg,display:'flex',
-        alignItems:'center',justifyContent:'center'}}>
-        <BallSpinner/>
-      </div>
-    );
-  }
-  if(error||!session){
-    return(
-      <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
-        paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
-        <div style={{flex:1,padding:'0 22px',display:'flex',alignItems:'center',
-          justifyContent:'center'}}>
-          <div style={{background:T.card,border:`1px solid ${T.r}`,borderRadius:14,
-            padding:'24px 22px',maxWidth:340,textAlign:'center'}}>
-            <div style={{color:T.r,fontSize:14,fontWeight:800,marginBottom:8}}>
-              Session-Problem
-            </div>
-            <div style={{color:T.t2,fontSize:13,lineHeight:1.55,marginBottom:14}}>
-              {error||'Diese Match-Session ist nicht mehr verfügbar.'}
-            </div>
-            <button onClick={onLeave||onHome}
-              style={{width:'100%',padding:'12px',background:T.card2,
-                border:`1px solid ${T.border}`,borderRadius:10,
-                color:T.t1,fontSize:13,fontWeight:700,cursor:'pointer'}}>
-              Zurück
-            </button>
-          </div>
-        </div>
-        <MatchBar onHome={onHome}/>
-      </div>
-    );
-  }
-
-  const status=session.status;
-  const state=session.state||{};
-  const sets=Array.isArray(state.sets)?state.sets:[];
-  const winnerLetter=session.winner||state.winner;
-  const isOpen=status==='open';
-  const isFinished=status==='finished';
-
-  // Score-Ausgabe pro Team. Wenn kein State vorliegt (status='open'),
-  // zeigen wir „—" als Platzhalter.
-  const pointStr=(team)=>{
-    if(!state||state.pA==null||state.pB==null) return '—';
-    if(state.tb) return team==='A'?String(state.tA||0):String(state.tB||0);
-    // Vereinfachte Anzeige: Zahlenwert in Padel-Notation (0/15/30/40)
-    const PA=state.pA, PB=state.pB;
-    const PT=['0','15','30','40'];
-    const a=team==='A'?PA:PB, b=team==='A'?PB:PA;
-    if(a>=3&&b>=3){
-      if(a===b) return 'Einstand';
-      if(a===b+1) return 'Vorteil';
-      return '—';
-    }
-    return PT[Math.min(a,3)]||'—';
-  };
-
-  const labelFor=(idx)=>session.players_names?.[idx]||`Spieler ${idx+1}`;
-  const teamALabel=session.team_a_label||`${labelFor(0)} & ${labelFor(1)}`;
-  const teamBLabel=session.team_b_label||`${labelFor(2)} & ${labelFor(3)}`;
-
-  return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
-      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
-
-      <div style={{padding:'0 22px 18px'}}>
-        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
-          <CourtIcon size={28}/>
-          <div style={{flex:1,minWidth:0}}>
-            <div style={{color:T.t1,fontSize:22,fontWeight:800,letterSpacing:-.3}}>
-              Live Match
-            </div>
-            <div style={{display:'flex',alignItems:'center',gap:8,marginTop:4}}>
-              <span style={{width:8,height:8,borderRadius:'50%',
-                background:isFinished?T.t3:isOpen?'#7ED39C':T.o,
-                animation:isOpen||(!isFinished)?'pulseDot 1.4s infinite':'none'}}/>
-              <span style={{color:T.t2,fontSize:11,fontWeight:800,letterSpacing:1,
-                textTransform:'uppercase'}}>
-                {isOpen?'Warte auf Host':isFinished?'Match beendet':'Läuft'}
-              </span>
-              {session.match_type==='competitive'&&(
-                <span style={{padding:'2px 7px',background:T.oSoft,
-                  border:`1px solid ${T.o}`,borderRadius:5,
-                  color:T.o,fontSize:9,fontWeight:900,letterSpacing:1,
-                  textTransform:'uppercase'}}>
-                  Wettkampf
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div style={{flex:1,padding:'0 22px 120px',overflowY:'auto',
-        WebkitOverflowScrolling:'touch',display:'flex',flexDirection:'column',gap:14}}>
-
-        {isOpen&&(
-          <div style={{background:T.card,border:`1px dashed ${T.border}`,borderRadius:14,
-            padding:'18px 18px',color:T.t2,fontSize:12,lineHeight:1.55,textAlign:'center'}}>
-            Der Host stellt gerade die Teams zusammen. Sobald das Match startet,
-            erscheint hier der Live-Score.
-          </div>
-        )}
-
-        {/* Team A Card */}
-        <div style={{background:T.card,
-          border:`1px solid ${winnerLetter==='A'?T.o:T.border}`,borderRadius:14,
-          padding:'18px 22px',display:'flex',alignItems:'center',gap:14}}>
-          <div style={{flex:1,display:'flex',flexDirection:'column',gap:10,minWidth:0}}>
-            <div style={{display:'flex',alignItems:'center',gap:9,minWidth:0}}>
-              <div style={{width:12,height:12,borderRadius:'50%',background:T.o,flexShrink:0,
-                boxShadow:`0 0 8px ${T.oGlow}`}}/>
-              <div style={{color:T.t1,fontSize:18,fontWeight:800,letterSpacing:-.2,
-                overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                {teamALabel}
-              </div>
-            </div>
-            {!isOpen&&(
-              <div style={{display:'flex',alignItems:'center',gap:10}}>
-                <div style={{display:'flex',gap:6,alignItems:'center'}}>
-                  {[0,1,2].map(i=>{
-                    const setRec=sets[i];
-                    const played=!!setRec;
-                    const won=played&&setRec.w==='A';
-                    const games=played?setRec.gA:null;
-                    return(
-                      <div key={i} style={{
-                        width:22,height:22,borderRadius:'50%',
-                        background:played?(won?T.o:T.card2):'transparent',
-                        border:`1.5px solid ${played?(won?T.o:T.border):T.o}`,
-                        boxSizing:'border-box',
-                        display:'flex',alignItems:'center',justifyContent:'center',
-                        color:played?(won?'#000':T.t2):'transparent',
-                        fontSize:11,fontWeight:900,lineHeight:1}}>
-                        {played?games:''}
-                      </div>
-                    );
-                  })}
-                </div>
-                <div style={{color:T.o,fontSize:30,fontWeight:900,letterSpacing:-1,lineHeight:1}}>
-                  {state.gA??0}
-                </div>
-              </div>
-            )}
-          </div>
-          {!isOpen&&(
-            <div style={{fontSize:64,fontWeight:900,color:T.t1,lineHeight:.85,
-              letterSpacing:-3,textAlign:'right',whiteSpace:'nowrap',flexShrink:0,maxWidth:'55%'}}>
-              {pointStr('A')}
-            </div>
-          )}
-        </div>
-
-        {/* Team B Card */}
-        <div style={{background:T.card,
-          border:`1px solid ${winnerLetter==='B'?T.o:T.border}`,borderRadius:14,
-          padding:'18px 22px',display:'flex',alignItems:'center',gap:14}}>
-          <div style={{flex:1,display:'flex',flexDirection:'column',gap:10,minWidth:0}}>
-            <div style={{display:'flex',alignItems:'center',gap:9,minWidth:0}}>
-              <div style={{width:12,height:12,borderRadius:'50%',background:T.blue,flexShrink:0,
-                boxShadow:`0 0 8px ${T.blueGlow}`}}/>
-              <div style={{color:T.t1,fontSize:18,fontWeight:800,letterSpacing:-.2,
-                overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                {teamBLabel}
-              </div>
-            </div>
-            {!isOpen&&(
-              <div style={{display:'flex',alignItems:'center',gap:10}}>
-                <div style={{display:'flex',gap:6,alignItems:'center'}}>
-                  {[0,1,2].map(i=>{
-                    const setRec=sets[i];
-                    const played=!!setRec;
-                    const won=played&&setRec.w==='B';
-                    const games=played?setRec.gB:null;
-                    return(
-                      <div key={i} style={{
-                        width:22,height:22,borderRadius:'50%',
-                        background:played?(won?T.o:T.card2):'transparent',
-                        border:`1.5px solid ${played?(won?T.o:T.border):T.o}`,
-                        boxSizing:'border-box',
-                        display:'flex',alignItems:'center',justifyContent:'center',
-                        color:played?(won?'#000':T.t2):'transparent',
-                        fontSize:11,fontWeight:900,lineHeight:1}}>
-                        {played?games:''}
-                      </div>
-                    );
-                  })}
-                </div>
-                <div style={{color:T.o,fontSize:30,fontWeight:900,letterSpacing:-1,lineHeight:1}}>
-                  {state.gB??0}
-                </div>
-              </div>
-            )}
-          </div>
-          {!isOpen&&(
-            <div style={{fontSize:64,fontWeight:900,color:T.t1,lineHeight:.85,
-              letterSpacing:-3,textAlign:'right',whiteSpace:'nowrap',flexShrink:0,maxWidth:'55%'}}>
-              {pointStr('B')}
-            </div>
-          )}
-        </div>
-
-        {/* Winner-Banner */}
-        {isFinished&&winnerLetter&&(
-          <div style={{textAlign:'center',padding:'14px 16px',background:T.oSoft,
-            borderRadius:12,border:`1px solid ${T.o}`,color:T.o,fontWeight:800,fontSize:14}}>
-            🏆 {winnerLetter==='A'?teamALabel:teamBLabel} hat gewonnen!
-          </div>
-        )}
-
-        {/* Hinweis: das Match landet automatisch in der Statistik */}
-        {isFinished&&session.match_type==='competitive'&&(
-          <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:12,
-            padding:'12px 14px',color:T.t3,fontSize:11,lineHeight:1.55,textAlign:'center'}}>
-            Das Match wurde in deiner Statistik gespeichert und fließt in deine RITMO DNA ein.
-          </div>
-        )}
-
-        {/* Session-ID + Slot Info */}
-        <div style={{background:T.card2,border:`1px dashed ${T.border}`,borderRadius:10,
-          padding:'10px 14px',color:T.t3,fontSize:10,lineHeight:1.5,
-          fontFamily:'-apple-system,SFMono-Regular,Menlo,monospace',
-          display:'flex',justifyContent:'space-between',gap:8}}>
-          <span>Session</span>
-          <span style={{wordBreak:'break-all',textAlign:'right',color:T.t2}}>
-            {sessionId.slice(0,12)}…
-          </span>
-        </div>
-
-        {isFinished&&(
-          <button onClick={onLeave||onHome}
-            style={{padding:'12px 14px',background:T.card,
-              border:`1px solid ${T.border}`,borderRadius:10,
-              color:T.t1,fontSize:13,fontWeight:700,cursor:'pointer'}}>
-            Session verlassen
-          </button>
-        )}
-      </div>
-
-      <MatchBar onHome={onHome}/>
-    </div>
-  );
-}
-
 function RitmoBibel({onHome,onRules,onJourney}){
   return(
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
@@ -12521,14 +11285,6 @@ export default function App(){
     if(joinedSession===null){try{localStorage.removeItem('ritmo_joined');}catch{}}
     else lsSet('ritmo_joined',joinedSession);
   },[joinedSession]);
-  // Beigetretene Single-Match-Session (Joiner-Seite). Persistiert in
-  // localStorage damit ein Reload den User wieder in den Live-View
-  // zurückholt, solange das Match nicht abgeschlossen ist.
-  const[joinedMatchSession,setJoinedMatchSession]=useState(()=>lsGet('ritmo_joined_match',null));
-  useEffect(()=>{
-    if(joinedMatchSession===null){try{localStorage.removeItem('ritmo_joined_match');}catch{}}
-    else lsSet('ritmo_joined_match',joinedMatchSession);
-  },[joinedMatchSession]);
   // ?join=PIN aus der URL extrahieren (vom QR-Scan). Wird beim
   // Cold-Load gelesen und an JoinTournament als initialPin gegeben.
   // Sobald gelesen, säubern wir die URL via history.replaceState.
@@ -12547,34 +11303,6 @@ export default function App(){
       window.history.replaceState({},'',url.toString());
     }catch{}
   },[joinPinFromUrl]);
-  // ?match=<sessionId> aus der URL — vom QR-Scan oder geteilten Link
-  // einer Match-Einladung. Wird beim Cold-Load gelesen, als
-  // initialSessionId an JoinMatch durchgereicht und sofort aus der
-  // URL gelöscht damit ein Reload nicht erneut weiterleitet.
-  const[joinMatchFromUrl,setJoinMatchFromUrl]=useState(()=>{
-    if(typeof window==='undefined') return null;
-    try{
-      const params=new URLSearchParams(window.location.search);
-      const direct=params.get('match');
-      if(direct) return direct.trim();
-      // Variante ?join=match&session=<id>
-      if(params.get('join')==='match'){
-        const s=params.get('session');
-        if(s) return s.trim();
-      }
-      return null;
-    }catch{return null;}
-  });
-  useEffect(()=>{
-    if(!joinMatchFromUrl) return;
-    try{
-      const url=new URL(window.location.href);
-      url.searchParams.delete('match');
-      url.searchParams.delete('session');
-      if(url.searchParams.get('join')==='match') url.searchParams.delete('join');
-      window.history.replaceState({},'',url.toString());
-    }catch{}
-  },[joinMatchFromUrl]);
   const[pendingEmail,setPendingEmail]=useState('');
   // Aktuelle Supabase User-ID — wird vom Auth-Listener gesetzt und
   // an Social-Screens (PublicProfile, BookingDetail, …) durchgereicht.
@@ -12866,10 +11594,6 @@ export default function App(){
       // ohne Login (Auth-Pflicht wäre Reibung für den eingeladenen
       // Spieler).
       if(joinPinFromUrl) return nav('remote');
-      // ?match=<sessionId> aus QR-Scan: direkt in die Single-Match-
-      // Join-Maske. Auch hier ohne Login-Pflicht — der Beitritt-
-      // Screen funktioniert als reine UI-Eingangstür.
-      if(joinMatchFromUrl) return nav('join-match');
       // Vor Login zeigen wir die Beta-Landing-Page (Coming-Soon-
       // Ankündigung + CTA-Buttons). Eingeloggte User springen direkt
       // weiter zu welcome / home.
@@ -13107,29 +11831,7 @@ export default function App(){
       onJoin={setJoinedSession}
       onHome={()=>{setJoinPinFromUrl(null);goHome();}}/>}
 
-    {/* Hub-Screens: Single-Match, Turnier-Auswahl + RITMO Bibel */}
-    {scr==='single-hub'&&<SingleMatchHub
-      onHome={goHome}
-      onStart={()=>setScr('single-setup')}
-      onJoin={()=>setScr('join-match')}/>}
-    {scr==='join-match'&&<JoinMatch
-      onHome={goHome}
-      onBack={joinMatchFromUrl?null:()=>setScr('single-hub')}
-      initialSessionId={joinMatchFromUrl}
-      profile={profile}
-      currentUid={currentUid}
-      onJoined={({sessionId,slot})=>{
-        setJoinedMatchSession({sessionId,slot,joinedAt:Date.now()});
-        setJoinMatchFromUrl(null);
-        setScr('live-match');
-      }}/>}
-    {scr==='live-match'&&joinedMatchSession&&<LiveMatchView
-      sessionId={joinedMatchSession.sessionId}
-      onHome={goHome}
-      onLeave={()=>{
-        setJoinedMatchSession(null);
-        goHome();
-      }}/>}
+    {/* Hub-Screens: Turnier-Auswahl + RITMO Bibel */}
     {scr==='tournament-hub'&&<TournamentHub
       onHome={goHome}
       onStart={()=>setScr('tournament-setup')}

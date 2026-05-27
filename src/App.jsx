@@ -6626,21 +6626,21 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='soft',onEdit,onMa
   useEffect(()=>{
     if(!tourney.timerRunning||tourney.finished)return;
     const id=setInterval(()=>{
-      // playRing OUT des State-Updaters ziehen — React kann
-      // Updater im StrictMode/Concurrent-Mode mehrfach aufrufen, was
-      // den Klingelton doppelt triggert. Außerhalb des Updaters
-      // läuft die Audio-Logik garantiert exakt einmal pro Tick, mit
-      // garantiertem AudioContext-resume() (siehe audio.js).
-      let willFinish=false;
+      // playRing MUSS innerhalb des State-Updaters laufen — React 18
+      // batched State-Updates aus setInterval-Callbacks; ein Flag
+      // außerhalb zu setzen und danach abzufragen kommt zu früh
+      // (Updater läuft erst beim nächsten Tick). Der Pattern matched
+      // jetzt 1:1 die Americano-Timer-Logik in Match. AudioContext-
+      // Resume() in audio.js sorgt dafür, dass der Ton auch nach
+      // langer User-Inaktivität noch durchkommt.
       setTourney(t=>{
         if(!t||!t.timerRunning)return t;
         if(t.timerSecsLeft<=1){
-          willFinish=true;
+          playRing(ringId);
           return {...t,timerSecsLeft:0,timerRunning:false,timerFinished:true};
         }
         return {...t,timerSecsLeft:t.timerSecsLeft-1};
       });
-      if(willFinish) playRing(ringId);
     },1000);
     return()=>clearInterval(id);
   },[tourney.timerRunning,tourney.finished,ringId,setTourney]);
@@ -7550,13 +7550,15 @@ function SettingsSteuerung({onBack,onHome,inputMode,setInputMode,voiceOn,setVoic
         </div>
       </div>
 
-      {/* Timer-Klingelton */}
+      {/* Timer-Klingelton — globale Einstellung für ALLE Timer in
+          der App (Americano + Turnier-Rundentimer). Wer die Glocke
+          hier wechselt, hört sie überall. */}
       <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
         padding:'18px 18px 8px'}}>
         <div style={{color:T.o,fontSize:11,fontWeight:700,letterSpacing:1.3,
           textTransform:'uppercase',marginBottom:4}}>Timer-Klingelton</div>
         <div style={{color:T.t3,fontSize:12,fontWeight:500,marginBottom:14,lineHeight:1.5}}>
-          Ton wenn Americano-Timer abläuft.
+          Globaler Ton — spielt beim Ablaufen aller Timer (Americano + Turnier-Runden).
         </div>
         {RINGS.map((r,i)=>(
           <div key={r.id} onClick={()=>setRingId(r.id)}

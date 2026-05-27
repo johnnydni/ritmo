@@ -2081,18 +2081,47 @@ function TabBar({active,onTab,rightAction,searchable=false,onSearch}){
   const[pill,setPill]=useState({left:0,top:0,width:0,height:0,ready:false});
   const targetTab=hovered||active;
 
+  // Mess-Helper: liefert die Position des Ziel-Tabs RELATIV zur
+  // Padding-Box des Navbar-Containers — das ist auch der Bezugsrahmen
+  // für absolute-positionierte Kinder mit top:0/left:0. Wir nutzen
+  // getBoundingClientRect statt offsetLeft/Top, weil das in jedem
+  // Browser konsistent verhält (offsetLeft ist je nach Engine vom
+  // Border- oder Padding-Rand gemessen → kann 1–5px off sein).
+  const measurePill=()=>{
+    const navEl=navRef.current;
+    const tabEl=tabRefs.current[targetTab];
+    if(!navEl||!tabEl) return null;
+    const navRect=navEl.getBoundingClientRect();
+    const tabRect=tabEl.getBoundingClientRect();
+    const cs=window.getComputedStyle(navEl);
+    // Border + (left:0 sitzt auf der Padding-Innenkante, also nur die
+    // Border der Box rausrechnen). Padding selbst gehört zum
+    // Bezugsrahmen, also NICHT abziehen.
+    const bL=parseFloat(cs.borderLeftWidth)||0;
+    const bT=parseFloat(cs.borderTopWidth)||0;
+    return {
+      left:tabRect.left-navRect.left-bL,
+      top:tabRect.top-navRect.top-bT,
+      width:tabRect.width,
+      height:tabRect.height,
+    };
+  };
+
   // useLayoutEffect, damit die Pill schon im ersten Frame korrekt
   // sitzt — sonst sähe man sie 1 Tick lang an der falschen Stelle.
   useLayoutEffect(()=>{
-    const el=tabRefs.current[targetTab];
-    if(!el) return;
-    setPill({
-      left:el.offsetLeft,
-      top:el.offsetTop,
-      width:el.offsetWidth,
-      height:el.offsetHeight,
-      ready:true,
-    });
+    // Im Search-Mode wird die Pill ausgeblendet (siehe opacity
+    // unten), weil der aktive Tab (z. B. "settings") in Search-Mode
+    // auf width:0 kollabiert. Eine 0-Pixel-Pill mit Glow würde sonst
+    // als kleine graue Box am Rand stehenbleiben.
+    if(searchMode){
+      setPill(p=>({...p,ready:false}));
+      return;
+    }
+    const m=measurePill();
+    if(!m) return;
+    setPill({...m,ready:true});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   },[targetTab,searchMode]);
 
   // Resize: TabBar-Layout kann sich z. B. bei Theme-Wechsel oder
@@ -2100,15 +2129,15 @@ function TabBar({active,onTab,rightAction,searchable=false,onSearch}){
   // aber window-resize reicht für unser Inline-Layout.
   useEffect(()=>{
     const onResize=()=>{
-      const el=tabRefs.current[targetTab];
-      if(!el) return;
-      setPill(p=>({...p,
-        left:el.offsetLeft,top:el.offsetTop,
-        width:el.offsetWidth,height:el.offsetHeight}));
+      if(searchMode) return;
+      const m=measurePill();
+      if(!m) return;
+      setPill(p=>({...p,...m}));
     };
     window.addEventListener('resize',onResize);
     return()=>window.removeEventListener('resize',onResize);
-  },[targetTab]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[targetTab,searchMode]);
 
   // Beim Verlassen des suchbaren Screens: Mode + Query zurücksetzen.
   useEffect(()=>{

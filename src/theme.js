@@ -560,7 +560,14 @@ button:disabled{cursor:not-allowed;opacity:.55;}
    Position+Größe werden in App.jsx via Refs auf den aktiven Tab
    gemessen und mit transform/width animiert. */
 .liquid-pill{
+  /* Explizit an die obere linke Ecke der offsetParent-Padding-Area
+     ankern — ohne top/left würde absolute Positionierung auf den
+     natürlichen Flow zurückfallen (≈ Start des Flex-Containers) und
+     transform: translate würde dann von einer browser-abhängigen
+     Position aus rechnen → Pill saß optisch off-center. */
   position:absolute;
+  top:0;
+  left:0;
   border-radius:24px;
   background:linear-gradient(135deg,
     rgba(255,255,255,.10) 0%,
@@ -577,6 +584,7 @@ button:disabled{cursor:not-allowed;opacity:.55;}
   transition:
     transform var(--anim-pill),
     width var(--anim-pill),
+    height var(--anim-pill),
     opacity 220ms var(--ease-out-expo),
     box-shadow 260ms var(--ease-out-expo);
   will-change:transform,width;

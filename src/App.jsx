@@ -3017,7 +3017,12 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
 /* ═══════════════════════════════════════════════════════════════
    MATCH SCREEN
 ═══════════════════════════════════════════════════════════════ */
-function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId='soft',matchKeyRef,theme='dark',voiceOn=false,voiceBaseUrl='',onMatchLogged}){
+function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId='soft',matchKeyRef,theme='dark',voiceOn=false,voiceBaseUrl='',tabletMode=false,onMatchLogged}){
+  // Tablet-Modus-Skalierungsfaktor — wird auf alle größenbezogenen
+  // Stylings im Portrait-Layout angewandt. BigScreen hat eigenen
+  // Zoom-Multiplier; Tablet-Modus erhöht dort den Default-Zoom auf 1.5.
+  // Service-Indikator + Verlauf-Bar bleiben in beiden Pfaden erhalten.
+  const tm=tabletMode?1.35:1;
   const isB=cfg.format==='bo3';
   const[flA,setFA]=useState(false);const[flB,setFB]=useState(false);
   const[confReset,setConfReset]=useState(false);
@@ -3027,7 +3032,9 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
   // Reset beim Schließen von BigScreen.
   const ZOOM_CYCLE=[1,1.5,2,0.5];
   const[zoomLevel,setZoomLevel]=useState(1);
-  useEffect(()=>{if(!bigScreen) setZoomLevel(1);},[bigScreen]);
+  // BigScreen → Reset auf Default. Im Tablet-Modus ist Default 1.5×
+  // (statt 1×), damit iPad-Anzeigen sofort groß wirken.
+  useEffect(()=>{if(!bigScreen) setZoomLevel(tabletMode?1.5:1);},[bigScreen,tabletMode]);
   const cycleZoom=()=>setZoomLevel(z=>{
     const i=ZOOM_CYCLE.indexOf(z);
     return ZOOM_CYCLE[(i+1)%ZOOM_CYCLE.length];
@@ -3468,26 +3475,39 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
                     {big}
                   </div>
                 )}
-                {/* Games + Set traffic-light dots */}
+                {/* Games + Set traffic-light dots — im BigScreen mit
+                    eigenständigen Dots (pro Satz), im Tablet-Modus
+                    werden zusätzlich die Games-Zahlen ausgegeben. */}
                 {isB&&(
                   <div style={{display:'flex',alignItems:'center',gap:`clamp(${1.5*m}rem,${vh(4,5)}vw,${3*m}rem)`,
                     marginTop:`clamp(${1.6*m}rem,${vh(4.5,6)}vh,${3*m}rem)`}}>
+                    <div style={{display:'flex',gap:`clamp(${.7*m}rem,${vh(1.5,2.2)}vw,${1.2*m}rem)`}}>
+                      {[0,1,2].map(i=>{
+                        const setRec=bo3.sets&&bo3.sets[i];
+                        const played=!!setRec;
+                        const won=played&&setRec.w===team;
+                        const games=played?(team==='A'?setRec.gA:setRec.gB):null;
+                        const dotSize=`clamp(${1.4*m}rem,${vh(3.5,5)}vh,${2.5*m}rem)`;
+                        return(
+                          <div key={i} style={{
+                            width:dotSize,height:dotSize,borderRadius:'50%',
+                            background:played?(won?T.o:T.card2):'transparent',
+                            border:`2.5px solid ${played?(won?T.o:T.border):T.o}`,
+                            boxSizing:'border-box',
+                            boxShadow:won?'0 0 14px var(--oGlow)':'none',
+                            display:'flex',alignItems:'center',justifyContent:'center',
+                            color:played?(won?'#000':T.t2):'transparent',
+                            fontSize:`clamp(${.8*m}rem,${vh(1.6,2.4)}vh,${1.4*m}rem)`,
+                            fontWeight:900,lineHeight:1,
+                          }}>
+                            {played&&tabletMode?games:''}
+                          </div>
+                        );
+                      })}
+                    </div>
                     <div style={{color:T.o,fontSize:`clamp(${3.5*m}rem,${vh(12,18)}vh,${8*m}rem)`,
                       fontWeight:900,letterSpacing:-3,lineHeight:1}}>
                       {gamesCount}
-                    </div>
-                    <div style={{display:'flex',gap:`clamp(${.7*m}rem,${vh(1.5,2.2)}vw,${1.2*m}rem)`}}>
-                      {[0,1,2].map(i=>(
-                        <div key={i} style={{
-                          width:`clamp(${1.4*m}rem,${vh(3.5,5)}vh,${2.5*m}rem)`,
-                          height:`clamp(${1.4*m}rem,${vh(3.5,5)}vh,${2.5*m}rem)`,
-                          borderRadius:'50%',
-                          background:i<setsCount?T.o:'transparent',
-                          border:`2.5px solid ${T.o}`,
-                          boxSizing:'border-box',
-                          boxShadow:i<setsCount?'0 0 14px var(--oGlow)':'none'
-                        }}/>
-                      ))}
                     </div>
                   </div>
                 )}
@@ -3574,24 +3594,32 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
   }
 
   // ═══ NORMAL VERTICAL ═══
+  // Tablet-Modus: Content wird auf maxWidth ~720px zentriert, alle
+  // Größen werden um Faktor `tm` skaliert. Phone-Modus rendert wie
+  // gewohnt (tm=1).
+  const contentMaxWidth=tabletMode?720:'100%';
   return(
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
-      <div style={{padding:'0 9px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
+      <div style={{padding:`0 ${Math.round(9*tm)}px ${Math.round(22*tm)}px`,
+        display:'flex',alignItems:'flex-start',justifyContent:'space-between',
+        maxWidth:contentMaxWidth,width:'100%',margin:'0 auto',boxSizing:'border-box'}}>
         <div>
-          <RitmoWordmark size={52} style={{marginLeft:-3}}/>
-          <div style={{color:T.t1,fontSize:40,marginTop:4,marginLeft:10,fontWeight:900}}>
+          <RitmoWordmark size={Math.round(52*tm)} style={{marginLeft:-3}}/>
+          <div style={{color:T.t1,fontSize:Math.round(40*tm),marginTop:4,marginLeft:10,fontWeight:900}}>
             {isB?'Best of Three':'Americano'}
           </div>
         </div>
         <div style={{display:'flex',alignItems:'center',gap:10}}>
-          <span style={{color:T.t2,fontSize:18,fontWeight:800,letterSpacing:2}}>•••</span>
-          <CourtIcon size={32}/>
+          <span style={{color:T.t2,fontSize:Math.round(18*tm),fontWeight:800,letterSpacing:2}}>•••</span>
+          <CourtIcon size={Math.round(32*tm)}/>
         </div>
       </div>
 
-      <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
+      <div style={{flex:1,padding:`0 ${Math.round(22*tm)}px`,display:'flex',flexDirection:'column',
+        gap:Math.round(14*tm),overflowY:'auto',
+        maxWidth:contentMaxWidth,width:'100%',margin:'0 auto',boxSizing:'border-box'}}>
 
         {['A','B'].map(team=>{
           const isA=team==='A';
@@ -3607,38 +3635,59 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
           const isSpecial = isAdv || isDeuce || isDash;
           return(
             <button key={team} onClick={()=>punkt(team)} className={fl?'flash':''}
-              style={{background:T.card,border:`1px solid ${isW?T.o:T.border}`,borderRadius:14,
-                padding:'18px 22px',display:'flex',alignItems:'center',
+              style={{background:T.card,border:`1px solid ${isW?T.o:T.border}`,
+                borderRadius:Math.round(14*tm),
+                padding:`${Math.round(18*tm)}px ${Math.round(22*tm)}px`,
+                display:'flex',alignItems:'center',
                 cursor:win?'default':'pointer',color:T.t1,textAlign:'left',
-                transition:'border-color .25s',minHeight:120}}>
+                transition:'border-color .25s',minHeight:Math.round(120*tm)}}>
 
-              <div style={{flex:1,display:'flex',flexDirection:'column',gap:14,minWidth:0}}>
-                <div style={{display:'flex',alignItems:'center',gap:9,minWidth:0}}>
-                  <div style={{width:12,height:12,borderRadius:'50%',
+              <div style={{flex:1,display:'flex',flexDirection:'column',gap:Math.round(14*tm),minWidth:0}}>
+                <div style={{display:'flex',alignItems:'center',gap:Math.round(9*tm),minWidth:0}}>
+                  <div style={{width:Math.round(12*tm),height:Math.round(12*tm),borderRadius:'50%',
                     background:isA?T.o:T.blue,flexShrink:0,
                     boxShadow:`0 0 8px ${isA?T.oGlow:T.blueGlow}`}}/>
-                  <div style={{color:T.t1,fontSize:24,fontWeight:800,letterSpacing:-.3,
+                  <div style={{color:T.t1,fontSize:Math.round(24*tm),fontWeight:800,letterSpacing:-.3,
                     overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{nm}</div>
                 </div>
                 {isB&&(
-                  <div style={{display:'flex',alignItems:'center',gap:12}}>
-                    <div style={{color:T.o,fontSize:32,fontWeight:900,
+                  <div style={{display:'flex',alignItems:'center',gap:Math.round(12*tm)}}>
+                    <div style={{display:'flex',gap:Math.round(6*tm),alignItems:'center'}}>
+                      {/* Pro Satz ein Marker: gefüllter Kreis mit der
+                          Games-Anzahl für DIESES Team in jenem Satz.
+                          Farbe: orange = Satz gewonnen, gedämpft grau =
+                          verloren, leerer outline-Kreis = noch nicht
+                          gespielt. So sieht man den Satz-Verlauf auf
+                          einen Blick (z. B. 6–2, 3–6, im 3. Satz). */}
+                      {[0,1,2].map(i=>{
+                        const setRec=bo3.sets&&bo3.sets[i];
+                        const played=!!setRec;
+                        const won=played&&setRec.w===team;
+                        const games=played?(team==='A'?setRec.gA:setRec.gB):null;
+                        const dotSize=Math.round(20*tm);
+                        return(
+                          <div key={i} style={{
+                            width:dotSize,height:dotSize,borderRadius:'50%',
+                            background:played?(won?T.o:T.card2):'transparent',
+                            border:`1.5px solid ${played?(won?T.o:T.border):T.o}`,
+                            boxSizing:'border-box',
+                            display:'flex',alignItems:'center',justifyContent:'center',
+                            color:played?(won?'#000':T.t2):'transparent',
+                            fontSize:Math.round(11*tm),fontWeight:900,lineHeight:1,
+                          }}>
+                            {played?games:''}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div style={{color:T.o,fontSize:Math.round(32*tm),fontWeight:900,
                       letterSpacing:-1,lineHeight:1}}>
                       {gamesCount}
-                    </div>
-                    <div style={{display:'flex',gap:5}}>
-                      {[0,1,2].map(i=>(
-                        <div key={i} style={{
-                          width:10,height:10,borderRadius:'50%',
-                          background:i<setsCount?T.o:'transparent',
-                          border:`1.5px solid ${T.o}`,boxSizing:'border-box'
-                        }}/>
-                      ))}
                     </div>
                   </div>
                 )}
                 {!isB&&(
-                  <div style={{color:T.o,fontSize:14,fontWeight:600}}>
+                  <div style={{color:T.o,fontSize:Math.round(14*tm),fontWeight:600}}>
                     {(cfg.amLimit??21)>0?`${big} / ${cfg.amLimit??21}`:'∞'}
                   </div>
                 )}
@@ -3646,22 +3695,22 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
 
               {isSpecial ? (
                 <div style={{display:'flex',flexDirection:'column',alignItems:'center',
-                  flexShrink:0,gap:6,maxWidth:'55%'}}>
+                  flexShrink:0,gap:Math.round(6*tm),maxWidth:'55%'}}>
                   <div style={{
-                    width:48,height:48,borderRadius:'50%',
+                    width:Math.round(48*tm),height:Math.round(48*tm),borderRadius:'50%',
                     background:isAdv?T.o:T.t1,
                     boxShadow:isAdv
                       ?'0 0 14px var(--oGlow), inset 0 -4px 10px rgba(0,0,0,.18)'
                       :'0 0 10px rgba(255,255,255,.18), inset 0 -4px 10px rgba(0,0,0,.10)'
                   }}/>
-                  <div style={{color:T.t1,fontSize:18,fontWeight:800,letterSpacing:-.3,
+                  <div style={{color:T.t1,fontSize:Math.round(18*tm),fontWeight:800,letterSpacing:-.3,
                     whiteSpace:'nowrap',lineHeight:1}}>
                     {big}
                   </div>
                 </div>
               ) : (
                 <div style={{
-                  fontSize:96,fontWeight:900,color:T.t1,
+                  fontSize:Math.round(96*tm),fontWeight:900,color:T.t1,
                   lineHeight:.85,letterSpacing:-5,
                   textAlign:'right',whiteSpace:'nowrap',
                   flexShrink:0,maxWidth:'55%'}}>
@@ -6738,8 +6787,12 @@ function SettingsSteuerung({onBack,onHome,inputMode,setInputMode,voiceOn,setVoic
   );
 }
 
-/* ─── Anpassung — Theme picker ──────────────────────────────────── */
-function SettingsAnpassung({onBack,onHome,theme,setTheme}){
+/* ─── Anpassung — Theme picker + Tablet-Modus ────────────────────
+   Tablet-Modus skaliert das Match-Scoreboard für größere Screens
+   (Padel-Court-Display, iPad neben dem Platz). Service-Indikator und
+   Punkte-Verlauf bleiben in beiden Modi erhalten — siehe Match.jsx.
+═══════════════════════════════════════════════════════════════ */
+function SettingsAnpassung({onBack,onHome,theme,setTheme,tabletMode,setTabletMode}){
   const themes=[
     {id:'dark',label:'RITMO BAUHAUS Dark',icon:'🌙',desc:'Schwarz, weiß, orange'},
     {id:'light',label:'Federleicht',icon:'☀️',desc:'Weiß, schwarz, blau'},
@@ -6753,7 +6806,7 @@ function SettingsAnpassung({onBack,onHome,theme,setTheme}){
       icon={<PaletteIcon size={22} color="currentColor"/>}
       onBack={onBack} onHome={onHome}>
       <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
-        padding:'18px 18px 8px'}}>
+        padding:'18px 18px 8px',marginBottom:12}}>
         <div style={{color:T.o,fontSize:11,fontWeight:700,letterSpacing:1.3,
           textTransform:'uppercase',marginBottom:8}}>Theme</div>
         {themes.map((th,i)=>(
@@ -6771,6 +6824,25 @@ function SettingsAnpassung({onBack,onHome,theme,setTheme}){
               :<span style={{width:16}}/>}
           </div>
         ))}
+      </div>
+
+      {/* Tablet-Modus */}
+      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+        padding:'18px 18px',marginBottom:12}}>
+        <div style={{color:T.o,fontSize:11,fontWeight:700,letterSpacing:1.3,
+          textTransform:'uppercase',marginBottom:12}}>Anzeige</div>
+        <div style={{display:'flex',alignItems:'center',gap:14}}>
+          <div style={{fontSize:22,width:32,textAlign:'center',flexShrink:0}}>📱</div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{color:T.t1,fontSize:14,fontWeight:700}}>Tablet-Modus</div>
+            <div style={{color:T.t3,fontSize:11,marginTop:2,lineHeight:1.5}}>
+              Score-Anzeige wird für iPad-Größen optimiert: größere Karten,
+              dickere Zahlen, mehr Luft. Service-Indikator und Punkte-Verlauf
+              bleiben erhalten.
+            </div>
+          </div>
+          <SettingsToggle on={tabletMode} onToggle={()=>setTabletMode(!tabletMode)}/>
+        </div>
       </div>
     </SettingsSubLayout>
   );
@@ -10804,6 +10876,12 @@ export default function App(){
   const[voiceOn,setVoiceOn]=useState(()=>lsGet('ritmo_voice',false));
   const[voiceBaseUrl,setVoiceBaseUrl]=useState(()=>lsGet('ritmo_voice_url',''));
   const[theme,setTheme]=useState(()=>lsGet('ritmo_theme','dark'));
+  // Tablet-Modus skaliert das Scoreboard (Match-Screen) auf größere
+  // Bildschirme. Eigene Persistenz, weil der Mode bewusst manuell vom
+  // User aktiviert wird — nicht automatisch via Viewport-Erkennung,
+  // damit Tester:innen die Tablet-Optik auch am Phone prüfen können.
+  const[tabletMode,setTabletMode]=useState(()=>lsGet('ritmo_tablet',false));
+  useEffect(()=>{ lsSet('ritmo_tablet',tabletMode); },[tabletMode]);
   // Benachrichtigungs-Präferenzen — werden in den Settings gepflegt
   // und hier zentral gehalten, damit sie an mehreren Stellen (z. B.
   // RITMO Post, Home-Badge) ausgelesen werden können.
@@ -11180,7 +11258,8 @@ export default function App(){
       ringId={ringId} setRingId={setRingId}/>}
     {scr==='settings-anpassung'&&<SettingsAnpassung
       onBack={()=>setScr('settings')} onHome={goHome}
-      theme={theme} setTheme={setTheme}/>}
+      theme={theme} setTheme={setTheme}
+      tabletMode={tabletMode} setTabletMode={setTabletMode}/>}
     {scr==='settings-privatsphaere'&&<SettingsPrivatsphaere
       onBack={()=>setScr('settings')} onHome={goHome}
       profile={profile} setProfile={setProfile}
@@ -11232,6 +11311,7 @@ export default function App(){
       onHome={goHome} inputMode={inputMode} ringId={ringId}
       matchKeyRef={matchKeyRef} theme={theme}
       voiceOn={voiceOn} voiceBaseUrl={voiceBaseUrl}
+      tabletMode={tabletMode}
       onMatchLogged={onMatchLogged}/>}
     {scr==='tournament-setup'&&<TournamentSetup nav={nav} onHome={goHome}
       onStart={startTourney} onSave={saveTourneyEdit}

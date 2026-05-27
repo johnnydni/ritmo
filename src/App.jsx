@@ -5207,10 +5207,31 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit,profile,onCreat
           padding:'18px 18px 8px'}}>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
             <div style={{color:T.o,fontSize:18,fontWeight:800}}>Spieler</div>
-            <div style={{display:'flex',alignItems:'center',gap:12}}>
+            <div style={{display:'flex',alignItems:'center',gap:10}}>
               <span style={{color:T.t3,fontSize:12,fontWeight:600}}>{players.length}/12</span>
+              {/* Liste leeren — destruktiver Reset. Nur sichtbar, wenn
+                  überhaupt Spieler in der Liste sind. Roter Akzent +
+                  title-Hinweis, damit es nicht versehentlich gedrückt
+                  wird. */}
+              {players.length>0&&(
+                <button onClick={()=>setPlayers([])}
+                  title="Alle Spieler entfernen"
+                  aria-label="Alle Spieler entfernen"
+                  style={{width:30,height:30,borderRadius:'50%',
+                    background:'rgba(232,69,69,0.10)',
+                    border:`1px solid rgba(232,69,69,0.45)`,
+                    color:'#FF6B6B',
+                    fontSize:18,fontWeight:800,cursor:'pointer',
+                    display:'flex',alignItems:'center',justifyContent:'center',
+                    lineHeight:1,paddingBottom:3,transition:'opacity .15s,background .15s'}}
+                  onPointerDown={e=>e.currentTarget.style.opacity='.7'}
+                  onPointerUp={e=>e.currentTarget.style.opacity='1'}
+                  onPointerLeave={e=>e.currentTarget.style.opacity='1'}>−</button>
+              )}
               {players.length<12&&(
                 <button onClick={addPlayer}
+                  title="Spieler hinzufügen"
+                  aria-label="Spieler hinzufügen"
                   style={{width:30,height:30,borderRadius:'50%',
                     background:T.o,border:'none',color:T.bg,
                     fontSize:18,fontWeight:800,cursor:'pointer',

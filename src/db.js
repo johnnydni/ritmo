@@ -1096,3 +1096,134 @@ export function subscribeClubMessages(clubId, onInsert) {
     .subscribe();
   return () => { try { c.removeChannel(channel); } catch (e) {} };
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   MATCH SESSIONS — Single-Match Realtime-Pairing
+
+   Tabelle ritmo_match_sessions (siehe match-sessions-migration.sql)
+   hält Live-State eines laufenden Bo3-Matches. Host schreibt,
+   eingeladene Spieler:innen subscribieren via Postgres Realtime
+   und sehen den Score in Echtzeit.
+
+   Failure modes:
+   - Migration noch nicht ausgeführt → alle Helper no-op'en still,
+     Host-Flow läuft trotzdem (das Match wird lokal gespielt).
+   - Auth fehlt → Joiner-RPC schlägt fehl, wir loggen das.
+═══════════════════════════════════════════════════════════════ */
+
+/** Host legt eine neue Session an. session_id wird vom Client
+ *  mitgegeben (idempotent — upsert by unique constraint). */
+export async function createMatchSession(session) {
+  const c = sb();
+  if (!c || !session?.session_id) return null;
+  const uid = await currentUserId();
+  if (!uid) return null;
+  try {
+    const row = {
+      session_id: session.session_id,
+      host_user_id: uid,
+      status: 'open',
+      format: session.format || 'bo3',
+      match_type: session.match_type || 'friendly',
+      golden_point_after: session.golden_point_after ?? null,
+      players_names: session.players_names || ['','','',''],
+      players_user_ids: session.players_user_ids || [uid, null, null, null],
+      team_a_label: session.team_a_label || null,
+      team_b_label: session.team_b_label || null,
+    };
+    const { data, error } = await c
+      .from('ritmo_match_sessions')
+      .upsert(row, { onConflict: 'session_id' })
+      .select()
+      .maybeSingle();
+    if (error) {
+      console.warn('[db] createMatchSession failed:', error.message);
+      return null;
+    }
+    return data;
+  } catch (e) {
+    console.warn('[db] createMatchSession exception:', e?.message || e);
+    return null;
+  }
+}
+
+/** Host aktualisiert seine Session. RLS lässt nur Host schreiben.
+ *  patch enthält die Felder, die geändert werden sollen. */
+export async function updateMatchSession(sessionId, patch) {
+  const c = sb();
+  if (!c || !sessionId || !patch) return null;
+  const fields = { ...patch, updated_at: new Date().toISOString() };
+  if (patch.status === 'started' && !patch.started_at) {
+    fields.started_at = new Date().toISOString();
+  }
+  if (patch.status === 'finished' && !patch.finished_at) {
+    fields.finished_at = new Date().toISOString();
+  }
+  try {
+    const { error } = await c
+      .from('ritmo_match_sessions')
+      .update(fields)
+      .eq('session_id', sessionId);
+    if (error) console.warn('[db] updateMatchSession failed:', error.message);
+  } catch (e) {
+    console.warn('[db] updateMatchSession exception:', e?.message || e);
+  }
+}
+
+/** Eine Session aus der DB ziehen. */
+export async function fetchMatchSession(sessionId) {
+  const c = sb();
+  if (!c || !sessionId) return null;
+  try {
+    const { data, error } = await c
+      .from('ritmo_match_sessions')
+      .select('*')
+      .eq('session_id', sessionId)
+      .maybeSingle();
+    if (error) {
+      console.warn('[db] fetchMatchSession failed:', error.message);
+      return null;
+    }
+    return data || null;
+  } catch (e) {
+    console.warn('[db] fetchMatchSession exception:', e?.message || e);
+    return null;
+  }
+}
+
+/** Joiner-RPC: claimt einen Slot und schreibt Name + user_id rein.
+ *  Returns { slot, session_id, already_in } oder { error }. */
+export async function joinMatchSession(sessionId, displayName) {
+  const c = sb();
+  if (!c || !sessionId) return null;
+  try {
+    const { data, error } = await c.rpc('join_match_session', {
+      p_session_id: sessionId,
+      p_name: displayName || null,
+    });
+    if (error) {
+      console.warn('[db] joinMatchSession failed:', error.message);
+      return { error: error.message };
+    }
+    return data;
+  } catch (e) {
+    console.warn('[db] joinMatchSession exception:', e?.message || e);
+    return { error: e?.message || 'unknown' };
+  }
+}
+
+/** Realtime-Subscription auf eine Match-Session.
+ *  Liefert eine unsubscribe-Funktion. */
+export function subscribeMatchSession(sessionId, onUpdate) {
+  const c = sb();
+  if (!c || !sessionId) return () => {};
+  const channel = c.channel(`match-session-${sessionId}`)
+    .on('postgres_changes', {
+      event: 'UPDATE', schema: 'public', table: 'ritmo_match_sessions',
+      filter: `session_id=eq.${sessionId}`,
+    }, (payload) => {
+      if (typeof onUpdate === 'function') onUpdate(payload.new);
+    })
+    .subscribe();
+  return () => { try { c.removeChannel(channel); } catch (e) {} };
+}

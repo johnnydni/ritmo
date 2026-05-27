@@ -11,7 +11,10 @@ import { loadProfile as dbLoadProfile, saveProfile as dbSaveProfile, logMatch as
   listClubs, fetchClub, createClub, joinClub, leaveClub, clubMembers, isClubMember,
   clubMemberCount, updateClub, myOwnedClubId,
   listClubMessages, sendClubMessage, markChatRead, listMyChats, totalUnreadCount,
-  subscribeClubMessages
+  subscribeClubMessages,
+  // Match-Sessions: Single-Match-Realtime-Pairing
+  createMatchSession, updateMatchSession, fetchMatchSession,
+  joinMatchSession, subscribeMatchSession,
   } from "./db.js";
 
 /* ── Refactor (Phase 1): pure modules extracted from App.jsx.
@@ -2889,6 +2892,100 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile,currentUid}){
   const teamA=[labelFor(0),labelFor(1)].join(' & ');
   const teamB=[labelFor(2),labelFor(3)].join(' & ');
 
+  // ── Match-Session auf der DB anlegen + Realtime-Subscription ──
+  // Sobald der User auf SingleSetup landet, registrieren wir eine
+  // Session-Row in ritmo_match_sessions. Dadurch ist die QR-URL
+  // sofort beitrittsfähig — Joiner brauchen nicht auf „Start"
+  // zu warten, sondern können sich schon in offene Slots eintragen
+  // während der Host noch konfiguriert.
+  //
+  // Wir subscriben auf UPDATE-Events: wenn ein Joiner einen Slot
+  // claimt, kommt der neue State zurück und wir spiegeln Namen +
+  // user_ids ins lokale Setup. Bestehende Host-Inputs werden NICHT
+  // überschrieben — nur leere Slots werden gefüllt.
+  useEffect(()=>{
+    if(!currentUid||!matchSessionId) return;
+    let cancelled=false;
+    let unsubscribe=()=>{};
+
+    (async()=>{
+      // Initiale Session-Row (idempotent — upsert). Wir nehmen die
+      // aktuell sichtbaren Slots als Startwert; Updates während
+      // Setup spielen wir gleich noch via Side-Effect zurück.
+      await createMatchSession({
+        session_id:matchSessionId,
+        format:fmt,
+        match_type:fmt==='bo3'?matchType:'friendly',
+        golden_point_after:gpAfter,
+        players_names:players,
+        players_user_ids:playerUserIds,
+        team_a_label:teamA,
+        team_b_label:teamB,
+      });
+
+      if(cancelled) return;
+      unsubscribe=subscribeMatchSession(matchSessionId,(row)=>{
+        if(!row) return;
+        // Joiner-Update: Slot 2..4. Nur leere lokale Slots werden
+        // überschrieben — wenn der Host parallel jemanden manuell
+        // eintippt, gewinnt die lokale Eingabe.
+        const incomingNames=row.players_names||[];
+        const incomingUids =row.players_user_ids||[];
+        let touched=false;
+        setPlayers(prev=>{
+          const next=[...prev];
+          for(let i=1;i<4;i++){
+            if(!next[i]&&incomingNames[i]&&incomingUids[i]){
+              next[i]=incomingNames[i];
+              touched=true;
+            }
+          }
+          return touched?next:prev;
+        });
+        setPlayerUserIds(prev=>{
+          const next=[...prev];
+          let changed=false;
+          for(let i=1;i<4;i++){
+            if(!next[i]&&incomingUids[i]){
+              next[i]=incomingUids[i];
+              changed=true;
+            }
+          }
+          return changed?next:prev;
+        });
+      });
+    })();
+
+    return()=>{
+      cancelled=true;
+      try{ unsubscribe(); }catch{}
+    };
+  // Wir wollen die Subscription stabil halten — nur an currentUid +
+  // sessionId binden, nicht an Player-Arrays (die ändern sich oft).
+  // eslint-disable-next-line
+  },[currentUid,matchSessionId]);
+
+  // Wenn der Host etwas am Setup ändert (Name eintippen, Format
+  // wechseln), aktualisieren wir die Session-Row debounced, damit
+  // Joiner immer den aktuellen Roster + die richtigen Match-Regeln
+  // sehen.
+  useEffect(()=>{
+    if(!currentUid||!matchSessionId) return;
+    const t=setTimeout(()=>{
+      updateMatchSession(matchSessionId,{
+        format:fmt,
+        match_type:fmt==='bo3'?matchType:'friendly',
+        golden_point_after:gpAfter,
+        players_names:players,
+        players_user_ids:playerUserIds,
+        team_a_label:teamA,
+        team_b_label:teamB,
+      });
+    },350);
+    return()=>clearTimeout(t);
+  // eslint-disable-next-line
+  },[fmt,matchType,gpAfter,players,playerUserIds,teamA,teamB]);
+
   return(
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
@@ -3895,10 +3992,44 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
       if(isCompetitive){
         onMatchLogged?.({userWon});
       }
+      // Match-Session als finished markieren — Joiner-Devices
+      // bekommen den finalen Score + Winner und können die View
+      // schließen.
+      if(isB&&cfg.matchSessionId){
+        updateMatchSession(cfg.matchSessionId,{
+          status:'finished',
+          state:{pA,pB,gA,gB,sA,sB,tb,tA,tB,sets,winner:win,deuces},
+          winner:win,
+        });
+      }
     } else if(!win){
       loggedWinRef.current=null;
     }
   },[win]);// eslint-disable-line
+
+  // ── Live-Session: Score-Snapshots publishen (Host) ──
+  // Sobald sich der bo3-State ändert, schreiben wir den aktuellen
+  // Snapshot in ritmo_match_sessions.state. Debounced (250ms), damit
+  // schnelle Tap-Folgen nicht in Network-Spam ausarten. Erste
+  // Punktewertung schaltet status auf 'started' — Joiner-Devices
+  // wechseln dadurch in den Live-View.
+  const liveStartedRef=useRef(false);
+  useEffect(()=>{
+    if(!isB||!cfg.matchSessionId) return;
+    if(win) return; // finaler Update lief schon im winner-Block oben
+    const snapshot={pA,pB,gA,gB,sA,sB,tb,tA,tB,sets,winner:null,deuces};
+    const hasAnyPoint = pA>0||pB>0||gA>0||gB>0||sA>0||sB>0||sets.length>0;
+    const t=setTimeout(()=>{
+      const patch={state:snapshot};
+      if(hasAnyPoint&&!liveStartedRef.current){
+        patch.status='started';
+        liveStartedRef.current=true;
+      }
+      updateMatchSession(cfg.matchSessionId,patch);
+    },250);
+    return()=>clearTimeout(t);
+  // eslint-disable-next-line
+  },[pA,pB,gA,gB,sA,sB,tb,tA,tB,sets.length,deuces,isB,cfg.matchSessionId,win]);
 
   // ── Serving team + side (Padel rules) ──
   // Total completed games across all sets (excludes current in-progress game)
@@ -9811,7 +9942,7 @@ function SingleMatchHub({onHome,onStart,onJoin}){
    ist die UI-Eingangstür und bindet bereits an die Session-ID, die
    der Host in seinem InviteSlotSheet teilt.
 ═══════════════════════════════════════════════════════════════ */
-function JoinMatch({onHome,onBack,initialSessionId,profile}){
+function JoinMatch({onHome,onBack,onJoined,initialSessionId,profile,currentUid}){
   const[sessionId,setSessionId]=useState(initialSessionId||'');
   const[scannerOpen,setScannerOpen]=useState(false);
   const[busy,setBusy]=useState(false);
@@ -9846,15 +9977,37 @@ function JoinMatch({onHome,onBack,initialSessionId,profile}){
     const sid=sessionId.trim();
     if(!sid||busy) return;
     setBusy(true);
-    // Realtime-Join wird in einer separaten PR an die DB gebunden
-    // (ritmo_match_sessions + RPC). Derzeit zeigen wir dem User
-    // einen Bestätigungs-Hinweis und merken die Session in
-    // localStorage — sobald die Host-Sync-Logik live ist, kann der
-    // Screen direkt in eine Warte-Lobby übergehen.
     try{
-      lsSet('ritmo_joined_match',{sessionId:sid,joinedAt:Date.now()});
-      flash('ok',`Beitritt zu Session ${sid.slice(0,8)}… vorgemerkt. Sobald der Host startet, erscheint das Match in deiner Statistik.`);
-    }finally{
+      // Ohne Account-Login können wir die RPC nicht aufrufen — die
+      // Spieler-Statistik braucht aber zwingend eine user_id. Wir
+      // merken die ID lokal und weisen den User darauf hin.
+      if(!currentUid){
+        lsSet('ritmo_joined_match',{sessionId:sid,joinedAt:Date.now()});
+        flash('err','Melde dich an, damit das Match in deine Statistik einfließen kann.');
+        return;
+      }
+      const res = await joinMatchSession(sid, profile?.name);
+      if(!res||res.error){
+        const m=res?.error||'Beitritt fehlgeschlagen.';
+        if(/not found/i.test(m)) flash('err','Session nicht gefunden — Code prüfen.');
+        else if(/not joinable/i.test(m)) flash('err','Session ist bereits abgeschlossen.');
+        else if(/no open slot/i.test(m)) flash('err','Alle Plätze sind belegt.');
+        else flash('err',m);
+        return;
+      }
+      lsSet('ritmo_joined_match',{
+        sessionId:sid,
+        slot:res.slot,
+        joinedAt:Date.now(),
+      });
+      if(res.already_in){
+        flash('ok',`Du bist bereits in Slot ${res.slot}. Wechsel zu Live-View …`);
+      } else {
+        flash('ok',`In Slot ${res.slot} eingetragen. Wechsel zu Live-View …`);
+      }
+      // Kleine Verzögerung damit der User den Toast noch sieht
+      setTimeout(()=>{ onJoined?.({sessionId:sid,slot:res.slot}); }, 600);
+    } finally {
       setBusy(false);
     }
   };
@@ -9969,6 +10122,297 @@ function JoinMatch({onHome,onBack,initialSessionId,profile}){
           onResult={handleScan}
           onClose={()=>setScannerOpen(false)}/>
       )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   LIVE MATCH VIEW
+
+   Read-only Score-Anzeige für eingeladene Spieler:innen, die einer
+   Match-Session beigetreten sind. Liest den Live-State via
+   subscribeMatchSession und rendert eine kompakte Match-Karte.
+
+   States, die wir abdecken:
+     - status='open'      → „Warte auf Host (Aufstellung läuft)"
+     - status='started'   → Live-Score
+     - status='finished'  → Endstand + Sieger-Banner
+     - session weg / Fehler → Fehler-Hinweis + Zurück-Button
+═══════════════════════════════════════════════════════════════ */
+function LiveMatchView({sessionId,onHome,onLeave}){
+  const[session,setSession]=useState(null);
+  const[loading,setLoading]=useState(true);
+  const[error,setError]=useState('');
+
+  useEffect(()=>{
+    if(!sessionId) return;
+    let cancelled=false;
+    let unsubscribe=()=>{};
+
+    (async()=>{
+      const initial=await fetchMatchSession(sessionId);
+      if(cancelled) return;
+      if(!initial){
+        setError('Session nicht gefunden.');
+        setLoading(false);
+        return;
+      }
+      setSession(initial);
+      setLoading(false);
+      unsubscribe=subscribeMatchSession(sessionId,(row)=>{
+        if(cancelled||!row) return;
+        setSession(row);
+      });
+    })();
+
+    return()=>{
+      cancelled=true;
+      try{ unsubscribe(); }catch{}
+    };
+  },[sessionId]);
+
+  if(loading){
+    return(
+      <div style={{height:'100dvh',background:T.bg,display:'flex',
+        alignItems:'center',justifyContent:'center'}}>
+        <BallSpinner/>
+      </div>
+    );
+  }
+  if(error||!session){
+    return(
+      <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+        paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
+        <div style={{flex:1,padding:'0 22px',display:'flex',alignItems:'center',
+          justifyContent:'center'}}>
+          <div style={{background:T.card,border:`1px solid ${T.r}`,borderRadius:14,
+            padding:'24px 22px',maxWidth:340,textAlign:'center'}}>
+            <div style={{color:T.r,fontSize:14,fontWeight:800,marginBottom:8}}>
+              Session-Problem
+            </div>
+            <div style={{color:T.t2,fontSize:13,lineHeight:1.55,marginBottom:14}}>
+              {error||'Diese Match-Session ist nicht mehr verfügbar.'}
+            </div>
+            <button onClick={onLeave||onHome}
+              style={{width:'100%',padding:'12px',background:T.card2,
+                border:`1px solid ${T.border}`,borderRadius:10,
+                color:T.t1,fontSize:13,fontWeight:700,cursor:'pointer'}}>
+              Zurück
+            </button>
+          </div>
+        </div>
+        <MatchBar onHome={onHome}/>
+      </div>
+    );
+  }
+
+  const status=session.status;
+  const state=session.state||{};
+  const sets=Array.isArray(state.sets)?state.sets:[];
+  const winnerLetter=session.winner||state.winner;
+  const isOpen=status==='open';
+  const isFinished=status==='finished';
+
+  // Score-Ausgabe pro Team. Wenn kein State vorliegt (status='open'),
+  // zeigen wir „—" als Platzhalter.
+  const pointStr=(team)=>{
+    if(!state||state.pA==null||state.pB==null) return '—';
+    if(state.tb) return team==='A'?String(state.tA||0):String(state.tB||0);
+    // Vereinfachte Anzeige: Zahlenwert in Padel-Notation (0/15/30/40)
+    const PA=state.pA, PB=state.pB;
+    const PT=['0','15','30','40'];
+    const a=team==='A'?PA:PB, b=team==='A'?PB:PA;
+    if(a>=3&&b>=3){
+      if(a===b) return 'Einstand';
+      if(a===b+1) return 'Vorteil';
+      return '—';
+    }
+    return PT[Math.min(a,3)]||'—';
+  };
+
+  const labelFor=(idx)=>session.players_names?.[idx]||`Spieler ${idx+1}`;
+  const teamALabel=session.team_a_label||`${labelFor(0)} & ${labelFor(1)}`;
+  const teamBLabel=session.team_b_label||`${labelFor(2)} & ${labelFor(3)}`;
+
+  return(
+    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
+
+      <div style={{padding:'0 22px 18px'}}>
+        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
+          <CourtIcon size={28}/>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{color:T.t1,fontSize:22,fontWeight:800,letterSpacing:-.3}}>
+              Live Match
+            </div>
+            <div style={{display:'flex',alignItems:'center',gap:8,marginTop:4}}>
+              <span style={{width:8,height:8,borderRadius:'50%',
+                background:isFinished?T.t3:isOpen?'#7ED39C':T.o,
+                animation:isOpen||(!isFinished)?'pulseDot 1.4s infinite':'none'}}/>
+              <span style={{color:T.t2,fontSize:11,fontWeight:800,letterSpacing:1,
+                textTransform:'uppercase'}}>
+                {isOpen?'Warte auf Host':isFinished?'Match beendet':'Läuft'}
+              </span>
+              {session.match_type==='competitive'&&(
+                <span style={{padding:'2px 7px',background:T.oSoft,
+                  border:`1px solid ${T.o}`,borderRadius:5,
+                  color:T.o,fontSize:9,fontWeight:900,letterSpacing:1,
+                  textTransform:'uppercase'}}>
+                  Wettkampf
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{flex:1,padding:'0 22px 120px',overflowY:'auto',
+        WebkitOverflowScrolling:'touch',display:'flex',flexDirection:'column',gap:14}}>
+
+        {isOpen&&(
+          <div style={{background:T.card,border:`1px dashed ${T.border}`,borderRadius:14,
+            padding:'18px 18px',color:T.t2,fontSize:12,lineHeight:1.55,textAlign:'center'}}>
+            Der Host stellt gerade die Teams zusammen. Sobald das Match startet,
+            erscheint hier der Live-Score.
+          </div>
+        )}
+
+        {/* Team A Card */}
+        <div style={{background:T.card,
+          border:`1px solid ${winnerLetter==='A'?T.o:T.border}`,borderRadius:14,
+          padding:'18px 22px',display:'flex',alignItems:'center',gap:14}}>
+          <div style={{flex:1,display:'flex',flexDirection:'column',gap:10,minWidth:0}}>
+            <div style={{display:'flex',alignItems:'center',gap:9,minWidth:0}}>
+              <div style={{width:12,height:12,borderRadius:'50%',background:T.o,flexShrink:0,
+                boxShadow:`0 0 8px ${T.oGlow}`}}/>
+              <div style={{color:T.t1,fontSize:18,fontWeight:800,letterSpacing:-.2,
+                overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                {teamALabel}
+              </div>
+            </div>
+            {!isOpen&&(
+              <div style={{display:'flex',alignItems:'center',gap:10}}>
+                <div style={{display:'flex',gap:6,alignItems:'center'}}>
+                  {[0,1,2].map(i=>{
+                    const setRec=sets[i];
+                    const played=!!setRec;
+                    const won=played&&setRec.w==='A';
+                    const games=played?setRec.gA:null;
+                    return(
+                      <div key={i} style={{
+                        width:22,height:22,borderRadius:'50%',
+                        background:played?(won?T.o:T.card2):'transparent',
+                        border:`1.5px solid ${played?(won?T.o:T.border):T.o}`,
+                        boxSizing:'border-box',
+                        display:'flex',alignItems:'center',justifyContent:'center',
+                        color:played?(won?'#000':T.t2):'transparent',
+                        fontSize:11,fontWeight:900,lineHeight:1}}>
+                        {played?games:''}
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{color:T.o,fontSize:30,fontWeight:900,letterSpacing:-1,lineHeight:1}}>
+                  {state.gA??0}
+                </div>
+              </div>
+            )}
+          </div>
+          {!isOpen&&(
+            <div style={{fontSize:64,fontWeight:900,color:T.t1,lineHeight:.85,
+              letterSpacing:-3,textAlign:'right',whiteSpace:'nowrap',flexShrink:0,maxWidth:'55%'}}>
+              {pointStr('A')}
+            </div>
+          )}
+        </div>
+
+        {/* Team B Card */}
+        <div style={{background:T.card,
+          border:`1px solid ${winnerLetter==='B'?T.o:T.border}`,borderRadius:14,
+          padding:'18px 22px',display:'flex',alignItems:'center',gap:14}}>
+          <div style={{flex:1,display:'flex',flexDirection:'column',gap:10,minWidth:0}}>
+            <div style={{display:'flex',alignItems:'center',gap:9,minWidth:0}}>
+              <div style={{width:12,height:12,borderRadius:'50%',background:T.blue,flexShrink:0,
+                boxShadow:`0 0 8px ${T.blueGlow}`}}/>
+              <div style={{color:T.t1,fontSize:18,fontWeight:800,letterSpacing:-.2,
+                overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                {teamBLabel}
+              </div>
+            </div>
+            {!isOpen&&(
+              <div style={{display:'flex',alignItems:'center',gap:10}}>
+                <div style={{display:'flex',gap:6,alignItems:'center'}}>
+                  {[0,1,2].map(i=>{
+                    const setRec=sets[i];
+                    const played=!!setRec;
+                    const won=played&&setRec.w==='B';
+                    const games=played?setRec.gB:null;
+                    return(
+                      <div key={i} style={{
+                        width:22,height:22,borderRadius:'50%',
+                        background:played?(won?T.o:T.card2):'transparent',
+                        border:`1.5px solid ${played?(won?T.o:T.border):T.o}`,
+                        boxSizing:'border-box',
+                        display:'flex',alignItems:'center',justifyContent:'center',
+                        color:played?(won?'#000':T.t2):'transparent',
+                        fontSize:11,fontWeight:900,lineHeight:1}}>
+                        {played?games:''}
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{color:T.o,fontSize:30,fontWeight:900,letterSpacing:-1,lineHeight:1}}>
+                  {state.gB??0}
+                </div>
+              </div>
+            )}
+          </div>
+          {!isOpen&&(
+            <div style={{fontSize:64,fontWeight:900,color:T.t1,lineHeight:.85,
+              letterSpacing:-3,textAlign:'right',whiteSpace:'nowrap',flexShrink:0,maxWidth:'55%'}}>
+              {pointStr('B')}
+            </div>
+          )}
+        </div>
+
+        {/* Winner-Banner */}
+        {isFinished&&winnerLetter&&(
+          <div style={{textAlign:'center',padding:'14px 16px',background:T.oSoft,
+            borderRadius:12,border:`1px solid ${T.o}`,color:T.o,fontWeight:800,fontSize:14}}>
+            🏆 {winnerLetter==='A'?teamALabel:teamBLabel} hat gewonnen!
+          </div>
+        )}
+
+        {/* Hinweis: das Match landet automatisch in der Statistik */}
+        {isFinished&&session.match_type==='competitive'&&(
+          <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:12,
+            padding:'12px 14px',color:T.t3,fontSize:11,lineHeight:1.55,textAlign:'center'}}>
+            Das Match wurde in deiner Statistik gespeichert und fließt in deine RITMO DNA ein.
+          </div>
+        )}
+
+        {/* Session-ID + Slot Info */}
+        <div style={{background:T.card2,border:`1px dashed ${T.border}`,borderRadius:10,
+          padding:'10px 14px',color:T.t3,fontSize:10,lineHeight:1.5,
+          fontFamily:'-apple-system,SFMono-Regular,Menlo,monospace',
+          display:'flex',justifyContent:'space-between',gap:8}}>
+          <span>Session</span>
+          <span style={{wordBreak:'break-all',textAlign:'right',color:T.t2}}>
+            {sessionId.slice(0,12)}…
+          </span>
+        </div>
+
+        {isFinished&&(
+          <button onClick={onLeave||onHome}
+            style={{padding:'12px 14px',background:T.card,
+              border:`1px solid ${T.border}`,borderRadius:10,
+              color:T.t1,fontSize:13,fontWeight:700,cursor:'pointer'}}>
+            Session verlassen
+          </button>
+        )}
+      </div>
+
+      <MatchBar onHome={onHome}/>
     </div>
   );
 }
@@ -12077,6 +12521,14 @@ export default function App(){
     if(joinedSession===null){try{localStorage.removeItem('ritmo_joined');}catch{}}
     else lsSet('ritmo_joined',joinedSession);
   },[joinedSession]);
+  // Beigetretene Single-Match-Session (Joiner-Seite). Persistiert in
+  // localStorage damit ein Reload den User wieder in den Live-View
+  // zurückholt, solange das Match nicht abgeschlossen ist.
+  const[joinedMatchSession,setJoinedMatchSession]=useState(()=>lsGet('ritmo_joined_match',null));
+  useEffect(()=>{
+    if(joinedMatchSession===null){try{localStorage.removeItem('ritmo_joined_match');}catch{}}
+    else lsSet('ritmo_joined_match',joinedMatchSession);
+  },[joinedMatchSession]);
   // ?join=PIN aus der URL extrahieren (vom QR-Scan). Wird beim
   // Cold-Load gelesen und an JoinTournament als initialPin gegeben.
   // Sobald gelesen, säubern wir die URL via history.replaceState.
@@ -12664,7 +13116,20 @@ export default function App(){
       onHome={goHome}
       onBack={joinMatchFromUrl?null:()=>setScr('single-hub')}
       initialSessionId={joinMatchFromUrl}
-      profile={profile}/>}
+      profile={profile}
+      currentUid={currentUid}
+      onJoined={({sessionId,slot})=>{
+        setJoinedMatchSession({sessionId,slot,joinedAt:Date.now()});
+        setJoinMatchFromUrl(null);
+        setScr('live-match');
+      }}/>}
+    {scr==='live-match'&&joinedMatchSession&&<LiveMatchView
+      sessionId={joinedMatchSession.sessionId}
+      onHome={goHome}
+      onLeave={()=>{
+        setJoinedMatchSession(null);
+        goHome();
+      }}/>}
     {scr==='tournament-hub'&&<TournamentHub
       onHome={goHome}
       onStart={()=>setScr('tournament-setup')}

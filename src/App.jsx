@@ -2808,23 +2808,41 @@ function SetupHero({icon,title,desc,accent}){
 
 function SingleSetup({nav,onHome,cfg,setCfg,profile}){
   const userName=profile?.name||'';
-  // Initialize players: prefer stored, else seed mit Defaults — Spieler 1
-  // ist der User, die anderen kriegen einen generischen "Spieler N" Namen
-  // damit das Setup ohne Tippen direkt startbar ist.
+  // Spielername-Slots: User belegt Slot 0 (sein Profil), die übrigen
+  // bleiben leer und zeigen als „Beitreten"-Slot mit + und Invite-CTA.
   const[players,setPlayers]=useState(()=>{
     const stored=cfg.players;
-    if(stored&&stored.length===4) return stored;
-    return [userName,'Spieler 2','Spieler 3','Spieler 4'];
+    if(stored&&stored.length===4){
+      // Bestehende Defaultnamen ("Spieler 2/3/4") aus dem alten Setup
+      // auf leere Strings normalisieren — sonst zeigt der neue Empty-
+      // Slot-Modus nie sein + + „Beitreten".
+      return stored.map((n,i)=>{
+        if(i===0) return n||userName;
+        if(/^Spieler\s*\d+$/i.test(n||'')) return '';
+        return n||'';
+      });
+    }
+    return [userName,'','',''];
   });
   const setPlayer=(idx,val)=>setPlayers(p=>p.map((v,i)=>i===idx?val:v));
 
   const[fmt,setFmt]=useState(cfg.format||'bo3');
   const[amLim,setAmLim]=useState(cfg.amLimit??21);
   const[gpAfter,setGpAfter]=useState(cfg.goldenPointAfter??null);
+  // Wettkampf vs Friendly. Nur Bo3 nutzt diesen Wert; Americano ist
+  // per Definition Freestyle und never competitive. Persistiert in cfg
+  // damit der Match-Screen es auswerten kann.
+  const[matchType,setMatchType]=useState(cfg.matchType||'friendly');
 
-  // Computed team display names (used during scoring)
-  const teamA=[players[0]||'Spieler 1',players[1]||'Spieler 2'].join(' & ');
-  const teamB=[players[2]||'Spieler 3',players[3]||'Spieler 4'].join(' & ');
+  // Slot, der gerade editiert/eingeladen wird (für InviteModal).
+  const[inviteSlot,setInviteSlot]=useState(null);
+
+  // Computed team display names (used during scoring). Leere Slots
+  // fallen auf eine generische Beschriftung zurück, damit das Match-
+  // Display nicht „& " als Namen anzeigt.
+  const labelFor=(idx)=>players[idx]||`Spieler ${idx+1}`;
+  const teamA=[labelFor(0),labelFor(1)].join(' & ');
+  const teamB=[labelFor(2),labelFor(3)].join(' & ');
 
   return(
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
@@ -2840,70 +2858,102 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
 
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
 
-        <SetupHero
-          icon={<CourtIcon size={36}/>}
-          title="Schnelles Match"
-          desc="Du, dein Partner, zwei Gegner. Wähle Best-of-3 oder Americano und leg los."/>
+        {/* Wettkampf vs Friendly — oberste Karte mit swipebaren Icons.
+            Nur sichtbar für Bo3; Americano (Freestyle) ist per
+            Definition friendly und zeigt diese Wahl nicht.
+            Friendly = lockerer Match, kein Stats-Impact.
+            Wettkampf = zählt in Spielerstatistik + RITMO DNA. */}
+        {fmt==='bo3'&&(
+          <MatchTypePicker value={matchType} onChange={setMatchType}/>
+        )}
 
-        {/* Team 1 */}
-        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14}}>
-          <div style={{padding:'14px 18px 6px',color:T.o,fontSize:11,fontWeight:700,
-            letterSpacing:1.3,textTransform:'uppercase'}}>
-            Team 1
-          </div>
-          {[0,1].map(idx=>{
+        {/* Spielerkarten — 2×2 Grid, vertikal pro Slot.
+            Slot 0 = User (Profilbild aus profile.avatar);
+            leere Slots zeigen + + „Beitreten" → öffnet InviteModal
+            zum Namen-Eingeben oder Link teilen. */}
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+          {[0,1,2,3].map(idx=>{
             const isUser=idx===0;
+            const isTeamA=idx<2;
+            const accent=isTeamA?T.o:T.blue;
+            const accentGlow=isTeamA?T.oGlow:T.blueGlow;
+            const name=players[idx];
+            const filled=!!(name&&name.trim());
+            const userAvatar=isUser?profile?.avatar:null;
             return(
-              <div key={idx} style={{display:'flex',alignItems:'center',
-                padding:'14px 18px',borderTop:`1px solid ${T.sep}`,gap:12}}>
-                <span style={{color:T.t1,fontSize:14,fontWeight:600,
-                  width:94,flexShrink:0,display:'flex',alignItems:'center',gap:5}}>
-                  Spieler {idx+1}
-                  {isUser&&<span style={{color:T.o,fontWeight:700}}>(Du)</span>}
-                </span>
-                <input value={players[idx]}
-                  onChange={e=>setPlayer(idx,e.target.value)}
-                  placeholder={isUser?'Dein Name':`Spieler ${idx+1}`}
-                  autoCapitalize="words" autoCorrect="off" spellCheck={false}
-                  style={{flex:1,fontSize:14,color:T.t2,fontWeight:500,textAlign:'right',
-                    background:'transparent',border:'none',outline:'none'}}/>
-                <button onClick={()=>setPlayer(idx,'')}
-                  style={{width:20,height:20,borderRadius:'50%',background:T.t4,border:'none',
-                    color:T.t1,fontSize:12,cursor:'pointer',display:'flex',alignItems:'center',
-                    justifyContent:'center',fontWeight:700,flexShrink:0}}>×</button>
-              </div>
+              <button key={idx} onClick={()=>setInviteSlot(idx)}
+                style={{background:T.card,
+                  border:`1.5px solid ${filled?accent:T.border}`,
+                  borderRadius:14,padding:'18px 12px 16px',
+                  display:'flex',flexDirection:'column',alignItems:'center',gap:8,
+                  cursor:'pointer',textAlign:'center',
+                  transition:'border-color .2s,background .2s',
+                  minHeight:170,position:'relative',
+                  boxShadow:filled?`0 0 0 1px ${accent}22 inset`:'none'}}>
+                {/* Team-Pill oben */}
+                <div style={{position:'absolute',top:8,left:8,
+                  padding:'2px 8px',borderRadius:6,
+                  background:`${accent}1F`,border:`1px solid ${accent}66`,
+                  color:accent,fontSize:9,fontWeight:900,letterSpacing:1.4,
+                  textTransform:'uppercase'}}>
+                  Team {isTeamA?'A':'B'}
+                </div>
+
+                {/* Avatar / Empty-Slot-Icon */}
+                {filled?(
+                  <ProfileAvatar name={name} avatar={isUser?userAvatar:null}
+                    size={62} emphasize={isUser}/>
+                ):(
+                  <div style={{width:62,height:62,borderRadius:'50%',
+                    background:T.card2,border:`1.5px dashed ${T.border}`,
+                    display:'flex',alignItems:'center',justifyContent:'center',
+                    color:T.t3,fontSize:30,fontWeight:300,lineHeight:1}}>
+                    +
+                  </div>
+                )}
+
+                {/* Name oder Beitreten-Label */}
+                <div style={{minHeight:34,display:'flex',flexDirection:'column',
+                  alignItems:'center',justifyContent:'center'}}>
+                  {filled?(
+                    <>
+                      <div style={{color:T.t1,fontSize:13,fontWeight:700,
+                        letterSpacing:-.1,maxWidth:120,overflow:'hidden',
+                        textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                        {name}
+                      </div>
+                      {isUser&&(
+                        <div style={{color:accent,fontSize:9,fontWeight:900,
+                          letterSpacing:1.2,textTransform:'uppercase',marginTop:2}}>
+                          Du
+                        </div>
+                      )}
+                    </>
+                  ):(
+                    <div style={{color:T.t2,fontSize:12,fontWeight:700,
+                      letterSpacing:.1}}>
+                      Beitreten
+                    </div>
+                  )}
+                </div>
+
+                {/* Clear-Knopf rechts oben, nur wenn Name gesetzt und
+                    nicht User-Slot (User-Avatar bleibt). */}
+                {filled&&!isUser&&(
+                  <button onClick={e=>{e.stopPropagation();setPlayer(idx,'');}}
+                    aria-label="Slot leeren"
+                    style={{position:'absolute',top:6,right:6,
+                      width:22,height:22,borderRadius:'50%',background:T.card2,
+                      border:`1px solid ${T.border}`,color:T.t2,
+                      fontSize:11,fontWeight:700,cursor:'pointer',
+                      display:'flex',alignItems:'center',justifyContent:'center',padding:0}}>×</button>
+                )}
+              </button>
             );
           })}
         </div>
 
-        {/* Team 2 */}
-        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14}}>
-          <div style={{padding:'14px 18px 6px',color:T.o,fontSize:11,fontWeight:700,
-            letterSpacing:1.3,textTransform:'uppercase'}}>
-            Team 2
-          </div>
-          {[2,3].map(idx=>(
-            <div key={idx} style={{display:'flex',alignItems:'center',
-              padding:'14px 18px',borderTop:`1px solid ${T.sep}`,gap:12}}>
-              <span style={{color:T.t1,fontSize:14,fontWeight:600,
-                width:94,flexShrink:0}}>
-                Spieler {idx+1}
-              </span>
-              <input value={players[idx]}
-                onChange={e=>setPlayer(idx,e.target.value)}
-                placeholder={`Spieler ${idx+1}`}
-                autoCapitalize="words" autoCorrect="off" spellCheck={false}
-                style={{flex:1,fontSize:14,color:T.t2,fontWeight:500,textAlign:'right',
-                  background:'transparent',border:'none',outline:'none'}}/>
-              <button onClick={()=>setPlayer(idx,'')}
-                style={{width:20,height:20,borderRadius:'50%',background:T.t4,border:'none',
-                  color:T.t1,fontSize:12,cursor:'pointer',display:'flex',alignItems:'center',
-                  justifyContent:'center',fontWeight:700,flexShrink:0}}>×</button>
-            </div>
-          ))}
-        </div>
-
-        {/* Spielmodus */}
+        {/* Format-Karte (Bo3 / Americano (Freestyle)) */}
         <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
           padding:'18px 18px 20px'}}>
           <div style={{color:T.o,fontSize:21,fontWeight:800,marginBottom:14}}>Spielmodus</div>
@@ -2967,10 +3017,13 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
 
           {fmt==='americano'&&(
             <div>
-              <div style={{color:T.t1,fontSize:15,fontWeight:700,marginBottom:4}}>Americano</div>
+              <div style={{color:T.t1,fontSize:15,fontWeight:700,marginBottom:4}}>
+                Americano <span style={{color:T.t3,fontWeight:600}}>(Freestyle)</span>
+              </div>
               <div style={{marginBottom:6}}><RacketMini size={18}/></div>
               <div style={{color:T.t3,fontSize:12,lineHeight:1.6,fontWeight:500,marginBottom:14}}>
                 Punkte zählen pro Team. Optional mit Timer.
+                Freestyle — fließt nicht in deine Wertung.
               </div>
               <div style={{display:'flex',justifyContent:'flex-end'}}>
                 <div style={{display:'flex',background:T.card2,borderRadius:24,padding:3,
@@ -2999,7 +3052,11 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
       <MatchBar onHome={onHome} rightButtons={[{
         icon:'Start',
         onClick:()=>{
-          setCfg({players,nameA:teamA,nameB:teamB,format:fmt,amLimit:amLim,goldenPointAfter:gpAfter});
+          // Americano ist immer friendly — egal was der User vorher
+          // im Wettkampf/Friendly-Picker gewählt hatte.
+          const finalMatchType = fmt==='bo3' ? matchType : 'friendly';
+          setCfg({players,nameA:teamA,nameB:teamB,format:fmt,amLimit:amLim,
+            goldenPointAfter:gpAfter,matchType:finalMatchType});
           nav('match');
         },
         style:{
@@ -3010,6 +3067,263 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
           fontSize:13,fontWeight:800,
         }
       }]}/>
+
+      {inviteSlot!==null&&(
+        <InviteSlotSheet
+          slotIndex={inviteSlot}
+          isUserSlot={inviteSlot===0}
+          currentName={players[inviteSlot]||''}
+          onClose={()=>setInviteSlot(null)}
+          onSetName={(n)=>{setPlayer(inviteSlot,n);setInviteSlot(null);}}/>
+      )}
+    </div>
+  );
+}
+
+/* ─── MatchTypePicker — swipeable Wettkampf vs Friendly Karte ────
+   Identisches Scroll-Snap-Pattern wie das Cast-Sheet-Carousel.
+   Zwei vertikale Tiles, links/rechts swipebar, Pagination + Pfeile.
+═══════════════════════════════════════════════════════════════ */
+function MatchTypePicker({value,onChange}){
+  const types=[
+    {id:'competitive', emoji:'🏆', label:'Wettkampf',
+      desc:'Zählt in deine Statistik und RITMO DNA.'},
+    {id:'friendly',    emoji:'🤝', label:'Friendly',
+      desc:'Locker spielen, ohne Stats-Impact.'},
+  ];
+  const idx=Math.max(0,types.findIndex(t=>t.id===value));
+  const railRef=useRef(null);
+
+  // Beim Mount auf die richtige Position scrollen (z. B. wenn der
+  // User mit value='friendly' wiederkommt). useLayoutEffect wäre
+  // sauberer, aber useEffect reicht — initialer Render zeigt die
+  // erste Karte für ~1 Frame, dann snappt es.
+  useEffect(()=>{
+    const el=railRef.current;
+    if(!el) return;
+    el.scrollLeft=idx*el.clientWidth;
+  // eslint-disable-next-line
+  },[]);
+
+  const onScroll=()=>{
+    const el=railRef.current;
+    if(!el) return;
+    const i=Math.round(el.scrollLeft/el.clientWidth);
+    const t=types[Math.max(0,Math.min(types.length-1,i))];
+    if(t&&t.id!==value) onChange(t.id);
+  };
+
+  const snapTo=(i)=>{
+    const el=railRef.current;
+    if(!el) return;
+    el.scrollTo({left:i*el.clientWidth,behavior:'smooth'});
+  };
+
+  return(
+    <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+      padding:'14px 14px 10px',position:'relative'}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',
+        marginBottom:10,padding:'0 4px'}}>
+        <div style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:1.4,
+          textTransform:'uppercase'}}>Match-Art</div>
+        <div style={{color:T.t3,fontSize:10,fontWeight:600,letterSpacing:.5}}>
+          ‹ swipe ›
+        </div>
+      </div>
+
+      {/* Pfeile */}
+      <button onClick={()=>snapTo(Math.max(0,idx-1))} disabled={idx===0}
+        aria-label="Vorherige Match-Art"
+        style={{position:'absolute',top:'56%',left:2,transform:'translateY(-50%)',
+          zIndex:2,width:28,height:28,borderRadius:'50%',
+          background:T.card,border:`1px solid ${T.border}`,
+          color:idx===0?T.t3:T.t1,cursor:idx===0?'not-allowed':'pointer',
+          opacity:idx===0?.4:1,
+          display:'flex',alignItems:'center',justifyContent:'center',
+          boxShadow:'0 2px 8px rgba(0,0,0,.4)'}}>
+        <span style={{transform:'rotate(180deg)',lineHeight:0}}>
+          <ChevronRightIcon size={14} color="currentColor"/>
+        </span>
+      </button>
+      <button onClick={()=>snapTo(Math.min(types.length-1,idx+1))} disabled={idx===types.length-1}
+        aria-label="Nächste Match-Art"
+        style={{position:'absolute',top:'56%',right:2,transform:'translateY(-50%)',
+          zIndex:2,width:28,height:28,borderRadius:'50%',
+          background:T.card,border:`1px solid ${T.border}`,
+          color:idx===types.length-1?T.t3:T.t1,
+          cursor:idx===types.length-1?'not-allowed':'pointer',
+          opacity:idx===types.length-1?.4:1,
+          display:'flex',alignItems:'center',justifyContent:'center',
+          boxShadow:'0 2px 8px rgba(0,0,0,.4)'}}>
+        <ChevronRightIcon size={14} color="currentColor"/>
+      </button>
+
+      <div ref={railRef} onScroll={onScroll}
+        style={{display:'flex',overflowX:'auto',
+          scrollSnapType:'x mandatory',
+          WebkitOverflowScrolling:'touch',
+          scrollbarWidth:'none',msOverflowStyle:'none'}}>
+        {types.map((t,i)=>{
+          const active=t.id===value;
+          return(
+            <div key={t.id}
+              style={{flex:'0 0 100%',scrollSnapAlign:'center',
+                padding:'0 36px',boxSizing:'border-box'}}>
+              <div onClick={()=>onChange(t.id)}
+                style={{background:active?T.card2:'transparent',
+                  border:`1.5px solid ${active?T.o:T.border}`,borderRadius:12,
+                  padding:'14px 12px',cursor:'pointer',
+                  display:'flex',flexDirection:'column',alignItems:'center',gap:6,
+                  transition:'border-color .2s,background .2s'}}>
+                <div style={{fontSize:38,lineHeight:1}}>{t.emoji}</div>
+                <div style={{color:T.t1,fontSize:15,fontWeight:800,letterSpacing:-.1}}>
+                  {t.label}
+                </div>
+                <div style={{color:T.t3,fontSize:11,lineHeight:1.45,textAlign:'center',
+                  maxWidth:240}}>
+                  {t.desc}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Pagination-Dots */}
+      <div style={{display:'flex',justifyContent:'center',gap:6,marginTop:10}}>
+        {types.map((_,i)=>(
+          <button key={i} onClick={()=>snapTo(i)}
+            aria-label={`Match-Art ${i+1}`}
+            style={{width:i===idx?20:6,height:6,borderRadius:3,
+              background:i===idx?T.o:T.border,
+              border:'none',cursor:'pointer',padding:0,
+              transition:'width .2s,background .2s'}}/>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─── InviteSlotSheet — Modal für Player-Slot ────────────────────
+   Tap auf einen leeren oder gefüllten Slot öffnet dieses Sheet.
+   - User-Slot (0): nur Hinweis, dass das der eigene Account ist
+     (sonst ist der User-Avatar weg)
+   - andere Slots: Name eingeben ODER Einladungslink teilen
+═══════════════════════════════════════════════════════════════ */
+function InviteSlotSheet({slotIndex,isUserSlot,currentName,onClose,onSetName}){
+  const[name,setName]=useState(currentName||'');
+  const[copied,setCopied]=useState(false);
+
+  // Einladungslink — derzeit eine simple Deep-Link-URL auf den App-
+  // Origin mit ?join=<slot>. Echte Invite-Mechanik (Pairing,
+  // Counter) folgt; für jetzt teilbar als Hinweis-Link.
+  const inviteUrl=(()=>{
+    try{
+      const origin=typeof window!=='undefined'?window.location.origin:'';
+      const base=(typeof window!=='undefined'&&window.__BASE__)||'/';
+      return `${origin}${base}?join=match&slot=${slotIndex+1}`;
+    }catch{ return ''; }
+  })();
+
+  const share=async()=>{
+    if(typeof navigator==='undefined') return;
+    const payload={
+      title:'RITMO Match',
+      text:`Komm spiel mit — du bist als Spieler ${slotIndex+1} eingeladen.`,
+      url:inviteUrl,
+    };
+    try{
+      if(navigator.share) await navigator.share(payload);
+      else if(navigator.clipboard){
+        await navigator.clipboard.writeText(inviteUrl);
+        setCopied(true);
+        setTimeout(()=>setCopied(false),1600);
+      }
+    }catch{}
+  };
+
+  return(
+    <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:220,
+      background:'rgba(0,0,0,.7)',backdropFilter:'blur(4px)',
+      display:'flex',alignItems:'flex-end',justifyContent:'center',
+      animation:'fadeIn .15s ease'}}>
+      <div onClick={e=>e.stopPropagation()} className="si"
+        style={{background:T.bg,border:`1px solid ${T.border}`,
+          borderTopLeftRadius:20,borderTopRightRadius:20,
+          width:'100%',maxWidth:520,
+          padding:'20px 22px calc(env(safe-area-inset-bottom,0px) + 22px)',
+          boxShadow:'0 -8px 30px rgba(0,0,0,.5)'}}>
+
+        <div style={{width:38,height:4,borderRadius:2,background:T.border,
+          margin:'0 auto 14px'}}/>
+
+        <div style={{color:T.t1,fontSize:17,fontWeight:800,letterSpacing:-.2,marginBottom:4}}>
+          {isUserSlot?'Das bist du':`Spieler ${slotIndex+1}`}
+        </div>
+        <div style={{color:T.t3,fontSize:12,lineHeight:1.5,marginBottom:14}}>
+          {isUserSlot
+            ?'Slot 1 ist dein Account. Du kannst den Namen anpassen, wie er im Match angezeigt wird.'
+            :'Trag den Namen ein oder teile einen Einladungslink.'}
+        </div>
+
+        <div style={{color:T.o,fontSize:10,fontWeight:800,letterSpacing:1.4,
+          textTransform:'uppercase',marginBottom:6}}>Name</div>
+        <input value={name} onChange={e=>setName(e.target.value)}
+          autoFocus={!isUserSlot}
+          autoCapitalize="words" autoCorrect="off" spellCheck={false}
+          placeholder={isUserSlot?'Dein Name':'Name eingeben'}
+          style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
+            borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:15,fontWeight:600,
+            outline:'none',boxSizing:'border-box',marginBottom:12}}/>
+
+        <button onClick={()=>onSetName(name.trim())} disabled={!name.trim()}
+          style={{width:'100%',padding:'12px 14px',marginBottom:isUserSlot?12:8,
+            background:name.trim()?T.o:T.card2,
+            border:name.trim()?'none':`1px solid ${T.border}`,borderRadius:10,
+            color:name.trim()?'#000':T.t3,
+            fontSize:13,fontWeight:800,letterSpacing:.3,
+            cursor:name.trim()?'pointer':'not-allowed'}}>
+          Übernehmen
+        </button>
+
+        {!isUserSlot&&(
+          <>
+            <div style={{height:1,background:T.sep,margin:'10px 0 14px'}}/>
+            <div style={{color:T.o,fontSize:10,fontWeight:800,letterSpacing:1.4,
+              textTransform:'uppercase',marginBottom:6}}>Einladungslink</div>
+            <div style={{color:T.t3,fontSize:11,lineHeight:1.55,marginBottom:8}}>
+              Teile diesen Link mit deinem Mitspieler. Sobald er beitritt,
+              wird sein Name automatisch in diesen Slot übernommen.
+            </div>
+            <div style={{background:T.card2,border:`1px solid ${T.border}`,borderRadius:10,
+              padding:'10px 12px',color:T.t2,fontSize:11,fontWeight:500,
+              fontFamily:'-apple-system,SFMono-Regular,Menlo,monospace',
+              wordBreak:'break-all',marginBottom:10}}>
+              {inviteUrl||'—'}
+            </div>
+            <button onClick={share}
+              style={{width:'100%',padding:'12px 14px',marginBottom:8,
+                background:T.card,border:`1px solid ${T.border}`,borderRadius:10,
+                color:T.t1,fontSize:13,fontWeight:700,letterSpacing:.2,
+                cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+              <span style={{color:T.o,fontSize:14,fontWeight:900}}>↗</span>
+              <span>{copied?'Link kopiert!':'Einladungslink teilen'}</span>
+            </button>
+            <div style={{color:T.t3,fontSize:10,lineHeight:1.5,marginBottom:6}}>
+              Tipp: Das Beitritt-Pairing ist in Entwicklung — derzeit
+              übernimmst du den Namen noch manuell, sobald dein Mitspieler
+              da ist.
+            </div>
+          </>
+        )}
+
+        <button onClick={onClose}
+          style={{width:'100%',marginTop:6,padding:'12px',background:T.card2,
+            border:`1px solid ${T.border}`,borderRadius:10,
+            color:T.t2,fontSize:13,fontWeight:700,cursor:'pointer'}}>
+          Schließen
+        </button>
+      </div>
     </div>
   );
 }
@@ -3301,18 +3615,32 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
     if(win&&!loggedWinRef.current){
       loggedWinRef.current=win;
       const userWon=win==='A';
-      dbLogMatch({
-        format:isB?'bo3':'americano',
-        player_names:cfg.players||[cfg.nameA,cfg.nameB],
-        score_a:isB?sA:am.pA,
-        score_b:isB?sB:am.pB,
-        sets:isB?sets:null,
-        user_team:'A', // Konvention: User ist im Single immer Team A
-        user_won:userWon,
-      }).catch(()=>{});
-      // Counter im Profil hochzählen (matchesPlayed + ggf. winsCount),
-      // damit App-Matches in den Spielniveau-Estimate einfließen.
-      onMatchLogged?.({userWon});
+      // matchType: explizit aus cfg, default 'friendly'. Americano-
+      // Single-Matches sind per Definition nie competitive (das Format
+      // ist Freestyle); nur Best-of-Three darf gewertet werden.
+      const isCompetitive = isB && cfg.matchType==='competitive';
+      // Nur loggen wenn (a) Bo3 ODER (b) explizit gewertet wurde. Der
+      // User hat ausdrücklich gewünscht, dass Americano (Freestyle)
+      // nicht in die Spielerstatistik einfließt. Wir speichern Bo3
+      // generell — friendly als History, competitive zusätzlich mit
+      // Profile-Counter-Update.
+      if(isB){
+        dbLogMatch({
+          format:'bo3',
+          match_type:isCompetitive?'competitive':'friendly',
+          player_names:cfg.players||[cfg.nameA,cfg.nameB],
+          score_a:sA,score_b:sB,
+          sets:sets,
+          user_team:'A', // Konvention: User ist im Single immer Team A
+          user_won:userWon,
+        }).catch(()=>{});
+      }
+      // Counter im Profil hochzählen (matchesPlayed + ggf. winsCount)
+      // ausschließlich für gewertete Bo3-Matches. Friendly + Americano
+      // bleiben damit ohne Einfluss auf das geschätzte Niveau.
+      if(isCompetitive){
+        onMatchLogged?.({userWon});
+      }
     } else if(!win){
       loggedWinRef.current=null;
     }
@@ -3662,7 +3990,7 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
         <div>
           <RitmoWordmark size={Math.round(52*tm)} style={{marginLeft:-3}}/>
           <div style={{color:T.t1,fontSize:Math.round(40*tm),marginTop:4,marginLeft:10,fontWeight:900}}>
-            {isB?'Best of Three':'Americano'}
+            {isB?(cfg.matchType==='competitive'?'Best of Three · Wettkampf':'Best of Three'):'Americano (Freestyle)'}
           </div>
         </div>
         <div style={{display:'flex',alignItems:'center',gap:10}}>

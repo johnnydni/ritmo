@@ -21,7 +21,7 @@ import { lsGet, lsSet, getAssetBase, getInitials, readImageAsDataUrl, resizeImag
 import { getLevelLabel, getLevelTier, getLevelColor, estimateLevel } from "./levels.js";
 import { B0, A0, PL, ptD, wG, bo3R, amR } from "./game.js";
 import { PCOLS, shuffle, genAmericanoRound, genMexicanoRound, calcLeaderboard } from "./tournament.js";
-import { RINGS, playRing } from "./audio.js";
+import { RINGS, playRing, unlockAudio } from "./audio.js";
 import { auth } from "./auth.js";
 import {
   RitmoWordmark, RitmoSplashLogo, CourtIcon, RacketMini, TrophyIcon, JoinIcon,
@@ -4502,6 +4502,100 @@ function ScrollPicker({value,onChange,options,bgColor=T.card,width=86}){
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   HORIZONTAL SCROLL PICKER
+
+   Wie ScrollPicker, nur horizontal. Wird im Turnier-Setup für die
+   Rundendauer verwendet — der User scrollt schnell durch Minuten
+   1..60 und die mittlere Ziffer wird "vergrößert" (Lupen-Effekt).
+
+   Layout: ITEMS_VISIBLE Items in einer Reihe (≈ 5–7), das mittlere
+   Item ist die Auswahl. PAD links/rechts so groß, dass auch die
+   ersten/letzten Werte ihre Mitte erreichen können.
+═══════════════════════════════════════════════════════════════ */
+function HorizontalScrollPicker({value,onChange,options,bgColor=T.card,
+  itemW=56,visible=5,height=60,unit}){
+  const ref=useRef(null);
+  const TOTAL_W=itemW*visible;
+  const PAD=(TOTAL_W-itemW)/2;
+  const initialized=useRef(false);
+  const scrollTimeoutRef=useRef(null);
+
+  // Initial- und externe Wertänderungen: Scroll-Position auf das
+  // value setzen. Nur einmal beim Mount, danach lassen wir den User
+  // frei scrollen (sonst springen wir während des Snap-Vorgangs).
+  useEffect(()=>{
+    if(!ref.current) return;
+    const idx=options.indexOf(value);
+    if(idx<0) return;
+    const target=idx*itemW;
+    if(!initialized.current){
+      ref.current.scrollLeft=target;
+      initialized.current=true;
+    }
+  },[value,options,itemW]);
+
+  const handleScroll=(e)=>{
+    if(scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+    scrollTimeoutRef.current=setTimeout(()=>{
+      const idx=Math.round(e.target.scrollLeft/itemW);
+      const newVal=options[Math.max(0,Math.min(options.length-1,idx))];
+      if(newVal!==value) onChange(newVal);
+    },80);
+  };
+
+  const FADE_W=Math.round(itemW*0.9);
+
+  return(
+    <div style={{position:'relative',width:TOTAL_W,height,flexShrink:0}}>
+      {/* Selection band — die "Lupe" sitzt mittig und hebt das
+          aktive Item visuell hervor. */}
+      <div style={{position:'absolute',top:0,bottom:0,left:PAD,width:itemW,
+        background:'var(--oSoft)',
+        borderLeft:`1px solid ${T.border}`,borderRight:`1px solid ${T.border}`,
+        pointerEvents:'none',borderRadius:10}}/>
+
+      {/* Linker Fade — kaschiert das Ende der Reihe, damit der User
+          das Gefühl hat, durch eine Lupe zu schauen. */}
+      <div style={{position:'absolute',top:0,bottom:0,left:0,width:FADE_W,
+        background:`linear-gradient(to right, ${bgColor}, transparent)`,
+        pointerEvents:'none',zIndex:2}}/>
+      <div style={{position:'absolute',top:0,bottom:0,right:0,width:FADE_W,
+        background:`linear-gradient(to left, ${bgColor}, transparent)`,
+        pointerEvents:'none',zIndex:2}}/>
+
+      <div ref={ref} onScroll={handleScroll}
+        style={{width:TOTAL_W,height,overflowX:'scroll',overflowY:'hidden',
+          scrollSnapType:'x mandatory',
+          scrollPaddingLeft:`${PAD}px`,
+          WebkitOverflowScrolling:'touch',
+          display:'flex',alignItems:'center'}}>
+        {/* Pad vor dem ersten Item, damit Wert 0 zentriert werden kann */}
+        <div style={{width:PAD,height:'100%',flexShrink:0}}/>
+        {options.map(o=>{
+          const active=o===value;
+          return(
+            <div key={o} style={{
+              width:itemW,height:'100%',flexShrink:0,
+              display:'flex',alignItems:'center',justifyContent:'center',
+              scrollSnapAlign:'start',
+              fontSize:active?26:16,
+              fontWeight:active?900:500,
+              color:active?T.t1:T.t2,
+              letterSpacing:active?-.5:0,
+              transform:active?'scale(1.05)':'scale(1)',
+              transformOrigin:'center',
+              transition:'color .18s,font-size .18s,transform .18s,font-weight .18s'}}>
+              {o}{active&&unit?<span style={{color:T.t3,fontSize:12,fontWeight:600,marginLeft:3}}>{unit}</span>:null}
+            </div>
+          );
+        })}
+        <div style={{width:PAD,height:'100%',flexShrink:0}}/>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
    TIMER CARD (Americano)
 ═══════════════════════════════════════════════════════════════ */
 function WimbledonDial({minutes,secsLeft,running,finished,hasStarted,svgStyle,
@@ -5082,25 +5176,26 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit,profile,onCreat
           </div>
         </div>
 
-        {/* Rundendauer */}
+        {/* Rundendauer — horizontaler Scroll-Picker mit Lupen-Effekt
+            auf dem mittleren Minutenwert. Schnelles Swipen statt
+            +/- Klick-Klick-Klick. */}
         <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
-          padding:'14px 18px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-          <div>
+          padding:'14px 18px 16px'}}>
+          <div style={{marginBottom:10}}>
             <div style={{color:T.t1,fontSize:15,fontWeight:600}}>Rundendauer</div>
             <div style={{color:T.t3,fontSize:11,fontWeight:500,marginTop:1}}>
-              Timer pro Runde
+              Timer pro Runde — wische zur gewünschten Minute
             </div>
           </div>
-          <div style={{display:'flex',alignItems:'center',gap:14}}>
-            <button onClick={()=>setRoundDur(d=>Math.max(1,d-1))}
-              style={{width:32,height:32,borderRadius:'50%',background:T.card2,border:`1px solid ${T.border}`,
-                color:T.t1,fontSize:16,cursor:'pointer'}}>−</button>
-            <span style={{color:T.t1,fontWeight:800,fontSize:18,minWidth:60,textAlign:'center'}}>
-              {roundDur} min
-            </span>
-            <button onClick={()=>setRoundDur(d=>Math.min(60,d+1))}
-              style={{width:32,height:32,borderRadius:'50%',background:T.card2,border:`1px solid ${T.border}`,
-                color:T.t1,fontSize:16,cursor:'pointer'}}>+</button>
+          <div style={{display:'flex',justifyContent:'center'}}>
+            <HorizontalScrollPicker
+              value={roundDur}
+              onChange={setRoundDur}
+              options={Array.from({length:60},(_,i)=>i+1)}
+              bgColor={T.card}
+              itemW={56}
+              visible={5}
+              unit="min"/>
           </div>
         </div>
 
@@ -11722,6 +11817,30 @@ export default function App(){
     redDot:true,
   }));
   useEffect(()=>{ lsSet('ritmo_notify',notify); },[notify]);
+
+  // iOS Audio Unlock — auf iOS Safari + installierte Web.App ist
+  // ein frisch erstellter AudioContext suspended, und resume() läuft
+  // NUR aus einer User-Geste durch. Wir hängen einen One-Shot-
+  // Listener auf den ersten Tap/Touch/Keypress; danach kann
+  // playRing() jederzeit Töne abspielen, auch aus setInterval-
+  // Callbacks (Tournament-Round-Timer). Pointerdown + touchstart
+  // + keydown decken alle Eingabe-Modalitäten ab; passive:true,
+  // damit wir scrolling nicht blockieren.
+  useEffect(()=>{
+    const opts={once:true,passive:true,capture:true};
+    const handler=()=>{
+      try{ unlockAudio(); }catch{}
+      // Andere Listener via { once:true } werden automatisch entfernt.
+    };
+    window.addEventListener('pointerdown',handler,opts);
+    window.addEventListener('touchstart',handler,opts);
+    window.addEventListener('keydown',handler,opts);
+    return()=>{
+      window.removeEventListener('pointerdown',handler,opts);
+      window.removeEventListener('touchstart',handler,opts);
+      window.removeEventListener('keydown',handler,opts);
+    };
+  },[]);
 
   // Apply theme to document root → CSS vars cascade everywhere
   // Also sync the theme-color meta tag so iOS/Android system UI matches

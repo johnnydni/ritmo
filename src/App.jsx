@@ -5030,7 +5030,23 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit,profile,onCreat
             <div key={p.id} style={{display:'flex',alignItems:'center',padding:'10px 0',
               borderBottom:i<players.length-1?`1px solid ${T.sep}`:'none',gap:10}}>
               <div style={{width:10,height:10,borderRadius:'50%',background:p.color,flexShrink:0}}/>
-              <input value={p.name} onChange={e=>renamePlayer(p.id,e.target.value)}
+              <input value={p.name}
+                onChange={e=>renamePlayer(p.id,e.target.value)}
+                onFocus={e=>{
+                  // Default-Namen ("Spieler N") räumen wir beim ersten
+                  // Tap automatisch ab — sonst tippt der User in den
+                  // Platzhalter rein und produziert "Spieler 1Anna".
+                  // Echte Namen bleiben unangetastet.
+                  if(/^Spieler\s*\d+$/i.test(p.name||'')){
+                    renamePlayer(p.id,'');
+                    // select() ist nach dem state-Update keinen Sinn —
+                    // wir leeren das Feld direkt, der Caret landet
+                    // automatisch am Anfang.
+                  } else {
+                    e.currentTarget.select();
+                  }
+                }}
+                placeholder={`Spieler ${i+1}`}
                 style={{flex:1,fontSize:14,color:T.t1,fontWeight:500}}/>
               {players.length>4&&(
                 <button onClick={()=>removePlayer(p.id)}
@@ -6171,14 +6187,32 @@ function ReadyCheckHostCard({tourney,participants,readyCheck,onBroadcast,onDismi
    Staggered Entrance via animationDelay (50ms × Court-Index).
 ═══════════════════════════════════════════════════════════════ */
 function TournamentCourtCard({court,courtIndex,playerById,onScoreChange,onConfirm}){
-  // Score-Pop-Trigger: re-mounten via key, sobald sich der Wert ändert.
-  // So spielt die scorePop-Animation auch ohne State-Klimm-Zug.
-  const s1=court.s1??0;
-  const s2=court.s2??0;
+  // Score-Werte aus dem Court ziehen. null/undefined = noch nicht
+  // eingegeben → Input rendert leer, damit Tippen "5" auch wirklich
+  // "5" wird und nicht "05". Beim Abschluss zählt 0 als gültiger
+  // Score (z. B. 6-0), daher fallback nur in Logik/Display, nicht
+  // im Input-Value.
+  const s1Raw=court.s1;
+  const s2Raw=court.s2;
+  const s1=s1Raw??0;
+  const s2=s2Raw??0;
+  const s1Input=s1Raw==null?'':String(s1Raw);
+  const s2Input=s2Raw==null?'':String(s2Raw);
   const done=!!court.done;
 
   // Gewinnerseite ermitteln (für goldenen Glow auf der Karte).
   const winnerTeam=done?(s1>s2?'A':s2>s1?'B':null):null;
+
+  // Input-Handler: leer → null (kein 0 erzwingen), sonst geclamped 0..99.
+  const handleScoreInput=(field,raw)=>{
+    if(raw===''||raw==null){
+      onScoreChange(field,null);
+      return;
+    }
+    const n=parseInt(raw,10);
+    if(!Number.isFinite(n)) return;
+    onScoreChange(field,Math.max(0,Math.min(99,n)));
+  };
 
   // Pill mit Initialen + Farb-Border um den Spieler-Avatar zu hinten —
   // sieht in der Liste lebendiger aus als nur ein Farbpunkt.
@@ -6277,76 +6311,82 @@ function TournamentCourtCard({court,courtIndex,playerById,onScoreChange,onConfir
         )}
       </div>
 
-      {/* Matchup: Team A · VS · Team B */}
+      {/* Matchup: [Team A] [Score A] [VS] [Score B] [Team B]
+          Alles in einer Zeile, Scores links + rechts vom VS-Kreis,
+          mittig vertikal ausgerichtet. Score-Inputs sind kompakter
+          gehalten (48x48 statt 60x60) damit die Karte auf 320px+
+          Screens nicht überläuft. */}
       <div style={{position:'relative',display:'flex',alignItems:'center',
-        gap:10,marginBottom:14}}>
+        gap:8,marginBottom:14}}>
         {teamSide(court.t1||[],'left')}
 
+        {/* Score A — Input wenn offen, große Zahl wenn fertig */}
+        {done?(
+          <div key={`s1-${s1}`} className="court-score-pop"
+            style={{
+              flexShrink:0,
+              minWidth:44,textAlign:'center',
+              fontSize:32,fontWeight:900,letterSpacing:-1,lineHeight:1,
+              color:winnerTeam==='A'?T.o:T.t2,
+            }}>
+            {s1}
+          </div>
+        ):(
+          <input type="number" min="0" max="99" inputMode="numeric"
+            placeholder="–"
+            value={s1Input}
+            onChange={e=>handleScoreInput('s1',e.target.value)}
+            onFocus={e=>e.currentTarget.select()}
+            style={{flexShrink:0,width:48,height:48,borderRadius:12,
+              border:`1.5px solid ${T.o}`,
+              background:T.card2,color:T.t1,fontSize:22,fontWeight:900,
+              textAlign:'center',
+              boxShadow:`0 0 0 3px ${T.o}11`,
+              outline:'none',padding:0}}/>
+        )}
+
+        {/* VS-Kreis bleibt zentral zwischen den Scores */}
         <div className={done?'':'court-vs'}
           style={{
             flexShrink:0,
-            width:38,height:38,borderRadius:'50%',
+            width:34,height:34,borderRadius:'50%',
             background:done
               ?(winnerTeam?`${T.o}33`:T.card2)
               :`${T.r}22`,
             border:`1.5px solid ${done?(winnerTeam?T.o:T.border):T.r}`,
             color:done?(winnerTeam?T.o:T.t3):T.r,
             display:'flex',alignItems:'center',justifyContent:'center',
-            fontSize:11,fontWeight:900,letterSpacing:.5,
+            fontSize:10,fontWeight:900,letterSpacing:.4,
           }}>
           VS
         </div>
 
-        {teamSide(court.t2||[],'right')}
-      </div>
-
-      {/* Score-Eingabe — bei done wird der Punktestand groß und ohne
-          Eingabe gerendert; vorher sind es zwei klare Inputs. */}
-      <div style={{position:'relative',display:'flex',alignItems:'center',
-        justifyContent:'center',gap:10,marginBottom:14}}>
+        {/* Score B */}
         {done?(
-          <>
-            <div key={`s1-${s1}`} className="court-score-pop"
-              style={{
-                fontSize:36,fontWeight:900,letterSpacing:-1,lineHeight:1,
-                color:winnerTeam==='A'?T.o:T.t2,
-                minWidth:48,textAlign:'center',
-              }}>
-              {s1}
-            </div>
-            <span style={{color:T.t3,fontSize:24,fontWeight:700,
-              letterSpacing:-1,lineHeight:1}}>:</span>
-            <div key={`s2-${s2}`} className="court-score-pop"
-              style={{
-                fontSize:36,fontWeight:900,letterSpacing:-1,lineHeight:1,
-                color:winnerTeam==='B'?T.o:T.t2,
-                minWidth:48,textAlign:'center',
-              }}>
-              {s2}
-            </div>
-          </>
+          <div key={`s2-${s2}`} className="court-score-pop"
+            style={{
+              flexShrink:0,
+              minWidth:44,textAlign:'center',
+              fontSize:32,fontWeight:900,letterSpacing:-1,lineHeight:1,
+              color:winnerTeam==='B'?T.o:T.t2,
+            }}>
+            {s2}
+          </div>
         ):(
-          <>
-            <input type="number" min="0" max="99" value={s1}
-              onChange={e=>onScoreChange('s1',Math.max(0,parseInt(e.target.value)||0))}
-              style={{width:60,height:60,borderRadius:14,
-                border:`1.5px solid ${T.o}`,
-                background:T.card2,color:T.t1,fontSize:28,fontWeight:900,
-                textAlign:'center',
-                boxShadow:`0 0 0 4px ${T.o}11`,
-                outline:'none'}}/>
-            <span style={{color:T.t3,fontSize:24,fontWeight:700,
-              letterSpacing:-1,lineHeight:1}}>:</span>
-            <input type="number" min="0" max="99" value={s2}
-              onChange={e=>onScoreChange('s2',Math.max(0,parseInt(e.target.value)||0))}
-              style={{width:60,height:60,borderRadius:14,
-                border:`1.5px solid ${T.o}`,
-                background:T.card2,color:T.t1,fontSize:28,fontWeight:900,
-                textAlign:'center',
-                boxShadow:`0 0 0 4px ${T.o}11`,
-                outline:'none'}}/>
-          </>
+          <input type="number" min="0" max="99" inputMode="numeric"
+            placeholder="–"
+            value={s2Input}
+            onChange={e=>handleScoreInput('s2',e.target.value)}
+            onFocus={e=>e.currentTarget.select()}
+            style={{flexShrink:0,width:48,height:48,borderRadius:12,
+              border:`1.5px solid ${T.o}`,
+              background:T.card2,color:T.t1,fontSize:22,fontWeight:900,
+              textAlign:'center',
+              boxShadow:`0 0 0 3px ${T.o}11`,
+              outline:'none',padding:0}}/>
         )}
+
+        {teamSide(court.t2||[],'right')}
       </div>
 
       {/* Confirm / Edit Button */}
@@ -6497,14 +6537,21 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='soft',onEdit,onMa
   useEffect(()=>{
     if(!tourney.timerRunning||tourney.finished)return;
     const id=setInterval(()=>{
+      // playRing OUT des State-Updaters ziehen — React kann
+      // Updater im StrictMode/Concurrent-Mode mehrfach aufrufen, was
+      // den Klingelton doppelt triggert. Außerhalb des Updaters
+      // läuft die Audio-Logik garantiert exakt einmal pro Tick, mit
+      // garantiertem AudioContext-resume() (siehe audio.js).
+      let willFinish=false;
       setTourney(t=>{
         if(!t||!t.timerRunning)return t;
         if(t.timerSecsLeft<=1){
-          playRing(ringId);
+          willFinish=true;
           return {...t,timerSecsLeft:0,timerRunning:false,timerFinished:true};
         }
         return {...t,timerSecsLeft:t.timerSecsLeft-1};
       });
+      if(willFinish) playRing(ringId);
     },1000);
     return()=>clearInterval(id);
   },[tourney.timerRunning,tourney.finished,ringId,setTourney]);

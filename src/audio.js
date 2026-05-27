@@ -22,6 +22,17 @@ export const RINGS=[
 export function playRing(id){
   try{
     const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    // Wichtig: viele Browser starten den AudioContext im
+    // 'suspended'-State, wenn seit der letzten User-Geste mehr als
+    // ein paar Sekunden vergangen sind. Beim Timer-Ablauf eines
+    // langen Turnier-Timers triggern wir aus einem setInterval-Tick
+    // (keine User-Geste) — ohne resume() schedulen die Oscillatoren
+    // zwar Events, aber es kommt kein Ton aus dem Speaker. Der
+    // resume()-Aufruf ist idempotent und unschädlich, wenn der
+    // Context bereits läuft. */
+    if(ctx.state==='suspended'){
+      ctx.resume().catch(()=>{});
+    }
     const master=ctx.createGain();master.gain.value=0.65;master.connect(ctx.destination);
     const beep=(f,start,dur,vol=0.5,type='sine')=>{
       const o=ctx.createOscillator(),g=ctx.createGain();

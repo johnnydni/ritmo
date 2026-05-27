@@ -1,6 +1,7 @@
 import { useState, useEffect, useReducer, useCallback, useRef, Fragment } from "react";
 import { SKILL_DESCRIPTIONS } from "./skillDescriptions.js";
-import { loadProfile as dbLoadProfile, saveProfile as dbSaveProfile, logMatch as dbLogMatch, loadMatchStats as dbLoadMatchStats,
+import { loadProfile as dbLoadProfile, saveProfile as dbSaveProfile, logMatch as dbLogMatch,
+  logMatchForParticipants as dbLogMatchForParticipants, loadMatchStats as dbLoadMatchStats,
   createOnlineTournament, joinOnlineTournament, fetchOnlineTournament, updateOnlineTournament, subscribeToTournament,
   publishTournamentState, submitScore, approveScore, rejectScore, sendReadyCheck, confirmReady, clearReadyCheck,
   checkBetaKey, redeemBetaKey,
@@ -3844,21 +3845,47 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
       // Single-Matches sind per Definition nie competitive (das Format
       // ist Freestyle); nur Best-of-Three darf gewertet werden.
       const isCompetitive = isB && cfg.matchType==='competitive';
-      // Nur loggen wenn (a) Bo3 ODER (b) explizit gewertet wurde. Der
-      // User hat ausdrücklich gewünscht, dass Americano (Freestyle)
-      // nicht in die Spielerstatistik einfließt. Wir speichern Bo3
-      // generell — friendly als History, competitive zusätzlich mit
-      // Profile-Counter-Update.
+      // Nur Bo3 wird überhaupt geloggt — Americano (Freestyle) fließt
+      // weder in History noch DNA ein.
       if(isB){
-        dbLogMatch({
-          format:'bo3',
-          match_type:isCompetitive?'competitive':'friendly',
-          player_names:cfg.players||[cfg.nameA,cfg.nameB],
-          score_a:sA,score_b:sB,
-          sets:sets,
-          user_team:'A', // Konvention: User ist im Single immer Team A
-          user_won:userWon,
-        }).catch(()=>{});
+        // playerUserIds steckt für jeden eingeladenen RITMO-Account
+        // eine user_id; nicht-registrierte Slots bleiben null. Wenn
+        // mindestens ein Account dabei ist, schreiben wir via RPC
+        // für ALLE Teilnehmer auf einmal — so taucht das Match auch
+        // in den Statistiken der Mitspieler:innen auf.
+        const uids = cfg.playerUserIds||[];
+        const hasAccounts = uids.some(Boolean);
+        const playerNames = cfg.players || [cfg.nameA,cfg.nameB];
+        const finalSets = sets;
+        const matchTypeStr = isCompetitive?'competitive':'friendly';
+        const winnerLetter = win; // 'A' | 'B'
+
+        if(hasAccounts){
+          dbLogMatchForParticipants({
+            format:'bo3',
+            match_type:matchTypeStr,
+            player_names:playerNames,
+            player_user_ids:uids,
+            score_a:sA,score_b:sB,
+            sets:finalSets,
+            winner:winnerLetter,
+            // Fallback-Felder, falls die RPC nicht greift (Migration
+            // fehlt) — der Host bekommt zumindest seinen eigenen Row.
+            user_team:'A',
+            user_won:userWon,
+          }).catch(()=>{});
+        } else {
+          // Klassischer Solo-/Test-User-Pfad ohne RPC.
+          dbLogMatch({
+            format:'bo3',
+            match_type:matchTypeStr,
+            player_names:playerNames,
+            score_a:sA,score_b:sB,
+            sets:finalSets,
+            user_team:'A',
+            user_won:userWon,
+          }).catch(()=>{});
+        }
       }
       // Counter im Profil hochzählen (matchesPlayed + ggf. winsCount)
       // ausschließlich für gewertete Bo3-Matches. Friendly + Americano

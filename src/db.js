@@ -136,6 +136,84 @@ export async function logMatch(match) {
   }
 }
 
+/**
+ * Loggt ein Bo3-Match für ALLE registrierten Teilnehmer:innen.
+ * Geht über die RPC log_match_for_participants, die mit
+ * SECURITY DEFINER Match-Rows für jeden non-null user_id im Roster
+ * schreibt. Vorbedingung: der Aufrufer muss selbst im Roster sein
+ * (Anti-Abuse-Check im DB-Body).
+ *
+ * Falls die RPC fehlt (Migration noch nicht ausgeführt) oder ein
+ * Auth-Problem auftritt, fallen wir auf den klassischen logMatch
+ * für den Host zurück, damit das Match wenigstens lokal in dessen
+ * Historie auftaucht.
+ *
+ * @param {object} match
+ *   - format: 'bo3'
+ *   - match_type: 'friendly' | 'competitive'
+ *   - player_names: string[4]
+ *   - player_user_ids: (string|null)[4]
+ *   - score_a, score_b: number
+ *   - sets: array
+ *   - winner: 'A' | 'B'
+ *   - user_team / user_won: optional, nur für Fallback-Pfad
+ */
+export async function logMatchForParticipants(match) {
+  const c = sb();
+  if (!c) return;
+  const uid = await currentUserId();
+  if (!uid) return;
+  // 4-Slot-Garantie — Supabase RPC pingt sonst gleich zurück.
+  const names = (match.player_names || []).slice(0, 4);
+  const uids  = (match.player_user_ids || []).slice(0, 4);
+  while (names.length < 4) names.push('');
+  while (uids.length  < 4) uids.push(null);
+  try {
+    const { error } = await c.rpc('log_match_for_participants', {
+      p_format: match.format || 'bo3',
+      p_match_type: match.match_type || 'friendly',
+      p_player_names: names,
+      p_player_user_ids: uids,
+      p_score_a: match.score_a ?? null,
+      p_score_b: match.score_b ?? null,
+      p_sets: match.sets ?? null,
+      p_winner: match.winner,
+    });
+    if (error) {
+      console.warn('[db] logMatchForParticipants RPC failed:', error.message);
+      // Fallback: wenigstens das Match des Hosts schreiben, damit es
+      // nicht ganz verloren geht. Tritt auf, wenn die Migration noch
+      // nicht in Supabase liegt oder das Profil grade nicht in
+      // einem zulässigen Status ist.
+      await logMatch({
+        format: match.format,
+        match_type: match.match_type,
+        player_names: names,
+        score_a: match.score_a,
+        score_b: match.score_b,
+        sets: match.sets,
+        user_team: match.user_team || null,
+        user_won: match.user_won ?? null,
+      });
+    }
+  } catch (e) {
+    console.warn('[db] logMatchForParticipants exception:', e?.message || e);
+    // Defensiv: gleicher Fallback bei JS-Exception.
+    try {
+      await logMatch({
+        format: match.format,
+        match_type: match.match_type,
+        player_names: names,
+        score_a: match.score_a,
+        score_b: match.score_b,
+        sets: match.sets,
+        user_team: match.user_team || null,
+        user_won: match.user_won ?? null,
+      });
+    } catch {}
+  }
+}
+
 /* ───────── STATS ───────── */
 
 /**

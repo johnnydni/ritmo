@@ -524,6 +524,26 @@ export function AirPlayIcon({size=22,color='currentColor'}){
   </svg>);
 }
 
+// Coffee-Cup-Icon für Clubs auf dem Home-Screen.
+// Padel-Clubs sind in der DACH-Region oft Café-getrieben — die
+// Tasse ist ein wärmeres, "sozialer treffen"-Signal als der
+// Pokal-Icon, der näher an Wettkampf-Konnotation liegt.
+// Form: Kaffeetasse mit Henkel + zwei aufsteigende Dampf-Linien.
+export function CoffeeCupIcon({size=22,color='currentColor'}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    {/* Dampf — zwei sanft geschwungene Linien */}
+    <path d="M8.5 2.5c.5 1 -.5 2 0 3s.5 1.5 0 2.5"/>
+    <path d="M13 2.5c.5 1 -.5 2 0 3s.5 1.5 0 2.5"/>
+    {/* Tasse — leicht trapezförmig, oben breiter als unten */}
+    <path d="M3.5 11h12v5a4 4 0 0 1 -4 4h-4a4 4 0 0 1 -4 -4v-5z"/>
+    {/* Henkel rechts */}
+    <path d="M15.5 13h2a2 2 0 0 1 0 4h-2"/>
+    {/* Untertasse-Linie */}
+    <line x1="2.5" y1="22" x2="16.5" y2="22"/>
+  </svg>);
+}
+
 // RITMO Post — Mash aus Glocke + Chat-Bubble, line art.
 // Die Glocke sitzt rechts-unten als Notification-Sigil über der Chat-Bubble.
 export function RitmoPostIcon({size=24,color='currentColor'}){

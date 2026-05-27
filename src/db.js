@@ -71,7 +71,6 @@ export async function saveProfile(profile) {
  * Loggt ein abgeschlossenes Match.
  * @param {object} match
  *   - format: 'bo3' | 'americano' | 'tournament-americano' | 'tournament-mexicano'
- *   - match_type: 'friendly' | 'competitive' (default 'friendly')
  *   - player_names: string[]
  *   - score_a, score_b: number
  *   - sets: array (bo3) | null
@@ -79,25 +78,16 @@ export async function saveProfile(profile) {
  *   - user_won: boolean | null
  *   - tournament_id?: string
  *   - round_index?: number
- *
- * match_type entscheidet, ob das Match in Spielniveau-/DNA-Aggregate
- * einfließt. Nur 'competitive' zählt — 'friendly' bleibt nur Historie.
- * Tournament-Matches gelten automatisch als competitive.
  */
 export async function logMatch(match) {
   const c = sb();
   if (!c) return;
   const uid = await currentUserId();
   if (!uid) return;
-  // Tournament-Runden zählen immer als competitive; Singles erben
-  // das explizite Flag oder fallen auf 'friendly' zurück.
-  const matchType = match.match_type
-    || (String(match.format||'').startsWith('tournament-') ? 'competitive' : 'friendly');
   try {
     const { error } = await c.from('ritmo_matches').insert({
       user_id: uid,
       format: match.format,
-      match_type: matchType,
       player_names: match.player_names || [],
       score_a: match.score_a ?? null,
       score_b: match.score_b ?? null,
@@ -108,109 +98,9 @@ export async function logMatch(match) {
       round_index: match.round_index ?? null,
       finished_at: new Date().toISOString(),
     });
-    if (error) {
-      // Wenn die Spalte match_type in der DB fehlt (Migration noch
-      // nicht ausgeführt), versuchen wir den Insert ohne sie. So
-      // bleibt die App auch vor dem Apply funktional.
-      if (/column .*match_type/i.test(error.message)) {
-        const retry = await c.from('ritmo_matches').insert({
-          user_id: uid,
-          format: match.format,
-          player_names: match.player_names || [],
-          score_a: match.score_a ?? null,
-          score_b: match.score_b ?? null,
-          sets: match.sets ?? null,
-          user_team: match.user_team || null,
-          user_won: match.user_won ?? null,
-          tournament_id: match.tournament_id || null,
-          round_index: match.round_index ?? null,
-          finished_at: new Date().toISOString(),
-        });
-        if (retry.error) console.warn('[db] logMatch fallback failed:', retry.error.message);
-      } else {
-        console.warn('[db] logMatch failed:', error.message);
-      }
-    }
+    if (error) console.warn('[db] logMatch failed:', error.message);
   } catch (e) {
     console.warn('[db] logMatch exception:', e?.message || e);
-  }
-}
-
-/**
- * Loggt ein Bo3-Match für ALLE registrierten Teilnehmer:innen.
- * Geht über die RPC log_match_for_participants, die mit
- * SECURITY DEFINER Match-Rows für jeden non-null user_id im Roster
- * schreibt. Vorbedingung: der Aufrufer muss selbst im Roster sein
- * (Anti-Abuse-Check im DB-Body).
- *
- * Falls die RPC fehlt (Migration noch nicht ausgeführt) oder ein
- * Auth-Problem auftritt, fallen wir auf den klassischen logMatch
- * für den Host zurück, damit das Match wenigstens lokal in dessen
- * Historie auftaucht.
- *
- * @param {object} match
- *   - format: 'bo3'
- *   - match_type: 'friendly' | 'competitive'
- *   - player_names: string[4]
- *   - player_user_ids: (string|null)[4]
- *   - score_a, score_b: number
- *   - sets: array
- *   - winner: 'A' | 'B'
- *   - user_team / user_won: optional, nur für Fallback-Pfad
- */
-export async function logMatchForParticipants(match) {
-  const c = sb();
-  if (!c) return;
-  const uid = await currentUserId();
-  if (!uid) return;
-  // 4-Slot-Garantie — Supabase RPC pingt sonst gleich zurück.
-  const names = (match.player_names || []).slice(0, 4);
-  const uids  = (match.player_user_ids || []).slice(0, 4);
-  while (names.length < 4) names.push('');
-  while (uids.length  < 4) uids.push(null);
-  try {
-    const { error } = await c.rpc('log_match_for_participants', {
-      p_format: match.format || 'bo3',
-      p_match_type: match.match_type || 'friendly',
-      p_player_names: names,
-      p_player_user_ids: uids,
-      p_score_a: match.score_a ?? null,
-      p_score_b: match.score_b ?? null,
-      p_sets: match.sets ?? null,
-      p_winner: match.winner,
-    });
-    if (error) {
-      console.warn('[db] logMatchForParticipants RPC failed:', error.message);
-      // Fallback: wenigstens das Match des Hosts schreiben, damit es
-      // nicht ganz verloren geht. Tritt auf, wenn die Migration noch
-      // nicht in Supabase liegt oder das Profil grade nicht in
-      // einem zulässigen Status ist.
-      await logMatch({
-        format: match.format,
-        match_type: match.match_type,
-        player_names: names,
-        score_a: match.score_a,
-        score_b: match.score_b,
-        sets: match.sets,
-        user_team: match.user_team || null,
-        user_won: match.user_won ?? null,
-      });
-    }
-  } catch (e) {
-    console.warn('[db] logMatchForParticipants exception:', e?.message || e);
-    // Defensiv: gleicher Fallback bei JS-Exception.
-    try {
-      await logMatch({
-        format: match.format,
-        match_type: match.match_type,
-        player_names: names,
-        score_a: match.score_a,
-        score_b: match.score_b,
-        sets: match.sets,
-        user_team: match.user_team || null,
-        user_won: match.user_won ?? null,
-      });
-    } catch {}
   }
 }
 
@@ -226,25 +116,12 @@ export async function loadMatchStats() {
   const uid = await currentUserId();
   if (!uid) return null;
   try {
-    // match_type wird mitselektiert; falls die Spalte fehlt (Migration
-    // nicht ausgeführt), kommt der Fehler hier — wir fallen dann auf
-    // den alten SELECT zurück, damit ältere DBs nicht brechen.
-    let { data, error } = await c
+    const { data, error } = await c
       .from('ritmo_matches')
-      .select('format,match_type,score_a,score_b,user_team,user_won,sets,finished_at')
+      .select('format,score_a,score_b,user_team,user_won,sets,finished_at')
       .eq('user_id', uid)
       .order('finished_at', { ascending: false })
       .limit(200);
-    if (error && /column .*match_type/i.test(error.message)) {
-      const retry = await c
-        .from('ritmo_matches')
-        .select('format,score_a,score_b,user_team,user_won,sets,finished_at')
-        .eq('user_id', uid)
-        .order('finished_at', { ascending: false })
-        .limit(200);
-      data = retry.data;
-      error = retry.error;
-    }
     if (error || !data) {
       if (error) console.warn('[db] loadMatchStats failed:', error.message);
       return null;
@@ -257,27 +134,10 @@ export async function loadMatchStats() {
 }
 
 function computeStats(rows) {
-  // Competitive-Subset = Datenbasis für Spielniveau + RITMO DNA.
-  // Wenn die match_type-Spalte fehlt (alte DB), gelten alle Bo3+
-  // Tournament-Matches als competitive — das matched das frühere
-  // Verhalten und kippt keine bestehenden Profile.
-  const isCompetitive = (r) => {
-    if (typeof r.match_type === 'string') return r.match_type === 'competitive';
-    return r.format === 'bo3' || String(r.format||'').startsWith('tournament-');
-  };
-  const competitiveRows = rows.filter(isCompetitive);
-
   const total = rows.length;
   const wins = rows.filter(r => r.user_won === true).length;
   const losses = rows.filter(r => r.user_won === false).length;
   const winRate = total > 0 ? Math.round((wins / total) * 100) : 0;
-
-  // Competitive-Aggregate — getrennt geführt, damit die DNA-Schätzung
-  // nur darauf zugreift.
-  const cMatches = competitiveRows.length;
-  const cWins = competitiveRows.filter(r => r.user_won === true).length;
-  const cLosses = competitiveRows.filter(r => r.user_won === false).length;
-  const cWinRate = cMatches > 0 ? Math.round((cWins / cMatches) * 100) : 0;
 
   // Form trend: last 12 matches (oldest → newest), Sieg=5, Niederlage=1, sonst 3.
   const last12 = rows.slice(0, 12).reverse();
@@ -307,11 +167,6 @@ function computeStats(rows) {
     wins,
     losses,
     winRate,
-    // Competitive-only Spiegel für DNA-Konsumenten.
-    competitiveMatches: cMatches,
-    competitiveWins: cWins,
-    competitiveLosses: cLosses,
-    competitiveWinRate: cWinRate,
     formTrend,
     weeklyMatches: weeks,
     weekDays,
@@ -1097,133 +952,3 @@ export function subscribeClubMessages(clubId, onInsert) {
   return () => { try { c.removeChannel(channel); } catch (e) {} };
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   MATCH SESSIONS — Single-Match Realtime-Pairing
-
-   Tabelle ritmo_match_sessions (siehe match-sessions-migration.sql)
-   hält Live-State eines laufenden Bo3-Matches. Host schreibt,
-   eingeladene Spieler:innen subscribieren via Postgres Realtime
-   und sehen den Score in Echtzeit.
-
-   Failure modes:
-   - Migration noch nicht ausgeführt → alle Helper no-op'en still,
-     Host-Flow läuft trotzdem (das Match wird lokal gespielt).
-   - Auth fehlt → Joiner-RPC schlägt fehl, wir loggen das.
-═══════════════════════════════════════════════════════════════ */
-
-/** Host legt eine neue Session an. session_id wird vom Client
- *  mitgegeben (idempotent — upsert by unique constraint). */
-export async function createMatchSession(session) {
-  const c = sb();
-  if (!c || !session?.session_id) return null;
-  const uid = await currentUserId();
-  if (!uid) return null;
-  try {
-    const row = {
-      session_id: session.session_id,
-      host_user_id: uid,
-      status: 'open',
-      format: session.format || 'bo3',
-      match_type: session.match_type || 'friendly',
-      golden_point_after: session.golden_point_after ?? null,
-      players_names: session.players_names || ['','','',''],
-      players_user_ids: session.players_user_ids || [uid, null, null, null],
-      team_a_label: session.team_a_label || null,
-      team_b_label: session.team_b_label || null,
-    };
-    const { data, error } = await c
-      .from('ritmo_match_sessions')
-      .upsert(row, { onConflict: 'session_id' })
-      .select()
-      .maybeSingle();
-    if (error) {
-      console.warn('[db] createMatchSession failed:', error.message);
-      return null;
-    }
-    return data;
-  } catch (e) {
-    console.warn('[db] createMatchSession exception:', e?.message || e);
-    return null;
-  }
-}
-
-/** Host aktualisiert seine Session. RLS lässt nur Host schreiben.
- *  patch enthält die Felder, die geändert werden sollen. */
-export async function updateMatchSession(sessionId, patch) {
-  const c = sb();
-  if (!c || !sessionId || !patch) return null;
-  const fields = { ...patch, updated_at: new Date().toISOString() };
-  if (patch.status === 'started' && !patch.started_at) {
-    fields.started_at = new Date().toISOString();
-  }
-  if (patch.status === 'finished' && !patch.finished_at) {
-    fields.finished_at = new Date().toISOString();
-  }
-  try {
-    const { error } = await c
-      .from('ritmo_match_sessions')
-      .update(fields)
-      .eq('session_id', sessionId);
-    if (error) console.warn('[db] updateMatchSession failed:', error.message);
-  } catch (e) {
-    console.warn('[db] updateMatchSession exception:', e?.message || e);
-  }
-}
-
-/** Eine Session aus der DB ziehen. */
-export async function fetchMatchSession(sessionId) {
-  const c = sb();
-  if (!c || !sessionId) return null;
-  try {
-    const { data, error } = await c
-      .from('ritmo_match_sessions')
-      .select('*')
-      .eq('session_id', sessionId)
-      .maybeSingle();
-    if (error) {
-      console.warn('[db] fetchMatchSession failed:', error.message);
-      return null;
-    }
-    return data || null;
-  } catch (e) {
-    console.warn('[db] fetchMatchSession exception:', e?.message || e);
-    return null;
-  }
-}
-
-/** Joiner-RPC: claimt einen Slot und schreibt Name + user_id rein.
- *  Returns { slot, session_id, already_in } oder { error }. */
-export async function joinMatchSession(sessionId, displayName) {
-  const c = sb();
-  if (!c || !sessionId) return null;
-  try {
-    const { data, error } = await c.rpc('join_match_session', {
-      p_session_id: sessionId,
-      p_name: displayName || null,
-    });
-    if (error) {
-      console.warn('[db] joinMatchSession failed:', error.message);
-      return { error: error.message };
-    }
-    return data;
-  } catch (e) {
-    console.warn('[db] joinMatchSession exception:', e?.message || e);
-    return { error: e?.message || 'unknown' };
-  }
-}
-
-/** Realtime-Subscription auf eine Match-Session.
- *  Liefert eine unsubscribe-Funktion. */
-export function subscribeMatchSession(sessionId, onUpdate) {
-  const c = sb();
-  if (!c || !sessionId) return () => {};
-  const channel = c.channel(`match-session-${sessionId}`)
-    .on('postgres_changes', {
-      event: 'UPDATE', schema: 'public', table: 'ritmo_match_sessions',
-      filter: `session_id=eq.${sessionId}`,
-    }, (payload) => {
-      if (typeof onUpdate === 'function') onUpdate(payload.new);
-    })
-    .subscribe();
-  return () => { try { c.removeChannel(channel); } catch (e) {} };
-}

@@ -6479,6 +6479,13 @@ function TournamentCourtCard({court,courtIndex,playerById,onScoreChange,onConfir
         animationDelay:`${courtIndex*60}ms`,
         boxShadow:done?`0 0 0 1px ${T.o}33 inset, 0 8px 20px rgba(0,0,0,.25)`:'0 4px 14px rgba(0,0,0,.18)',
         overflow:'hidden',
+        // Eltern-Container des Runden-Tabs ist ein Flex-Column mit
+        // overflowY:auto. Ohne flexShrink:0 würden mehrere Court-
+        // Karten sich gegenseitig komprimieren statt zu scrollen —
+        // mit overflow:hidden auf der Karte wird dann unten der
+        // Bestätigen-Button abgeschnitten und sieht nur noch wie ein
+        // dünner oranger Streifen aus.
+        flexShrink:0,
       }}>
 
       {/* Subtiler Gradient-Akzent als Hintergrund-Layer — nimmt nur

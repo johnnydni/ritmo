@@ -2690,8 +2690,10 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
           </button>
         )}
 
-        {/* Single Match */}
-        <button onClick={()=>nav('single-setup')} className="fu"
+        {/* Single Match — Hub mit "Starten" + "Beitreten", analog
+            zur Turnier-Karte. Direkter Sprung in single-setup ist raus
+            damit der Join-Pfad gleichwertig auffindbar ist. */}
+        <button onClick={()=>nav('single-hub')} className="fu"
           style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:18,
             padding:'18px 20px',display:'flex',alignItems:'center',gap:18,
             cursor:'pointer',color:T.t1,textAlign:'left',transition:'background .15s'}}
@@ -2701,7 +2703,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
           <CourtIcon size={42}/>
           <div style={{flex:1}}>
             <div style={{color:T.o,fontSize:18,fontWeight:700,marginBottom:3}}>Single Match</div>
-            <div style={{color:T.t3,fontSize:12,fontWeight:500}}>Best of 3 | Americano</div>
+            <div style={{color:T.t3,fontSize:12,fontWeight:500}}>Starten | Beitreten</div>
           </div>
         </button>
 
@@ -9760,6 +9762,217 @@ function TournamentHub({onHome,onStart,onJoin}){
   );
 }
 
+function SingleMatchHub({onHome,onStart,onJoin}){
+  return(
+    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+      position:'relative',overflow:'hidden',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
+      <div className="fi" style={{padding:'0 22px 22px'}}>
+        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
+          <CourtIcon size={32}/>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{color:T.t1,fontSize:26,fontWeight:800,letterSpacing:-.3}}>Single Match</div>
+            <div style={{color:T.t2,fontSize:14,marginTop:2,fontWeight:400}}>
+              Eigenes Match aufsetzen oder beitreten.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{flex:1,padding:'0 22px 120px',overflowY:'auto',
+        WebkitOverflowScrolling:'touch',display:'flex',flexDirection:'column',gap:14}}>
+        <HubBigCard
+          icon={<CourtIcon size={28}/>}
+          title="Match starten"
+          desc="Best of 3 oder Americano — du bist Host."
+          onClick={onStart} delay=".02s"/>
+        <HubBigCard
+          icon={<JoinIcon size={28}/>}
+          title="Match beitreten"
+          desc="QR-Code scannen oder Session-ID eingeben."
+          onClick={onJoin} delay=".06s"/>
+      </div>
+
+      <MatchBar onHome={onHome}/>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   JOIN MATCH
+
+   Spieler:innen, die zu einer fremden Match-Session beitreten.
+   - Primärer Pfad: QR-Code des Hosts scannen → Session-ID landet
+     hier und der User landet in der Session.
+   - Sekundär: Session-ID manuell eintippen (für Fälle ohne QR).
+
+   Echtes Realtime-Pairing (joinende User taucht beim Host als
+   gefüllter Slot auf) folgt in einer separaten PR — dieses Screen
+   ist die UI-Eingangstür und bindet bereits an die Session-ID, die
+   der Host in seinem InviteSlotSheet teilt.
+═══════════════════════════════════════════════════════════════ */
+function JoinMatch({onHome,onBack,initialSessionId,profile}){
+  const[sessionId,setSessionId]=useState(initialSessionId||'');
+  const[scannerOpen,setScannerOpen]=useState(false);
+  const[busy,setBusy]=useState(false);
+  const[msg,setMsg]=useState('');
+  const[msgKind,setMsgKind]=useState('info');
+
+  // Beim ersten Render mit übergebener ID: Status-Hinweis anzeigen.
+  useEffect(()=>{
+    if(initialSessionId){
+      setMsgKind('ok');
+      setMsg('Session-ID aus QR-Scan übernommen.');
+    }
+  },[initialSessionId]);
+
+  const flash=(kind,text,ms=4000)=>{
+    setMsgKind(kind); setMsg(text);
+    setTimeout(()=>{setMsg('');},ms);
+  };
+
+  const handleScan=(text)=>{
+    const sid=extractMatchSessionFromScan(text);
+    setScannerOpen(false);
+    if(!sid){
+      flash('err','Kein RITMO-Match in diesem QR.');
+      return;
+    }
+    setSessionId(sid);
+    flash('ok','Session-ID erkannt.');
+  };
+
+  const join=async()=>{
+    const sid=sessionId.trim();
+    if(!sid||busy) return;
+    setBusy(true);
+    // Realtime-Join wird in einer separaten PR an die DB gebunden
+    // (ritmo_match_sessions + RPC). Derzeit zeigen wir dem User
+    // einen Bestätigungs-Hinweis und merken die Session in
+    // localStorage — sobald die Host-Sync-Logik live ist, kann der
+    // Screen direkt in eine Warte-Lobby übergehen.
+    try{
+      lsSet('ritmo_joined_match',{sessionId:sid,joinedAt:Date.now()});
+      flash('ok',`Beitritt zu Session ${sid.slice(0,8)}… vorgemerkt. Sobald der Host startet, erscheint das Match in deiner Statistik.`);
+    }finally{
+      setBusy(false);
+    }
+  };
+
+  return(
+    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+      position:'relative',overflow:'hidden',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
+
+      <div className="fi" style={{padding:'0 22px 18px'}}>
+        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
+          <JoinIcon size={32}/>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{color:T.t1,fontSize:24,fontWeight:800,letterSpacing:-.3}}>
+              Match beitreten
+            </div>
+            <div style={{color:T.t2,fontSize:13,marginTop:2,fontWeight:400}}>
+              Scan den QR-Code deines Hosts oder tipp die Session-ID ein.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{flex:1,padding:'0 22px 120px',overflowY:'auto',
+        WebkitOverflowScrolling:'touch',display:'flex',flexDirection:'column',gap:14}}>
+
+        {msg&&(
+          <div style={{
+            padding:'10px 14px',borderRadius:10,
+            background:msgKind==='ok'?'rgba(34,180,90,0.10)':msgKind==='err'?'rgba(232,69,69,0.10)':T.card,
+            border:`1px solid ${msgKind==='ok'?'rgba(34,180,90,0.4)':msgKind==='err'?'rgba(232,69,69,0.4)':T.border}`,
+            color:msgKind==='ok'?'#7ED39C':msgKind==='err'?'#FF8A8A':T.t2,
+            fontSize:12,fontWeight:600,lineHeight:1.5}}>
+            {msg}
+          </div>
+        )}
+
+        {/* Primärer CTA: QR-Scanner */}
+        <button onClick={()=>setScannerOpen(true)} className="fu"
+          style={{background:T.card,border:`1.5px solid ${T.o}`,borderRadius:18,
+            padding:'24px 20px',display:'flex',flexDirection:'column',alignItems:'center',
+            gap:12,cursor:'pointer',color:T.t1,textAlign:'center',
+            transition:'background .15s',
+            boxShadow:`0 0 0 1px ${T.o}22 inset`}}>
+          <div style={{width:72,height:72,borderRadius:18,
+            background:T.oSoft,border:`1.5px solid ${T.o}`,color:T.o,
+            display:'flex',alignItems:'center',justifyContent:'center'}}>
+            {/* Größeres QR-Glyph für die Hero-Card */}
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
+              <rect x="3"  y="3"  width="7" height="7" rx="1"/>
+              <rect x="14" y="3"  width="7" height="7" rx="1"/>
+              <rect x="3"  y="14" width="7" height="7" rx="1"/>
+              <rect x="5"  y="5"  width="3" height="3" fill="currentColor" stroke="none"/>
+              <rect x="16" y="5"  width="3" height="3" fill="currentColor" stroke="none"/>
+              <rect x="5"  y="16" width="3" height="3" fill="currentColor" stroke="none"/>
+              <rect x="14" y="14" width="3" height="3"/>
+              <rect x="19" y="15" width="2" height="2"/>
+              <rect x="15" y="19" width="2" height="2"/>
+              <rect x="18" y="18" width="3" height="3"/>
+            </svg>
+          </div>
+          <div style={{color:T.o,fontSize:18,fontWeight:800,letterSpacing:-.2}}>
+            QR-Code scannen
+          </div>
+          <div style={{color:T.t3,fontSize:12,fontWeight:500,lineHeight:1.5,maxWidth:300}}>
+            Kamera öffnet sich in der App. Halte den QR aus dem Slot
+            deines Hosts in den Rahmen.
+          </div>
+        </button>
+
+        {/* Alternative: manuelle Eingabe */}
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+          padding:'18px 18px'}}>
+          <div style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:1.4,
+            textTransform:'uppercase',marginBottom:8}}>Oder Session-ID eingeben</div>
+          <input value={sessionId} onChange={e=>setSessionId(e.target.value)}
+            placeholder="z. B. 4f8a-c1…"
+            autoCapitalize="off" autoCorrect="off" spellCheck={false}
+            style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
+              borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:600,
+              outline:'none',boxSizing:'border-box',marginBottom:12,
+              fontFamily:'-apple-system,SFMono-Regular,Menlo,monospace'}}/>
+          <button onClick={join} disabled={!sessionId.trim()||busy}
+            style={{width:'100%',padding:'12px 14px',
+              background:sessionId.trim()&&!busy?T.o:T.card2,
+              border:sessionId.trim()&&!busy?'none':`1px solid ${T.border}`,borderRadius:10,
+              color:sessionId.trim()&&!busy?'#000':T.t3,
+              fontSize:13,fontWeight:800,letterSpacing:.3,
+              cursor:sessionId.trim()&&!busy?'pointer':'not-allowed'}}>
+            {busy?'Trete bei …':'Beitreten'}
+          </button>
+        </div>
+
+        {/* Hinweis für den User: was passiert nach dem Beitritt */}
+        <div style={{background:T.card2,border:`1px dashed ${T.border}`,borderRadius:12,
+          padding:'14px 16px',color:T.t3,fontSize:11,lineHeight:1.6}}>
+          <div style={{color:T.t2,fontSize:12,fontWeight:700,marginBottom:6}}>
+            So funktioniert's
+          </div>
+          1. Host öffnet einen Slot in seinem Setup → QR erscheint.<br/>
+          2. Du scannst den QR oder tippst die Session-ID hier ein.<br/>
+          3. Sobald der Host startet, läuft das Match auf seinem Gerät.<br/>
+          4. Am Match-Ende landet das Ergebnis automatisch in deiner Statistik.
+        </div>
+      </div>
+
+      <MatchBar onHome={onBack||onHome}/>
+
+      {scannerOpen&&(
+        <QRScannerModal
+          onResult={handleScan}
+          onClose={()=>setScannerOpen(false)}/>
+      )}
+    </div>
+  );
+}
+
 function RitmoBibel({onHome,onRules,onJourney}){
   return(
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
@@ -11882,6 +12095,34 @@ export default function App(){
       window.history.replaceState({},'',url.toString());
     }catch{}
   },[joinPinFromUrl]);
+  // ?match=<sessionId> aus der URL — vom QR-Scan oder geteilten Link
+  // einer Match-Einladung. Wird beim Cold-Load gelesen, als
+  // initialSessionId an JoinMatch durchgereicht und sofort aus der
+  // URL gelöscht damit ein Reload nicht erneut weiterleitet.
+  const[joinMatchFromUrl,setJoinMatchFromUrl]=useState(()=>{
+    if(typeof window==='undefined') return null;
+    try{
+      const params=new URLSearchParams(window.location.search);
+      const direct=params.get('match');
+      if(direct) return direct.trim();
+      // Variante ?join=match&session=<id>
+      if(params.get('join')==='match'){
+        const s=params.get('session');
+        if(s) return s.trim();
+      }
+      return null;
+    }catch{return null;}
+  });
+  useEffect(()=>{
+    if(!joinMatchFromUrl) return;
+    try{
+      const url=new URL(window.location.href);
+      url.searchParams.delete('match');
+      url.searchParams.delete('session');
+      if(url.searchParams.get('join')==='match') url.searchParams.delete('join');
+      window.history.replaceState({},'',url.toString());
+    }catch{}
+  },[joinMatchFromUrl]);
   const[pendingEmail,setPendingEmail]=useState('');
   // Aktuelle Supabase User-ID — wird vom Auth-Listener gesetzt und
   // an Social-Screens (PublicProfile, BookingDetail, …) durchgereicht.
@@ -12169,9 +12410,14 @@ export default function App(){
       onKey={onMatchKey}/>
 
     {scr==='splash'&&<Splash onDone={()=>{
-      // ?join=PIN aus QR-Scan: direkt zur Join-Maske, auch ohne Login
-      // (Auth-Pflicht wäre Reibung für den eingeladenen Spieler).
+      // ?join=PIN aus QR-Scan: direkt zur Turnier-Join-Maske, auch
+      // ohne Login (Auth-Pflicht wäre Reibung für den eingeladenen
+      // Spieler).
       if(joinPinFromUrl) return nav('remote');
+      // ?match=<sessionId> aus QR-Scan: direkt in die Single-Match-
+      // Join-Maske. Auch hier ohne Login-Pflicht — der Beitritt-
+      // Screen funktioniert als reine UI-Eingangstür.
+      if(joinMatchFromUrl) return nav('join-match');
       // Vor Login zeigen wir die Beta-Landing-Page (Coming-Soon-
       // Ankündigung + CTA-Buttons). Eingeloggte User springen direkt
       // weiter zu welcome / home.
@@ -12409,7 +12655,16 @@ export default function App(){
       onJoin={setJoinedSession}
       onHome={()=>{setJoinPinFromUrl(null);goHome();}}/>}
 
-    {/* Hub-Screens: Turnier-Auswahl + RITMO Bibel */}
+    {/* Hub-Screens: Single-Match, Turnier-Auswahl + RITMO Bibel */}
+    {scr==='single-hub'&&<SingleMatchHub
+      onHome={goHome}
+      onStart={()=>setScr('single-setup')}
+      onJoin={()=>setScr('join-match')}/>}
+    {scr==='join-match'&&<JoinMatch
+      onHome={goHome}
+      onBack={joinMatchFromUrl?null:()=>setScr('single-hub')}
+      initialSessionId={joinMatchFromUrl}
+      profile={profile}/>}
     {scr==='tournament-hub'&&<TournamentHub
       onHome={goHome}
       onStart={()=>setScr('tournament-setup')}

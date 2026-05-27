@@ -2140,10 +2140,22 @@ function TabBar({active,onTab,rightAction,searchable=false,onSearch}){
                 background:isActive?T.blueSoft:'transparent',
                 color:isActive?T.blue:T.t2,
                 fontSize:11,fontWeight:600,
-                transition:'max-width .25s ease, padding .25s ease, opacity .2s ease'}}>
-              <Icon active={isActive} size={20}/>
+                /* Globaler button-Transition kümmert sich um Farbwechsel;
+                   die Search-Mode-Effekte (max-width/padding/opacity)
+                   bleiben explizit, weil sie nicht zur Default-Liste
+                   gehören. */
+                transition:'max-width .25s ease, padding .25s ease, opacity .2s ease, background-color var(--anim-base), color var(--anim-base)'}}>
+              {/* key=isActive zwingt das Icon-Wrapper-Element zum Remount
+                  beim Tab-Wechsel, sodass die Bounce-Animation jedes Mal
+                  neu durchläuft. */}
+              <span key={isActive?'on':'off'}
+                className={isActive?'nav-icon-active':''}
+                style={{display:'inline-flex',transformOrigin:'center'}}>
+                <Icon active={isActive} size={20}/>
+              </span>
               <span style={{fontSize:11,color:isActive?T.blue:T.t3,
-                fontWeight:isActive?700:500,whiteSpace:'nowrap'}}>{label}</span>
+                fontWeight:isActive?700:500,whiteSpace:'nowrap',
+                transition:'color var(--anim-base)'}}>{label}</span>
             </button>
           );
         })}
@@ -2181,13 +2193,13 @@ function TabBar({active,onTab,rightAction,searchable=false,onSearch}){
           </button>
         )}
       </div>
-      <button onClick={rightClick} title={rightTitle}
+      <button onClick={rightClick} title={rightTitle} data-lift
+        className={rightHighlight?'glow-pulse':''}
         style={{width:48,height:48,borderRadius:'50%',
           background:T.card,
           border:`1px solid ${rightHighlight?T.o:T.border}`,
           display:'flex',alignItems:'center',justifyContent:'center',
           cursor:rightClick?'pointer':'default',pointerEvents:'auto',
-          transition:'border-color .2s ease, box-shadow .2s ease',
           boxShadow:rightHighlight
             ?`0 4px 20px rgba(0,0,0,.6), 0 0 0 2px ${T.o}33`
             :'0 4px 20px rgba(0,0,0,.6)'}}>
@@ -2690,10 +2702,10 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
         )}
 
         {/* Single Match */}
-        <button onClick={()=>nav('single-setup')} className="fu"
+        <button onClick={()=>nav('single-setup')} className="fu" data-lift
           style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:18,
             padding:'18px 20px',display:'flex',alignItems:'center',gap:18,
-            cursor:'pointer',color:T.t1,textAlign:'left',transition:'background .15s'}}
+            cursor:'pointer',color:T.t1,textAlign:'left'}}
           onPointerDown={e=>e.currentTarget.style.background=T.card2}
           onPointerUp={e=>e.currentTarget.style.background=T.card}
           onPointerLeave={e=>e.currentTarget.style.background=T.card}>
@@ -2705,10 +2717,10 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
         </button>
 
         {/* Turnier — neuer Hub mit "Starten" + "Beitreten" */}
-        <button onClick={()=>nav('tournament-hub')} className="fu"
+        <button onClick={()=>nav('tournament-hub')} className="fu" data-lift
           style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:18,
             padding:'18px 20px',display:'flex',alignItems:'center',gap:18,
-            cursor:'pointer',color:T.t1,textAlign:'left',transition:'background .15s',
+            cursor:'pointer',color:T.t1,textAlign:'left',
             animationDelay:'.06s'}}
           onPointerDown={e=>e.currentTarget.style.background=T.card2}
           onPointerUp={e=>e.currentTarget.style.background=T.card}
@@ -6145,6 +6157,213 @@ function ReadyCheckHostCard({tourney,participants,readyCheck,onBroadcast,onDismi
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   TOURNAMENT COURT CARD
+
+   Animierter Court-Eintrag im Runden-View. Zeigt pro Court:
+     - Court-Nummer (groß, Akzent-Farbe)
+     - Live-Pulse oder Fertig-Häkchen rechts oben
+     - Team A links: Spieler-Avatare (Initial-Pill) + Namen, Farbpunkt
+     - „VS" zwischen den Teams, dauerhaft pulsierend solange offen
+     - Team B rechts: gespiegelt
+     - Score-Felder mittig unten, gross + Score-Pop-Animation bei
+       Punktänderung
+     - Confirm-/Edit-Button am unteren Rand
+   Staggered Entrance via animationDelay (50ms × Court-Index).
+═══════════════════════════════════════════════════════════════ */
+function TournamentCourtCard({court,courtIndex,playerById,onScoreChange,onConfirm}){
+  // Score-Pop-Trigger: re-mounten via key, sobald sich der Wert ändert.
+  // So spielt die scorePop-Animation auch ohne State-Klimm-Zug.
+  const s1=court.s1??0;
+  const s2=court.s2??0;
+  const done=!!court.done;
+
+  // Gewinnerseite ermitteln (für goldenen Glow auf der Karte).
+  const winnerTeam=done?(s1>s2?'A':s2>s1?'B':null):null;
+
+  // Pill mit Initialen + Farb-Border um den Spieler-Avatar zu hinten —
+  // sieht in der Liste lebendiger aus als nur ein Farbpunkt.
+  const Avatar=({player})=>(
+    <div style={{
+      width:28,height:28,borderRadius:'50%',flexShrink:0,
+      background:`${player?.color||T.t3}22`,
+      border:`1.5px solid ${player?.color||T.border}`,
+      color:player?.color||T.t1,
+      display:'flex',alignItems:'center',justifyContent:'center',
+      fontSize:11,fontWeight:800,letterSpacing:.3,
+      boxShadow:`0 0 8px ${player?.color||'transparent'}44`,
+    }}>
+      {getInitials(player?.name||'?')}
+    </div>
+  );
+
+  const teamSide=(playerIds,align)=>(
+    <div style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',gap:6,
+      alignItems:align==='right'?'flex-end':'flex-start'}}>
+      {playerIds.map(pid=>{
+        const p=playerById(pid);
+        return(
+          <div key={pid}
+            style={{display:'flex',alignItems:'center',gap:8,minWidth:0,
+              flexDirection:align==='right'?'row-reverse':'row',width:'100%',
+              justifyContent:align==='right'?'flex-end':'flex-start'}}>
+            <Avatar player={p}/>
+            <div style={{minWidth:0,flex:'1 1 auto',overflow:'hidden',
+              textAlign:align==='right'?'right':'left'}}>
+              <div style={{color:T.t1,fontSize:13,fontWeight:700,letterSpacing:-.1,
+                overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                {p?.name||'—'}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  return(
+    <div className="court-card"
+      style={{
+        position:'relative',
+        background:done
+          ?`linear-gradient(135deg, ${T.card} 0%, ${T.card2} 100%)`
+          :T.card,
+        border:`1.5px solid ${done?T.o:T.border}`,
+        borderRadius:16,padding:'16px 16px 14px',
+        animationDelay:`${courtIndex*60}ms`,
+        boxShadow:done?`0 0 0 1px ${T.o}33 inset, 0 8px 20px rgba(0,0,0,.25)`:'0 4px 14px rgba(0,0,0,.18)',
+        overflow:'hidden',
+      }}>
+
+      {/* Subtiler Gradient-Akzent als Hintergrund-Layer — nimmt nur
+          Top-Right-Ecke ein, gibt dem Card mehr Tiefe ohne den
+          Content zu überdecken. */}
+      <div aria-hidden style={{
+        position:'absolute',top:-50,right:-50,width:120,height:120,
+        borderRadius:'50%',
+        background:`radial-gradient(circle, ${done?T.o:T.o}1A 0%, transparent 70%)`,
+        pointerEvents:'none',
+      }}/>
+
+      {/* Header: Court-Nummer + Status */}
+      <div style={{position:'relative',display:'flex',alignItems:'center',
+        justifyContent:'space-between',marginBottom:14}}>
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          <div style={{
+            padding:'4px 10px',borderRadius:8,
+            background:done?T.oSoft:`${T.o}1A`,
+            border:`1px solid ${T.o}`,
+            color:T.o,fontSize:11,fontWeight:900,letterSpacing:1.4,
+            textTransform:'uppercase'}}>
+            Court {courtIndex+1}
+          </div>
+        </div>
+        {done?(
+          <div style={{display:'flex',alignItems:'center',gap:6,
+            padding:'4px 10px',borderRadius:8,
+            background:`${T.g}22`,border:`1px solid ${T.g}`,
+            color:T.g,fontSize:10,fontWeight:900,letterSpacing:1.2,
+            textTransform:'uppercase'}}>
+            <span style={{fontSize:11,lineHeight:1}}>✓</span>
+            Fertig
+          </div>
+        ):(
+          <div style={{display:'flex',alignItems:'center',gap:7}}>
+            <div className="court-live-dot"
+              style={{width:8,height:8,borderRadius:'50%',background:T.r,
+                boxShadow:`0 0 8px ${T.r}aa`}}/>
+            <span style={{color:T.r,fontSize:10,fontWeight:900,letterSpacing:1.3,
+              textTransform:'uppercase'}}>Live</span>
+          </div>
+        )}
+      </div>
+
+      {/* Matchup: Team A · VS · Team B */}
+      <div style={{position:'relative',display:'flex',alignItems:'center',
+        gap:10,marginBottom:14}}>
+        {teamSide(court.t1||[],'left')}
+
+        <div className={done?'':'court-vs'}
+          style={{
+            flexShrink:0,
+            width:38,height:38,borderRadius:'50%',
+            background:done
+              ?(winnerTeam?`${T.o}33`:T.card2)
+              :`${T.r}22`,
+            border:`1.5px solid ${done?(winnerTeam?T.o:T.border):T.r}`,
+            color:done?(winnerTeam?T.o:T.t3):T.r,
+            display:'flex',alignItems:'center',justifyContent:'center',
+            fontSize:11,fontWeight:900,letterSpacing:.5,
+          }}>
+          VS
+        </div>
+
+        {teamSide(court.t2||[],'right')}
+      </div>
+
+      {/* Score-Eingabe — bei done wird der Punktestand groß und ohne
+          Eingabe gerendert; vorher sind es zwei klare Inputs. */}
+      <div style={{position:'relative',display:'flex',alignItems:'center',
+        justifyContent:'center',gap:10,marginBottom:14}}>
+        {done?(
+          <>
+            <div key={`s1-${s1}`} className="court-score-pop"
+              style={{
+                fontSize:36,fontWeight:900,letterSpacing:-1,lineHeight:1,
+                color:winnerTeam==='A'?T.o:T.t2,
+                minWidth:48,textAlign:'center',
+              }}>
+              {s1}
+            </div>
+            <span style={{color:T.t3,fontSize:24,fontWeight:700,
+              letterSpacing:-1,lineHeight:1}}>:</span>
+            <div key={`s2-${s2}`} className="court-score-pop"
+              style={{
+                fontSize:36,fontWeight:900,letterSpacing:-1,lineHeight:1,
+                color:winnerTeam==='B'?T.o:T.t2,
+                minWidth:48,textAlign:'center',
+              }}>
+              {s2}
+            </div>
+          </>
+        ):(
+          <>
+            <input type="number" min="0" max="99" value={s1}
+              onChange={e=>onScoreChange('s1',Math.max(0,parseInt(e.target.value)||0))}
+              style={{width:60,height:60,borderRadius:14,
+                border:`1.5px solid ${T.o}`,
+                background:T.card2,color:T.t1,fontSize:28,fontWeight:900,
+                textAlign:'center',
+                boxShadow:`0 0 0 4px ${T.o}11`,
+                outline:'none'}}/>
+            <span style={{color:T.t3,fontSize:24,fontWeight:700,
+              letterSpacing:-1,lineHeight:1}}>:</span>
+            <input type="number" min="0" max="99" value={s2}
+              onChange={e=>onScoreChange('s2',Math.max(0,parseInt(e.target.value)||0))}
+              style={{width:60,height:60,borderRadius:14,
+                border:`1.5px solid ${T.o}`,
+                background:T.card2,color:T.t1,fontSize:28,fontWeight:900,
+                textAlign:'center',
+                boxShadow:`0 0 0 4px ${T.o}11`,
+                outline:'none'}}/>
+          </>
+        )}
+      </div>
+
+      {/* Confirm / Edit Button */}
+      <button onClick={onConfirm}
+        style={{width:'100%',padding:'11px 14px',borderRadius:11,
+          background:done?T.card2:T.o,
+          color:done?T.t2:'#000',fontSize:13,fontWeight:800,letterSpacing:.3,
+          cursor:'pointer',
+          border:done?`1px solid ${T.border}`:'none',
+          transition:'background .2s,color .2s'}}>
+        {done?'✎ Bearbeiten':'✓ Ergebnis bestätigen'}
+      </button>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
    TOURNAMENT PLAY
 ═══════════════════════════════════════════════════════════════ */
 function TournamentPlay({tourney,setTourney,onHome,nav,ringId='soft',onEdit,onMatchLogged}){
@@ -6415,60 +6634,11 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='soft',onEdit,onMa
           )}
 
           {round.courts.map((court,ci)=>(
-            <div key={court.id} style={{background:T.card,border:`1px solid ${court.done?T.o:T.border}`,
-              borderRadius:14,padding:'14px 16px',transition:'border-color .2s'}}>
-              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
-                <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1}}>COURT {ci+1}</div>
-                {court.done&&<div style={{color:T.o,fontSize:11,fontWeight:700}}>✓ FERTIG</div>}
-              </div>
-              <div style={{display:'flex',alignItems:'center',gap:10}}>
-                {/* Team 1 */}
-                <div style={{flex:1,minWidth:0}}>
-                  {court.t1.map(pid=>{const p=playerById(pid);return(
-                    <div key={pid} style={{display:'flex',alignItems:'center',gap:6,marginBottom:3}}>
-                      <div style={{width:7,height:7,borderRadius:'50%',background:p?.color,flexShrink:0}}/>
-                      <span style={{fontSize:13,color:T.t1,fontWeight:600,
-                        overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p?.name}</span>
-                    </div>
-                  );})}
-                </div>
-                {/* Scores */}
-                <div style={{display:'flex',alignItems:'center',gap:6}}>
-                  <input type="number" min="0" max="99" value={court.s1??0}
-                    onChange={e=>updateScore(court.id,'s1',Math.max(0,parseInt(e.target.value)||0))}
-                    disabled={court.done}
-                    style={{width:48,height:48,borderRadius:10,
-                      border:`1.5px solid ${court.done?T.border:T.o}`,
-                      background:T.card2,color:T.t1,fontSize:22,fontWeight:800,
-                      textAlign:'center',opacity:court.done?.55:1}}/>
-                  <span style={{color:T.t3,fontSize:18,fontWeight:700}}>:</span>
-                  <input type="number" min="0" max="99" value={court.s2??0}
-                    onChange={e=>updateScore(court.id,'s2',Math.max(0,parseInt(e.target.value)||0))}
-                    disabled={court.done}
-                    style={{width:48,height:48,borderRadius:10,
-                      border:`1.5px solid ${court.done?T.border:T.o}`,
-                      background:T.card2,color:T.t1,fontSize:22,fontWeight:800,
-                      textAlign:'center',opacity:court.done?.55:1}}/>
-                </div>
-                {/* Team 2 */}
-                <div style={{flex:1,minWidth:0,textAlign:'right'}}>
-                  {court.t2.map(pid=>{const p=playerById(pid);return(
-                    <div key={pid} style={{display:'flex',alignItems:'center',gap:6,marginBottom:3,justifyContent:'flex-end'}}>
-                      <span style={{fontSize:13,color:T.t1,fontWeight:600,
-                        overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p?.name}</span>
-                      <div style={{width:7,height:7,borderRadius:'50%',background:p?.color,flexShrink:0}}/>
-                    </div>
-                  );})}
-                </div>
-              </div>
-              <button onClick={()=>confirmCourt(court.id)}
-                style={{width:'100%',marginTop:12,padding:'9px',borderRadius:10,
-                  background:court.done?T.card2:T.oSoft,
-                  color:court.done?T.t2:T.o,fontSize:12,fontWeight:700,cursor:'pointer',
-                  border:`1px solid ${court.done?T.border:T.o}`}}>
-                {court.done?'✓ Bearbeiten':'Bestätigen'}
-              </button>
-            </div>
+            <TournamentCourtCard key={court.id}
+              court={court} courtIndex={ci}
+              playerById={playerById}
+              onScoreChange={(field,val)=>updateScore(court.id,field,val)}
+              onConfirm={()=>confirmCourt(court.id)}/>
           ))}
 
           {round.sitOut?.length>0&&(
@@ -6965,10 +7135,10 @@ function SettingsCard({icon,title,desc,onClick,destructive=false,q=''}){
   const border  = destructive ? 'rgba(232,69,69,0.35)' : T.border;
   const bg      = destructive ? 'rgba(232,69,69,0.08)' : T.card;
   return(
-    <button onClick={onClick}
+    <button onClick={onClick} data-lift
       style={{width:'100%',background:bg,border:`1px solid ${border}`,borderRadius:14,
         padding:'16px 18px',display:'flex',alignItems:'center',gap:16,
-        color,textAlign:'left',cursor:'pointer',transition:'background .15s'}}
+        color,textAlign:'left',cursor:'pointer'}}
       onPointerDown={e=>e.currentTarget.style.background = destructive ? 'rgba(232,69,69,0.14)' : T.card2}
       onPointerUp={e=>e.currentTarget.style.background = bg}
       onPointerLeave={e=>e.currentTarget.style.background = bg}>
@@ -9117,10 +9287,10 @@ function FollowList({userId,initial='followers',onHome,onBack,onOpenPlayer}){
    Chevron rechts. Animationen erbt sie über className="fu". */
 function HubBigCard({icon,title,desc,onClick,accent,delay='0s'}){
   return(
-    <button onClick={onClick} className="fu"
+    <button onClick={onClick} className="fu" data-lift
       style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:18,
         padding:'20px 22px',display:'flex',alignItems:'center',gap:18,
-        cursor:'pointer',color:T.t1,textAlign:'left',transition:'background .15s',
+        cursor:'pointer',color:T.t1,textAlign:'left',
         animationDelay:delay,width:'100%'}}
       onPointerDown={e=>e.currentTarget.style.background=T.card2}
       onPointerUp={e=>e.currentTarget.style.background=T.card}

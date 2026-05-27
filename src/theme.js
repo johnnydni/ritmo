@@ -478,10 +478,23 @@ input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
 @keyframes scaleIn{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 @keyframes flashOrange{0%,100%{background:var(--card)}40%{background:var(--oFlash)}}
+/* Court-View: Live-Pulse (Punkt + Border), VS-Pulse (rotation + scale)
+   und Score-Pop (Skalierung beim Punkte-Update). Eigene Animationen,
+   damit die übrigen Screens nicht versehentlich mitwackeln. */
+@keyframes courtLivePulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.55;transform:scale(.92)}}
+@keyframes courtBorderPulse{0%,100%{box-shadow:0 0 0 0 var(--oGlow)}50%{box-shadow:0 0 0 6px transparent}}
+@keyframes vsPulse{0%,100%{transform:scale(1) rotate(0deg);opacity:.85}50%{transform:scale(1.12) rotate(-3deg);opacity:1}}
+@keyframes scorePop{0%{transform:scale(.7);opacity:.4}60%{transform:scale(1.18);opacity:1}100%{transform:scale(1);opacity:1}}
+@keyframes courtCardEnter{from{opacity:0;transform:translateY(22px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
 .fu{animation:fadeUp .4s ease both;}
 .fi{animation:fadeIn .25s ease both;}
 .si{animation:scaleIn .2s ease both;}
 .flash{animation:flashOrange .42s ease;}
+.court-card{animation:courtCardEnter .5s cubic-bezier(.22,.95,.34,1) both;}
+.court-live-dot{animation:courtLivePulse 1.4s ease-in-out infinite;}
+.court-live-border{animation:courtBorderPulse 2s ease-in-out infinite;}
+.court-vs{animation:vsPulse 2.6s ease-in-out infinite;}
+.court-score-pop{animation:scorePop .35s cubic-bezier(.22,.95,.34,1) both;}
 `;
 
 /* ───── Color helpers (for custom themes) ───── */

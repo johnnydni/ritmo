@@ -185,6 +185,57 @@ export function computeStyle(qa){
   return {a:'chico',b:'toro',c:'individuoso',d:'muro',e:'fantasma',f:'motor'}[winner]||null;
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   MATCH-TIER — RITMO DNA Rating einer 2-gegen-2-Paarung.
+
+   Rein stilbasiert: Turnier-Spieler tragen einen Spielstil, aber kein
+   Level — daher fließt nur die Stil-Chemie ein (Level ist im Turnier
+   nicht erfasst). Pro Team ergibt sich ein Chemie-Wert aus den beiden
+   Stilen, die Summe beider Teams (0..4) bestimmt das Tier:
+
+     teamChem:
+       2 = DUO     — empfohlene Partner (ergänzen sich)
+       1 = MIXED   — verschieden, aber keine ausgewiesene Synergie
+       0 = MIRROR  — gleicher Stil (Schwächen-Dopplung)
+
+     Summe → Tier:  4→S · 3→A · 2→B · 1→C · 0→X
+═══════════════════════════════════════════════════════════════ */
+
+// Empfohlene-Partner-Beziehung (ungerichtet) aus den .partners-Listen.
+function arePartners(a,b){
+  if(!a||!b||a===b) return false;
+  const inA=PADEL_STYLES[a]?.partners?.some(x=>x.id===b);
+  const inB=PADEL_STYLES[b]?.partners?.some(x=>x.id===a);
+  return !!(inA||inB);
+}
+
+// Chemie zweier Teammate-Stile: 2 Duo · 1 Mixed · 0 Mirror.
+function teamChem(a,b){
+  if(a===b) return 0;          // Mirror
+  if(arePartners(a,b)) return 2; // Duo-Synergie
+  return 1;                     // Mixed
+}
+
+export const MATCH_TIER_META={
+  S:{tier:'S', label:'S-Tier', sub:'Elite Synergy',   stars:5, color:'#1A8754'},
+  A:{tier:'A', label:'A-Tier', sub:'Starke Chemie',   stars:4, color:'#3498DB'},
+  B:{tier:'B', label:'B-Tier', sub:'Solides Match',   stars:3, color:'#F39C12'},
+  C:{tier:'C', label:'C-Tier', sub:'Reibungs-Match',  stars:2, color:'#E67E22'},
+  X:{tier:'X', label:'X-Tier', sub:'Chaos Mode',      stars:1, color:'#9B59B6'},
+};
+
+/* Match-Tier aus den Stilen der vier Spieler (Team 1 vs Team 2).
+   t1Styles/t2Styles sind je ein Array aus zwei Stil-Schlüsseln.
+   Gibt das Tier-Meta-Objekt zurück — oder null, wenn nicht alle vier
+   Stile gesetzt/gültig sind (dann zeigt die UI kein Label). */
+export function computeMatchTier(t1Styles, t2Styles){
+  const a=t1Styles?.[0], b=t1Styles?.[1], c=t2Styles?.[0], d=t2Styles?.[1];
+  if(![a,b,c,d].every(s=>s&&PADEL_STYLES[s])) return null;
+  const sum=teamChem(a,b)+teamChem(c,d); // 0..4
+  const tier=sum>=4?'S':sum===3?'A':sum===2?'B':sum===1?'C':'X';
+  return MATCH_TIER_META[tier];
+}
+
 /* ── Per-style image visuals ─────────────────────────────────
    Bilder werden aus /assets im Vite-Projekt geladen.
    Vite injiziert BASE_URL automatisch, sodass GitHub Pages-Pfade

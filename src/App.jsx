@@ -16,7 +16,7 @@ import { loadProfile as dbLoadProfile, saveProfile as dbSaveProfile, logMatch as
 /* ── Refactor (Phase 1): pure modules extracted from App.jsx.
    Components, screens and routing remain colocated here for now;
    only side-effect-free units are split out. See CLAUDE.md. */
-import { T, CSS } from "./theme.js";
+import { T, CSS, rgba } from "./theme.js";
 import { lsGet, lsSet, getAssetBase, getInitials, readImageAsDataUrl, resizeImage, safeImageSrc } from "./utils.js";
 import { getLevelLabel, getLevelTier, getLevelColor, estimateLevel } from "./levels.js";
 import { B0, A0, PL, ptD, wG, bo3R, amR } from "./game.js";
@@ -28,11 +28,12 @@ import {
   HomeIcon, LiveIcon, GearIcon, SearchIcon, Hl, DNAIcon, FullscreenIcon, EditIcon,
   ExitFullscreenIcon, KiwiIcon, PineappleIcon, CoconutIcon, TennisBallIcon, ParrotIcon,
   FunkyFruitsRow, BookIcon, JourneyIcon, ArrowRightCircleIcon, WandIcon,
-  MiniBall, BallSpinner, GoogleGlyph, AppleGlyph, PersonGlyph,
+  MiniBall, BallSpinner, GoogleGlyph, AppleGlyph, AppStoreIcon, PersonGlyph,
   HeroRulesVisual, HeroJourneyVisual,
   // Settings + RITMO Post line-art icons
   SteeringWheelIcon, PaletteIcon, EyeIcon, BellIcon, LockIcon, DoorOutIcon,
   ChevronRightIcon, RitmoPostIcon, AirPlayIcon, CoffeeCupIcon,
+  ArchetypeGlyph,
 } from "./icons.jsx";
 import { PADEL_STYLES, PADEL_QUIZ, computeStyle, STYLE_IMAGES } from "./padelStyles.js";
 
@@ -273,11 +274,11 @@ function BetaLanding({onLogin,onRegister}){
           <div style={{display:'flex',alignItems:'center',gap:10,padding:'10px 16px',
             background:T.card,border:`1px solid ${T.border}`,borderRadius:10,
             color:T.t2,opacity:.85}}>
-            <AppleGlyph size={22}/>
+            <AppStoreIcon size={24}/>
             <div style={{textAlign:'left'}}>
               <div style={{fontSize:9,fontWeight:700,letterSpacing:.8,color:T.t3,
-                textTransform:'uppercase'}}>Bald auf</div>
-              <div style={{fontSize:13,fontWeight:800,color:T.t1,letterSpacing:.2}}>App Store</div>
+                textTransform:'uppercase'}}>Bald im</div>
+              <div style={{fontSize:13,fontWeight:800,color:T.t1,letterSpacing:.2}}>Apple App Store</div>
             </div>
           </div>
         </div>
@@ -1120,16 +1121,28 @@ function OnboardProgress({total,current}){
 
 function ChapterWelcome(){
   return(
-    <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:24,padding:'30px 0'}}>
+    <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:20,padding:'30px 0'}}>
       <RitmoSplashLogo size={130}/>
       <div style={{color:T.t2,fontSize:14,textAlign:'center',maxWidth:300,lineHeight:1.6}}>
         Lass uns RITMO kurz für dich einrichten — dauert keine Minute.
+      </div>
+      {/* Beruhigungs-Hinweis: Onboarding ist nicht "jetzt oder nie" — nimmt
+          beim ersten Start den Druck raus und senkt die Abbruchrate. */}
+      <div className="fu" style={{animationDelay:'.18s',display:'flex',alignItems:'flex-start',
+        gap:10,maxWidth:300,background:T.card,border:`1px solid ${T.border}`,
+        borderRadius:12,padding:'11px 13px'}}>
+        <span style={{flexShrink:0,marginTop:1,width:17,height:17,borderRadius:'50%',
+          background:T.oSoft,color:T.o,fontSize:11,fontWeight:900,fontStyle:'italic',
+          display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1}}>i</span>
+        <div style={{color:T.t3,fontSize:12.5,lineHeight:1.5,textAlign:'left'}}>
+          Du kannst auch später in deinem Profil das Onboarding nachholen. Keine Sorge.
+        </div>
       </div>
     </div>
   );
 }
 
-function ChapterName({profile,setProfile}){
+function ChapterName({profile,setProfile,onEnter}){
   return(
     <div>
       <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
@@ -1138,8 +1151,10 @@ function ChapterName({profile,setProfile}){
       </div>
       <input value={profile.name}
         onChange={e=>setProfile(p=>({...p,name:e.target.value}))}
+        onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();onEnter&&onEnter();}}}
         placeholder="z.B. Alex"
         autoFocus autoCapitalize="words" autoCorrect="off" spellCheck={false}
+        enterKeyHint="next"
         style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
           borderRadius:10,padding:'14px 16px',color:T.t1,fontSize:15,fontWeight:500,
           outline:'none',boxSizing:'border-box'}}/>
@@ -1781,6 +1796,10 @@ function ProfileRitmoDNA({profile,onBack,onHome}){
   );
 }
 
+/* Option-ID → Archetyp-Schlüssel (deckungsgleich mit computeStyle in
+   padelStyles.js). Treibt das animierte Kategorie-Sigil je Antwort. */
+const QUIZ_GLYPHS={a:'chico',b:'toro',c:'individuoso',d:'muro',e:'fantasma',f:'motor'};
+
 /* ── Updated ChapterPlaystyle with full personality quiz ────── */
 function ChapterPlaystyle({profile,setProfile}){
   const qa=profile.quizAnswers||{};
@@ -1803,23 +1822,22 @@ function ChapterPlaystyle({profile,setProfile}){
             <div style={{display:'flex',flexDirection:'column',gap:6}}>
               {q.options.map(o=>{
                 const sel=qa[q.key]===o.id;
+                const aType=QUIZ_GLYPHS[o.id];
+                const accent=PADEL_STYLES[aType]?.accent||T.o;
                 return(
                   <button key={o.id} onClick={()=>{
                     const newQa={...qa,[q.key]:o.id};
                     const styleType=computeStyle(newQa);
                     setProfile(p=>({...p,quizAnswers:newQa,styleType}));
-                  }} style={{display:'flex',alignItems:'center',gap:8,padding:'9px 12px',
-                    background:sel?T.oSoft:T.card,
-                    border:`1.5px solid ${sel?T.o:T.border}`,
+                  }} style={{display:'flex',alignItems:'center',gap:11,padding:'9px 11px',
+                    background:sel?rgba(accent,0.14):T.card,
+                    border:`1.5px solid ${sel?accent:T.border}`,
                     borderRadius:9,color:T.t1,fontSize:12,fontWeight:sel?700:500,
-                    cursor:'pointer',textAlign:'left',transition:'all .12s'}}>
-                    <span style={{width:18,height:18,borderRadius:'50%',flexShrink:0,
-                      background:sel?T.o:T.card2,border:`1.5px solid ${sel?T.o:T.border}`,
-                      display:'flex',alignItems:'center',justifyContent:'center',
-                      color:sel?'#000':T.t3,fontSize:10,fontWeight:800}}>
-                      {o.id.toUpperCase()}
-                    </span>
-                    {o.label}
+                    cursor:'pointer',textAlign:'left',transition:'all .2s var(--ease-out-expo)'}}>
+                    <ArchetypeGlyph type={aType} active={sel} color={accent} size={22}/>
+                    <span style={{flex:1}}>{o.label}</span>
+                    {sel&&<span className="dot-pop" style={{width:7,height:7,borderRadius:'50%',
+                      flexShrink:0,background:accent,boxShadow:`0 0 0 3px ${rgba(accent,0.22)}`}}/>}
                   </button>
                 );
               })}
@@ -1833,7 +1851,7 @@ function ChapterPlaystyle({profile,setProfile}){
             border:`1.5px solid ${PADEL_STYLES[result].accent}`,
             borderRadius:12,padding:'14px 16px',marginBottom:16,
             display:'flex',alignItems:'center',gap:12}}>
-            <div style={{fontSize:28}}>{PADEL_STYLES[result].symbol}</div>
+            <ArchetypeGlyph type={result} active color={PADEL_STYLES[result].accent} size={34}/>
             <div>
               <div style={{color:PADEL_STYLES[result].accent,fontSize:16,fontWeight:900}}>
                 {PADEL_STYLES[result].name}
@@ -2020,7 +2038,7 @@ function Welcome({profile,setProfile,theme,setTheme,onComplete}){
         </div>
 
         <div className="fu" style={{animationDelay:'.1s'}}>
-          <Content {...current.contentProps}/>
+          <Content {...current.contentProps} onEnter={()=>{if(current.canContinue())goNext();}}/>
         </div>
       </div>
 
@@ -5068,7 +5086,9 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit,profile,onCreat
   useEffect(()=>{if(numCourts>maxCourts)setNumCourts(maxCourts);},[maxCourts,numCourts]);
 
   const addPlayer=()=>{
-    if(players.length>=12)return;
+    // Keine Obergrenze mehr — beliebig viele Spieler. Farben zyklen via
+    // Modulo durch die PCOLS-Palette, Courts werden separat auf
+    // floor(Spieler/4) gedeckelt (maxCourts).
     const id=nextId.current++;
     setPlayers(p=>[...p,{id,name:`Spieler ${p.length+1}`,color:PCOLS[id%PCOLS.length]}]);
   };
@@ -5096,7 +5116,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit,profile,onCreat
         <SetupHero
           icon={<TrophyIcon size={40}/>}
           title="Turnier erstellen"
-          desc="Mehrere Runden, rotierende Partner oder Mexicano-Pairings. Bis zu 12+ Spieler — lokal oder online via QR-Code."/>
+          desc="Mehrere Runden, rotierende Partner oder Mexicano-Pairings. Beliebig viele Spieler — lokal oder online via QR-Code."/>
 
         {/* Modus: Lokal vs Online */}
         {!isEdit&&(
@@ -5208,7 +5228,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit,profile,onCreat
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
             <div style={{color:T.o,fontSize:18,fontWeight:800}}>Spieler</div>
             <div style={{display:'flex',alignItems:'center',gap:10}}>
-              <span style={{color:T.t3,fontSize:12,fontWeight:600}}>{players.length}/12</span>
+              <span style={{color:T.t3,fontSize:12,fontWeight:600}}>{players.length} Spieler</span>
               {/* Liste leeren — destruktiver Reset. Nur sichtbar, wenn
                   überhaupt Spieler in der Liste sind. Roter Akzent +
                   title-Hinweis, damit es nicht versehentlich gedrückt
@@ -5228,19 +5248,17 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit,profile,onCreat
                   onPointerUp={e=>e.currentTarget.style.opacity='1'}
                   onPointerLeave={e=>e.currentTarget.style.opacity='1'}>−</button>
               )}
-              {players.length<12&&(
-                <button onClick={addPlayer}
-                  title="Spieler hinzufügen"
-                  aria-label="Spieler hinzufügen"
-                  style={{width:30,height:30,borderRadius:'50%',
-                    background:T.o,border:'none',color:T.bg,
-                    fontSize:18,fontWeight:800,cursor:'pointer',
-                    display:'flex',alignItems:'center',justifyContent:'center',
-                    lineHeight:1,paddingBottom:2,transition:'opacity .15s'}}
-                  onPointerDown={e=>e.currentTarget.style.opacity='.7'}
-                  onPointerUp={e=>e.currentTarget.style.opacity='1'}
-                  onPointerLeave={e=>e.currentTarget.style.opacity='1'}>+</button>
-              )}
+              <button onClick={addPlayer}
+                title="Spieler hinzufügen"
+                aria-label="Spieler hinzufügen"
+                style={{width:30,height:30,borderRadius:'50%',
+                  background:T.o,border:'none',color:T.bg,
+                  fontSize:18,fontWeight:800,cursor:'pointer',
+                  display:'flex',alignItems:'center',justifyContent:'center',
+                  lineHeight:1,paddingBottom:2,transition:'opacity .15s'}}
+                onPointerDown={e=>e.currentTarget.style.opacity='.7'}
+                onPointerUp={e=>e.currentTarget.style.opacity='1'}
+                onPointerLeave={e=>e.currentTarget.style.opacity='1'}>+</button>
             </div>
           </div>
           {players.map((p,i)=>(
@@ -5632,6 +5650,82 @@ function OnlineTournamentLobby({pin,onHome,onStart,onCancel}){
    aktuellen Runde, finden ihren eigenen Court (über Name-Match auf
    den team-arrays) und können dort das Ergebnis einreichen.
 ═══════════════════════════════════════════════════════════════ */
+/* ── Score-Modus für Online-Teilnehmer — großer Live-Zähler fürs
+   eigene Match. Tippen auf eine Team-Fläche = +1, kleiner −1-Button
+   korrigiert. „Einreichen" schickt den Stand als Submission an den Host
+   (gleicher Weg wie die Schnell-Eingabe). Vollbild-Overlay über der
+   Teilnehmer-Ansicht. */
+function ParticipantScoreSheet({court,labelA,labelB,myTeam,initialA,initialB,
+  roundIndex,pin,participantId,myName,onClose}){
+  const[a,setA]=useState(Number.isFinite(initialA)?initialA:0);
+  const[b,setB]=useState(Number.isFinite(initialB)?initialB:0);
+  const[busy,setBusy]=useState(false);
+  const[err,setErr]=useState('');
+  const submit=async()=>{
+    setBusy(true);setErr('');
+    try{
+      await submitScore(pin,{roundIndex,courtId:court.id,scoreA:a,scoreB:b,
+        submittedBy:participantId,submitterName:myName});
+      onClose();
+    }catch(e){ setErr(e?.message||'Senden fehlgeschlagen.');setBusy(false); }
+  };
+  const panel=(team,label,score,setScore)=>{
+    const mine=myTeam===team;
+    return(
+      <div onClick={()=>setScore(s=>Math.min(99,s+1))}
+        style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',
+          alignItems:'center',justifyContent:'center',gap:12,cursor:'pointer',
+          background:mine?'var(--oSoft)':T.card,position:'relative',
+          border:`2px solid ${mine?T.o:T.border}`,borderRadius:18,padding:'20px 12px'}}>
+        {mine&&<div style={{position:'absolute',top:10,color:T.o,fontSize:10,fontWeight:900,
+          letterSpacing:1.4,textTransform:'uppercase'}}>Du</div>}
+        <div style={{color:T.t2,fontSize:13,fontWeight:700,textAlign:'center',maxWidth:'100%',
+          overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',
+          lineHeight:1.25}}>{label}</div>
+        <div style={{color:mine?T.o:T.t1,fontSize:72,fontWeight:900,lineHeight:1,
+          letterSpacing:-2,fontFamily:'monospace'}}>{score}</div>
+        <button onClick={e=>{e.stopPropagation();setScore(s=>Math.max(0,s-1));}}
+          style={{width:40,height:40,borderRadius:'50%',background:T.card2,
+            border:`1px solid ${T.border}`,color:T.t1,fontSize:22,fontWeight:800,
+            cursor:'pointer',lineHeight:1}}>−</button>
+        <div style={{color:T.t4,fontSize:10,fontWeight:600,letterSpacing:.5}}>Tippen = +1</div>
+      </div>
+    );
+  };
+  return(
+    <div style={{position:'fixed',inset:0,zIndex:400,background:T.bg,
+      display:'flex',flexDirection:'column',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 14px)'}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',
+        padding:'0 18px 12px'}}>
+        <div style={{color:T.o,fontSize:12,fontWeight:900,letterSpacing:1.4,
+          textTransform:'uppercase'}}>Score-Modus · Runde {roundIndex+1}</div>
+        <button onClick={onClose}
+          style={{width:36,height:36,borderRadius:'50%',background:T.card,
+            border:`1px solid ${T.border}`,color:T.t1,fontSize:18,cursor:'pointer',
+            display:'flex',alignItems:'center',justifyContent:'center'}}>×</button>
+      </div>
+      <div style={{flex:1,display:'flex',gap:12,padding:'0 16px',minHeight:0,alignItems:'stretch'}}>
+        {panel('A',labelA,a,setA)}
+        <div style={{display:'flex',alignItems:'center',color:T.t3,fontSize:16,
+          fontWeight:800,flexShrink:0}}>:</div>
+        {panel('B',labelB,b,setB)}
+      </div>
+      {err&&<div style={{color:'#FF6B6B',fontSize:12,fontWeight:600,textAlign:'center',
+        padding:'10px 18px 0'}}>{err}</div>}
+      <div style={{padding:'14px 18px calc(env(safe-area-inset-bottom,0px) + 16px)'}}>
+        <button onClick={submit} disabled={busy}
+          style={{width:'100%',padding:'16px',background:T.o,border:'none',borderRadius:14,
+            color:'#000',fontSize:16,fontWeight:800,letterSpacing:.3,
+            cursor:busy?'not-allowed':'pointer',opacity:busy?.6:1,
+            boxShadow:'0 6px 20px var(--oGlow)'}}>
+          {busy?'…':`Ergebnis einreichen (${a}:${b})`}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function TournamentParticipantView({session,participantId,pin}){
   const ts=session.tournamentState||{};
   const me=session.participants?.find(p=>p.id===participantId);
@@ -5657,6 +5751,8 @@ function TournamentParticipantView({session,participantId,pin}){
   const[sB,setSB]=useState('');
   const[busy,setBusy]=useState(false);
   const[err,setErr]=useState('');
+  // Score-Modus (Vollbild-Live-Zähler) für das eigene Match
+  const[scoreMode,setScoreMode]=useState(false);
 
   // Habe ich bereits etwas eingereicht?
   const mySubmission=(session.scoreSubmissions||[]).find(s=>
@@ -5840,7 +5936,7 @@ function TournamentParticipantView({session,participantId,pin}){
       <div style={{background:T.card,border:`1px solid ${myTeam?T.o:T.border}`,
         borderRadius:14,padding:'18px'}}>
         <div style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:1.3,
-          textTransform:'uppercase',marginBottom:10}}>Dein Court</div>
+          textTransform:'uppercase',marginBottom:10}}>Dein Match</div>
         <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:14}}>
           <div style={{flex:1,minWidth:0}}>
             <div style={{color:myTeam==='A'?T.o:T.t1,fontSize:14,fontWeight:myTeam==='A'?800:600,
@@ -5856,6 +5952,16 @@ function TournamentParticipantView({session,participantId,pin}){
             </div>
           </div>
         </div>
+        {/* Score-Modus — Live-Zähler fürs eigene Match (öffnet Vollbild) */}
+        {!courtDone&&(
+          <button onClick={()=>setScoreMode(true)}
+            style={{width:'100%',marginBottom:14,padding:'13px',background:T.o,border:'none',
+              borderRadius:11,color:'#000',fontSize:14,fontWeight:800,letterSpacing:.3,
+              cursor:'pointer',boxShadow:'0 4px 14px var(--oGlow)',
+              display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+            <span style={{fontSize:12}}>▶</span> Score-Modus öffnen
+          </button>
+        )}
         {courtDone?(
           <div style={{background:`${T.g}15`,border:`1px solid ${T.g}`,borderRadius:10,
             padding:'12px',textAlign:'center'}}>
@@ -5884,7 +5990,7 @@ function TournamentParticipantView({session,participantId,pin}){
           <div style={{marginTop:mySubmission?12:0}}>
             <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.2,
               textTransform:'uppercase',marginBottom:8}}>
-              {mySubmission?'Neuer Vorschlag':'Ergebnis eingeben'}
+              {mySubmission?'Neuer Vorschlag':'Oder direkt eintragen'}
             </div>
             <div style={{display:'flex',alignItems:'center',gap:8,minWidth:0}}>
               <input type="number" inputMode="numeric" min="0"
@@ -5956,6 +6062,22 @@ function TournamentParticipantView({session,participantId,pin}){
           {round.sitOut.map(pid=>playerById(pid)?.name||'?').join(' · ')}
         </div>
       </div>
+    )}
+
+    {/* Score-Modus Vollbild-Overlay */}
+    {scoreMode&&myCourt&&!courtDone&&(
+      <ParticipantScoreSheet
+        court={myCourt}
+        labelA={teamLabel(myCourt.t1)}
+        labelB={teamLabel(myCourt.t2)}
+        myTeam={myTeam}
+        initialA={mySubmission?mySubmission.scoreA:0}
+        initialB={mySubmission?mySubmission.scoreB:0}
+        roundIndex={roundIndex}
+        pin={pin}
+        participantId={participantId}
+        myName={myName}
+        onClose={()=>setScoreMode(false)}/>
     )}
   </>);
 }
@@ -6420,7 +6542,155 @@ function ReadyCheckHostCard({tourney,participants,readyCheck,onBroadcast,onDismi
      - Confirm-/Edit-Button am unteren Rand
    Staggered Entrance via animationDelay (50ms × Court-Index).
 ═══════════════════════════════════════════════════════════════ */
-function TournamentCourtCard({court,courtIndex,playerById,onScoreChange,onConfirm}){
+/* ── Lineup-Editor — Host tauscht die Spieler eines Courts. Auswahl
+   aus ALLEN Turnier-Spielern (inkl. Pause). Tausch ist immer 1:1
+   (conserving): wählt man einen Spieler, der schon woanders spielt,
+   wechseln beide Positionen; kommt er aus der Pause, wandert der
+   Ersetzte in die Pause. sitOut wird in TournamentPlay neu berechnet. */
+function LineupEditSheet({court,courtIndex,players,round,onAssign,onClose}){
+  const[pick,setPick]=useState(null); // {teamKey,idx} | null
+  const playerById=id=>players.find(p=>p.id===id);
+  const statusOf=(pid)=>{
+    const ci=round.courts.findIndex(c=>(c.t1||[]).includes(pid)||(c.t2||[]).includes(pid));
+    if(ci<0) return {label:'Pause',color:T.t3};
+    if(round.courts[ci].id===court.id) return {label:`Court ${courtIndex+1}`,color:T.o};
+    return {label:`Court ${ci+1}`,color:T.t2};
+  };
+  const slotRow=(teamKey,idx)=>{
+    const p=playerById(court[teamKey]?.[idx]);
+    return(
+      <button key={`${teamKey}-${idx}`} onClick={()=>setPick({teamKey,idx})}
+        style={{display:'flex',alignItems:'center',gap:10,width:'100%',
+          background:T.card2,border:`1px solid ${T.border}`,borderRadius:11,
+          padding:'11px 12px',cursor:'pointer',textAlign:'left'}}>
+        <div style={{width:26,height:26,borderRadius:'50%',flexShrink:0,
+          background:`${p?.color||T.t3}22`,border:`1.5px solid ${p?.color||T.border}`,
+          color:p?.color||T.t1,display:'flex',alignItems:'center',justifyContent:'center',
+          fontSize:10,fontWeight:800}}>{getInitials(p?.name||'?')}</div>
+        <div style={{flex:1,minWidth:0,color:T.t1,fontSize:14,fontWeight:600,
+          overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p?.name||'—'}</div>
+        <EditIcon size={14} color={T.t3}/>
+      </button>
+    );
+  };
+  return(
+    <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:300,
+      background:'rgba(0,0,0,.7)',backdropFilter:'blur(4px)',display:'flex',
+      alignItems:'center',justifyContent:'center',padding:20,animation:'fadeIn .15s ease'}}>
+      <div onClick={e=>e.stopPropagation()} className="si"
+        style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:18,
+          padding:'20px',width:'100%',maxWidth:380,maxHeight:'82vh',overflowY:'auto'}}>
+        {!pick?(<>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:4}}>
+            <div style={{color:T.t1,fontSize:18,fontWeight:800}}>Aufstellung</div>
+            <div style={{color:T.o,fontSize:11,fontWeight:900,letterSpacing:1.2,
+              textTransform:'uppercase',padding:'3px 9px',borderRadius:7,
+              background:`${T.o}1A`,border:`1px solid ${T.o}`}}>Court {courtIndex+1}</div>
+          </div>
+          <div style={{color:T.t3,fontSize:12,lineHeight:1.5,marginBottom:16}}>
+            Tippe einen Slot, um den Spieler zu tauschen — auch gegen pausierte Spieler.
+          </div>
+          <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.2,
+            textTransform:'uppercase',marginBottom:8}}>Team 1</div>
+          <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:16}}>
+            {slotRow('t1',0)}{slotRow('t1',1)}
+          </div>
+          <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.2,
+            textTransform:'uppercase',marginBottom:8}}>Team 2</div>
+          <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:18}}>
+            {slotRow('t2',0)}{slotRow('t2',1)}
+          </div>
+          <button onClick={onClose}
+            style={{width:'100%',padding:'12px',background:T.o,border:'none',borderRadius:11,
+              color:'#000',fontSize:14,fontWeight:800,cursor:'pointer'}}>Fertig</button>
+        </>):(<>
+          <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:14}}>
+            <button onClick={()=>setPick(null)}
+              style={{width:32,height:32,borderRadius:9,background:T.card2,
+                border:`1px solid ${T.border}`,color:T.t1,fontSize:18,cursor:'pointer',
+                display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>‹</button>
+            <div style={{color:T.t1,fontSize:16,fontWeight:800}}>
+              Spieler wählen · {pick.teamKey==='t1'?'Team 1':'Team 2'}
+            </div>
+          </div>
+          <div style={{display:'flex',flexDirection:'column',gap:6}}>
+            {players.map(p=>{
+              const st=statusOf(p.id);
+              const isCurrent=court[pick.teamKey]?.[pick.idx]===p.id;
+              return(
+                <button key={p.id} onClick={()=>{onAssign(pick.teamKey,pick.idx,p.id);setPick(null);}}
+                  style={{display:'flex',alignItems:'center',gap:10,width:'100%',
+                    background:isCurrent?T.oSoft:T.card2,
+                    border:`1px solid ${isCurrent?T.o:T.border}`,borderRadius:10,
+                    padding:'10px 12px',cursor:'pointer',textAlign:'left'}}>
+                  <div style={{width:24,height:24,borderRadius:'50%',flexShrink:0,
+                    background:`${p.color||T.t3}22`,border:`1.5px solid ${p.color||T.border}`,
+                    color:p.color||T.t1,display:'flex',alignItems:'center',justifyContent:'center',
+                    fontSize:10,fontWeight:800}}>{getInitials(p.name||'?')}</div>
+                  <div style={{flex:1,minWidth:0,color:T.t1,fontSize:14,fontWeight:600,
+                    overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.name}</div>
+                  <span style={{color:st.color,fontSize:10,fontWeight:700,letterSpacing:.5,
+                    flexShrink:0,padding:'3px 8px',borderRadius:6,background:`${st.color}1A`}}>
+                    {st.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </>)}
+      </div>
+    </div>
+  );
+}
+
+/* ── Leaderboard-Punkte manuell anpassen. Host gibt den NEUEN
+   Gesamtwert ein; intern wird die Differenz als adjustment auf dem
+   Spieler gespeichert (adjPts/adjWins), damit weitere Matches normal
+   weiterzählen. */
+function PointsEditModal({entry,winMode,onSave,onClose}){
+  const isWins=winMode==='wins';
+  const current=isWins?entry.totalWins:entry.totalPts;
+  const[val,setVal]=useState(String(current));
+  const save=()=>{
+    const n=parseInt(val,10);
+    onSave(Number.isFinite(n)?Math.max(0,n):current);
+  };
+  return(
+    <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:300,
+      background:'rgba(0,0,0,.7)',backdropFilter:'blur(4px)',display:'flex',
+      alignItems:'center',justifyContent:'center',padding:24,animation:'fadeIn .15s ease'}}>
+      <div onClick={e=>e.stopPropagation()} className="si"
+        style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:18,
+          padding:'22px',width:'100%',maxWidth:330}}>
+        <div style={{display:'flex',alignItems:'center',gap:9,marginBottom:4}}>
+          <div style={{width:10,height:10,borderRadius:'50%',background:entry.color,flexShrink:0}}/>
+          <div style={{color:T.t1,fontSize:18,fontWeight:800,overflow:'hidden',
+            textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{entry.name}</div>
+        </div>
+        <div style={{color:T.t3,fontSize:12,lineHeight:1.5,marginBottom:16}}>
+          {isWins?'Siege':'Punkte'} manuell setzen. Korrigiert den Gesamtwert; folgende Matches zählen normal weiter.
+        </div>
+        <input type="number" inputMode="numeric" min="0" autoFocus
+          value={val} onChange={e=>setVal(e.target.value)}
+          onFocus={e=>e.currentTarget.select()}
+          onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();save();}}}
+          style={{width:'100%',background:T.card2,border:`1.5px solid ${T.o}`,borderRadius:12,
+            padding:'14px',color:T.t1,fontSize:24,fontWeight:900,textAlign:'center',
+            fontFamily:'monospace',outline:'none',boxSizing:'border-box',marginBottom:16}}/>
+        <div style={{display:'flex',gap:10}}>
+          <button onClick={onClose}
+            style={{flex:1,padding:'12px',background:T.card2,border:`1px solid ${T.border}`,
+              borderRadius:11,color:T.t1,fontSize:14,fontWeight:600,cursor:'pointer'}}>Abbrechen</button>
+          <button onClick={save}
+            style={{flex:1,padding:'12px',background:T.o,border:'none',borderRadius:11,
+              color:'#000',fontSize:14,fontWeight:800,cursor:'pointer'}}>Speichern</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TournamentCourtCard({court,courtIndex,playerById,onScoreChange,onConfirm,onEditLineup}){
   // Score-Werte aus dem Court ziehen. null/undefined = noch nicht
   // eingegeben → Input rendert leer, damit Tippen "5" auch wirklich
   // "5" wird und nicht "05". Beim Abschluss zählt 0 als gültiger
@@ -6519,7 +6789,7 @@ function TournamentCourtCard({court,courtIndex,playerById,onScoreChange,onConfir
         pointerEvents:'none',
       }}/>
 
-      {/* Header: Court-Nummer + Status */}
+      {/* Header: Court-Nummer + Status + Lineup-Edit */}
       <div style={{position:'relative',display:'flex',alignItems:'center',
         justifyContent:'space-between',marginBottom:14}}>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
@@ -6532,24 +6802,35 @@ function TournamentCourtCard({court,courtIndex,playerById,onScoreChange,onConfir
             Court {courtIndex+1}
           </div>
         </div>
-        {done?(
-          <div style={{display:'flex',alignItems:'center',gap:6,
-            padding:'4px 10px',borderRadius:8,
-            background:`${T.g}22`,border:`1px solid ${T.g}`,
-            color:T.g,fontSize:10,fontWeight:900,letterSpacing:1.2,
-            textTransform:'uppercase'}}>
-            <span style={{fontSize:11,lineHeight:1}}>✓</span>
-            Fertig
-          </div>
-        ):(
-          <div style={{display:'flex',alignItems:'center',gap:7}}>
-            <div className="court-live-dot"
-              style={{width:8,height:8,borderRadius:'50%',background:T.r,
-                boxShadow:`0 0 8px ${T.r}aa`}}/>
-            <span style={{color:T.r,fontSize:10,fontWeight:900,letterSpacing:1.3,
-              textTransform:'uppercase'}}>Live</span>
-          </div>
-        )}
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          {done?(
+            <div style={{display:'flex',alignItems:'center',gap:6,
+              padding:'4px 10px',borderRadius:8,
+              background:`${T.g}22`,border:`1px solid ${T.g}`,
+              color:T.g,fontSize:10,fontWeight:900,letterSpacing:1.2,
+              textTransform:'uppercase'}}>
+              <span style={{fontSize:11,lineHeight:1}}>✓</span>
+              Fertig
+            </div>
+          ):(
+            <div style={{display:'flex',alignItems:'center',gap:7}}>
+              <div className="court-live-dot"
+                style={{width:8,height:8,borderRadius:'50%',background:T.r,
+                  boxShadow:`0 0 8px ${T.r}aa`}}/>
+              <span style={{color:T.r,fontSize:10,fontWeight:900,letterSpacing:1.3,
+                textTransform:'uppercase'}}>Live</span>
+            </div>
+          )}
+          {onEditLineup&&(
+            <button onClick={onEditLineup}
+              title="Aufstellung bearbeiten" aria-label="Aufstellung bearbeiten"
+              style={{width:30,height:30,borderRadius:9,background:T.card2,
+                border:`1px solid ${T.border}`,color:T.t2,cursor:'pointer',flexShrink:0,
+                display:'flex',alignItems:'center',justifyContent:'center'}}>
+              <EditIcon size={15} color={T.t2}/>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Matchup: [Team A] [Score A] [VS] [Score B] [Team B]
@@ -6651,6 +6932,8 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='soft',onEdit,onMa
   const[tab,setTab]=useState('round');
   const[confirmEnd,setConfirmEnd]=useState(false);
   const[showSitOutInfo,setShowSitOutInfo]=useState(false);
+  const[editLineupCourtId,setEditLineupCourtId]=useState(null);
+  const[editPtsId,setEditPtsId]=useState(null);
   const round=tourney.rounds[tourney.current];
   const playerById=id=>tourney.players.find(p=>p.id===id);
 
@@ -6774,6 +7057,56 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='soft',onEdit,onMa
     });
   };
 
+  // ── Aufstellung tauschen ──
+  // Setzt newPid auf (courtId,teamKey,idx). Der bisherige Spieler dort
+  // wandert auf die alte Position von newPid (Court-Slot) bzw. — wenn
+  // newPid pausiert war — in die Pause. So bleibt jeder Spieler genau
+  // einmal vergeben; sitOut wird aus der Court-Belegung neu abgeleitet.
+  const assignPlayer=(courtId,teamKey,idx,newPid)=>{
+    setTourney(t=>{
+      const ci=t.current;
+      const rnd=t.rounds[ci];
+      if(!rnd) return t;
+      const courts=rnd.courts.map(c=>({...c,t1:[...(c.t1||[])],t2:[...(c.t2||[])]}));
+      const tCourt=courts.find(c=>c.id===courtId);
+      if(!tCourt) return t;
+      const oldPid=tCourt[teamKey][idx];
+      if(oldPid===newPid) return t;
+      // Wo steckt newPid gerade (Court-Slot)?
+      let src=null;
+      for(const c of courts){
+        const i1=c.t1.indexOf(newPid); if(i1>=0){src={arr:c.t1,i:i1};break;}
+        const i2=c.t2.indexOf(newPid); if(i2>=0){src={arr:c.t2,i:i2};break;}
+      }
+      tCourt[teamKey][idx]=newPid;
+      if(src){ src.arr[src.i]=oldPid; } // Swap; sonst landet oldPid in der Pause
+      const playing=new Set(courts.flatMap(c=>[...c.t1,...c.t2]));
+      const sitOut=t.players.map(p=>p.id).filter(id=>!playing.has(id));
+      const rounds=[...t.rounds];
+      rounds[ci]={...rnd,courts,sitOut};
+      return {...t,rounds};
+    });
+  };
+
+  // ── Leaderboard-Punkte manuell setzen ──
+  // newTotal = gewünschter Gesamtwert. Wir speichern die Differenz zur
+  // berechneten Basis (echte Punkte + Pausen-Bonus) als adjPts/adjWins
+  // auf dem Spieler, damit künftige Matches normal weiterzählen.
+  const savePlayerPoints=(playerId,newTotal)=>{
+    setTourney(t=>{
+      const lb=calcLeaderboard(t.players,t.rounds,t.winMode);
+      const e=lb.find(x=>x.id===playerId);
+      if(!e) return t;
+      const players=t.players.map(p=>{
+        if(p.id!==playerId) return p;
+        return t.winMode==='wins'
+          ?{...p,adjWins:newTotal-(e.wins+e.bonusWins)}
+          :{...p,adjPts:newTotal-(e.pts+e.bonusPts)};
+      });
+      return {...t,players};
+    });
+  };
+
   // ═══ TIMER LOGIC ═══
   useEffect(()=>{
     if(!tourney.timerRunning||tourney.finished)return;
@@ -6833,6 +7166,10 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='soft',onEdit,onMa
   const allDone=round.courts.every(c=>c.done);
   const lb=calcLeaderboard(tourney.players,tourney.rounds,tourney.winMode);
   const sortedLb=lb.sort((a,b)=>tourney.winMode==='points'?b.totalPts-a.totalPts||b.totalWins-a.totalWins:b.totalWins-a.totalWins||b.totalPts-a.totalPts);
+  // Live nachgeschlagen, damit die offenen Modals immer den frischen
+  // Court/Leaderboard-Eintrag bekommen (sonst stale nach setTourney).
+  const editLineupCourt=editLineupCourtId!=null?round.courts.find(c=>c.id===editLineupCourtId):null;
+  const editPtsEntry=editPtsId!=null?sortedLb.find(p=>p.id===editPtsId):null;
 
   const totalSecs=(tourney.roundDurationMin||10)*60;
   const progress=totalSecs?(tourney.timerSecsLeft||0)/totalSecs:0;
@@ -6930,7 +7267,8 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='soft',onEdit,onMa
               court={court} courtIndex={ci}
               playerById={playerById}
               onScoreChange={(field,val)=>updateScore(court.id,field,val)}
-              onConfirm={()=>confirmCourt(court.id)}/>
+              onConfirm={()=>confirmCourt(court.id)}
+              onEditLineup={()=>setEditLineupCourtId(court.id)}/>
           ))}
 
           {round.sitOut?.length>0&&(
@@ -6993,16 +7331,25 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='soft',onEdit,onMa
                       {p.sitOut>0&&<> · {p.sitOut} Pause{p.sitOut>1?'n':''}</>}
                     </div>
                   </div>
-                  <div style={{textAlign:'right'}}>
-                    <div style={{color:T.o,fontSize:18,fontWeight:800}}>
-                      {tourney.winMode==='wins'?p.totalWins:p.totalPts}
+                  <button onClick={()=>setEditPtsId(p.id)}
+                    title="Punkte anpassen"
+                    style={{textAlign:'right',background:'none',border:'none',cursor:'pointer',
+                      padding:'2px 0 2px 10px',display:'flex',flexDirection:'column',
+                      alignItems:'flex-end',gap:1,flexShrink:0}}>
+                    <div style={{display:'flex',alignItems:'center',gap:5}}>
+                      <EditIcon size={12} color={T.t4}/>
+                      <span style={{color:T.o,fontSize:18,fontWeight:800}}>
+                        {tourney.winMode==='wins'?p.totalWins:p.totalPts}
+                      </span>
                     </div>
-                    <div style={{color:T.t3,fontSize:10,fontWeight:600}}>
+                    <div style={{color:(tourney.winMode==='wins'?p.adjWins:p.adjPts)?T.o:T.t3,
+                      fontSize:10,fontWeight:600}}>
                       {tourney.winMode==='wins'
-                        ?(p.bonusWins>0?`Siege (+${p.bonusWins})`:'Siege')
-                        :(p.bonusPts>0?`Punkte (+${p.bonusPts})`:'Punkte')}
+                        ?(p.bonusWins>0?`Siege +${p.bonusWins}`:'Siege')
+                        :(p.bonusPts>0?`Punkte +${p.bonusPts}`:'Punkte')}
+                      {(tourney.winMode==='wins'?p.adjWins:p.adjPts)?' · angepasst':''}
                     </div>
-                  </div>
+                  </button>
                 </div>
               ))}
             </div>
@@ -7037,6 +7384,26 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='soft',onEdit,onMa
           confirmLabel="Beenden"
           onCancel={()=>setConfirmEnd(false)}
           onConfirm={()=>{setConfirmEnd(false);endTournament();}}/>
+      )}
+
+      {/* Aufstellung bearbeiten */}
+      {editLineupCourt&&(
+        <LineupEditSheet
+          court={editLineupCourt}
+          courtIndex={round.courts.indexOf(editLineupCourt)}
+          players={tourney.players}
+          round={round}
+          onAssign={(tk,i,pid)=>assignPlayer(editLineupCourt.id,tk,i,pid)}
+          onClose={()=>setEditLineupCourtId(null)}/>
+      )}
+
+      {/* Leaderboard-Punkte anpassen */}
+      {editPtsEntry&&(
+        <PointsEditModal
+          entry={editPtsEntry}
+          winMode={tourney.winMode}
+          onSave={(v)=>{savePlayerPoints(editPtsEntry.id,v);setEditPtsId(null);}}
+          onClose={()=>setEditPtsId(null)}/>
       )}
     </div>
   );

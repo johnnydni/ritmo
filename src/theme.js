@@ -715,6 +715,33 @@ a:focus-visible{
    automatisch (z. B. style={{'--i':2}}). Spart pro-Element delay. */
 .stagger > *{animation-delay:calc(var(--i,0) * 50ms);}
 
+/* ── Archetyp-Quiz-Sigille — animierte Bauhaus-Geometrie ──
+   Jede der sechs Persönlichkeits-Kategorien (a–f) trägt ein eigenes
+   geometrisches Zeichen mit eigener Bewegung. Die Loops laufen NUR im
+   aktiven Zustand (.aglyph--on); unselektierte Glyphen bleiben ruhig &
+   gedämpft, damit das Quiz nicht flimmert. transform-box:fill-box
+   verankert Rotation/Skalierung am Element-Zentrum — ohne das würde ein
+   SVG-Child um den 0,0-Ursprung der Zeichenfläche rotieren. */
+@keyframes agSpin{to{transform:rotate(360deg);}}
+@keyframes agThrust{0%,100%{transform:translateY(1px) scaleY(.92);}45%{transform:translateY(-2px) scaleY(1.1);}}
+@keyframes agTilt{0%,44%{transform:rotate(0deg);}56%,100%{transform:rotate(90deg);}}
+@keyframes agWall{0%,100%{opacity:.4;}50%{opacity:1;}}
+@keyframes agFloat{0%,100%{transform:translateY(1px);}50%{transform:translateY(-2px);}}
+@keyframes agDrive{0%{transform:translateX(-3px);opacity:.35;}45%{opacity:1;}100%{transform:translateX(3px);opacity:.35;}}
+.aglyph{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;}
+.aglyph svg{display:block;overflow:visible;}
+.aglyph svg *{transform-box:fill-box;transform-origin:center;
+  transition:fill .25s var(--ease-out-expo),stroke .25s var(--ease-out-expo);}
+.aglyph--on .ag-spin{animation:agSpin 5s linear infinite;}
+.aglyph--on .ag-thrust{transform-origin:center bottom;animation:agThrust 1.5s var(--ease-out-back) infinite;}
+.aglyph--on .ag-tilt{animation:agTilt 3.4s var(--ease-in-out) infinite;}
+.aglyph--on .ag-wall-1{animation:agWall 1.7s ease-in-out infinite;}
+.aglyph--on .ag-wall-2{animation:agWall 1.7s ease-in-out .22s infinite;}
+.aglyph--on .ag-wall-3{animation:agWall 1.7s ease-in-out .44s infinite;}
+.aglyph--on .ag-float{animation:agFloat 2.6s ease-in-out infinite;}
+.aglyph--on .ag-drive-1{animation:agDrive 1.4s ease-in-out infinite;}
+.aglyph--on .ag-drive-2{animation:agDrive 1.4s ease-in-out .18s infinite;}
+
 /* ── prefers-reduced-motion Killswitch ──
    Respektiert OS-/Browser-Setting; deaktiviert ALLE App-Animationen
    inklusive Transitions, damit motion-sensitive User nichts wackeln

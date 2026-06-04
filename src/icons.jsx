@@ -433,6 +433,15 @@ export function AppStoreIcon({size=22}){
   </svg>);
 }
 
+/* Pause-Glyph — zwei abgerundete Balken. Für die "Pausiert"-Anzeige
+   im Turnier (sit-out Spieler). */
+export function PauseIcon({size=22,color='currentColor'}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill={color} aria-hidden="true">
+    <rect x="6" y="5" width="4" height="14" rx="1.6"/>
+    <rect x="14" y="5" width="4" height="14" rx="1.6"/>
+  </svg>);
+}
+
 /* ─── Person glyph (avatar fallback) ──────────────────────────── */
 export function PersonGlyph({size=22}){
   return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none">

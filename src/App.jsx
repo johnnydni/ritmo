@@ -33,9 +33,9 @@ import {
   // Settings + RITMO Post line-art icons
   SteeringWheelIcon, PaletteIcon, EyeIcon, BellIcon, LockIcon, DoorOutIcon,
   ChevronRightIcon, RitmoPostIcon, AirPlayIcon, CoffeeCupIcon,
-  ArchetypeGlyph,
+  ArchetypeGlyph, PauseIcon,
 } from "./icons.jsx";
-import { PADEL_STYLES, PADEL_QUIZ, computeStyle, STYLE_IMAGES } from "./padelStyles.js";
+import { PADEL_STYLES, PADEL_QUIZ, computeStyle, computeMatchTier, STYLE_IMAGES } from "./padelStyles.js";
 
 /* ═══════════════════════════════════════════════════════════════
    Theme/CSS, helpers, reducers, auth, audio and icons all live in
@@ -5049,6 +5049,58 @@ function SwipeableCard({children,onDelete}){
 }
 
 
+/* ── Spielstil-Picker (Bottom-Sheet) — Auswahl eines der sechs RITMO-
+   Archetypen pro Spieler. Treibt das Match-Tier-Rating der Paarungen. */
+function StylePickerSheet({current,onSelect,onClose}){
+  return(
+    <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:300,
+      background:'rgba(0,0,0,.7)',backdropFilter:'blur(4px)',display:'flex',
+      alignItems:'flex-end',justifyContent:'center',animation:'fadeIn .15s ease'}}>
+      <div onClick={e=>e.stopPropagation()} className="slide-up"
+        style={{background:T.card,borderTopLeftRadius:20,borderTopRightRadius:20,
+          borderTop:`1px solid ${T.border}`,width:'100%',maxWidth:480,
+          padding:'16px 18px calc(env(safe-area-inset-bottom,0px) + 18px)',
+          maxHeight:'82vh',overflowY:'auto'}}>
+        <div style={{width:36,height:4,borderRadius:2,background:T.border,margin:'0 auto 14px'}}/>
+        <div style={{color:T.t1,fontSize:17,fontWeight:800,marginBottom:3}}>Spielstil wählen</div>
+        <div style={{color:T.t3,fontSize:12,lineHeight:1.5,marginBottom:14}}>
+          Bestimmt das Match-Tier-Rating der Paarungen im Turnier.
+        </div>
+        <div style={{display:'flex',flexDirection:'column',gap:8}}>
+          {Object.keys(PADEL_STYLES).map(key=>{
+            const st=PADEL_STYLES[key]; const sel=current===key;
+            return(
+              <button key={key} onClick={()=>{onSelect(key);onClose();}}
+                style={{display:'flex',alignItems:'center',gap:12,width:'100%',
+                  background:sel?rgba(st.accent,0.14):T.card2,
+                  border:`1.5px solid ${sel?st.accent:T.border}`,borderRadius:12,
+                  padding:'11px 13px',cursor:'pointer',textAlign:'left',
+                  transition:'all .18s var(--ease-out-expo)'}}>
+                <ArchetypeGlyph type={key} active color={st.accent} size={26}/>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{color:T.t1,fontSize:14,fontWeight:800}}>{st.name}</div>
+                  <div style={{color:T.t3,fontSize:11,fontWeight:500,
+                    overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                    {st.subtitle} — {st.tagline}
+                  </div>
+                </div>
+                {sel&&<span style={{color:st.accent,fontSize:16,fontWeight:900,flexShrink:0}}>✓</span>}
+              </button>
+            );
+          })}
+          {current&&(
+            <button onClick={()=>{onSelect(null);onClose();}}
+              style={{marginTop:4,padding:'11px',background:T.card2,border:`1px solid ${T.border}`,
+                borderRadius:12,color:T.t3,fontSize:13,fontWeight:600,cursor:'pointer'}}>
+              Kein Stil
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit,profile,onCreateOnline}){
   // mode: 'lokal' = bestehender Flow (lokale Spielerliste).
   // 'online' = Host erstellt Session, Player joinen via PIN/QR.
@@ -5094,6 +5146,10 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit,profile,onCreat
   };
   const removePlayer=id=>setPlayers(p=>p.filter(x=>x.id!==id));
   const renamePlayer=(id,name)=>setPlayers(p=>p.map(x=>x.id===id?{...x,name}:x));
+  // Spielstil je Spieler — treibt das Match-Tier-Rating der Paarungen.
+  const setPlayerStyle=(id,style)=>setPlayers(p=>p.map(x=>x.id===id?{...x,style:style||null}:x));
+  // Welcher Spieler hat gerade den Stil-Picker offen (id | null).
+  const[stylePickerFor,setStylePickerFor]=useState(null);
 
   const canStart=players.length>=4;
 
@@ -5300,6 +5356,18 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit,profile,onCreat
                 }}
                 placeholder={`Spieler ${i+1}`}
                 style={{flex:1,fontSize:14,color:T.t1,fontWeight:500}}/>
+              {/* Spielstil-Picker — Glyph des gewählten Archetyps, sonst
+                  DNA-Platzhalter. Bestimmt das Match-Tier der Paarungen. */}
+              <button onClick={()=>setStylePickerFor(p.id)}
+                title="Spielstil wählen" aria-label="Spielstil wählen"
+                style={{width:34,height:34,borderRadius:'50%',flexShrink:0,padding:0,cursor:'pointer',
+                  background:p.style?rgba(PADEL_STYLES[p.style].accent,0.16):T.card2,
+                  border:`1.5px solid ${p.style?PADEL_STYLES[p.style].accent:T.border}`,
+                  display:'flex',alignItems:'center',justifyContent:'center'}}>
+                {p.style
+                  ?<ArchetypeGlyph type={p.style} active color={PADEL_STYLES[p.style].accent} size={20}/>
+                  :<DNAIcon size={16} color={T.t3}/>}
+              </button>
               {players.length>4&&(
                 <button onClick={()=>removePlayer(p.id)}
                   style={{width:22,height:22,borderRadius:'50%',background:T.t4,border:'none',
@@ -5391,6 +5459,13 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit,profile,onCreat
           fontWeight:800,
         }
       }]}/>
+
+      {stylePickerFor!=null&&(
+        <StylePickerSheet
+          current={players.find(p=>p.id===stylePickerFor)?.style||null}
+          onSelect={(style)=>setPlayerStyle(stylePickerFor,style)}
+          onClose={()=>setStylePickerFor(null)}/>
+      )}
     </div>
   );
 }
@@ -6056,8 +6131,14 @@ function TournamentParticipantView({session,participantId,pin}){
     {round?.sitOut?.length>0&&(
       <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
         padding:'14px 18px'}}>
-        <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.3,
-          textTransform:'uppercase',marginBottom:6}}>Pausiert diese Runde</div>
+        <div style={{display:'flex',alignItems:'center',gap:9,marginBottom:8}}>
+          <div style={{width:24,height:24,borderRadius:'50%',flexShrink:0,background:T.oSoft,
+            border:`1px solid ${T.o}`,display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <PauseIcon size={12} color={T.o}/>
+          </div>
+          <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.3,
+            textTransform:'uppercase'}}>Pausiert diese Runde</div>
+        </div>
         <div style={{color:T.t2,fontSize:13,fontWeight:500}}>
           {round.sitOut.map(pid=>playerById(pid)?.name||'?').join(' · ')}
         </div>
@@ -6702,7 +6783,17 @@ function TournamentCourtCard({court,courtIndex,playerById,onScoreChange,onConfir
   const s2=s2Raw??0;
   const s1Input=s1Raw==null?'':String(s1Raw);
   const s2Input=s2Raw==null?'':String(s2Raw);
+  // Ref auf das zweite Score-Feld: Enter im ersten Feld springt dorthin,
+  // Enter im zweiten bestätigt das Ergebnis (wie der Bestätigen-Button).
+  const s2Ref=useRef(null);
   const done=!!court.done;
+
+  // Match-Tier-Rating aus den Spielstilen der vier Spieler (RITMO DNA).
+  // null, wenn nicht alle vier einen Stil gesetzt haben → kein Label.
+  const tier=computeMatchTier(
+    (court.t1||[]).map(pid=>playerById(pid)?.style),
+    (court.t2||[]).map(pid=>playerById(pid)?.style),
+  );
 
   // Gewinnerseite ermitteln (für goldenen Glow auf der Karte).
   const winnerTeam=done?(s1>s2?'A':s2>s1?'B':null):null;
@@ -6859,6 +6950,7 @@ function TournamentCourtCard({court,courtIndex,playerById,onScoreChange,onConfir
             value={s1Input}
             onChange={e=>handleScoreInput('s1',e.target.value)}
             onFocus={e=>e.currentTarget.select()}
+            onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();s2Ref.current?.focus();s2Ref.current?.select();}}}
             style={{flexShrink:0,width:48,height:48,borderRadius:12,
               border:`1.5px solid ${T.o}`,
               background:T.card2,color:T.t1,fontSize:22,fontWeight:900,
@@ -6897,9 +6989,11 @@ function TournamentCourtCard({court,courtIndex,playerById,onScoreChange,onConfir
         ):(
           <input type="number" min="0" max="99" inputMode="numeric"
             placeholder="–"
+            ref={s2Ref}
             value={s2Input}
             onChange={e=>handleScoreInput('s2',e.target.value)}
             onFocus={e=>e.currentTarget.select()}
+            onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();e.currentTarget.blur();onConfirm();}}}
             style={{flexShrink:0,width:48,height:48,borderRadius:12,
               border:`1.5px solid ${T.o}`,
               background:T.card2,color:T.t1,fontSize:22,fontWeight:900,
@@ -6910,6 +7004,20 @@ function TournamentCourtCard({court,courtIndex,playerById,onScoreChange,onConfir
 
         {teamSide(court.t2||[],'right')}
       </div>
+
+      {/* Match-Tier-Rating (RITMO DNA) — Stil-Chemie beider Teams */}
+      {tier&&(
+        <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8,
+          marginBottom:12,padding:'7px 12px',borderRadius:10,
+          background:`${tier.color}14`,border:`1px solid ${tier.color}55`}}>
+          <span style={{color:tier.color,fontSize:12,fontWeight:900,letterSpacing:.6}}>{tier.label}</span>
+          <span style={{color:T.t3,fontSize:11,fontWeight:700}}>·</span>
+          <span style={{color:T.t2,fontSize:11,fontWeight:600}}>{tier.sub}</span>
+          <span style={{color:tier.color,fontSize:10,letterSpacing:1,marginLeft:2}}>
+            {'★'.repeat(tier.stars)}{'☆'.repeat(5-tier.stars)}
+          </span>
+        </div>
+      )}
 
       {/* Confirm / Edit Button */}
       <button onClick={onConfirm}
@@ -7275,6 +7383,10 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='soft',onEdit,onMa
             <div style={{background:T.card2,borderRadius:10,
               border:`1px solid ${T.border}`}}>
               <div style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px'}}>
+                <div style={{width:26,height:26,borderRadius:'50%',flexShrink:0,background:T.oSoft,
+                  border:`1px solid ${T.o}`,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  <PauseIcon size={13} color={T.o}/>
+                </div>
                 <div style={{flex:1,minWidth:0,color:T.t3,fontSize:12,fontWeight:500}}>
                   Pausiert: <span style={{color:T.t1,fontWeight:600}}>
                     {round.sitOut.map(id=>playerById(id)?.name).join(', ')}

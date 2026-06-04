@@ -102,8 +102,14 @@ export function genMexicanoRound(playerIds,leaderboard,maxCourts=null,history=[]
 
 export function calcLeaderboard(players,rounds,winMode='points'){
   const stats={};
+  // adjPts/adjWins = manuelle Korrekturen vom Host (Leaderboard-Edit).
+  // Liegen auf dem Spieler-Record, damit sie persistieren + online
+  // mitpubliziert werden. sessionParticipantId wird durchgereicht, damit
+  // die Teilnehmer-Ansicht ihre eigene Zeile zuverlässig per ID findet.
   players.forEach(p=>{stats[p.id]={id:p.id,name:p.name,color:p.color,
-    pts:0,wins:0,losses:0,played:0,sitOut:0,bonusPts:0,bonusWins:0};});
+    sessionParticipantId:p.sessionParticipantId,
+    pts:0,wins:0,losses:0,played:0,sitOut:0,bonusPts:0,bonusWins:0,
+    adjPts:p.adjPts||0,adjWins:p.adjWins||0};});
   // Phase 1: actual match stats + sit-out counts
   rounds.forEach(round=>{
     round.courts.forEach(m=>{
@@ -151,10 +157,10 @@ export function calcLeaderboard(players,rounds,winMode='points'){
       if(lowerIds.has(s.id)&&s.sitOut>0) s.bonusWins=s.sitOut;
     });
   }
-  // Convenience: total values for ranking
+  // Convenience: total values for ranking (inkl. manueller Korrektur)
   Object.values(stats).forEach(s=>{
-    s.totalPts=s.pts+s.bonusPts;
-    s.totalWins=s.wins+s.bonusWins;
+    s.totalPts=s.pts+s.bonusPts+s.adjPts;
+    s.totalWins=s.wins+s.bonusWins+s.adjWins;
   });
   return Object.values(stats);
 }

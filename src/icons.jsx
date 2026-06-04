@@ -7,7 +7,7 @@
    load PNGs with an inline SVG fallback if the asset is missing.
 ═══════════════════════════════════════════════════════════════ */
 
-import { useState } from "react";
+import { useState, useId } from "react";
 import { T } from "./theme.js";
 import { getAssetBase } from "./utils.js";
 
@@ -409,6 +409,30 @@ export function AppleGlyph({size=20}){
   </svg>);
 }
 
+/* App-Store-Icon (Marke) — blaues Squircle mit weißem stilisiertem „A".
+   Eigenständiges Store-Symbol, NICHT das Apple-Logo (AppleGlyph). Der
+   Gradient bekommt eine via useId() garantiert eindeutige ID, damit
+   mehrere Instanzen sich nicht gegenseitig die Füllung klauen. */
+export function AppStoreIcon({size=22}){
+  const uid=useId().replace(/:/g,'');
+  const gid=`ritmo-appstore-${uid}`;
+  return(<svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" style={{display:'block'}}>
+    <defs>
+      <linearGradient id={gid} x1="12" y1="1.5" x2="12" y2="22.5" gradientUnits="userSpaceOnUse">
+        <stop offset="0" stopColor="#1FB6FF"/>
+        <stop offset="1" stopColor="#1187FB"/>
+      </linearGradient>
+    </defs>
+    {/* Squircle-Hintergrund */}
+    <rect x="1.5" y="1.5" width="21" height="21" rx="5.2" fill={`url(#${gid})`}/>
+    {/* Weißes „A" — zwei Beine + Querstrich, runde Kappen */}
+    <g fill="none" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M7.4 16.9 12 7.1 16.6 16.9"/>
+      <path d="M9.3 13.7h5.4"/>
+    </g>
+  </svg>);
+}
+
 /* ─── Person glyph (avatar fallback) ──────────────────────────── */
 export function PersonGlyph({size=22}){
   return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -558,4 +582,64 @@ export function RitmoPostIcon({size=24,color='currentColor'}){
       <path d="M2 8.5a1 1 0 0 0 2 0"/>
     </g>
   </svg>);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ARCHETYP-SIGILLE — animierte Bauhaus-Zeichen für das Personality-
+   Quiz. Jeder der sechs RITMO-Spielstile besitzt ein eigenes
+   geometrisches Mark + eine eigene Bewegung (Keyframes/Klassen in
+   theme.js). Die Animation läuft NUR solange `active` true ist;
+   ruhende Glyphen bleiben statisch & gedämpft (var(--t3)).
+
+   `type`  : Archetyp-Schlüssel (chico|toro|individuoso|muro|fantasma|motor)
+   `active`: ausgewählt → Akzentfarbe + Loop
+   `color` : Akzentfarbe des Archetyps (vom Aufrufer, z. B. PADEL_STYLES[t].accent)
+═══════════════════════════════════════════════════════════════ */
+export function ArchetypeGlyph({type,active=false,color,size=22}){
+  const c=active?(color||'var(--o)'):'var(--t3)';
+  const cls='aglyph'+(active?' aglyph--on':'');
+  let body;
+  if(type==='toro'){
+    /* Aggressor — nach oben stoßendes Dreieck (Power). */
+    body=<path className="ag-thrust" d="M12 3.5 19.5 18.5 4.5 18.5Z" fill={c}/>;
+  }else if(type==='individuoso'){
+    /* Stratege — Quadrat dreht in 90°-Schritten (Schach auf Glas). */
+    body=(<g>
+      <rect className="ag-tilt" x="5.5" y="5.5" width="13" height="13" rx="1.5" fill="none" stroke={c} strokeWidth="2"/>
+      <rect x="10" y="10" width="4" height="4" rx=".6" fill={c}/>
+    </g>);
+  }else if(type==='muro'){
+    /* Wand — versetzte Ziegelreihen, nacheinander pulsierend (Defensive). */
+    body=(<g fill={c}>
+      <rect className="ag-wall-1" x="3"    y="4.5"  width="8.4" height="4" rx=".8"/>
+      <rect className="ag-wall-1" x="12.6" y="4.5"  width="8.4" height="4" rx=".8"/>
+      <rect className="ag-wall-2" x="3"    y="10"   width="5"   height="4" rx=".8"/>
+      <rect className="ag-wall-2" x="9.6"  y="10"   width="8.4" height="4" rx=".8"/>
+      <rect className="ag-wall-2" x="19.6" y="10"   width="1.4" height="4" rx=".7"/>
+      <rect className="ag-wall-3" x="3"    y="15.5" width="8.4" height="4" rx=".8"/>
+      <rect className="ag-wall-3" x="12.6" y="15.5" width="8.4" height="4" rx=".8"/>
+    </g>);
+  }else if(type==='fantasma'){
+    /* Kreativer — schwebendes Geist-Sigil mit zwei Augen (Überraschung). */
+    body=(<g className="ag-float">
+      <path d="M5.5 12a6.5 6.5 0 0 1 13 0v7.2l-2.16 -1.6 -2.16 1.6 -2.17 -1.6 -2.17 1.6 -2.17 -1.6 -2.17 1.6z" fill={c}/>
+      <circle cx="9.7" cy="11.2" r="1.15" fill="var(--bg)"/>
+      <circle cx="14.3" cy="11.2" r="1.15" fill="var(--bg)"/>
+    </g>);
+  }else if(type==='motor'){
+    /* Ausdauer — zwei nach rechts gleitende Chevrons (Vorwärts-Motion). */
+    body=(<g fill="none" stroke={c} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+      <polyline className="ag-drive-1" points="5 6.5 11 12 5 17.5"/>
+      <polyline className="ag-drive-2" points="12 6.5 18 12 12 17.5"/>
+    </g>);
+  }else{
+    /* chico (Default) — Allrounder: rotierender Balance-Ring + ruhender Kern. */
+    body=(<g>
+      <circle className="ag-spin" cx="12" cy="12" r="8" fill="none" stroke={c} strokeWidth="2.2" strokeLinecap="round" strokeDasharray="33 17"/>
+      <circle cx="12" cy="12" r="2.6" fill={c}/>
+    </g>);
+  }
+  return(<span className={cls} aria-hidden="true">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">{body}</svg>
+  </span>);
 }

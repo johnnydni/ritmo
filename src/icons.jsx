@@ -113,6 +113,25 @@ export function RacketMini({size=24,color=T.t1}){
   );
 }
 
+/* ─── Single-Match-Logo (PNG, theme-aware: schwarz auf hellem Theme,
+   weiß sonst) ─────────────────────────────────────────────────── */
+export function SingleMatchIcon({size=36}){
+  const isLight=typeof document!=='undefined'&&
+    document.documentElement.getAttribute('data-theme')==='light';
+  const file=isLight?'singlematchicon-black.png':'singlematchicon-white.png';
+  return(<img src={`${getAssetBase()}assets/${file}`} alt="Single Match"
+    style={{width:size,height:size,objectFit:'contain',display:'block',userSelect:'none'}}/>);
+}
+
+/* ─── Best-of-Three-Logo (PNG, theme-aware) ───────────────────── */
+export function BestOfThreeIcon({size=22}){
+  const isLight=typeof document!=='undefined'&&
+    document.documentElement.getAttribute('data-theme')==='light';
+  const file=isLight?'bestofthreeicon-black.png':'bestofthreeicon-white.png';
+  return(<img src={`${getAssetBase()}assets/${file}`} alt="Best of Three"
+    style={{width:size,height:size,objectFit:'contain',display:'block',userSelect:'none'}}/>);
+}
+
 /* ─── Trophy ──────────────────────────────────────────────────── */
 export function TrophyIcon({size=42}){
   return(
@@ -148,11 +167,10 @@ export function HomeIcon({active,size=22}){
   </svg>);
 }
 export function LiveIcon({active,size=22}){
-  return(<svg width={size} height={size} viewBox="0 0 22 22" fill="none">
-    <ellipse cx="11" cy="9" rx="6.5" ry="7" stroke={active?T.blue:T.t1} strokeWidth="1.6" fill="none"/>
-    <line x1="6" y1="6" x2="9" y2="9" stroke={active?T.blue:T.t1} strokeWidth=".8" opacity=".6"/>
-    <line x1="11" y1="16" x2="11" y2="20" stroke={active?T.blue:T.t1} strokeWidth="1.8" strokeLinecap="round"/>
-  </svg>);
+  // Padel-Schläger-Logo (PNG): weiß = inaktiv, blau = aktiv.
+  const file=active?'Padel-Rackeet-blue.png':'Padel-Rackeet-white.png';
+  return(<img src={`${getAssetBase()}assets/${file}`} alt="Live"
+    style={{width:size,height:size,objectFit:'contain',display:'block',userSelect:'none'}}/>);
 }
 export function GearIcon({active,size=22}){
   return(<svg width={size} height={size} viewBox="0 0 22 22" fill="none">

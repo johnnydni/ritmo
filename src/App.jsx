@@ -25,6 +25,7 @@ import { RINGS, playRing, unlockAudio } from "./audio.js";
 import { auth } from "./auth.js";
 import {
   RitmoWordmark, RitmoSplashLogo, CourtIcon, RacketMini, TrophyIcon, JoinIcon,
+  SingleMatchIcon, BestOfThreeIcon,
   HomeIcon, LiveIcon, GearIcon, SearchIcon, Hl, DNAIcon, FullscreenIcon, EditIcon,
   ExitFullscreenIcon, KiwiIcon, PineappleIcon, CoconutIcon, TennisBallIcon, ParrotIcon,
   FunkyFruitsRow, BookIcon, JourneyIcon, ArrowRightCircleIcon, WandIcon,
@@ -2818,7 +2819,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
           onPointerDown={e=>e.currentTarget.style.background=T.card2}
           onPointerUp={e=>e.currentTarget.style.background=T.card}
           onPointerLeave={e=>e.currentTarget.style.background=T.card}>
-          <CourtIcon size={42}/>
+          <SingleMatchIcon size={42}/>
           <div style={{flex:1}}>
             <div style={{color:T.o,fontSize:18,fontWeight:700,marginBottom:3}}>Single Match</div>
             <div style={{color:T.t3,fontSize:12,fontWeight:500}}>Best of 3 | Americano (Freestyle)</div>
@@ -2955,13 +2956,13 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
           <RitmoWordmark size={52} style={{marginLeft:-3}}/>
           <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>Single Match</div>
         </div>
-        <CourtIcon size={36}/>
+        <SingleMatchIcon size={36}/>
       </div>
 
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
 
         <SetupHero
-          icon={<CourtIcon size={36}/>}
+          icon={<SingleMatchIcon size={36}/>}
           title="Schnelles Match"
           desc="Du, dein Partner, zwei Gegner. Waehle Best-of-3 oder Americano (Freestyle) und leg los."/>
 
@@ -3035,7 +3036,7 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
                 background:fmt==='bo3'?T.t4:'transparent',
                 display:'flex',alignItems:'center',justifyContent:'center',
                 transition:'background .2s'}}>
-              <span style={{fontSize:18,fontWeight:800,color:T.t1,letterSpacing:2}}>{'•••'}</span>
+              <BestOfThreeIcon size={22}/>
             </button>
             <button onClick={()=>setFmt('americano')}
               style={{flex:1,padding:'10px',borderRadius:24,border:'none',cursor:'pointer',
@@ -3049,7 +3050,7 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
           {fmt==='bo3'&&(
             <div>
               <div style={{color:T.t1,fontSize:15,fontWeight:700,marginBottom:6}}>Best of Three</div>
-              <div style={{color:T.t1,fontSize:14,fontWeight:700,marginBottom:6,letterSpacing:2}}>{'•••'}</div>
+              <div style={{marginBottom:6}}><BestOfThreeIcon size={20}/></div>
               <div style={{color:T.t3,fontSize:12,lineHeight:1.6,fontWeight:500,marginBottom:14}}>
                 Klassisches Scoring:<br/>
                 15 - 30 - 40 | Einstand - Vorteil<br/>
@@ -3510,10 +3511,8 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
 
         {/* Top: Team labels + close + countdown */}
         <div style={{display:'flex',padding:'18px 24px 0',gap:14,alignItems:'center'}}>
-          <div style={{flex:1,display:'flex',alignItems:'center',gap:10,minWidth:0}}>
-            <div style={{width:14,height:14,borderRadius:'50%',background:T.o,flexShrink:0,
-              boxShadow:'0 0 8px var(--oGlow)'}}/>
-            <div style={{color:T.t1,fontSize:20,fontWeight:800,letterSpacing:.3,
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{color:T.o,fontSize:20,fontWeight:800,letterSpacing:.3,
               overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
               {cfg.nameA}
             </div>
@@ -3524,11 +3523,9 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
               {fmtT(secsLeft)}
             </div>
           )}
-          <div style={{flex:1,display:'flex',alignItems:'center',gap:10,minWidth:0,
-            justifyContent:!isB&&hasStarted?'flex-end':'flex-start'}}>
-            <div style={{width:14,height:14,borderRadius:'50%',background:T.blue,flexShrink:0,
-              boxShadow:'0 0 8px var(--blueGlow)'}}/>
-            <div style={{color:T.t1,fontSize:20,fontWeight:800,letterSpacing:.3,
+          <div style={{flex:1,minWidth:0,
+            textAlign:!isB&&hasStarted?'right':'left'}}>
+            <div style={{color:T.o,fontSize:20,fontWeight:800,letterSpacing:.3,
               overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
               {cfg.nameB}
             </div>
@@ -3601,9 +3598,13 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
                 {/* Games + Set traffic-light dots — im BigScreen mit
                     eigenständigen Dots (pro Satz), im Tablet-Modus
                     werden zusätzlich die Games-Zahlen ausgegeben. */}
-                {isB&&(
+                {isB&&(<>
+                  {/* Horizontale Trennlinie unter dem Score */}
+                  <div aria-hidden="true" style={{alignSelf:'stretch',height:2,
+                    background:T.border,borderRadius:1,
+                    marginTop:`clamp(${1.4*m}rem,${vh(3.5,5)}vh,${2.4*m}rem)`}}/>
                   <div style={{display:'flex',alignItems:'center',gap:`clamp(${1.5*m}rem,${vh(4,5)}vw,${3*m}rem)`,
-                    marginTop:`clamp(${1.6*m}rem,${vh(4.5,6)}vh,${3*m}rem)`}}>
+                    marginTop:`clamp(${.9*m}rem,${vh(2.4,3.4)}vh,${1.6*m}rem)`}}>
                     <div style={{display:'flex',gap:`clamp(${.7*m}rem,${vh(1.5,2.2)}vw,${1.2*m}rem)`}}>
                       {[0,1,2].map(i=>{
                         const setRec=bo3.sets&&bo3.sets[i];
@@ -3633,7 +3634,7 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
                       {gamesCount}
                     </div>
                   </div>
-                )}
+                </>)}
               </button>
               {ti===0&&theme==='wimbledon'&&!isB&&(
                 <div style={{flex:'0 0 auto',display:'flex',alignItems:'center',
@@ -3650,6 +3651,13 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
                     onSetMinutes={(m)=>setTimerMin(m)}
                     svgStyle={{height:'72vh',maxHeight:'72vh',width:'auto',maxWidth:'40vw'}}/>
                 </div>
+              )}
+              {/* Vertikale Trennlinie zwischen Team A und Team B —
+                  als Flex-Kind exakt an der Spaltengrenze (außer im
+                  Wimbledon-Americano-Dial-Layout). */}
+              {ti===0&&!(theme==='wimbledon'&&!isB)&&(
+                <div aria-hidden="true" style={{flexShrink:0,alignSelf:'stretch',
+                  width:2,marginTop:'3vh',marginBottom:'3vh',background:T.border,borderRadius:1}}/>
               )}
               </Fragment>
             );
@@ -3788,8 +3796,9 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
           </div>
         </div>
         <div style={{display:'flex',alignItems:'center',gap:10}}>
-          <span style={{color:T.t2,fontSize:Math.round(18*tm),fontWeight:800,letterSpacing:2}}>•••</span>
-          <CourtIcon size={Math.round(32*tm)}/>
+          {isB
+            ?<BestOfThreeIcon size={Math.round(30*tm)}/>
+            :<RacketMini size={Math.round(28*tm)}/>}
         </div>
       </div>
 
@@ -7676,7 +7685,7 @@ function Live({hasMatch,hasTourney,tourneyData,matchCfg,nav,activeTab,setActiveT
                 onPointerDown={e=>e.currentTarget.style.background=T.card2}
                 onPointerUp={e=>e.currentTarget.style.background=T.card}
                 onPointerLeave={e=>e.currentTarget.style.background=T.card}>
-                {item.type==='match'?<CourtIcon size={42}/>:<TrophyIcon size={42}/>}
+                {item.type==='match'?<SingleMatchIcon size={42}/>:<TrophyIcon size={42}/>}
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{color:T.o,fontSize:16,fontWeight:700,marginBottom:3,
                     overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.title}</div>
@@ -8853,6 +8862,105 @@ function SettingsKonto({onBack,onHome,onLogout}){
    Phase 1: leere Posteingänge mit Empty-States. Inhalte folgen,
    sobald Real-Time-Notifications und Chats wired sind.
 ═══════════════════════════════════════════════════════════════ */
+/* RITMO Post — kuratierte Events (Tab "Events"). Bewusst statische,
+   vom RITMO-Team kuratierte Liste (kein User-Content). Jede Karte
+   verlinkt auf die offizielle Event-Seite mit Termin/Location/Tickets. */
+const POST_EVENTS=[
+  {
+    id:'ritmo-x-padel-haus-summer-sunset-2026',
+    day:'18', mon:'Jul',
+    kicker:'Turnier · mit Padel Haus',
+    title:'RITMO × Padel Haus',
+    subtitle:'Summer Sunset · DNA Cup',
+    when:'Sa., 18. Juli 2026 · ab 17:30',
+    venue:'Padel Haus · Großmehring (bei Ingolstadt)',
+    desc:'Founders Edition des RITMO DNA Cup: 22 Spieler:innen, drei Courts, sechs Stunden vom Sunset bis Mitternacht — House Music, Drinks & Live-Matches.',
+    tickets:[
+      {label:'Spieler',   price:'39 €', note:'22 Spots'},
+      {label:'Zuschauer', price:'15 €', note:'Unlimited'},
+    ],
+    cta:'Ticket sichern · bald verfügbar',
+    url:'https://ritmopadel.shop/events/ritmo-x-padel-haus-summer-sunset-2026',
+  },
+];
+
+/* Event-Karte — ganze Karte ist ein Link auf die Event-Seite (neuer Tab).
+   Bauhaus-Signaturstreifen oben, Event-Badge + Zeitraum, Titel/Untertitel. */
+function PostEventCard({ev,i=0}){
+  return(
+    <a href={ev.url} target="_blank" rel="noopener noreferrer" data-lift
+      className="fu" style={{display:'block',textDecoration:'none',color:'inherit',
+        background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
+        overflow:'hidden',animationDelay:`${i*0.05}s`}}>
+      <div style={{display:'flex',height:6}} aria-hidden="true">
+        {['#FF7A1A','#FFD60A','#0A84FF','#E84545','#FFFFFF'].map((c,j)=>(
+          <div key={j} style={{flex:1,background:c}}/>
+        ))}
+      </div>
+      <div style={{padding:'15px 16px 16px'}}>
+        {/* Kopf: Datum-Badge + Titelblock */}
+        <div style={{display:'flex',gap:13,alignItems:'flex-start'}}>
+          {ev.day&&(
+            <div style={{flexShrink:0,width:50,borderRadius:12,overflow:'hidden',
+              border:`1px solid ${T.o}`,textAlign:'center'}}>
+              <div style={{background:T.o,color:'#000',fontSize:18,fontWeight:900,
+                lineHeight:1,padding:'6px 0 5px'}}>{ev.day}</div>
+              <div style={{background:T.oSoft,color:T.o,fontSize:10,fontWeight:800,
+                letterSpacing:1,textTransform:'uppercase',padding:'3px 0 4px'}}>{ev.mon}</div>
+            </div>
+          )}
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{color:T.o,fontSize:10,fontWeight:900,letterSpacing:1.4,
+              textTransform:'uppercase',marginBottom:3}}>{ev.kicker||'Event'}</div>
+            <div style={{color:T.t1,fontSize:18,fontWeight:900,letterSpacing:-.3,lineHeight:1.15}}>
+              {ev.title}
+            </div>
+            {ev.subtitle&&(
+              <div style={{color:T.t2,fontSize:13,fontWeight:700,marginTop:2}}>{ev.subtitle}</div>
+            )}
+          </div>
+        </div>
+
+        {/* Meta: Datum + Venue */}
+        <div style={{marginTop:12,display:'flex',flexDirection:'column',gap:5}}>
+          {ev.when&&<div style={{color:T.t1,fontSize:12.5,fontWeight:600}}>{ev.when}</div>}
+          {ev.venue&&<div style={{color:T.t3,fontSize:12,fontWeight:500}}>{ev.venue}</div>}
+        </div>
+
+        {/* Beschreibung */}
+        {ev.desc&&(
+          <div style={{color:T.t2,fontSize:12.5,lineHeight:1.55,marginTop:11}}>{ev.desc}</div>
+        )}
+
+        {/* Ticket-Pills */}
+        {ev.tickets&&ev.tickets.length>0&&(
+          <div style={{display:'flex',gap:8,marginTop:13}}>
+            {ev.tickets.map(t=>(
+              <div key={t.label} style={{flex:'1 1 0',minWidth:0,
+                background:T.card2,border:`1px solid ${T.border}`,borderRadius:10,
+                padding:'9px 11px'}}>
+                <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:.6,
+                  textTransform:'uppercase'}}>{t.label}</div>
+                <div style={{display:'flex',alignItems:'baseline',gap:6,marginTop:2}}>
+                  <span style={{color:T.t1,fontSize:15,fontWeight:900}}>{t.price}</span>
+                  {t.note&&<span style={{color:T.t3,fontSize:10,fontWeight:600}}>{t.note}</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* CTA */}
+        <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:6,
+          marginTop:14,background:T.o,color:'#000',borderRadius:10,padding:'11px 14px',
+          fontSize:13,fontWeight:800,letterSpacing:.2}}>
+          {ev.cta||'Zur Event-Seite'} <span style={{fontSize:14,lineHeight:1}}>→</span>
+        </div>
+      </div>
+    </a>
+  );
+}
+
 function RitmoPost({onHome,profile,onOpenChat,unread=0}){
   const[tab,setTab]=useState('notify');
   const[chats,setChats]=useState([]);
@@ -9021,10 +9129,16 @@ function RitmoPost({onHome,profile,onOpenChat,unread=0}){
         )}
 
         {tab==='events'&&(
-          <RitmoPostEmpty
-            icon={<TrophyIcon size={28}/>}
-            title="Noch keine Events"
-            desc="RITMO Turniere, Open Days und Meetups in deiner Nähe — sobald die ersten Daten verfügbar sind."/>
+          POST_EVENTS.length===0?(
+            <RitmoPostEmpty
+              icon={<TrophyIcon size={28}/>}
+              title="Noch keine Events"
+              desc="RITMO Turniere, Open Days und Meetups in deiner Nähe — sobald die ersten Daten verfügbar sind."/>
+          ):(
+            <div style={{display:'flex',flexDirection:'column',gap:12}}>
+              {POST_EVENTS.map((ev,i)=>(<PostEventCard key={ev.id} ev={ev} i={i}/>))}
+            </div>
+          )
         )}
       </div>
 

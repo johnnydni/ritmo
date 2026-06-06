@@ -19,8 +19,14 @@ import { loadProfile as dbLoadProfile, saveProfile as dbSaveProfile, logMatch as
 import { T, CSS, rgba } from "./theme.js";
 import { lsGet, lsSet, getAssetBase, getInitials, readImageAsDataUrl, resizeImage, safeImageSrc } from "./utils.js";
 import { getLevelLabel, getLevelTier, getLevelColor, estimateLevel } from "./levels.js";
-import { B0, A0, PL, ptD, wG, bo3R, amR } from "./game.js";
+import { B0, A0, PL, ptD, wG, bo3R, amR, makeBo3, makeAm, DEFCFG } from "./game.js";
 import { PCOLS, shuffle, genAmericanoRound, genMexicanoRound, calcLeaderboard } from "./tournament.js";
+import {
+  DNA_CUP_EVENT, DNA_CUP_PIN, DNA_SCHEDULE, FORMATS, STAGE_FORMAT, TIER_BONUS, TIER_META,
+  lobbyStats, classifyTier, genDnaGroupRound, dnaLeaderboard, dnaQualify,
+  buildBrackets, advanceDnaCup, matchWinners, resultFromSets, resultFromManualSets,
+  resultLabel, validateCourts,
+} from "./dnaCup.js";
 import { RINGS, playRing, unlockAudio } from "./audio.js";
 import { auth } from "./auth.js";
 import {
@@ -10230,7 +10236,7 @@ function HubBigCard({icon,title,desc,onClick,accent,delay='0s'}){
   );
 }
 
-function TournamentHub({onHome,onStart,onJoin}){
+function TournamentHub({onHome,onStart,onJoin,onDnaCup,hasDnaCup}){
   return(
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden',
@@ -10259,9 +10265,1118 @@ function TournamentHub({onHome,onStart,onJoin}){
           title="Turnier beitreten"
           desc="PIN eingeben oder QR scannen, Ergebnisse übertragen."
           onClick={onJoin} delay=".06s"/>
+        <HubBigCard
+          icon={<DNAIcon size={28}/>}
+          title={hasDnaCup?'RITMO DNA Cup · fortsetzen':'RITMO DNA Cup'}
+          desc="Founders Edition · Gruppenphase, K.-o.-Bracket & Ehren-Cup mit Live-Scoring."
+          onClick={onDnaCup} accent={T.o} delay=".10s"/>
       </div>
 
       <MatchBar onHome={onHome}/>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   RITMO DNA CUP — Founders Edition tournament module.
+   Pure logic lives in src/dnaCup.js; these are the director-facing
+   screens. The whole cup is one self-contained <DnaCup/> with an
+   internal view router (dashboard · roster · round · bracket ·
+   leaderboard · schedule · sieger · match), persisted to
+   localStorage('ritmo_dnacup') by App().
+═════════════════════════════════════════════════════════════════ */
+
+const DNA_RATINGS=[1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6,6.5,7];
+
+function makeDnaCup(){
+  return {
+    id:'dnacup-'+Date.now(), createdAt:Date.now(), status:'setup',
+    numCourts:3, roundDurationMin:10, openLimit:0,
+    players:[], nextPid:0, fieldIds:[],
+    group:{rounds:[],current:0},
+    qualified:null, ko:null, ehren:null, champion:null, ehrenChampion:null,
+  };
+}
+const dnaTeamName=(cup,team)=>(team||[]).map(id=>cup.players.find(p=>p.id===id)?.name||'—').join('  /  ');
+const dnaActive=cup=>cup.players.filter(p=>p.checkedIn&&!p.withdrew);
+const dnaField=cup=>cup.players.filter(p=>(cup.fieldIds||[]).includes(p.id));
+function dnaSetMatchByPath(cup,path,result){
+  const[br,stage,idx]=path; const branch={...cup[br]};
+  if(stage==='final'){
+    branch.final={...branch.final,match:{...branch.final.match,result,status:'completed'}};
+  }else{
+    branch[stage]={...branch[stage],
+      matches:branch[stage].matches.map((m,i)=>i===idx?{...m,result,status:'completed'}:m)};
+  }
+  return {...cup,[br]:branch};
+}
+function dnaGetMatchByPath(cup,path){
+  const[br,stage,idx]=path; const b=cup[br]; if(!b) return null;
+  return stage==='final'?b.final.match:b[stage].matches[idx];
+}
+
+/* ── Small presentational atoms ──────────────────────────────── */
+function DnaTierBadge({tier,size=22}){
+  if(!tier) return null;
+  const meta=TIER_META[tier]||TIER_META.X;
+  return(
+    <div title={`Tier ${tier} · ${meta.name} · +${TIER_BONUS[tier]} Bonus`}
+      style={{height:size,padding:'0 7px',borderRadius:7,background:`${meta.color}22`,
+        border:`1px solid ${meta.color}`,color:meta.color,fontSize:Math.round(size*0.5),
+        fontWeight:900,display:'inline-flex',alignItems:'center',gap:4,letterSpacing:.3}}>
+      <span>{tier}</span>
+      <span style={{fontSize:Math.round(size*0.36),opacity:.85,fontWeight:800}}>+{TIER_BONUS[tier]}</span>
+    </div>
+  );
+}
+function DnaChip({children,color=T.t3,bg=T.card2,bd=T.border}){
+  return <span style={{padding:'3px 9px',borderRadius:8,background:bg,border:`1px solid ${bd}`,
+    color,fontSize:11,fontWeight:700,letterSpacing:.2,whiteSpace:'nowrap'}}>{children}</span>;
+}
+function DnaCard({children,style}){
+  return <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:21,
+    padding:18,...style}}>{children}</div>;
+}
+
+/* ── Format-aware live scoring screen + full-window court display ─ */
+function DnaCupMatch({fmt,nameA,nameB,subA,subB,stageLabel,tier,courtNo,durationMin=10,
+  ringId='soft',theme='dark',onFinish,onCancel,onHome}){
+  const isPoints=fmt.type==='points';
+  const[bo3,dBo3]=useReducer(bo3R,undefined,()=>makeBo3(fmt));
+  const[am,dAm]=useReducer(amR,undefined,()=>makeAm(fmt.limit||0));
+  const[big,setBig]=useState(false);
+  const[confReset,setConfReset]=useState(false);
+  const[flA,setFlA]=useState(false),[flB,setFlB]=useState(false);
+
+  // Round timer (open-points only)
+  const[secsLeft,setSecsLeft]=useState((durationMin||10)*60);
+  const[running,setRunning]=useState(false);
+  const[tFin,setTFin]=useState(false);
+  useEffect(()=>{
+    if(!isPoints||!running||tFin) return;
+    const id=setInterval(()=>setSecsLeft(s=>{
+      if(s<=1){setRunning(false);setTFin(true);try{playRing(ringId);}catch{}dAm({type:'TIME_UP'});return 0;}
+      return s-1;
+    }),1000);
+    return()=>clearInterval(id);
+  },[isPoints,running,tFin,ringId]);
+  const fmtClock=s=>`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+
+  const pt=t=>{
+    if(isPoints) dAm({type:'PT',t,limit:fmt.limit||0}); else dBo3({type:'PT',t});
+    if(t==='A'){setFlA(true);setTimeout(()=>setFlA(false),380);}
+    else{setFlB(true);setTimeout(()=>setFlB(false),380);}
+  };
+  const undo=()=>isPoints?dAm({type:'UNDO'}):dBo3({type:'UNDO'});
+  const doReset=()=>{
+    if(isPoints) dAm({type:'RESET',limit:fmt.limit||0}); else dBo3({type:'RESET',cfg:fmt});
+    setSecsLeft((durationMin||10)*60);setRunning(false);setTFin(false);
+  };
+  const win=isPoints?am.winner:bo3.winner;
+  const canConfirm=isPoints?(am.pA+am.pB>0||tFin):!!win;
+  const confirm=()=>{
+    if(isPoints) onFinish({kind:'points',
+      winner:am.pA===am.pB?null:(am.pA>am.pB?'A':'B'),scoreA:am.pA,scoreB:am.pB});
+    else onFinish(resultFromSets(bo3));
+  };
+
+  // Set-format display values
+  const inTb=!isPoints&&(bo3.tb||bo3.matchTb);
+  const[dA,dB]=isPoints?[am.pA,am.pB]
+    :inTb?[String(bo3.tA),String(bo3.tB)]:ptD(bo3.pA,bo3.pB,false);
+  // serving (simple alternation per completed game; sets-format only)
+  const completedGames=isPoints?0:bo3.gA+bo3.gB+(bo3.sets||[]).reduce((a,s)=>a+s.gA+s.gB,0);
+  const serving=completedGames%2===0?'A':'B';
+
+  // ═══ FULL-WINDOW (court display) ═══
+  if(big){
+    const totalSecs=(durationMin||10)*60, prog=totalSecs?secsLeft/totalSecs:0;
+    return(
+      <div style={{height:'100dvh',width:'100vw',background:T.bg,display:'flex',
+        flexDirection:'column',position:'relative',animation:'fadeIn .2s ease'}}>
+        {isPoints&&(
+          <div style={{height:5,background:T.card2,overflow:'hidden'}}>
+            <div style={{height:'100%',background:tFin?T.r:T.o,width:`${prog*100}%`,transition:'width 1s linear'}}/>
+          </div>
+        )}
+        <div style={{display:'flex',alignItems:'center',gap:12,padding:'16px 24px 0'}}>
+          <div style={{flex:1,minWidth:0,color:T.o,fontSize:20,fontWeight:800,
+            overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{nameA}</div>
+          <div style={{flexShrink:0,display:'flex',flexDirection:'column',alignItems:'center',gap:2}}>
+            <DnaChip color={T.t2}>{stageLabel}</DnaChip>
+            {isPoints&&<div style={{fontFamily:'monospace',fontSize:18,fontWeight:800,
+              color:tFin?T.r:T.t1}}>{fmtClock(secsLeft)}</div>}
+          </div>
+          <div style={{flex:1,minWidth:0,textAlign:'right',color:T.o,fontSize:20,fontWeight:800,
+            overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{nameB}</div>
+        </div>
+        <div style={{flex:1,display:'flex',padding:'0 24px',minHeight:0,overflow:'hidden'}}>
+          {['A','B'].map((team,ti)=>{
+            const isA=team==='A'; const fl=isA?flA:flB;
+            const big2=isA?dA:dB; const gc=isA?bo3.gA:bo3.gB;
+            const special=!isPoints&&['Vorteil','Einstand','—'].includes(big2);
+            return(
+              <Fragment key={team}>
+                <button onClick={()=>!win&&pt(team)}
+                  style={{flex:1,minWidth:0,overflow:'hidden',display:'flex',flexDirection:'column',
+                    justifyContent:'center',background:fl?'var(--oFlash)':'transparent',border:'none',
+                    cursor:win?'default':'pointer',padding:'0 18px',transition:'background .3s'}}>
+                  <div style={{fontSize:special?'clamp(2.4rem,11vh,5rem)':'clamp(4rem,min(40vh,30vw),20rem)',
+                    fontWeight:900,color:T.t1,lineHeight:.95,letterSpacing:special?-1:-10,whiteSpace:'nowrap'}}>
+                    {big2}
+                  </div>
+                  {!isPoints&&(<>
+                    <div aria-hidden="true" style={{alignSelf:'stretch',height:2,background:T.border,
+                      borderRadius:1,marginTop:'clamp(1.2rem,3.5vh,2.2rem)'}}/>
+                    <div style={{display:'flex',alignItems:'center',gap:'clamp(1.2rem,4vw,2.4rem)',
+                      marginTop:'clamp(.8rem,2.4vh,1.4rem)'}}>
+                      <div style={{display:'flex',gap:'clamp(.5rem,1.5vw,1rem)'}}>
+                        {(fmt.setsToWin>=2?[0,1,2]:[0]).map(i=>{
+                          const rec=bo3.sets&&bo3.sets[i]; const played=!!rec; const won=played&&rec.w===team;
+                          const sz='clamp(1.2rem,3.4vh,2.2rem)';
+                          return <div key={i} style={{width:sz,height:sz,borderRadius:'50%',
+                            background:played?(won?T.o:T.card2):'transparent',
+                            border:`2.5px solid ${played?(won?T.o:T.border):T.o}`,boxSizing:'border-box',
+                            display:'flex',alignItems:'center',justifyContent:'center',
+                            color:played?(won?'#000':T.t2):'transparent',
+                            fontSize:'clamp(.7rem,1.6vh,1.2rem)',fontWeight:900}}>{played?(team==='A'?rec.gA:rec.gB):''}</div>;
+                        })}
+                      </div>
+                      <div style={{color:T.o,fontSize:'clamp(3rem,12vh,7rem)',fontWeight:900,
+                        letterSpacing:-3,lineHeight:1}}>{gc}</div>
+                    </div>
+                  </>)}
+                </button>
+                {ti===0&&<div aria-hidden="true" style={{flexShrink:0,alignSelf:'stretch',width:2,
+                  marginTop:'3vh',marginBottom:'3vh',background:T.border,borderRadius:1}}/>}
+              </Fragment>
+            );
+          })}
+        </div>
+        {inTb&&<div style={{textAlign:'center',color:T.o,fontSize:14,fontWeight:800,paddingBottom:6}}>
+          {bo3.matchTb?'Match-Tiebreak':'Tiebreak'}</div>}
+        {win&&<div style={{position:'absolute',top:'46%',left:0,right:0,textAlign:'center',
+          color:T.o,fontSize:'clamp(1.4rem,5vh,3rem)',fontWeight:900,pointerEvents:'none',
+          textShadow:'0 2px 20px rgba(0,0,0,.6)'}}>{(win==='A'?nameA:nameB)} gewinnt 🏆</div>}
+        <div style={{position:'absolute',bottom:18,left:18}}>
+          <button onClick={onHome} style={fwBtn}><HomeIcon size={18}/></button>
+        </div>
+        <div style={{position:'absolute',bottom:18,right:18,display:'flex',gap:10}}>
+          {isPoints&&<button onClick={()=>setRunning(r=>!r)} style={{...fwBtn,width:'auto',padding:'0 16px',
+            color:running?T.o:T.t1,fontWeight:800,fontSize:13}}>{running?'Pause':tFin?'Zeit ↺':'Start'}</button>}
+          <button onClick={()=>setConfReset(true)} style={{...fwBtn,background:'rgba(232,69,69,0.12)',
+            border:'1px solid rgba(232,69,69,0.5)',color:T.r,fontSize:20}}>↺</button>
+          {canConfirm&&<button onClick={confirm} style={{...fwBtn,width:'auto',padding:'0 18px',
+            background:T.o,border:`1px solid ${T.o}`,color:'#000',fontWeight:900,fontSize:14}}>Ergebnis ✓</button>}
+          <button onClick={()=>setBig(false)} style={fwBtn}><ExitFullscreenIcon size={18}/></button>
+        </div>
+        {confReset&&<ResetModal onCancel={()=>setConfReset(false)} onConfirm={()=>{doReset();setConfReset(false);}}/>}
+      </div>
+    );
+  }
+
+  // ═══ PORTRAIT ═══
+  return(
+    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 18px)',position:'relative',overflow:'hidden'}}>
+      <div style={{padding:'0 18px 12px',display:'flex',alignItems:'center',gap:12}}>
+        <button onClick={onCancel} style={{width:38,height:38,borderRadius:'50%',background:T.card,
+          border:`1px solid ${T.border}`,color:T.t1,fontSize:18,cursor:'pointer',flexShrink:0}}>‹</button>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{color:T.t1,fontSize:18,fontWeight:800,letterSpacing:-.2,
+            overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{stageLabel}</div>
+          <div style={{display:'flex',gap:8,marginTop:4,flexWrap:'wrap',alignItems:'center'}}>
+            <DnaChip color={T.o} bg={T.oSoft} bd={T.o}>{fmt.label}</DnaChip>
+            {courtNo&&<DnaChip>Court {courtNo}</DnaChip>}
+            {tier&&<DnaTierBadge tier={tier} size={20}/>}
+          </div>
+        </div>
+        <button onClick={()=>setBig(true)} title="Vollbild · Court-Anzeige"
+          style={{width:38,height:38,borderRadius:'50%',background:T.card,border:`1px solid ${T.border}`,
+            color:T.o,cursor:'pointer',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <FullscreenIcon size={17}/>
+        </button>
+      </div>
+
+      {isPoints&&(
+        <div style={{padding:'0 18px 10px',display:'flex',alignItems:'center',gap:10}}>
+          <div style={{flex:1,height:6,background:T.card2,borderRadius:99,overflow:'hidden'}}>
+            <div style={{height:'100%',background:tFin?T.r:T.o,borderRadius:99,
+              width:`${(((durationMin||10)*60-secsLeft)/((durationMin||10)*60))*100}%`,transition:'width 1s linear'}}/>
+          </div>
+          <div style={{fontFamily:'monospace',fontSize:15,fontWeight:800,color:tFin?T.r:T.t1,minWidth:48,textAlign:'right'}}>
+            {fmtClock(secsLeft)}
+          </div>
+          <button onClick={()=>setRunning(r=>!r)} style={{padding:'6px 14px',borderRadius:99,
+            background:running?T.oSoft:T.card,border:`1px solid ${running?T.o:T.border}`,
+            color:running?T.o:T.t1,fontSize:12,fontWeight:800,cursor:'pointer'}}>
+            {running?'Pause':tFin?'↺':'Start'}
+          </button>
+        </div>
+      )}
+
+      <div style={{flex:1,padding:'0 18px',display:'flex',flexDirection:'column',gap:12,overflowY:'auto'}}>
+        {['A','B'].map(team=>{
+          const isA=team==='A'; const fl=isA?flA:flB; const isW=win===team;
+          const nm=isA?nameA:nameB; const sub=isA?subA:subB;
+          const big2=isA?dA:dB; const gc=isA?bo3.gA:bo3.gB;
+          const special=!isPoints&&['Vorteil','Einstand','—'].includes(big2);
+          return(
+            <button key={team} onClick={()=>!win&&pt(team)} className={fl?'flash':''}
+              style={{background:T.card,border:`1px solid ${isW?T.o:T.border}`,borderRadius:18,
+                padding:'16px 18px',display:'flex',alignItems:'center',gap:14,cursor:win?'default':'pointer',
+                color:T.t1,textAlign:'left',transition:'border-color .25s',minHeight:116}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:'flex',alignItems:'center',gap:9,minWidth:0}}>
+                  <div style={{width:11,height:11,borderRadius:'50%',background:isA?T.o:T.blue,flexShrink:0,
+                    boxShadow:`0 0 8px ${isA?T.oGlow:T.blueGlow}`}}/>
+                  <div style={{color:T.t1,fontSize:19,fontWeight:800,letterSpacing:-.3,
+                    overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{nm}</div>
+                </div>
+                {sub&&<div style={{color:T.t3,fontSize:12,fontWeight:600,marginTop:3,marginLeft:20,
+                  overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{sub}</div>}
+                {!isPoints&&(
+                  <div style={{display:'flex',alignItems:'center',gap:10,marginTop:12,marginLeft:20}}>
+                    <div style={{display:'flex',gap:6}}>
+                      {(fmt.setsToWin>=2?[0,1,2]:[0]).map(i=>{
+                        const rec=bo3.sets&&bo3.sets[i]; const played=!!rec; const won=played&&rec.w===team;
+                        return <div key={i} style={{width:20,height:20,borderRadius:'50%',
+                          background:played?(won?T.o:T.card2):'transparent',
+                          border:`1.5px solid ${played?(won?T.o:T.border):T.o}`,boxSizing:'border-box',
+                          display:'flex',alignItems:'center',justifyContent:'center',
+                          color:played?(won?'#000':T.t2):'transparent',fontSize:11,fontWeight:900}}>
+                          {played?(team==='A'?rec.gA:rec.gB):''}</div>;
+                      })}
+                    </div>
+                    <div style={{color:T.o,fontSize:30,fontWeight:900,letterSpacing:-1,lineHeight:1}}>{gc}</div>
+                  </div>
+                )}
+                {isPoints&&<div style={{color:T.o,fontSize:13,fontWeight:700,marginTop:8,marginLeft:20}}>
+                  {fmt.limit>0?`Ziel ${fmt.limit}`:'Punkte sammeln'}</div>}
+              </div>
+              <div style={{flexShrink:0,minWidth:74,textAlign:'center'}}>
+                <div style={{color:isW?T.o:T.t1,fontSize:special?28:48,fontWeight:900,letterSpacing:-2,lineHeight:1}}>
+                  {big2}
+                </div>
+                {inTb&&<div style={{color:T.o,fontSize:11,fontWeight:800,marginTop:4}}>
+                  {bo3.matchTb?'M-TB':'TB'}</div>}
+                {!isPoints&&!inTb&&isW&&<div style={{color:T.o,fontSize:11,fontWeight:800,marginTop:4}}>SIEG</div>}
+              </div>
+            </button>
+          );
+        })}
+
+        <div style={{display:'flex',gap:10,marginTop:2}}>
+          <button onClick={undo} style={dnaSecBtn}>↩ Rückgängig</button>
+          <button onClick={()=>setConfReset(true)} style={{...dnaSecBtn,color:T.r,
+            borderColor:'rgba(232,69,69,0.4)'}}>↺ Reset</button>
+        </div>
+      </div>
+
+      <div style={{padding:'14px 18px calc(env(safe-area-inset-bottom,0px) + 18px)',
+        display:'flex',gap:10,borderTop:`1px solid ${T.sep}`}}>
+        <button onClick={onCancel} style={{...dnaSecBtn,flex:'0 0 auto',padding:'0 18px'}}>Abbrechen</button>
+        <button onClick={confirm} disabled={!canConfirm}
+          style={{flex:1,height:50,borderRadius:25,border:'none',cursor:canConfirm?'pointer':'default',
+            background:canConfirm?T.o:T.card2,color:canConfirm?'#000':T.t3,fontSize:15,fontWeight:900,
+            transition:'background .2s'}}>
+          {win?`${win==='A'?nameA:nameB} gewinnt · übernehmen`:'Ergebnis übernehmen'}
+        </button>
+      </div>
+      {confReset&&<ResetModal onCancel={()=>setConfReset(false)} onConfirm={()=>{doReset();setConfReset(false);}}/>}
+    </div>
+  );
+}
+const fwBtn={width:42,height:42,borderRadius:'50%',background:T.card,border:`1px solid ${T.border}`,
+  cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',
+  boxShadow:'0 4px 20px rgba(0,0,0,.6)',color:T.t1};
+const dnaSecBtn={flex:1,height:42,borderRadius:14,background:T.card,border:`1px solid ${T.border}`,
+  color:T.t1,fontSize:13,fontWeight:700,cursor:'pointer'};
+
+/* ── DnaCup sub-views ────────────────────────────────────────── */
+const DNA_PHASE={setup:'Setup · Check-in',group:'Gruppenphase',ko:'K.-o.-Phase',completed:'Abgeschlossen'};
+
+function DnaTopBar({title,sub,onBack,onHome,right}){
+  return(
+    <div style={{padding:'0 18px 14px',display:'flex',alignItems:'center',gap:12}}>
+      {onBack&&<button onClick={onBack} style={{width:38,height:38,borderRadius:'50%',background:T.card,
+        border:`1px solid ${T.border}`,color:T.t1,fontSize:18,cursor:'pointer',flexShrink:0}}>‹</button>}
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{color:T.t1,fontSize:20,fontWeight:800,letterSpacing:-.3,
+          overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{title}</div>
+        {sub&&<div style={{color:T.t3,fontSize:12,fontWeight:500,marginTop:2}}>{sub}</div>}
+      </div>
+      {right}
+      {onHome&&<button onClick={onHome} style={{width:38,height:38,borderRadius:'50%',background:T.card,
+        border:`1px solid ${T.border}`,color:T.t2,cursor:'pointer',flexShrink:0,
+        display:'flex',alignItems:'center',justifyContent:'center'}}><HomeIcon size={17}/></button>}
+    </div>
+  );
+}
+const dnaScreen={height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+  paddingTop:'calc(env(safe-area-inset-top,0px) + 56px)',position:'relative',overflow:'hidden'};
+const dnaScroll={flex:1,padding:'0 18px calc(env(safe-area-inset-bottom,0px) + 24px)',
+  overflowY:'auto',WebkitOverflowScrolling:'touch',display:'flex',flexDirection:'column',gap:14};
+
+/* Roster + check-in + RITMO DNA rating + style */
+function DnaCupRoster({cup,setCup,onBack,onHome,onStart,onStyle}){
+  const active=dnaActive(cup);
+  const canStart=active.length>=DNA_CUP_EVENT.minPlayers;
+  const addP=()=>setCup(c=>{const id=c.nextPid;return {...c,nextPid:id+1,
+    players:[...c.players,{id,name:`Spieler ${c.players.length+1}`,color:PCOLS[id%PCOLS.length],
+      rating:3.5,style:null,checkedIn:true,withdrew:false}]};});
+  const fillDemo=()=>setCup(c=>{
+    const have=c.players.length; const need=Math.max(0,DNA_CUP_EVENT.capacity-have);
+    let id=c.nextPid; const add=[];
+    for(let i=0;i<need;i++){ add.push({id,name:`Spieler ${have+i+1}`,color:PCOLS[id%PCOLS.length],
+      rating:2+((have+i)%11)*0.5,style:null,checkedIn:true,withdrew:false}); id++; }
+    return {...c,nextPid:id,players:[...c.players,...add]};
+  });
+  const rm=id=>setCup(c=>({...c,players:c.players.filter(p=>p.id!==id)}));
+  const ren=(id,name)=>setCup(c=>({...c,players:c.players.map(p=>p.id===id?{...p,name}:p)}));
+  const rate=(id,d)=>setCup(c=>({...c,players:c.players.map(p=>{
+    if(p.id!==id) return p; const i=DNA_RATINGS.indexOf(p.rating);
+    const ni=Math.max(0,Math.min(DNA_RATINGS.length-1,(i<0?6:i)+d));
+    return {...p,rating:DNA_RATINGS[ni]};})}));
+  const toggleIn=id=>setCup(c=>({...c,players:c.players.map(p=>p.id===id?{...p,checkedIn:!p.checkedIn}:p)}));
+  return(
+    <div style={dnaScreen}>
+      <DnaTopBar title="Aufstellung & Check-in" sub={`${active.length} eingecheckt · ${cup.players.length} gemeldet`}
+        onBack={onBack} onHome={onHome}/>
+      <div style={dnaScroll}>
+        <DnaCard style={{borderColor:T.o,background:T.oSoft}}>
+          <div style={{color:T.o,fontSize:13,fontWeight:800,letterSpacing:.4}}>{DNA_CUP_EVENT.subtitle}</div>
+          <div style={{color:T.t1,fontSize:16,fontWeight:800,marginTop:3}}>{DNA_CUP_EVENT.name}</div>
+          <div style={{color:T.t2,fontSize:12,fontWeight:500,marginTop:6,lineHeight:1.6}}>
+            {DNA_CUP_EVENT.venue} · {DNA_CUP_EVENT.courts} Courts · max {DNA_CUP_EVENT.capacity} Spieler ·
+            Doors {DNA_CUP_EVENT.doors}
+          </div>
+        </DnaCard>
+
+        <div style={{display:'flex',gap:10}}>
+          <button onClick={addP} style={{flex:1,height:46,borderRadius:14,background:T.card,
+            border:`1px solid ${T.border}`,color:T.t1,fontSize:14,fontWeight:800,cursor:'pointer'}}>
+            + Spieler
+          </button>
+          {cup.players.length<DNA_CUP_EVENT.capacity&&<button onClick={fillDemo}
+            style={{flex:'0 0 auto',height:46,padding:'0 16px',borderRadius:14,background:T.card2,
+              border:`1px solid ${T.border}`,color:T.t2,fontSize:13,fontWeight:700,cursor:'pointer'}}>
+            Feld füllen (22)
+          </button>}
+        </div>
+
+        {cup.players.map(p=>{
+          const lvl=Math.max(1,Math.min(7,Math.round(p.rating)));
+          const col=getLevelColor(lvl);
+          return(
+          <div key={p.id} style={{background:T.card,border:`1px solid ${p.checkedIn?T.border:T.sep}`,
+            borderRadius:16,padding:'12px 14px',opacity:p.checkedIn?1:0.55}}>
+            <div style={{display:'flex',alignItems:'center',gap:10}}>
+              <div style={{width:10,height:10,borderRadius:'50%',background:p.color,flexShrink:0}}/>
+              <input value={p.name} onChange={e=>ren(p.id,e.target.value)} placeholder="Name"
+                style={{flex:1,minWidth:0,background:'transparent',border:'none',outline:'none',
+                  color:T.t1,fontSize:15,fontWeight:700}}/>
+              <button onClick={()=>onStyle(p.id)} title="Spielstil"
+                style={{flexShrink:0,padding:'5px 9px',borderRadius:9,background:T.card2,
+                  border:`1px solid ${T.border}`,color:p.style?T.o:T.t3,fontSize:11,fontWeight:700,cursor:'pointer'}}>
+                {p.style?(PADEL_STYLES[p.style]?.name||'Stil'):'+ Stil'}
+              </button>
+              <button onClick={()=>rm(p.id)} style={{flexShrink:0,width:28,height:28,borderRadius:'50%',
+                background:'rgba(232,69,69,0.10)',border:`1px solid rgba(232,69,69,0.4)`,color:'#FF6B6B',
+                fontSize:15,cursor:'pointer',lineHeight:1}}>×</button>
+            </div>
+            <div style={{display:'flex',alignItems:'center',gap:12,marginTop:10,marginLeft:20}}>
+              <div style={{display:'flex',alignItems:'center',gap:8}}>
+                <span style={{color:T.t3,fontSize:11,fontWeight:600}}>DNA</span>
+                <button onClick={()=>rate(p.id,-1)} style={dnaStep}>−</button>
+                <span style={{color:col,fontWeight:900,fontSize:14,minWidth:30,textAlign:'center'}}>{p.rating.toFixed(1)}</span>
+                <button onClick={()=>rate(p.id,1)} style={dnaStep}>+</button>
+              </div>
+              <div style={{flex:1}}/>
+              <button onClick={()=>toggleIn(p.id)}
+                style={{padding:'5px 12px',borderRadius:99,fontSize:11,fontWeight:800,cursor:'pointer',
+                  background:p.checkedIn?T.oSoft:T.card2,border:`1px solid ${p.checkedIn?T.o:T.border}`,
+                  color:p.checkedIn?T.o:T.t3}}>
+                {p.checkedIn?'✓ Eingecheckt':'Check-in'}
+              </button>
+            </div>
+          </div>);
+        })}
+        {cup.players.length===0&&<div style={{color:T.t3,fontSize:13,textAlign:'center',padding:'30px 0'}}>
+          Noch keine Spieler. Füge bis zu 22 hinzu.</div>}
+      </div>
+      <div style={{padding:'12px 18px calc(env(safe-area-inset-bottom,0px) + 14px)',borderTop:`1px solid ${T.sep}`}}>
+        <button onClick={canStart?onStart:undefined} disabled={!canStart}
+          style={{width:'100%',height:52,borderRadius:26,border:'none',cursor:canStart?'pointer':'default',
+            background:canStart?T.o:T.card2,color:canStart?'#000':T.t3,fontSize:15,fontWeight:900}}>
+          {canStart?'Gruppenphase starten →':`Mindestens ${DNA_CUP_EVENT.minPlayers} Spieler einchecken`}
+        </button>
+      </div>
+    </div>
+  );
+}
+const dnaStep={width:26,height:26,borderRadius:'50%',background:T.card2,border:`1px solid ${T.border}`,
+  color:T.t1,fontSize:14,fontWeight:800,cursor:'pointer',lineHeight:1};
+
+/* Group-phase round: courts + tier badges + score entry + sit-outs */
+function DnaCupGroupRound({cup,setCup,onBack,onHome,onPlay,onLeaderboard,onFinishGroup,onEditLineup}){
+  const ci=cup.group.current; const round=cup.group.rounds[ci];
+  const pById=id=>cup.players.find(p=>p.id===id);
+  const allDone=round&&round.courts.every(c=>c.done);
+  const score=(courtId,field,val)=>setCup(c=>{
+    const r=[...c.group.rounds];
+    r[ci]={...r[ci],courts:r[ci].courts.map(ct=>ct.id===courtId?{...ct,[field]:val}:ct)};
+    return {...c,group:{...c.group,rounds:r}};
+  });
+  const toggleDone=courtId=>setCup(c=>{
+    const r=[...c.group.rounds];
+    r[ci]={...r[ci],courts:r[ci].courts.map(ct=>ct.id===courtId?{...ct,done:!ct.done}:ct)};
+    return {...c,group:{...c.group,rounds:r}};
+  });
+  const regenerate=()=>setCup(c=>{
+    if(c.group.rounds[ci].courts.some(ct=>ct.done)) return c; // don't wipe scored courts
+    const r=[...c.group.rounds];
+    r[ci]=genDnaGroupRound(dnaField(c),c.group.rounds.filter((_,i)=>i!==ci),c.numCourts,ci);
+    return {...c,group:{...c.group,rounds:r}};
+  });
+  const nextRound=()=>setCup(c=>{
+    const r=genDnaGroupRound(dnaField(c),c.group.rounds,c.numCourts,c.group.rounds.length);
+    return {...c,group:{rounds:[...c.group.rounds,r],current:c.group.rounds.length}};
+  });
+  const numInput=(courtId,field,v)=>(
+    <input type="number" inputMode="numeric" value={v??''} placeholder="–"
+      onChange={e=>{const x=e.target.value;score(courtId,field,x===''?null:Math.max(0,parseInt(x,10)||0));}}
+      style={{width:54,height:40,borderRadius:10,background:T.card2,border:`1px solid ${T.border}`,
+        color:T.t1,fontSize:18,fontWeight:900,textAlign:'center',outline:'none'}}/>
+  );
+  return(
+    <div style={dnaScreen}>
+      <DnaTopBar title={`Runde ${ci+1}`} sub="Mexicano · Open Points" onBack={onBack} onHome={onHome}
+        right={<button onClick={onLeaderboard} style={{padding:'7px 12px',borderRadius:99,background:T.card,
+          border:`1px solid ${T.border}`,color:T.o,fontSize:12,fontWeight:800,cursor:'pointer',marginRight:6}}>
+          Tabelle</button>}/>
+      <div style={dnaScroll}>
+        <div style={{display:'flex',gap:10}}>
+          <button onClick={regenerate} style={{...dnaSecBtn,height:40}}>↻ Neu auslosen</button>
+        </div>
+        {round&&round.courts.map((c,i)=>(
+          <div key={c.id} style={{background:T.card,border:`1px solid ${c.done?T.o:T.border}`,
+            borderRadius:18,padding:'14px 16px',transition:'border-color .25s'}}>
+            <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
+              <DnaChip color={T.t2}>Court {c.court}</DnaChip>
+              <DnaTierBadge tier={c.tier} size={20}/>
+              <div style={{flex:1}}/>
+              <button onClick={()=>onEditLineup(c.id)} style={{padding:'4px 8px',borderRadius:8,
+                background:T.card2,border:`1px solid ${T.border}`,color:T.t3,fontSize:11,fontWeight:700,
+                cursor:'pointer',display:'flex',alignItems:'center',gap:4}}><EditIcon size={11}/>Aufstellung</button>
+            </div>
+            <div style={{display:'flex',alignItems:'center',gap:10}}>
+              <div style={{flex:1,minWidth:0,color:T.t1,fontSize:14,fontWeight:700,
+                overflow:'hidden',textOverflow:'ellipsis'}}>{dnaTeamName(cup,c.t1)}</div>
+              {numInput(c.id,'s1',c.s1)}
+            </div>
+            <div style={{textAlign:'center',color:T.t4,fontSize:11,fontWeight:800,margin:'5px 0'}}>vs</div>
+            <div style={{display:'flex',alignItems:'center',gap:10}}>
+              <div style={{flex:1,minWidth:0,color:T.t1,fontSize:14,fontWeight:700,
+                overflow:'hidden',textOverflow:'ellipsis'}}>{dnaTeamName(cup,c.t2)}</div>
+              {numInput(c.id,'s2',c.s2)}
+            </div>
+            <div style={{display:'flex',gap:10,marginTop:12}}>
+              <button onClick={()=>onPlay(c)} style={{flex:1,height:42,borderRadius:13,background:T.card2,
+                border:`1px solid ${T.border}`,color:T.o,fontSize:13,fontWeight:800,cursor:'pointer',
+                display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
+                <FullscreenIcon size={14}/> Spielen · Court-Anzeige
+              </button>
+              <button onClick={()=>toggleDone(c.id)} style={{flex:'0 0 auto',width:52,height:42,borderRadius:13,
+                background:c.done?T.o:T.card2,border:`1px solid ${c.done?T.o:T.border}`,
+                color:c.done?'#000':T.t2,fontSize:18,fontWeight:900,cursor:'pointer'}}>✓</button>
+            </div>
+          </div>
+        ))}
+
+        {round&&round.sitOut&&round.sitOut.length>0&&(
+          <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,padding:'12px 14px'}}>
+            <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
+              <PauseIcon size={15} color={T.t3}/>
+              <span style={{color:T.t2,fontSize:13,fontWeight:800}}>Pausiert</span>
+              <span style={{color:T.t3,fontSize:11,fontWeight:600}}>· erhält aufgerundeten Median dieser Runde</span>
+            </div>
+            <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+              {round.sitOut.map(id=><DnaChip key={id}>{pById(id)?.name||'—'}</DnaChip>)}
+            </div>
+          </div>
+        )}
+      </div>
+      <div style={{padding:'12px 18px calc(env(safe-area-inset-bottom,0px) + 14px)',
+        borderTop:`1px solid ${T.sep}`,display:'flex',gap:10}}>
+        <button onClick={nextRound} disabled={!allDone}
+          style={{flex:1,height:50,borderRadius:25,border:'none',cursor:allDone?'pointer':'default',
+            background:allDone?T.card:T.card2,color:allDone?T.t1:T.t3,fontSize:14,fontWeight:800,
+            borderTop:allDone?`1px solid ${T.border}`:'none'}}>
+          Runde bestätigen → nächste
+        </button>
+        <button onClick={onFinishGroup}
+          style={{flex:'0 0 auto',padding:'0 18px',height:50,borderRadius:25,border:'none',
+            background:T.o,color:'#000',fontSize:14,fontWeight:900,cursor:'pointer'}}>
+          Qualifikation →
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* Bracket card for a single KO / Ehren match */
+function DnaBracketMatchCard({cup,m,onPlay,onManual}){
+  if(!m) return null;
+  const fmt=FORMATS[m.format]; const done=m.status==='completed';
+  const winA=done&&m.result.winner==='A', winB=done&&m.result.winner==='B';
+  const TeamRow=({team,won})=>(
+    <div style={{display:'flex',alignItems:'center',gap:8,padding:'3px 0'}}>
+      <div style={{flex:1,minWidth:0,color:won?T.o:T.t1,fontSize:13,fontWeight:won?900:700,
+        overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{dnaTeamName(cup,team)||'—'}</div>
+      {won&&<span style={{color:T.o,fontSize:12,fontWeight:900}}>✓</span>}
+    </div>
+  );
+  return(
+    <div style={{background:T.card,border:`1px solid ${done?T.o:T.border}`,borderRadius:14,padding:'11px 13px'}}>
+      <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:7}}>
+        <span style={{color:T.t2,fontSize:11,fontWeight:800,flex:1,minWidth:0,
+          overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{m.label}</span>
+        <DnaChip>Court {m.court}</DnaChip>
+      </div>
+      <TeamRow team={m.team1} won={winA}/>
+      <div style={{height:1,background:T.sep,margin:'2px 0'}}/>
+      <TeamRow team={m.team2} won={winB}/>
+      <div style={{display:'flex',alignItems:'center',gap:7,marginTop:9}}>
+        <DnaChip color={T.t3}>{fmt?.short||fmt?.label}</DnaChip>
+        <div style={{flex:1}}/>
+        {done
+          ?<><span style={{color:T.o,fontSize:12,fontWeight:800,marginRight:6}}>{resultLabel(m)}</span>
+             <button onClick={onManual} title="Ergebnis ändern" style={{padding:'5px 10px',borderRadius:9,
+               background:T.card2,border:`1px solid ${T.border}`,color:T.t2,fontSize:11,fontWeight:800,
+               cursor:'pointer'}}>Ändern</button></>
+          :(m.team1.length&&m.team2.length
+            ?<>
+              <button onClick={onManual} style={{padding:'6px 11px',borderRadius:10,background:T.card2,
+                border:`1px solid ${T.border}`,color:T.t1,fontSize:12,fontWeight:800,cursor:'pointer'}}>Eintragen</button>
+              <button onClick={onPlay} style={{padding:'6px 13px',borderRadius:10,background:T.o,
+                border:'none',color:'#000',fontSize:12,fontWeight:900,cursor:'pointer'}}>Spielen ▸</button>
+             </>
+            :<span style={{color:T.t4,fontSize:11,fontWeight:700}}>wartet…</span>)}
+      </div>
+    </div>
+  );
+}
+
+/* Manual score entry for a bracket match — format-aware set rows */
+const dnaManualInput={width:54,height:46,borderRadius:11,background:T.card2,border:`1px solid ${T.border}`,
+  color:T.t1,fontSize:20,fontWeight:900,textAlign:'center',outline:'none'};
+function DnaManualScoreSheet({nameA,nameB,fmt,label,onSave,onClose}){
+  const rows=fmt.setsToWin>=2?(fmt.noDecider?2:3):1;
+  const[sets,setSets]=useState(Array.from({length:rows},()=>({a:'',b:''})));
+  const upd=(i,k,v)=>setSets(s=>s.map((r,j)=>j===i?{...r,[k]:v}:r));
+  const preview=resultFromManualSets(fmt,sets.map(r=>({
+    a:r.a===''?null:parseInt(r.a,10), b:r.b===''?null:parseInt(r.b,10)})));
+  const canSave=preview.winner!=null;
+  return(
+    <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,.7)',
+      backdropFilter:'blur(4px)',display:'flex',alignItems:'center',justifyContent:'center',padding:20,
+      animation:'fadeIn .15s ease'}}>
+      <div onClick={e=>e.stopPropagation()} className="si" style={{background:T.card,
+        border:`1px solid ${T.border}`,borderRadius:23,padding:20,width:'100%',maxWidth:380}}>
+        <div style={{color:T.t1,fontSize:18,fontWeight:800}}>Ergebnis eintragen</div>
+        <div style={{color:T.t3,fontSize:12,marginTop:3}}>{label}</div>
+        <div style={{color:T.t3,fontSize:11,marginTop:2,marginBottom:16,lineHeight:1.5}}>{fmt.rules}</div>
+        <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
+          <div style={{flex:1,minWidth:0,color:T.o,fontSize:13,fontWeight:800,
+            overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{nameA}</div>
+          <div style={{flex:1,minWidth:0,color:T.blue,fontSize:13,fontWeight:800,textAlign:'right',
+            overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{nameB}</div>
+        </div>
+        {sets.map((r,i)=>(
+          <div key={i} style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
+            <span style={{color:T.t3,fontSize:11,fontWeight:700,width:44,flexShrink:0}}>Satz {i+1}</span>
+            <input type="number" inputMode="numeric" value={r.a} onChange={e=>upd(i,'a',e.target.value)}
+              placeholder="–" style={dnaManualInput}/>
+            <span style={{color:T.t4,fontWeight:900,flex:1,textAlign:'center'}}>:</span>
+            <input type="number" inputMode="numeric" value={r.b} onChange={e=>upd(i,'b',e.target.value)}
+              placeholder="–" style={dnaManualInput}/>
+          </div>
+        ))}
+        <div style={{color:canSave?T.o:T.t3,fontSize:12,fontWeight:800,textAlign:'center',
+          margin:'6px 0 16px',minHeight:16}}>
+          {canSave?`Sieger: ${preview.winner==='A'?nameA:nameB}`:'Satz-Ergebnisse eintragen'}
+        </div>
+        <div style={{display:'flex',gap:10}}>
+          <button onClick={onClose} style={{...dnaSecBtn,flex:'0 0 auto',padding:'0 18px',height:46}}>Abbrechen</button>
+          <button onClick={canSave?()=>onSave(preview):undefined} disabled={!canSave}
+            style={{flex:1,height:46,borderRadius:14,border:'none',cursor:canSave?'pointer':'default',
+              background:canSave?T.o:T.card2,color:canSave?'#000':T.t3,fontSize:14,fontWeight:900}}>
+            Übernehmen
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* KO + Ehren bracket trees */
+function DnaCupBracket({cup,onBack,onHome,onPlay,onManual,onSieger}){
+  const ko=cup.ko, ehren=cup.ehren;
+  const champName=cup.champion?dnaTeamName(cup,cup.champion):null;
+  // court-conflict check across the live KO stage (defensive)
+  const liveStage=ko&&!ko.semi.built?ko.knockout.matches:ko&&ko.semi.built&&!ko.final.built?ko.semi.matches:[];
+  const conflict=validateCourts(liveStage);
+  const Col=({title,accent,children})=>(
+    <div style={{flex:1,minWidth:0}}>
+      <div style={{color:accent,fontSize:12,fontWeight:900,letterSpacing:.5,textTransform:'uppercase',
+        marginBottom:10}}>{title}</div>
+      <div style={{display:'flex',flexDirection:'column',gap:10}}>{children}</div>
+    </div>
+  );
+  const Stage=({label,children})=>(
+    <div>
+      <div style={{color:T.t3,fontSize:11,fontWeight:800,letterSpacing:.4,margin:'4px 0 6px'}}>{label}</div>
+      <div style={{display:'flex',flexDirection:'column',gap:8}}>{children}</div>
+    </div>
+  );
+  return(
+    <div style={dnaScreen}>
+      <DnaTopBar title="K.-o.-Phase" sub="Haupt-Bracket + Ehren-Bracket" onBack={onBack} onHome={onHome}
+        right={cup.status==='completed'?<button onClick={onSieger} style={{padding:'7px 12px',borderRadius:99,
+          background:T.o,border:'none',color:'#000',fontSize:12,fontWeight:900,cursor:'pointer',marginRight:6}}>
+          Sieger</button>:null}/>
+      <div style={dnaScroll}>
+        {champName&&(
+          <DnaCard style={{borderColor:T.o,background:T.oSoft,textAlign:'center'}}>
+            <div style={{fontSize:30}}>🏆</div>
+            <div style={{color:T.t3,fontSize:11,fontWeight:800,letterSpacing:1,marginTop:4}}>RITMO DNA CUP CHAMPION</div>
+            <div style={{color:T.o,fontSize:18,fontWeight:900,marginTop:4}}>{champName}</div>
+          </DnaCard>
+        )}
+        {!conflict.ok&&<DnaCard style={{borderColor:T.r,padding:'10px 14px'}}>
+          <span style={{color:T.r,fontSize:12,fontWeight:800}}>⚠ Court-Doppelbelegung erkannt</span></DnaCard>}
+
+        <div style={{display:'flex',gap:14,alignItems:'flex-start'}}>
+          <Col title="Haupt-Bracket" accent={T.o}>
+            {cup.qualified?.byes?.length>0&&(
+              <div style={{background:T.card,border:`1px dashed ${T.o}`,borderRadius:14,padding:'11px 13px'}}>
+                <div style={{color:T.o,fontSize:11,fontWeight:800,marginBottom:7,letterSpacing:.3}}>
+                  ⏭ Freilos · direkt ins Halbfinale
+                </div>
+                {cup.qualified.byes.map((id,bi)=>{
+                  const p=cup.players.find(x=>x.id===id);
+                  return(
+                    <div key={id} style={{display:'flex',alignItems:'center',gap:8,padding:'3px 0'}}>
+                      <div style={{width:8,height:8,borderRadius:'50%',background:p?.color||T.o,flexShrink:0}}/>
+                      <span style={{flex:1,minWidth:0,color:T.t1,fontSize:13,fontWeight:700,
+                        overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p?.name||'—'}</span>
+                      <DnaChip color={T.o} bg={T.oSoft} bd={T.o}>Top {bi+1}</DnaChip>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            <Stage label="Knock-Out · 12 → 6">
+              {ko?.knockout.matches.map((m,i)=><DnaBracketMatchCard key={m.id} cup={cup} m={m}
+                onPlay={()=>onPlay(['ko','knockout',i],m)} onManual={()=>onManual(['ko','knockout',i],m)}/>)}
+            </Stage>
+            {ko?.semi.built&&<Stage label="Halbfinale · 8 → 4">
+              {ko.semi.matches.map((m,i)=><DnaBracketMatchCard key={m.id} cup={cup} m={m}
+                onPlay={()=>onPlay(['ko','semi',i],m)} onManual={()=>onManual(['ko','semi',i],m)}/>)}
+            </Stage>}
+            {ko?.final.built&&<Stage label="Grande Finale · 4 → 1">
+              <DnaBracketMatchCard cup={cup} m={ko.final.match} onPlay={()=>onPlay(['ko','final'],ko.final.match)}
+                onManual={()=>onManual(['ko','final'],ko.final.match)}/>
+            </Stage>}
+          </Col>
+          <Col title="Ehren-Bracket" accent={T.blue}>
+            <Stage label="Ehren-Halbfinale">
+              {ehren?.semi.matches.map((m,i)=><DnaBracketMatchCard key={m.id} cup={cup} m={m}
+                onPlay={()=>onPlay(['ehren','semi',i],m)} onManual={()=>onManual(['ehren','semi',i],m)}/>)}
+            </Stage>
+            {ehren?.final.built&&<Stage label="Ehren-Finale">
+              <DnaBracketMatchCard cup={cup} m={ehren.final.match} onPlay={()=>onPlay(['ehren','final'],ehren.final.match)}
+                onManual={()=>onManual(['ehren','final'],ehren.final.match)}/>
+            </Stage>}
+          </Col>
+        </div>
+        <div style={{color:T.t4,fontSize:11,lineHeight:1.6,padding:'4px 2px 0'}}>
+          Sieger jeder Partie steigen automatisch auf. Halbfinale & Ehren-HF laufen parallel
+          (Court 1 = Ehren, Court 2 + 3 = Haupt). Tippe „Spielen" für das korrekte Spielformat
+          + Court-Anzeige.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* Live group-phase leaderboard */
+function DnaCupLeaderboard({cup,onBack,onHome}){
+  const field=dnaField(cup);
+  const lb=dnaLeaderboard(field,cup.group.rounds);
+  const q=cup.qualified;
+  const statusOf=(id,rank)=>{
+    if(q){ if(q.byes.includes(id)) return {t:'Bye · Top 2',c:T.o};
+      if(q.ko.includes(id)) return {t:'KO · Top 14',c:T.t2};
+      if(q.ehren.includes(id)) return {t:'Ehren',c:T.blue};
+      return {t:'—',c:T.t4}; }
+    // predicted while group is still running
+    if(rank<=2) return {t:'Bye · Top 2',c:T.o};
+    if(rank<=14) return {t:'KO · Top 14',c:T.t2};
+    return {t:'Ehren',c:T.blue};
+  };
+  return(
+    <div style={dnaScreen}>
+      <DnaTopBar title="Live-Tabelle" sub="Punkte + Tier-Bonus + Pausen-Ausgleich" onBack={onBack} onHome={onHome}/>
+      <div style={dnaScroll}>
+        {lb.map(e=>{
+          const st=statusOf(e.id,e.rank);
+          return(
+          <div key={e.id} style={{display:'flex',alignItems:'center',gap:12,background:T.card,
+            border:`1px solid ${e.rank<=2?T.o:T.border}`,borderRadius:14,padding:'11px 14px'}}>
+            <div style={{width:26,textAlign:'center',color:e.rank<=2?T.o:T.t2,fontSize:16,fontWeight:900}}>{e.rank}</div>
+            <div style={{width:9,height:9,borderRadius:'50%',background:e.color,flexShrink:0}}/>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{color:T.t1,fontSize:14,fontWeight:800,overflow:'hidden',
+                textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{e.name}</div>
+              <div style={{color:T.t3,fontSize:11,fontWeight:600,marginTop:2}}>
+                {e.played} Spiele · {e.points} Pkt · +{e.tierBonus} Tier{e.sitOutBonus?` · +${e.sitOutBonus} Pause`:''}
+                <span style={{color:st.c,fontWeight:800}}> · {st.t}</span>
+              </div>
+            </div>
+            <div style={{color:T.o,fontSize:20,fontWeight:900,minWidth:34,textAlign:'right'}}>{e.totalPoints}</div>
+          </div>);
+        })}
+        {lb.length===0&&<div style={{color:T.t3,fontSize:13,textAlign:'center',padding:'30px 0'}}>
+          Noch keine Ergebnisse.</div>}
+      </div>
+    </div>
+  );
+}
+
+/* Schedule view (mirrors event detail page) */
+function DnaCupSchedule({cup,onBack,onHome}){
+  return(
+    <div style={dnaScreen}>
+      <DnaTopBar title="Spielplan" sub={`${DNA_CUP_EVENT.venue} · ${DNA_CUP_EVENT.date}`} onBack={onBack} onHome={onHome}/>
+      <div style={dnaScroll}>
+        {DNA_SCHEDULE.map((row,i)=>{
+          const active=row.phase===cup.status;
+          return(
+          <div key={i} style={{display:'flex',gap:14,alignItems:'flex-start',background:T.card,
+            border:`1px solid ${active?T.o:T.border}`,borderRadius:14,padding:'12px 14px'}}>
+            <div style={{color:active?T.o:T.t2,fontSize:14,fontWeight:900,fontFamily:'monospace',
+              minWidth:46}}>{row.time}</div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{color:T.t1,fontSize:13,fontWeight:700}}>{row.title}</div>
+              <div style={{color:T.t3,fontSize:11,fontWeight:600,marginTop:2}}>Courts: {row.courts}</div>
+            </div>
+            {active&&<DnaChip color={T.o} bg={T.oSoft} bd={T.o}>jetzt</DnaChip>}
+          </div>);
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* Final results + per-player MVP stats */
+function DnaCupSieger({cup,onBack,onHome}){
+  const field=dnaField(cup);
+  const lb=dnaLeaderboard(field,cup.group.rounds);
+  const champ=cup.champion?dnaTeamName(cup,cup.champion):null;
+  const ehrenChamp=cup.ehrenChampion?dnaTeamName(cup,cup.ehrenChampion):null;
+  const mvp=lb[0];
+  const mostWins=[...lb].sort((a,b)=>b.wins-a.wins)[0];
+  const mostBonus=[...lb].sort((a,b)=>b.tierBonus-a.tierBonus)[0];
+  const Stat=({label,name,val,color})=>(
+    <DnaCard style={{flex:1,minWidth:0,padding:14,textAlign:'center'}}>
+      <div style={{color:T.t3,fontSize:10,fontWeight:800,letterSpacing:.4,textTransform:'uppercase'}}>{label}</div>
+      <div style={{color:color||T.t1,fontSize:14,fontWeight:900,marginTop:6,overflow:'hidden',
+        textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{name||'—'}</div>
+      {val!=null&&<div style={{color:T.t2,fontSize:12,fontWeight:700,marginTop:2}}>{val}</div>}
+    </DnaCard>
+  );
+  return(
+    <div style={dnaScreen}>
+      <DnaTopBar title="Sieger-Übersicht" sub={DNA_CUP_EVENT.subtitle} onBack={onBack} onHome={onHome}/>
+      <div style={dnaScroll}>
+        <DnaCard style={{borderColor:T.o,background:T.oSoft,textAlign:'center'}}>
+          <div style={{fontSize:40}}>🏆</div>
+          <div style={{color:T.t3,fontSize:11,fontWeight:800,letterSpacing:1.5,marginTop:4}}>GRANDE FINALE SIEGER</div>
+          <div style={{color:T.o,fontSize:20,fontWeight:900,marginTop:6}}>{champ||'Noch offen'}</div>
+        </DnaCard>
+        {ehrenChamp&&<DnaCard style={{borderColor:T.blue,textAlign:'center'}}>
+          <div style={{color:T.blue,fontSize:11,fontWeight:800,letterSpacing:1}}>EHREN-BRACKET SIEGER</div>
+          <div style={{color:T.t1,fontSize:16,fontWeight:900,marginTop:4}}>{ehrenChamp}</div>
+        </DnaCard>}
+        <div style={{color:T.t2,fontSize:13,fontWeight:800,margin:'4px 2px'}}>MVP-Statistiken (Gruppenphase)</div>
+        <div style={{display:'flex',gap:10}}>
+          <Stat label="Top-Punkte" name={mvp?.name} val={mvp?`${mvp.totalPoints} Pkt`:null} color={T.o}/>
+          <Stat label="Meiste Siege" name={mostWins?.name} val={mostWins?`${mostWins.wins} Siege`:null}/>
+          <Stat label="Tier-König" name={mostBonus?.name} val={mostBonus?`+${mostBonus.tierBonus} Bonus`:null}/>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* Director dashboard */
+function DnaCupDashboard({cup,onHome,go,onReset}){
+  const active=dnaActive(cup);
+  const phaseLabel=DNA_PHASE[cup.status]||cup.status;
+  const lb=cup.group.rounds.length?dnaLeaderboard(dnaField(cup),cup.group.rounds):[];
+  const courtStatus=()=>{
+    if(cup.status==='group'){
+      const r=cup.group.rounds[cup.group.current];
+      return (r?.courts||[]).map(c=>({court:c.court,label:dnaTeamName(cup,c.t1).split('  /  ')[0]+'…',live:!c.done}));
+    }
+    return [];
+  };
+  const Tile=({icon,title,sub,onClick,accent})=>(
+    <button onClick={onClick} className="fu" data-lift
+      style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:18,padding:'16px',
+        display:'flex',alignItems:'center',gap:14,cursor:'pointer',color:T.t1,textAlign:'left',width:'100%'}}
+      onPointerDown={e=>e.currentTarget.style.background=T.card2}
+      onPointerUp={e=>e.currentTarget.style.background=T.card}
+      onPointerLeave={e=>e.currentTarget.style.background=T.card}>
+      <div style={{flexShrink:0,width:44,height:44,borderRadius:14,background:`${accent||T.o}22`,
+        border:`1px solid ${accent||T.o}`,color:accent||T.o,display:'flex',alignItems:'center',
+        justifyContent:'center'}}>{icon}</div>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{color:T.t1,fontSize:15,fontWeight:800}}>{title}</div>
+        <div style={{color:T.t3,fontSize:12,fontWeight:500,marginTop:2}}>{sub}</div>
+      </div>
+      <ChevronRightIcon size={18} color={T.t3}/>
+    </button>
+  );
+  return(
+    <div style={dnaScreen}>
+      <DnaTopBar title="RITMO DNA Cup" sub={DNA_CUP_EVENT.subtitle} onHome={onHome}
+        right={<DnaChip color={T.o} bg={T.oSoft} bd={T.o}>{phaseLabel}</DnaChip>}/>
+      <div style={dnaScroll}>
+        <DnaCard style={{background:`linear-gradient(135deg, ${T.oSoft}, ${T.card})`,borderColor:T.o}}>
+          <div style={{display:'flex',alignItems:'center',gap:12}}>
+            <TrophyIcon size={30}/>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{color:T.t1,fontSize:15,fontWeight:800}}>{DNA_CUP_EVENT.name}</div>
+              <div style={{color:T.t2,fontSize:12,fontWeight:500,marginTop:3}}>
+                {DNA_CUP_EVENT.venue} · {DNA_CUP_EVENT.date} · {active.length} Spieler eingecheckt
+              </div>
+            </div>
+          </div>
+        </DnaCard>
+
+        {cup.status==='group'&&(
+          <DnaCard style={{padding:'14px 16px'}}>
+            <div style={{color:T.t2,fontSize:12,fontWeight:800,marginBottom:10}}>
+              Court-Status · Runde {cup.group.current+1}
+            </div>
+            <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
+              {courtStatus().map(cs=>(
+                <div key={cs.court} style={{display:'flex',alignItems:'center',gap:6,padding:'6px 10px',
+                  borderRadius:10,background:T.card2,border:`1px solid ${cs.live?T.o:T.border}`}}>
+                  <span style={{width:7,height:7,borderRadius:'50%',background:cs.live?T.o:T.g,
+                    boxShadow:cs.live?`0 0 6px ${T.oGlow}`:'none'}}/>
+                  <span style={{color:T.t2,fontSize:11,fontWeight:700}}>Court {cs.court}</span>
+                  <span style={{color:cs.live?T.o:T.t3,fontSize:10,fontWeight:700}}>{cs.live?'live':'fertig'}</span>
+                </div>
+              ))}
+            </div>
+            {lb[0]&&<div style={{color:T.t3,fontSize:12,marginTop:12,fontWeight:600}}>
+              Führend: <span style={{color:T.o,fontWeight:800}}>{lb[0].name}</span> · {lb[0].totalPoints} Pkt</div>}
+          </DnaCard>
+        )}
+
+        {cup.status==='setup'&&<Tile icon={<PersonGlyph size={22}/>} title="Aufstellung & Check-in"
+          sub={`${active.length}/${DNA_CUP_EVENT.capacity} eingecheckt · min ${DNA_CUP_EVENT.minPlayers}`}
+          onClick={()=>go('roster')}/>}
+        {cup.status==='group'&&<Tile icon={<CourtIcon size={22}/>} title={`Runde ${cup.group.current+1} spielen`}
+          sub="Paarungen · Open Points · Court-Anzeige" onClick={()=>go('round')} accent={T.o}/>}
+        {(cup.status==='ko'||cup.status==='completed')&&<Tile icon={<TrophyIcon size={22}/>} title="Bracket"
+          sub="Knock-Out · Halbfinale · Finale · Ehren" onClick={()=>go('bracket')} accent={T.o}/>}
+
+        {cup.group.rounds.length>0&&<Tile icon={<DNAIcon size={22}/>} title="Live-Tabelle"
+          sub="Rang · Punkte · Tier-Bonus · Qualifikation" onClick={()=>go('leaderboard')} accent={T.blue}/>}
+        <Tile icon={<BookIcon size={20}/>} title="Spielplan" sub="Zeitplan & Court-Belegung" onClick={()=>go('schedule')} accent={T.t2}/>
+        {cup.status==='completed'&&<Tile icon={<TrophyIcon size={22}/>} title="Sieger-Übersicht"
+          sub="Champion · Ehren · MVP-Statistiken" onClick={()=>go('sieger')} accent={T.o}/>}
+        {cup.status!=='setup'&&<Tile icon={<PersonGlyph size={22}/>} title="Aufstellung"
+          sub="Spieler & Check-in ansehen" onClick={()=>go('roster')} accent={T.t2}/>}
+
+        <button onClick={onReset} style={{marginTop:8,height:44,borderRadius:14,background:'transparent',
+          border:`1px solid rgba(232,69,69,0.4)`,color:T.r,fontSize:13,fontWeight:800,cursor:'pointer'}}>
+          Cup zurücksetzen
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* Root: owns the view router + active match + cup mutations */
+function DnaCup({cup,setCup,onHome}){
+  const[view,setView]=useState('dashboard');
+  const[activeMatch,setActiveMatch]=useState(null);
+  const[manualMatch,setManualMatch]=useState(null);
+  const[stylePickerFor,setStylePickerFor]=useState(null);
+  const[editLineupCourtId,setEditLineupCourtId]=useState(null);
+  useEffect(()=>{ if(!cup) setCup(makeDnaCup()); },[cup,setCup]);
+  if(!cup) return <div style={{height:'100dvh',background:T.bg}}/>;
+
+  const go=v=>setView(v);
+  const backToDash=()=>setView('dashboard');
+
+  const startGroup=()=>setCup(c=>{
+    const active=dnaActive(c);
+    const numCourts=Math.max(1,Math.min(c.numCourts,Math.floor(active.length/4)));
+    const fieldIds=active.map(p=>p.id);
+    const r0=genDnaGroupRound(active,[],numCourts,0);
+    return {...c,status:'group',numCourts,fieldIds,group:{rounds:[r0],current:0}};
+  });
+  const finishGroup=()=>{ setCup(c=>{
+    const lb=dnaLeaderboard(dnaField(c),c.group.rounds);
+    const q=dnaQualify(lb); const b=buildBrackets(q);
+    return {...c,status:'ko',qualified:q,ko:b.ko,ehren:b.ehren};
+  }); setView('bracket'); };
+
+  // open matches
+  const openGroupMatch=court=>{ setActiveMatch({kind:'group',courtId:court.id,fmt:FORMATS['open-points'],
+    nameA:dnaTeamName(cup,court.t1),nameB:dnaTeamName(cup,court.t2),
+    stageLabel:`Gruppenphase · Runde ${cup.group.current+1}`,tier:court.tier,courtNo:court.court,
+    durationMin:cup.roundDurationMin}); setView('match'); };
+  const openBracketMatch=(path,m)=>{ if(!m.team1.length||!m.team2.length) return;
+    setActiveMatch({kind:'bracket',path,fmt:FORMATS[m.format],
+      nameA:dnaTeamName(cup,m.team1),nameB:dnaTeamName(cup,m.team2),
+      stageLabel:m.label,courtNo:m.court}); setView('match'); };
+  // Manual quick-entry (no live scoring) for a bracket match.
+  const openManual=(path,m)=>{ if(!m.team1.length||!m.team2.length) return;
+    setManualMatch({path,nameA:dnaTeamName(cup,m.team1),nameB:dnaTeamName(cup,m.team2),
+      fmt:FORMATS[m.format],label:m.label}); };
+  const saveManual=res=>{ const path=manualMatch.path;
+    setCup(c=>advanceDnaCup(dnaSetMatchByPath(c,path,res))); setManualMatch(null); };
+  const exitMatch=()=>{ const k=activeMatch?.kind; setActiveMatch(null);
+    setView(k==='group'?'round':'bracket'); };
+  const finishMatch=res=>{
+    if(activeMatch.kind==='group'){
+      const courtId=activeMatch.courtId;
+      setCup(c=>{ const ci=c.group.current; const r=[...c.group.rounds];
+        r[ci]={...r[ci],courts:r[ci].courts.map(ct=>ct.id===courtId
+          ?{...ct,s1:res.scoreA,s2:res.scoreB,done:true}:ct)};
+        return {...c,group:{...c.group,rounds:r}}; });
+      setView('round');
+    } else {
+      const path=activeMatch.path;
+      setCup(c=>advanceDnaCup(dnaSetMatchByPath(c,path,res)));
+      setView('bracket');
+    }
+    setActiveMatch(null);
+  };
+
+  // lineup override (group)
+  const assignPlayer=(courtId,teamKey,idx,newPid)=>setCup(c=>{
+    const ci=c.group.current; const rnd=c.group.rounds[ci]; if(!rnd) return c;
+    const courts=rnd.courts.map(ct=>({...ct,t1:[...(ct.t1||[])],t2:[...(ct.t2||[])]}));
+    const tCourt=courts.find(ct=>ct.id===courtId); if(!tCourt) return c;
+    const oldPid=tCourt[teamKey][idx]; if(oldPid===newPid) return c;
+    let src=null;
+    for(const ct of courts){ const i1=ct.t1.indexOf(newPid); if(i1>=0){src={arr:ct.t1,i:i1};break;}
+      const i2=ct.t2.indexOf(newPid); if(i2>=0){src={arr:ct.t2,i:i2};break;} }
+    tCourt[teamKey][idx]=newPid; if(src) src.arr[src.i]=oldPid;
+    const lobby=lobbyStats(dnaField(c).map(p=>p.rating));
+    courts.forEach(ct=>{ ct.tier=classifyTier([...ct.t1,...ct.t2]
+      .map(id=>c.players.find(p=>p.id===id)?.rating),lobby,ci); });
+    const playing=new Set(courts.flatMap(ct=>[...ct.t1,...ct.t2]));
+    const sitOut=dnaField(c).map(p=>p.id).filter(id=>!playing.has(id));
+    const rounds=[...c.group.rounds]; rounds[ci]={...rnd,courts,sitOut};
+    return {...c,group:{...c.group,rounds}};
+  });
+
+  // ── Match view (full screen) ──
+  if(view==='match'&&activeMatch){
+    return <DnaCupMatch key={activeMatch.kind+'-'+(activeMatch.courtId||activeMatch.path?.join('-'))}
+      fmt={activeMatch.fmt} nameA={activeMatch.nameA} nameB={activeMatch.nameB}
+      stageLabel={activeMatch.stageLabel} tier={activeMatch.tier} courtNo={activeMatch.courtNo}
+      durationMin={activeMatch.durationMin} onFinish={finishMatch} onCancel={exitMatch} onHome={exitMatch}/>;
+  }
+
+  const editCourt=editLineupCourtId!=null
+    ?cup.group.rounds[cup.group.current]?.courts.find(c=>c.id===editLineupCourtId):null;
+
+  return(
+    <>
+      {view==='dashboard'&&<DnaCupDashboard cup={cup} onHome={onHome} go={go}
+        onReset={()=>{ if(window.confirm('RITMO DNA Cup zurücksetzen? Alle Daten gehen verloren.')){
+          setCup(makeDnaCup()); setView('dashboard'); } }}/>}
+      {view==='roster'&&<DnaCupRoster cup={cup} setCup={setCup} onBack={backToDash} onHome={onHome}
+        onStart={startGroup} onStyle={id=>setStylePickerFor(id)}/>}
+      {view==='round'&&<DnaCupGroupRound cup={cup} setCup={setCup} onBack={backToDash} onHome={onHome}
+        onPlay={openGroupMatch} onLeaderboard={()=>setView('leaderboard')} onFinishGroup={finishGroup}
+        onEditLineup={id=>setEditLineupCourtId(id)}/>}
+      {view==='bracket'&&<DnaCupBracket cup={cup} onBack={backToDash} onHome={onHome}
+        onPlay={openBracketMatch} onManual={openManual} onSieger={()=>setView('sieger')}/>}
+      {view==='leaderboard'&&<DnaCupLeaderboard cup={cup} onBack={()=>setView(cup.status==='group'?'round':'dashboard')} onHome={onHome}/>}
+      {view==='schedule'&&<DnaCupSchedule cup={cup} onBack={backToDash} onHome={onHome}/>}
+      {view==='sieger'&&<DnaCupSieger cup={cup} onBack={()=>setView('bracket')} onHome={onHome}/>}
+
+      {manualMatch&&<DnaManualScoreSheet nameA={manualMatch.nameA} nameB={manualMatch.nameB}
+        fmt={manualMatch.fmt} label={manualMatch.label} onSave={saveManual}
+        onClose={()=>setManualMatch(null)}/>}
+      {stylePickerFor!=null&&<StylePickerSheet
+        current={cup.players.find(p=>p.id===stylePickerFor)?.style}
+        onSelect={style=>{ setCup(c=>({...c,players:c.players.map(p=>p.id===stylePickerFor?{...p,style:style||null}:p)}));
+          setStylePickerFor(null); }}
+        onClose={()=>setStylePickerFor(null)}/>}
+      {editCourt&&<LineupEditSheet court={editCourt}
+        courtIndex={cup.group.rounds[cup.group.current].courts.findIndex(c=>c.id===editCourt.id)}
+        players={dnaField(cup)} round={cup.group.rounds[cup.group.current]}
+        onAssign={(teamKey,idx,newPid)=>assignPlayer(editCourt.id,teamKey,idx,newPid)}
+        onClose={()=>setEditLineupCourtId(null)}/>}
+    </>
+  );
+}
+
+/* Director PIN gate — the cup only opens after the correct PIN */
+function DnaPinGate({onOk,onClose}){
+  const[pin,setPin]=useState('');
+  const[err,setErr]=useState(false);
+  const inputRef=useRef(null);
+  useEffect(()=>{ const id=setTimeout(()=>inputRef.current?.focus(),60); return()=>clearTimeout(id); },[]);
+  const submit=()=>{
+    if(pin===DNA_CUP_PIN){ onOk(); }
+    else { setErr(true); setPin(''); setTimeout(()=>setErr(false),700); }
+  };
+  return(
+    <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:400,background:'rgba(0,0,0,.82)',
+      backdropFilter:'blur(6px)',display:'flex',alignItems:'center',justifyContent:'center',padding:24,
+      animation:'fadeIn .15s ease'}}>
+      <div onClick={e=>e.stopPropagation()} className="si"
+        style={{background:T.card,border:`1px solid ${err?T.r:T.border}`,borderRadius:24,padding:24,
+          width:'100%',maxWidth:340,textAlign:'center',transition:'border-color .2s'}}>
+        <div style={{width:56,height:56,borderRadius:18,margin:'0 auto 14px',background:T.oSoft,
+          border:`1px solid ${T.o}`,color:T.o,display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <TrophyIcon size={26}/>
+        </div>
+        <div style={{color:T.t1,fontSize:18,fontWeight:800}}>RITMO DNA Cup</div>
+        <div style={{color:T.t3,fontSize:13,marginTop:4,marginBottom:18,lineHeight:1.5}}>
+          Director-PIN eingeben, um den Cup zu öffnen.
+        </div>
+        <input ref={inputRef} type="password" inputMode="numeric" value={pin}
+          onChange={e=>setPin(e.target.value.replace(/\D/g,'').slice(0,6))}
+          onKeyDown={e=>{if(e.key==='Enter')submit();}} placeholder="••••"
+          aria-label="Director-PIN"
+          style={{width:'100%',height:54,borderRadius:14,background:T.card2,
+            border:`1px solid ${err?T.r:T.border}`,color:T.t1,fontSize:24,fontWeight:900,
+            textAlign:'center',letterSpacing:8,outline:'none',boxSizing:'border-box',transition:'border-color .2s'}}/>
+        <div style={{color:T.r,fontSize:12,fontWeight:700,marginTop:10,minHeight:16,
+          opacity:err?1:0,transition:'opacity .15s'}}>Falscher PIN</div>
+        <div style={{display:'flex',gap:10,marginTop:8}}>
+          <button onClick={onClose} style={{...dnaSecBtn,flex:'0 0 auto',padding:'0 18px',height:48}}>Abbrechen</button>
+          <button onClick={submit} disabled={pin.length<4}
+            style={{flex:1,height:48,borderRadius:14,border:'none',cursor:pin.length<4?'default':'pointer',
+              background:pin.length<4?T.card2:T.o,color:pin.length<4?T.t3:'#000',fontSize:15,fontWeight:900,
+              transition:'background .2s'}}>Öffnen</button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -12446,6 +13561,14 @@ export default function App(){
   const[bo3,dBo3]=useReducer(bo3R,B0,init=>lsGet('ritmo_bo3',init));
   const[am,dAm]=useReducer(amR,A0,init=>lsGet('ritmo_am',init));
   const[tourney,setTourney]=useState(()=>lsGet('ritmo_tourney',null));
+  // RITMO DNA Cup (Founders Edition) — structured multi-phase
+  // tournament. Whole state in one object, persisted separately from
+  // the freeform Americano/Mexicano tourney.
+  const[dnaCup,setDnaCup]=useState(()=>lsGet('ritmo_dnacup',null));
+  // DNA Cup director gate: PIN required to open the console. Session-only
+  // (not persisted) — a fresh load re-prompts; navigating in/out does not.
+  const[dnaPinPrompt,setDnaPinPrompt]=useState(false);
+  const[dnaUnlocked,setDnaUnlocked]=useState(false);
   const[ringId,setRingId]=useState(()=>lsGet('ritmo_ring','soft'));
   const[inputMode,setInputMode]=useState(()=>lsGet('ritmo_input','smartphone'));
   const[voiceOn,setVoiceOn]=useState(()=>lsGet('ritmo_voice',false));
@@ -12601,6 +13724,7 @@ export default function App(){
   useEffect(()=>lsSet('ritmo_bo3',bo3),[bo3]);
   useEffect(()=>lsSet('ritmo_am',am),[am]);
   useEffect(()=>{if(tourney===null){try{localStorage.removeItem('ritmo_tourney');}catch(e){}}else lsSet('ritmo_tourney',tourney);},[tourney]);
+  useEffect(()=>{if(dnaCup===null){try{localStorage.removeItem('ritmo_dnacup');}catch(e){}}else lsSet('ritmo_dnacup',dnaCup);},[dnaCup]);
   useEffect(()=>lsSet('ritmo_ring',ringId),[ringId]);
   useEffect(()=>lsSet('ritmo_input',inputMode),[inputMode]);
   useEffect(()=>lsSet('ritmo_voice',voiceOn),[voiceOn]);
@@ -12949,7 +14073,13 @@ export default function App(){
     {scr==='tournament-hub'&&<TournamentHub
       onHome={goHome}
       onStart={()=>setScr('tournament-setup')}
-      onJoin={()=>setScr('remote')}/>}
+      onJoin={()=>setScr('remote')}
+      onDnaCup={()=>{ if(dnaUnlocked) setScr('dna-cup'); else setDnaPinPrompt(true); }}
+      hasDnaCup={dnaCup!=null&&dnaCup.status!=='setup'}/>}
+    {scr==='dna-cup'&&<DnaCup cup={dnaCup} setCup={setDnaCup} onHome={goHome}/>}
+    {dnaPinPrompt&&<DnaPinGate
+      onOk={()=>{ setDnaUnlocked(true); setDnaPinPrompt(false); setScr('dna-cup'); }}
+      onClose={()=>setDnaPinPrompt(false)}/>}
     {scr==='ritmo-bibel'&&<RitmoBibel
       onHome={goHome}
       onRules={()=>nav('rules')}

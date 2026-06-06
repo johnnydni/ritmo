@@ -12561,7 +12561,12 @@ export default function App(){
         // nach DB-Profil, falls Login.onSuccess auf Basis von stale
         // localStorage-Werten geroutet hat. Andere Screens (match,
         // tournament-*, profile, etc.) bleiben unverändert.
-        if(curr==='splash'||curr==='login'||curr==='register'||curr==='verify-email'
+        //
+        // 'splash' ist BEWUSST ausgenommen: der Ladebildschirm soll NICHT
+        // automatisch in die App reinladen, sondern stehen bleiben, bis
+        // der User tippt. loggedIn + onboarded sind oben bereits gesetzt,
+        // sodass der Tap (Splash.onDone) dann korrekt nach home routet.
+        if(curr==='login'||curr==='register'||curr==='verify-email'
           ||curr==='beta-landing'||curr==='welcome'||curr==='home'){
           return isOnboarded?'home':'welcome';
         }

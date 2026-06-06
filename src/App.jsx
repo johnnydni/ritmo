@@ -336,13 +336,28 @@ function Splash({onDone}){
   },[]);
   return(
     <div onClick={ready?onDone:undefined}
-      style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
-        alignItems:'center',justifyContent:'center',gap:36,
-        cursor:ready?'pointer':'default',userSelect:'none',position:'relative'}}>
-      <div className="fi"><RitmoSplashLogo size={250}/></div>
-      <div className="fi" style={{animationDelay:'.3s'}}><BallSpinner/></div>
-      <div style={{position:'absolute',bottom:48,color:T.t3,fontSize:13,letterSpacing:.3,
-        opacity:ready?1:0,transition:'opacity .4s'}}>
+      style={{height:'100dvh',width:'100vw',
+        /* Ladebildschirm IMMER schwarz — bewusst hartkodiert (#000),
+           unabhängig vom gewählten Theme. */
+        background:'#000',
+        display:'flex',alignItems:'center',justifyContent:'center',
+        cursor:ready?'pointer':'default',userSelect:'none',
+        position:'relative',overflow:'hidden'}}>
+      {/* Loading-Video — füllt den Screen auf schwarzem Grund. Stumm +
+          playsInline für Mobile-Autoplay; contain zeigt das Video
+          vollständig (keine Beschneidung), schwarze Ränder verschmelzen
+          mit dem Hintergrund. */}
+      <video
+        src={`${getAssetBase()}assets/ritmo-loadingscreen.mp4`}
+        autoPlay muted playsInline loop preload="auto"
+        aria-hidden="true"
+        style={{position:'absolute',inset:0,width:'100%',height:'100%',
+          objectFit:'contain',background:'#000',pointerEvents:'none'}}/>
+      <div style={{position:'absolute',
+        bottom:'calc(env(safe-area-inset-bottom,0px) + 48px)',
+        color:'rgba(255,255,255,0.72)',fontSize:13,letterSpacing:.3,
+        opacity:ready?1:0,transition:'opacity .4s',zIndex:1,
+        textShadow:'0 1px 10px rgba(0,0,0,0.7)'}}>
         Tippen um fortzufahren
       </div>
     </div>
@@ -2951,12 +2966,12 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
-      <div style={{padding:'0 9px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
-        <div>
+      <div style={{padding:'0 9px 22px'}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
           <RitmoWordmark size={52} style={{marginLeft:-3}}/>
-          <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>Single Match</div>
+          <SingleMatchIcon size={40}/>
         </div>
-        <SingleMatchIcon size={36}/>
+        <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>Single Match</div>
       </div>
 
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
@@ -3787,18 +3802,17 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
       <div style={{padding:`0 ${Math.round(9*tm)}px ${Math.round(22*tm)}px`,
-        display:'flex',alignItems:'flex-start',justifyContent:'space-between',
         maxWidth:contentMaxWidth,width:'100%',margin:'0 auto',boxSizing:'border-box'}}>
-        <div>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
           <RitmoWordmark size={Math.round(52*tm)} style={{marginLeft:-3}}/>
-          <div style={{color:T.t1,fontSize:Math.round(40*tm),marginTop:4,marginLeft:10,fontWeight:900}}>
-            {isB?'Best of Three':'Americano (Freestyle)'}
+          <div style={{display:'flex',alignItems:'center',gap:10}}>
+            {isB
+              ?<BestOfThreeIcon size={Math.round(33*tm)}/>
+              :<RacketMini size={Math.round(31*tm)}/>}
           </div>
         </div>
-        <div style={{display:'flex',alignItems:'center',gap:10}}>
-          {isB
-            ?<BestOfThreeIcon size={Math.round(30*tm)}/>
-            :<RacketMini size={Math.round(28*tm)}/>}
+        <div style={{color:T.t1,fontSize:Math.round(40*tm),marginTop:4,marginLeft:10,fontWeight:900}}>
+          {isB?'Best of Three':'Americano (Freestyle)'}
         </div>
       </div>
 
@@ -5166,14 +5180,14 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit,profile,onCreat
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
-      <div style={{padding:'0 9px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
-        <div>
+      <div style={{padding:'0 9px 22px'}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
           <RitmoWordmark size={52} style={{marginLeft:-3}}/>
-          <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>
-            {isEdit?'Turnier bearbeiten':'Turnier'}
-          </div>
+          <TrophyIcon size={40}/>
         </div>
-        <TrophyIcon size={36}/>
+        <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>
+          {isEdit?'Turnier bearbeiten':'Turnier'}
+        </div>
       </div>
 
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
@@ -5589,14 +5603,14 @@ function OnlineTournamentLobby({pin,onHome,onStart,onCancel}){
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
-      <div style={{padding:'0 9px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
-        <div>
+      <div style={{padding:'0 9px 22px'}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
           <RitmoWordmark size={52} style={{marginLeft:-3}}/>
-          <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>
-            Online-Lobby
-          </div>
+          <TrophyIcon size={40}/>
         </div>
-        <TrophyIcon size={36}/>
+        <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>
+          Online-Lobby
+        </div>
       </div>
 
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
@@ -7302,7 +7316,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='soft',onEdit,onMa
       <div style={{padding:'0 22px 14px'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
           <RitmoWordmark size={52} style={{marginLeft:-3}}/>
-          <TrophyIcon size={36}/>
+          <TrophyIcon size={40}/>
         </div>
         <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>
           {tourney.format==='mexicano'?'Mexicano':'Americano'} · Runde {tourney.current+1}
@@ -7542,12 +7556,12 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
-      <div style={{padding:'0 9px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
-        <div>
+      <div style={{padding:'0 9px 22px'}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
           <RitmoWordmark size={52} style={{marginLeft:-3}}/>
-          <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>Endstand</div>
+          <TrophyIcon size={40}/>
         </div>
-        <TrophyIcon size={36}/>
+        <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>Endstand</div>
       </div>
 
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>

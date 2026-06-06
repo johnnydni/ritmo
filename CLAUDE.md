@@ -38,6 +38,7 @@ Pure / side-effect-free modules have been extracted from the original mega-file.
 | [src/icons.jsx](src/icons.jsx) | Every small SVG glyph + brand logos. | Imports `T` from theme; uses `getAssetBase()` for PNG fallback paths. |
 | [src/padelStyles.js](src/padelStyles.js) | `PADEL_STYLES` (6 archetypes), `PADEL_QUIZ`, `computeStyle`, `STYLE_IMAGES`. | Content/data; no React. |
 | [src/db.js](src/db.js) | Profile load/save + match logging + online tournament helpers (publish/subscribe/score-submit/ready-check). | Talks to Supabase via `window.supabase`. |
+| [src/dnaCup.js](src/dnaCup.js) | RITMO DNA Cup (Founders Edition): event/schedule/format/tier constants, `lobbyStats`/`classifyTier`, `genDnaGroupRound`, `dnaLeaderboard` (tier bonus + ceil-median sit-out comp.), `dnaQualify`, bracket builders + `advanceDnaCup`, `validateCourts`. | Pure; the structured multi-phase tournament logic. |
 | [src/skillDescriptions.js](src/skillDescriptions.js) | `SKILL_DESCRIPTIONS` — text for the RITMO DNA Skill tier card. | Translation-ready content. |
 | [src/supabase.js](src/supabase.js) | Older standalone tournament-sharing helper (legacy). | Currently unused by the active flow. |
 
@@ -58,10 +59,10 @@ Screens are pure components driven by props/callbacks from `App()`. Navigation =
 
 Score state is computed by pure reducers in [`src/game.js`](src/game.js):
 
-- **Best-of-3** (`bo3R`): full padel scoring — points (0/15/30/40), advantage/deuce, optional "Golden Point" mode (activated after N deuces via `cfg.goldenPointAfter`), 6-game sets with tiebreak at 6-6, best-of-3 sets. Each action pushes a snapshot to `s.hist` for UNDO.
-- **Americano** (`amR`): point-based scoring to a configurable limit (`s.limit`, default 21; `lim<=0` = ∞ mode) with a `TIME_UP` action used by the round timer.
+- **Best-of-3** (`bo3R`): full padel scoring — points (0/15/30/40), advantage/deuce, optional "Golden Point". **Rules are configurable via an optional `s.cfg`** = `{setsToWin, gamesPerSet, tbAt, tbPoints, noDecider}` (seed with `makeBo3(cfg)`). When `cfg` is absent the `DEFCFG` values apply (6-game sets, TB at 6-6, best-of-3) — so the classic `Match` screen, which never sets cfg, is byte-identical. The DNA Cup seeds bespoke cfg blocks for single-set / two-set-no-decider / short-set / best-of-3 formats. `noDecider` plays exactly 2 sets then decides on total games, then a 7-pt match-TB. Each action pushes a snapshot to `s.hist` for UNDO.
+- **Americano** (`amR`): point-based scoring to a configurable limit (`s.limit`, default 21; `lim<=0` = ∞ mode) with a `TIME_UP` action used by the round timer. Seed with `makeAm(limit)`.
 
-When changing scoring rules, edit the reducer — the `Match` screen is a thin shell over `dBo3`/`dAm`.
+When changing scoring rules, edit the reducer — the `Match` screen is a thin shell over `dBo3`/`dAm`, and `DnaCupMatch` runs its own local `useReducer(bo3R|amR)` seeded per format.
 
 ### Tournament logic
 
@@ -70,6 +71,17 @@ When changing scoring rules, edit the reducer — the `Match` screen is a thin s
 - **Americano**: random pairings; avoids partner-repeats for up to 60 attempts, then falls back to allowing repeats. Fair sit-out (players with fewest prior sit-outs sit out next).
 - **Mexicano**: pairings driven by current leaderboard standings (1+4 vs 2+3 per court group of 4).
 - **Sit-out compensation**: in `points` mode, sit-outs get the per-round median score as `bonusPts`; in `wins` mode, lower-half players get `+1 win per sit-out`. Bonuses are kept on separate fields (`bonusPts`/`bonusWins`) and only folded into `totalPts`/`totalWins` at the end.
+
+### RITMO DNA Cup (Founders Edition)
+
+A separate, **structured** multi-phase tournament (distinct from the freeform Americano/Mexicano above). Pure logic in [`src/dnaCup.js`](src/dnaCup.js); the entire UI is one self-contained `<DnaCup/>` in `App.jsx` (route `scr==='dna-cup'`, reached from `TournamentHub`) with an internal view router — `dashboard · roster · round · bracket · leaderboard · schedule · sieger · match`. Whole cup persists to `localStorage('ritmo_dnacup')`.
+
+- **State machine**: `setup → group → ko → completed` (`cup.status`). The Ehren-Bracket runs in parallel with the main KO from the semis on.
+- **Group phase**: Mexicano rounds (round 0 random/warm-up, then standings-based) of **open-points** matches; each court gets a **match-tier** (S/A/B/C/X) from `classifyTier` based on the 4 players' RITMO DNA ratings vs the lobby mean/stdev. `dnaLeaderboard` = Σ points + Σ tier-bonus (for wins) + **ceil-median sit-out compensation** (so paused players aren't disadvantaged), tiebroken by H2H then opponent-avg-rating.
+- **Qualify** (`dnaQualify`): Top 14 → KO (Top 2 of those get a bye to the Halbfinale), bottom 8 → Ehren. Scales down for smaller fields.
+- **Brackets**: `buildBrackets` + `advanceDnaCup` (pure) auto-pair individuals into teams (balanced seed pairing, re-seeded each round) and auto-advance winners stage-by-stage. Each stage has its own `MatchFormat` (`STAGE_FORMAT`): KO = single-set, Halbfinale = two-sets-no-decider, Finale = best-of-3, Ehren-HF = short-set, Ehren-Finale = single-set. `validateCourts` guards against a player on two courts at once.
+- **Live scoring**: tapping any match opens `DnaCupMatch`, which seeds a local reducer for the correct format and offers a **full-window court display** (the "Vollbild" / fullscreen icon). On finish, the result writes back to the round/bracket and `advanceDnaCup` runs.
+- Event constants (`DNA_CUP_EVENT`, `DNA_SCHEDULE`) mirror the public event detail page (Padel Haus Großmehring, 2026-07-18, 22 spots, 3 courts).
 
 ### Theming
 

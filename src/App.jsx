@@ -238,7 +238,7 @@ function BetaLanding({onLogin,onRegister}){
         <div className="fu" style={{display:'flex',gap:10,flexWrap:'wrap',
           justifyContent:'center',animationDelay:'.1s'}}>
           <div style={{display:'flex',alignItems:'center',gap:10,padding:'10px 16px',
-            background:T.card,border:`1px solid ${T.border}`,borderRadius:10,
+            background:T.card,border:`1px solid ${T.border}`,borderRadius:13,
             color:T.t2,opacity:.85}}>
             {/* Google Play Dreieck — multi-stop gradient als Hommage */}
             <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
@@ -273,7 +273,7 @@ function BetaLanding({onLogin,onRegister}){
           </div>
 
           <div style={{display:'flex',alignItems:'center',gap:10,padding:'10px 16px',
-            background:T.card,border:`1px solid ${T.border}`,borderRadius:10,
+            background:T.card,border:`1px solid ${T.border}`,borderRadius:13,
             color:T.t2,opacity:.85}}>
             <AppStoreIcon size={24}/>
             <div style={{textAlign:'left'}}>
@@ -301,7 +301,7 @@ function BetaLanding({onLogin,onRegister}){
         <div style={{display:'flex',gap:10,width:'100%',maxWidth:340}}>
           <button onClick={onLogin}
             style={{flex:1,padding:'14px 16px',background:T.card,
-              border:`1px solid ${T.border}`,borderRadius:12,
+              border:`1px solid ${T.border}`,borderRadius:15,
               color:T.t1,fontSize:14,fontWeight:800,letterSpacing:.3,
               cursor:'pointer',transition:'background .15s'}}
             onPointerDown={e=>e.currentTarget.style.background=T.card2}
@@ -310,7 +310,7 @@ function BetaLanding({onLogin,onRegister}){
             Login
           </button>
           <button onClick={onRegister}
-            style={{flex:1,padding:'14px 16px',background:T.o,border:'none',borderRadius:12,
+            style={{flex:1,padding:'14px 16px',background:T.o,border:'none',borderRadius:15,
               color:'#000',fontSize:14,fontWeight:800,letterSpacing:.3,
               cursor:'pointer',boxShadow:'0 6px 18px var(--oGlow)'}}>
             Registrierung
@@ -336,13 +336,28 @@ function Splash({onDone}){
   },[]);
   return(
     <div onClick={ready?onDone:undefined}
-      style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
-        alignItems:'center',justifyContent:'center',gap:36,
-        cursor:ready?'pointer':'default',userSelect:'none',position:'relative'}}>
-      <div className="fi"><RitmoSplashLogo size={250}/></div>
-      <div className="fi" style={{animationDelay:'.3s'}}><BallSpinner/></div>
-      <div style={{position:'absolute',bottom:48,color:T.t3,fontSize:13,letterSpacing:.3,
-        opacity:ready?1:0,transition:'opacity .4s'}}>
+      style={{height:'100dvh',width:'100vw',
+        /* Ladebildschirm IMMER schwarz — bewusst hartkodiert (#000),
+           unabhängig vom gewählten Theme. */
+        background:'#000',
+        display:'flex',alignItems:'center',justifyContent:'center',
+        cursor:ready?'pointer':'default',userSelect:'none',
+        position:'relative',overflow:'hidden'}}>
+      {/* Loading-Video — füllt den Screen auf schwarzem Grund. Stumm +
+          playsInline für Mobile-Autoplay; contain zeigt das Video
+          vollständig (keine Beschneidung), schwarze Ränder verschmelzen
+          mit dem Hintergrund. */}
+      <video
+        src={`${getAssetBase()}assets/ritmo-loadingscreen.mp4`}
+        autoPlay muted playsInline loop preload="auto"
+        aria-hidden="true"
+        style={{position:'absolute',inset:0,width:'100%',height:'100%',
+          objectFit:'contain',background:'#000',pointerEvents:'none'}}/>
+      <div style={{position:'absolute',
+        bottom:'calc(env(safe-area-inset-bottom,0px) + 48px)',
+        color:'rgba(255,255,255,0.72)',fontSize:13,letterSpacing:.3,
+        opacity:ready?1:0,transition:'opacity .4s',zIndex:1,
+        textShadow:'0 1px 10px rgba(0,0,0,0.7)'}}>
         Tippen um fortzufahren
       </div>
     </div>
@@ -363,7 +378,7 @@ function WelcomeNotice({onConfirm}){
       padding:'24px',animation:'fadeIn .25s ease'}}>
       <div className="si" style={{
         maxWidth:380,width:'100%',background:T.card,
-        border:`1px solid ${T.border}`,borderRadius:18,
+        border:`1px solid ${T.border}`,borderRadius:23,
         padding:'28px 24px 22px',
         boxShadow:'0 24px 48px rgba(0,0,0,0.55)'}}>
         <div style={{display:'flex',justifyContent:'center',marginBottom:16}}>
@@ -378,7 +393,7 @@ function WelcomeNotice({onConfirm}){
           </div>
         </div>
         <button onClick={onConfirm}
-          style={{width:'100%',background:T.o,border:'none',borderRadius:12,
+          style={{width:'100%',background:T.o,border:'none',borderRadius:15,
             padding:'13px 16px',color:'#000',fontSize:15,fontWeight:800,letterSpacing:.3,
             cursor:'pointer',boxShadow:'0 4px 14px var(--oGlow)'}}>
           OK
@@ -458,7 +473,7 @@ function Login({onSuccess,onRegister}){
         {/* Google — disabled (OAuth folgt) */}
         <button disabled
           style={{display:'flex',alignItems:'center',justifyContent:'center',gap:10,
-            background:T.card,border:`1px solid ${T.border}`,borderRadius:12,
+            background:T.card,border:`1px solid ${T.border}`,borderRadius:15,
             padding:'13px 16px',color:T.t2,fontSize:15,fontWeight:600,
             cursor:'not-allowed',marginBottom:10,position:'relative'}}>
           <GoogleGlyph size={18}/>
@@ -470,7 +485,7 @@ function Login({onSuccess,onRegister}){
         {/* Apple — disabled bis Apple Dev Program aktiv */}
         <button disabled
           style={{display:'flex',alignItems:'center',justifyContent:'center',gap:10,
-            background:'#000',border:'1px solid rgba(255,255,255,.08)',borderRadius:12,
+            background:'#000',border:'1px solid rgba(255,255,255,.08)',borderRadius:15,
             padding:'13px 16px',color:'rgba(255,255,255,.4)',fontSize:15,fontWeight:600,
             cursor:'not-allowed',marginBottom:22,position:'relative'}}>
           <AppleGlyph size={18}/>
@@ -495,7 +510,7 @@ function Login({onSuccess,onRegister}){
             autoCapitalize="off" autoCorrect="off" spellCheck={false}
             placeholder="du@example.com"
             style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-              borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
+              borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
               outline:'none',boxSizing:'border-box'}}/>
         </div>
 
@@ -507,7 +522,7 @@ function Login({onSuccess,onRegister}){
             onKeyDown={onKeyDown} autoComplete="current-password"
             placeholder="••••••••"
             style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-              borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
+              borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
               outline:'none',boxSizing:'border-box'}}/>
         </div>
 
@@ -522,7 +537,7 @@ function Login({onSuccess,onRegister}){
 
         {/* Submit */}
         <button onClick={tryLogin} disabled={busy}
-          style={{background:T.o,border:'none',borderRadius:12,
+          style={{background:T.o,border:'none',borderRadius:15,
             padding:'14px 16px',color:'#000',fontSize:15,fontWeight:800,letterSpacing:.2,
             cursor:busy?'not-allowed':'pointer',opacity:busy?.6:1,
             boxShadow:'0 4px 14px var(--oGlow)'}}>
@@ -540,7 +555,7 @@ function Login({onSuccess,onRegister}){
 
         {resetMode&&(
           <div className="fi" style={{marginTop:10,background:T.card2,
-            border:`1px solid ${T.border}`,borderRadius:12,padding:'14px 14px 12px'}}>
+            border:`1px solid ${T.border}`,borderRadius:15,padding:'14px 14px 12px'}}>
             {resetSent?(
               <div style={{color:T.g,fontSize:13,fontWeight:600,textAlign:'center',
                 padding:'6px 0'}}>
@@ -556,14 +571,14 @@ function Login({onSuccess,onRegister}){
                 autoCapitalize="off" autoCorrect="off" spellCheck={false}
                 placeholder="du@example.com"
                 style={{width:'100%',background:T.bg,border:`1px solid ${T.border}`,
-                  borderRadius:10,padding:'10px 12px',color:T.t1,fontSize:13,fontWeight:500,
+                  borderRadius:13,padding:'10px 12px',color:T.t1,fontSize:13,fontWeight:500,
                   outline:'none',boxSizing:'border-box',marginBottom:10}}/>
               {resetError&&(
                 <div style={{color:'#FF6B6B',fontSize:11,fontWeight:600,
                   marginBottom:8,paddingLeft:2}}>{resetError}</div>
               )}
               <button onClick={submitReset} disabled={resetBusy}
-                style={{width:'100%',background:T.o,border:'none',borderRadius:10,
+                style={{width:'100%',background:T.o,border:'none',borderRadius:13,
                   padding:'10px 14px',color:'#000',fontSize:13,fontWeight:800,
                   cursor:resetBusy?'not-allowed':'pointer',opacity:resetBusy?.6:1}}>
                 {resetBusy?'Sende…':'Reset-Mail anfordern'}
@@ -724,7 +739,7 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
                 autoCapitalize="characters" autoCorrect="off" spellCheck={false}
                 placeholder="RITMO-XXXX-XXXX"
                 style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-                  borderRadius:10,padding:'13px 14px',color:T.t1,fontSize:15,fontWeight:700,
+                  borderRadius:13,padding:'13px 14px',color:T.t1,fontSize:15,fontWeight:700,
                   letterSpacing:1,outline:'none',boxSizing:'border-box',
                   fontFamily:'-apple-system,SFMono-Regular,Menlo,monospace'}}/>
             </div>
@@ -738,7 +753,7 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
             )}
 
             <button onClick={tryCheckKey} disabled={busy}
-              style={{background:T.o,border:'none',borderRadius:12,
+              style={{background:T.o,border:'none',borderRadius:15,
                 padding:'14px 16px',color:'#000',fontSize:15,fontWeight:800,letterSpacing:.2,
                 cursor:busy?'not-allowed':'pointer',opacity:busy?.6:1,
                 boxShadow:'0 4px 14px var(--oGlow)'}}>
@@ -767,7 +782,7 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
             {/* Beta-Key Quittung (read-only) + Zurück */}
             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',
               gap:8,marginBottom:16,padding:'10px 12px',
-              background:T.oSoft,border:`1px solid ${T.o}`,borderRadius:10}}>
+              background:T.oSoft,border:`1px solid ${T.o}`,borderRadius:13}}>
               <div>
                 <div style={{color:T.t3,fontSize:9,fontWeight:800,letterSpacing:1.4,
                   textTransform:'uppercase'}}>Beta-Key bestätigt</div>
@@ -785,7 +800,7 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
             {/* Google — disabled (OAuth folgt) */}
             <button disabled
               style={{display:'flex',alignItems:'center',justifyContent:'center',gap:10,
-                background:T.card,border:`1px solid ${T.border}`,borderRadius:12,
+                background:T.card,border:`1px solid ${T.border}`,borderRadius:15,
                 padding:'13px 16px',color:T.t2,fontSize:15,fontWeight:600,
                 cursor:'not-allowed',marginBottom:10,position:'relative'}}>
               <GoogleGlyph size={18}/>
@@ -797,7 +812,7 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
             {/* Apple disabled */}
             <button disabled
               style={{display:'flex',alignItems:'center',justifyContent:'center',gap:10,
-                background:'#000',border:'1px solid rgba(255,255,255,.08)',borderRadius:12,
+                background:'#000',border:'1px solid rgba(255,255,255,.08)',borderRadius:15,
                 padding:'13px 16px',color:'rgba(255,255,255,.4)',fontSize:15,fontWeight:600,
                 cursor:'not-allowed',marginBottom:22,position:'relative'}}>
               <AppleGlyph size={18}/>
@@ -822,7 +837,7 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
                 autoCapitalize="off" autoCorrect="off" spellCheck={false}
                 placeholder="du@example.com"
                 style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-                  borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
+                  borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
                   outline:'none',boxSizing:'border-box'}}/>
             </div>
 
@@ -835,7 +850,7 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
                 onKeyDown={onKeyDown} autoComplete="new-password"
                 placeholder="Min. 10 Zeichen, mit Ziffer"
                 style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-                  borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
+                  borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
                   outline:'none',boxSizing:'border-box'}}/>
             </div>
 
@@ -848,7 +863,7 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
                 onKeyDown={onKeyDown} autoComplete="new-password"
                 placeholder="••••••••"
                 style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-                  borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
+                  borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
                   outline:'none',boxSizing:'border-box'}}/>
             </div>
 
@@ -861,7 +876,7 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
             )}
 
             <button onClick={tryRegister} disabled={busy}
-              style={{background:T.o,border:'none',borderRadius:12,
+              style={{background:T.o,border:'none',borderRadius:15,
                 padding:'14px 16px',color:'#000',fontSize:15,fontWeight:800,letterSpacing:.2,
                 cursor:busy?'not-allowed':'pointer',opacity:busy?.6:1,
                 boxShadow:'0 4px 14px var(--oGlow)'}}>
@@ -953,14 +968,14 @@ function EmailVerification({email,onBack,onSignIn}){
 
         <button onClick={resend} disabled={busy||resent}
           style={{width:'100%',background:T.card,border:`1px solid ${T.border}`,
-            borderRadius:12,padding:'12px 16px',color:T.t1,fontSize:13,fontWeight:600,
+            borderRadius:15,padding:'12px 16px',color:T.t1,fontSize:13,fontWeight:600,
             cursor:(busy||resent)?'not-allowed':'pointer',opacity:(busy||resent)?.6:1,
             marginBottom:10}}>
           {resent?'✓ Erneut gesendet':'E-Mail erneut senden'}
         </button>
 
         <button onClick={()=>onSignIn?.(email)}
-          style={{width:'100%',background:T.o,border:'none',borderRadius:12,
+          style={{width:'100%',background:T.o,border:'none',borderRadius:15,
             padding:'14px 16px',color:'#000',fontSize:14,fontWeight:800,letterSpacing:.3,
             cursor:'pointer',marginBottom:18,
             boxShadow:'0 4px 14px var(--oGlow)'}}>
@@ -1022,7 +1037,7 @@ function PasswordRecovery({onDone}){
             autoComplete="new-password"
             placeholder="Min. 10 Zeichen, mit Ziffer"
             style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-              borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
+              borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
               outline:'none',boxSizing:'border-box'}}/>
         </div>
 
@@ -1035,7 +1050,7 @@ function PasswordRecovery({onDone}){
             autoComplete="new-password"
             placeholder="••••••••"
             style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-              borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
+              borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
               outline:'none',boxSizing:'border-box'}}/>
         </div>
 
@@ -1048,7 +1063,7 @@ function PasswordRecovery({onDone}){
         )}
 
         <button onClick={submit} disabled={busy}
-          style={{background:T.o,border:'none',borderRadius:12,
+          style={{background:T.o,border:'none',borderRadius:15,
             padding:'14px 16px',color:'#000',fontSize:15,fontWeight:800,letterSpacing:.2,
             cursor:busy?'not-allowed':'pointer',opacity:busy?.6:1,
             boxShadow:'0 4px 14px var(--oGlow)'}}>
@@ -1131,7 +1146,7 @@ function ChapterWelcome(){
           beim ersten Start den Druck raus und senkt die Abbruchrate. */}
       <div className="fu" style={{animationDelay:'.18s',display:'flex',alignItems:'flex-start',
         gap:10,maxWidth:300,background:T.card,border:`1px solid ${T.border}`,
-        borderRadius:12,padding:'11px 13px'}}>
+        borderRadius:15,padding:'11px 13px'}}>
         <span style={{flexShrink:0,marginTop:1,width:17,height:17,borderRadius:'50%',
           background:T.oSoft,color:T.o,fontSize:11,fontWeight:900,fontStyle:'italic',
           display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1}}>i</span>
@@ -1157,7 +1172,7 @@ function ChapterName({profile,setProfile,onEnter}){
         autoFocus autoCapitalize="words" autoCorrect="off" spellCheck={false}
         enterKeyHint="next"
         style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-          borderRadius:10,padding:'14px 16px',color:T.t1,fontSize:15,fontWeight:500,
+          borderRadius:13,padding:'14px 16px',color:T.t1,fontSize:15,fontWeight:500,
           outline:'none',boxSizing:'border-box'}}/>
       <div style={{color:T.t3,fontSize:11,marginTop:8,lineHeight:1.5,paddingLeft:4}}>
         Wird beim Match-Setup voreingetragen und in Turnieren angezeigt.
@@ -1180,7 +1195,7 @@ function QuestionGroup({label,value,onChange,options,sub}){
               style={{padding:'12px 14px',textAlign:'left',
                 background:sel?T.oSoft:T.card,
                 border:`1.5px solid ${sel?T.o:T.border}`,
-                borderRadius:10,color:T.t1,fontSize:13,fontWeight:sel?700:500,
+                borderRadius:13,color:T.t1,fontSize:13,fontWeight:sel?700:500,
                 cursor:'pointer',transition:'all .15s',
                 display:'flex',alignItems:'center',gap:10}}>
               <span style={{flex:1}}>{o.label}</span>
@@ -1214,7 +1229,7 @@ function ChapterPlaytomic({profile,setProfile}){
           style={{flex:1,padding:'11px 10px',
             background:hasPlaytomic?T.oSoft:T.card,
             border:`1.5px solid ${hasPlaytomic?T.o:T.border}`,
-            borderRadius:10,color:T.t1,fontSize:12,fontWeight:hasPlaytomic?700:500,
+            borderRadius:13,color:T.t1,fontSize:12,fontWeight:hasPlaytomic?700:500,
             cursor:'pointer',transition:'all .15s',lineHeight:1.3,textAlign:'center'}}>
           Habe Playtomic-Level
         </button>
@@ -1222,7 +1237,7 @@ function ChapterPlaytomic({profile,setProfile}){
           style={{flex:1,padding:'11px 10px',
             background:!hasPlaytomic?T.oSoft:T.card,
             border:`1.5px solid ${!hasPlaytomic?T.o:T.border}`,
-            borderRadius:10,color:T.t1,fontSize:12,fontWeight:!hasPlaytomic?700:500,
+            borderRadius:13,color:T.t1,fontSize:12,fontWeight:!hasPlaytomic?700:500,
             cursor:'pointer',transition:'all .15s',lineHeight:1.3,textAlign:'center'}}>
           {'Habe ich nicht —\nGib mir ein RITMO Level 😉'}
         </button>
@@ -1230,7 +1245,7 @@ function ChapterPlaytomic({profile,setProfile}){
 
       {hasPlaytomic?(
         /* ── Playtomic Level — 0.01-Schritte ── */
-        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19,
           padding:'20px 18px 16px'}}>
           <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
             textTransform:'uppercase',textAlign:'center',marginBottom:14}}>
@@ -1333,7 +1348,7 @@ function ChapterPlaytomic({profile,setProfile}){
                 setProfile(p=>({...p,matchesPlayed:v===''?'':Math.max(0,parseInt(v)||0)}));
               }}
               style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-                borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:15,fontWeight:600,
+                borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:15,fontWeight:600,
                 outline:'none',boxSizing:'border-box'}}/>
           </div>
 
@@ -1352,7 +1367,7 @@ function ChapterPlaytomic({profile,setProfile}){
                   setProfile(p=>({...p,winsCount:v===''?'':wins}));
                 }}
                 style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-                  borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:15,fontWeight:600,
+                  borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:15,fontWeight:600,
                   outline:'none',boxSizing:'border-box'}}/>
               {profile.winsCount!==''&&profile.winsCount!=null&&(
                 <div style={{color:T.t3,fontSize:12,marginTop:6,paddingLeft:2}}>
@@ -1365,7 +1380,7 @@ function ChapterPlaytomic({profile,setProfile}){
           {/* Live estimate */}
           {estimated!=null&&(
             <div className="fi" style={{background:T.oSoft,
-              border:`1px solid ${T.o}`,borderRadius:12,padding:'16px 18px',
+              border:`1px solid ${T.o}`,borderRadius:15,padding:'16px 18px',
               display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:12}}>
               <div>
                 <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.3,
@@ -1421,7 +1436,7 @@ function StyleHeroCard({styleId}){
   const s=PADEL_STYLES[styleId];
   if(!s) return null;
   return(
-    <div style={{background:'#F5EDDC',borderRadius:16,overflow:'hidden',
+    <div style={{background:'#F5EDDC',borderRadius:21,overflow:'hidden',
       marginBottom:16,boxShadow:'0 4px 24px rgba(0,0,0,0.35)'}}>
       {/* Visual */}
       <div style={{background:'#F5EDDC',padding:'20px 20px 0',paddingBottom:8}}>
@@ -1453,7 +1468,7 @@ function StyleHeroCard({styleId}){
         {/* Kernwerte */}
         <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:12}}>
           {s.kernwerte.map(k=>(
-            <div key={k} style={{padding:'4px 10px',background:s.accent,borderRadius:20,
+            <div key={k} style={{padding:'4px 10px',background:s.accent,borderRadius:25,
               color:'white',fontSize:11,fontWeight:700,letterSpacing:.5}}>
               {k}
             </div>
@@ -1465,7 +1480,7 @@ function StyleHeroCard({styleId}){
         <div style={{display:'flex',gap:4,flexWrap:'wrap',marginBottom:12}}>
           {s.shots.map(sh=>(
             <div key={sh} style={{padding:'3px 8px',background:'rgba(0,0,0,0.08)',
-              borderRadius:14,color:'#1A1A1A',fontSize:11,fontWeight:500}}>
+              borderRadius:19,color:'#1A1A1A',fontSize:11,fontWeight:500}}>
               {sh}
             </div>
           ))}
@@ -1557,7 +1572,7 @@ function BarChart({values,labels,color,height=80}){
 
 function StatTile({label,value,unit,trend,color,sparklineData}){
   return(
-    <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+    <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19,
       padding:'14px 16px'}}>
       <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.2,
         textTransform:'uppercase',marginBottom:4}}>{label}</div>
@@ -1680,7 +1695,7 @@ function ProfileRitmoDNA({profile,onBack,onHome}){
         {hasMatches?(<>
         {/* Section: Form Trend */}
         <div className="fu" style={{animationDelay:'.15s',background:T.card,
-          border:`1px solid ${T.border}`,borderRadius:14,padding:'16px 18px',marginBottom:14}}>
+          border:`1px solid ${T.border}`,borderRadius:19,padding:'16px 18px',marginBottom:14}}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',
             marginBottom:10}}>
             <div>
@@ -1707,7 +1722,7 @@ function ProfileRitmoDNA({profile,onBack,onHome}){
 
         {/* Section: Match Aktivität pro Woche */}
         <div className="fu" style={{animationDelay:'.2s',background:T.card,
-          border:`1px solid ${T.border}`,borderRadius:14,padding:'16px 18px',marginBottom:14}}>
+          border:`1px solid ${T.border}`,borderRadius:19,padding:'16px 18px',marginBottom:14}}>
           <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.3,
             textTransform:'uppercase',marginBottom:3}}>Aktivität</div>
           <div style={{color:T.t1,fontSize:18,fontWeight:800,letterSpacing:-.3,marginBottom:14}}>
@@ -1718,7 +1733,7 @@ function ProfileRitmoDNA({profile,onBack,onHome}){
         </div>
         </>):(
           <div className="fu" style={{animationDelay:'.15s',background:T.card,
-            border:`1px solid ${T.border}`,borderRadius:14,padding:'24px 20px',
+            border:`1px solid ${T.border}`,borderRadius:19,padding:'24px 20px',
             marginBottom:14,textAlign:'center'}}>
             <div style={{color:T.t2,fontSize:14,fontWeight:700,marginBottom:6}}>
               Noch keine Matches geloggt
@@ -1733,7 +1748,7 @@ function ProfileRitmoDNA({profile,onBack,onHome}){
         {/* Section: Level & Ring */}
         {lvl!=null&&style&&(
           <div className="fu" style={{animationDelay:'.25s',background:T.card,
-            border:`1px solid ${T.border}`,borderRadius:14,padding:'16px 18px',marginBottom:14,
+            border:`1px solid ${T.border}`,borderRadius:19,padding:'16px 18px',marginBottom:14,
             display:'flex',alignItems:'center',gap:18}}>
             <RingChart value={(lvl/7)*100} size={90} color={accent}
               label={lvl.toFixed(2)} subLabel="Level"/>
@@ -1759,7 +1774,7 @@ function ProfileRitmoDNA({profile,onBack,onHome}){
         {/* Section: Beste Partner-Stile (Mock) */}
         {style&&(
           <div className="fu" style={{animationDelay:'.3s',background:T.card,
-            border:`1px solid ${T.border}`,borderRadius:14,padding:'16px 18px',marginBottom:14}}>
+            border:`1px solid ${T.border}`,borderRadius:19,padding:'16px 18px',marginBottom:14}}>
             <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.3,
               textTransform:'uppercase',marginBottom:10}}>Beste Partner-Chemie</div>
             {style.partners?.slice(0,2).map(p=>{
@@ -1850,7 +1865,7 @@ function ChapterPlaystyle({profile,setProfile}){
         {result&&(
           <div className="fi" style={{background:PADEL_STYLES[result].card,
             border:`1.5px solid ${PADEL_STYLES[result].accent}`,
-            borderRadius:12,padding:'14px 16px',marginBottom:16,
+            borderRadius:15,padding:'14px 16px',marginBottom:16,
             display:'flex',alignItems:'center',gap:12}}>
             <ArchetypeGlyph type={result} active color={PADEL_STYLES[result].accent} size={34}/>
             <div>
@@ -1918,7 +1933,7 @@ function ChapterTheme({theme,setTheme}){
             display:'flex',alignItems:'center',gap:14,
             background:sel?T.oSoft:T.card,
             border:`1.5px solid ${sel?T.o:T.border}`,
-            borderRadius:12,padding:'12px 14px',
+            borderRadius:15,padding:'12px 14px',
             cursor:'pointer',transition:'all .15s'}}>
             <div style={{display:'flex',flexShrink:0,borderRadius:5,overflow:'hidden',
               boxShadow:'inset 0 0 0 1px rgba(255,255,255,0.06)'}}>
@@ -2050,7 +2065,7 @@ function Welcome({profile,setProfile,theme,setTheme,onComplete}){
         {step>0&&(
           <button onClick={goBack}
             style={{padding:'14px 18px',background:T.card,
-              border:`1px solid ${T.border}`,borderRadius:12,
+              border:`1px solid ${T.border}`,borderRadius:15,
               color:T.t1,fontSize:14,fontWeight:600,cursor:'pointer'}}>
             Zurück
           </button>
@@ -2059,7 +2074,7 @@ function Welcome({profile,setProfile,theme,setTheme,onComplete}){
           style={{flex:1,padding:'14px 18px',
             background:current.canContinue()?T.o:T.card2,
             border:current.canContinue()?'none':`1px solid ${T.border}`,
-            borderRadius:12,
+            borderRadius:15,
             color:current.canContinue()?'#000':T.t4,
             fontSize:15,fontWeight:800,letterSpacing:.2,
             cursor:current.canContinue()?'pointer':'not-allowed',
@@ -2476,7 +2491,7 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
 
         {/* Spielniveau — avatar + level (TOP) */}
         <div className="fi" style={{background:T.card,border:`1px solid ${T.border}`,
-          borderRadius:16,padding:'24px 20px',marginBottom:14,
+          borderRadius:21,padding:'24px 20px',marginBottom:14,
           display:'flex',alignItems:'center',gap:18}}>
           <AvatarWithUpload profile={profile} setProfile={setProfile} size={72}/>
           <div style={{flex:1,minWidth:0}}>
@@ -2589,7 +2604,7 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
             style={{animationDelay:'.05s',width:'100%',
               background:'linear-gradient(135deg,#1A1A1A 0%,#000000 100%)',
               border:`1px solid ${PADEL_STYLES[profile.styleType].accent}40`,
-              borderRadius:16,padding:'20px 20px',marginBottom:14,
+              borderRadius:21,padding:'20px 20px',marginBottom:14,
               display:'flex',alignItems:'center',gap:16,cursor:'pointer',
               boxShadow:`0 0 0 1px ${PADEL_STYLES[profile.styleType].accent}20, 0 4px 20px rgba(0,0,0,0.4)`,
               textAlign:'left',color:'#FFF'}}>
@@ -2627,7 +2642,7 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
           </button>
         ):(
           <div className="fu" style={{background:T.card,border:`1px solid ${T.border}`,
-            borderRadius:14,padding:'16px 18px',marginBottom:14,animationDelay:'.05s'}}>
+            borderRadius:19,padding:'16px 18px',marginBottom:14,animationDelay:'.05s'}}>
             <div style={{color:T.t3,fontSize:13,lineHeight:1.5}}>
               Spielstil noch nicht bestimmt — Onboarding-Quiz abschließen.
             </div>
@@ -2637,14 +2652,14 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
         {/* Followers / Following — Counter-Karten, tap öffnet die Liste */}
         <div className="fu" style={{display:'flex',gap:10,marginBottom:14,animationDelay:'.08s'}}>
           <button onClick={()=>onOpenFollowers&&onOpenFollowers()}
-            style={{flex:1,background:T.card,border:`1px solid ${T.border}`,borderRadius:12,
+            style={{flex:1,background:T.card,border:`1px solid ${T.border}`,borderRadius:15,
               padding:'14px 12px',textAlign:'center',cursor:'pointer',color:T.t1}}>
             <div style={{fontSize:22,fontWeight:900,letterSpacing:-.3}}>{counts.followers}</div>
             <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.3,
               textTransform:'uppercase',marginTop:2}}>Follower</div>
           </button>
           <button onClick={()=>onOpenFollowing&&onOpenFollowing()}
-            style={{flex:1,background:T.card,border:`1px solid ${T.border}`,borderRadius:12,
+            style={{flex:1,background:T.card,border:`1px solid ${T.border}`,borderRadius:15,
               padding:'14px 12px',textAlign:'center',cursor:'pointer',color:T.t1}}>
             <div style={{fontSize:22,fontWeight:900,letterSpacing:-.3}}>{counts.following}</div>
             <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.3,
@@ -2656,9 +2671,9 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
             Spiegelt profile.private; das Schema-Trigger synchronisiert
             is_public beim Save, sodass das Profil in Suchen auftaucht. */}
         <div className="fu" style={{background:T.card,border:`1px solid ${T.border}`,
-          borderRadius:14,padding:'14px 18px',marginBottom:14,animationDelay:'.1s',
+          borderRadius:19,padding:'14px 18px',marginBottom:14,animationDelay:'.1s',
           display:'flex',alignItems:'center',gap:12}}>
-          <div style={{flexShrink:0,width:36,height:36,borderRadius:10,background:T.card2,
+          <div style={{flexShrink:0,width:36,height:36,borderRadius:13,background:T.card2,
             border:`1px solid ${T.border}`,color:isPublic?T.o:T.t3,
             display:'flex',alignItems:'center',justifyContent:'center'}}>
             <EyeIcon size={20}/>
@@ -2674,7 +2689,7 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
             </div>
           </div>
           <div onClick={togglePublic}
-            style={{width:48,height:28,borderRadius:14,
+            style={{width:48,height:28,borderRadius:19,
               background:isPublic?T.o:'rgba(120,120,128,.32)',
               position:'relative',cursor:'pointer',transition:'background .25s',flexShrink:0}}>
             <div style={{width:24,height:24,borderRadius:'50%',background:T.bg,
@@ -2688,14 +2703,14 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
           display:'flex',flexDirection:'column',gap:8,marginBottom:16}}>
           <button onClick={onResetOnboarding}
             style={{padding:'13px 16px',background:T.card,
-              border:`1px solid ${T.border}`,borderRadius:12,
+              border:`1px solid ${T.border}`,borderRadius:15,
               color:T.t1,fontSize:14,fontWeight:600,cursor:'pointer',
               textAlign:'left'}}>
             Onboarding wiederholen
           </button>
           <button onClick={onLogout}
             style={{padding:'13px 16px',background:'rgba(232,69,69,0.08)',
-              border:'1px solid rgba(232,69,69,0.35)',borderRadius:12,
+              border:'1px solid rgba(232,69,69,0.35)',borderRadius:15,
               color:'#FF6B6B',fontSize:14,fontWeight:700,cursor:'pointer',
               textAlign:'left'}}>
             Abmelden
@@ -2791,7 +2806,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
             durch das Onboarding gelaufen ist. */}
         {needsOnboarding&&(
           <button onClick={()=>nav('welcome')} className="fu"
-            style={{background:T.oSoft,border:`1px solid ${T.o}`,borderRadius:18,
+            style={{background:T.oSoft,border:`1px solid ${T.o}`,borderRadius:23,
               padding:'16px 18px',display:'flex',alignItems:'center',gap:14,
               cursor:'pointer',color:T.t1,textAlign:'left',transition:'background .15s',
               animationDelay:'.02s'}}
@@ -2813,7 +2828,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
 
         {/* Single Match */}
         <button onClick={()=>nav('single-setup')} className="fu" data-lift
-          style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:18,
+          style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:23,
             padding:'18px 20px',display:'flex',alignItems:'center',gap:18,
             cursor:'pointer',color:T.t1,textAlign:'left'}}
           onPointerDown={e=>e.currentTarget.style.background=T.card2}
@@ -2828,7 +2843,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
 
         {/* Turnier — neuer Hub mit "Starten" + "Beitreten" */}
         <button onClick={()=>nav('tournament-hub')} className="fu" data-lift
-          style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:18,
+          style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:23,
             padding:'18px 20px',display:'flex',alignItems:'center',gap:18,
             cursor:'pointer',color:T.t1,textAlign:'left',
             animationDelay:'.06s'}}
@@ -2845,7 +2860,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
         {/* Community: Spieler-Suche + Clubs in einer Zeile */}
         <div className="fu" style={{display:'flex',gap:10,animationDelay:'.1s'}}>
           <button onClick={()=>nav('player-search')}
-            style={{flex:1,background:'transparent',border:`1px solid ${T.border}`,borderRadius:16,
+            style={{flex:1,background:'transparent',border:`1px solid ${T.border}`,borderRadius:21,
               padding:'14px 14px',display:'flex',flexDirection:'column',alignItems:'flex-start',
               gap:8,cursor:'pointer',color:T.t1,textAlign:'left',transition:'background .15s'}}
             onPointerDown={e=>e.currentTarget.style.background=T.card2}
@@ -2858,7 +2873,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
             </div>
           </button>
           <button onClick={()=>nav('clubs')}
-            style={{flex:1,background:'transparent',border:`1px solid ${T.border}`,borderRadius:16,
+            style={{flex:1,background:'transparent',border:`1px solid ${T.border}`,borderRadius:21,
               padding:'14px 14px',display:'flex',flexDirection:'column',alignItems:'flex-start',
               gap:8,cursor:'pointer',color:T.t1,textAlign:'left',transition:'background .15s'}}
             onPointerDown={e=>e.currentTarget.style.background=T.card2}
@@ -2874,7 +2889,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
 
         {/* RITMO Bibel — gebündelt: Regelwerk + Journey */}
         <button onClick={()=>nav('ritmo-bibel')} className="fu"
-          style={{background:'transparent',border:`1px solid ${T.border}`,borderRadius:16,
+          style={{background:'transparent',border:`1px solid ${T.border}`,borderRadius:21,
             padding:'14px 20px',display:'flex',alignItems:'center',gap:16,
             cursor:'pointer',color:T.t1,textAlign:'left',transition:'background .15s',
             animationDelay:'.18s'}}
@@ -2909,7 +2924,7 @@ function SetupHero({icon,title,desc,accent}){
     <div className="fi" style={{
       background:`linear-gradient(135deg, ${c}18 0%, ${T.card} 100%)`,
       border:`1px solid ${c}55`,
-      borderRadius:18,padding:'20px 22px',
+      borderRadius:23,padding:'20px 22px',
       display:'flex',alignItems:'center',gap:18}}>
       <div style={{flexShrink:0,width:64,height:64,borderRadius:'50%',
         background:`${c}22`,border:`1.5px solid ${c}`,
@@ -2951,12 +2966,12 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
-      <div style={{padding:'0 9px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
-        <div>
+      <div style={{padding:'0 9px 22px'}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
           <RitmoWordmark size={52} style={{marginLeft:-3}}/>
-          <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>Single Match</div>
+          <SingleMatchIcon size={40}/>
         </div>
-        <SingleMatchIcon size={36}/>
+        <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>Single Match</div>
       </div>
 
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
@@ -2967,7 +2982,7 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
           desc="Du, dein Partner, zwei Gegner. Waehle Best-of-3 oder Americano (Freestyle) und leg los."/>
 
         {/* Team 1 */}
-        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14}}>
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19}}>
           <div style={{padding:'14px 18px 6px',color:T.o,fontSize:11,fontWeight:700,
             letterSpacing:1.3,textTransform:'uppercase'}}>
             Team 1
@@ -2998,7 +3013,7 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
         </div>
 
         {/* Team 2 */}
-        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14}}>
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19}}>
           <div style={{padding:'14px 18px 6px',color:T.o,fontSize:11,fontWeight:700,
             letterSpacing:1.3,textTransform:'uppercase'}}>
             Team 2
@@ -3025,7 +3040,7 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
         </div>
 
         {/* Spielmodus */}
-        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19,
           padding:'18px 18px 20px'}}>
           <div style={{color:T.o,fontSize:21,fontWeight:800,marginBottom:14}}>Spielmodus</div>
 
@@ -3067,7 +3082,7 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
                     {v:2,l:'nach 2×'},
                   ].map(opt=>(
                     <button key={String(opt.v)} onClick={()=>setGpAfter(opt.v)}
-                      style={{padding:'5px 11px',borderRadius:14,cursor:'pointer',
+                      style={{padding:'5px 11px',borderRadius:19,cursor:'pointer',
                         background:gpAfter===opt.v?T.oSoft:'transparent',
                         border:`1px solid ${gpAfter===opt.v?T.o:T.border}`,
                         color:gpAfter===opt.v?T.o:T.t2,
@@ -3098,13 +3113,13 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
                 <div style={{display:'flex',background:T.card2,borderRadius:24,padding:3,
                   border:`1px solid ${T.border}`}}>
                   <button onClick={()=>setAmLim(21)}
-                    style={{padding:'5px 14px',borderRadius:20,border:'none',cursor:'pointer',
+                    style={{padding:'5px 14px',borderRadius:25,border:'none',cursor:'pointer',
                       background:amLim===21?T.t4:'transparent',
                       color:T.t1,fontSize:12,fontWeight:600,transition:'background .2s'}}>
                     Split 21
                   </button>
                   <button onClick={()=>setAmLim(0)}
-                    style={{padding:'5px 14px',borderRadius:20,border:'none',cursor:'pointer',
+                    style={{padding:'5px 14px',borderRadius:25,border:'none',cursor:'pointer',
                       background:amLim===0?T.t4:'transparent',
                       color:T.t1,fontSize:14,fontWeight:600,transition:'background .2s',
                       display:'flex',alignItems:'center'}}>
@@ -3787,18 +3802,17 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
       <div style={{padding:`0 ${Math.round(9*tm)}px ${Math.round(22*tm)}px`,
-        display:'flex',alignItems:'flex-start',justifyContent:'space-between',
         maxWidth:contentMaxWidth,width:'100%',margin:'0 auto',boxSizing:'border-box'}}>
-        <div>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
           <RitmoWordmark size={Math.round(52*tm)} style={{marginLeft:-3}}/>
-          <div style={{color:T.t1,fontSize:Math.round(40*tm),marginTop:4,marginLeft:10,fontWeight:900}}>
-            {isB?'Best of Three':'Americano (Freestyle)'}
+          <div style={{display:'flex',alignItems:'center',gap:10}}>
+            {isB
+              ?<BestOfThreeIcon size={Math.round(33*tm)}/>
+              :<RacketMini size={Math.round(31*tm)}/>}
           </div>
         </div>
-        <div style={{display:'flex',alignItems:'center',gap:10}}>
-          {isB
-            ?<BestOfThreeIcon size={Math.round(30*tm)}/>
-            :<RacketMini size={Math.round(28*tm)}/>}
+        <div style={{color:T.t1,fontSize:Math.round(40*tm),marginTop:4,marginLeft:10,fontWeight:900}}>
+          {isB?'Best of Three':'Americano (Freestyle)'}
         </div>
       </div>
 
@@ -3912,7 +3926,7 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
           if(!hist||hist.length===0) return null;
           const recent=hist.slice(-18);
           return(
-            <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:12,
+            <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:15,
               padding:'10px 14px',display:'flex',alignItems:'center',gap:10,
               overflowX:'auto'}}>
               <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1,
@@ -3937,14 +3951,14 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
             Aufruf erlauben. Die Card bleibt zwischen Verlauf und Timer
             sichtbar; tap → CastSheet. */}
         <button onClick={()=>setCastSheet(true)}
-          style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:12,
+          style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:15,
             padding:'12px 14px',display:'flex',alignItems:'center',gap:12,
             color:T.t1,textAlign:'left',cursor:'pointer',
             transition:'background .15s'}}
           onPointerDown={e=>e.currentTarget.style.background=T.card2}
           onPointerUp={e=>e.currentTarget.style.background=T.card}
           onPointerLeave={e=>e.currentTarget.style.background=T.card}>
-          <div style={{flexShrink:0,width:38,height:38,borderRadius:10,
+          <div style={{flexShrink:0,width:38,height:38,borderRadius:13,
             background:T.card2,border:`1px solid ${T.border}`,color:T.o,
             display:'flex',alignItems:'center',justifyContent:'center'}}>
             <AirPlayIcon size={20} color="currentColor"/>
@@ -3970,7 +3984,7 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
         )}
 
         {win&&win!=='draw'&&(
-          <div style={{textAlign:'center',padding:14,background:T.oSoft,borderRadius:12,
+          <div style={{textAlign:'center',padding:14,background:T.oSoft,borderRadius:15,
             border:`1px solid ${T.o}`,color:T.o,fontWeight:700}}>
             🏆 {win==='A'?cfg.nameA:cfg.nameB} gewinnt!
           </div>
@@ -4221,7 +4235,7 @@ function CastSheet({onClose,onEnterBigScreen}){
 
         {/* Hero */}
         <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:14}}>
-          <div style={{width:48,height:48,borderRadius:12,background:T.card,
+          <div style={{width:48,height:48,borderRadius:15,background:T.card,
             border:`1px solid ${T.border}`,color:T.o,
             display:'flex',alignItems:'center',justifyContent:'center'}}>
             <AirPlayIcon size={26} color="currentColor"/>
@@ -4251,7 +4265,7 @@ function CastSheet({onClose,onEnterBigScreen}){
         </div>
 
         {/* Pro-Tip: BigScreen zuerst */}
-        <div style={{background:T.oSoft,border:`1px solid ${T.o}`,borderRadius:12,
+        <div style={{background:T.oSoft,border:`1px solid ${T.o}`,borderRadius:15,
           padding:'12px 14px',marginBottom:16,display:'flex',alignItems:'flex-start',gap:10}}>
           <span style={{color:T.o,fontSize:14,lineHeight:1.4,flexShrink:0}}>★</span>
           <div style={{color:T.t1,fontSize:12,lineHeight:1.55,flex:1}}>
@@ -4323,7 +4337,7 @@ function CastSheet({onClose,onEnterBigScreen}){
                 style={{flex:'0 0 100%',scrollSnapAlign:'center',
                   padding:'2px 40px',boxSizing:'border-box'}}>
                 <div style={{background:i===idx?T.card2:T.card,
-                  border:`1px solid ${i===idx?T.o:T.border}`,borderRadius:14,
+                  border:`1px solid ${i===idx?T.o:T.border}`,borderRadius:19,
                   padding:'22px 14px',display:'flex',flexDirection:'column',
                   alignItems:'center',gap:8,transition:'border-color .2s,background .2s'}}>
                   <div style={{fontSize:48,lineHeight:1}}>{d.emoji}</div>
@@ -4373,7 +4387,7 @@ function CastSheet({onClose,onEnterBigScreen}){
         <button onClick={tryPresentation} disabled={busy}
           style={{width:'100%',padding:'12px 14px',marginTop:6,marginBottom:6,
             background:busy?T.card2:T.card,
-            border:`1px solid ${T.border}`,borderRadius:10,
+            border:`1px solid ${T.border}`,borderRadius:13,
             color:T.t1,fontSize:13,fontWeight:700,letterSpacing:.2,
             cursor:busy?'not-allowed':'pointer',opacity:busy?.6:1,
             textAlign:'left',
@@ -4393,7 +4407,7 @@ function CastSheet({onClose,onEnterBigScreen}){
 
         <button onClick={onClose}
           style={{width:'100%',marginTop:6,padding:'12px',background:T.card2,
-            border:`1px solid ${T.border}`,borderRadius:10,
+            border:`1px solid ${T.border}`,borderRadius:13,
             color:T.t2,fontSize:13,fontWeight:700,cursor:'pointer'}}>
           Schließen
         </button>
@@ -4417,25 +4431,25 @@ function ResetModal({onCancel,onConfirm,
       display:'flex',alignItems:'center',justifyContent:'center',padding:24,
       animation:'fadeIn .15s ease'}}>
       <div onClick={e=>e.stopPropagation()} className="si"
-        style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:18,
+        style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:23,
           padding:'22px 22px 20px',width:'100%',maxWidth:340}}>
         <div style={{color:T.t1,fontSize:18,fontWeight:800,marginBottom:6}}>{title}</div>
         <div style={{color:T.t2,fontSize:13,lineHeight:1.5,marginBottom:16}}>
           {description}
         </div>
-        <div style={{background:T.card2,borderRadius:10,padding:'12px 14px',marginBottom:16,
+        <div style={{background:T.card2,borderRadius:13,padding:'12px 14px',marginBottom:16,
           border:`1px solid ${T.border}`}}>
           <div style={{color:T.t1,fontSize:14,fontWeight:600}}>{question}</div>
         </div>
         <div style={{display:'flex',gap:10}}>
           <button onClick={onCancel}
             style={{flex:1,padding:'12px',background:T.card2,border:`1px solid ${T.border}`,
-              borderRadius:10,color:T.t1,fontSize:14,fontWeight:600,cursor:'pointer'}}>
+              borderRadius:13,color:T.t1,fontSize:14,fontWeight:600,cursor:'pointer'}}>
             {cancelLabel}
           </button>
           <button onClick={onConfirm}
             style={{flex:1,padding:'12px',background:'rgba(232,69,69,0.18)',
-              border:`1px solid ${T.r}`,borderRadius:10,color:T.r,
+              border:`1px solid ${T.r}`,borderRadius:13,color:T.r,
               fontSize:14,fontWeight:700,cursor:'pointer'}}>
             {confirmLabel}
           </button>
@@ -4579,7 +4593,7 @@ function HorizontalScrollPicker({value,onChange,options,bgColor=T.card,
       <div style={{position:'absolute',top:0,bottom:0,left:PAD,width:itemW,
         background:'var(--oSoft)',
         borderLeft:`1px solid ${T.border}`,borderRight:`1px solid ${T.border}`,
-        pointerEvents:'none',borderRadius:10}}/>
+        pointerEvents:'none',borderRadius:13}}/>
 
       {/* Linker Fade — kaschiert das Ende der Reihe, damit der User
           das Gefühl hat, durch eine Lupe zu schauen. */}
@@ -4827,7 +4841,7 @@ function WimbledonTimerCard({minutes,setMinutes,running,secsLeft,finished,onStar
     <div style={{
       background:T.bg,
       border:`1px solid ${T.o}`,
-      borderRadius:14,
+      borderRadius:19,
       padding:'20px 16px 16px',
       display:'flex',
       flexDirection:'column',
@@ -4907,7 +4921,7 @@ function TimerCard({minutes,setMinutes,running,secsLeft,finished,onStart,onPause
 
   // 3 states: idle (picker visible), running/paused (countdown), finished
   return(
-    <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+    <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19,
       padding:'14px 16px',transition:'border-color .25s'}}>
 
       {!hasStarted&&!finished&&(
@@ -4932,7 +4946,7 @@ function TimerCard({minutes,setMinutes,running,secsLeft,finished,onStart,onPause
 
       {hasStarted&&!finished&&(
         <div style={{position:'relative',margin:-16,padding:16,
-          border:`1px solid ${T.o}`,borderRadius:14,
+          border:`1px solid ${T.o}`,borderRadius:19,
           overflow:'hidden'}}>
           {/* Progress fill — shrinks as time runs out (tournament pattern) */}
           <div style={{position:'absolute',left:0,top:0,bottom:0,
@@ -5036,7 +5050,7 @@ function SwipeableCard({children,onDelete}){
   };
 
   return(
-    <div style={{position:'relative',overflow:'hidden',borderRadius:18}}>
+    <div style={{position:'relative',overflow:'hidden',borderRadius:23}}>
       {/* Delete background */}
       <div onClick={handleDeleteClick}
         style={{position:'absolute',top:0,right:0,bottom:0,width:80,
@@ -5082,7 +5096,7 @@ function StylePickerSheet({current,onSelect,onClose}){
               <button key={key} onClick={()=>{onSelect(key);onClose();}}
                 style={{display:'flex',alignItems:'center',gap:12,width:'100%',
                   background:sel?rgba(st.accent,0.14):T.card2,
-                  border:`1.5px solid ${sel?st.accent:T.border}`,borderRadius:12,
+                  border:`1.5px solid ${sel?st.accent:T.border}`,borderRadius:15,
                   padding:'11px 13px',cursor:'pointer',textAlign:'left',
                   transition:'all .18s var(--ease-out-expo)'}}>
                 <ArchetypeGlyph type={key} active color={st.accent} size={26}/>
@@ -5100,7 +5114,7 @@ function StylePickerSheet({current,onSelect,onClose}){
           {current&&(
             <button onClick={()=>{onSelect(null);onClose();}}
               style={{marginTop:4,padding:'11px',background:T.card2,border:`1px solid ${T.border}`,
-                borderRadius:12,color:T.t3,fontSize:13,fontWeight:600,cursor:'pointer'}}>
+                borderRadius:15,color:T.t3,fontSize:13,fontWeight:600,cursor:'pointer'}}>
               Kein Stil
             </button>
           )}
@@ -5166,14 +5180,14 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit,profile,onCreat
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
-      <div style={{padding:'0 9px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
-        <div>
+      <div style={{padding:'0 9px 22px'}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
           <RitmoWordmark size={52} style={{marginLeft:-3}}/>
-          <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>
-            {isEdit?'Turnier bearbeiten':'Turnier'}
-          </div>
+          <TrophyIcon size={40}/>
         </div>
-        <TrophyIcon size={36}/>
+        <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>
+          {isEdit?'Turnier bearbeiten':'Turnier'}
+        </div>
       </div>
 
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
@@ -5185,7 +5199,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit,profile,onCreat
 
         {/* Modus: Lokal vs Online */}
         {!isEdit&&(
-          <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,padding:'18px'}}>
+          <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19,padding:'18px'}}>
             <div style={{color:T.o,fontSize:18,fontWeight:800,marginBottom:12}}>Modus</div>
             <div style={{display:'flex',background:T.card2,borderRadius:30,padding:4,gap:4,
               border:`1px solid ${T.border}`}}>
@@ -5207,7 +5221,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit,profile,onCreat
         )}
 
         {/* Format */}
-        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,padding:'18px'}}>
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19,padding:'18px'}}>
           <div style={{color:T.o,fontSize:18,fontWeight:800,marginBottom:12}}>Format</div>
           <div style={{display:'flex',background:T.card2,borderRadius:30,padding:4,gap:4,
             border:`1px solid ${T.border}`}}>
@@ -5226,7 +5240,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit,profile,onCreat
         </div>
 
         {/* Sieger-Modus */}
-        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,padding:'18px'}}>
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19,padding:'18px'}}>
           <div style={{color:T.o,fontSize:18,fontWeight:800,marginBottom:12}}>Sieger-Modus</div>
           <div style={{display:'flex',background:T.card2,borderRadius:30,padding:4,gap:4,
             border:`1px solid ${T.border}`}}>
@@ -5242,7 +5256,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit,profile,onCreat
         </div>
 
         {/* Anzahl Courts */}
-        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19,
           padding:'14px 18px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
           <div>
             <div style={{color:T.t1,fontSize:15,fontWeight:600}}>Anzahl Courts</div>
@@ -5264,7 +5278,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit,profile,onCreat
         {/* Rundendauer — horizontaler Scroll-Picker mit Lupen-Effekt
             auf dem mittleren Minutenwert. Schnelles Swipen statt
             +/- Klick-Klick-Klick. */}
-        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19,
           padding:'14px 18px 16px'}}>
           <div style={{marginBottom:10}}>
             <div style={{color:T.t1,fontSize:15,fontWeight:600}}>Rundendauer</div>
@@ -5288,7 +5302,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit,profile,onCreat
             Im Online-Modus erscheint stattdessen eine Info-Karte,
             da Spieler nach Erstellung über PIN/QR joinen. */}
         {mode==='lokal'?(
-        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19,
           padding:'18px 18px 8px'}}>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
             <div style={{color:T.o,fontSize:18,fontWeight:800}}>Spieler</div>
@@ -5397,7 +5411,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit,profile,onCreat
           )}
         </div>
         ):(
-        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19,
           padding:'18px'}}>
           <div style={{color:T.o,fontSize:18,fontWeight:800,marginBottom:8}}>Spieler joinen via QR</div>
           <div style={{color:T.t2,fontSize:13,lineHeight:1.55,marginBottom:6}}>
@@ -5589,20 +5603,20 @@ function OnlineTournamentLobby({pin,onHome,onStart,onCancel}){
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
-      <div style={{padding:'0 9px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
-        <div>
+      <div style={{padding:'0 9px 22px'}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
           <RitmoWordmark size={52} style={{marginLeft:-3}}/>
-          <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>
-            Online-Lobby
-          </div>
+          <TrophyIcon size={40}/>
         </div>
-        <TrophyIcon size={36}/>
+        <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>
+          Online-Lobby
+        </div>
       </div>
 
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
 
         {/* PIN + QR */}
-        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19,
           padding:'18px',textAlign:'center'}}>
           <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.3,
             textTransform:'uppercase',marginBottom:6}}>Beitritts-PIN</div>
@@ -5611,7 +5625,7 @@ function OnlineTournamentLobby({pin,onHome,onStart,onCancel}){
             {pin.toUpperCase()}
           </div>
           <div style={{display:'flex',justifyContent:'center',marginBottom:10}}>
-            <div style={{width:220,height:220,background:'#fff',padding:8,borderRadius:10}}>
+            <div style={{width:220,height:220,background:'#fff',padding:8,borderRadius:13}}>
               <img src={qrSrc} alt={`QR für PIN ${pin}`}
                 style={{width:'100%',height:'100%',display:'block'}}
                 onError={(e)=>{e.currentTarget.style.opacity='0.2';}}/>
@@ -5624,7 +5638,7 @@ function OnlineTournamentLobby({pin,onHome,onStart,onCancel}){
         </div>
 
         {/* Teilnehmer */}
-        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19,
           padding:'18px 18px 8px'}}>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
             <div style={{color:T.o,fontSize:18,fontWeight:800}}>Teilnehmer</div>
@@ -5760,7 +5774,7 @@ function ParticipantScoreSheet({court,labelA,labelB,myTeam,initialA,initialB,
         style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',
           alignItems:'center',justifyContent:'center',gap:12,cursor:'pointer',
           background:mine?'var(--oSoft)':T.card,position:'relative',
-          border:`2px solid ${mine?T.o:T.border}`,borderRadius:18,padding:'20px 12px'}}>
+          border:`2px solid ${mine?T.o:T.border}`,borderRadius:23,padding:'20px 12px'}}>
         {mine&&<div style={{position:'absolute',top:10,color:T.o,fontSize:10,fontWeight:900,
           letterSpacing:1.4,textTransform:'uppercase'}}>Du</div>}
         <div style={{color:T.t2,fontSize:13,fontWeight:700,textAlign:'center',maxWidth:'100%',
@@ -5799,7 +5813,7 @@ function ParticipantScoreSheet({court,labelA,labelB,myTeam,initialA,initialB,
         padding:'10px 18px 0'}}>{err}</div>}
       <div style={{padding:'14px 18px calc(env(safe-area-inset-bottom,0px) + 16px)'}}>
         <button onClick={submit} disabled={busy}
-          style={{width:'100%',padding:'16px',background:T.o,border:'none',borderRadius:14,
+          style={{width:'100%',padding:'16px',background:T.o,border:'none',borderRadius:19,
             color:'#000',fontSize:16,fontWeight:800,letterSpacing:.3,
             cursor:busy?'not-allowed':'pointer',opacity:busy?.6:1,
             boxShadow:'0 6px 20px var(--oGlow)'}}>
@@ -5906,7 +5920,7 @@ function TournamentParticipantView({session,participantId,pin}){
     const myRank=myRow?sortedLb.indexOf(myRow)+1:null;
     return(<>
       {/* Winner Hero */}
-      <div className="fi" style={{background:T.card,border:`1px solid ${T.o}`,borderRadius:18,
+      <div className="fi" style={{background:T.card,border:`1px solid ${T.o}`,borderRadius:23,
         padding:'24px 22px',textAlign:'center'}}>
         <div style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:1.5,
           textTransform:'uppercase',marginBottom:6}}>Turnier beendet</div>
@@ -5919,14 +5933,14 @@ function TournamentParticipantView({session,participantId,pin}){
         </div>
         {myRow&&myRank&&winner&&myRow.id!==winner.id&&(
           <div style={{marginTop:14,padding:'8px 12px',background:T.card2,
-            borderRadius:10,color:T.t2,fontSize:12,fontWeight:600,display:'inline-block'}}>
+            borderRadius:13,color:T.t2,fontSize:12,fontWeight:600,display:'inline-block'}}>
             Du bist auf Platz <span style={{color:T.o,fontWeight:800}}>#{myRank}</span> gelandet.
           </div>
         )}
       </div>
 
       {/* Full Leaderboard */}
-      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19,
         overflow:'hidden'}}>
         {sortedLb.map((p,i)=>{
           const isMe=myRow&&p.id===myRow.id;
@@ -5970,7 +5984,7 @@ function TournamentParticipantView({session,participantId,pin}){
     {/* Ready-Check Banner */}
     {rcActive&&!iConfirmed&&(
       <div className="fi" style={{background:T.oSoft,border:`1.5px solid ${T.o}`,
-        borderRadius:14,padding:'14px 18px',display:'flex',alignItems:'center',gap:12}}>
+        borderRadius:19,padding:'14px 18px',display:'flex',alignItems:'center',gap:12}}>
         <div style={{flex:1,minWidth:0}}>
           <div style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:1.3,
             textTransform:'uppercase',marginBottom:2}}>Bereit?</div>
@@ -5980,21 +5994,21 @@ function TournamentParticipantView({session,participantId,pin}){
         </div>
         <button onClick={doConfirmReady}
           style={{padding:'10px 18px',background:T.o,color:'#000',border:'none',
-            borderRadius:10,fontSize:13,fontWeight:800,cursor:'pointer',
+            borderRadius:13,fontSize:13,fontWeight:800,cursor:'pointer',
             boxShadow:'0 4px 14px var(--oGlow)'}}>
           Bereit ✓
         </button>
       </div>
     )}
     {rcActive&&iConfirmed&&(
-      <div style={{background:T.card,border:`1px solid ${T.g}`,borderRadius:14,
+      <div style={{background:T.card,border:`1px solid ${T.g}`,borderRadius:19,
         padding:'10px 14px',color:T.g,fontSize:12,fontWeight:700,textAlign:'center'}}>
         ✓ Du bist bereit — warte auf andere Spieler
       </div>
     )}
 
     {/* Round-Header */}
-    <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+    <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19,
       padding:'16px 18px'}}>
       <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between'}}>
         <div>
@@ -6018,7 +6032,7 @@ function TournamentParticipantView({session,participantId,pin}){
     {/* Eigener Court — Score Submission */}
     {myCourt&&(
       <div style={{background:T.card,border:`1px solid ${myTeam?T.o:T.border}`,
-        borderRadius:14,padding:'18px'}}>
+        borderRadius:19,padding:'18px'}}>
         <div style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:1.3,
           textTransform:'uppercase',marginBottom:10}}>Dein Match</div>
         <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:14}}>
@@ -6040,14 +6054,14 @@ function TournamentParticipantView({session,participantId,pin}){
         {!courtDone&&(
           <button onClick={()=>setScoreMode(true)}
             style={{width:'100%',marginBottom:14,padding:'13px',background:T.o,border:'none',
-              borderRadius:11,color:'#000',fontSize:14,fontWeight:800,letterSpacing:.3,
+              borderRadius:13,color:'#000',fontSize:14,fontWeight:800,letterSpacing:.3,
               cursor:'pointer',boxShadow:'0 4px 14px var(--oGlow)',
               display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
             <span style={{fontSize:12}}>▶</span> Score-Modus öffnen
           </button>
         )}
         {courtDone?(
-          <div style={{background:`${T.g}15`,border:`1px solid ${T.g}`,borderRadius:10,
+          <div style={{background:`${T.g}15`,border:`1px solid ${T.g}`,borderRadius:13,
             padding:'12px',textAlign:'center'}}>
             <div style={{color:T.g,fontSize:11,fontWeight:800,letterSpacing:1,
               textTransform:'uppercase',marginBottom:4}}>Vom Host bestätigt</div>
@@ -6056,7 +6070,7 @@ function TournamentParticipantView({session,participantId,pin}){
             </div>
           </div>
         ):mySubmission?(
-          <div style={{background:T.card2,border:`1px dashed ${T.o}`,borderRadius:10,
+          <div style={{background:T.card2,border:`1px dashed ${T.o}`,borderRadius:13,
             padding:'12px',textAlign:'center'}}>
             <div style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:1,
               textTransform:'uppercase',marginBottom:4}}>Wartet auf Host</div>
@@ -6082,7 +6096,7 @@ function TournamentParticipantView({session,participantId,pin}){
                 placeholder="0"
                 style={{flex:1,minWidth:0,width:0,padding:'12px',
                   background:T.card2,boxSizing:'border-box',
-                  border:`1px solid ${T.border}`,borderRadius:10,
+                  border:`1px solid ${T.border}`,borderRadius:13,
                   color:T.t1,fontSize:20,fontWeight:800,fontFamily:'monospace',
                   textAlign:'center',outline:'none'}}/>
               <span style={{color:T.t3,fontSize:18,fontWeight:700,flexShrink:0}}>:</span>
@@ -6091,14 +6105,14 @@ function TournamentParticipantView({session,participantId,pin}){
                 placeholder="0"
                 style={{flex:1,minWidth:0,width:0,padding:'12px',
                   background:T.card2,boxSizing:'border-box',
-                  border:`1px solid ${T.border}`,borderRadius:10,
+                  border:`1px solid ${T.border}`,borderRadius:13,
                   color:T.t1,fontSize:20,fontWeight:800,fontFamily:'monospace',
                   textAlign:'center',outline:'none'}}/>
             </div>
             {err&&<div style={{color:'#FF6B6B',fontSize:11,fontWeight:600,marginTop:6}}>{err}</div>}
             <button onClick={submit} disabled={busy}
               style={{width:'100%',marginTop:10,padding:'12px',background:T.o,
-                border:'none',borderRadius:10,color:'#000',fontSize:14,fontWeight:800,
+                border:'none',borderRadius:13,color:'#000',fontSize:14,fontWeight:800,
                 cursor:busy?'not-allowed':'pointer',opacity:busy?.6:1,
                 boxShadow:'0 4px 14px var(--oGlow)'}}>
               {busy?'…':(mySubmission?'Neu einreichen':'Ergebnis einreichen')}
@@ -6110,7 +6124,7 @@ function TournamentParticipantView({session,participantId,pin}){
 
     {/* Andere Courts (read-only) */}
     {round&&round.courts.length>1&&(
-      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19,
         padding:'14px 18px'}}>
         <div style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:1.3,
           textTransform:'uppercase',marginBottom:8}}>Weitere Courts</div>
@@ -6138,7 +6152,7 @@ function TournamentParticipantView({session,participantId,pin}){
 
     {/* Pausen-Spieler */}
     {round?.sitOut?.length>0&&(
-      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19,
         padding:'14px 18px'}}>
         <div style={{display:'flex',alignItems:'center',gap:9,marginBottom:8}}>
           <div style={{width:24,height:24,borderRadius:'50%',flexShrink:0,background:T.oSoft,
@@ -6230,7 +6244,7 @@ function QRScannerModal({onResult,onClose}){
           <div style={{position:'absolute',inset:0,display:'flex',
             alignItems:'center',justifyContent:'center',padding:24}}>
             <div style={{background:T.card,border:`1px solid ${T.r}`,
-              borderRadius:14,padding:'20px',maxWidth:320,textAlign:'center'}}>
+              borderRadius:19,padding:'20px',maxWidth:320,textAlign:'center'}}>
               <div style={{color:T.r,fontSize:14,fontWeight:800,marginBottom:8}}>
                 Kamera nicht verfügbar
               </div>
@@ -6349,12 +6363,12 @@ function JoinTournament({initialPin,profile,onHome,onJoin,restored}){
             icon={<JoinIcon size={36}/>}
             title="Beitreten"
             desc="Scan den QR-Code des Hosts oder tippe den PIN ein, um in ein laufendes Online-Turnier einzusteigen."/>
-          <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+          <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19,
             padding:'18px'}}>
             {/* QR-Code Scanner Button */}
             <button onClick={()=>setScannerOpen(true)}
               style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'center',gap:10,
-                background:T.oSoft,border:`1px solid ${T.o}`,borderRadius:10,
+                background:T.oSoft,border:`1px solid ${T.o}`,borderRadius:13,
                 padding:'12px 14px',color:T.o,fontSize:14,fontWeight:700,
                 cursor:'pointer',marginBottom:14,letterSpacing:.2}}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
@@ -6381,7 +6395,7 @@ function JoinTournament({initialPin,profile,onHome,onJoin,restored}){
               autoCapitalize="off" autoCorrect="off" spellCheck={false}
               maxLength={8}
               style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-                borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:18,
+                borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:18,
                 fontFamily:'monospace',letterSpacing:4,
                 outline:'none',boxSizing:'border-box',textAlign:'center'}}/>
             <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
@@ -6391,7 +6405,7 @@ function JoinTournament({initialPin,profile,onHome,onJoin,restored}){
               placeholder="Wie du im Tournament heißt"
               autoCapitalize="words" autoCorrect="off" spellCheck={false}
               style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-                borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
+                borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
                 outline:'none',boxSizing:'border-box'}}/>
             {err&&(
               <div style={{color:'#FF6B6B',fontSize:12,fontWeight:600,marginTop:10}}>
@@ -6402,7 +6416,7 @@ function JoinTournament({initialPin,profile,onHome,onJoin,restored}){
         </>):null}
 
         {status==='waiting'&&(
-          <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+          <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19,
             padding:'24px 20px',textAlign:'center'}}>
             <div style={{display:'flex',justifyContent:'center',marginBottom:18}}>
               <BallSpinner/>
@@ -6418,7 +6432,7 @@ function JoinTournament({initialPin,profile,onHome,onJoin,restored}){
         )}
 
         {status==='approved'&&(
-          <div style={{background:T.card,border:`1px solid ${T.g}`,borderRadius:14,
+          <div style={{background:T.card,border:`1px solid ${T.g}`,borderRadius:19,
             padding:'24px 20px',textAlign:'center'}}>
             <div style={{width:64,height:64,borderRadius:'50%',background:`${T.g}22`,
               border:`2px solid ${T.g}`,display:'flex',alignItems:'center',justifyContent:'center',
@@ -6446,7 +6460,7 @@ function JoinTournament({initialPin,profile,onHome,onJoin,restored}){
         )}
 
         {status==='rejected'&&(
-          <div style={{background:T.card,border:`1px solid ${T.r}`,borderRadius:14,
+          <div style={{background:T.card,border:`1px solid ${T.r}`,borderRadius:19,
             padding:'24px 20px',textAlign:'center'}}>
             <div style={{color:T.r,fontSize:42,fontWeight:900,marginBottom:8}}>✕</div>
             <div style={{color:T.t1,fontSize:16,fontWeight:800,marginBottom:6}}>
@@ -6460,7 +6474,7 @@ function JoinTournament({initialPin,profile,onHome,onJoin,restored}){
                 setStatus('input');setParticipantId(null);
               }}
               style={{padding:'10px 20px',background:T.oSoft,border:`1px solid ${T.o}`,
-                borderRadius:10,color:T.o,fontSize:12,fontWeight:700,cursor:'pointer'}}>
+                borderRadius:13,color:T.o,fontSize:12,fontWeight:700,cursor:'pointer'}}>
               Erneut versuchen
             </button>
           </div>
@@ -6568,7 +6582,7 @@ function ReadyCheckHostCard({tourney,participants,readyCheck,onBroadcast,onDismi
 
   if(!active){
     return(
-      <div style={{background:T.card,border:`1px dashed ${T.border}`,borderRadius:14,
+      <div style={{background:T.card,border:`1px dashed ${T.border}`,borderRadius:19,
         padding:'12px 14px',display:'flex',alignItems:'center',gap:10}}>
         <div style={{flex:1,color:T.t3,fontSize:12,fontWeight:500}}>
           Vor Rundenstart Bereitschaft der Spieler abfragen?
@@ -6583,7 +6597,7 @@ function ReadyCheckHostCard({tourney,participants,readyCheck,onBroadcast,onDismi
     );
   }
   return(
-    <div style={{background:T.card,border:`1.5px solid ${allReady?T.g:T.o}`,borderRadius:14,
+    <div style={{background:T.card,border:`1.5px solid ${allReady?T.g:T.o}`,borderRadius:19,
       padding:'14px 16px'}}>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',
         marginBottom:8}}>
@@ -6601,7 +6615,7 @@ function ReadyCheckHostCard({tourney,participants,readyCheck,onBroadcast,onDismi
           return (
             <span key={p.id} style={{
               display:'inline-block',marginRight:8,marginBottom:4,
-              padding:'2px 8px',borderRadius:10,fontSize:11,fontWeight:600,
+              padding:'2px 8px',borderRadius:13,fontSize:11,fontWeight:600,
               background:ok?`${T.g}22`:T.card2,
               color:ok?T.g:T.t3,
               border:`1px solid ${ok?T.g:T.border}`,
@@ -6651,7 +6665,7 @@ function LineupEditSheet({court,courtIndex,players,round,onAssign,onClose}){
     return(
       <button key={`${teamKey}-${idx}`} onClick={()=>setPick({teamKey,idx})}
         style={{display:'flex',alignItems:'center',gap:10,width:'100%',
-          background:T.card2,border:`1px solid ${T.border}`,borderRadius:11,
+          background:T.card2,border:`1px solid ${T.border}`,borderRadius:13,
           padding:'11px 12px',cursor:'pointer',textAlign:'left'}}>
         <div style={{width:26,height:26,borderRadius:'50%',flexShrink:0,
           background:`${p?.color||T.t3}22`,border:`1.5px solid ${p?.color||T.border}`,
@@ -6668,7 +6682,7 @@ function LineupEditSheet({court,courtIndex,players,round,onAssign,onClose}){
       background:'rgba(0,0,0,.7)',backdropFilter:'blur(4px)',display:'flex',
       alignItems:'center',justifyContent:'center',padding:20,animation:'fadeIn .15s ease'}}>
       <div onClick={e=>e.stopPropagation()} className="si"
-        style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:18,
+        style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:23,
           padding:'20px',width:'100%',maxWidth:380,maxHeight:'82vh',overflowY:'auto'}}>
         {!pick?(<>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:4}}>
@@ -6691,7 +6705,7 @@ function LineupEditSheet({court,courtIndex,players,round,onAssign,onClose}){
             {slotRow('t2',0)}{slotRow('t2',1)}
           </div>
           <button onClick={onClose}
-            style={{width:'100%',padding:'12px',background:T.o,border:'none',borderRadius:11,
+            style={{width:'100%',padding:'12px',background:T.o,border:'none',borderRadius:13,
               color:'#000',fontSize:14,fontWeight:800,cursor:'pointer'}}>Fertig</button>
         </>):(<>
           <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:14}}>
@@ -6711,7 +6725,7 @@ function LineupEditSheet({court,courtIndex,players,round,onAssign,onClose}){
                 <button key={p.id} onClick={()=>{onAssign(pick.teamKey,pick.idx,p.id);setPick(null);}}
                   style={{display:'flex',alignItems:'center',gap:10,width:'100%',
                     background:isCurrent?T.oSoft:T.card2,
-                    border:`1px solid ${isCurrent?T.o:T.border}`,borderRadius:10,
+                    border:`1px solid ${isCurrent?T.o:T.border}`,borderRadius:13,
                     padding:'10px 12px',cursor:'pointer',textAlign:'left'}}>
                   <div style={{width:24,height:24,borderRadius:'50%',flexShrink:0,
                     background:`${p.color||T.t3}22`,border:`1.5px solid ${p.color||T.border}`,
@@ -6750,7 +6764,7 @@ function PointsEditModal({entry,winMode,onSave,onClose}){
       background:'rgba(0,0,0,.7)',backdropFilter:'blur(4px)',display:'flex',
       alignItems:'center',justifyContent:'center',padding:24,animation:'fadeIn .15s ease'}}>
       <div onClick={e=>e.stopPropagation()} className="si"
-        style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:18,
+        style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:23,
           padding:'22px',width:'100%',maxWidth:330}}>
         <div style={{display:'flex',alignItems:'center',gap:9,marginBottom:4}}>
           <div style={{width:10,height:10,borderRadius:'50%',background:entry.color,flexShrink:0}}/>
@@ -6764,15 +6778,15 @@ function PointsEditModal({entry,winMode,onSave,onClose}){
           value={val} onChange={e=>setVal(e.target.value)}
           onFocus={e=>e.currentTarget.select()}
           onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();save();}}}
-          style={{width:'100%',background:T.card2,border:`1.5px solid ${T.o}`,borderRadius:12,
+          style={{width:'100%',background:T.card2,border:`1.5px solid ${T.o}`,borderRadius:15,
             padding:'14px',color:T.t1,fontSize:24,fontWeight:900,textAlign:'center',
             fontFamily:'monospace',outline:'none',boxSizing:'border-box',marginBottom:16}}/>
         <div style={{display:'flex',gap:10}}>
           <button onClick={onClose}
             style={{flex:1,padding:'12px',background:T.card2,border:`1px solid ${T.border}`,
-              borderRadius:11,color:T.t1,fontSize:14,fontWeight:600,cursor:'pointer'}}>Abbrechen</button>
+              borderRadius:13,color:T.t1,fontSize:14,fontWeight:600,cursor:'pointer'}}>Abbrechen</button>
           <button onClick={save}
-            style={{flex:1,padding:'12px',background:T.o,border:'none',borderRadius:11,
+            style={{flex:1,padding:'12px',background:T.o,border:'none',borderRadius:13,
               color:'#000',fontSize:14,fontWeight:800,cursor:'pointer'}}>Speichern</button>
         </div>
       </div>
@@ -6866,7 +6880,7 @@ function TournamentCourtCard({court,courtIndex,playerById,onScoreChange,onConfir
           ?`linear-gradient(135deg, ${T.card} 0%, ${T.card2} 100%)`
           :T.card,
         border:`1.5px solid ${done?T.o:T.border}`,
-        borderRadius:16,padding:'16px 16px 14px',
+        borderRadius:21,padding:'16px 16px 14px',
         animationDelay:`${courtIndex*60}ms`,
         boxShadow:done?`0 0 0 1px ${T.o}33 inset, 0 8px 20px rgba(0,0,0,.25)`:'0 4px 14px rgba(0,0,0,.18)',
         overflow:'hidden',
@@ -6960,7 +6974,7 @@ function TournamentCourtCard({court,courtIndex,playerById,onScoreChange,onConfir
             onChange={e=>handleScoreInput('s1',e.target.value)}
             onFocus={e=>e.currentTarget.select()}
             onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();s2Ref.current?.focus();s2Ref.current?.select();}}}
-            style={{flexShrink:0,width:48,height:48,borderRadius:12,
+            style={{flexShrink:0,width:48,height:48,borderRadius:15,
               border:`1.5px solid ${T.o}`,
               background:T.card2,color:T.t1,fontSize:22,fontWeight:900,
               textAlign:'center',
@@ -7003,7 +7017,7 @@ function TournamentCourtCard({court,courtIndex,playerById,onScoreChange,onConfir
             onChange={e=>handleScoreInput('s2',e.target.value)}
             onFocus={e=>e.currentTarget.select()}
             onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();e.currentTarget.blur();onConfirm();}}}
-            style={{flexShrink:0,width:48,height:48,borderRadius:12,
+            style={{flexShrink:0,width:48,height:48,borderRadius:15,
               border:`1.5px solid ${T.o}`,
               background:T.card2,color:T.t1,fontSize:22,fontWeight:900,
               textAlign:'center',
@@ -7017,7 +7031,7 @@ function TournamentCourtCard({court,courtIndex,playerById,onScoreChange,onConfir
       {/* Match-Tier-Rating (RITMO DNA) — Stil-Chemie beider Teams */}
       {tier&&(
         <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8,
-          marginBottom:12,padding:'7px 12px',borderRadius:10,
+          marginBottom:12,padding:'7px 12px',borderRadius:13,
           background:`${tier.color}14`,border:`1px solid ${tier.color}55`}}>
           <span style={{color:tier.color,fontSize:12,fontWeight:900,letterSpacing:.6}}>{tier.label}</span>
           <span style={{color:T.t3,fontSize:11,fontWeight:700}}>·</span>
@@ -7030,7 +7044,7 @@ function TournamentCourtCard({court,courtIndex,playerById,onScoreChange,onConfir
 
       {/* Confirm / Edit Button */}
       <button onClick={onConfirm}
-        style={{width:'100%',padding:'11px 14px',borderRadius:11,
+        style={{width:'100%',padding:'11px 14px',borderRadius:13,
           background:done?T.card2:T.o,
           color:done?T.t2:'#000',fontSize:13,fontWeight:800,letterSpacing:.3,
           cursor:'pointer',
@@ -7302,7 +7316,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='soft',onEdit,onMa
       <div style={{padding:'0 22px 14px'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
           <RitmoWordmark size={52} style={{marginLeft:-3}}/>
-          <TrophyIcon size={36}/>
+          <TrophyIcon size={40}/>
         </div>
         <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>
           {tourney.format==='mexicano'?'Mexicano':'Americano'} · Runde {tourney.current+1}
@@ -7315,7 +7329,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='soft',onEdit,onMa
         <div style={{flex:'1 1 60%',
           background:T.bg,
           border:`2px solid ${tourney.timerFinished?T.r:T.o}`,
-          borderRadius:14,padding:'10px 14px',
+          borderRadius:19,padding:'10px 14px',
           display:'flex',alignItems:'center',gap:10,
           position:'relative',overflow:'hidden'}}>
           {/* Progress fill */}
@@ -7344,7 +7358,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='soft',onEdit,onMa
           style={{flex:'1 1 40%',
             background:tab==='board'?T.oSoft:T.card,
             border:`1px solid ${tab==='board'?T.o:T.border}`,
-            borderRadius:14,padding:'10px 14px',
+            borderRadius:19,padding:'10px 14px',
             color:tab==='board'?T.o:T.t1,fontSize:14,fontWeight:600,
             cursor:'pointer',transition:'all .2s'}}>
           {tab==='board'?'Courts':'Leaderboard'}
@@ -7356,7 +7370,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='soft',onEdit,onMa
         {tab==='round'&&(<>
           {/* Online: Pending Score-Submissions (Host approved/rejected) */}
           {isOnline&&pendingSubs.filter(s=>s.roundIndex===tourney.current).length>0&&(
-            <div style={{background:T.card,border:`1.5px solid ${T.o}`,borderRadius:14,
+            <div style={{background:T.card,border:`1.5px solid ${T.o}`,borderRadius:19,
               padding:'14px 16px'}}>
               <div style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:1.3,
                 textTransform:'uppercase',marginBottom:8}}>
@@ -7389,7 +7403,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='soft',onEdit,onMa
           ))}
 
           {round.sitOut?.length>0&&(
-            <div style={{background:T.card2,borderRadius:10,
+            <div style={{background:T.card2,borderRadius:13,
               border:`1px solid ${T.border}`}}>
               <div style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px'}}>
                 <div style={{width:26,height:26,borderRadius:'50%',flexShrink:0,background:T.oSoft,
@@ -7423,7 +7437,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='soft',onEdit,onMa
           {/* Next round (when allDone) */}
           {allDone&&(
             <button onClick={nextRound}
-              style={{padding:'14px',borderRadius:14,border:'none',
+              style={{padding:'14px',borderRadius:19,border:'none',
                 background:T.o,color:T.bg,fontSize:15,fontWeight:800,cursor:'pointer',
                 marginTop:6}}>
               Nächste Runde →
@@ -7432,7 +7446,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='soft',onEdit,onMa
         </>)}
 
         {tab==='board'&&(
-          <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+          <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19,
             overflow:'hidden',display:'flex',flexDirection:'column',maxHeight:'100%'}}>
             <div style={{overflowY:'auto',WebkitOverflowScrolling:'touch'}}>
               {sortedLb.map((p,i)=>(
@@ -7542,18 +7556,18 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
-      <div style={{padding:'0 9px 22px',display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
-        <div>
+      <div style={{padding:'0 9px 22px'}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
           <RitmoWordmark size={52} style={{marginLeft:-3}}/>
-          <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>Endstand</div>
+          <TrophyIcon size={40}/>
         </div>
-        <TrophyIcon size={36}/>
+        <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>Endstand</div>
       </div>
 
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
 
         {/* Winner Hero */}
-        <div style={{background:T.card,border:`1px solid ${T.o}`,borderRadius:18,
+        <div style={{background:T.card,border:`1px solid ${T.o}`,borderRadius:23,
           padding:'24px 22px',textAlign:'center'}}>
           <div style={{fontSize:42,marginBottom:8}}>🥇</div>
           <div style={{fontSize:24,fontWeight:800,color:T.t1,letterSpacing:-.3}}>{winner?.name}</div>
@@ -7563,7 +7577,7 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
         </div>
 
         {/* Full Leaderboard */}
-        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19,
           overflow:'hidden',flex:1,minHeight:120,display:'flex',flexDirection:'column'}}>
           <div style={{overflowY:'auto',WebkitOverflowScrolling:'touch'}}>
             {sortedLb.map((p,i)=>(
@@ -7598,12 +7612,12 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
 
         <div style={{display:'flex',gap:10,marginTop:6}}>
           <button onClick={onNew}
-            style={{flex:1,padding:'14px',borderRadius:14,border:'none',
+            style={{flex:1,padding:'14px',borderRadius:19,border:'none',
               background:T.o,color:T.bg,fontSize:14,fontWeight:800,cursor:'pointer'}}>
             🏆 Neues Turnier
           </button>
           <button onClick={onHome}
-            style={{flex:1,padding:'14px',borderRadius:14,
+            style={{flex:1,padding:'14px',borderRadius:19,
               border:`1px solid ${T.border}`,background:T.card,
               color:T.t1,fontSize:14,fontWeight:600,cursor:'pointer'}}>
             🏠 Home
@@ -7680,7 +7694,7 @@ function Live({hasMatch,hasTourney,tourneyData,matchCfg,nav,activeTab,setActiveT
             <SwipeableCard onDelete={item.onDelete}>
               <button onClick={()=>nav(item.navTo)}
                 style={{width:'100%',background:T.card,border:`1px solid ${T.border}`,
-                  borderRadius:18,padding:'18px 20px',display:'flex',alignItems:'center',gap:18,
+                  borderRadius:23,padding:'18px 20px',display:'flex',alignItems:'center',gap:18,
                   cursor:'pointer',color:T.t1,textAlign:'left',transition:'background .15s'}}
                 onPointerDown={e=>e.currentTarget.style.background=T.card2}
                 onPointerUp={e=>e.currentTarget.style.background=T.card}
@@ -7692,7 +7706,7 @@ function Live({hasMatch,hasTourney,tourneyData,matchCfg,nav,activeTab,setActiveT
                   <div style={{color:T.t3,fontSize:12,fontWeight:500}}>{item.sub}</div>
                 </div>
                 <div style={{display:'flex',alignItems:'center',gap:8,
-                  background:T.oSoft,borderRadius:20,
+                  background:T.oSoft,borderRadius:25,
                   padding:'5px 12px',border:`1px solid ${T.o}`,flexShrink:0}}>
                   <span style={{color:T.o,fontSize:11,fontWeight:700}}>▶</span>
                 </div>
@@ -7839,7 +7853,7 @@ function InputTester(){
 
   return(
     <div style={{margin:'8px 0 14px',padding:'14px',
-      background:T.card2,borderRadius:10,border:`1px solid ${T.border}`}}>
+      background:T.card2,borderRadius:13,border:`1px solid ${T.border}`}}>
       <KeyCapture onKey={handleKey}/>
       <div style={{color:T.t1,fontSize:12,fontWeight:700,marginBottom:10}}>
         Eingabe testen
@@ -7849,7 +7863,7 @@ function InputTester(){
       <div style={{
         background: fresh?T.oSoft:T.card,
         border:`1.5px solid ${fresh?T.o:T.border}`,
-        borderRadius:10,padding:'18px 14px',textAlign:'center',
+        borderRadius:13,padding:'18px 14px',textAlign:'center',
         transition:'background .2s, border-color .2s'}}>
         {last?(
           <>
@@ -7916,7 +7930,7 @@ function SettingsCard({icon,title,desc,onClick,destructive=false,q=''}){
   const bg      = destructive ? 'rgba(232,69,69,0.08)' : T.card;
   return(
     <button onClick={onClick} data-lift
-      style={{width:'100%',background:bg,border:`1px solid ${border}`,borderRadius:14,
+      style={{width:'100%',background:bg,border:`1px solid ${border}`,borderRadius:19,
         padding:'16px 18px',display:'flex',alignItems:'center',gap:16,
         color,textAlign:'left',cursor:'pointer'}}
       onPointerDown={e=>e.currentTarget.style.background = destructive ? 'rgba(232,69,69,0.14)' : T.card2}
@@ -7925,7 +7939,7 @@ function SettingsCard({icon,title,desc,onClick,destructive=false,q=''}){
       <div style={{flexShrink:0,color:accent,display:'flex',alignItems:'center',
         justifyContent:'center',width:38,height:38,
         background:destructive?'rgba(232,69,69,0.10)':T.card2,
-        border:`1px solid ${destructive?'rgba(232,69,69,0.25)':T.border}`,borderRadius:10}}>
+        border:`1px solid ${destructive?'rgba(232,69,69,0.25)':T.border}`,borderRadius:13}}>
         {icon}
       </div>
       <div style={{flex:1,minWidth:0}}>
@@ -7999,7 +8013,7 @@ function Settings({onHome,activeTab,setActiveTab,nav}){
             dem Schritt erst die DSGVO-Konsequenzen sehen. */}
 
         {/* About — schlichte Marker, kein Tap-Target */}
-        <div style={{background:'transparent',border:`1px solid ${T.border}`,borderRadius:14,
+        <div style={{background:'transparent',border:`1px solid ${T.border}`,borderRadius:19,
           padding:'14px 18px',color:T.t3,fontSize:11,lineHeight:1.6,textAlign:'center'}}>
           <Hl text="Made by Team RITMO." q={q}/><br/><Hl text="With love for Padel ♡" q={q}/>
         </div>
@@ -8042,7 +8056,7 @@ function SettingsSubLayout({title,desc,icon,onBack,onHome,children}){
           {icon&&(
             <div style={{flexShrink:0,color:T.o,
               width:36,height:36,background:T.card2,
-              border:`1px solid ${T.border}`,borderRadius:10,
+              border:`1px solid ${T.border}`,borderRadius:13,
               display:'flex',alignItems:'center',justifyContent:'center'}}>
               {icon}
             </div>
@@ -8100,7 +8114,7 @@ function SettingsSteuerung({onBack,onHome,inputMode,setInputMode,voiceOn,setVoic
       onBack={onBack} onHome={onHome}>
 
       {/* Score-Gerät */}
-      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19,
         padding:'18px 18px 6px',marginBottom:12}}>
         <div style={{color:T.o,fontSize:11,fontWeight:700,letterSpacing:1.3,
           textTransform:'uppercase',marginBottom:8}}>Score-Gerät</div>
@@ -8132,7 +8146,7 @@ function SettingsSteuerung({onBack,onHome,inputMode,setInputMode,voiceOn,setVoic
         {/* Sub-Info pro Modus */}
         {inputMode==='presenter'&&!showInfo&&<InputTester/>}
         {inputMode==='presenter'&&showInfo&&(
-          <div style={{margin:'8px 0 14px',padding:'12px 14px',background:T.card2,borderRadius:10,
+          <div style={{margin:'8px 0 14px',padding:'12px 14px',background:T.card2,borderRadius:13,
             border:`1px solid ${T.border}`,color:T.t2,fontSize:12,lineHeight:1.7}}>
             <div style={{color:T.t1,fontWeight:700,marginBottom:6}}>Tasten-Belegung:</div>
             <div>Page Up → Punkt Team A</div>
@@ -8143,7 +8157,7 @@ function SettingsSteuerung({onBack,onHome,inputMode,setInputMode,voiceOn,setVoic
         )}
         {inputMode==='ring'&&!showInfo&&<InputTester/>}
         {inputMode==='ring'&&showInfo&&(
-          <div style={{margin:'8px 0 14px',padding:'12px 14px',background:T.card2,borderRadius:10,
+          <div style={{margin:'8px 0 14px',padding:'12px 14px',background:T.card2,borderRadius:13,
             border:`1px solid ${T.border}`,color:T.t2,fontSize:12,lineHeight:1.7}}>
             <div style={{color:T.t1,fontWeight:700,marginBottom:6}}>Tasten-Belegung:</div>
             <div><span style={{color:T.t1,fontWeight:700,fontFamily:'monospace'}}>2</span> → Punkt Team A</div>
@@ -8160,13 +8174,13 @@ function SettingsSteuerung({onBack,onHome,inputMode,setInputMode,voiceOn,setVoic
           </div>
         )}
         {inputMode==='flic'&&(
-          <div style={{margin:'8px 0 14px',padding:'12px 14px',background:T.card2,borderRadius:10,
+          <div style={{margin:'8px 0 14px',padding:'12px 14px',background:T.card2,borderRadius:13,
             border:`1px solid ${T.border}`,color:T.t3,fontSize:12,lineHeight:1.6}}>
             Flic Button Integration kommt in einer zukünftigen Version.
           </div>
         )}
         {inputMode==='watch'&&(
-          <div style={{margin:'8px 0 14px',padding:'12px 14px',background:T.card2,borderRadius:10,
+          <div style={{margin:'8px 0 14px',padding:'12px 14px',background:T.card2,borderRadius:13,
             border:`1px solid ${T.border}`,color:T.t3,fontSize:12,lineHeight:1.6}}>
             Smartwatch Integration kommt in einer zukünftigen Version.
           </div>
@@ -8174,7 +8188,7 @@ function SettingsSteuerung({onBack,onHome,inputMode,setInputMode,voiceOn,setVoic
       </div>
 
       {/* Sprachansage */}
-      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19,
         padding:'14px 18px',marginBottom:12}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
           <div style={{flex:1,minWidth:0}}>
@@ -8184,7 +8198,7 @@ function SettingsSteuerung({onBack,onHome,inputMode,setInputMode,voiceOn,setVoic
             </div>
           </div>
           <div onClick={()=>setVoiceOn(!voiceOn)}
-            style={{width:48,height:28,borderRadius:14,
+            style={{width:48,height:28,borderRadius:19,
               background:voiceOn?T.o:'rgba(120,120,128,.32)',
               position:'relative',cursor:'pointer',transition:'background .25s',flexShrink:0}}>
             <div style={{width:24,height:24,borderRadius:'50%',background:T.bg,
@@ -8197,7 +8211,7 @@ function SettingsSteuerung({onBack,onHome,inputMode,setInputMode,voiceOn,setVoic
       {/* Timer-Klingelton — globale Einstellung für ALLE Timer in
           der App (Americano + Turnier-Rundentimer). Wer die Glocke
           hier wechselt, hört sie überall. */}
-      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19,
         padding:'18px 18px 8px'}}>
         <div style={{color:T.o,fontSize:11,fontWeight:700,letterSpacing:1.3,
           textTransform:'uppercase',marginBottom:4}}>Timer-Klingelton</div>
@@ -8247,7 +8261,7 @@ function SettingsAnpassung({onBack,onHome,theme,setTheme,tabletMode,setTabletMod
       desc="Wähle dein Erscheinungsbild."
       icon={<PaletteIcon size={22} color="currentColor"/>}
       onBack={onBack} onHome={onHome}>
-      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19,
         padding:'18px 18px 8px',marginBottom:12}}>
         <div style={{color:T.o,fontSize:11,fontWeight:700,letterSpacing:1.3,
           textTransform:'uppercase',marginBottom:8}}>Theme</div>
@@ -8269,7 +8283,7 @@ function SettingsAnpassung({onBack,onHome,theme,setTheme,tabletMode,setTabletMod
       </div>
 
       {/* Tablet-Modus */}
-      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19,
         padding:'18px 18px',marginBottom:12}}>
         <div style={{color:T.o,fontSize:11,fontWeight:700,letterSpacing:1.3,
           textTransform:'uppercase',marginBottom:12}}>Anzeige</div>
@@ -8299,7 +8313,7 @@ function SettingsToggle({on,onToggle,disabled=false}){
   return(
     <div onClick={()=>!disabled&&onToggle&&onToggle()}
       role="switch" aria-checked={!!on} aria-disabled={disabled||undefined}
-      style={{width:48,height:28,borderRadius:14,
+      style={{width:48,height:28,borderRadius:19,
         background:on?T.o:'rgba(120,120,128,.32)',
         position:'relative',cursor:disabled?'not-allowed':'pointer',
         opacity:disabled?.5:1,
@@ -8328,7 +8342,7 @@ function SettingsToggleRow({title,desc,on,onToggle,first=false,disabled=false}){
 
 function SettingsSection({eyebrow,children,style}){
   return(
-    <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+    <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19,
       padding:'18px 18px 6px',marginBottom:12,...(style||{})}}>
       {eyebrow&&(
         <div style={{color:T.o,fontSize:11,fontWeight:700,letterSpacing:1.3,
@@ -8345,7 +8359,7 @@ function SettingsFlash({kind,text}){
   const ok=kind==='ok';
   return(
     <div style={{
-      padding:'10px 14px',marginBottom:12,borderRadius:10,
+      padding:'10px 14px',marginBottom:12,borderRadius:13,
       background:ok?'rgba(34,180,90,0.10)':'rgba(232,69,69,0.10)',
       border:`1px solid ${ok?'rgba(34,180,90,0.4)':'rgba(232,69,69,0.4)'}`,
       color:ok?'#7ED39C':'#FF8A8A',fontSize:12,fontWeight:600,lineHeight:1.5}}>
@@ -8442,7 +8456,7 @@ function SettingsPrivatsphaere({onBack,onHome,profile,setProfile,onOpenDelete}){
         </div>
         <button onClick={onExport}
           style={{width:'100%',marginBottom:10,padding:'12px 14px',
-            background:T.card2,border:`1px solid ${T.border}`,borderRadius:10,
+            background:T.card2,border:`1px solid ${T.border}`,borderRadius:13,
             color:T.t1,fontSize:13,fontWeight:700,letterSpacing:.2,
             cursor:'pointer',textAlign:'left',
             display:'flex',alignItems:'center',justifyContent:'space-between'}}>
@@ -8452,7 +8466,7 @@ function SettingsPrivatsphaere({onBack,onHome,profile,setProfile,onOpenDelete}){
         <button onClick={onOpenDelete}
           style={{width:'100%',marginBottom:12,padding:'12px 14px',
             background:'rgba(232,69,69,0.08)',border:'1px solid rgba(232,69,69,0.35)',
-            borderRadius:10,color:'#FF6B6B',fontSize:13,fontWeight:700,letterSpacing:.2,
+            borderRadius:13,color:'#FF6B6B',fontSize:13,fontWeight:700,letterSpacing:.2,
             cursor:'pointer',textAlign:'left',
             display:'flex',alignItems:'center',justifyContent:'space-between'}}>
           <span>Konto und Daten löschen</span>
@@ -8552,7 +8566,7 @@ function SettingsBenachrichtigungen({onBack,onHome,notify,setNotify}){
           </div>
           {perm!=='granted'&&perm!=='unsupported'&&(
             <button onClick={requestPush} disabled={busy}
-              style={{padding:'10px 14px',background:T.o,border:'none',borderRadius:10,
+              style={{padding:'10px 14px',background:T.o,border:'none',borderRadius:13,
                 color:'#000',fontSize:12,fontWeight:800,letterSpacing:.3,
                 cursor:busy?'not-allowed':'pointer',opacity:busy?.6:1,flexShrink:0}}>
               Aktivieren
@@ -8560,7 +8574,7 @@ function SettingsBenachrichtigungen({onBack,onHome,notify,setNotify}){
           )}
         </div>
         {perm==='denied'&&(
-          <div style={{padding:'10px 12px',background:T.card2,borderRadius:10,
+          <div style={{padding:'10px 12px',background:T.card2,borderRadius:13,
             border:`1px solid ${T.border}`,color:T.t3,fontSize:11,lineHeight:1.55,marginBottom:10}}>
             Browser/System hat Push blockiert. Du musst es in den System-Einstellungen
             wieder freigeben, bevor wir dir senden dürfen.
@@ -8729,7 +8743,7 @@ function SettingsSicherheit({onBack,onHome}){
           <button onClick={sendReset} disabled={!email||busy}
             style={{width:'100%',padding:'12px 14px',
               background:!email||busy?T.card2:T.o,
-              border:!email||busy?`1px solid ${T.border}`:'none',borderRadius:10,
+              border:!email||busy?`1px solid ${T.border}`:'none',borderRadius:13,
               color:!email||busy?T.t3:'#000',
               fontSize:13,fontWeight:800,letterSpacing:.3,
               cursor:!email||busy?'not-allowed':'pointer',
@@ -8756,7 +8770,7 @@ function SettingsSicherheit({onBack,onHome}){
           <button onClick={signOutAll} disabled={busy}
             style={{width:'100%',padding:'12px 14px',
               background:'rgba(232,69,69,0.08)',
-              border:'1px solid rgba(232,69,69,0.35)',borderRadius:10,
+              border:'1px solid rgba(232,69,69,0.35)',borderRadius:13,
               color:'#FF6B6B',fontSize:13,fontWeight:700,letterSpacing:.2,
               cursor:busy?'not-allowed':'pointer',opacity:busy?.6:1,textAlign:'left',
               display:'flex',alignItems:'center',justifyContent:'space-between'}}>
@@ -8802,7 +8816,7 @@ function SettingsKonto({onBack,onHome,onLogout}){
       onBack={onBack} onHome={onHome}>
 
       <div style={{background:'rgba(232,69,69,0.08)',border:'1px solid rgba(232,69,69,0.35)',
-        borderRadius:14,padding:'20px 22px',marginBottom:14}}>
+        borderRadius:19,padding:'20px 22px',marginBottom:14}}>
         <div style={{color:'#FF6B6B',fontSize:11,fontWeight:800,letterSpacing:2,
           textTransform:'uppercase',marginBottom:8}}>Achtung</div>
         <div style={{color:T.t1,fontSize:15,fontWeight:700,marginBottom:8,letterSpacing:-.1}}>
@@ -8815,7 +8829,7 @@ function SettingsKonto({onBack,onHome,onLogout}){
         </div>
       </div>
 
-      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19,
         padding:'18px 22px',marginBottom:14}}>
         <div style={{color:T.t2,fontSize:12,lineHeight:1.6,marginBottom:10}}>
           Zur Bestätigung tippe das Wort <strong style={{color:T.t1}}>LÖSCHEN</strong> in
@@ -8825,7 +8839,7 @@ function SettingsKonto({onBack,onHome,onLogout}){
           autoCapitalize="characters" autoCorrect="off" spellCheck={false}
           placeholder="LÖSCHEN"
           style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-            borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:700,
+            borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:700,
             letterSpacing:1,outline:'none',boxSizing:'border-box',
             fontFamily:'-apple-system,SFMono-Regular,Menlo,monospace'}}/>
         <button disabled={!ready}
@@ -8838,7 +8852,7 @@ function SettingsKonto({onBack,onHome,onLogout}){
           }}
           style={{width:'100%',marginTop:12,padding:'14px 16px',
             background:ready?'#E84545':'rgba(232,69,69,0.25)',
-            border:'none',borderRadius:12,
+            border:'none',borderRadius:15,
             color:ready?'#FFFFFF':'rgba(255,255,255,0.5)',
             fontSize:14,fontWeight:800,letterSpacing:.3,
             cursor:ready?'pointer':'not-allowed',
@@ -8849,7 +8863,7 @@ function SettingsKonto({onBack,onHome,onLogout}){
 
       <button onClick={onBack}
         style={{width:'100%',padding:'14px 16px',background:'transparent',
-          border:`1px solid ${T.border}`,borderRadius:12,
+          border:`1px solid ${T.border}`,borderRadius:15,
           color:T.t2,fontSize:13,fontWeight:700,cursor:'pointer'}}>
         Doch nicht — zurück zu den Einstellungen
       </button>
@@ -8890,7 +8904,7 @@ function PostEventCard({ev,i=0}){
   return(
     <a href={ev.url} target="_blank" rel="noopener noreferrer" data-lift
       className="fu" style={{display:'block',textDecoration:'none',color:'inherit',
-        background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
+        background:T.card,border:`1px solid ${T.border}`,borderRadius:21,
         overflow:'hidden',animationDelay:`${i*0.05}s`}}>
       <div style={{display:'flex',height:6}} aria-hidden="true">
         {['#FF7A1A','#FFD60A','#0A84FF','#E84545','#FFFFFF'].map((c,j)=>(
@@ -8901,7 +8915,7 @@ function PostEventCard({ev,i=0}){
         {/* Kopf: Datum-Badge + Titelblock */}
         <div style={{display:'flex',gap:13,alignItems:'flex-start'}}>
           {ev.day&&(
-            <div style={{flexShrink:0,width:50,borderRadius:12,overflow:'hidden',
+            <div style={{flexShrink:0,width:50,borderRadius:15,overflow:'hidden',
               border:`1px solid ${T.o}`,textAlign:'center'}}>
               <div style={{background:T.o,color:'#000',fontSize:18,fontWeight:900,
                 lineHeight:1,padding:'6px 0 5px'}}>{ev.day}</div>
@@ -8937,7 +8951,7 @@ function PostEventCard({ev,i=0}){
           <div style={{display:'flex',gap:8,marginTop:13}}>
             {ev.tickets.map(t=>(
               <div key={t.label} style={{flex:'1 1 0',minWidth:0,
-                background:T.card2,border:`1px solid ${T.border}`,borderRadius:10,
+                background:T.card2,border:`1px solid ${T.border}`,borderRadius:13,
                 padding:'9px 11px'}}>
                 <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:.6,
                   textTransform:'uppercase'}}>{t.label}</div>
@@ -8952,7 +8966,7 @@ function PostEventCard({ev,i=0}){
 
         {/* CTA */}
         <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:6,
-          marginTop:14,background:T.o,color:'#000',borderRadius:10,padding:'11px 14px',
+          marginTop:14,background:T.o,color:'#000',borderRadius:13,padding:'11px 14px',
           fontSize:13,fontWeight:800,letterSpacing:.2}}>
           {ev.cta||'Zur Event-Seite'} <span style={{fontSize:14,lineHeight:1}}>→</span>
         </div>
@@ -9004,7 +9018,7 @@ function RitmoPost({onHome,profile,onOpenChat,unread=0}){
         <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
           <div style={{flexShrink:0,color:T.o,
             width:38,height:38,background:T.card2,
-            border:`1px solid ${T.border}`,borderRadius:10,
+            border:`1px solid ${T.border}`,borderRadius:13,
             display:'flex',alignItems:'center',justifyContent:'center'}}>
             <RitmoPostIcon size={22} color="currentColor"/>
           </div>
@@ -9039,7 +9053,7 @@ function RitmoPost({onHome,profile,onOpenChat,unread=0}){
               style={{flex:1,padding:'10px 8px',
                 background:active?T.t1:'transparent',
                 color:active?T.bg:T.t2,
-                border:`1px solid ${active?T.t1:T.border}`,borderRadius:10,
+                border:`1px solid ${active?T.t1:T.border}`,borderRadius:13,
                 fontSize:12,fontWeight:active?800:600,letterSpacing:.3,
                 cursor:'pointer',transition:'all .15s',
                 position:'relative'}}>
@@ -9080,17 +9094,17 @@ function RitmoPost({onHome,profile,onOpenChat,unread=0}){
               {chats.map((c,i)=>(
                 <button key={c.club.id} onClick={()=>onOpenChat&&onOpenChat(c.club.id)}
                   className="fu" style={{
-                    background:T.card,border:`1px solid ${c.unread>0?T.o:T.border}`,borderRadius:14,
+                    background:T.card,border:`1px solid ${c.unread>0?T.o:T.border}`,borderRadius:19,
                     padding:'12px 14px',display:'flex',alignItems:'center',gap:12,
                     cursor:'pointer',color:T.t1,textAlign:'left',
                     animationDelay:`${i*0.03}s`}}>
                   {/* Mini-Cover */}
                   {(()=>{const safe=safeImageSrc(c.club.cover);return safe?(
                     <img src={safe} alt={c.club.name}
-                      style={{width:42,height:42,borderRadius:10,objectFit:'cover',
+                      style={{width:42,height:42,borderRadius:13,objectFit:'cover',
                         flexShrink:0,border:`1px solid ${T.border}`}}/>
                   ):(
-                    <div style={{flexShrink:0,width:42,height:42,borderRadius:10,
+                    <div style={{flexShrink:0,width:42,height:42,borderRadius:13,
                       background:T.card2,border:`1px solid ${T.border}`,color:T.o,
                       display:'flex',alignItems:'center',justifyContent:'center'}}>
                       <TrophyIcon size={20}/>
@@ -9116,7 +9130,7 @@ function RitmoPost({onHome,profile,onOpenChat,unread=0}){
                     </div>
                   </div>
                   {c.unread>0&&(
-                    <div style={{flexShrink:0,minWidth:22,height:22,borderRadius:11,
+                    <div style={{flexShrink:0,minWidth:22,height:22,borderRadius:13,
                       background:T.o,color:'#000',fontSize:11,fontWeight:900,
                       padding:'0 7px',display:'flex',alignItems:'center',justifyContent:'center'}}>
                       {c.unread>99?'99+':c.unread}
@@ -9158,7 +9172,7 @@ function RitmoPost({onHome,profile,onOpenChat,unread=0}){
 
 function RitmoPostEmpty({icon,title,desc,cta}){
   return(
-    <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+    <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19,
       padding:'40px 28px',textAlign:'center',color:T.t2}}>
       <div style={{display:'flex',justifyContent:'center',marginBottom:14,color:T.o}}>
         {icon}
@@ -9172,7 +9186,7 @@ function RitmoPostEmpty({icon,title,desc,cta}){
       {cta&&(
         <button onClick={cta.onClick}
           style={{marginTop:18,padding:'10px 18px',background:T.oSoft,
-            border:`1px solid ${T.o}`,borderRadius:10,
+            border:`1px solid ${T.o}`,borderRadius:13,
             color:T.o,fontSize:12,fontWeight:800,letterSpacing:.3,cursor:'pointer'}}>
           {cta.label}
         </button>
@@ -9205,7 +9219,7 @@ function PlayerListItem({profile,onClick,trailing}){
   const style=styleType?PADEL_STYLES[styleType]:null;
   return(
     <button onClick={onClick}
-      style={{width:'100%',background:T.card,border:`1px solid ${T.border}`,borderRadius:12,
+      style={{width:'100%',background:T.card,border:`1px solid ${T.border}`,borderRadius:15,
         padding:'12px 14px',display:'flex',alignItems:'center',gap:12,
         color:T.t1,textAlign:'left',cursor:'pointer',transition:'background .15s'}}
       onPointerDown={e=>e.currentTarget.style.background=T.card2}
@@ -9263,7 +9277,7 @@ function SocialScreen({eyebrow,title,desc,icon,onHome,onBack,backLabel='Zurück'
           {icon&&(
             <div style={{flexShrink:0,color:T.o,
               width:36,height:36,background:T.card2,
-              border:`1px solid ${T.border}`,borderRadius:10,
+              border:`1px solid ${T.border}`,borderRadius:13,
               display:'flex',alignItems:'center',justifyContent:'center'}}>{icon}</div>
           )}
           <div style={{flex:1,minWidth:0}}>
@@ -9318,7 +9332,7 @@ function PlayerSearch({onHome,onOpenPlayer}){
           autoCapitalize="off" autoCorrect="off" spellCheck={false}
           placeholder="Name eingeben …"
           style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-            borderRadius:12,padding:'13px 16px',color:T.t1,fontSize:15,fontWeight:500,
+            borderRadius:15,padding:'13px 16px',color:T.t1,fontSize:15,fontWeight:500,
             outline:'none',boxSizing:'border-box'}}/>
       </div>
       {q.trim()===''?(
@@ -9396,7 +9410,7 @@ function PublicProfile({userId,currentUid,onHome,onBack,backLabel}){
         <Fragment>
           {/* Hero */}
           <div className="fu" style={{background:T.card,border:`1px solid ${T.border}`,
-            borderRadius:16,padding:'24px 22px',marginBottom:12,
+            borderRadius:21,padding:'24px 22px',marginBottom:12,
             display:'flex',alignItems:'center',gap:16}}>
             <ProfileAvatar name={name} avatar={data.avatar} size={72}/>
             <div style={{flex:1,minWidth:0}}>
@@ -9433,13 +9447,13 @@ function PublicProfile({userId,currentUid,onHome,onBack,backLabel}){
 
           {/* Follower / Following */}
           <div className="fu" style={{display:'flex',gap:10,marginBottom:12,animationDelay:'.04s'}}>
-            <div style={{flex:1,background:T.card,border:`1px solid ${T.border}`,borderRadius:12,
+            <div style={{flex:1,background:T.card,border:`1px solid ${T.border}`,borderRadius:15,
               padding:'14px 12px',textAlign:'center'}}>
               <div style={{color:T.t1,fontSize:22,fontWeight:900,letterSpacing:-.3}}>{counts.followers}</div>
               <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.3,
                 textTransform:'uppercase',marginTop:2}}>Follower</div>
             </div>
-            <div style={{flex:1,background:T.card,border:`1px solid ${T.border}`,borderRadius:12,
+            <div style={{flex:1,background:T.card,border:`1px solid ${T.border}`,borderRadius:15,
               padding:'14px 12px',textAlign:'center'}}>
               <div style={{color:T.t1,fontSize:22,fontWeight:900,letterSpacing:-.3}}>{counts.following}</div>
               <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.3,
@@ -9452,7 +9466,7 @@ function PublicProfile({userId,currentUid,onHome,onBack,backLabel}){
             <button onClick={toggle} disabled={busy} className="fu"
               style={{width:'100%',marginBottom:12,padding:'14px 16px',
                 background:following?T.card:T.o,
-                border:following?`1px solid ${T.border}`:'none',borderRadius:12,
+                border:following?`1px solid ${T.border}`:'none',borderRadius:15,
                 color:following?T.t1:'#000',fontSize:14,fontWeight:800,letterSpacing:.3,
                 cursor:busy?'not-allowed':'pointer',opacity:busy?.6:1,
                 animationDelay:'.08s'}}>
@@ -9464,7 +9478,7 @@ function PublicProfile({userId,currentUid,onHome,onBack,backLabel}){
           {style&&(
             <div className="fu" style={{
               background:'linear-gradient(135deg,#1A1A1A 0%,#000 100%)',
-              border:`1px solid ${style.accent}40`,borderRadius:16,
+              border:`1px solid ${style.accent}40`,borderRadius:21,
               padding:'18px 20px',animationDelay:'.12s'}}>
               <div style={{display:'flex',alignItems:'center',gap:14}}>
                 <div style={{width:48,height:48,borderRadius:'50%',flexShrink:0,
@@ -9523,13 +9537,13 @@ function Clubs({onHome,onOpenClub,onCreateClub}){
         <input value={q} onChange={e=>setQ(e.target.value)}
           placeholder="Name oder Stadt …"
           style={{flex:1,background:T.card2,border:`1px solid ${T.border}`,
-            borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
+            borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
             outline:'none',boxSizing:'border-box',minWidth:0}}/>
         <button onClick={onCreateClub} disabled={!!ownedId}
           title={ownedId?'Du hast bereits einen Club.':'Neuen Club gründen'}
           style={{padding:'12px 14px',
             background:ownedId?T.card2:T.o,
-            border:ownedId?`1px solid ${T.border}`:'none',borderRadius:10,
+            border:ownedId?`1px solid ${T.border}`:'none',borderRadius:13,
             color:ownedId?T.t3:'#000',fontSize:13,fontWeight:800,letterSpacing:.3,
             cursor:ownedId?'not-allowed':'pointer',flexShrink:0,
             opacity:ownedId?.55:1}}>
@@ -9546,15 +9560,15 @@ function Clubs({onHome,onOpenClub,onCreateClub}){
               textTransform:'uppercase',marginBottom:6,marginLeft:4}}>Dein Club</div>
             <button onClick={()=>onOpenClub(mine.id)}
               style={{width:'100%',background:T.card,
-                border:`1px solid ${T.o}`,borderRadius:12,
+                border:`1px solid ${T.o}`,borderRadius:15,
                 padding:'14px 16px',display:'flex',alignItems:'center',gap:12,
                 color:T.t1,textAlign:'left',cursor:'pointer'}}>
               {(()=>{const safe=safeImageSrc(mine.cover);return safe?(
                 <img src={safe} alt={mine.name}
-                  style={{width:40,height:40,borderRadius:10,objectFit:'cover',
+                  style={{width:40,height:40,borderRadius:13,objectFit:'cover',
                     flexShrink:0,border:`1px solid ${T.border}`}}/>
               ):(
-                <div style={{flexShrink:0,width:40,height:40,borderRadius:10,
+                <div style={{flexShrink:0,width:40,height:40,borderRadius:13,
                   background:T.card2,border:`1px solid ${T.border}`,color:T.o,
                   display:'flex',alignItems:'center',justifyContent:'center'}}>
                   <TrophyIcon size={20}/>
@@ -9598,15 +9612,15 @@ function Clubs({onHome,onOpenClub,onCreateClub}){
               )}
               {rest.map((c,i)=>(
                 <button key={c.id} onClick={()=>onOpenClub(c.id)} className="fu"
-                  style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:12,
+                  style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:15,
                     padding:'14px 16px',display:'flex',alignItems:'center',gap:12,
                     color:T.t1,textAlign:'left',cursor:'pointer',animationDelay:`${i*0.03}s`}}>
                   {(()=>{const safe=safeImageSrc(c.cover);return safe?(
                     <img src={safe} alt={c.name}
-                      style={{width:40,height:40,borderRadius:10,objectFit:'cover',
+                      style={{width:40,height:40,borderRadius:13,objectFit:'cover',
                         flexShrink:0,border:`1px solid ${T.border}`}}/>
                   ):(
-                    <div style={{flexShrink:0,width:40,height:40,borderRadius:10,
+                    <div style={{flexShrink:0,width:40,height:40,borderRadius:13,
                       background:T.card2,border:`1px solid ${T.border}`,color:T.o,
                       display:'flex',alignItems:'center',justifyContent:'center'}}>
                       <TrophyIcon size={20}/>
@@ -9679,7 +9693,7 @@ function ClubCreate({onHome,onDone,onCancel,initial}){
             textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Cover</div>
           <button onClick={()=>coverInput.current?.click()}
             style={{width:'100%',position:'relative',aspectRatio:'16/9',
-              background:T.card2,border:`1px dashed ${T.border}`,borderRadius:12,
+              background:T.card2,border:`1px dashed ${T.border}`,borderRadius:15,
               overflow:'hidden',cursor:'pointer',color:T.t2,padding:0}}>
             {(()=>{const safe=safeImageSrc(cover);return safe?(
               <img src={safe} alt="Cover"
@@ -9709,7 +9723,7 @@ function ClubCreate({onHome,onDone,onCancel,initial}){
           <input value={name} onChange={e=>setName(e.target.value)}
             placeholder="z.B. Padelhaus München"
             style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-              borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:600,
+              borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:600,
               outline:'none',boxSizing:'border-box'}}/>
         </div>
         <div>
@@ -9718,7 +9732,7 @@ function ClubCreate({onHome,onDone,onCancel,initial}){
           <input value={city} onChange={e=>setCity(e.target.value)}
             placeholder="z.B. München"
             style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-              borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:600,
+              borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:600,
               outline:'none',boxSizing:'border-box'}}/>
         </div>
         <div>
@@ -9727,7 +9741,7 @@ function ClubCreate({onHome,onDone,onCancel,initial}){
           <textarea value={desc} onChange={e=>setDesc(e.target.value)} rows={4}
             placeholder="Was zeichnet euch aus? Wann trefft ihr euch? Welche Levels seid ihr?"
             style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-              borderRadius:10,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
+              borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
               outline:'none',boxSizing:'border-box',resize:'vertical',lineHeight:1.55}}/>
         </div>
         {err&&(
@@ -9737,7 +9751,7 @@ function ClubCreate({onHome,onDone,onCancel,initial}){
           </div>
         )}
         <button onClick={save} disabled={busy||!name.trim()}
-          style={{padding:'14px 16px',background:T.o,border:'none',borderRadius:12,
+          style={{padding:'14px 16px',background:T.o,border:'none',borderRadius:15,
             color:'#000',fontSize:14,fontWeight:800,letterSpacing:.3,
             cursor:(busy||!name.trim())?'not-allowed':'pointer',
             opacity:(busy||!name.trim())?.55:1,marginTop:6}}>
@@ -9745,7 +9759,7 @@ function ClubCreate({onHome,onDone,onCancel,initial}){
         </button>
         <button onClick={onCancel}
           style={{padding:'12px 16px',background:'transparent',border:`1px solid ${T.border}`,
-            borderRadius:12,color:T.t2,fontSize:13,fontWeight:700,cursor:'pointer'}}>
+            borderRadius:15,color:T.t2,fontSize:13,fontWeight:700,cursor:'pointer'}}>
           Abbrechen
         </button>
       </div>
@@ -9796,7 +9810,7 @@ function ClubDetail({clubId,currentUid,onHome,onBack,onOpenPlayer,onOpenChat,onE
         <Fragment>
           {/* Hero-Image (Cover) — mit Bauhaus-Fallback wenn null */}
           <div className="fu" style={{position:'relative',width:'100%',aspectRatio:'16/9',
-            borderRadius:14,overflow:'hidden',marginBottom:12,
+            borderRadius:19,overflow:'hidden',marginBottom:12,
             background:T.card2,border:`1px solid ${T.border}`}}>
             {(()=>{const safe=safeImageSrc(cover);return safe?(
               <img src={safe} alt={club.name}
@@ -9832,7 +9846,7 @@ function ClubDetail({clubId,currentUid,onHome,onBack,onOpenPlayer,onOpenChat,onE
           {/* Description-Card (Hero-Text) — falls vorhanden */}
           {club.description&&(
             <div className="fu" style={{background:T.card,border:`1px solid ${T.border}`,
-              borderRadius:14,padding:'16px 18px',marginBottom:12,
+              borderRadius:19,padding:'16px 18px',marginBottom:12,
               color:T.t2,fontSize:14,lineHeight:1.6,animationDelay:'.03s',whiteSpace:'pre-wrap'}}>
               {club.description}
             </div>
@@ -9840,7 +9854,7 @@ function ClubDetail({clubId,currentUid,onHome,onBack,onOpenPlayer,onOpenChat,onE
 
           {/* Member-Count + Chat-Button als Status-Tiles */}
           <div className="fu" style={{display:'flex',gap:10,marginBottom:12,animationDelay:'.05s'}}>
-            <div style={{flex:1,background:T.card,border:`1px solid ${T.border}`,borderRadius:12,
+            <div style={{flex:1,background:T.card,border:`1px solid ${T.border}`,borderRadius:15,
               padding:'12px 14px',textAlign:'center'}}>
               <div style={{color:T.t1,fontSize:20,fontWeight:900,letterSpacing:-.3}}>{memberCount}</div>
               <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.3,
@@ -9848,7 +9862,7 @@ function ClubDetail({clubId,currentUid,onHome,onBack,onOpenPlayer,onOpenChat,onE
             </div>
             {joined&&(
               <button onClick={()=>onOpenChat&&onOpenChat(clubId)}
-                style={{flex:1,background:T.oSoft,border:`1px solid ${T.o}`,borderRadius:12,
+                style={{flex:1,background:T.oSoft,border:`1px solid ${T.o}`,borderRadius:15,
                   padding:'12px 14px',textAlign:'center',cursor:'pointer',color:T.o}}>
                 <RitmoPostIcon size={20} color="currentColor"/>
                 <div style={{color:T.o,fontSize:10,fontWeight:800,letterSpacing:1.3,
@@ -9861,7 +9875,7 @@ function ClubDetail({clubId,currentUid,onHome,onBack,onOpenPlayer,onOpenChat,onE
             <button onClick={toggle} disabled={busy} className="fu"
               style={{width:'100%',marginBottom:14,padding:'14px 16px',
                 background:joined?T.card:T.o,
-                border:joined?`1px solid ${T.border}`:'none',borderRadius:12,
+                border:joined?`1px solid ${T.border}`:'none',borderRadius:15,
                 color:joined?T.t1:'#000',fontSize:14,fontWeight:800,letterSpacing:.3,
                 cursor:busy?'not-allowed':'pointer',opacity:busy?.6:1,
                 animationDelay:'.07s'}}>
@@ -9872,7 +9886,7 @@ function ClubDetail({clubId,currentUid,onHome,onBack,onOpenPlayer,onOpenChat,onE
             <div className="fu" style={{display:'flex',gap:10,marginBottom:14,
               animationDelay:'.07s'}}>
               <div style={{flex:1,padding:'10px 14px',
-                background:T.oSoft,border:`1px solid ${T.o}`,borderRadius:10,
+                background:T.oSoft,border:`1px solid ${T.o}`,borderRadius:13,
                 color:T.o,fontSize:11,fontWeight:800,letterSpacing:1.5,
                 textTransform:'uppercase',textAlign:'center'}}>
                 Du bist Inhaber:in
@@ -9880,7 +9894,7 @@ function ClubDetail({clubId,currentUid,onHome,onBack,onOpenPlayer,onOpenChat,onE
               {onEdit&&(
                 <button onClick={()=>onEdit(club)}
                   style={{padding:'10px 14px',background:T.card,border:`1px solid ${T.border}`,
-                    borderRadius:10,color:T.t1,fontSize:11,fontWeight:800,letterSpacing:.5,
+                    borderRadius:13,color:T.t1,fontSize:11,fontWeight:800,letterSpacing:.5,
                     cursor:'pointer'}}>
                   Bearbeiten
                 </button>
@@ -10004,7 +10018,7 @@ function ClubChat({clubId,currentUid,onHome,onBack}){
       {/* Compact Chat-Header: Cover-Mini + Club-Name + Back-Pill */}
       <div className="fi" style={{padding:'0 22px 12px',display:'flex',alignItems:'center',gap:12}}>
         <button onClick={onBack} aria-label="Zurück"
-          style={{flexShrink:0,width:38,height:38,borderRadius:10,
+          style={{flexShrink:0,width:38,height:38,borderRadius:13,
             background:T.card2,border:`1px solid ${T.border}`,color:T.t1,
             display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>
           <span style={{transform:'rotate(180deg)',display:'inline-flex'}}>
@@ -10013,11 +10027,11 @@ function ClubChat({clubId,currentUid,onHome,onBack}){
         </button>
         {(()=>{const safe=safeImageSrc(club?.cover);return safe?(
           <img src={safe} alt={club.name}
-            style={{width:38,height:38,borderRadius:10,objectFit:'cover',flexShrink:0,
+            style={{width:38,height:38,borderRadius:13,objectFit:'cover',flexShrink:0,
               border:`1px solid ${T.border}`}}/>
         ):(
           <div style={{flexShrink:0,width:38,height:38,background:T.card2,
-            border:`1px solid ${T.border}`,borderRadius:10,color:T.o,
+            border:`1px solid ${T.border}`,borderRadius:13,color:T.o,
             display:'flex',alignItems:'center',justifyContent:'center'}}>
             <TrophyIcon size={20}/>
           </div>
@@ -10057,7 +10071,7 @@ function ClubChat({clubId,currentUid,onHome,onBack}){
                   <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:.3,
                     paddingLeft:4}}>{name}</div>
                 )}
-                <div style={{padding:'8px 12px',borderRadius:14,
+                <div style={{padding:'8px 12px',borderRadius:19,
                   background:mine?T.o:T.card,
                   border:mine?'none':`1px solid ${T.border}`,
                   color:mine?'#000':T.t1,fontSize:14,lineHeight:1.45,
@@ -10080,7 +10094,7 @@ function ClubChat({clubId,currentUid,onHome,onBack}){
         bottom:'calc(env(safe-area-inset-bottom,0px) + 14px)',
         padding:'0 22px',zIndex:5}}>
         <div style={{display:'flex',gap:8,background:T.card,
-          border:`1px solid ${T.border}`,borderRadius:14,padding:'8px 8px 8px 14px',
+          border:`1px solid ${T.border}`,borderRadius:19,padding:'8px 8px 8px 14px',
           boxShadow:'0 8px 24px rgba(0,0,0,.4)'}}>
           <input value={text} onChange={e=>setText(e.target.value)}
             onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}}}
@@ -10088,7 +10102,7 @@ function ClubChat({clubId,currentUid,onHome,onBack}){
             style={{flex:1,background:'transparent',border:'none',color:T.t1,
               fontSize:14,fontWeight:500,outline:'none',minWidth:0}}/>
           <button onClick={send} disabled={busy||!text.trim()}
-            style={{padding:'8px 14px',background:T.o,border:'none',borderRadius:10,
+            style={{padding:'8px 14px',background:T.o,border:'none',borderRadius:13,
               color:'#000',fontSize:13,fontWeight:800,letterSpacing:.3,
               cursor:(busy||!text.trim())?'not-allowed':'pointer',
               opacity:(busy||!text.trim())?.5:1}}>
@@ -10131,7 +10145,7 @@ function FollowList({userId,initial='followers',onHome,onBack,onOpenPlayer}){
             <button key={t.id} onClick={()=>setTab(t.id)}
               style={{flex:1,padding:'10px 8px',
                 background:active?T.t1:'transparent',color:active?T.bg:T.t2,
-                border:`1px solid ${active?T.t1:T.border}`,borderRadius:10,
+                border:`1px solid ${active?T.t1:T.border}`,borderRadius:13,
                 fontSize:12,fontWeight:active?800:600,letterSpacing:.3,cursor:'pointer'}}>
               {t.label}
             </button>
@@ -10175,14 +10189,14 @@ function FollowList({userId,initial='followers',onHome,onBack,onOpenPlayer}){
 function HubBigCard({icon,title,desc,onClick,accent,delay='0s'}){
   return(
     <button onClick={onClick} className="fu" data-lift
-      style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:18,
+      style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:23,
         padding:'20px 22px',display:'flex',alignItems:'center',gap:18,
         cursor:'pointer',color:T.t1,textAlign:'left',
         animationDelay:delay,width:'100%'}}
       onPointerDown={e=>e.currentTarget.style.background=T.card2}
       onPointerUp={e=>e.currentTarget.style.background=T.card}
       onPointerLeave={e=>e.currentTarget.style.background=T.card}>
-      <div style={{flexShrink:0,width:54,height:54,borderRadius:14,
+      <div style={{flexShrink:0,width:54,height:54,borderRadius:19,
         background:`${accent||T.o}22`,
         border:`1px solid ${accent||T.o}`,
         color:accent||T.o,
@@ -10396,7 +10410,7 @@ function RulesDetailLayout({icon,title,sub,visual,children,onBackToRules,onHome,
         onMouseLeave={()=>dragRef.current.active&&onTouchEnd()}>
         {visual&&(
           <div className="fi" style={{background:T.card,border:`1px solid ${T.border}`,
-            borderRadius:14,padding:16,marginBottom:18,
+            borderRadius:19,padding:16,marginBottom:18,
             display:'flex',alignItems:'center',justifyContent:'center'}}>
             {visual}
           </div>
@@ -10815,7 +10829,7 @@ function Rules({onHome,onSelect,alreadyRead,onToggleRead,onBibel}){
         overflowY:'auto',WebkitOverflowScrolling:'touch'}}>
         {sections.map((s,i)=>(
           <button key={s.id} onClick={()=>onSelect(s.id)} className="fu"
-            style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+            style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19,
               padding:'14px 16px',display:'flex',alignItems:'center',gap:14,
               cursor:'pointer',color:T.t1,textAlign:'left',
               animationDelay:`${i*40}ms`,transition:'background .15s, border-color .15s'}}
@@ -11014,10 +11028,10 @@ function RulesGlossar({onBackToRules,onHome,onNext,onPrev,currentIdx,totalSectio
       <div style={{display:'flex',flexDirection:'column',gap:14}}>
         {shots.map((s,i)=>(
           <div key={s.id} className="fu"
-            style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+            style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19,
               padding:14,display:'flex',gap:14,animationDelay:`${i*60}ms`}}>
             <div style={{flexShrink:0,width:120,display:'flex',alignItems:'center',
-              justifyContent:'center',background:T.card2,borderRadius:10,padding:6,
+              justifyContent:'center',background:T.card2,borderRadius:13,padding:6,
               border:`1px solid ${T.sep}`}}>
               <s.Fig/>
             </div>
@@ -11288,7 +11302,7 @@ function Journey({onHome,onSelect,alreadyRead,onToggleRead,onBibel}){
         overflowY:'auto',WebkitOverflowScrolling:'touch'}}>
         {sections.map((s,i)=>(
           <button key={s.id} onClick={()=>onSelect(s.id)} className="fu"
-            style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+            style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19,
               padding:'14px 16px',display:'flex',alignItems:'center',gap:14,
               cursor:'pointer',color:T.t1,textAlign:'left',
               animationDelay:`${i*40}ms`,transition:'background .15s, border-color .15s'}}
@@ -11342,7 +11356,7 @@ function JourneySpielstileList({onBack,onHome,onSelect}){
           const fn=STYLE_IMAGES[id];
           return(
             <button key={id} onClick={()=>onSelect(id)} className="fu"
-              style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,
+              style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19,
                 padding:0,display:'flex',alignItems:'stretch',gap:0,
                 cursor:'pointer',color:T.t1,textAlign:'left',overflow:'hidden',
                 animationDelay:`${i*40}ms`,transition:'border-color .15s'}}
@@ -11466,7 +11480,7 @@ function JourneySpielstile({styleId,onBack,onHome,onNext,onPrev,currentIdx,total
       <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:16}}>
         {style.kernwerte.map(k=>(
           <div key={k} style={{padding:'5px 11px',background:style.accent,
-            borderRadius:20,color:'white',fontSize:11,fontWeight:700,letterSpacing:.5}}>
+            borderRadius:25,color:'white',fontSize:11,fontWeight:700,letterSpacing:.5}}>
             {k}
           </div>
         ))}
@@ -11477,7 +11491,7 @@ function JourneySpielstile({styleId,onBack,onHome,onNext,onPrev,currentIdx,total
       <div style={{display:'flex',gap:5,flexWrap:'wrap',marginBottom:18}}>
         {style.shots.map(sh=>(
           <div key={sh} style={{padding:'4px 10px',background:T.card,
-            border:`1px solid ${T.border}`,borderRadius:14,
+            border:`1px solid ${T.border}`,borderRadius:19,
             color:T.t1,fontSize:11,fontWeight:500}}>{sh}</div>
         ))}
       </div>
@@ -11506,7 +11520,7 @@ function PartnerCard({pStyle,pFile,why,onClick}){
     <button onClick={onClick}
       style={{display:'flex',gap:12,alignItems:'center',
         background:pStyle.card,border:`1px solid ${pStyle.accent}40`,
-        borderRadius:12,padding:10,cursor:'pointer',textAlign:'left',
+        borderRadius:15,padding:10,cursor:'pointer',textAlign:'left',
         color:'inherit'}}>
       <div style={{width:56,height:40,borderRadius:6,overflow:'hidden',
         flexShrink:0,background:pStyle.accent}}>
@@ -11624,7 +11638,7 @@ function JourneyRitmoDNA({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalS
       </div>
       {MATCHING_LEVELS.map(m=>(
         <div key={m.id} style={{background:T.card,border:`1px solid ${T.border}`,
-          borderRadius:12,padding:'14px 16px',marginBottom:10,
+          borderRadius:15,padding:'14px 16px',marginBottom:10,
           display:'flex',gap:14,alignItems:'flex-start'}}>
           <div style={{width:42,height:42,borderRadius:'50%',flexShrink:0,
             background:`${m.color}22`,border:`1.5px solid ${m.color}`,
@@ -11649,7 +11663,7 @@ function JourneyRitmoDNA({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalS
       </div>
       {MATCH_TIERS.map(t=>(
         <div key={t.id} style={{background:T.card,border:`1px solid ${T.border}`,
-          borderRadius:12,padding:'12px 16px',marginBottom:8,
+          borderRadius:15,padding:'12px 16px',marginBottom:8,
           display:'flex',alignItems:'center',gap:14}}>
           <div style={{width:36,height:36,borderRadius:'50%',flexShrink:0,
             background:t.color,color:'white',
@@ -11678,7 +11692,7 @@ function JourneyRitmoDNA({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalS
       <div style={{color:T.t2,fontSize:13,marginBottom:14,lineHeight:1.5}}>
         Das Level entscheidet — gleiches Niveau, höherer Match-Tier.
       </div>
-      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:12,
+      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:15,
         overflow:'hidden',marginBottom:14}}>
         {PLAYER_LEVELS.map((lv,i)=>(
           <div key={lv.id} style={{display:'flex',alignItems:'center',gap:12,
@@ -11698,7 +11712,7 @@ function JourneyRitmoDNA({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalS
           </div>
         ))}
       </div>
-      <div style={{background:T.card2,border:`1px solid ${T.border}`,borderRadius:10,
+      <div style={{background:T.card2,border:`1px solid ${T.border}`,borderRadius:13,
         padding:'12px 14px',marginBottom:22,color:T.t2,fontSize:12,lineHeight:1.6}}>
         <span style={{color:T.t1,fontWeight:700}}>Warum?</span> Je größer die Level-Differenz,
         desto höher die Gefahr von Dominanz und desto stärker leidet die Chemie. Spieler:innen
@@ -11709,7 +11723,7 @@ function JourneyRitmoDNA({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalS
       <SectionTitle accent={T.o}>Beispiele</SectionTitle>
       <div style={{display:'flex',flexDirection:'column',gap:10,marginBottom:22}}>
         {/* Matching example */}
-        <div style={{background:T.card,border:`1px solid #1A875440`,borderRadius:12,
+        <div style={{background:T.card,border:`1px solid #1A875440`,borderRadius:15,
           padding:'14px 16px'}}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',
             marginBottom:8}}>
@@ -11730,7 +11744,7 @@ function JourneyRitmoDNA({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalS
         </div>
 
         {/* Counter example */}
-        <div style={{background:T.card,border:`1px solid #3498DB40`,borderRadius:12,
+        <div style={{background:T.card,border:`1px solid #3498DB40`,borderRadius:15,
           padding:'14px 16px'}}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',
             marginBottom:8}}>
@@ -11751,7 +11765,7 @@ function JourneyRitmoDNA({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalS
         </div>
 
         {/* Mirror example */}
-        <div style={{background:T.card,border:`1px solid #F39C1240`,borderRadius:12,
+        <div style={{background:T.card,border:`1px solid #F39C1240`,borderRadius:15,
           padding:'14px 16px'}}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',
             marginBottom:8}}>

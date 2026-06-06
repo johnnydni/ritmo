@@ -485,6 +485,8 @@ input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 @keyframes scaleIn{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+/* Splash/Ladebalken — füllt sich linear über die Mindestlaufzeit. */
+@keyframes splashLoad{from{width:0%}to{width:100%}}
 @keyframes flashOrange{0%,100%{background:var(--card)}40%{background:var(--oFlash)}}
 /* Court-View: Live-Pulse (Punkt + Border), VS-Pulse (rotation + scale)
    und Score-Pop (Skalierung beim Punkte-Update). Eigene Animationen,

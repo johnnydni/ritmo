@@ -331,7 +331,9 @@ function BetaLanding({onLogin,onRegister}){
 function Splash({onDone}){
   const[ready,setReady]=useState(false);
   useEffect(()=>{
-    const t=setTimeout(()=>setReady(true),1600);
+    // Mindestlaufzeit 6s: Ladebalken füllt sich, danach erscheint der
+    // Tipp-Hinweis und der Splash wird antippbar.
+    const t=setTimeout(()=>setReady(true),6000);
     return()=>clearTimeout(t);
   },[]);
   return(
@@ -353,12 +355,24 @@ function Splash({onDone}){
         aria-hidden="true"
         style={{position:'absolute',inset:0,width:'100%',height:'100%',
           objectFit:'contain',background:'#000',pointerEvents:'none'}}/>
-      <div style={{position:'absolute',
-        bottom:'calc(env(safe-area-inset-bottom,0px) + 48px)',
-        color:'rgba(255,255,255,0.72)',fontSize:13,letterSpacing:.3,
-        opacity:ready?1:0,transition:'opacity .4s',zIndex:1,
-        textShadow:'0 1px 10px rgba(0,0,0,0.7)'}}>
-        Tippen um fortzufahren
+      {/* Unten: Progress-Bar (über dem Hinweis) + Tipp-Hinweis */}
+      <div style={{position:'absolute',left:0,right:0,
+        bottom:'calc(env(safe-area-inset-bottom,0px) + 40px)',
+        display:'flex',flexDirection:'column',alignItems:'center',gap:16,
+        zIndex:1,pointerEvents:'none'}}>
+        {/* Ladebalken: Track weiß @85% Transparenz, Füllung RITMO-Orange,
+            läuft linear über die 6s-Mindestlaufzeit voll. */}
+        <div style={{width:'min(220px,58vw)',height:4,borderRadius:999,
+          background:'rgba(255,255,255,0.15)',overflow:'hidden'}}>
+          <div style={{height:'100%',width:0,background:'#FF7A1A',borderRadius:999,
+            animation:'splashLoad 6s linear forwards'}}/>
+        </div>
+        {/* Hinweis — erst nach den 6s sichtbar */}
+        <div style={{color:'rgba(255,255,255,0.72)',fontSize:13,letterSpacing:.3,
+          opacity:ready?1:0,transition:'opacity .4s',
+          textShadow:'0 1px 10px rgba(0,0,0,0.7)'}}>
+          Zum Fortfahren Tippen
+        </div>
       </div>
     </div>
   );

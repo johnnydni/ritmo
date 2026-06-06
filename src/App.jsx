@@ -331,9 +331,9 @@ function BetaLanding({onLogin,onRegister}){
 function Splash({onDone}){
   const[ready,setReady]=useState(false);
   useEffect(()=>{
-    // Mindestlaufzeit 6s: Ladebalken füllt sich, danach erscheint der
+    // Mindestlaufzeit 4s: Ladebalken füllt sich, danach erscheint der
     // Tipp-Hinweis und der Splash wird antippbar.
-    const t=setTimeout(()=>setReady(true),6000);
+    const t=setTimeout(()=>setReady(true),4000);
     return()=>clearTimeout(t);
   },[]);
   return(
@@ -361,11 +361,11 @@ function Splash({onDone}){
         display:'flex',flexDirection:'column',alignItems:'center',gap:16,
         zIndex:1,pointerEvents:'none'}}>
         {/* Ladebalken: Track weiß @85% Transparenz, Füllung RITMO-Orange,
-            läuft linear über die 6s-Mindestlaufzeit voll. */}
+            läuft linear über die 4s-Mindestlaufzeit voll. */}
         <div style={{width:'min(220px,58vw)',height:4,borderRadius:999,
           background:'rgba(255,255,255,0.15)',overflow:'hidden'}}>
           <div style={{height:'100%',width:0,background:'#FF7A1A',borderRadius:999,
-            animation:'splashLoad 6s linear forwards'}}/>
+            animation:'splashLoad 4s linear forwards'}}/>
         </div>
         {/* Hinweis — erst nach den 6s sichtbar */}
         <div style={{color:'rgba(255,255,255,0.72)',fontSize:13,letterSpacing:.3,

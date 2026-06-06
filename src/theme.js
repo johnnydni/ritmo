@@ -33,15 +33,18 @@ export const T = {
 
 export const CSS = `
 :root, :root[data-theme="dark"] {
-  --bg: #000000;
-  --card: #141414;
-  --card2: #1C1C1C;
-  --border: rgba(255,255,255,0.08);
-  --sep: rgba(255,255,255,0.06);
+  /* Clean-Modern-Redesign: weicheres Near-Black statt hartem #000,
+     klar abgestufte Flächen (bg → card → card2) und feine Hairline-
+     Borders für ein ruhiges, premium-dunkles Erscheinungsbild. */
+  --bg: #0B0B0E;
+  --card: #17171C;
+  --card2: #23232A;
+  --border: rgba(255,255,255,0.09);
+  --sep: rgba(255,255,255,0.055);
   --t1: #FFFFFF;
-  --t2: rgba(255,255,255,0.6);
-  --t3: rgba(255,255,255,0.35);
-  --t4: rgba(255,255,255,0.18);
+  --t2: rgba(255,255,255,0.64);
+  --t3: rgba(255,255,255,0.40);
+  --t4: rgba(255,255,255,0.17);
   --o: #FF7A1A;
   --oSoft: rgba(255,122,26,0.12);
   --oGlow: rgba(255,122,26,0.5);
@@ -55,15 +58,17 @@ export const CSS = `
   --headerGrad: linear-gradient(90deg, #FFC037 0%, #5F4848 100%);
 }
 :root[data-theme="light"] {
+  /* Clean-Modern: hellgrau abgestufte Flächen, weicheres Schwarz für
+     Text, feinere Borders — luftig und kontrastsicher (WCAG). */
   --bg: #FFFFFF;
-  --card: #F5F5F7;
-  --card2: #EBEBEF;
-  --border: rgba(0,0,0,0.10);
-  --sep: rgba(0,0,0,0.06);
-  --t1: #000000;
-  --t2: rgba(0,0,0,0.65);
-  --t3: rgba(0,0,0,0.42);
-  --t4: rgba(0,0,0,0.22);
+  --card: #F6F7F9;
+  --card2: #ECEEF2;
+  --border: rgba(0,0,0,0.08);
+  --sep: rgba(0,0,0,0.05);
+  --t1: #0A0A0C;
+  --t2: rgba(0,0,0,0.62);
+  --t3: rgba(0,0,0,0.40);
+  --t4: rgba(0,0,0,0.20);
   --o: #007AFF;
   --oSoft: rgba(0,122,255,0.12);
   --oGlow: rgba(0,122,255,0.5);
@@ -465,8 +470,11 @@ export const CSS = `
 
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html,body,#root{background:var(--bg);height:100%;min-height:100dvh;overflow:hidden;
-  font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','SF Pro Text','Helvetica Neue',sans-serif;
-  -webkit-font-smoothing:antialiased;color:var(--t1);}
+  font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','SF Pro Text','Helvetica Neue','Segoe UI',Roboto,sans-serif;
+  -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
+  text-rendering:optimizeLegibility;letter-spacing:-0.011em;color:var(--t1);}
+/* Branded Text-Selektion statt Browser-Default-Blau. */
+::selection{background:var(--oSoft);color:var(--t1);}
 button,input{font-family:inherit;color:inherit;}
 input{outline:none;border:none;background:none;}
 ::-webkit-scrollbar{display:none;}
@@ -526,6 +534,16 @@ input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
   --anim-slow:380ms var(--ease-out-expo);
   --anim-spring:320ms var(--ease-out-back);
   --anim-pill:420ms var(--ease-out-back);
+  /* Radius-Skala (Clean-Modern-Redesign) — abgerundete, weiche Ecken */
+  --r-sm:10px;
+  --r-md:14px;
+  --r-lg:19px;
+  --r-xl:24px;
+  --r-pill:999px;
+  /* Weiche Elevations-Schatten für Karten/Sheets/Modals */
+  --shadow-sm:0 1px 2px rgba(0,0,0,.18);
+  --shadow-md:0 8px 22px rgba(0,0,0,.28);
+  --shadow-lg:0 18px 44px rgba(0,0,0,.42);
 }
 
 /* Jeder Button bekommt smooth transitions auf seinen visuellen

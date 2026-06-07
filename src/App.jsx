@@ -378,7 +378,6 @@ function Splash({onDone}){
   const ballTransition = flung ? 'transform .36s cubic-bezier(.36,0,.7,.5), opacity .36s ease'
     : active ? 'none'
     : landed ? 'transform .5s cubic-bezier(.34,1.56,.64,1)' : 'none';
-  const baseShadow='0 8px 16px rgba(0,0,0,.5), inset -3px -5px 9px rgba(0,0,0,.28), inset 3px 3px 7px rgba(255,255,255,.42)';
 
   return(
     <div style={{height:'100dvh',width:'100vw',
@@ -395,7 +394,8 @@ function Splash({onDone}){
           objectFit:'contain',background:'#000',pointerEvents:'none'}}/>
 
       <div style={{position:'absolute',left:0,right:0,
-        bottom:'calc(env(safe-area-inset-bottom,0px) + 40px)',
+        /* Höher gesetzt: über dem RITMO-Wortmark-Logo im Lade-Video. */
+        bottom:'calc(env(safe-area-inset-bottom,0px) + 18vh)',
         display:'flex',flexDirection:'column',alignItems:'center',
         zIndex:2,pointerEvents:'none'}}>
         {/* Ball-Lane direkt über dem Balken */}
@@ -404,18 +404,21 @@ function Splash({onDone}){
             <div onPointerDown={onDown} onPointerMove={onMove} onPointerUp={endDrag} onPointerCancel={endDrag}
               onAnimationEnd={e=>{ if(e.animationName==='splashBallDrop') setLanded(true); }}
               style={{position:'absolute',left:'50%',bottom:0,marginLeft:-20,width:40,height:40,
-                borderRadius:'50%',
-                background:'radial-gradient(circle at 33% 27%, #FFB877, #FF7A1A 58%, #DA5A00)',
-                boxShadow:baseShadow,transform:ballTransform,transition:ballTransition,
+                transform:ballTransform,transition:ballTransition,
                 animation:ballAnim,opacity:flung?0:1,
+                // Glühen (filter) übernimmt im Ruhezustand die Animation;
+                // sonst eine dezente Tiefen-Schattierung.
+                filter:(landed&&!active&&!flung)?undefined:'drop-shadow(0 4px 7px rgba(0,0,0,.45))',
                 pointerEvents:landed&&!flung?'auto':'none',
                 cursor:active?'grabbing':landed?'grab':'default',
                 touchAction:'none',zIndex:3}}>
-              {/* Tennisball-Naht (dreht mit dem Ball mit) */}
-              <svg viewBox="0 0 40 40" aria-hidden="true"
-                style={{position:'absolute',inset:0,width:'100%',height:'100%',pointerEvents:'none'}}>
-                <path d="M7 7 Q20 20 7 33" stroke="rgba(255,255,255,.85)" strokeWidth="2.2" fill="none"/>
-                <path d="M33 7 Q20 20 33 33" stroke="rgba(255,255,255,.85)" strokeWidth="2.2" fill="none"/>
+              {/* Oranger Tennisball als Line-Grafik: Kreis-Outline + zwei
+                  Nahtbögen, alles als Stroke (keine Füllung). */}
+              <svg viewBox="0 0 40 40" width="40" height="40" fill="none" aria-hidden="true"
+                style={{display:'block'}}>
+                <circle cx="20" cy="20" r="17" stroke="#FF7A1A" strokeWidth="2.6"/>
+                <path d="M9 5 C15 13 15 27 9 35" stroke="#FF7A1A" strokeWidth="2.4" strokeLinecap="round"/>
+                <path d="M31 5 C25 13 25 27 31 35" stroke="#FF7A1A" strokeWidth="2.4" strokeLinecap="round"/>
               </svg>
             </div>
           )}
@@ -10885,7 +10888,8 @@ function DnaBracketMatchCard({cup,m,onPlay,onManual}){
     </div>
   );
   return(
-    <div style={{background:T.card,border:`1px solid ${done?T.o:T.border}`,borderRadius:14,padding:'11px 13px'}}>
+    <div style={{background:T.card,border:`1px solid ${done?T.o:T.border}`,borderRadius:14,
+      padding:'11px 13px',overflow:'hidden'}}>
       <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:7}}>
         <span style={{color:T.t2,fontSize:11,fontWeight:800,flex:1,minWidth:0,
           overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{m.label}</span>
@@ -10894,7 +10898,7 @@ function DnaBracketMatchCard({cup,m,onPlay,onManual}){
       <TeamRow team={m.team1} won={winA}/>
       <div style={{height:1,background:T.sep,margin:'2px 0'}}/>
       <TeamRow team={m.team2} won={winB}/>
-      <div style={{display:'flex',alignItems:'center',gap:7,marginTop:9}}>
+      <div style={{display:'flex',alignItems:'center',gap:7,marginTop:9,flexWrap:'wrap',rowGap:8}}>
         <DnaChip color={T.t3}>{fmt?.short||fmt?.label}</DnaChip>
         <div style={{flex:1}}/>
         {done
@@ -10974,9 +10978,11 @@ function DnaCupBracket({cup,onBack,onHome,onPlay,onManual,onSieger}){
   // court-conflict check across the live KO stage (defensive)
   const liveStage=ko&&!ko.semi.built?ko.knockout.matches:ko&&ko.semi.built&&!ko.final.built?ko.semi.matches:[];
   const conflict=validateCourts(liveStage);
+  // Vollbreite, vertikal gestapelte Spalten — auf Mobile sind zwei
+  // Spalten nebeneinander zu schmal (Buttons ragen über die Karten).
   const Col=({title,accent,children})=>(
-    <div style={{flex:1,minWidth:0}}>
-      <div style={{color:accent,fontSize:12,fontWeight:900,letterSpacing:.5,textTransform:'uppercase',
+    <div style={{width:'100%',minWidth:0}}>
+      <div style={{color:accent,fontSize:13,fontWeight:900,letterSpacing:.5,textTransform:'uppercase',
         marginBottom:10}}>{title}</div>
       <div style={{display:'flex',flexDirection:'column',gap:10}}>{children}</div>
     </div>
@@ -11004,7 +11010,7 @@ function DnaCupBracket({cup,onBack,onHome,onPlay,onManual,onSieger}){
         {!conflict.ok&&<DnaCard style={{borderColor:T.r,padding:'10px 14px'}}>
           <span style={{color:T.r,fontSize:12,fontWeight:800}}>⚠ Court-Doppelbelegung erkannt</span></DnaCard>}
 
-        <div style={{display:'flex',gap:14,alignItems:'flex-start'}}>
+        <div style={{display:'flex',flexDirection:'column',gap:24}}>
           <Col title="Haupt-Bracket" accent={T.o}>
             {cup.qualified?.byes?.length>0&&(
               <div style={{background:T.card,border:`1px dashed ${T.o}`,borderRadius:14,padding:'11px 13px'}}>
@@ -11058,45 +11064,48 @@ function DnaCupBracket({cup,onBack,onHome,onPlay,onManual,onSieger}){
   );
 }
 
-/* Live group-phase leaderboard */
-function DnaCupLeaderboard({cup,onBack,onHome}){
-  const field=dnaField(cup);
-  const lb=dnaLeaderboard(field,cup.group.rounds);
+/* Detailed leaderboard rows — shared by the live table AND the Diashow
+   so both show exactly the same standings. */
+function DnaLeaderboardRows({cup}){
+  const lb=dnaLeaderboard(dnaField(cup),cup.group.rounds);
   const q=cup.qualified;
   const statusOf=(id,rank)=>{
     if(q){ if(q.byes.includes(id)) return {t:'Bye · Top 2',c:T.o};
       if(q.ko.includes(id)) return {t:'KO · Top 14',c:T.t2};
       if(q.ehren.includes(id)) return {t:'Ehren',c:T.blue};
       return {t:'—',c:T.t4}; }
-    // predicted while group is still running
     if(rank<=2) return {t:'Bye · Top 2',c:T.o};
     if(rank<=14) return {t:'KO · Top 14',c:T.t2};
     return {t:'Ehren',c:T.blue};
   };
+  if(lb.length===0) return <div style={{color:T.t3,fontSize:13,textAlign:'center',padding:'30px 0'}}>Noch keine Ergebnisse.</div>;
+  return lb.map(e=>{
+    const st=statusOf(e.id,e.rank);
+    return(
+      <div key={e.id} style={{display:'flex',alignItems:'center',gap:12,background:T.card,
+        border:`1px solid ${e.rank<=2?T.o:T.border}`,borderRadius:14,padding:'11px 14px'}}>
+        <div style={{width:26,textAlign:'center',color:e.rank<=2?T.o:T.t2,fontSize:16,fontWeight:900}}>{e.rank}</div>
+        <div style={{width:9,height:9,borderRadius:'50%',background:e.color,flexShrink:0}}/>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{color:T.t1,fontSize:14,fontWeight:800,overflow:'hidden',
+            textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{e.name}</div>
+          <div style={{color:T.t3,fontSize:11,fontWeight:600,marginTop:2}}>
+            {e.played} Spiele · {e.points} Pkt · +{e.tierBonus} Tier{e.sitOutBonus?` · +${e.sitOutBonus} Pause`:''}
+            <span style={{color:st.c,fontWeight:800}}> · {st.t}</span>
+          </div>
+        </div>
+        <div style={{color:T.o,fontSize:20,fontWeight:900,minWidth:34,textAlign:'right'}}>{e.totalPoints}</div>
+      </div>);
+  });
+}
+
+/* Live group-phase leaderboard */
+function DnaCupLeaderboard({cup,onBack,onHome}){
   return(
     <div style={dnaScreen}>
       <DnaTopBar title="Live-Tabelle" sub="Punkte + Tier-Bonus + Pausen-Ausgleich" onBack={onBack} onHome={onHome}/>
       <div style={dnaScroll}>
-        {lb.map(e=>{
-          const st=statusOf(e.id,e.rank);
-          return(
-          <div key={e.id} style={{display:'flex',alignItems:'center',gap:12,background:T.card,
-            border:`1px solid ${e.rank<=2?T.o:T.border}`,borderRadius:14,padding:'11px 14px'}}>
-            <div style={{width:26,textAlign:'center',color:e.rank<=2?T.o:T.t2,fontSize:16,fontWeight:900}}>{e.rank}</div>
-            <div style={{width:9,height:9,borderRadius:'50%',background:e.color,flexShrink:0}}/>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{color:T.t1,fontSize:14,fontWeight:800,overflow:'hidden',
-                textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{e.name}</div>
-              <div style={{color:T.t3,fontSize:11,fontWeight:600,marginTop:2}}>
-                {e.played} Spiele · {e.points} Pkt · +{e.tierBonus} Tier{e.sitOutBonus?` · +${e.sitOutBonus} Pause`:''}
-                <span style={{color:st.c,fontWeight:800}}> · {st.t}</span>
-              </div>
-            </div>
-            <div style={{color:T.o,fontSize:20,fontWeight:900,minWidth:34,textAlign:'right'}}>{e.totalPoints}</div>
-          </div>);
-        })}
-        {lb.length===0&&<div style={{color:T.t3,fontSize:13,textAlign:'center',padding:'30px 0'}}>
-          Noch keine Ergebnisse.</div>}
+        <DnaLeaderboardRows cup={cup}/>
       </div>
     </div>
   );
@@ -11179,6 +11188,26 @@ function DnaDiashowIcon({size=20,color=T.t1}){
   );
 }
 
+/* Slow vertical auto-scroller for long Diashow lists. Measures the
+   overflow and animates one calm top→bottom pass over the slide's
+   lifetime (no-op when the content fits). */
+function DnaAutoScroll({children,durationMs,style}){
+  const outer=useRef(null), inner=useRef(null);
+  const[dist,setDist]=useState(0);
+  useLayoutEffect(()=>{
+    const o=outer.current,n=inner.current; if(!o||!n) return;
+    setDist(Math.max(0,n.scrollHeight-o.clientHeight));
+  });
+  const dur=Math.max(4000,(durationMs||12000)-1800);
+  return(
+    <div ref={outer} style={{flex:1,minHeight:0,overflow:'hidden',...style}}>
+      <div ref={inner} style={dist>0?{animation:`dnaScrollY ${dur}ms linear forwards`,'--dnaDist':`-${dist}px`}:undefined}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 function DnaCupSlideshow({cup,onExit}){
   // Slide deck depends on the current phase.
   const slides=['phase'];
@@ -11186,11 +11215,14 @@ function DnaCupSlideshow({cup,onExit}){
   if(cup.status==='completed') slides.push('champion');
   if(cup.group.rounds.length>0) slides.push('leaderboard');
   const[idx,setIdx]=useState(0);
-  useEffect(()=>{
-    const id=setInterval(()=>setIdx(i=>(i+1)%slides.length),10000);
-    return()=>clearInterval(id);
-  },[slides.length]);
   const cur=slides[idx%slides.length];
+  // Querformat-Erkennung — die Court-Slide nutzt im Landscape 2 Spalten.
+  const[land,setLand]=useState(()=>typeof window!=='undefined'&&window.innerWidth>window.innerHeight);
+  useEffect(()=>{
+    const f=()=>setLand(window.innerWidth>window.innerHeight);
+    window.addEventListener('resize',f); window.addEventListener('orientationchange',f);
+    return()=>{window.removeEventListener('resize',f);window.removeEventListener('orientationchange',f);};
+  },[]);
 
   const field=dnaField(cup);
   const lb=cup.group.rounds.length?dnaLeaderboard(field,cup.group.rounds):[];
@@ -11227,6 +11259,18 @@ function DnaCupSlideshow({cup,onExit}){
     return out.sort((a,b)=>a.court-b.court);
   };
 
+  // Per-slide duration — long lists get enough time for one slow pass.
+  const durFor=t=>{
+    if(t==='courts') return Math.max(10000, courtsList().length*2600);
+    if(t==='leaderboard') return Math.max(12000, lb.length*1100);
+    return 9000;
+  };
+  const slideMs=durFor(cur);
+  useEffect(()=>{
+    const id=setTimeout(()=>setIdx(i=>(i+1)%slides.length),slideMs);
+    return()=>clearTimeout(id);
+  },[idx,slideMs,slides.length]);
+
   const SLABEL={color:T.o,fontSize:14,fontWeight:900,letterSpacing:2,marginBottom:16,flexShrink:0};
   let body=null;
   if(cur==='phase'){
@@ -11244,7 +11288,8 @@ function DnaCupSlideshow({cup,onExit}){
     body=(
       <>
         <div style={SLABEL}>AKTUELLE COURTS</div>
-        <div style={{flex:1,minHeight:0,display:'flex',flexDirection:'column',gap:14,justifyContent:'center',overflow:'hidden'}}>
+        <DnaAutoScroll durationMs={slideMs}>
+        <div style={{display:'grid',gridTemplateColumns:land?'1fr 1fr':'1fr',gap:14,alignContent:'start'}}>
           {cs.map((c,i)=>(
             <div key={i} style={{background:T.card,border:`1px solid ${c.done?T.border:T.o}`,borderRadius:18,
               padding:'16px 22px',display:'flex',alignItems:'center',gap:18}}>
@@ -11265,28 +11310,19 @@ function DnaCupSlideshow({cup,onExit}){
           ))}
           {cs.length===0&&<div style={{color:T.t3,fontSize:16,textAlign:'center'}}>Nächste Runde wird vorbereitet…</div>}
         </div>
+        </DnaAutoScroll>
       </>
     );
   } else if(cur==='leaderboard'){
-    const two=lb.length>11;
+    // Identisch zur Live-Tabelle — gleiche Zeilen, langsames Auto-Scroll.
     body=(
       <>
         <div style={SLABEL}>LIVE-TABELLE</div>
-        <div style={{flex:1,minHeight:0,display:'grid',gridTemplateColumns:two?'1fr 1fr':'1fr',
-          gap:'8px 22px',alignContent:'start',overflow:'hidden'}}>
-          {lb.slice(0,22).map(e=>{
-            const q=e.rank<=2?T.o:e.rank<=14?T.t1:T.blue;
-            return(
-              <div key={e.id} style={{display:'flex',alignItems:'center',gap:12,padding:'8px 13px',
-                background:T.card,border:`1px solid ${e.rank<=2?T.o:T.border}`,borderRadius:12}}>
-                <div style={{width:26,textAlign:'center',color:q,fontSize:18,fontWeight:900}}>{e.rank}</div>
-                <div style={{flex:1,minWidth:0,color:T.t1,fontSize:15,fontWeight:700,
-                  overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{e.name}</div>
-                <div style={{color:T.o,fontSize:18,fontWeight:900}}>{e.totalPoints}</div>
-              </div>
-            );
-          })}
-        </div>
+        <DnaAutoScroll durationMs={slideMs}>
+          <div style={{display:'flex',flexDirection:'column',gap:10}}>
+            <DnaLeaderboardRows cup={cup}/>
+          </div>
+        </DnaAutoScroll>
       </>
     );
   } else if(cur==='champion'){
@@ -11306,7 +11342,7 @@ function DnaCupSlideshow({cup,onExit}){
     <div onClick={onExit} style={{position:'fixed',inset:0,zIndex:500,background:T.bg,
       display:'flex',flexDirection:'column',cursor:'pointer',overflow:'hidden',userSelect:'none'}}>
       <div style={{height:4,background:T.card2,flexShrink:0}}>
-        <div key={idx} style={{height:'100%',background:T.o,animation:'splashLoad 10s linear forwards'}}/>
+        <div key={idx} style={{height:'100%',background:T.o,animation:`splashLoad ${slideMs}ms linear forwards`}}/>
       </div>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',
         padding:'calc(env(safe-area-inset-top,0px) + 16px) 28px 0'}}>
@@ -11332,7 +11368,7 @@ function DnaCupSlideshow({cup,onExit}){
 }
 
 /* Director dashboard */
-function DnaCupDashboard({cup,onHome,go,onReset,onSlideshow}){
+function DnaCupDashboard({cup,onHome,go,onReset,onSlideshow,onLeaderboard}){
   const active=dnaActive(cup);
   const phaseLabel=DNA_PHASE[cup.status]||cup.status;
   const lb=cup.group.rounds.length?dnaLeaderboard(dnaField(cup),cup.group.rounds):[];
@@ -11414,7 +11450,7 @@ function DnaCupDashboard({cup,onHome,go,onReset,onSlideshow}){
           sub="Knock-Out · Halbfinale · Finale · Ehren" onClick={()=>go('bracket')} accent={T.o}/>}
 
         {cup.group.rounds.length>0&&<Tile icon={<DNAIcon size={22}/>} title="Live-Tabelle"
-          sub="Rang · Punkte · Tier-Bonus · Qualifikation" onClick={()=>go('leaderboard')} accent={T.blue}/>}
+          sub="Rang · Punkte · Tier-Bonus · Qualifikation" onClick={onLeaderboard} accent={T.blue}/>}
         <Tile icon={<BookIcon size={20}/>} title="Spielplan" sub="Zeitplan & Court-Belegung" onClick={()=>go('schedule')} accent={T.t2}/>
         {cup.status!=='setup'&&<Tile icon={<DnaDiashowIcon size={20} color={T.o}/>} title="RITMO Diashow"
           sub="Court-Anzeige · Phase · Court · Tabelle im 10-Sek-Wechsel" onClick={onSlideshow} accent={T.o}/>}
@@ -11438,6 +11474,9 @@ function DnaCup({cup,setCup,onHome}){
   const[activeMatch,setActiveMatch]=useState(null);
   const[manualMatch,setManualMatch]=useState(null);
   const[slideshow,setSlideshow]=useState(false);
+  // Woher die Live-Tabelle geöffnet wurde ('dashboard' | 'round') —
+  // damit der Zurück-Pfeil korrekt zur Cup-Übersicht zurückführt.
+  const[lbBackTo,setLbBackTo]=useState('dashboard');
   const[stylePickerFor,setStylePickerFor]=useState(null);
   const[editLineupCourtId,setEditLineupCourtId]=useState(null);
   useEffect(()=>{ if(!cup) setCup(makeDnaCup()); },[cup,setCup]);
@@ -11529,16 +11568,17 @@ function DnaCup({cup,setCup,onHome}){
     <>
       {view==='dashboard'&&<DnaCupDashboard cup={cup} onHome={onHome} go={go}
         onSlideshow={()=>setSlideshow(true)}
+        onLeaderboard={()=>{ setLbBackTo('dashboard'); setView('leaderboard'); }}
         onReset={()=>{ if(window.confirm('RITMO DNA Cup zurücksetzen? Alle Daten gehen verloren.')){
           setCup(makeDnaCup()); setView('dashboard'); } }}/>}
       {view==='roster'&&<DnaCupRoster cup={cup} setCup={setCup} onBack={backToDash} onHome={onHome}
         onStart={startGroup} onStyle={id=>setStylePickerFor(id)}/>}
       {view==='round'&&<DnaCupGroupRound cup={cup} setCup={setCup} onBack={backToDash} onHome={onHome}
-        onPlay={openGroupMatch} onLeaderboard={()=>setView('leaderboard')} onFinishGroup={finishGroup}
+        onPlay={openGroupMatch} onLeaderboard={()=>{ setLbBackTo('round'); setView('leaderboard'); }} onFinishGroup={finishGroup}
         onEditLineup={id=>setEditLineupCourtId(id)}/>}
       {view==='bracket'&&<DnaCupBracket cup={cup} onBack={backToDash} onHome={onHome}
         onPlay={openBracketMatch} onManual={openManual} onSieger={()=>setView('sieger')}/>}
-      {view==='leaderboard'&&<DnaCupLeaderboard cup={cup} onBack={()=>setView(cup.status==='group'?'round':'dashboard')} onHome={onHome}/>}
+      {view==='leaderboard'&&<DnaCupLeaderboard cup={cup} onBack={()=>setView(lbBackTo)} onHome={onHome}/>}
       {view==='schedule'&&<DnaCupSchedule cup={cup} onBack={backToDash} onHome={onHome}/>}
       {view==='sieger'&&<DnaCupSieger cup={cup} onBack={()=>setView('bracket')} onHome={onHome}/>}
 

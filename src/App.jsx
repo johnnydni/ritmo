@@ -10712,10 +10712,34 @@ const dnaStep={width:26,height:26,borderRadius:'50%',background:T.card2,border:`
   color:T.t1,fontSize:14,fontWeight:800,cursor:'pointer',lineHeight:1};
 
 /* Group-phase round: courts + tier badges + score entry + sit-outs */
-function DnaCupGroupRound({cup,setCup,onBack,onHome,onPlay,onLeaderboard,onFinishGroup,onEditLineup}){
+function DnaCupGroupRound({cup,setCup,onBack,onHome,onPlay,onLeaderboard,onFinishGroup,onEditLineup,ringId='soft'}){
   const ci=cup.group.current; const round=cup.group.rounds[ci];
   const pById=id=>cup.players.find(p=>p.id===id);
   const allDone=round&&round.courts.every(c=>c.done);
+
+  // ── Runden-Timer (im Cup persistiert → läuft wie im Turnier-Modus
+  //    über Navigation hinweg weiter). Einstellbar via iPhone-Wecker-
+  //    Scroll-Picker im TimerCard. ──
+  const total=(cup.roundDurationMin||10)*60;
+  const tHasStarted=!!(cup.timerRunning||cup.timerFinished
+    ||(typeof cup.timerSecsLeft==='number'&&cup.timerSecsLeft>0&&cup.timerSecsLeft<total));
+  useEffect(()=>{
+    if(!cup.timerRunning) return;
+    const id=setInterval(()=>{
+      setCup(c=>{
+        if(!c.timerRunning) return c;
+        if((c.timerSecsLeft||0)<=1){ try{playRing(ringId);}catch{} return {...c,timerSecsLeft:0,timerRunning:false,timerFinished:true}; }
+        return {...c,timerSecsLeft:c.timerSecsLeft-1};
+      });
+    },1000);
+    return()=>clearInterval(id);
+  },[cup.timerRunning,ringId,setCup]);
+  const setTimerMin=m=>setCup(c=>({...c,roundDurationMin:m,timerSecsLeft:m*60,timerRunning:false,timerFinished:false}));
+  const startTimer=()=>setCup(c=>{ const tot=(c.roundDurationMin||10)*60;
+    const s=(c.timerSecsLeft==null||c.timerFinished||c.timerSecsLeft<=0)?tot:c.timerSecsLeft;
+    return {...c,timerSecsLeft:s,timerRunning:true,timerFinished:false}; });
+  const pauseTimer=()=>setCup(c=>({...c,timerRunning:false}));
+  const resetTimer=()=>setCup(c=>({...c,timerRunning:false,timerFinished:false,timerSecsLeft:(c.roundDurationMin||10)*60}));
   const score=(courtId,field,val)=>setCup(c=>{
     const r=[...c.group.rounds];
     r[ci]={...r[ci],courts:r[ci].courts.map(ct=>ct.id===courtId?{...ct,[field]:val}:ct)};
@@ -10749,6 +10773,9 @@ function DnaCupGroupRound({cup,setCup,onBack,onHome,onPlay,onLeaderboard,onFinis
           border:`1px solid ${T.border}`,color:T.o,fontSize:12,fontWeight:800,cursor:'pointer',marginRight:6}}>
           Tabelle</button>}/>
       <div style={dnaScroll}>
+        <TimerCard minutes={cup.roundDurationMin||10} setMinutes={setTimerMin}
+          running={!!cup.timerRunning} secsLeft={cup.timerSecsLeft??total} finished={!!cup.timerFinished}
+          hasStarted={tHasStarted} onStart={startTimer} onPause={pauseTimer} onReset={resetTimer}/>
         <div style={{display:'flex',gap:10}}>
           <button onClick={regenerate} style={{...dnaSecBtn,height:40}}>↻ Neu auslosen</button>
         </div>
@@ -11446,7 +11473,7 @@ function DnaCupDashboard({cup,onHome,go,onReset,onSlideshow,onLeaderboard}){
 }
 
 /* Root: owns the view router + active match + cup mutations */
-function DnaCup({cup,setCup,onHome}){
+function DnaCup({cup,setCup,onHome,ringId='soft'}){
   const[view,setView]=useState('dashboard');
   const[activeMatch,setActiveMatch]=useState(null);
   const[manualMatch,setManualMatch]=useState(null);
@@ -11535,7 +11562,7 @@ function DnaCup({cup,setCup,onHome}){
     return <DnaCupMatch key={activeMatch.kind+'-'+(activeMatch.courtId||activeMatch.path?.join('-'))}
       fmt={activeMatch.fmt} nameA={activeMatch.nameA} nameB={activeMatch.nameB}
       stageLabel={activeMatch.stageLabel} tier={activeMatch.tier} courtNo={activeMatch.courtNo}
-      durationMin={activeMatch.durationMin} onFinish={finishMatch} onCancel={exitMatch} onHome={exitMatch}/>;
+      durationMin={activeMatch.durationMin} ringId={ringId} onFinish={finishMatch} onCancel={exitMatch} onHome={exitMatch}/>;
   }
 
   const editCourt=editLineupCourtId!=null
@@ -11552,7 +11579,7 @@ function DnaCup({cup,setCup,onHome}){
         onStart={startGroup} onStyle={id=>setStylePickerFor(id)}/>}
       {view==='round'&&<DnaCupGroupRound cup={cup} setCup={setCup} onBack={backToDash} onHome={onHome}
         onPlay={openGroupMatch} onLeaderboard={()=>{ setLbBackTo('round'); setView('leaderboard'); }} onFinishGroup={finishGroup}
-        onEditLineup={id=>setEditLineupCourtId(id)}/>}
+        onEditLineup={id=>setEditLineupCourtId(id)} ringId={ringId}/>}
       {view==='bracket'&&<DnaCupBracket cup={cup} onBack={backToDash} onHome={onHome}
         onPlay={openBracketMatch} onManual={openManual} onSieger={()=>setView('sieger')}/>}
       {view==='leaderboard'&&<DnaCupLeaderboard cup={cup} onBack={()=>setView(lbBackTo)} onHome={onHome}/>}
@@ -14317,7 +14344,7 @@ export default function App(){
       onJoin={()=>setScr('remote')}
       onDnaCup={()=>{ if(dnaUnlocked) setScr('dna-cup'); else setDnaPinPrompt(true); }}
       hasDnaCup={dnaCup!=null&&dnaCup.status!=='setup'}/>}
-    {scr==='dna-cup'&&<DnaCup cup={dnaCup} setCup={setDnaCup} onHome={goHome}/>}
+    {scr==='dna-cup'&&<DnaCup cup={dnaCup} setCup={setDnaCup} onHome={goHome} ringId={ringId}/>}
     {dnaPinPrompt&&<DnaPinGate
       onOk={()=>{ setDnaUnlocked(true); setDnaPinPrompt(false); setScr('dna-cup'); }}
       onClose={()=>setDnaPinPrompt(false)}/>}

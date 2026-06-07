@@ -11152,13 +11152,9 @@ function DnaAutoScroll({children,durationMs,style}){
 }
 
 /* Großer orange Match-Typ-Tag (BOLD ITALIC) für die Court-Übersicht. */
+// Kurz-Tags ohne Nummern — der Court + die Teams unterscheiden die Spiele.
 const STAGE_TAG={ko:'KO',semi:'HF',final:'FINALE',ehrenSemi:'EHREN HF',ehrenFinal:'EHREN F'};
-function dnaMatchTag(m){
-  const base=STAGE_TAG[m.stage]||'';
-  const num=(m.label||'').match(/(\d+)\s*$/);
-  if((m.stage==='ko'||m.stage==='semi')&&num) return `${base}-${num[1]}`;
-  return base;
-}
+function dnaMatchTag(m){ return STAGE_TAG[m.stage]||''; }
 function DnaMatchTag({tag}){
   return(
     <div style={{flexShrink:0,width:'clamp(108px,15vw,176px)',minHeight:'clamp(70px,10.5vh,108px)',
@@ -11198,9 +11194,16 @@ function DnaCupSlideshow({cup,onExit}){
     if(cup.status==='completed') return {big:'TURNIER BEENDET',sub:cup.champion?dnaTeamName(cup,cup.champion):''};
     let big='K.-O.-PHASE', sub='Nächste Runde wird vorbereitet';
     if(cup.ko){
-      if(cup.ko.final.built&&cup.ko.final.match.status!=='completed'){big='RITMO GRANDE FINALE';sub='Best of 3 · Court 3 · Flutlicht';}
-      else if(cup.ko.semi.built&&cup.ko.semi.matches.some(m=>m.status!=='completed')){big='HALBFINALE';sub='2 Sätze · Court 2 + 3 · Ehren-HF auf Court 1';}
-      else if(cup.ko.knockout.matches.some(m=>m.status!=='completed')){big='KNOCK-OUT';sub='1 Satz bis 6 · Court 1 · 2 · 3';}
+      const ko=cup.ko, ehren=cup.ehren;
+      const koPend=ko.knockout.matches.some(m=>m.status!=='completed');
+      const semiPend=ko.semi.built&&ko.semi.matches.some(m=>m.status!=='completed');
+      const ehSemiPend=!!ehren?.semi?.matches?.some(m=>m.status!=='completed');
+      const ehFinalPend=!!(ehren?.final?.built&&ehren.final.match&&ehren.final.match.status!=='completed');
+      const finalPend=!!(ko.final.built&&ko.final.match&&ko.final.match.status!=='completed');
+      if(koPend){big='KNOCK-OUT';sub='1 Satz bis 6 · Court 1 · 2 · 3';}
+      else if(semiPend||ehSemiPend){big='HALBFINALE & EHREN-HF';sub='Halbfinale Court 2 + 3 · Ehren-HF Court 1';}
+      else if(ehFinalPend){big='EHREN-FINALE';sub='1 Satz bis 6 · Court 3';}
+      else if(finalPend){big='RITMO GRANDE FINALE';sub='Best of 3 · Court 3 · Flutlicht';}
     }
     return {big,sub};
   };
@@ -11209,17 +11212,27 @@ function DnaCupSlideshow({cup,onExit}){
       const r=cup.group.rounds[cup.group.current];
       return (r?.courts||[]).map(c=>({court:c.court,a:dnaTeamName(cup,c.t1),b:dnaTeamName(cup,c.t2),tier:c.tier,done:c.done}));
     }
-    const out=[];
-    const push=m=>{ if(m&&m.team1.length&&m.team2.length&&m.status!=='completed')
+    const out=[]; const ko=cup.ko, ehren=cup.ehren;
+    if(!ko) return out;
+    const add=m=>{ if(m&&m.team1.length&&m.team2.length&&m.status!=='completed')
       out.push({court:m.court,a:dnaTeamName(cup,m.team1),b:dnaTeamName(cup,m.team2),tag:dnaMatchTag(m)}); };
-    if(cup.ko){
-      cup.ko.knockout.matches.forEach(push);
-      if(cup.ko.semi.built) cup.ko.semi.matches.forEach(push);
-      if(cup.ko.final.built) push(cup.ko.final.match);
-    }
-    if(cup.ehren){
-      if(cup.ehren.semi.built) cup.ehren.semi.matches.forEach(push);
-      if(cup.ehren.final.built) push(cup.ehren.final.match);
+    const koPend=ko.knockout.matches.some(m=>m.status!=='completed');
+    const semiPend=ko.semi.built&&ko.semi.matches.some(m=>m.status!=='completed');
+    const ehSemiPend=!!ehren?.semi?.matches?.some(m=>m.status!=='completed');
+    const ehFinalPend=!!(ehren?.final?.built&&ehren.final.match&&ehren.final.match.status!=='completed');
+    const finalPend=!!(ko.final.built&&ko.final.match&&ko.final.match.status!=='completed');
+    // Nur die aktuell laufende Phase zeigen. Ehren-HF läuft parallel zum
+    // Halbfinale (NICHT zur Knock-Out-Runde); danach Ehren-Finale, dann
+    // erst das Grande Finale.
+    if(koPend){
+      ko.knockout.matches.forEach(add);                 // 1) Knock-Out
+    } else if(semiPend||ehSemiPend){
+      ko.semi.matches.forEach(add);                     // 2) Halbfinale +
+      ehren?.semi?.matches?.forEach(add);               //    Ehren-HF (parallel)
+    } else if(ehFinalPend){
+      add(ehren.final.match);                            // 3) Ehren-Finale
+    } else if(finalPend){
+      add(ko.final.match);                              // 4) Grande Finale
     }
     return out.sort((a,b)=>a.court-b.court);
   };

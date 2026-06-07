@@ -487,6 +487,26 @@ input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 /* Splash/Ladebalken — füllt sich linear über die Mindestlaufzeit. */
 @keyframes splashLoad{from{width:0%}to{width:100%}}
+/* Splash-Tennisball: fällt aus großer Höhe und springt physikalisch
+   korrekt aus — abklingende Sprunghöhen, Fall-Segmente beschleunigen
+   (ease-in), Aufstiege bremsen ab (ease-out). Ruht am Ende auf dem
+   Ladebalken bei translateY(0). */
+@keyframes splashBallDrop{
+  0%{transform:translateY(-46vh);animation-timing-function:cubic-bezier(.5,0,1,.5);}
+  30%{transform:translateY(0);animation-timing-function:cubic-bezier(0,.5,.5,1);}
+  47%{transform:translateY(-13vh);animation-timing-function:cubic-bezier(.5,0,1,.5);}
+  64%{transform:translateY(0);animation-timing-function:cubic-bezier(0,.5,.5,1);}
+  77%{transform:translateY(-5.5vh);animation-timing-function:cubic-bezier(.5,0,1,.5);}
+  88%{transform:translateY(0);animation-timing-function:cubic-bezier(0,.5,.5,1);}
+  95%{transform:translateY(-2vh);animation-timing-function:cubic-bezier(.5,0,1,.5);}
+  100%{transform:translateY(0);}
+}
+/* Sanftes "greif mich"-Glühen, sobald der Ball liegt (nur box-shadow,
+   kollidiert daher nicht mit dem Drag-Transform). */
+@keyframes splashBallGlow{
+  0%,100%{box-shadow:0 8px 16px rgba(0,0,0,.5), inset -3px -5px 9px rgba(0,0,0,.28), inset 3px 3px 7px rgba(255,255,255,.42), 0 0 0 0 rgba(255,122,26,.5);}
+  50%{box-shadow:0 8px 16px rgba(0,0,0,.5), inset -3px -5px 9px rgba(0,0,0,.28), inset 3px 3px 7px rgba(255,255,255,.42), 0 0 22px 5px rgba(255,122,26,.5);}
+}
 @keyframes flashOrange{0%,100%{background:var(--card)}40%{background:var(--oFlash)}}
 /* Court-View: Live-Pulse (Punkt + Border), VS-Pulse (rotation + scale)
    und Score-Pop (Skalierung beim Punkte-Update). Eigene Animationen,

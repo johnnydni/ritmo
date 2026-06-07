@@ -487,27 +487,11 @@ input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 /* Splash/Ladebalken — füllt sich linear über die Mindestlaufzeit. */
 @keyframes splashLoad{from{width:0%}to{width:100%}}
-/* Splash-Tennisball: fällt aus großer Höhe und springt physikalisch
-   korrekt aus — abklingende Sprunghöhen, Fall-Segmente beschleunigen
-   (ease-in), Aufstiege bremsen ab (ease-out). Ruht am Ende auf dem
-   Ladebalken bei translateY(0). */
-@keyframes splashBallDrop{
-  0%{transform:translateY(-46vh);animation-timing-function:cubic-bezier(.5,0,1,.5);}
-  30%{transform:translateY(0);animation-timing-function:cubic-bezier(0,.5,.5,1);}
-  47%{transform:translateY(-13vh);animation-timing-function:cubic-bezier(.5,0,1,.5);}
-  64%{transform:translateY(0);animation-timing-function:cubic-bezier(0,.5,.5,1);}
-  77%{transform:translateY(-5.5vh);animation-timing-function:cubic-bezier(.5,0,1,.5);}
-  88%{transform:translateY(0);animation-timing-function:cubic-bezier(0,.5,.5,1);}
-  95%{transform:translateY(-2vh);animation-timing-function:cubic-bezier(.5,0,1,.5);}
-  100%{transform:translateY(0);}
-}
-/* Sanftes "greif mich"-Glühen, sobald der Ball liegt — via filter
-   (drop-shadow), passt zur Line-Art-Grafik und kollidiert nicht mit
-   dem Drag-Transform. */
-@keyframes splashBallGlow{
-  0%,100%{filter:drop-shadow(0 4px 7px rgba(0,0,0,.5));}
-  50%{filter:drop-shadow(0 4px 7px rgba(0,0,0,.5)) drop-shadow(0 0 9px rgba(255,122,26,.8));}
-}
+/* Super-fancy Ladebalken: fließender Farbverlauf (background-position),
+   ein durchziehender Comet-Shine und ein pulsierendes Außen-Glühen. */
+@keyframes splashBarFlow{0%{background-position:0% 50%}100%{background-position:200% 50%}}
+@keyframes splashBarComet{0%{transform:translateX(-160%)}60%,100%{transform:translateX(460%)}}
+@keyframes splashBarGlow{0%,100%{box-shadow:0 0 8px 1px rgba(255,122,26,.4)}50%{box-shadow:0 0 22px 5px rgba(255,122,26,.85)}}
 /* Diashow: langsames vertikales Auto-Scrollen langer Listen. Die
    Distanz wird per --dnaDist (negativ) gesetzt; kurzer Halt oben,
    dann eine ruhige Fahrt nach unten. */

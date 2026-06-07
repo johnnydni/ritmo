@@ -501,12 +501,17 @@ input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
   95%{transform:translateY(-2vh);animation-timing-function:cubic-bezier(.5,0,1,.5);}
   100%{transform:translateY(0);}
 }
-/* Sanftes "greif mich"-Glühen, sobald der Ball liegt (nur box-shadow,
-   kollidiert daher nicht mit dem Drag-Transform). */
+/* Sanftes "greif mich"-Glühen, sobald der Ball liegt — via filter
+   (drop-shadow), passt zur Line-Art-Grafik und kollidiert nicht mit
+   dem Drag-Transform. */
 @keyframes splashBallGlow{
-  0%,100%{box-shadow:0 8px 16px rgba(0,0,0,.5), inset -3px -5px 9px rgba(0,0,0,.28), inset 3px 3px 7px rgba(255,255,255,.42), 0 0 0 0 rgba(255,122,26,.5);}
-  50%{box-shadow:0 8px 16px rgba(0,0,0,.5), inset -3px -5px 9px rgba(0,0,0,.28), inset 3px 3px 7px rgba(255,255,255,.42), 0 0 22px 5px rgba(255,122,26,.5);}
+  0%,100%{filter:drop-shadow(0 4px 7px rgba(0,0,0,.5));}
+  50%{filter:drop-shadow(0 4px 7px rgba(0,0,0,.5)) drop-shadow(0 0 9px rgba(255,122,26,.8));}
 }
+/* Diashow: langsames vertikales Auto-Scrollen langer Listen. Die
+   Distanz wird per --dnaDist (negativ) gesetzt; kurzer Halt oben,
+   dann eine ruhige Fahrt nach unten. */
+@keyframes dnaScrollY{0%,7%{transform:translateY(0)}100%{transform:translateY(var(--dnaDist,0px))}}
 @keyframes flashOrange{0%,100%{background:var(--card)}40%{background:var(--oFlash)}}
 /* Court-View: Live-Pulse (Punkt + Border), VS-Pulse (rotation + scale)
    und Score-Pop (Skalierung beim Punkte-Update). Eigene Animationen,

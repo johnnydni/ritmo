@@ -335,57 +335,16 @@ function BetaLanding({onLogin,onRegister}){
    SPLASH SCREEN
 ═══════════════════════════════════════════════════════════════ */
 function Splash({onDone}){
-  // Kein Auto-Advance: nach 3 s fällt ein oranger Tennisball auf den
-  // Ladebalken, federt physikalisch korrekt aus und muss weggewischt
-  // werden, um in die App zu gelangen.
-  const[showBall,setShowBall]=useState(false);
-  const[landed,setLanded]=useState(false);
-  const[drag,setDrag]=useState({x:0,y:0});
-  const[active,setActive]=useState(false);
-  const[flung,setFlung]=useState(null);
-  const start=useRef(null);
-  const dragRef=useRef({x:0,y:0});
-  useEffect(()=>{ const t=setTimeout(()=>setShowBall(true),3000); return()=>clearTimeout(t); },[]);
-
-  const onDown=e=>{
-    if(!landed||flung) return;
-    try{e.currentTarget.setPointerCapture?.(e.pointerId);}catch{}
-    start.current={x:e.clientX,y:e.clientY};
-    setActive(true);
-  };
-  const onMove=e=>{
-    if(!active||!start.current) return;
-    const d={x:e.clientX-start.current.x,y:e.clientY-start.current.y};
-    dragRef.current=d; setDrag(d);
-  };
-  const endDrag=()=>{
-    if(!active) return;
-    setActive(false);
-    const {x,y}=dragRef.current, dist=Math.hypot(x,y);
-    if(dist>64){
-      // Weit genug gewischt → in Wischrichtung vom Screen schleudern.
-      const n=dist||1, W=window.innerWidth||400, H=window.innerHeight||800;
-      setFlung({x:(x/n)*W*1.3,y:(y/n)*H*1.3});
-      setTimeout(onDone,340);
-    } else { dragRef.current={x:0,y:0}; setDrag({x:0,y:0}); } // Snap zurück
-  };
-
-  const ballAnim = showBall&&!landed ? 'splashBallDrop 1.5s forwards'
-    : (landed&&!active&&!flung ? 'splashBallGlow 1.9s ease-in-out infinite' : 'none');
-  const ballTransform = flung
-    ? `translate(${flung.x}px,${flung.y}px) rotate(${flung.x>=0?460:-460}deg)`
-    : `translate(${drag.x}px,${drag.y}px) rotate(${(drag.x*0.4)|0}deg)`;
-  const ballTransition = flung ? 'transform .36s cubic-bezier(.36,0,.7,.5), opacity .36s ease'
-    : active ? 'none'
-    : landed ? 'transform .5s cubic-bezier(.34,1.56,.64,1)' : 'none';
-
+  // Der fancy Ladebalken läuft in ~4 s voll und öffnet danach die App;
+  // ein Tap überspringt sofort. (Tennisball entfernt.)
+  const doneRef=useRef(false);
+  const finish=()=>{ if(doneRef.current) return; doneRef.current=true; onDone(); };
   return(
-    <div style={{height:'100dvh',width:'100vw',
+    <div onClick={finish} style={{height:'100dvh',width:'100vw',
       /* Ladebildschirm IMMER schwarz — bewusst hartkodiert (#000),
          unabhängig vom gewählten Theme. */
-      background:'#000',
-      display:'flex',alignItems:'center',justifyContent:'center',
-      userSelect:'none',position:'relative',overflow:'hidden'}}>
+      background:'#000',position:'relative',overflow:'hidden',
+      cursor:'pointer',userSelect:'none'}}>
       {/* Loading-Video — füllt den Screen auf schwarzem Grund. */}
       <video
         src={`${getAssetBase()}assets/ritmo-loadingscreen.mp4`}
@@ -393,41 +352,25 @@ function Splash({onDone}){
         style={{position:'absolute',inset:0,width:'100%',height:'100%',
           objectFit:'contain',background:'#000',pointerEvents:'none'}}/>
 
-      <div style={{position:'absolute',left:0,right:0,
-        /* Höher gesetzt: über dem RITMO-Wortmark-Logo im Lade-Video. */
-        bottom:'calc(env(safe-area-inset-bottom,0px) + 18vh)',
-        display:'flex',flexDirection:'column',alignItems:'center',
-        zIndex:2,pointerEvents:'none'}}>
-        {/* Ball-Lane direkt über dem Balken */}
-        <div style={{position:'relative',width:'min(220px,58vw)',height:48}}>
-          {showBall&&(
-            <div onPointerDown={onDown} onPointerMove={onMove} onPointerUp={endDrag} onPointerCancel={endDrag}
-              onAnimationEnd={e=>{ if(e.animationName==='splashBallDrop') setLanded(true); }}
-              style={{position:'absolute',left:'50%',bottom:0,marginLeft:-20,width:40,height:40,
-                transform:ballTransform,transition:ballTransition,
-                animation:ballAnim,opacity:flung?0:1,
-                // Glühen (filter) übernimmt im Ruhezustand die Animation;
-                // sonst eine dezente Tiefen-Schattierung.
-                filter:(landed&&!active&&!flung)?undefined:'drop-shadow(0 4px 7px rgba(0,0,0,.45))',
-                pointerEvents:landed&&!flung?'auto':'none',
-                cursor:active?'grabbing':landed?'grab':'default',
-                touchAction:'none',zIndex:3}}>
-              {/* Oranger Tennisball als Line-Grafik: Kreis-Outline + zwei
-                  Nahtbögen, alles als Stroke (keine Füllung). */}
-              <svg viewBox="0 0 40 40" width="40" height="40" fill="none" aria-hidden="true"
-                style={{display:'block'}}>
-                <circle cx="20" cy="20" r="17" stroke="#FF7A1A" strokeWidth="2.6"/>
-                <path d="M9 5 C15 13 15 27 9 35" stroke="#FF7A1A" strokeWidth="2.4" strokeLinecap="round"/>
-                <path d="M31 5 C25 13 25 27 31 35" stroke="#FF7A1A" strokeWidth="2.4" strokeLinecap="round"/>
-              </svg>
-            </div>
-          )}
-        </div>
-        {/* Ladebalken — 20 % dicker (5 px). Track weiß @15 %, Füllung Orange. */}
-        <div style={{width:'min(220px,58vw)',height:5,borderRadius:999,
-          background:'rgba(255,255,255,0.15)',overflow:'hidden'}}>
-          <div style={{height:'100%',width:0,background:'#FF7A1A',borderRadius:999,
-            animation:'splashLoad 4s linear forwards'}}/>
+      {/* Fancy Ladebalken — knapp unter dem "R" des Splash-Logos. */}
+      <div style={{position:'absolute',left:0,right:0,top:'47%',
+        display:'flex',justifyContent:'center',pointerEvents:'none',zIndex:2}}>
+        {/* Glüh-Wrapper (box-shadow außerhalb des Track-overflow). */}
+        <div style={{width:'min(240px,62vw)',borderRadius:999,
+          animation:'splashBarGlow 2s ease-in-out infinite'}}>
+          <div style={{position:'relative',height:7,borderRadius:999,overflow:'hidden',
+            background:'rgba(255,255,255,0.12)'}}>
+            {/* Füllung: wächst 0→100 % und fließt im Farbverlauf. */}
+            <div onAnimationEnd={e=>{ if(e.animationName==='splashLoad') finish(); }}
+              style={{position:'absolute',left:0,top:0,bottom:0,width:0,borderRadius:999,
+                background:'linear-gradient(90deg,#E85D00,#FF7A1A,#FFB877,#FF7A1A,#E85D00)',
+                backgroundSize:'200% 100%',
+                animation:'splashLoad 4s cubic-bezier(.45,.05,.2,1) forwards, splashBarFlow 2.2s linear infinite'}}/>
+            {/* Comet-Shine zieht über den Balken. */}
+            <div style={{position:'absolute',top:0,bottom:0,left:0,width:'42%',
+              background:'linear-gradient(90deg,transparent,rgba(255,255,255,.9),transparent)',
+              animation:'splashBarComet 1.9s ease-in-out infinite'}}/>
+          </div>
         </div>
       </div>
     </div>
@@ -11208,6 +11151,28 @@ function DnaAutoScroll({children,durationMs,style}){
   );
 }
 
+/* Großer orange Match-Typ-Tag (BOLD ITALIC) für die Court-Übersicht. */
+const STAGE_TAG={ko:'KO',semi:'HF',final:'FINALE',ehrenSemi:'EHREN HF',ehrenFinal:'EHREN F'};
+function dnaMatchTag(m){
+  const base=STAGE_TAG[m.stage]||'';
+  const num=(m.label||'').match(/(\d+)\s*$/);
+  if((m.stage==='ko'||m.stage==='semi')&&num) return `${base}-${num[1]}`;
+  return base;
+}
+function DnaMatchTag({tag}){
+  return(
+    <div style={{flexShrink:0,width:'clamp(108px,15vw,176px)',minHeight:'clamp(70px,10.5vh,108px)',
+      padding:'10px 16px',borderRadius:24,background:T.o,color:'#1b1206',
+      display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',
+      textAlign:'center',fontStyle:'italic',fontWeight:900,letterSpacing:.4,lineHeight:1.02,
+      boxShadow:'0 6px 18px rgba(0,0,0,.35)'}}>
+      {tag.split(' ').map((w,i)=>(
+        <span key={i} style={{display:'block',fontSize:'clamp(1.5rem,3vw,2.6rem)',whiteSpace:'nowrap'}}>{w}</span>
+      ))}
+    </div>
+  );
+}
+
 function DnaCupSlideshow({cup,onExit}){
   // Slide deck depends on the current phase.
   const slides=['phase'];
@@ -11246,7 +11211,7 @@ function DnaCupSlideshow({cup,onExit}){
     }
     const out=[];
     const push=m=>{ if(m&&m.team1.length&&m.team2.length&&m.status!=='completed')
-      out.push({court:m.court,a:dnaTeamName(cup,m.team1),b:dnaTeamName(cup,m.team2),label:m.label}); };
+      out.push({court:m.court,a:dnaTeamName(cup,m.team1),b:dnaTeamName(cup,m.team2),tag:dnaMatchTag(m)}); };
     if(cup.ko){
       cup.ko.knockout.matches.forEach(push);
       if(cup.ko.semi.built) cup.ko.semi.matches.forEach(push);
@@ -11304,8 +11269,7 @@ function DnaCupSlideshow({cup,onExit}){
                 <div style={{color:T.t1,fontSize:'clamp(1rem,3vw,1.7rem)',fontWeight:800,
                   overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{c.b}</div>
               </div>
-              {c.tier&&<DnaTierBadge tier={c.tier} size={26}/>}
-              {c.label&&<DnaChip>{c.label}</DnaChip>}
+              {c.tag?<DnaMatchTag tag={c.tag}/>:c.tier?<DnaTierBadge tier={c.tier} size={28}/>:null}
             </div>
           ))}
           {cs.length===0&&<div style={{color:T.t3,fontSize:16,textAlign:'center'}}>Nächste Runde wird vorbereitet…</div>}

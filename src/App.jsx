@@ -335,49 +335,96 @@ function BetaLanding({onLogin,onRegister}){
    SPLASH SCREEN
 ═══════════════════════════════════════════════════════════════ */
 function Splash({onDone}){
-  const[ready,setReady]=useState(false);
-  useEffect(()=>{
-    // Mindestlaufzeit 4s: Ladebalken füllt sich, danach erscheint der
-    // Tipp-Hinweis und der Splash wird antippbar.
-    const t=setTimeout(()=>setReady(true),4000);
-    return()=>clearTimeout(t);
-  },[]);
+  // Kein Auto-Advance: nach 3 s fällt ein oranger Tennisball auf den
+  // Ladebalken, federt physikalisch korrekt aus und muss weggewischt
+  // werden, um in die App zu gelangen.
+  const[showBall,setShowBall]=useState(false);
+  const[landed,setLanded]=useState(false);
+  const[drag,setDrag]=useState({x:0,y:0});
+  const[active,setActive]=useState(false);
+  const[flung,setFlung]=useState(null);
+  const start=useRef(null);
+  const dragRef=useRef({x:0,y:0});
+  useEffect(()=>{ const t=setTimeout(()=>setShowBall(true),3000); return()=>clearTimeout(t); },[]);
+
+  const onDown=e=>{
+    if(!landed||flung) return;
+    try{e.currentTarget.setPointerCapture?.(e.pointerId);}catch{}
+    start.current={x:e.clientX,y:e.clientY};
+    setActive(true);
+  };
+  const onMove=e=>{
+    if(!active||!start.current) return;
+    const d={x:e.clientX-start.current.x,y:e.clientY-start.current.y};
+    dragRef.current=d; setDrag(d);
+  };
+  const endDrag=()=>{
+    if(!active) return;
+    setActive(false);
+    const {x,y}=dragRef.current, dist=Math.hypot(x,y);
+    if(dist>64){
+      // Weit genug gewischt → in Wischrichtung vom Screen schleudern.
+      const n=dist||1, W=window.innerWidth||400, H=window.innerHeight||800;
+      setFlung({x:(x/n)*W*1.3,y:(y/n)*H*1.3});
+      setTimeout(onDone,340);
+    } else { dragRef.current={x:0,y:0}; setDrag({x:0,y:0}); } // Snap zurück
+  };
+
+  const ballAnim = showBall&&!landed ? 'splashBallDrop 1.5s forwards'
+    : (landed&&!active&&!flung ? 'splashBallGlow 1.9s ease-in-out infinite' : 'none');
+  const ballTransform = flung
+    ? `translate(${flung.x}px,${flung.y}px) rotate(${flung.x>=0?460:-460}deg)`
+    : `translate(${drag.x}px,${drag.y}px) rotate(${(drag.x*0.4)|0}deg)`;
+  const ballTransition = flung ? 'transform .36s cubic-bezier(.36,0,.7,.5), opacity .36s ease'
+    : active ? 'none'
+    : landed ? 'transform .5s cubic-bezier(.34,1.56,.64,1)' : 'none';
+  const baseShadow='0 8px 16px rgba(0,0,0,.5), inset -3px -5px 9px rgba(0,0,0,.28), inset 3px 3px 7px rgba(255,255,255,.42)';
+
   return(
-    <div onClick={ready?onDone:undefined}
-      style={{height:'100dvh',width:'100vw',
-        /* Ladebildschirm IMMER schwarz — bewusst hartkodiert (#000),
-           unabhängig vom gewählten Theme. */
-        background:'#000',
-        display:'flex',alignItems:'center',justifyContent:'center',
-        cursor:ready?'pointer':'default',userSelect:'none',
-        position:'relative',overflow:'hidden'}}>
-      {/* Loading-Video — füllt den Screen auf schwarzem Grund. Stumm +
-          playsInline für Mobile-Autoplay; contain zeigt das Video
-          vollständig (keine Beschneidung), schwarze Ränder verschmelzen
-          mit dem Hintergrund. */}
+    <div style={{height:'100dvh',width:'100vw',
+      /* Ladebildschirm IMMER schwarz — bewusst hartkodiert (#000),
+         unabhängig vom gewählten Theme. */
+      background:'#000',
+      display:'flex',alignItems:'center',justifyContent:'center',
+      userSelect:'none',position:'relative',overflow:'hidden'}}>
+      {/* Loading-Video — füllt den Screen auf schwarzem Grund. */}
       <video
         src={`${getAssetBase()}assets/ritmo-loadingscreen.mp4`}
-        autoPlay muted playsInline loop preload="auto"
-        aria-hidden="true"
+        autoPlay muted playsInline loop preload="auto" aria-hidden="true"
         style={{position:'absolute',inset:0,width:'100%',height:'100%',
           objectFit:'contain',background:'#000',pointerEvents:'none'}}/>
-      {/* Unten: Progress-Bar (über dem Hinweis) + Tipp-Hinweis */}
+
       <div style={{position:'absolute',left:0,right:0,
         bottom:'calc(env(safe-area-inset-bottom,0px) + 40px)',
-        display:'flex',flexDirection:'column',alignItems:'center',gap:16,
-        zIndex:1,pointerEvents:'none'}}>
-        {/* Ladebalken: Track weiß @85% Transparenz, Füllung RITMO-Orange,
-            läuft linear über die 4s-Mindestlaufzeit voll. */}
-        <div style={{width:'min(220px,58vw)',height:4,borderRadius:999,
+        display:'flex',flexDirection:'column',alignItems:'center',
+        zIndex:2,pointerEvents:'none'}}>
+        {/* Ball-Lane direkt über dem Balken */}
+        <div style={{position:'relative',width:'min(220px,58vw)',height:48}}>
+          {showBall&&(
+            <div onPointerDown={onDown} onPointerMove={onMove} onPointerUp={endDrag} onPointerCancel={endDrag}
+              onAnimationEnd={e=>{ if(e.animationName==='splashBallDrop') setLanded(true); }}
+              style={{position:'absolute',left:'50%',bottom:0,marginLeft:-20,width:40,height:40,
+                borderRadius:'50%',
+                background:'radial-gradient(circle at 33% 27%, #FFB877, #FF7A1A 58%, #DA5A00)',
+                boxShadow:baseShadow,transform:ballTransform,transition:ballTransition,
+                animation:ballAnim,opacity:flung?0:1,
+                pointerEvents:landed&&!flung?'auto':'none',
+                cursor:active?'grabbing':landed?'grab':'default',
+                touchAction:'none',zIndex:3}}>
+              {/* Tennisball-Naht (dreht mit dem Ball mit) */}
+              <svg viewBox="0 0 40 40" aria-hidden="true"
+                style={{position:'absolute',inset:0,width:'100%',height:'100%',pointerEvents:'none'}}>
+                <path d="M7 7 Q20 20 7 33" stroke="rgba(255,255,255,.85)" strokeWidth="2.2" fill="none"/>
+                <path d="M33 7 Q20 20 33 33" stroke="rgba(255,255,255,.85)" strokeWidth="2.2" fill="none"/>
+              </svg>
+            </div>
+          )}
+        </div>
+        {/* Ladebalken — 20 % dicker (5 px). Track weiß @15 %, Füllung Orange. */}
+        <div style={{width:'min(220px,58vw)',height:5,borderRadius:999,
           background:'rgba(255,255,255,0.15)',overflow:'hidden'}}>
           <div style={{height:'100%',width:0,background:'#FF7A1A',borderRadius:999,
             animation:'splashLoad 4s linear forwards'}}/>
-        </div>
-        {/* Hinweis — erst nach den 6s sichtbar */}
-        <div style={{color:'rgba(255,255,255,0.72)',fontSize:13,letterSpacing:.3,
-          opacity:ready?1:0,transition:'opacity .4s',
-          textShadow:'0 1px 10px rgba(0,0,0,0.7)'}}>
-          Zum Fortfahren Tippen
         </div>
       </div>
     </div>

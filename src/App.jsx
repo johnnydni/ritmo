@@ -5191,12 +5191,16 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit,profile,onCreat
   const gcd=(a,b)=>b?gcd(b,a%b):a;
   const suggest=(()=>{
     if(mode!=='lokal'||!windowMin||players.length<4)return null;
-    const C=Math.max(1,numCourts),perRound=4*C;
+    // perRound = 4 × Courts. Mehr Courts → mehr Spieler aktiv pro Runde
+    // → anderer fairer Zyklus + mehr Spiele pro Spieler. Courts laufen
+    // parallel, daher bleibt die Rundenzahl primär fensterbestimmt.
+    const C=Math.max(1,Math.min(numCourts,Math.floor(players.length/4)||1)),perRound=4*C;
     const cycle=players.length>perRound?Math.max(1,players.length/gcd(players.length,perRound)):1;
     const fit=Math.max(1,Math.round(windowMin/13));
     const rounds=Math.max(cycle,Math.round(fit/cycle)*cycle);
     const roundTime=Math.max(1,Math.floor(windowMin/rounds)-1);
-    return {rounds,roundTime};
+    const gamesEach=Math.round(rounds*perRound/players.length);
+    return {rounds,roundTime,gamesEach,courts:C};
   })();
   // Vorschlag übernehmen, wenn sich Fenster/Spielerzahl/Courts ändern.
   useEffect(()=>{ if(suggest){ setRoundDur(suggest.roundTime); setPickerKey(k=>k+1); }
@@ -5338,28 +5342,31 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit,profile,onCreat
               Start- & End-Uhrzeit → schlägt die Rundenzeit vor (− 1 Min Rotation/Runde)
             </div>
             <div style={{display:'flex',gap:12,alignItems:'flex-end'}}>
-              <div style={{flex:1}}>
+              <div style={{flex:1,minWidth:0}}>
                 <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:.4,marginBottom:5}}>START</div>
                 <input type="time" value={startTime} onChange={e=>setStartTime(e.target.value)}
-                  style={{width:'100%',height:44,borderRadius:12,background:T.card2,border:`1px solid ${T.border}`,
-                    color:T.t1,fontSize:16,fontWeight:700,padding:'0 12px',outline:'none',boxSizing:'border-box',
-                    colorScheme:'dark'}}/>
+                  style={{width:'100%',maxWidth:'100%',height:44,borderRadius:12,background:T.card2,
+                    border:`1px solid ${T.border}`,color:T.t1,fontSize:15,fontWeight:700,padding:'0 10px',
+                    outline:'none',boxSizing:'border-box',colorScheme:'dark',minWidth:0,
+                    fontFamily:'inherit'}}/>
               </div>
-              <div style={{flex:1}}>
+              <div style={{flex:1,minWidth:0}}>
                 <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:.4,marginBottom:5}}>ENDE</div>
                 <input type="time" value={endTime} onChange={e=>setEndTime(e.target.value)}
-                  style={{width:'100%',height:44,borderRadius:12,background:T.card2,border:`1px solid ${T.border}`,
-                    color:T.t1,fontSize:16,fontWeight:700,padding:'0 12px',outline:'none',boxSizing:'border-box',
-                    colorScheme:'dark'}}/>
+                  style={{width:'100%',maxWidth:'100%',height:44,borderRadius:12,background:T.card2,
+                    border:`1px solid ${T.border}`,color:T.t1,fontSize:15,fontWeight:700,padding:'0 10px',
+                    outline:'none',boxSizing:'border-box',colorScheme:'dark',minWidth:0,
+                    fontFamily:'inherit'}}/>
               </div>
             </div>
             {suggest&&(
               <div style={{marginTop:12,padding:'10px 12px',borderRadius:12,background:T.oSoft,
-                border:`1px solid ${T.o}`,display:'flex',alignItems:'center',gap:8}}>
-                <span style={{fontSize:14}}>⏱️</span>
-                <div style={{color:T.t2,fontSize:12,fontWeight:600,lineHeight:1.5}}>
+                border:`1px solid ${T.o}`,display:'flex',alignItems:'flex-start',gap:8}}>
+                <span style={{fontSize:14,marginTop:1}}>⏱️</span>
+                <div style={{color:T.t2,fontSize:12,fontWeight:600,lineHeight:1.5,minWidth:0}}>
                   Vorschlag: <span style={{color:T.o,fontWeight:800}}>≈ {suggest.rounds} Runden × {suggest.roundTime} Min</span>
-                  {' '}· füllt {Math.floor(windowMin/60)} h {windowMin%60} Min, alle spielen gleich oft.
+                  {' '}· füllt {Math.floor(windowMin/60)} h {windowMin%60} Min.
+                  <br/>Bei {suggest.courts} Court{suggest.courts>1?'s':''}: ~{suggest.gamesEach} Spiele/Spieler — alle gleich oft.
                 </div>
               </div>
             )}

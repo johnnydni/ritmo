@@ -4847,6 +4847,24 @@ function WimbledonDial({minutes,secsLeft,running,finished,hasStarted,svgStyle,
   );
 }
 
+/* Timer-Steuerung: saubere SVG-Glyphen (statt Farb-Emojis ▶/⏸), die
+   farblich zum orangen Timer-Knopf passen (color = Knopf-Vordergrund). */
+function PlayGlyph({size=16,color=T.bg}){
+  return(
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M8 5.14v13.72a1 1 0 0 0 1.55.83l9.5-6.86a1 1 0 0 0 0-1.66l-9.5-6.86A1 1 0 0 0 8 5.14Z" fill={color}/>
+    </svg>
+  );
+}
+function PauseGlyph({size=16,color=T.bg}){
+  return(
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="6.5" y="5" width="4" height="14" rx="1.6" fill={color}/>
+      <rect x="13.5" y="5" width="4" height="14" rx="1.6" fill={color}/>
+    </svg>
+  );
+}
+
 function WimbledonTimerCard({minutes,setMinutes,running,secsLeft,finished,onStart,onPause,onReset,hasStarted}){
   const opts=Array.from({length:60},(_,i)=>i+1);
 
@@ -4879,7 +4897,7 @@ function WimbledonTimerCard({minutes,setMinutes,running,secsLeft,finished,onStar
               fontSize:18,fontWeight:800,cursor:'pointer',
               boxShadow:'0 4px 16px var(--oGlow)',
               display:'flex',alignItems:'center',justifyContent:'center'}}>
-            ▶
+            <PlayGlyph size={19} color={T.bg}/>
           </button>
         </div>
       )}
@@ -4892,7 +4910,7 @@ function WimbledonTimerCard({minutes,setMinutes,running,secsLeft,finished,onStar
               fontSize:15,fontWeight:800,cursor:'pointer',
               boxShadow:'0 3px 12px var(--oGlow)',
               display:'flex',alignItems:'center',justifyContent:'center'}}>
-            {running?'⏸':'▶'}
+            {running?<PauseGlyph size={16} color={T.bg}/>:<PlayGlyph size={16} color={T.bg}/>}
           </button>
           <button onClick={onReset}
             style={{width:46,height:46,borderRadius:'50%',
@@ -4978,7 +4996,7 @@ function TimerCard({minutes,setMinutes,running,secsLeft,finished,onStart,onPause
                   background:T.o,border:'none',color:T.bg,
                   fontSize:14,fontWeight:800,cursor:'pointer',
                   display:'flex',alignItems:'center',justifyContent:'center'}}>
-                {running?'⏸':'▶'}
+                {running?<PauseGlyph size={16} color={T.bg}/>:<PlayGlyph size={16} color={T.bg}/>}
               </button>
               <button onClick={onReset}
                 style={{width:42,height:42,borderRadius:'50%',
@@ -5372,24 +5390,28 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit,profile,onCreat
           <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19,padding:'14px 18px'}}>
             <div style={{color:T.t1,fontSize:15,fontWeight:600,marginBottom:2}}>Zeitfenster</div>
             <div style={{color:T.t3,fontSize:11,fontWeight:500,marginBottom:12}}>
-              Start- & End-Uhrzeit → schlägt die Rundenzeit vor (− 1 Min Rotation/Runde)
+              Start- & End-Uhrzeit → schlägt die Rundenzeit vor (− 2 Min Rotation/Runde)
             </div>
-            <div style={{display:'flex',gap:12,alignItems:'flex-end'}}>
-              <div style={{flex:1,minWidth:0}}>
+            {/* START + ENDE in einer Zeile, aber als feste 2-Spalten-Grid
+                mit minmax(0,1fr): so respektiert die native type=time-
+                Mindestbreite die Spaltenbreite und steht nicht über den
+                Card-Rand. */}
+            <div style={{display:'grid',gridTemplateColumns:'minmax(0,1fr) minmax(0,1fr)',gap:10}}>
+              <div style={{minWidth:0}}>
                 <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:.4,marginBottom:5}}>START</div>
                 <input type="time" value={startTime} onChange={e=>setStartTime(e.target.value)}
                   style={{width:'100%',maxWidth:'100%',height:44,borderRadius:12,background:T.card2,
-                    border:`1px solid ${T.border}`,color:T.t1,fontSize:15,fontWeight:700,padding:'0 10px',
+                    border:`1px solid ${T.border}`,color:T.t1,fontSize:15,fontWeight:700,padding:'0 8px',
                     outline:'none',boxSizing:'border-box',colorScheme:'dark',minWidth:0,
-                    fontFamily:'inherit'}}/>
+                    fontFamily:'inherit',display:'block'}}/>
               </div>
-              <div style={{flex:1,minWidth:0}}>
+              <div style={{minWidth:0}}>
                 <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:.4,marginBottom:5}}>ENDE</div>
                 <input type="time" value={endTime} onChange={e=>setEndTime(e.target.value)}
                   style={{width:'100%',maxWidth:'100%',height:44,borderRadius:12,background:T.card2,
-                    border:`1px solid ${T.border}`,color:T.t1,fontSize:15,fontWeight:700,padding:'0 10px',
+                    border:`1px solid ${T.border}`,color:T.t1,fontSize:15,fontWeight:700,padding:'0 8px',
                     outline:'none',boxSizing:'border-box',colorScheme:'dark',minWidth:0,
-                    fontFamily:'inherit'}}/>
+                    fontFamily:'inherit',display:'block'}}/>
               </div>
             </div>
 
@@ -7515,7 +7537,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='soft',onEdit,onMa
               color:T.bg,fontSize:14,fontWeight:800,
               cursor:'pointer',position:'relative',zIndex:1,
               display:'flex',alignItems:'center',justifyContent:'center'}}>
-            {tourney.timerFinished?'↺':tourney.timerRunning?'⏸':'▶'}
+            {tourney.timerFinished?'↺':tourney.timerRunning?<PauseGlyph size={15} color={T.bg}/>:<PlayGlyph size={15} color={T.bg}/>}
           </button>
         </div>
 

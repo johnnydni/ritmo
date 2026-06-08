@@ -5151,6 +5151,13 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit,profile,onCreat
   const[winMode,setWinMode]=useState(saved?.winMode||'points');
   const[numCourts,setNumCourts]=useState(saved?.numCourts||1);
   const[roundDur,setRoundDur]=useState(saved?.roundDurationMin||10);
+  const[name,setName]=useState(saved?.name||'');
+  const[startTime,setStartTime]=useState(saved?.startTime||'');
+  const[endTime,setEndTime]=useState(saved?.endTime||'');
+  // Bumpt nur beim Übernehmen eines Vorschlags → der Rundendauer-Picker
+  // remountet und springt auf den neuen Wert (er repositioniert sonst
+  // nur beim Mount, nicht bei externer value-Änderung).
+  const[pickerKey,setPickerKey]=useState(0);
   const[creatingOnline,setCreatingOnline]=useState(false);
 
   // Refs auf alle Spieler-Inputs — Enter springt zum nächsten Slot,
@@ -5172,6 +5179,28 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit,profile,onCreat
   const maxCourts=mode==='online'?20:Math.max(1,Math.floor(players.length/4));
   // Auto-clamp courts when players reduced (gilt nur im Lokal-Modus)
   useEffect(()=>{if(numCourts>maxCourts)setNumCourts(maxCourts);},[maxCourts,numCourts]);
+
+  // ── Rundenzeit-Vorschlag: Fenster ÷ faire Rundenzahl − 1 Min Rotation.
+  //    Rundenzahl = Vielfaches des fairen Spiel-Zyklus (alle gleich oft),
+  //    das ~13-Min-Runden ergibt. Mehr Spieler/Pausen → mehr Runden →
+  //    kürzere Runden. Nur im Lokal-Modus (Spielerzahl bekannt). ──
+  const parseHM=s=>{const m=/^(\d{1,2}):(\d{2})$/.exec((s||'').trim());if(!m)return null;
+    const h=+m[1],mi=+m[2];if(h>23||mi>59)return null;return h*60+mi;};
+  const windowMin=(()=>{const a=parseHM(startTime),b=parseHM(endTime);
+    if(a==null||b==null)return null;let d=b-a;if(d<=0)d+=1440;return d;})();
+  const gcd=(a,b)=>b?gcd(b,a%b):a;
+  const suggest=(()=>{
+    if(mode!=='lokal'||!windowMin||players.length<4)return null;
+    const C=Math.max(1,numCourts),perRound=4*C;
+    const cycle=players.length>perRound?Math.max(1,players.length/gcd(players.length,perRound)):1;
+    const fit=Math.max(1,Math.round(windowMin/13));
+    const rounds=Math.max(cycle,Math.round(fit/cycle)*cycle);
+    const roundTime=Math.max(1,Math.floor(windowMin/rounds)-1);
+    return {rounds,roundTime};
+  })();
+  // Vorschlag übernehmen, wenn sich Fenster/Spielerzahl/Courts ändern.
+  useEffect(()=>{ if(suggest){ setRoundDur(suggest.roundTime); setPickerKey(k=>k+1); }
+    /* eslint-disable-next-line */ },[startTime,endTime,players.length,numCourts,mode]);
 
   const addPlayer=()=>{
     // Keine Obergrenze mehr — beliebig viele Spieler. Farben zyklen via
@@ -5209,6 +5238,19 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit,profile,onCreat
           icon={<TrophyIcon size={40}/>}
           title="Turnier erstellen"
           desc="Mehrere Runden, rotierende Partner oder Mexicano-Pairings. Beliebig viele Spieler — lokal oder online via QR-Code."/>
+
+        {/* Turniername — damit Turniere unter „Live" einzeln gespeichert
+            werden (laufende werden nicht mehr überschrieben). */}
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19,padding:'16px 18px'}}>
+          <div style={{color:T.o,fontSize:18,fontWeight:800,marginBottom:10}}>Turniername</div>
+          <input value={name} onChange={e=>setName(e.target.value)} maxLength={40}
+            placeholder="z. B. Sunset Americano · Fr"
+            style={{width:'100%',height:46,borderRadius:13,background:T.card2,border:`1px solid ${T.border}`,
+              color:T.t1,fontSize:15,fontWeight:600,padding:'0 14px',outline:'none',boxSizing:'border-box'}}/>
+          <div style={{color:T.t3,fontSize:11,fontWeight:500,marginTop:8,lineHeight:1.5}}>
+            Jedes Turnier wird einzeln gespeichert — laufende werden nicht mehr überschrieben.
+          </div>
+        </div>
 
         {/* Modus: Lokal vs Online */}
         {!isEdit&&(
@@ -5288,19 +5330,61 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit,profile,onCreat
           </div>
         </div>
 
+        {/* Zeitfenster (nur lokal) — Start/End-Uhrzeit → Rundenzeit-Vorschlag. */}
+        {mode==='lokal'&&(
+          <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19,padding:'14px 18px'}}>
+            <div style={{color:T.t1,fontSize:15,fontWeight:600,marginBottom:2}}>Zeitfenster</div>
+            <div style={{color:T.t3,fontSize:11,fontWeight:500,marginBottom:12}}>
+              Start- & End-Uhrzeit → schlägt die Rundenzeit vor (− 1 Min Rotation/Runde)
+            </div>
+            <div style={{display:'flex',gap:12,alignItems:'flex-end'}}>
+              <div style={{flex:1}}>
+                <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:.4,marginBottom:5}}>START</div>
+                <input type="time" value={startTime} onChange={e=>setStartTime(e.target.value)}
+                  style={{width:'100%',height:44,borderRadius:12,background:T.card2,border:`1px solid ${T.border}`,
+                    color:T.t1,fontSize:16,fontWeight:700,padding:'0 12px',outline:'none',boxSizing:'border-box',
+                    colorScheme:'dark'}}/>
+              </div>
+              <div style={{flex:1}}>
+                <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:.4,marginBottom:5}}>ENDE</div>
+                <input type="time" value={endTime} onChange={e=>setEndTime(e.target.value)}
+                  style={{width:'100%',height:44,borderRadius:12,background:T.card2,border:`1px solid ${T.border}`,
+                    color:T.t1,fontSize:16,fontWeight:700,padding:'0 12px',outline:'none',boxSizing:'border-box',
+                    colorScheme:'dark'}}/>
+              </div>
+            </div>
+            {suggest&&(
+              <div style={{marginTop:12,padding:'10px 12px',borderRadius:12,background:T.oSoft,
+                border:`1px solid ${T.o}`,display:'flex',alignItems:'center',gap:8}}>
+                <span style={{fontSize:14}}>⏱️</span>
+                <div style={{color:T.t2,fontSize:12,fontWeight:600,lineHeight:1.5}}>
+                  Vorschlag: <span style={{color:T.o,fontWeight:800}}>≈ {suggest.rounds} Runden × {suggest.roundTime} Min</span>
+                  {' '}· füllt {Math.floor(windowMin/60)} h {windowMin%60} Min, alle spielen gleich oft.
+                </div>
+              </div>
+            )}
+            {windowMin&&!suggest&&(
+              <div style={{color:T.t3,fontSize:11,fontWeight:500,marginTop:10}}>
+                Mind. 4 Spieler eintragen für einen Rundenzeit-Vorschlag.
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Rundendauer — horizontaler Scroll-Picker mit Lupen-Effekt
             auf dem mittleren Minutenwert. Schnelles Swipen statt
             +/- Klick-Klick-Klick. */}
         <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19,
           padding:'14px 18px 16px'}}>
           <div style={{marginBottom:10}}>
-            <div style={{color:T.t1,fontSize:15,fontWeight:600}}>Rundendauer</div>
+            <div style={{color:T.t1,fontSize:15,fontWeight:600}}>Rundendauer{suggest?' · Vorschlag übernommen':''}</div>
             <div style={{color:T.t3,fontSize:11,fontWeight:500,marginTop:1}}>
               Timer pro Runde — wische zur gewünschten Minute
             </div>
           </div>
           <div style={{display:'flex',justifyContent:'center'}}>
             <HorizontalScrollPicker
+              key={pickerKey}
               value={roundDur}
               onChange={setRoundDur}
               options={Array.from({length:60},(_,i)=>i+1)}
@@ -5448,7 +5532,8 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit,profile,onCreat
         onClick:async()=>{
           if(creatingOnline) return;
           if(isEdit){
-            onSave({players,format,winMode,numCourts,roundDurationMin:roundDur});
+            onSave({players,format,winMode,numCourts,roundDurationMin:roundDur,
+              name:name.trim(),startTime,endTime});
             return;
           }
           if(mode==='online'){
@@ -5475,6 +5560,8 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit,profile,onCreat
             ?genMexicanoRound(players.map(p=>p.id),lb,numCourts)
             :genAmericanoRound(players.map(p=>p.id),[],numCourts);
           onStart({
+            name:name.trim()||('Turnier '+new Date().toLocaleDateString('de-DE')),
+            startTime,endTime,
             players,format,winMode,
             numCourts,
             roundDurationMin:roundDur,
@@ -6807,7 +6894,41 @@ function PointsEditModal({entry,winMode,onSave,onClose}){
   );
 }
 
-function TournamentCourtCard({court,courtIndex,playerById,onScoreChange,onConfirm,onEditLineup}){
+/* Kompaktes Score-Wheel (iPhone-Wecker-Stil) für die Court-Übersicht —
+   3 sichtbare Reihen, Snap, statt Zahleneingabe. */
+function ScoreWheel({value,onChange,max=40,color=T.o}){
+  const ref=useRef(null);
+  const ITEM_H=34, VISIBLE=3, HEIGHT=ITEM_H*VISIBLE, PAD=(HEIGHT-ITEM_H)/2;
+  const opts=Array.from({length:max+1},(_,i)=>i);
+  const v=value==null?0:value;
+  const init=useRef(false), toRef=useRef(null);
+  useEffect(()=>{ if(ref.current&&!init.current){ ref.current.scrollTop=v*ITEM_H; init.current=true; } },[v]);
+  const onScroll=e=>{ const el=e.target; if(toRef.current)clearTimeout(toRef.current);
+    toRef.current=setTimeout(()=>{ const idx=Math.max(0,Math.min(max,Math.round(el.scrollTop/ITEM_H)));
+      if(idx!==value) onChange(idx); },90); };
+  return(
+    <div style={{position:'relative',width:52,height:HEIGHT,flexShrink:0}}>
+      <div style={{position:'absolute',top:PAD,left:0,right:0,height:ITEM_H,
+        background:`${color}1A`,border:`1.5px solid ${color}`,borderRadius:11,pointerEvents:'none'}}/>
+      <div style={{position:'absolute',top:0,left:0,right:0,height:PAD,
+        background:`linear-gradient(${T.card},transparent)`,pointerEvents:'none',zIndex:2}}/>
+      <div style={{position:'absolute',bottom:0,left:0,right:0,height:PAD,
+        background:`linear-gradient(transparent,${T.card})`,pointerEvents:'none',zIndex:2}}/>
+      <div ref={ref} onScroll={onScroll}
+        style={{height:HEIGHT,overflowY:'scroll',scrollSnapType:'y mandatory',
+          scrollPaddingTop:`${PAD}px`,WebkitOverflowScrolling:'touch',scrollbarWidth:'none'}}>
+        <div style={{height:PAD}}/>
+        {opts.map(o=>{ const active=o===v;
+          return <div key={o} style={{height:ITEM_H,display:'flex',alignItems:'center',justifyContent:'center',
+            scrollSnapAlign:'start',fontSize:active?24:15,fontWeight:active?900:600,
+            color:active?T.t1:T.t3,transition:'color .15s,font-size .15s'}}>{o}</div>; })}
+        <div style={{height:PAD}}/>
+      </div>
+    </div>
+  );
+}
+
+function TournamentCourtCard({court,courtIndex,playerById,onScoreChange,onConfirm,onEditLineup,scoreMax=40}){
   // Score-Werte aus dem Court ziehen. null/undefined = noch nicht
   // eingegeben → Input rendert leer, damit Tippen "5" auch wirklich
   // "5" wird und nicht "05". Beim Abschluss zählt 0 als gültiger
@@ -6817,11 +6938,6 @@ function TournamentCourtCard({court,courtIndex,playerById,onScoreChange,onConfir
   const s2Raw=court.s2;
   const s1=s1Raw??0;
   const s2=s2Raw??0;
-  const s1Input=s1Raw==null?'':String(s1Raw);
-  const s2Input=s2Raw==null?'':String(s2Raw);
-  // Ref auf das zweite Score-Feld: Enter im ersten Feld springt dorthin,
-  // Enter im zweiten bestätigt das Ergebnis (wie der Bestätigen-Button).
-  const s2Ref=useRef(null);
   const done=!!court.done;
 
   // Match-Tier-Rating aus den Spielstilen der vier Spieler (RITMO DNA).
@@ -6833,17 +6949,6 @@ function TournamentCourtCard({court,courtIndex,playerById,onScoreChange,onConfir
 
   // Gewinnerseite ermitteln (für goldenen Glow auf der Karte).
   const winnerTeam=done?(s1>s2?'A':s2>s1?'B':null):null;
-
-  // Input-Handler: leer → null (kein 0 erzwingen), sonst geclamped 0..99.
-  const handleScoreInput=(field,raw)=>{
-    if(raw===''||raw==null){
-      onScoreChange(field,null);
-      return;
-    }
-    const n=parseInt(raw,10);
-    if(!Number.isFinite(n)) return;
-    onScoreChange(field,Math.max(0,Math.min(99,n)));
-  };
 
   // Pill mit Initialen + Farb-Border um den Spieler-Avatar zu hinten —
   // sieht in der Liste lebendiger aus als nur ein Farbpunkt.
@@ -6981,18 +7086,7 @@ function TournamentCourtCard({court,courtIndex,playerById,onScoreChange,onConfir
             {s1}
           </div>
         ):(
-          <input type="number" min="0" max="99" inputMode="numeric"
-            placeholder="–"
-            value={s1Input}
-            onChange={e=>handleScoreInput('s1',e.target.value)}
-            onFocus={e=>e.currentTarget.select()}
-            onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();s2Ref.current?.focus();s2Ref.current?.select();}}}
-            style={{flexShrink:0,width:48,height:48,borderRadius:15,
-              border:`1.5px solid ${T.o}`,
-              background:T.card2,color:T.t1,fontSize:22,fontWeight:900,
-              textAlign:'center',
-              boxShadow:`0 0 0 3px ${T.o}11`,
-              outline:'none',padding:0}}/>
+          <ScoreWheel value={s1Raw} onChange={v=>onScoreChange('s1',v)} max={scoreMax}/>
         )}
 
         {/* VS-Kreis bleibt zentral zwischen den Scores */}
@@ -7023,19 +7117,7 @@ function TournamentCourtCard({court,courtIndex,playerById,onScoreChange,onConfir
             {s2}
           </div>
         ):(
-          <input type="number" min="0" max="99" inputMode="numeric"
-            placeholder="–"
-            ref={s2Ref}
-            value={s2Input}
-            onChange={e=>handleScoreInput('s2',e.target.value)}
-            onFocus={e=>e.currentTarget.select()}
-            onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();e.currentTarget.blur();onConfirm();}}}
-            style={{flexShrink:0,width:48,height:48,borderRadius:15,
-              border:`1.5px solid ${T.o}`,
-              background:T.card2,color:T.t1,fontSize:22,fontWeight:900,
-              textAlign:'center',
-              boxShadow:`0 0 0 3px ${T.o}11`,
-              outline:'none',padding:0}}/>
+          <ScoreWheel value={s2Raw} onChange={v=>onScoreChange('s2',v)} max={scoreMax}/>
         )}
 
         {teamSide(court.t2||[],'right')}
@@ -7331,8 +7413,13 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='soft',onEdit,onMa
           <RitmoWordmark size={52} style={{marginLeft:-3}}/>
           <TrophyIcon size={40}/>
         </div>
-        <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>
+        <div style={{color:T.t1,fontSize:26,marginTop:6,marginLeft:10,fontWeight:800,
+          overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+          {tourney.name||(tourney.format==='mexicano'?'Mexicano':'Americano')}
+        </div>
+        <div style={{color:T.t3,fontSize:14,marginLeft:10,fontWeight:600,marginTop:1}}>
           {tourney.format==='mexicano'?'Mexicano':'Americano'} · Runde {tourney.current+1}
+          {tourney.endTime?` · bis ${tourney.endTime}`:''}
         </div>
       </div>
 
@@ -7647,8 +7734,8 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
 /* ═══════════════════════════════════════════════════════════════
    LIVE SCREEN
 ═══════════════════════════════════════════════════════════════ */
-function Live({hasMatch,hasTourney,tourneyData,matchCfg,nav,activeTab,setActiveTab,
-  onDeleteMatch,onDeleteTourney,joinedSession,onLeaveJoined}){
+function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
+  onDeleteMatch,onDeleteTourney,onOpenTourney,joinedSession,onLeaveJoined}){
   const items=[];
   if(hasMatch){
     items.push({
@@ -7659,15 +7746,18 @@ function Live({hasMatch,hasTourney,tourneyData,matchCfg,nav,activeTab,setActiveT
       onDelete:onDeleteMatch,
     });
   }
-  if(hasTourney){
-    items.push({
-      id:'tourney',type:'tourney',
-      title:`Turnier · ${tourneyData.format==='mexicano'?'Mexicano':'Americano'}`,
-      sub:`Runde ${tourneyData.current+1} · ${tourneyData.players.length} Spieler`,
-      navTo:tourneyData.finished?'tournament-leaderboard':'tournament-play',
-      onDelete:onDeleteTourney,
+  // Alle benannten Turniere — laufende oben, beendete darunter.
+  [...tourneys]
+    .sort((a,b)=>(a.finished?1:0)-(b.finished?1:0)||(b.createdAt||0)-(a.createdAt||0))
+    .forEach(t=>{
+      items.push({
+        id:'t-'+t.id,type:'tourney',finished:!!t.finished,
+        title:t.name||'Turnier',
+        sub:`${t.format==='mexicano'?'Mexicano':'Americano'} · ${t.finished?'beendet':'Runde '+((t.current||0)+1)} · ${(t.players||[]).length} Spieler`,
+        onClick:()=>onOpenTourney(t.id),
+        onDelete:()=>onDeleteTourney(t.id),
+      });
     });
-  }
   if(joinedSession){
     items.push({
       id:'joined',type:'joined',
@@ -7705,23 +7795,24 @@ function Live({hasMatch,hasTourney,tourneyData,matchCfg,nav,activeTab,setActiveT
         {items.map((item,i)=>(
           <div key={item.id} className="fu" style={{animationDelay:`${i*0.06}s`}}>
             <SwipeableCard onDelete={item.onDelete}>
-              <button onClick={()=>nav(item.navTo)}
-                style={{width:'100%',background:T.card,border:`1px solid ${T.border}`,
+              <button onClick={()=>item.onClick?item.onClick():nav(item.navTo)}
+                style={{width:'100%',background:T.card,border:`1px solid ${item.finished?T.border:T.border}`,
                   borderRadius:23,padding:'18px 20px',display:'flex',alignItems:'center',gap:18,
-                  cursor:'pointer',color:T.t1,textAlign:'left',transition:'background .15s'}}
+                  cursor:'pointer',color:T.t1,textAlign:'left',transition:'background .15s',
+                  opacity:item.finished?0.82:1}}
                 onPointerDown={e=>e.currentTarget.style.background=T.card2}
                 onPointerUp={e=>e.currentTarget.style.background=T.card}
                 onPointerLeave={e=>e.currentTarget.style.background=T.card}>
                 {item.type==='match'?<SingleMatchIcon size={42}/>:<TrophyIcon size={42}/>}
                 <div style={{flex:1,minWidth:0}}>
-                  <div style={{color:T.o,fontSize:16,fontWeight:700,marginBottom:3,
+                  <div style={{color:item.finished?T.t1:T.o,fontSize:16,fontWeight:700,marginBottom:3,
                     overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.title}</div>
                   <div style={{color:T.t3,fontSize:12,fontWeight:500}}>{item.sub}</div>
                 </div>
                 <div style={{display:'flex',alignItems:'center',gap:8,
-                  background:T.oSoft,borderRadius:25,
-                  padding:'5px 12px',border:`1px solid ${T.o}`,flexShrink:0}}>
-                  <span style={{color:T.o,fontSize:11,fontWeight:700}}>▶</span>
+                  background:item.finished?T.card2:T.oSoft,borderRadius:25,
+                  padding:'5px 12px',border:`1px solid ${item.finished?T.border:T.o}`,flexShrink:0}}>
+                  <span style={{color:item.finished?T.t2:T.o,fontSize:11,fontWeight:700}}>{item.finished?'✓':'▶'}</span>
                 </div>
               </button>
             </SwipeableCard>
@@ -13828,7 +13919,22 @@ export default function App(){
   const[cfg,setCfg]=useState(()=>lsGet('ritmo_cfg',{nameA:'Team A',nameB:'Team B',format:'bo3',amLimit:21}));
   const[bo3,dBo3]=useReducer(bo3R,B0,init=>lsGet('ritmo_bo3',init));
   const[am,dAm]=useReducer(amR,A0,init=>lsGet('ritmo_am',init));
-  const[tourney,setTourney]=useState(()=>lsGet('ritmo_tourney',null));
+  // Mehrere benannte Turniere als Liste (statt Einzelobjekt), damit ein
+  // laufendes Turnier nicht vom nächsten überschrieben wird. Migration
+  // vom alten Einzel-Key ritmo_tourney.
+  const[tourneys,setTourneys]=useState(()=>{
+    const list=lsGet('ritmo_tourneys',null);
+    if(Array.isArray(list)) return list;
+    const old=lsGet('ritmo_tourney',null);
+    if(old) return [{...old,id:old.id||('t-'+Date.now()),name:old.name||'Turnier',createdAt:old.createdAt||Date.now()}];
+    return [];
+  });
+  const[currentTourneyId,setCurrentTourneyId]=useState(null);
+  const tourney=tourneys.find(t=>t.id===currentTourneyId)||null;
+  const setTourney=useCallback(updater=>{
+    setTourneys(list=>list.map(t=>t.id===currentTourneyId
+      ?(typeof updater==='function'?updater(t):updater):t));
+  },[currentTourneyId]);
   // RITMO DNA Cup (Founders Edition) — structured multi-phase
   // tournament. Whole state in one object, persisted separately from
   // the freeform Americano/Mexicano tourney.
@@ -13991,7 +14097,11 @@ export default function App(){
   useEffect(()=>lsSet('ritmo_cfg',cfg),[cfg]);
   useEffect(()=>lsSet('ritmo_bo3',bo3),[bo3]);
   useEffect(()=>lsSet('ritmo_am',am),[am]);
-  useEffect(()=>{if(tourney===null){try{localStorage.removeItem('ritmo_tourney');}catch(e){}}else lsSet('ritmo_tourney',tourney);},[tourney]);
+  useEffect(()=>{
+    if(!tourneys.length){try{localStorage.removeItem('ritmo_tourneys');}catch(e){}}
+    else lsSet('ritmo_tourneys',tourneys);
+    try{localStorage.removeItem('ritmo_tourney');}catch(e){} // alter Einzel-Key
+  },[tourneys]);
   useEffect(()=>{if(dnaCup===null){try{localStorage.removeItem('ritmo_dnacup');}catch(e){}}else lsSet('ritmo_dnacup',dnaCup);},[dnaCup]);
   useEffect(()=>lsSet('ritmo_ring',ringId),[ringId]);
   useEffect(()=>lsSet('ritmo_input',inputMode),[inputMode]);
@@ -14041,8 +14151,19 @@ export default function App(){
 
   const[tourneyEditMode,setTourneyEditMode]=useState(false);
 
-  const startTourney=(t)=>{setTourney(t);setScr('tournament-play');setTourneyEditMode(false);};
-  const newTourney=()=>{setTourney(null);setScr('tournament-setup');setTourneyEditMode(false);};
+  const startTourney=(t)=>{
+    const id=t.id||('t-'+Date.now());
+    const nt={...t,id,name:t.name||('Turnier '+new Date().toLocaleDateString('de-DE')),createdAt:t.createdAt||Date.now()};
+    setTourneys(list=>[nt,...list.filter(x=>x.id!==id)]);
+    setCurrentTourneyId(id);
+    setScr('tournament-play');setTourneyEditMode(false);
+  };
+  const newTourney=()=>{setCurrentTourneyId(null);setScr('tournament-setup');setTourneyEditMode(false);};
+  const openTourney=(id)=>{
+    const t=tourneys.find(x=>x.id===id); if(!t) return;
+    setCurrentTourneyId(id); setTourneyEditMode(false);
+    setScr(t.finished?'tournament-leaderboard':'tournament-play');
+  };
 
   const editTourney=()=>{setTourneyEditMode(true);setScr('tournament-setup');};
   const saveTourneyEdit=(updates)=>{
@@ -14054,6 +14175,9 @@ export default function App(){
         winMode:updates.winMode,
         numCourts:updates.numCourts,
         roundDurationMin:updates.roundDurationMin,
+        name:updates.name||prev.name,
+        startTime:updates.startTime,
+        endTime:updates.endTime,
       };
     });
     setTourneyEditMode(false);
@@ -14064,7 +14188,11 @@ export default function App(){
     dBo3({type:'RESET'});
     dAm({type:'RESET',limit:cfg.amLimit??21});
   };
-  const deleteTourney=()=>setTourney(null);
+  const deleteTourney=(id)=>{
+    const target=id||currentTourneyId;
+    setTourneys(list=>list.filter(t=>t.id!==target));
+    if(target===currentTourneyId) setCurrentTourneyId(null);
+  };
 
   // Wird von Match + TournamentPlay aufgerufen, sobald ein Match
   // tatsächlich geloggt wird (winner-Transition / done=true→logged).
@@ -14240,10 +14368,10 @@ export default function App(){
         schlaeger:JourneySchlaeger,baelle:JourneyBaelle}[id];
       return Comp?<Comp {...nav}/>:null;
     })()}
-    {scr==='live'&&<Live nav={nav} hasMatch={hasMatch} hasTourney={hasTourney}
-      tourneyData={tourney} matchCfg={cfg}
+    {scr==='live'&&<Live nav={nav} hasMatch={hasMatch} tourneys={tourneys}
+      matchCfg={cfg}
       activeTab={activeTab} setActiveTab={handleTab}
-      onDeleteMatch={deleteMatch} onDeleteTourney={deleteTourney}
+      onDeleteMatch={deleteMatch} onDeleteTourney={deleteTourney} onOpenTourney={openTourney}
       joinedSession={joinedSession}
       onLeaveJoined={()=>setJoinedSession(null)}/>}
     {scr==='settings'&&<Settings onHome={goHome} nav={nav}
@@ -14320,9 +14448,8 @@ export default function App(){
       onHome={goHome}
       onCancel={()=>{setOnlinePin(null);setScr('tournament-setup');}}
       onStart={(tourneyState)=>{
-        setTourney(tourneyState);
+        startTourney(tourneyState);
         setOnlinePin(null);
-        setScr('tournament-play');
       }}/>}
     {scr==='tournament-play'&&tourney&&<TournamentPlay tourney={tourney} setTourney={setTourney}
       onHome={goHome} nav={nav} ringId={ringId} onEdit={editTourney}
@@ -14340,7 +14467,7 @@ export default function App(){
     {/* Hub-Screens: Turnier-Auswahl + RITMO Bibel */}
     {scr==='tournament-hub'&&<TournamentHub
       onHome={goHome}
-      onStart={()=>setScr('tournament-setup')}
+      onStart={newTourney}
       onJoin={()=>setScr('remote')}
       onDnaCup={()=>{ if(dnaUnlocked) setScr('dna-cup'); else setDnaPinPrompt(true); }}
       hasDnaCup={dnaCup!=null&&dnaCup.status!=='setup'}/>}

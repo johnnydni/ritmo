@@ -5064,20 +5064,29 @@ function SwipeableCard({children,onDelete}){
 
   return(
     <div style={{position:'relative',overflow:'hidden',borderRadius:23}}>
-      {/* Delete background */}
+      {/* Delete-Hintergrund — füllt die komplette Card-Fläche (inset:0)
+          mit gleichem Radius, sodass das Rot die Card beim Swipen sauber
+          umhüllt statt als kantiger Streifen abzustehen. Label rechts,
+          wird beim Wegswipen der Card sichtbar. */}
       <div onClick={handleDeleteClick}
-        style={{position:'absolute',top:0,right:0,bottom:0,width:80,
-          background:T.r,display:'flex',alignItems:'center',justifyContent:'center',
-          cursor:'pointer',color:T.t1,fontSize:13,fontWeight:700}}>
+        style={{position:'absolute',inset:0,background:T.r,borderRadius:23,
+          display:'flex',alignItems:'center',justifyContent:'flex-end',
+          paddingRight:26,gap:8,cursor:'pointer',color:'#fff',
+          fontSize:13,fontWeight:800,letterSpacing:.3}}>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13" stroke="#fff"
+            strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
         Löschen
       </div>
-      {/* Card content */}
+      {/* Card content — eigener Radius, damit die führende Kante beim
+          Swipen rund bleibt und nicht eckig über dem Rot absteht. */}
       <div onTouchStart={onStart} onTouchMove={onMove} onTouchEnd={onEnd}
         onMouseDown={onStart} onMouseMove={swiping?onMove:undefined} onMouseUp={onEnd} onMouseLeave={swiping?onEnd:undefined}
         onClickCapture={handleCardClick}
         style={{transform:`translateX(${tx}px)`,
           transition:swiping?'none':'transform .25s cubic-bezier(.3,0,.2,1)',
-          willChange:'transform',background:T.bg,position:'relative'}}>
+          willChange:'transform',background:T.bg,borderRadius:23,position:'relative'}}>
         {children}
       </div>
     </div>
@@ -5154,6 +5163,10 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit,profile,onCreat
   const[name,setName]=useState(saved?.name||'');
   const[startTime,setStartTime]=useState(saved?.startTime||'');
   const[endTime,setEndTime]=useState(saved?.endTime||'');
+  // Priorität für den Rundenzeit-Vorschlag: 'length' = längere Runden
+  // (weniger Runden, dafür spielt nicht jeder gegen jeden), 'variety' =
+  // jeder gegen jeden (mehr Runden, dafür kürzer).
+  const[roundPrio,setRoundPrio]=useState(saved?.roundPrio||'variety');
   // Bumpt nur beim Übernehmen eines Vorschlags → der Rundendauer-Picker
   // remountet und springt auf den neuen Wert (er repositioniert sonst
   // nur beim Mount, nicht bei externer value-Änderung).
@@ -5180,31 +5193,51 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit,profile,onCreat
   // Auto-clamp courts when players reduced (gilt nur im Lokal-Modus)
   useEffect(()=>{if(numCourts>maxCourts)setNumCourts(maxCourts);},[maxCourts,numCourts]);
 
-  // ── Rundenzeit-Vorschlag: Fenster ÷ faire Rundenzahl − 1 Min Rotation.
-  //    Rundenzahl = Vielfaches des fairen Spiel-Zyklus (alle gleich oft),
-  //    das ~13-Min-Runden ergibt. Mehr Spieler/Pausen → mehr Runden →
-  //    kürzere Runden. Nur im Lokal-Modus (Spielerzahl bekannt). ──
+  // ══ RUNDENZEIT-VORSCHLAG — Gesamtlogik ════════════════════════════
+  //  Eingaben:  Spielerzahl P · Courts (4 Spieler/Court) · Zeitfenster W
+  //             (Start→Ende) · 2 Min Rotation zwischen den Runden.
+  //  Ziele:     möglichst viele Runden (jeder mit möglichst jedem),
+  //             aber Runden nicht zu kurz (≥ MIN) und nicht zu lang (≤ MAX).
+  //
+  //  Schritte:
+  //   1. Courts realistisch kappen: C = min(gewählt, ⌊P/4⌋).
+  //      perRound = 4·C aktive Spieler, sitOut = P − perRound pausieren.
+  //   2. So viele Runden, wie bei ~13-Min-Runde + 2-Min-Rotation ins
+  //      Fenster passen:  rounds ≈ W / (TARGET + ROT).
+  //   3. Rundenzeit = ⌊W / rounds⌋ − ROT.
+  //   4. Zu kurz? Runden reduzieren bis Rundenzeit ≥ MIN (nicht zu kurz).
+  //      Zu lang? Runden erhöhen für mehr Partner-Vielfalt, solange ≥ MIN.
+  //   5. Faire Pausen-Rotation steckt im Runden-Generator (fewest-sat-out
+  //      sitzt zuerst) → jeder spielt ±1 gleich oft, unabhängig von rounds.
+  //   Courts laufen PARALLEL → sie bestimmen Spiele/Spieler + Pausen,
+  //   die Rundenzahl hängt am Zeitfenster (nicht an der Court-Zahl).
   const parseHM=s=>{const m=/^(\d{1,2}):(\d{2})$/.exec((s||'').trim());if(!m)return null;
     const h=+m[1],mi=+m[2];if(h>23||mi>59)return null;return h*60+mi;};
   const windowMin=(()=>{const a=parseHM(startTime),b=parseHM(endTime);
     if(a==null||b==null)return null;let d=b-a;if(d<=0)d+=1440;return d;})();
-  const gcd=(a,b)=>b?gcd(b,a%b):a;
+  const ROT=2; // 1–2 Min Rotation zwischen den Runden
+  // Prioritäts-Bänder: 'length' → längere Runden (Ziel 18, 14–30 Min) =
+  // weniger Runden / weniger Mix; 'variety' → jeder gegen jeden (Ziel 10,
+  // 8–16 Min) = mehr Runden / mehr Partner, dafür kürzer.
+  const PRIO = roundPrio==='length' ? {TARGET:18,MIN:14,MAX:30} : {TARGET:10,MIN:8,MAX:16};
   const suggest=(()=>{
     if(mode!=='lokal'||!windowMin||players.length<4)return null;
-    // perRound = 4 × Courts. Mehr Courts → mehr Spieler aktiv pro Runde
-    // → anderer fairer Zyklus + mehr Spiele pro Spieler. Courts laufen
-    // parallel, daher bleibt die Rundenzahl primär fensterbestimmt.
-    const C=Math.max(1,Math.min(numCourts,Math.floor(players.length/4)||1)),perRound=4*C;
-    const cycle=players.length>perRound?Math.max(1,players.length/gcd(players.length,perRound)):1;
-    const fit=Math.max(1,Math.round(windowMin/13));
-    const rounds=Math.max(cycle,Math.round(fit/cycle)*cycle);
-    const roundTime=Math.max(1,Math.floor(windowMin/rounds)-1);
-    const gamesEach=Math.round(rounds*perRound/players.length);
-    return {rounds,roundTime,gamesEach,courts:C};
+    const P=players.length;
+    const C=Math.max(1,Math.min(numCourts,Math.floor(P/4)));   // 4 Spieler/Court, an P angepasst
+    const perRound=4*C, sitOut=P-perRound;
+    let rounds=Math.max(1,Math.round(windowMin/(PRIO.TARGET+ROT))); // so viele Ziel-Slots wie passen
+    let roundTime=Math.floor(windowMin/rounds)-ROT;
+    // Nicht zu kurz: Runden reduzieren, bis Rundenzeit ≥ MIN (oder 1 Runde).
+    while(roundTime<PRIO.MIN && rounds>1){ rounds--; roundTime=Math.floor(windowMin/rounds)-ROT; }
+    // Nicht zu lang: Runden erhöhen (mehr verschiedene Partner), solange ≥ MIN.
+    while(roundTime>PRIO.MAX){ const r=rounds+1,rt=Math.floor(windowMin/r)-ROT; if(rt<PRIO.MIN)break; rounds=r; roundTime=rt; }
+    roundTime=Math.max(1,roundTime);
+    const gamesEach=Math.round(rounds*perRound/P);
+    return {rounds,roundTime,gamesEach,courts:C,sitOut,rotation:ROT};
   })();
-  // Vorschlag übernehmen, wenn sich Fenster/Spielerzahl/Courts ändern.
+  // Vorschlag übernehmen, wenn sich Fenster/Spielerzahl/Courts/Prio ändern.
   useEffect(()=>{ if(suggest){ setRoundDur(suggest.roundTime); setPickerKey(k=>k+1); }
-    /* eslint-disable-next-line */ },[startTime,endTime,players.length,numCourts,mode]);
+    /* eslint-disable-next-line */ },[startTime,endTime,players.length,numCourts,mode,roundPrio]);
 
   const addPlayer=()=>{
     // Keine Obergrenze mehr — beliebig viele Spieler. Farben zyklen via
@@ -5359,14 +5392,40 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit,profile,onCreat
                     fontFamily:'inherit'}}/>
               </div>
             </div>
+
+            {/* Priorität: Längere Runden ⇄ Jeder gegen Jeden — steuert
+                Ziel-/Min-/Max-Rundenzeit des Vorschlags. */}
+            <div style={{marginTop:14}}>
+              <div style={{color:T.t3,fontSize:11,fontWeight:600,marginBottom:7}}>
+                Priorität: Längere Runden oder Jeder gegen Jeden?
+              </div>
+              <div style={{display:'flex',background:T.card2,borderRadius:30,padding:4,gap:4,
+                border:`1px solid ${T.border}`}}>
+                {[{v:'length',l:'Längere Runden'},{v:'variety',l:'Jeder gegen Jeden'}].map(o=>(
+                  <button key={o.v} onClick={()=>setRoundPrio(o.v)}
+                    style={{flex:1,padding:'9px 6px',borderRadius:24,border:'none',cursor:'pointer',
+                      background:roundPrio===o.v?T.o:'transparent',
+                      color:roundPrio===o.v?'#000':T.t2,fontSize:12,fontWeight:800,
+                      transition:'background .2s,color .2s',lineHeight:1.2}}>
+                    {o.l}
+                  </button>
+                ))}
+              </div>
+              <div style={{color:T.t4,fontSize:10.5,fontWeight:500,marginTop:6,lineHeight:1.45}}>
+                {roundPrio==='length'
+                  ?'Längere, ruhigere Runden — dafür spielt nicht jeder gegen jeden.'
+                  :'Mehr Runden, jeder gegen möglichst jeden — dafür kürzere Runden.'}
+              </div>
+            </div>
             {suggest&&(
               <div style={{marginTop:12,padding:'10px 12px',borderRadius:12,background:T.oSoft,
                 border:`1px solid ${T.o}`,display:'flex',alignItems:'flex-start',gap:8}}>
                 <span style={{fontSize:14,marginTop:1}}>⏱️</span>
                 <div style={{color:T.t2,fontSize:12,fontWeight:600,lineHeight:1.5,minWidth:0}}>
                   Vorschlag: <span style={{color:T.o,fontWeight:800}}>≈ {suggest.rounds} Runden × {suggest.roundTime} Min</span>
-                  {' '}· füllt {Math.floor(windowMin/60)} h {windowMin%60} Min.
-                  <br/>Bei {suggest.courts} Court{suggest.courts>1?'s':''}: ~{suggest.gamesEach} Spiele/Spieler — alle gleich oft.
+                  {' '}+ {suggest.rotation} Min Rotation · füllt {Math.floor(windowMin/60)} h {windowMin%60} Min.
+                  <br/>Bei {suggest.courts} Court{suggest.courts>1?'s':''}: ~{suggest.gamesEach} Spiele/Spieler
+                  {suggest.sitOut>0?` · ${suggest.sitOut} pausieren/Runde`:' · keine Pausen'} — alle ±1 gleich oft.
                 </div>
               </div>
             )}
@@ -5540,7 +5599,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit,profile,onCreat
           if(creatingOnline) return;
           if(isEdit){
             onSave({players,format,winMode,numCourts,roundDurationMin:roundDur,
-              name:name.trim(),startTime,endTime});
+              name:name.trim(),startTime,endTime,roundPrio});
             return;
           }
           if(mode==='online'){
@@ -5568,7 +5627,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,saved,isEdit,profile,onCreat
             :genAmericanoRound(players.map(p=>p.id),[],numCourts);
           onStart({
             name:name.trim()||('Turnier '+new Date().toLocaleDateString('de-DE')),
-            startTime,endTime,
+            startTime,endTime,roundPrio,
             players,format,winMode,
             numCourts,
             roundDurationMin:roundDur,
@@ -14185,6 +14244,7 @@ export default function App(){
         name:updates.name||prev.name,
         startTime:updates.startTime,
         endTime:updates.endTime,
+        roundPrio:updates.roundPrio,
       };
     });
     setTourneyEditMode(false);

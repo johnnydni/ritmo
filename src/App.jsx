@@ -3174,7 +3174,7 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
 /* ═══════════════════════════════════════════════════════════════
    MATCH SCREEN
 ═══════════════════════════════════════════════════════════════ */
-function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId='chime',matchKeyRef,theme='dark',voiceOn=false,voiceBaseUrl='',tabletMode=false,onMatchLogged}){
+function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId='ritmo',matchKeyRef,theme='dark',voiceOn=false,voiceBaseUrl='',tabletMode=false,onMatchLogged}){
   // Tablet-Modus-Skalierungsfaktor — wird auf alle größenbezogenen
   // Stylings im Portrait-Layout angewandt. BigScreen hat eigenen
   // Zoom-Multiplier; Tablet-Modus erhöht dort den Default-Zoom auf 1.5.
@@ -7276,7 +7276,7 @@ function TournamentCourtCard({court,courtIndex,playerById,onScoreChange,onConfir
 /* ═══════════════════════════════════════════════════════════════
    TOURNAMENT PLAY
 ═══════════════════════════════════════════════════════════════ */
-function TournamentPlay({tourney,setTourney,onHome,nav,ringId='chime',onEdit,onMatchLogged}){
+function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onMatchLogged}){
   const[tab,setTab]=useState('round');
   const[confirmEnd,setConfirmEnd]=useState(false);
   const[showSitOutInfo,setShowSitOutInfo]=useState(false);
@@ -10552,7 +10552,7 @@ function DnaCard({children,style}){
 
 /* ── Format-aware live scoring screen + full-window court display ─ */
 function DnaCupMatch({fmt,nameA,nameB,subA,subB,stageLabel,tier,courtNo,durationMin=10,
-  ringId='chime',theme='dark',onFinish,onCancel,onHome}){
+  ringId='ritmo',theme='dark',onFinish,onCancel,onHome}){
   const isPoints=fmt.type==='points';
   const[bo3,dBo3]=useReducer(bo3R,undefined,()=>makeBo3(fmt));
   const[am,dAm]=useReducer(amR,undefined,()=>makeAm(fmt.limit||0));
@@ -10931,7 +10931,7 @@ const dnaStep={width:26,height:26,borderRadius:'50%',background:T.card2,border:`
   color:T.t1,fontSize:14,fontWeight:800,cursor:'pointer',lineHeight:1};
 
 /* Group-phase round: courts + tier badges + score entry + sit-outs */
-function DnaCupGroupRound({cup,setCup,onBack,onHome,onPlay,onLeaderboard,onFinishGroup,onEditLineup,ringId='chime'}){
+function DnaCupGroupRound({cup,setCup,onBack,onHome,onPlay,onLeaderboard,onFinishGroup,onEditLineup,ringId='ritmo'}){
   const ci=cup.group.current; const round=cup.group.rounds[ci];
   const pById=id=>cup.players.find(p=>p.id===id);
   const allDone=round&&round.courts.every(c=>c.done);
@@ -11692,7 +11692,7 @@ function DnaCupDashboard({cup,onHome,go,onReset,onSlideshow,onLeaderboard}){
 }
 
 /* Root: owns the view router + active match + cup mutations */
-function DnaCup({cup,setCup,onHome,ringId='chime'}){
+function DnaCup({cup,setCup,onHome,ringId='ritmo'}){
   const[view,setView]=useState('dashboard');
   const[activeMatch,setActiveMatch]=useState(null);
   const[manualMatch,setManualMatch]=useState(null);
@@ -14072,8 +14072,8 @@ export default function App(){
   const[dnaPinPrompt,setDnaPinPrompt]=useState(false);
   const[dnaUnlocked,setDnaUnlocked]=useState(false);
   // Ring-ID gegen die aktuellen RINGS normalisieren — alte gespeicherte
-  // IDs (z. B. 'soft' aus früheren Versionen) fallen sauber auf 'chime'.
-  const[ringId,setRingId]=useState(()=>{const v=lsGet('ritmo_ring','chime');return RINGS.some(r=>r.id===v)?v:'chime';});
+  // IDs (z. B. 'soft' aus früheren Versionen) fallen sauber auf 'ritmo'.
+  const[ringId,setRingId]=useState(()=>{const v=lsGet('ritmo_ring','ritmo');return RINGS.some(r=>r.id===v)?v:'ritmo';});
   const[inputMode,setInputMode]=useState(()=>lsGet('ritmo_input','smartphone'));
   const[voiceOn,setVoiceOn]=useState(()=>lsGet('ritmo_voice',false));
   const[voiceBaseUrl,setVoiceBaseUrl]=useState(()=>lsGet('ritmo_voice_url',''));

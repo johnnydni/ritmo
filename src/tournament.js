@@ -14,7 +14,7 @@
    leaderboard rank.
 
    Leaderboard supports two win modes:
-     'points' — actual game points; sit-outs get round-median bonus
+     'points' — actual game points; sit-outs get the round's mean score (ceil)
      'wins'   — actual win count; sit-outs add +1 win (lower half only)
 
    Bonus values are kept SEPARATE (bonusPts/bonusWins) and folded
@@ -131,7 +131,7 @@ export function calcLeaderboard(players,rounds,winMode='points'){
   });
   // Phase 2: compute bonuses (kept SEPARATE from real stats)
   if(winMode==='points'){
-    // Median per-round bonus for sit-outs
+    // Mittelwert (mean, aufgerundet) per-round bonus for sit-outs
     rounds.forEach(round=>{
       if(!round.sitOut||round.sitOut.length===0)return;
       const scores=[];
@@ -141,11 +141,12 @@ export function calcLeaderboard(players,rounds,winMode='points'){
         m.t2.forEach(()=>scores.push(m.s2??0));
       });
       if(scores.length===0)return;
-      scores.sort((a,b)=>a-b);
-      const median=scores.length%2===0
-        ?(scores[scores.length/2-1]+scores[scores.length/2])/2
-        :scores[Math.floor(scores.length/2)];
-      round.sitOut.forEach(pid=>{if(stats[pid]) stats[pid].bonusPts+=median;});
+      // Aufgerundeter Mittelwert (Durchschnitt) aller Rundenpunkte als
+      // Pausen-Bonus → ganze Zahlen (keine 0.5-Schritte); niemand wird
+      // durch eine erzwungene Pause benachteiligt.
+      const mean=scores.reduce((a,b)=>a+b,0)/scores.length;
+      const bonus=Math.ceil(mean);
+      round.sitOut.forEach(pid=>{if(stats[pid]) stats[pid].bonusPts+=bonus;});
     });
   } else {
     // Wins mode: +1 win per sit-out, only for lower-half players (by actual wins)

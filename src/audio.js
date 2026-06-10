@@ -1,37 +1,41 @@
 /* ═══════════════════════════════════════════════════════════════
-   AUDIO — short notification rings via Web Audio API.
+   AUDIO — RITMO Timer-Klingeltöne.
 
-   No audio files; everything is synthesized inline.
+   Zwei Quellen, EIN geteilter AudioContext:
+     1. Datei-Töne (MP3 aus public/assets/sounds/) — dekodiert in einen
+        AudioBuffer und über den Context abgespielt. Gleicher Origin →
+        unter der CSP erlaubt (connect-src/media-src 'self').
+     2. Synthese-Töne — live aus Oszillatoren (kein Asset nötig).
 
-   iOS-Spezifika (Safari + installierte Web.App):
-     * Ein frisch erstellter AudioContext startet in 'suspended'.
-       resume() funktioniert NUR aus einer User-Geste (touchstart,
-       click, keydown) heraus — aus setInterval-Callbacks wird der
-       Promise zwar resolved, der Context bleibt aber stumm.
-     * Jeder neue AudioContext braucht eine separate Unlock-Geste.
-       Mehrfaches "new AudioContext()" pro Klingelton (alter Code)
-       war auf iOS extrem fragil.
-     * Lösung: EIN geteilter Context fürs gesamte App-Leben. Beim
-       ersten User-Gesture entsperren wir ihn mit einem silent
-       Buffer-Source (klassischer iOS-Unlock-Trick). Danach kann
-       playRing() jederzeit Töne planen — auch aus setInterval.
+   Warum Buffer statt <audio>? Der Runden-Timer feuert aus einem
+   setInterval — KEINE direkte User-Geste. Ein über den (beim ersten
+   Tap entsperrten) Context abgespielter Buffer klingt dort zuverlässig,
+   während <audio>.play() auf iOS aus setInterval oft blockiert wird.
 
-   Wrapped in try/catch — audio is non-essential, never crash the
-   UI if the browser refuses (private mode, blocked autoplay).
+   iOS-Spezifika:
+     * Frischer AudioContext startet 'suspended'; resume() greift nur
+       aus einer Geste. Lösung: EIN Context fürs App-Leben, beim ersten
+       Tap via unlockAudio() entsperrt + Datei-Töne vorgeladen.
+
+   Alles in try/catch — Audio ist non-essential, nie die UI crashen.
 ═══════════════════════════════════════════════════════════════ */
 
+import { getAssetBase } from "./utils.js";
+
 export const RINGS=[
-  {id:'soft',label:'Sanft',desc:'Weiche Glockentöne'},
-  {id:'alarm',label:'Alarm',desc:'Klassischer Wecker'},
-  {id:'double',label:'Doppelton',desc:'Zwei absteigende Töne'},
-  {id:'rising',label:'Aufsteigend',desc:'Vier steigende Töne'},
-  {id:'whistle',label:'Schiedsrichter',desc:'Pfiff – lang kurz kurz'},
+  // Datei-Töne (src gesetzt). ritmo = Standard ab jetzt.
+  {id:'ritmo',    label:'RITMO',    desc:'Original RITMO Timer-Ton · Standard', src:'assets/sounds/ritmo-timer.mp3'},
+  {id:'dramatic', label:'Dramatisch',desc:'Dramatischer Countdown',             src:'assets/sounds/dramatic-timer.mp3'},
+  // Synthese-Töne (live erzeugt).
+  {id:'chime',    label:'Glocke',   desc:'Warmes Glockenspiel, aufsteigend'},
+  {id:'beacon',   label:'Signal',   desc:'Modernes Doppel-Signal'},
+  {id:'fanfare',  label:'Fanfare',  desc:'Sportliche Fanfare zum Rundenende'},
 ];
 
-/* Shared AudioContext — lazy initialisiert, lebt für die gesamte
-   App-Session. */
+/* Shared AudioContext + Decode-Cache fürs gesamte App-Leben. */
 let sharedCtx = null;
 let unlocked = false;
+const bufferCache = {}; // url → AudioBuffer
 
 function getCtx() {
   if (sharedCtx) return sharedCtx;
@@ -45,86 +49,115 @@ function getCtx() {
   return sharedCtx;
 }
 
-/* Entsperrt den AudioContext nach iOS-Regeln. MUSS aus einem
-   User-Gesture-Handler heraus aufgerufen werden (pointerdown,
-   click, keydown). Spielt einen 1-Sample-Silent-Buffer, der
-   ausreichend "Audio-Aktivität" registriert, damit der Context
-   ab jetzt jederzeit Töne abspielen darf — auch aus setInterval. */
+/* decodeAudioData robust (Promise- ODER Callback-Form, je nach Browser). */
+function decode(ctx, arrayBuffer) {
+  return new Promise((res, rej) => {
+    let settled = false;
+    const ok = b => { if (!settled) { settled = true; res(b); } };
+    const no = e => { if (!settled) { settled = true; rej(e); } };
+    let p;
+    try { p = ctx.decodeAudioData(arrayBuffer, ok, no); } catch (e) { no(e); }
+    if (p && typeof p.then === 'function') p.then(ok, no);
+  });
+}
+
+/* Lädt + dekodiert eine Datei (gecached). */
+function loadBuffer(ctx, url) {
+  if (bufferCache[url]) return Promise.resolve(bufferCache[url]);
+  return fetch(url)
+    .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.arrayBuffer(); })
+    .then(ab => decode(ctx, ab))
+    .then(buf => { bufferCache[url] = buf; return buf; });
+}
+
+function playBuffer(ctx, buf) {
+  const s = ctx.createBufferSource(), g = ctx.createGain();
+  g.gain.value = 1.0;
+  s.buffer = buf;
+  s.connect(g); g.connect(ctx.destination);
+  s.start(ctx.currentTime + 0.02);
+}
+
+/* Datei-Ton: sofort spielen wenn gecached, sonst laden → dann spielen. */
+function playFile(ctx, relSrc) {
+  const url = getAssetBase() + relSrc;
+  if (bufferCache[url]) return playBuffer(ctx, bufferCache[url]);
+  loadBuffer(ctx, url).then(buf => playBuffer(ctx, buf)).catch(e => console.warn('Audio file:', e));
+}
+
+/* Entsperrt den AudioContext (iOS) + lädt die Datei-Töne vor. MUSS aus
+   einem User-Gesture-Handler kommen (pointerdown/click/keydown). */
 export function unlockAudio() {
   const ctx = getCtx();
   if (!ctx) return;
-  // Suspended → resume zwingend aus Gesture-Handler, sonst no-op
-  if (ctx.state === 'suspended') {
-    ctx.resume().catch(() => {});
-  }
+  if (ctx.state === 'suspended') ctx.resume().catch(() => {});
   if (unlocked) return;
   try {
-    // Silent buffer-source: iOS markiert den Context als "primed"
-    // sobald irgendetwas darüber abgespielt wurde — selbst bei
-    // gain=0. AudioBuffer mit 1 Sample @ 22050Hz ist <1ms lang.
     const buffer = ctx.createBuffer(1, 1, 22050);
     const source = ctx.createBufferSource();
     source.buffer = buffer;
     source.connect(ctx.destination);
     source.start(0);
     unlocked = true;
-  } catch (e) {
-    // Auch wenn der silent buffer scheitert, lassen wir den Context
-    // bestehen — ein späteres playRing kann es nochmal versuchen.
+  } catch (e) {/* Context bleibt bestehen, späterer Versuch möglich. */}
+  // Datei-Töne vorladen, damit der Timer sie sofort abspielen kann.
+  try { RINGS.filter(r => r.src).forEach(r => loadBuffer(ctx, getAssetBase() + r.src).catch(() => {})); }
+  catch (e) {}
+}
+
+/* Live-Synthese (chime / beacon / fanfare). */
+function synth(ctx, id) {
+  const t0 = ctx.currentTime + 0.03;
+  const master = ctx.createGain();
+  master.gain.value = 0.9;
+  master.connect(ctx.destination);
+  // Grundton + optionaler Oktav-Oberton, weicher Anschlag + Glocken-Decay.
+  const note = (f, start, dur, vol = 0.5, type = 'sine', harm = 0) => {
+    const s = t0 + start;
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type; o.frequency.value = f;
+    o.connect(g); g.connect(master);
+    g.gain.setValueAtTime(0.0001, s);
+    g.gain.exponentialRampToValueAtTime(vol, s + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0008, s + dur);
+    o.start(s); o.stop(s + dur + 0.05);
+    if (harm > 0) {
+      const o2 = ctx.createOscillator(), g2 = ctx.createGain();
+      o2.type = 'sine'; o2.frequency.value = f * 2;
+      o2.connect(g2); g2.connect(master);
+      g2.gain.setValueAtTime(0.0001, s);
+      g2.gain.exponentialRampToValueAtTime(vol * harm, s + 0.02);
+      g2.gain.exponentialRampToValueAtTime(0.0008, s + dur * 0.8);
+      o2.start(s); o2.stop(s + dur + 0.05);
+    }
+  };
+  if (id === 'fanfare') {
+    note(392, 0.00, 0.18, 0.55, 'triangle', 0.30);
+    note(523, 0.17, 0.18, 0.55, 'triangle', 0.30);
+    note(659, 0.34, 0.22, 0.60, 'triangle', 0.35);
+    note(784, 0.55, 0.70, 0.62, 'triangle', 0.40);
+  } else if (id === 'beacon') {
+    for (let i = 0; i < 2; i++) {
+      const b = i * 0.46;
+      note(988,  b + 0.00, 0.14, 0.52, 'sine', 0.22);  // B5
+      note(1319, b + 0.15, 0.20, 0.52, 'sine', 0.22);  // E6
+    }
+  } else { // 'chime'
+    [523, 659, 784, 1047].forEach((f, i) =>
+      note(f, i * 0.16, 0.95 - i * 0.07, 0.5, 'sine', 0.5));
   }
 }
 
+/* Spielt einen RINGS-Ton. Unbekannte/leere id → RINGS[0] (Standard,
+   = RITMO-Datei), damit alte gespeicherte IDs nie in Stille resultieren. */
 export function playRing(id) {
   try {
     const ctx = getCtx();
     if (!ctx) return;
-    // Belt-and-suspenders: falls der Context nach Inaktivität wieder
-    // suspended ist, versuchen wir resume(). Wenn das aus einem
-    // setInterval-Callback fehlschlägt (kein Gesture), bleibt der
-    // Context stumm — der unlockAudio()-Aufruf beim ersten Tap hat
-    // das aber idR bereits abgefangen.
-    if (ctx.state === 'suspended') {
-      ctx.resume().catch(() => {});
-    }
-    // Alle Töne werden RELATIV zum aktuellen Context-Zeitpunkt
-    // gescheduled — sonst würde "0" auf der Zeitachse weit in der
-    // Vergangenheit liegen und die Browser droppen die Events.
-    const t0 = ctx.currentTime;
-    const master = ctx.createGain();
-    master.gain.value = 0.65;
-    master.connect(ctx.destination);
-    const beep = (f, start, dur, vol = 0.5, type = 'sine') => {
-      const o = ctx.createOscillator(), g = ctx.createGain();
-      o.type = type;
-      o.frequency.value = f;
-      o.connect(g);
-      g.connect(master);
-      g.gain.setValueAtTime(0, t0 + start);
-      g.gain.linearRampToValueAtTime(vol, t0 + start + 0.015);
-      g.gain.setValueAtTime(vol, t0 + start + dur - 0.03);
-      g.gain.linearRampToValueAtTime(0, t0 + start + dur);
-      o.start(t0 + start);
-      o.stop(t0 + start + dur + 0.05);
-    };
-    if (id === 'alarm') for (let i = 0; i < 6; i++) beep(880, i * 0.18, 0.12, 0.5, 'square');
-    else if (id === 'double') for (let i = 0; i < 3; i++) { beep(880, i * 0.4, 0.16); beep(660, i * 0.4 + 0.2, 0.16); }
-    else if (id === 'rising') [523, 659, 784, 1047].forEach((f, i) => beep(f, i * 0.2, 0.18, 0.5));
-    else if (id === 'whistle') { beep(1100, 0, 0.45, 0.55); beep(1100, 0.6, 0.18, 0.55); beep(1100, 0.88, 0.18, 0.55); }
-    else if (id === 'soft') [0, 0.65, 1.3].forEach(t => {
-      const o = ctx.createOscillator(), g = ctx.createGain();
-      o.type = 'sine';
-      o.frequency.value = 528;
-      o.connect(g);
-      g.connect(master);
-      g.gain.setValueAtTime(0, t0 + t);
-      g.gain.linearRampToValueAtTime(0.4, t0 + t + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.001, t0 + t + 0.6);
-      o.start(t0 + t);
-      o.stop(t0 + t + 0.65);
-    });
-    // Bewusst kein ctx.close() — der gemeinsame Context bleibt
-    // bestehen, damit der nächste playRing-Aufruf ohne neuen
-    // Unlock-Tanz auskommt.
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+    const ring = RINGS.find(r => r.id === id) || RINGS[0];
+    if (ring.src) playFile(ctx, ring.src);
+    else synth(ctx, ring.id);
   } catch (e) {
     console.warn('Audio:', e);
   }

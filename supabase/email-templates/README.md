@@ -1,44 +1,46 @@
 # RITMO Padel — Supabase E-Mail-Templates
 
-RITMO-gebrandete HTML-Templates (dark + Orange `#FF7A1A`, deutsche Copy) für alle
-Supabase-Auth- und Security-Mails. Jede Datei ist **self-contained** (Inline-Styles,
-table-based Layout) und für Gmail, Apple Mail, iOS Mail und Outlook gebaut.
+RITMO-gebrandete HTML-Templates für alle Supabase-Auth- und Security-Mails.
+Stil: **Bauhaus / dark** — tiefes Schwarz (`#0A0A0A`), Card `#141414`, riesige
+italic-Hero-Headline, Akzent-Orange `#FF7A1A`, Bauhaus-Farbbalken oben/unten,
+deutsche Copy. Jede Datei ist **self-contained** (table-based Layout, alle Stile
+inline, Outlook-Button via VML) und für Gmail, Apple Mail, iOS Mail und Outlook
+gebaut.
 
 ## Verwendung
 
-Supabase Dashboard → **Authentication → Emails**. Pro Template das `Source`/HTML-Feld
-öffnen und den Inhalt der passenden Datei **komplett hineinkopieren**.
+Supabase Dashboard → **Authentication → Email Templates**. Pro Template das
+`Body`-Feld im **Source-Modus** öffnen und den Inhalt der passenden Datei
+**komplett hineinkopieren**. Den passenden Betreff im `Subject`-Feld setzen
+(Vorschläge unten — stehen auch oben in jeder Datei im Kommentar-Header).
 
-> Hinweis: Supabase nimmt nur den **HTML-Body** — der `<!DOCTYPE>`/`<html>`-Wrapper
-> ist trotzdem in Ordnung (wird mitversendet) und sorgt für korrektes Rendering in
-> allen Clients. Einfach die ganze Datei einfügen.
+> Tipp: Lokale Vorschau — Datei einfach im Browser öffnen. Die `{{ … }}`-
+> Platzhalter bleiben als Text stehen, das Layout ist 1:1 wie beim Versand.
 
 ## Mapping Datei → Dashboard
 
-### Auth-Mails (`Authentication → Emails`)
+### Auth-Mails (`Authentication → Email Templates`)
 
-| Dashboard-Template | Datei |
-|---|---|
-| Invite user | [`invite.html`](invite.html) |
-| Magic link / OTP | [`magic-link.html`](magic-link.html) |
-| Change email address | [`change-email.html`](change-email.html) |
-| Reset password | [`reset-password.html`](reset-password.html) |
-| Reauthentication | [`reauthentication.html`](reauthentication.html) |
+| Dashboard-Template | Datei | Betreff-Vorschlag |
+|---|---|---|
+| Confirm signup | [`confirm-signup.html`](confirm-signup.html) | Bestätige deine E-Mail · RITMO |
+| Invite user | [`invite.html`](invite.html) | Du bist eingeladen · RITMO |
+| Magic Link / OTP | [`magic-link.html`](magic-link.html) | Dein Login-Link · RITMO |
+| Change Email Address | [`change-email.html`](change-email.html) | Bestätige deine neue E-Mail · RITMO |
+| Reset Password | [`reset-password.html`](reset-password.html) | Passwort zurücksetzen · RITMO |
+| Reauthentication | [`reauthentication.html`](reauthentication.html) | Dein Bestätigungscode · RITMO |
 
-> **Confirm signup** war im Screenshot nicht dabei — falls dieses Template aktiv ist,
-> kann `invite.html` als Vorlage übernommen werden (gleiche Variablen).
+### Security-Benachrichtigungen (`Authentication → Email Templates → Security`)
 
-### Security-Benachrichtigungen (`Authentication → Emails → Security`)
-
-| Dashboard-Template | Datei |
-|---|---|
-| Password changed | [`security-password-changed.html`](security-password-changed.html) |
-| Email address changed | [`security-email-changed.html`](security-email-changed.html) |
-| Phone number changed | [`security-phone-changed.html`](security-phone-changed.html) |
-| Sign-in method linked | [`security-signin-linked.html`](security-signin-linked.html) |
-| Sign-in method removed | [`security-signin-removed.html`](security-signin-removed.html) |
-| MFA method added | [`security-mfa-added.html`](security-mfa-added.html) |
-| MFA method removed | [`security-mfa-removed.html`](security-mfa-removed.html) |
+| Dashboard-Template | Datei | Betreff-Vorschlag |
+|---|---|---|
+| Password changed | [`security-password-changed.html`](security-password-changed.html) | Sicherheitshinweis: Passwort geändert · RITMO |
+| Email address changed | [`security-email-changed.html`](security-email-changed.html) | Sicherheitshinweis: E-Mail geändert · RITMO |
+| Phone number changed | [`security-phone-changed.html`](security-phone-changed.html) | Sicherheitshinweis: Telefonnummer geändert · RITMO |
+| Sign-in method linked | [`security-signin-linked.html`](security-signin-linked.html) | Sicherheitshinweis: Anmeldemethode hinzugefügt · RITMO |
+| Sign-in method removed | [`security-signin-removed.html`](security-signin-removed.html) | Sicherheitshinweis: Anmeldemethode entfernt · RITMO |
+| MFA method added | [`security-mfa-added.html`](security-mfa-added.html) | Sicherheitshinweis: 2FA hinzugefügt · RITMO |
+| MFA method removed | [`security-mfa-removed.html`](security-mfa-removed.html) | Sicherheitshinweis: 2FA entfernt · RITMO |
 
 ## Template-Variablen (Go-Templating)
 
@@ -46,45 +48,31 @@ Supabase ersetzt diese Platzhalter beim Versand:
 
 | Variable | Bedeutung | verwendet in |
 |---|---|---|
-| `{{ .ConfirmationURL }}` | Action-Link (Button-Ziel) | invite, magic-link, change-email, reset-password |
+| `{{ .ConfirmationURL }}` | Action-Link (Button + Fallback) | confirm-signup, invite, magic-link, change-email, reset-password |
 | `{{ .Token }}` | 6-stelliger OTP-Code | magic-link, reset-password, reauthentication |
-| `{{ .Email }}` | aktuelle E-Mail des Users | invite, magic-link, reset-password, change-email, alle Security |
+| `{{ .Email }}` | aktuelle E-Mail des Users | alle (Info-Box) |
 | `{{ .NewEmail }}` | neue E-Mail (nur E-Mail-Wechsel) | change-email |
 | `{{ .SiteURL }}` | App-/Site-URL → „Konto sichern" | alle Security-Mails |
-| `{{ .TokenHash }}` | gehashter Token (für eigene Links) | — (optional) |
-| `{{ .RedirectTo }}` | Redirect-Ziel | — (optional) |
 
-> Die **Security-Templates** sind rein informativ (kein Action-Link/OTP). Sie nutzen
-> `{{ .Email }}` zur Personalisierung und `{{ .SiteURL }}` für den „Konto sichern"-Link.
-> Sollte Supabase eine dieser Variablen in einem Security-Template nicht befüllen,
-> rendert sie leer — Layout bleibt intakt.
+> Die **Security-Templates** sind rein informativ (kein Action-Link/OTP). Sie
+> nutzen `{{ .Email }}` zur Personalisierung und `{{ .SiteURL }}` für den
+> „Konto sichern"-Link. Befüllt Supabase eine Variable in einem Security-
+> Template nicht, rendert sie leer — das Layout bleibt intakt.
 
-## Betreffzeilen (Vorschlag)
+## Design-System
 
-Im Dashboard separat im `Subject`-Feld setzen:
-
-| Template | Betreff |
-|---|---|
-| Invite user | Du wurdest zu RITMO Padel eingeladen |
-| Magic link / OTP | Dein Anmelde-Link für RITMO |
-| Change email | Bestätige deine neue E-Mail-Adresse |
-| Reset password | Setze dein RITMO-Passwort zurück |
-| Reauthentication | Dein RITMO-Bestätigungscode |
-| Password changed | Sicherheitshinweis: Passwort geändert |
-| Email address changed | Sicherheitshinweis: E-Mail-Adresse geändert |
-| Phone number changed | Sicherheitshinweis: Telefonnummer geändert |
-| Sign-in method linked | Sicherheitshinweis: Anmeldemethode hinzugefügt |
-| Sign-in method removed | Sicherheitshinweis: Anmeldemethode entfernt |
-| MFA method added | Sicherheitshinweis: 2FA-Methode hinzugefügt |
-| MFA method removed | Sicherheitshinweis: 2FA-Methode entfernt |
-
-## Design
-
-- **Farben** spiegeln das App-Theme (`src/theme.js`): `--bg #0B0B0E`, `--card #17171C`,
-  Border `#26262E`, Akzent/CTA `--o #FF7A1A`, Warnung `--r #E84545`.
-- **Wordmark** als Text gerendert (kein externes Bild) → rendert in jedem Client
-  zuverlässig, auch wenn Bilder blockiert sind.
-- **Buttons** sind „bulletproof" (Tabellen-Zelle mit `bgcolor` + `mso-padding-alt`),
-  damit sie auch in Outlook korrekt aussehen.
-- Vorschau lokal: Datei einfach im Browser öffnen — die `{{ … }}`-Platzhalter bleiben
-  als Text stehen, das Layout ist 1:1 wie beim Versand.
+- **Hintergrund** `#0A0A0A` · **Card** `#141414` · **Code-/Box-Flächen** `#0A0A0A`
+  mit Hairline `#2A2A2A`.
+- **Akzent / CTA** `#FF7A1A` (schwarze Schrift auf Button). **Warnung** `#E84545`.
+- **Hero-Headline**: italic, `font-weight:900`, ~56 px (mobil 44 px), letzte
+  Zeile in Orange.
+- **Bauhaus-Farbbalken** oben (Gelb/Blau/Rot + Lücke) und unten (5-farbig) als
+  wiederkehrendes Marken-Motiv.
+- **Buttons** bulletproof: VML-`roundrect` für Outlook + `<a>`-Fallback für alle
+  anderen Clients.
+- **Text-Wordmark** „RITMO ●" statt externem Bild → rendert auch bei blockierten
+  Bildern zuverlässig.
+- Hidden **Preheader**, `format-detection`-Meta (keine Auto-Links für Mail/Tel),
+  `color-scheme: dark light` (kein Auto-Invert), responsiv ab 620 px.
+- Jede Datei trägt oben einen **Kommentar-Header** mit „Wo einfügen", Betreff
+  und den genutzten Platzhaltern.

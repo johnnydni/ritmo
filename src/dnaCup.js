@@ -9,7 +9,7 @@
      • lobbyStats / classifyTier   → match-tier classification
      • genDnaGroupRound            → Mexicano round + sit-out + tier
      • dnaLeaderboard              → group standings (points + tier
-                                     bonus + CEIL-median sit-out comp.)
+                                     bonus + CEIL-mean sit-out comp.)
      • dnaQualify                  → Top-14 KO / Top-2 bye / Ehren split
      • bracket builders + advanceDnaCup  → auto-advancing KO + Ehren
      • validateCourts              → never two courts for one player
@@ -138,7 +138,7 @@ export function genDnaGroupRound(players, history, numCourts, roundIndex){
 
 /* ── Group phase: leaderboard ─────────────────────────────────── */
 // totalPoints = Σ match points + Σ tier-bonus (for WINS) + Σ sit-out
-//               compensation (CEIL of that round's median score).
+//               compensation (CEIL of that round's mean score).
 // Tiebreak order: totalPoints → head-to-head → opponent-avg-rating.
 export function dnaLeaderboard(players, rounds){
   const stats={};
@@ -171,8 +171,9 @@ export function dnaLeaderboard(players, rounds){
     (round.sitOut||[]).forEach(pid=>{if(stats[pid]) stats[pid].sitOut++;});
   });
 
-  // Sit-out compensation: CEIL of the round's median player score, so
-  // pausing players are not disadvantaged (per RITMO DNA Cup rules).
+  // Sit-out compensation: CEIL of the round's MEAN (Mittelwert) player
+  // score, so pausing players are not disadvantaged (whole numbers, no
+  // 0.5 steps).
   rounds.forEach(round=>{
     if(!round.sitOut||!round.sitOut.length) return;
     const scores=[];
@@ -180,11 +181,8 @@ export function dnaLeaderboard(players, rounds){
       (m.t1||[]).forEach(()=>scores.push(m.s1??0));
       (m.t2||[]).forEach(()=>scores.push(m.s2??0));});
     if(!scores.length) return;
-    scores.sort((a,b)=>a-b);
-    const mid=scores.length%2===0
-      ?(scores[scores.length/2-1]+scores[scores.length/2])/2
-      :scores[Math.floor(scores.length/2)];
-    const comp=Math.ceil(mid);
+    const mean=scores.reduce((a,b)=>a+b,0)/scores.length;
+    const comp=Math.ceil(mean);
     round.sitOut.forEach(pid=>{if(stats[pid]) stats[pid].sitOutBonus+=comp;});
   });
 

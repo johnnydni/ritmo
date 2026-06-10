@@ -3174,7 +3174,7 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
 /* ═══════════════════════════════════════════════════════════════
    MATCH SCREEN
 ═══════════════════════════════════════════════════════════════ */
-function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId='soft',matchKeyRef,theme='dark',voiceOn=false,voiceBaseUrl='',tabletMode=false,onMatchLogged}){
+function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId='chime',matchKeyRef,theme='dark',voiceOn=false,voiceBaseUrl='',tabletMode=false,onMatchLogged}){
   // Tablet-Modus-Skalierungsfaktor — wird auf alle größenbezogenen
   // Stylings im Portrait-Layout angewandt. BigScreen hat eigenen
   // Zoom-Multiplier; Tablet-Modus erhöht dort den Default-Zoom auf 1.5.
@@ -5371,26 +5371,6 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
           </div>
         </div>
 
-        {/* Anzahl Courts */}
-        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19,
-          padding:'14px 18px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-          <div>
-            <div style={{color:T.t1,fontSize:15,fontWeight:600}}>Anzahl Courts</div>
-            <div style={{color:T.t3,fontSize:11,fontWeight:500,marginTop:1}}>
-              max. {maxCourts} bei {players.length} Spielern
-            </div>
-          </div>
-          <div style={{display:'flex',alignItems:'center',gap:14}}>
-            <button onClick={()=>setNumCourts(c=>Math.max(1,c-1))}
-              style={{width:32,height:32,borderRadius:'50%',background:T.card2,border:`1px solid ${T.border}`,
-                color:T.t1,fontSize:16,cursor:'pointer'}}>−</button>
-            <span style={{color:T.t1,fontWeight:800,fontSize:18,minWidth:24,textAlign:'center'}}>{numCourts}</span>
-            <button onClick={()=>setNumCourts(c=>Math.min(maxCourts,c+1))}
-              style={{width:32,height:32,borderRadius:'50%',background:T.card2,border:`1px solid ${T.border}`,
-                color:T.t1,fontSize:16,cursor:'pointer'}}>+</button>
-          </div>
-        </div>
-
         {/* Zeitfenster (nur lokal) — Start/End-Uhrzeit → Rundenzeit-Vorschlag. */}
         {mode==='lokal'&&(
           <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19,padding:'14px 18px'}}>
@@ -5488,6 +5468,26 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
               itemW={56}
               visible={5}
               unit="min"/>
+          </div>
+        </div>
+
+        {/* Anzahl Courts — zwischen Rundendauer und Spieler-Card. */}
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19,
+          padding:'14px 18px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+          <div>
+            <div style={{color:T.t1,fontSize:15,fontWeight:600}}>Anzahl Courts</div>
+            <div style={{color:T.t3,fontSize:11,fontWeight:500,marginTop:1}}>
+              max. {maxCourts} bei {players.length} Spielern
+            </div>
+          </div>
+          <div style={{display:'flex',alignItems:'center',gap:14}}>
+            <button onClick={()=>setNumCourts(c=>Math.max(1,c-1))}
+              style={{width:32,height:32,borderRadius:'50%',background:T.card2,border:`1px solid ${T.border}`,
+                color:T.t1,fontSize:16,cursor:'pointer'}}>−</button>
+            <span style={{color:T.t1,fontWeight:800,fontSize:18,minWidth:24,textAlign:'center'}}>{numCourts}</span>
+            <button onClick={()=>setNumCourts(c=>Math.min(maxCourts,c+1))}
+              style={{width:32,height:32,borderRadius:'50%',background:T.card2,border:`1px solid ${T.border}`,
+                color:T.t1,fontSize:16,cursor:'pointer'}}>+</button>
           </div>
         </div>
 
@@ -7276,7 +7276,7 @@ function TournamentCourtCard({court,courtIndex,playerById,onScoreChange,onConfir
 /* ═══════════════════════════════════════════════════════════════
    TOURNAMENT PLAY
 ═══════════════════════════════════════════════════════════════ */
-function TournamentPlay({tourney,setTourney,onHome,nav,ringId='soft',onEdit,onMatchLogged}){
+function TournamentPlay({tourney,setTourney,onHome,nav,ringId='chime',onEdit,onMatchLogged}){
   const[tab,setTab]=useState('round');
   const[confirmEnd,setConfirmEnd]=useState(false);
   const[showSitOutInfo,setShowSitOutInfo]=useState(false);
@@ -7648,7 +7648,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='soft',onEdit,onMa
                   </div>
                   <div style={{color:T.t3,fontSize:11,lineHeight:1.5}}>
                     {tourney.winMode==='points'
-                      ?'Pausierte Spieler bekommen den Median aller Punkte einer Runde gutgeschrieben — keine Benachteiligung durch erzwungene Pause.'
+                      ?'Pausierte Spieler bekommen den aufgerundeten Mittelwert aller Punkte einer Runde gutgeschrieben — keine Benachteiligung durch erzwungene Pause.'
                       :'Pausierte Spieler in der unteren Tabellenhälfte bekommen +1 Sieg pro Pause gutgeschrieben — damit niemand durch erzwungene Pause weiter zurückfällt.'}
                   </div>
                 </div>
@@ -10552,7 +10552,7 @@ function DnaCard({children,style}){
 
 /* ── Format-aware live scoring screen + full-window court display ─ */
 function DnaCupMatch({fmt,nameA,nameB,subA,subB,stageLabel,tier,courtNo,durationMin=10,
-  ringId='soft',theme='dark',onFinish,onCancel,onHome}){
+  ringId='chime',theme='dark',onFinish,onCancel,onHome}){
   const isPoints=fmt.type==='points';
   const[bo3,dBo3]=useReducer(bo3R,undefined,()=>makeBo3(fmt));
   const[am,dAm]=useReducer(amR,undefined,()=>makeAm(fmt.limit||0));
@@ -10931,7 +10931,7 @@ const dnaStep={width:26,height:26,borderRadius:'50%',background:T.card2,border:`
   color:T.t1,fontSize:14,fontWeight:800,cursor:'pointer',lineHeight:1};
 
 /* Group-phase round: courts + tier badges + score entry + sit-outs */
-function DnaCupGroupRound({cup,setCup,onBack,onHome,onPlay,onLeaderboard,onFinishGroup,onEditLineup,ringId='soft'}){
+function DnaCupGroupRound({cup,setCup,onBack,onHome,onPlay,onLeaderboard,onFinishGroup,onEditLineup,ringId='chime'}){
   const ci=cup.group.current; const round=cup.group.rounds[ci];
   const pById=id=>cup.players.find(p=>p.id===id);
   const allDone=round&&round.courts.every(c=>c.done);
@@ -11038,7 +11038,7 @@ function DnaCupGroupRound({cup,setCup,onBack,onHome,onPlay,onLeaderboard,onFinis
             <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
               <PauseIcon size={15} color={T.t3}/>
               <span style={{color:T.t2,fontSize:13,fontWeight:800}}>Pausiert</span>
-              <span style={{color:T.t3,fontSize:11,fontWeight:600}}>· erhält aufgerundeten Median dieser Runde</span>
+              <span style={{color:T.t3,fontSize:11,fontWeight:600}}>· erhält aufgerundeten Mittelwert dieser Runde</span>
             </div>
             <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
               {round.sitOut.map(id=><DnaChip key={id}>{pById(id)?.name||'—'}</DnaChip>)}
@@ -11692,7 +11692,7 @@ function DnaCupDashboard({cup,onHome,go,onReset,onSlideshow,onLeaderboard}){
 }
 
 /* Root: owns the view router + active match + cup mutations */
-function DnaCup({cup,setCup,onHome,ringId='soft'}){
+function DnaCup({cup,setCup,onHome,ringId='chime'}){
   const[view,setView]=useState('dashboard');
   const[activeMatch,setActiveMatch]=useState(null);
   const[manualMatch,setManualMatch]=useState(null);
@@ -12602,7 +12602,7 @@ function RulesRotation({onBackToRules,onHome,onNext,onPrev,currentIdx,totalSecti
         'Über genug Runden hat jeder gleich oft pausiert',
       ]}/>
       <RulesH>Pausen-Bonus (Punkte-Modus)</RulesH>
-      <RulesP>Pausierte Spieler bekommen für die Pausenrunde den <strong style={{color:T.t1}}>Median aller Punkte</strong> dieser Runde gutgeschrieben. So entgehen sie keinem Punkteverlust durch erzwungene Pause.</RulesP>
+      <RulesP>Pausierte Spieler bekommen für die Pausenrunde den <strong style={{color:T.t1}}>aufgerundeten Mittelwert aller Punkte</strong> dieser Runde gutgeschrieben. So entgehen sie keinem Punkteverlust durch erzwungene Pause.</RulesP>
       <RulesH>Pausen-Bonus (Siege-Modus)</RulesH>
       <RulesP>Spieler in der <strong style={{color:T.t1}}>unteren Tabellenhälfte</strong> bekommen <strong style={{color:T.t1}}>+1 Sieg pro Pause</strong>. So fallen Spieler nicht weiter zurück, die ohnehin schon hinten liegen.</RulesP>
       <RulesH>Transparenz</RulesH>
@@ -14071,7 +14071,9 @@ export default function App(){
   // (not persisted) — a fresh load re-prompts; navigating in/out does not.
   const[dnaPinPrompt,setDnaPinPrompt]=useState(false);
   const[dnaUnlocked,setDnaUnlocked]=useState(false);
-  const[ringId,setRingId]=useState(()=>lsGet('ritmo_ring','soft'));
+  // Ring-ID gegen die aktuellen RINGS normalisieren — alte gespeicherte
+  // IDs (z. B. 'soft' aus früheren Versionen) fallen sauber auf 'chime'.
+  const[ringId,setRingId]=useState(()=>{const v=lsGet('ritmo_ring','chime');return RINGS.some(r=>r.id===v)?v:'chime';});
   const[inputMode,setInputMode]=useState(()=>lsGet('ritmo_input','smartphone'));
   const[voiceOn,setVoiceOn]=useState(()=>lsGet('ritmo_voice',false));
   const[voiceBaseUrl,setVoiceBaseUrl]=useState(()=>lsGet('ritmo_voice_url',''));

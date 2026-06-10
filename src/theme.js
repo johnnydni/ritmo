@@ -480,6 +480,13 @@ input{outline:none;border:none;background:none;}
 ::-webkit-scrollbar{display:none;}
 input[type=number]::-webkit-inner-spin-button,
 input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
+/* type=time: native UA-Mindestbreite + Clock-Indicator entfernen, damit
+   die Felder width:100% respektieren und nicht über den Card-Rand stehen.
+   Der Wert wird zentriert; iOS öffnet das Rad weiterhin bei Tap aufs Feld. */
+input[type="time"]{-webkit-appearance:none;appearance:none;min-width:0;}
+input[type="time"]::-webkit-calendar-picker-indicator{display:none;-webkit-appearance:none;opacity:0;width:0;margin:0;padding:0;}
+input[type="time"]::-webkit-date-and-time-value{text-align:center;margin:0;}
+input[type="time"]::-webkit-datetime-edit{padding:0;text-align:center;}
 
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}

@@ -133,15 +133,16 @@ export function BestOfThreeIcon({size=22}){
 }
 
 /* ─── Trophy ──────────────────────────────────────────────────── */
-export function TrophyIcon({size=42}){
+export function TrophyIcon({size=42,color}){
+  const c=color||T.o;
   return(
     <svg width={size} height={size} viewBox="0 0 42 42" fill="none">
       <path d="M13 9 L29 9 L28 22 Q28 26 21 26 Q14 26 14 22 Z"
-        fill="none" stroke={T.o} strokeWidth="1.8"/>
-      <path d="M13 11 Q6 11 6 16 Q6 21 13 21" stroke={T.o} strokeWidth="1.6" fill="none"/>
-      <path d="M29 11 Q36 11 36 16 Q36 21 29 21" stroke={T.o} strokeWidth="1.6" fill="none"/>
-      <line x1="21" y1="26" x2="21" y2="33" stroke={T.o} strokeWidth="1.8"/>
-      <rect x="15" y="33" width="12" height="2.5" rx="1" fill={T.o}/>
+        fill="none" stroke={c} strokeWidth="1.8"/>
+      <path d="M13 11 Q6 11 6 16 Q6 21 13 21" stroke={c} strokeWidth="1.6" fill="none"/>
+      <path d="M29 11 Q36 11 36 16 Q36 21 29 21" stroke={c} strokeWidth="1.6" fill="none"/>
+      <line x1="21" y1="26" x2="21" y2="33" stroke={c} strokeWidth="1.8"/>
+      <rect x="15" y="33" width="12" height="2.5" rx="1" fill={c}/>
     </svg>
   );
 }
@@ -669,4 +670,182 @@ export function ArchetypeGlyph({type,active=false,color,size=22}){
   return(<span className={cls} aria-hidden="true">
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none">{body}</svg>
   </span>);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   GLYPH-SET — ersetzt System-Emojis durch konsistente Line-/Solid-
+   SVGs. Alle nutzen `currentColor` (oder eine explizite Akzentfarbe),
+   damit sie sich im jeweiligen Card-/Button-Kontext mitfärben.
+═══════════════════════════════════════════════════════════════ */
+
+// Herz (für „With love for Padel"). Inline → verticalAlign middle.
+export function HeartIcon({size=13,color='currentColor',filled=true}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24"
+    style={{display:'inline-block',verticalAlign:'-0.12em'}} aria-hidden="true">
+    <path d="M12 20.5S3.5 15.2 3.5 9.3A4.3 4.3 0 0 1 12 6.9a4.3 4.3 0 0 1 8.5 2.4C20.5 15.2 12 20.5 12 20.5z"
+      fill={filled?color:'none'} stroke={color} strokeWidth="1.7" strokeLinejoin="round"/>
+  </svg>);
+}
+
+// Medaille mit Rang-Ziffer (ersetzt 🥇🥈🥉). rank 1/2/3 = Gold/Silber/Bronze.
+export function MedalIcon({size=42,rank=1}){
+  const c=rank===1?'#FFC83D':rank===2?'#C9CDD2':'#D9883F';
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path d="M9 2.5 11 9 M15 2.5 13 9" stroke={c} strokeWidth="1.9" strokeLinecap="round"/>
+    <circle cx="12" cy="15" r="6.6" fill={c}/>
+    <text x="12" y="17.7" textAnchor="middle" fontFamily="-apple-system,sans-serif"
+      fontSize="8" fontWeight="900" fill="#0A0A0A">{rank}</text>
+  </svg>);
+}
+
+// Smartphone
+export function PhoneIcon({size=22,color='currentColor'}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color}
+    strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="6" y="2.5" width="12" height="19" rx="2.6"/>
+    <line x1="10.5" y1="18.6" x2="13.5" y2="18.6"/>
+  </svg>);
+}
+// Tastatur / Presenter
+export function KeyboardIcon({size=22,color='currentColor'}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color}
+    strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="2" y="6" width="20" height="12" rx="2"/>
+    <line x1="6" y1="10" x2="6" y2="10"/><line x1="10" y1="10" x2="10" y2="10"/>
+    <line x1="14" y1="10" x2="14" y2="10"/><line x1="18" y1="10" x2="18" y2="10"/>
+    <line x1="8" y1="14" x2="16" y2="14"/>
+  </svg>);
+}
+// Smart Ring (Ring mit Stein)
+export function RingIcon({size=22,color='currentColor'}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color}
+    strokeWidth="1.8" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="12" cy="14.5" r="6.2"/>
+    <path d="M9 5.5 12 9 15 5.5 13.4 3 10.6 3Z" fill={color} stroke="none"/>
+  </svg>);
+}
+// Smartwatch
+export function WatchIcon({size=22,color='currentColor'}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color}
+    strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="6" y="7" width="12" height="10" rx="3"/>
+    <path d="M9 7 9.5 3 14.5 3 15 7 M9 17 9.5 21 14.5 21 15 17"/>
+    <path d="M12 10.2v2.2h1.6"/>
+  </svg>);
+}
+// Flic-Button (runder Druckknopf)
+export function FlicIcon({size=22,color='currentColor'}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color}
+    strokeWidth="1.8" aria-hidden="true">
+    <circle cx="12" cy="12" r="9"/>
+    <circle cx="12" cy="12" r="3.6" fill={color} stroke="none"/>
+  </svg>);
+}
+// Mond (Dark-Theme)
+export function MoonIcon({size=20,color='currentColor'}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path d="M20 14.6A8 8 0 1 1 9.4 4 6.3 6.3 0 0 0 20 14.6z"
+      fill="none" stroke={color} strokeWidth="1.8" strokeLinejoin="round"/>
+  </svg>);
+}
+// Sonne (Light-Theme)
+export function SunIcon({size=20,color='currentColor'}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color}
+    strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="4.2"/>
+    <path d="M12 2.5v2.6M12 18.9v2.6M2.5 12H5.1M18.9 12h2.6M5 5l1.8 1.8M17.2 17.2 19 19M19 5l-1.8 1.8M6.8 17.2 5 19"/>
+  </svg>);
+}
+// Blatt (Wimbledon-Theme)
+export function LeafIcon({size=20,color='currentColor'}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color}
+    strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M5 19c0-9 6-14 14-14 0 9-5 14-14 14z"/>
+    <path d="M9 15c2-3 5-5 8-6"/>
+  </svg>);
+}
+// Zielscheibe (Mexicano / Aufschlag)
+export function TargetIcon({size=24,color='currentColor'}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color}
+    strokeWidth="1.8" aria-hidden="true">
+    <circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/>
+    <circle cx="12" cy="12" r="1.5" fill={color} stroke="none"/>
+  </svg>);
+}
+// Schriftrolle (Best of 3)
+export function ScrollIcon({size=24,color='currentColor'}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color}
+    strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M6 4h11a2 2 0 0 1 2 2v12a2 2 0 0 0 2 2H8a2 2 0 0 1-2-2V4z"/>
+    <path d="M6 4a2 2 0 0 0-2 2v2h2"/>
+    <line x1="9" y1="9" x2="15.5" y2="9"/><line x1="9" y1="12.5" x2="15.5" y2="12.5"/>
+  </svg>);
+}
+// Stoppuhr (Pausen & Rotation)
+export function StopwatchIcon({size=24,color='currentColor'}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color}
+    strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="12" cy="13.5" r="7.5"/>
+    <line x1="12" y1="13.5" x2="12" y2="9.6"/>
+    <line x1="9.5" y1="2.5" x2="14.5" y2="2.5"/><line x1="12" y1="2.5" x2="12" y2="6"/>
+    <line x1="18.6" y1="6.9" x2="20" y2="5.5"/>
+  </svg>);
+}
+// Maske (Spielstile / Personalities)
+export function MaskIcon({size=24,color='currentColor'}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color}
+    strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M4 4h16v6a8 8 0 0 1-16 0z"/>
+    <path d="M8.2 9.2a1.6 1.6 0 0 1 2.4 0M13.4 9.2a1.6 1.6 0 0 1 2.4 0"/>
+    <path d="M9 13.5a4 4 0 0 0 6 0"/>
+  </svg>);
+}
+// Zwei Personen (Aufstellungen)
+export function PeopleIcon({size=24,color='currentColor'}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color}
+    strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="8.5" cy="8" r="3"/>
+    <path d="M2.5 19c0-4 3-5.6 6-5.6s6 1.6 6 5.6"/>
+    <circle cx="17" cy="8.5" r="2.5"/>
+    <path d="M16.2 13.5c3 .2 5.3 1.8 5.3 5.5"/>
+  </svg>);
+}
+// Hand / Handfläche (Hand-Seiten)
+export function HandIcon({size=24,color='currentColor'}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color}
+    strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M7 11.5V5.6a1.5 1.5 0 0 1 3 0v4.4"/>
+    <path d="M10 10V4.2a1.5 1.5 0 0 1 3 0V10"/>
+    <path d="M13 10V5.2a1.5 1.5 0 0 1 3 0V13c0 4-2.4 7-6 7-2.6 0-4.6-1.3-5.6-3.6L3.6 14a1.4 1.4 0 0 1 2.4-1.4L7 14"/>
+  </svg>);
+}
+// Warndreieck
+export function WarnIcon({size=18,color='currentColor'}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color}
+    strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M12 3 22 20H2z"/>
+    <line x1="12" y1="10" x2="12" y2="14"/><line x1="12" y1="17" x2="12" y2="17"/>
+  </svg>);
+}
+// Skip / Freilos (Doppel-Dreieck nach rechts)
+export function SkipIcon({size=18,color='currentColor'}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill={color} aria-hidden="true">
+    <path d="M5 5l8 7-8 7zM14 5h3v14h-3z"/>
+  </svg>);
+}
+// Laptop (Mac)
+export function LaptopIcon({size=22,color='currentColor'}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color}
+    strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="4" y="5" width="16" height="11" rx="2"/>
+    <path d="M2 20h20"/>
+  </svg>);
+}
+// Monitor (Windows/Desktop)
+export function MonitorIcon({size=22,color='currentColor'}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color}
+    strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="3" y="4" width="18" height="12" rx="2"/>
+    <path d="M9 20h6M12 16v4"/>
+  </svg>);
 }

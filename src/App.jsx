@@ -41,6 +41,10 @@ import {
   SteeringWheelIcon, PaletteIcon, EyeIcon, BellIcon, LockIcon, DoorOutIcon,
   ChevronRightIcon, RitmoPostIcon, AirPlayIcon, CoffeeCupIcon,
   ArchetypeGlyph, PauseIcon,
+  // Emoji-Ersatz-Glyphen
+  HeartIcon, MedalIcon, PhoneIcon, KeyboardIcon, RingIcon, WatchIcon, FlicIcon,
+  MoonIcon, SunIcon, LeafIcon, TargetIcon, ScrollIcon, StopwatchIcon, MaskIcon,
+  PeopleIcon, HandIcon, WarnIcon, SkipIcon, LaptopIcon, MonitorIcon,
 } from "./icons.jsx";
 import { PADEL_STYLES, PADEL_QUIZ, computeStyle, computeMatchTier, STYLE_IMAGES } from "./padelStyles.js";
 
@@ -324,7 +328,7 @@ function BetaLanding({onLogin,onRegister}){
         </div>
 
         <div style={{color:T.t3,fontSize:10,letterSpacing:.4,opacity:0.7,marginTop:6}}>
-          Made by Team RITMO · with love for Padel ♡
+          Made by Team RITMO · with love for Padel <HeartIcon size={11} color={T.o}/>
         </div>
       </div>
     </div>
@@ -613,7 +617,7 @@ function Login({onSuccess,onRegister}){
 
         <div style={{color:T.t3,fontSize:10,textAlign:'center',marginTop:18,
           letterSpacing:.3,opacity:0.7}}>
-          Made by Team RITMO. With love for Padel ♡
+          Made by Team RITMO. With love for Padel <HeartIcon size={11} color={T.o}/>
         </div>
       </div>
     </div>
@@ -910,7 +914,7 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
 
         <div style={{color:T.t3,fontSize:10,textAlign:'center',marginTop:18,
           letterSpacing:.3,opacity:0.7}}>
-          Made by Team RITMO. With love for Padel ♡
+          Made by Team RITMO. With love for Padel <HeartIcon size={11} color={T.o}/>
         </div>
       </div>
     </div>
@@ -1127,7 +1131,7 @@ function VerifiedLanding(){
 
         <div style={{color:T.t3,fontSize:10,textAlign:'center',marginTop:28,
           letterSpacing:.3,opacity:0.7}}>
-          Made by Team RITMO. With love for Padel ♡
+          Made by Team RITMO. With love for Padel <HeartIcon size={11} color={T.o}/>
         </div>
       </div>
     </div>
@@ -1252,7 +1256,7 @@ function ChapterPlaytomic({profile,setProfile}){
             border:`1.5px solid ${!hasPlaytomic?T.o:T.border}`,
             borderRadius:13,color:T.t1,fontSize:12,fontWeight:!hasPlaytomic?700:500,
             cursor:'pointer',transition:'all .15s',lineHeight:1.3,textAlign:'center'}}>
-          {'Habe ich nicht —\nGib mir ein RITMO Level 😉'}
+          {'Habe ich nicht —\nGib mir ein RITMO Level'}
         </button>
       </div>
 
@@ -1901,8 +1905,8 @@ function ChapterPlaystyle({profile,setProfile}){
         value={profile.handPreference}
         onChange={v=>setProfile(p=>({...p,handPreference:v}))}
         options={[
-          {id:'right',label:'Rechtshänder 🤚'},
-          {id:'left',label:'Linkshänder ✋'},
+          {id:'right',label:'Rechtshänder'},
+          {id:'left',label:'Linkshänder'},
         ]}/>
       <QuestionGroup
         label="Lieblings-Position am Court"
@@ -2796,7 +2800,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
         </div>
         {profile?.name?(
           <div style={{color:T.t1,fontSize:18,fontWeight:700,marginTop:10,marginLeft:10,letterSpacing:-.2}}>
-            Hi, {profile.name}! 👋
+            Hi, {profile.name}!
           </div>
         ):null}
         <div style={{color:T.t2,fontSize:14,marginTop:profile?.name?4:8,marginLeft:10,fontWeight:400}}>
@@ -2832,7 +2836,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
             onPointerDown={e=>e.currentTarget.style.background=T.card2}
             onPointerUp={e=>e.currentTarget.style.background=T.oSoft}
             onPointerLeave={e=>e.currentTarget.style.background=T.oSoft}>
-            <div style={{fontSize:28,lineHeight:1,flexShrink:0}}>✨</div>
+            <div style={{flexShrink:0,display:'flex',alignItems:'center'}}><WandIcon size={26}/></div>
             <div style={{flex:1,minWidth:0}}>
               <div style={{color:T.o,fontSize:14,fontWeight:800,marginBottom:2,letterSpacing:.2}}>
                 Profil vervollständigen
@@ -4005,7 +4009,7 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
         {win&&win!=='draw'&&(
           <div style={{textAlign:'center',padding:14,background:T.oSoft,borderRadius:15,
             border:`1px solid ${T.o}`,color:T.o,fontWeight:700}}>
-            🏆 {win==='A'?cfg.nameA:cfg.nameB} gewinnt!
+            <span style={{display:'inline-flex',alignItems:'center',gap:8}}><TrophyIcon size={20}/>{win==='A'?cfg.nameA:cfg.nameB} gewinnt!</span>
           </div>
         )}
         <div style={{height:100,flexShrink:0}}/>
@@ -4141,10 +4145,10 @@ function CastSheet({onClose,onEnterBigScreen}){
 
   // Devices — Reihenfolge ist die Carousel-Reihenfolge.
   const devices=[
-    {id:'ios',     label:'iPhone / iPad', emoji:'📱', detected:isIOS},
-    {id:'mac',     label:'Mac',           emoji:'💻', detected:isMac},
-    {id:'android', label:'Android',       emoji:'🤖', detected:isAndroid},
-    {id:'windows', label:'Windows',       emoji:'🖥️', detected:isWin},
+    {id:'ios',     label:'iPhone / iPad', emoji:<PhoneIcon size={38} color={T.t1}/>, detected:isIOS},
+    {id:'mac',     label:'Mac',           emoji:<LaptopIcon size={38} color={T.t1}/>, detected:isMac},
+    {id:'android', label:'Android',       emoji:<PhoneIcon size={38} color={T.t1}/>, detected:isAndroid},
+    {id:'windows', label:'Windows',       emoji:<MonitorIcon size={38} color={T.t1}/>, detected:isWin},
   ];
   const defaultIndex=Math.max(0,devices.findIndex(d=>d.detected));
   const[idx,setIdx]=useState(defaultIndex);
@@ -4359,7 +4363,7 @@ function CastSheet({onClose,onEnterBigScreen}){
                   border:`1px solid ${i===idx?T.o:T.border}`,borderRadius:19,
                   padding:'22px 14px',display:'flex',flexDirection:'column',
                   alignItems:'center',gap:8,transition:'border-color .2s,background .2s'}}>
-                  <div style={{fontSize:48,lineHeight:1}}>{d.emoji}</div>
+                  <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:44}}>{d.emoji}</div>
                   <div style={{color:T.t1,fontSize:14,fontWeight:800,letterSpacing:-.1}}>
                     {d.label}
                   </div>
@@ -5430,7 +5434,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
             {suggest&&(
               <div style={{marginTop:12,padding:'10px 12px',borderRadius:12,background:T.oSoft,
                 border:`1px solid ${T.o}`,display:'flex',alignItems:'flex-start',gap:8}}>
-                <span style={{fontSize:14,marginTop:1}}>⏱️</span>
+                <span style={{marginTop:1,display:'inline-flex'}}><StopwatchIcon size={15} color={T.o}/></span>
                 <div style={{color:T.t2,fontSize:12,fontWeight:600,lineHeight:1.5,minWidth:0}}>
                   Vorschlag: <span style={{color:T.o,fontWeight:800}}>≈ {suggest.rounds} Runden × {suggest.roundTime} Min</span>
                   {' '}+ {suggest.rotation} Min Rotation · füllt {Math.floor(windowMin/60)} h {windowMin%60} Min.
@@ -6139,7 +6143,7 @@ function TournamentParticipantView({session,participantId,pin}){
         padding:'24px 22px',textAlign:'center'}}>
         <div style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:1.5,
           textTransform:'uppercase',marginBottom:6}}>Turnier beendet</div>
-        <div style={{fontSize:42,marginBottom:8}}>🥇</div>
+        <div style={{marginBottom:8,display:'flex',justifyContent:'center'}}><MedalIcon size={50} rank={1}/></div>
         <div style={{fontSize:24,fontWeight:800,color:T.t1,letterSpacing:-.3}}>
           {winner?.name||'?'}
         </div>
@@ -6165,7 +6169,7 @@ function TournamentParticipantView({session,participantId,pin}){
               background:isMe?T.oSoft:'transparent'}}>
               <div style={{width:24,fontSize:i<3?16:13,fontWeight:800,
                 color:i===0?T.o:i===1?T.t2:i===2?T.t3:T.t3,textAlign:'center'}}>
-                {i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}`}
+                {i<3?<MedalIcon size={20} rank={i+1}/>:`${i+1}`}
               </div>
               <div style={{width:8,height:8,borderRadius:'50%',background:p.color,flexShrink:0}}/>
               <div style={{flex:1,minWidth:0}}>
@@ -7677,7 +7681,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
                   background:i===0?'var(--oSoft)':'transparent'}}>
                   <div style={{width:24,fontSize:i<3?18:13,fontWeight:800,
                     color:i===0?T.o:i===1?T.t2:i===2?T.t3:T.t3,textAlign:'center'}}>
-                    {i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}`}
+                    {i<3?<MedalIcon size={20} rank={i+1}/>:`${i+1}`}
                   </div>
                   <div style={{width:8,height:8,borderRadius:'50%',background:p.color,flexShrink:0}}/>
                   <div style={{flex:1,minWidth:0}}>
@@ -7791,7 +7795,7 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
         {/* Winner Hero */}
         <div style={{background:T.card,border:`1px solid ${T.o}`,borderRadius:23,
           padding:'24px 22px',textAlign:'center'}}>
-          <div style={{fontSize:42,marginBottom:8}}>🥇</div>
+          <div style={{marginBottom:8,display:'flex',justifyContent:'center'}}><MedalIcon size={50} rank={1}/></div>
           <div style={{fontSize:24,fontWeight:800,color:T.t1,letterSpacing:-.3}}>{winner?.name}</div>
           <div style={{fontSize:14,color:T.o,fontWeight:700,marginTop:4}}>
             {tourney.winMode==='wins'?`${winner?.totalWins} Siege`:`${winner?.totalPts} Punkte`}
@@ -7807,7 +7811,7 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
                 gap:10,borderBottom:i<sortedLb.length-1?`1px solid ${T.sep}`:'none'}}>
                 <div style={{width:24,fontSize:i<3?16:13,fontWeight:800,
                   color:i===0?T.o:i===1?T.t2:i===2?T.t3:T.t3,textAlign:'center'}}>
-                  {i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}`}
+                  {i<3?<MedalIcon size={20} rank={i+1}/>:`${i+1}`}
                 </div>
                 <div style={{width:8,height:8,borderRadius:'50%',background:p.color,flexShrink:0}}/>
                 <div style={{flex:1}}>
@@ -7836,13 +7840,13 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
           <button onClick={onNew}
             style={{flex:1,padding:'14px',borderRadius:19,border:'none',
               background:T.o,color:T.bg,fontSize:14,fontWeight:800,cursor:'pointer'}}>
-            🏆 Neues Turnier
+            <span style={{display:'inline-flex',alignItems:'center',gap:7,justifyContent:'center'}}><TrophyIcon size={17} color={T.bg}/>Neues Turnier</span>
           </button>
           <button onClick={onHome}
             style={{flex:1,padding:'14px',borderRadius:19,
               border:`1px solid ${T.border}`,background:T.card,
               color:T.t1,fontSize:14,fontWeight:600,cursor:'pointer'}}>
-            🏠 Home
+            <span style={{display:'inline-flex',alignItems:'center',gap:7,justifyContent:'center'}}><HomeIcon size={16}/>Home</span>
           </button>
         </div>
         <div style={{height:100,flexShrink:0}}/>
@@ -8247,7 +8251,7 @@ function Settings({onHome,activeTab,setActiveTab,nav}){
         {/* About — schlichte Marker, kein Tap-Target */}
         <div style={{background:'transparent',border:`1px solid ${T.border}`,borderRadius:19,
           padding:'14px 18px',color:T.t3,fontSize:11,lineHeight:1.6,textAlign:'center'}}>
-          <Hl text="Made by Team RITMO." q={q}/><br/><Hl text="With love for Padel ♡" q={q}/>
+          <Hl text="Made by Team RITMO." q={q}/><br/><Hl text="With love for Padel " q={q}/><HeartIcon size={11} color={T.o}/>
         </div>
 
         <div style={{height:120,flexShrink:0}}/>
@@ -8333,11 +8337,11 @@ function SettingsSteuerung({onBack,onHome,inputMode,setInputMode,voiceOn,setVoic
   ringId,setRingId}){
   const[showInfo,setShowInfo]=useState(false);
   const inputs=[
-    {id:'smartphone',label:'Smartphone',icon:'📱',sub:'Tippen auf die Score-Karten'},
-    {id:'presenter',label:'Presenter',icon:'⌨️',sub:'Page Up / Page Down Tasten'},
-    {id:'ring',label:'Smart Ring',icon:'💍',sub:'Bluetooth Scroll-Ring am Finger'},
-    {id:'watch',label:'Smartwatch',icon:'⌚',sub:'Bald verfügbar'},
-    {id:'flic',label:'Flic Button',icon:'🔘',sub:'Bald verfügbar'},
+    {id:'smartphone',label:'Smartphone',icon:<PhoneIcon size={22} color={T.t1}/>,sub:'Tippen auf die Score-Karten'},
+    {id:'presenter',label:'Presenter',icon:<KeyboardIcon size={22} color={T.t1}/>,sub:'Page Up / Page Down Tasten'},
+    {id:'ring',label:'Smart Ring',icon:<RingIcon size={22} color={T.t1}/>,sub:'Bluetooth Scroll-Ring am Finger'},
+    {id:'watch',label:'Smartwatch',icon:<WatchIcon size={22} color={T.t1}/>,sub:'Bald verfügbar'},
+    {id:'flic',label:'Flic Button',icon:<FlicIcon size={22} color={T.t1}/>,sub:'Bald verfügbar'},
   ];
   return(
     <SettingsSubLayout title="Steuerung"
@@ -8362,7 +8366,7 @@ function SettingsSteuerung({onBack,onHome,inputMode,setInputMode,voiceOn,setVoic
                 display:'flex',alignItems:'center',gap:14,
                 cursor:disabled?'not-allowed':'pointer',
                 opacity:disabled?.45:1,textAlign:'left'}}>
-              <span style={{fontSize:24,width:32,textAlign:'center'}}>{opt.icon}</span>
+              <span style={{width:32,display:'inline-flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>{opt.icon}</span>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{color:T.t1,fontSize:15,fontWeight:600}}>{opt.label}</div>
                 <div style={{color:T.t3,fontSize:11,marginTop:1,fontWeight:500}}>{opt.sub}</div>
@@ -8460,10 +8464,12 @@ function SettingsSteuerung({onBack,onHome,inputMode,setInputMode,voiceOn,setVoic
             </div>
             <div style={{display:'flex',alignItems:'center',gap:10}}>
               <button onClick={e=>{e.stopPropagation();playRing(r.id);}}
+                aria-label="Vorhören"
                 style={{width:30,height:30,borderRadius:8,background:T.card2,
-                  border:`1px solid ${T.border}`,color:T.o,fontSize:11,
-                  cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',
-                  fontWeight:700}}>▶</button>
+                  border:`1px solid ${T.border}`,
+                  cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill={T.o} aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+              </button>
               {ringId===r.id
                 ?<span style={{color:T.o,fontSize:16,width:16,textAlign:'center'}}>✓</span>
                 :<span style={{width:16}}/>}
@@ -8482,11 +8488,11 @@ function SettingsSteuerung({onBack,onHome,inputMode,setInputMode,voiceOn,setVoic
 ═══════════════════════════════════════════════════════════════ */
 function SettingsAnpassung({onBack,onHome,theme,setTheme,tabletMode,setTabletMode}){
   const themes=[
-    {id:'dark',label:'RITMO BAUHAUS Dark',icon:'🌙',desc:'Schwarz, weiß, orange'},
-    {id:'light',label:'Federleicht',icon:'☀️',desc:'Weiß, schwarz, blau'},
-    {id:'padel',label:'Padelhaus Blue',icon:'🎾',desc:'Elektroblau, weiß, gelb'},
-    {id:'wimbledon',label:'Wimbledon Green',icon:'🌿',desc:'Rolex-Grün, beige, bone white'},
-    {id:'funky',label:'RITMO BAUHAUS Funky',icon:'🦜',desc:'Tropisch — Gelb, Papageienrot, Kiwi'},
+    {id:'dark',label:'RITMO BAUHAUS Dark',icon:<MoonIcon size={20} color={T.t1}/>,desc:'Schwarz, weiß, orange'},
+    {id:'light',label:'Federleicht',icon:<SunIcon size={20} color={T.t1}/>,desc:'Weiß, schwarz, blau'},
+    {id:'padel',label:'Padelhaus Blue',icon:<TennisBallIcon size={20}/>,desc:'Elektroblau, weiß, gelb'},
+    {id:'wimbledon',label:'Wimbledon Green',icon:<LeafIcon size={20} color={T.t1}/>,desc:'Rolex-Grün, beige, bone white'},
+    {id:'funky',label:'RITMO BAUHAUS Funky',icon:<ParrotIcon size={20}/>,desc:'Tropisch — Gelb, Papageienrot, Kiwi'},
   ];
   return(
     <SettingsSubLayout title="Anpassung"
@@ -8501,7 +8507,7 @@ function SettingsAnpassung({onBack,onHome,theme,setTheme,tabletMode,setTabletMod
           <div key={th.id} onClick={()=>setTheme(th.id)}
             style={{display:'flex',alignItems:'center',padding:'12px 0',
               borderBottom:i<themes.length-1?`1px solid ${T.sep}`:'none',cursor:'pointer'}}>
-            <div style={{fontSize:18,marginRight:12,width:22,textAlign:'center'}}>{th.icon}</div>
+            <div style={{marginRight:12,width:22,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>{th.icon}</div>
             <div style={{flex:1,minWidth:0}}>
               <div style={{color:T.t1,fontSize:14,fontWeight:theme===th.id?700:500}}>{th.label}</div>
               <div style={{color:T.t3,fontSize:11,marginTop:1}}>{th.desc}</div>
@@ -8520,7 +8526,7 @@ function SettingsAnpassung({onBack,onHome,theme,setTheme,tabletMode,setTabletMod
         <div style={{color:T.o,fontSize:11,fontWeight:700,letterSpacing:1.3,
           textTransform:'uppercase',marginBottom:12}}>Anzeige</div>
         <div style={{display:'flex',alignItems:'center',gap:14}}>
-          <div style={{fontSize:22,width:32,textAlign:'center',flexShrink:0}}>📱</div>
+          <div style={{width:32,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,color:T.t1}}><PhoneIcon size={22}/></div>
           <div style={{flex:1,minWidth:0}}>
             <div style={{color:T.t1,fontSize:14,fontWeight:700}}>Tablet-Modus</div>
             <div style={{color:T.t3,fontSize:11,marginTop:2,lineHeight:1.5}}>
@@ -10669,7 +10675,7 @@ function DnaCupMatch({fmt,nameA,nameB,subA,subB,stageLabel,tier,courtNo,duration
           {bo3.matchTb?'Match-Tiebreak':'Tiebreak'}</div>}
         {win&&<div style={{position:'absolute',top:'46%',left:0,right:0,textAlign:'center',
           color:T.o,fontSize:'clamp(1.4rem,5vh,3rem)',fontWeight:900,pointerEvents:'none',
-          textShadow:'0 2px 20px rgba(0,0,0,.6)'}}>{(win==='A'?nameA:nameB)} gewinnt 🏆</div>}
+          textShadow:'0 2px 20px rgba(0,0,0,.6)'}}>{(win==='A'?nameA:nameB)} gewinnt <span style={{display:'inline-flex',verticalAlign:'middle'}}><TrophyIcon size={26}/></span></div>}
         <div style={{position:'absolute',bottom:18,left:18}}>
           <button onClick={onHome} style={fwBtn}><HomeIcon size={18}/></button>
         </div>
@@ -11191,20 +11197,20 @@ function DnaCupBracket({cup,onBack,onHome,onPlay,onManual,onSieger}){
       <div style={dnaScroll}>
         {champName&&(
           <DnaCard style={{borderColor:T.o,background:T.oSoft,textAlign:'center'}}>
-            <div style={{fontSize:30}}>🏆</div>
+            <div style={{display:'flex',justifyContent:'center'}}><TrophyIcon size={32}/></div>
             <div style={{color:T.t3,fontSize:11,fontWeight:800,letterSpacing:1,marginTop:4}}>RITMO DNA CUP CHAMPION</div>
             <div style={{color:T.o,fontSize:18,fontWeight:900,marginTop:4}}>{champName}</div>
           </DnaCard>
         )}
         {!conflict.ok&&<DnaCard style={{borderColor:T.r,padding:'10px 14px'}}>
-          <span style={{color:T.r,fontSize:12,fontWeight:800}}>⚠ Court-Doppelbelegung erkannt</span></DnaCard>}
+          <span style={{color:T.r,fontSize:12,fontWeight:800,display:'inline-flex',alignItems:'center',gap:5}}><WarnIcon size={13} color={T.r}/>Court-Doppelbelegung erkannt</span></DnaCard>}
 
         <div style={{display:'flex',flexDirection:'column',gap:24}}>
           <Col title="Haupt-Bracket" accent={T.o}>
             {cup.qualified?.byes?.length>0&&(
               <div style={{background:T.card,border:`1px dashed ${T.o}`,borderRadius:14,padding:'11px 13px'}}>
                 <div style={{color:T.o,fontSize:11,fontWeight:800,marginBottom:7,letterSpacing:.3}}>
-                  ⏭ Freilos · direkt ins Halbfinale
+                  <span style={{display:'inline-flex',alignItems:'center',gap:5}}><SkipIcon size={12}/>Freilos · direkt ins Halbfinale</span>
                 </div>
                 {cup.qualified.byes.map((id,bi)=>{
                   const p=cup.players.find(x=>x.id===id);
@@ -11347,7 +11353,7 @@ function DnaCupSieger({cup,onBack,onHome}){
       <DnaTopBar title="Sieger-Übersicht" sub={DNA_CUP_EVENT.subtitle} onBack={onBack} onHome={onHome}/>
       <div style={dnaScroll}>
         <DnaCard style={{borderColor:T.o,background:T.oSoft,textAlign:'center'}}>
-          <div style={{fontSize:40}}>🏆</div>
+          <div style={{display:'flex',justifyContent:'center'}}><TrophyIcon size={42}/></div>
           <div style={{color:T.t3,fontSize:11,fontWeight:800,letterSpacing:1.5,marginTop:4}}>GRANDE FINALE SIEGER</div>
           <div style={{color:T.o,fontSize:20,fontWeight:900,marginTop:6}}>{champ||'Noch offen'}</div>
         </DnaCard>
@@ -11551,7 +11557,7 @@ function DnaCupSlideshow({cup,onExit}){
   } else if(cur==='champion'){
     body=(
       <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',textAlign:'center'}}>
-        <div style={{fontSize:'clamp(3rem,12vw,7rem)'}}>🏆</div>
+        <div style={{display:'flex',justifyContent:'center'}}><TrophyIcon size={92}/></div>
         <div style={{color:T.t3,fontSize:14,fontWeight:800,letterSpacing:3,marginTop:8}}>RITMO DNA CUP CHAMPION</div>
         <div style={{color:T.o,fontSize:'clamp(1.8rem,6vw,3.6rem)',fontWeight:900,marginTop:10}}>
           {cup.champion?dnaTeamName(cup,cup.champion):'—'}</div>
@@ -11995,7 +12001,7 @@ function RulesDetailLayout({icon,title,sub,visual,children,onBackToRules,onHome,
 
       <div style={{padding:'0 22px 8px'}}>
         <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
-          <div style={{fontSize:32,width:42,textAlign:'center'}}>{icon}</div>
+          <div style={{width:42,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>{icon}</div>
           <div style={{flex:1,minWidth:0}}>
             <div style={{color:T.t1,fontSize:22,fontWeight:800,letterSpacing:-.3}}>{title}</div>
             <div style={{color:T.t3,fontSize:12,marginTop:2,fontWeight:500}}>{sub}</div>
@@ -12419,12 +12425,12 @@ function ChiquitaFigure(){
 /* ───── Rules — Übersicht ───── */
 function Rules({onHome,onSelect,alreadyRead,onToggleRead,onBibel}){
   const sections=[
-    {id:'basics',    icon:'🎾',title:'Padel-Grundregeln', sub:'Aufschlag, Wände, Punktezählung'},
-    {id:'bo3',       icon:'📜',title:'Best of 3',         sub:'Klassisches Tennis-Scoring, Tiebreak bei 6:6'},
-    {id:'americano', icon:'🏆',title:'Americano',         sub:'Wechselnde Partner, individuelle Punkte'},
-    {id:'mexicano',  icon:'🎯',title:'Mexicano',          sub:'Ranking-basierte Paarungen ab Runde 2'},
-    {id:'rotation',  icon:'⏱',title:'Pausen & Rotation', sub:'Fairer Rotations-Pool bei ungeraden Spielern'},
-    {id:'glossar',   icon:'📖',title:'Schlagarten',       sub:'Bandeja, Víbora, Smash & mehr'},
+    {id:'basics',    icon:<TennisBallIcon size={24}/>,title:'Padel-Grundregeln', sub:'Aufschlag, Wände, Punktezählung'},
+    {id:'bo3',       icon:<ScrollIcon size={24} color={T.o}/>,title:'Best of 3',         sub:'Klassisches Tennis-Scoring, Tiebreak bei 6:6'},
+    {id:'americano', icon:<TrophyIcon size={26}/>,title:'Americano',         sub:'Wechselnde Partner, individuelle Punkte'},
+    {id:'mexicano',  icon:<TargetIcon size={24} color={T.o}/>,title:'Mexicano',          sub:'Ranking-basierte Paarungen ab Runde 2'},
+    {id:'rotation',  icon:<StopwatchIcon size={24} color={T.o}/>,title:'Pausen & Rotation', sub:'Fairer Rotations-Pool bei ungeraden Spielern'},
+    {id:'glossar',   icon:<BookIcon size={24}/>,title:'Schlagarten',       sub:'Bandeja, Víbora, Smash & mehr'},
   ];
   return(
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
@@ -12452,7 +12458,7 @@ function Rules({onHome,onSelect,alreadyRead,onToggleRead,onBibel}){
             onPointerDown={e=>e.currentTarget.style.background=T.card2}
             onPointerUp={e=>e.currentTarget.style.background=T.card}
             onPointerLeave={e=>e.currentTarget.style.background=T.card}>
-            <div style={{fontSize:24,width:32,textAlign:'center'}}>{s.icon}</div>
+            <div style={{width:32,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>{s.icon}</div>
             <div style={{flex:1,minWidth:0}}>
               <div style={{color:T.t1,fontSize:15,fontWeight:700,marginBottom:2}}>{s.title}</div>
               <div style={{color:T.t3,fontSize:11,fontWeight:500}}>{s.sub}</div>
@@ -12470,7 +12476,7 @@ function Rules({onHome,onSelect,alreadyRead,onToggleRead,onBibel}){
 /* ───── Detail screens (one per section) ───── */
 function RulesBasics({onBackToRules,onHome,onNext,onPrev,currentIdx,totalSections}){
   return(
-    <RulesDetailLayout icon="🎾" title="Padel-Grundregeln"
+    <RulesDetailLayout icon={<TennisBallIcon size={32}/>} title="Padel-Grundregeln"
       sub="Aufschlag, Wände, Punktezählung"
       visual={<CourtVisual/>}
       onBackToRules={onBackToRules} onHome={onHome}
@@ -12500,7 +12506,7 @@ function RulesBasics({onBackToRules,onHome,onNext,onPrev,currentIdx,totalSection
 
 function RulesBo3({onBackToRules,onHome,onNext,onPrev,currentIdx,totalSections}){
   return(
-    <RulesDetailLayout icon="📜" title="Best of 3"
+    <RulesDetailLayout icon={<ScrollIcon size={30} color={T.o}/>} title="Best of 3"
       sub="Klassisches Tennis-Scoring, Tiebreak bei 6:6"
       visual={<Bo3HierarchyVisual/>}
       onBackToRules={onBackToRules} onHome={onHome}
@@ -12527,7 +12533,7 @@ function RulesBo3({onBackToRules,onHome,onNext,onPrev,currentIdx,totalSections})
 
 function RulesAmericano({onBackToRules,onHome,onNext,onPrev,currentIdx,totalSections}){
   return(
-    <RulesDetailLayout icon="🏆" title="Americano"
+    <RulesDetailLayout icon={<TrophyIcon size={34}/>} title="Americano"
       sub="Wechselnde Partner, individuelle Punkte"
       visual={<AmericanoRotationVisual/>}
       onBackToRules={onBackToRules} onHome={onHome}
@@ -12559,7 +12565,7 @@ function RulesAmericano({onBackToRules,onHome,onNext,onPrev,currentIdx,totalSect
 
 function RulesMexicano({onBackToRules,onHome,onNext,onPrev,currentIdx,totalSections}){
   return(
-    <RulesDetailLayout icon="🎯" title="Mexicano"
+    <RulesDetailLayout icon={<TargetIcon size={30} color={T.o}/>} title="Mexicano"
       sub="Ranking-basierte Paarungen ab Runde 2"
       visual={<MexicanoPairingVisual/>}
       onBackToRules={onBackToRules} onHome={onHome}
@@ -12587,7 +12593,7 @@ function RulesMexicano({onBackToRules,onHome,onNext,onPrev,currentIdx,totalSecti
 
 function RulesRotation({onBackToRules,onHome,onNext,onPrev,currentIdx,totalSections}){
   return(
-    <RulesDetailLayout icon="⏱" title="Pausen & Rotation"
+    <RulesDetailLayout icon={<StopwatchIcon size={30} color={T.o}/>} title="Pausen & Rotation"
       sub="Fairer Rotations-Pool bei ungeraden Spielern"
       visual={<PausenPoolVisual/>}
       onBackToRules={onBackToRules} onHome={onHome}
@@ -12636,7 +12642,7 @@ function RulesGlossar({onBackToRules,onHome,onNext,onPrev,currentIdx,totalSectio
       stance:'Stand zentral, Racket leicht von oben nach unten geführt, weicher Touch ohne Schwung.'},
   ];
   return(
-    <RulesDetailLayout icon="📖" title="Schlagarten"
+    <RulesDetailLayout icon={<BookIcon size={30}/>} title="Schlagarten"
       sub="Körperhaltung & Treffpunkt der wichtigsten Schläge"
       onBackToRules={onBackToRules} onHome={onHome}
       onNext={onNext} onPrev={onPrev}
@@ -12890,14 +12896,14 @@ function BaelleVisual(){
 
 function Journey({onHome,onSelect,alreadyRead,onToggleRead,onBibel}){
   const sections=[
-    {id:'ritmodna',     icon:'🧬',title:'RITMO DNA',     sub:'Stil · Chemie · Tier-Matching · Levels'},
-    {id:'spielstile',   icon:'🎭',title:'Spielstile',    sub:'Die 6 Padel-Personalities'},
-    {id:'angaben',      icon:'🎯',title:'Aufschlag',     sub:'Reihenfolge, Position & Strategie'},
-    {id:'aufstellungen',icon:'👥',title:'Aufstellungen', sub:'Netz, Hinten, Verteidigung, Angriff'},
-    {id:'haende',       icon:'🤝',title:'Hand-Seiten',   sub:'Links-/Rechtshänder am Court'},
-    {id:'schlagwahl',   icon:'🎾',title:'Schlagwahl',    sub:'Wann welche Schlagart?'},
-    {id:'schlaeger',    icon:'🏓',title:'Schläger',      sub:'Rund, Diamant, Tropfen — Materialkunde'},
-    {id:'baelle',       icon:'🟡',title:'Bälle',         sub:'Tennis vs Padel — die Unterschiede'},
+    {id:'ritmodna',     icon:<DNAIcon size={24} color={T.o}/>,title:'RITMO DNA',     sub:'Stil · Chemie · Tier-Matching · Levels'},
+    {id:'spielstile',   icon:<MaskIcon size={24} color={T.o}/>,title:'Spielstile',    sub:'Die 6 Padel-Personalities'},
+    {id:'angaben',      icon:<TargetIcon size={24} color={T.o}/>,title:'Aufschlag',     sub:'Reihenfolge, Position & Strategie'},
+    {id:'aufstellungen',icon:<PeopleIcon size={24} color={T.o}/>,title:'Aufstellungen', sub:'Netz, Hinten, Verteidigung, Angriff'},
+    {id:'haende',       icon:<HandIcon size={24} color={T.o}/>,title:'Hand-Seiten',   sub:'Links-/Rechtshänder am Court'},
+    {id:'schlagwahl',   icon:<TennisBallIcon size={24}/>,title:'Schlagwahl',    sub:'Wann welche Schlagart?'},
+    {id:'schlaeger',    icon:<RacketMini size={24} color={T.o}/>,title:'Schläger',      sub:'Rund, Diamant, Tropfen — Materialkunde'},
+    {id:'baelle',       icon:<TennisBallIcon size={24}/>,title:'Bälle',         sub:'Tennis vs Padel — die Unterschiede'},
   ];
   return(
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
@@ -12925,7 +12931,7 @@ function Journey({onHome,onSelect,alreadyRead,onToggleRead,onBibel}){
             onPointerDown={e=>e.currentTarget.style.background=T.card2}
             onPointerUp={e=>e.currentTarget.style.background=T.card}
             onPointerLeave={e=>e.currentTarget.style.background=T.card}>
-            <div style={{fontSize:24,width:32,textAlign:'center'}}>{s.icon}</div>
+            <div style={{width:32,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>{s.icon}</div>
             <div style={{flex:1,minWidth:0}}>
               <div style={{color:T.t1,fontSize:15,fontWeight:700,marginBottom:2}}>{s.title}</div>
               <div style={{color:T.t3,fontSize:11,fontWeight:500}}>{s.sub}</div>
@@ -12952,7 +12958,7 @@ function JourneySpielstileList({onBack,onHome,onSelect}){
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
       <div style={{padding:'0 22px 8px'}}>
         <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
-          <div style={{fontSize:32,width:42,textAlign:'center'}}>🎭</div>
+          <div style={{width:42,display:'flex',justifyContent:'center'}}><MaskIcon size={30} color={T.o}/></div>
           <div style={{flex:1,minWidth:0}}>
             <div style={{color:T.t1,fontSize:22,fontWeight:800,letterSpacing:-.3}}>
               Die 6 Spielstile
@@ -13044,7 +13050,7 @@ function JourneySpielstile({styleId,onBack,onHome,onNext,onPrev,currentIdx,total
 
   return(
     <RulesDetailLayout
-      icon={style.symbol}
+      icon={<span style={{fontSize:28,fontWeight:900,lineHeight:1,color:style.accent}}>{style.symbol}</span>}
       title={style.name}
       sub={style.subtitle}
       visual={hero}
@@ -13184,7 +13190,7 @@ const MATCHING_LEVELS=[
   {id:'mirror',  name:'Mirror',  subtitle:'Spiegel Matching',  symbol:'≡',
    desc:'Gleicher Stil, gleiche DNA. Hohe Identität, aber Risiko von Schwächen-Dopplung.',
    color:'#E67E22'},
-  {id:'counter', name:'Counter', subtitle:'Gegensatz Matching',symbol:'⚡',
+  {id:'counter', name:'Counter', subtitle:'Gegensatz Matching',symbol:'≠',
    desc:'Stil-Konflikte verstehen und gezielt herausfordern. Der Clash der Archetypen.',
    color:'#9B59B6'},
 ];
@@ -13215,7 +13221,7 @@ const PLAYER_LEVELS=[
 function JourneyRitmoDNA({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalSections}){
   return(
     <RulesDetailLayout
-      icon="🧬"
+      icon={<DNAIcon size={32} color={T.o}/>}
       title="RITMO DNA"
       sub="Dein Stil. Deine Chemie. Dein Rhythmus."
       visual={
@@ -13432,7 +13438,7 @@ function JourneyRitmoDNA({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalS
 
 function JourneyAngaben({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalSections}){
   return(
-    <RulesDetailLayout icon="🎯" title="Aufschlag"
+    <RulesDetailLayout icon={<TargetIcon size={30} color={T.o}/>} title="Aufschlag"
       sub="Reihenfolge, Position & Strategie"
       visual={<AngabenVisual/>}
       onBackToRules={onBackToJourney} onHome={onHome}
@@ -13467,7 +13473,7 @@ function JourneyAngaben({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalSe
 
 function JourneyAufstellungen({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalSections}){
   return(
-    <RulesDetailLayout icon="👥" title="Aufstellungen"
+    <RulesDetailLayout icon={<PeopleIcon size={30} color={T.o}/>} title="Aufstellungen"
       sub="Netz, Hinten, Verteidigung, Angriff"
       visual={<AufstellungenVisual/>}
       onBackToRules={onBackToJourney} onHome={onHome}
@@ -13498,7 +13504,7 @@ function JourneyAufstellungen({onBackToJourney,onHome,onNext,onPrev,currentIdx,t
 
 function JourneyHaende({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalSections}){
   return(
-    <RulesDetailLayout icon="🤝" title="Hand-Seiten"
+    <RulesDetailLayout icon={<HandIcon size={30} color={T.o}/>} title="Hand-Seiten"
       sub="Links-/Rechtshänder am Court"
       visual={<HandSeitenVisual/>}
       onBackToRules={onBackToJourney} onHome={onHome}
@@ -13529,7 +13535,7 @@ function JourneyHaende({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalSec
 
 function JourneySchlagwahl({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalSections}){
   return(
-    <RulesDetailLayout icon="🎾" title="Schlagwahl"
+    <RulesDetailLayout icon={<TennisBallIcon size={32}/>} title="Schlagwahl"
       sub="Wann welche Schlagart?"
       visual={<SchlagwahlVisual/>}
       onBackToRules={onBackToJourney} onHome={onHome}
@@ -13564,7 +13570,7 @@ function JourneySchlagwahl({onBackToJourney,onHome,onNext,onPrev,currentIdx,tota
 
 function JourneySchlaeger({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalSections}){
   return(
-    <RulesDetailLayout icon="🏓" title="Schläger"
+    <RulesDetailLayout icon={<RacketMini size={30} color={T.o}/>} title="Schläger"
       sub="Rund, Diamant, Tropfen — Materialkunde"
       visual={<SchlaegerVisual/>}
       onBackToRules={onBackToJourney} onHome={onHome}
@@ -13603,7 +13609,7 @@ function JourneySchlaeger({onBackToJourney,onHome,onNext,onPrev,currentIdx,total
 
 function JourneyBaelle({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalSections}){
   return(
-    <RulesDetailLayout icon="🟡" title="Bälle"
+    <RulesDetailLayout icon={<TennisBallIcon size={32}/>} title="Bälle"
       sub="Tennis vs Padel — die Unterschiede"
       visual={<BaelleVisual/>}
       onBackToRules={onBackToJourney} onHome={onHome}

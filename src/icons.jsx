@@ -161,10 +161,12 @@ export function JoinIcon({size=32}){
 
 /* ─── Tab-Bar Icons ───────────────────────────────────────────── */
 export function HomeIcon({active,size=22}){
+  // aktiv = filled in Textfarbe (weiß im Dark-Theme), kein Blau mehr;
+  // die Tür bleibt durch die konkave Pfadform ausgespart.
   return(<svg width={size} height={size} viewBox="0 0 22 22" fill="none">
     <path d="M3 10 L11 3 L19 10 L19 19 L13.5 19 L13.5 13 L8.5 13 L8.5 19 L3 19 Z"
-      stroke={active?T.blue:T.t1} strokeWidth="1.7" strokeLinejoin="round"
-      fill={active?T.blueSoft:'none'}/>
+      stroke={T.t1} strokeWidth="1.7" strokeLinejoin="round"
+      fill={active?T.t1:'none'}/>
   </svg>);
 }
 export function LiveIcon({active,size=22}){

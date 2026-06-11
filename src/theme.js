@@ -649,6 +649,30 @@ button:disabled{cursor:not-allowed;opacity:.55;}
     inset 0 -1px 0 rgba(0,0,0,.06);
 }
 
+/* Tab-TAP: die Pill remountet am Ziel (key in App.jsx) und
+   „kondensiert" dort — Opacity + eigener Blur klingen ab, während
+   der Backdrop-Blur hochrampt. Liest sich wie flüssiges Glas, das
+   sich am neuen Tab sammelt. transform bleibt unangetastet, das
+   inline-translate positioniert weiterhin. */
+@keyframes pillBlend{
+  0%{
+    opacity:0;
+    filter:blur(7px);
+    -webkit-backdrop-filter:blur(2px) saturate(105%);
+    backdrop-filter:blur(2px) saturate(105%);
+  }
+  55%{opacity:1;}
+  100%{
+    opacity:1;
+    filter:blur(0px);
+    -webkit-backdrop-filter:blur(20px) saturate(180%);
+    backdrop-filter:blur(20px) saturate(180%);
+  }
+}
+.liquid-pill[data-blend="true"]{
+  animation:pillBlend 600ms var(--ease-out-expo) both;
+}
+
 /* Greif-Zustand der Pill: solange der Finger sie führt, KEINE
    Position/Größen-Transition (sonst „schwimmt" sie hinterher) —
    dafür sichtbar „angehoben": hellere Kante, tieferer Schatten,
@@ -786,6 +810,11 @@ a:focus-visible{
   0%,100%{transform:translateY(0);}
   50%{transform:translateY(-3px);}
 }
+/* Zoom-In — Entrance mit leichtem Back-Overshoot (Profil-Stagger). */
+@keyframes zoomIn{
+  from{opacity:0;transform:scale(.9);}
+  to{opacity:1;transform:scale(1);}
+}
 
 /* ── Utility-Klassen ── */
 .nav-icon-active{animation:navIconBounce var(--anim-spring) ease both;}
@@ -794,6 +823,7 @@ a:focus-visible{
 .slide-down{animation:slideDown var(--anim-base) ease both;}
 .slide-in-right{animation:slideInRight var(--anim-base) ease both;}
 .press-pop{animation:pressPop var(--anim-spring) ease both;}
+.zi{animation:zoomIn .45s var(--ease-out-back) both;}
 .glow-pulse{animation:glowPulse 1.8s ease-in-out infinite;}
 .float-y{animation:floatY 3.2s ease-in-out infinite;}
 .skeleton{

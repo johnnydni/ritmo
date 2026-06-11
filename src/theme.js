@@ -669,14 +669,19 @@ button:disabled{cursor:not-allowed;opacity:.55;}
    5 Themes; die erste background-Zeile ist der Fallback für
    Browser ohne color-mix. */
 .glass-bar{
+  /* iOS systemChromeMaterial (per expo building-native-ui Skill):
+     DÜNNERE Tönung + MEHR Blur (≈ intensity 100) als zuvor, dazu
+     ein deutlicher Specular-Highlight an der Oberkante und eine
+     dunkle Untergrenze — das ergibt die typische iOS-26-Bar-Linse. */
   background:var(--card);
-  background:color-mix(in srgb, var(--card) 55%, transparent);
-  -webkit-backdrop-filter:blur(22px) saturate(180%);
-  backdrop-filter:blur(22px) saturate(180%);
-  border:1px solid color-mix(in srgb, var(--t1) 13%, transparent);
+  background:color-mix(in srgb, var(--card) 46%, transparent);
+  -webkit-backdrop-filter:blur(28px) saturate(170%);
+  backdrop-filter:blur(28px) saturate(170%);
+  border:1px solid color-mix(in srgb, var(--t1) 12%, transparent);
   box-shadow:
-    0 8px 28px rgba(0,0,0,.28),
-    inset 0 1px 0 color-mix(in srgb, #fff 16%, transparent);
+    0 10px 30px rgba(0,0,0,.26),
+    inset 0 1px 0 color-mix(in srgb, #fff 22%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, #000 18%, transparent);
 }
 
 /* ── Bottom-Fade — ersetzt die Fußzeilen: Inhalte laufen unter

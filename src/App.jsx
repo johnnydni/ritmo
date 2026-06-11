@@ -2347,11 +2347,14 @@ function TabBar({active,onTab}){
       // untere Kante, der sichtbare „Strich"/Spalt darunter verschwindet.
       bottom:'calc(env(safe-area-inset-bottom, 0px) * 0.3 + 2px)',
       left:0,right:0,display:'flex',alignItems:'center',justifyContent:'center',gap:10,
-      padding:'0 20px',pointerEvents:'none',zIndex:5}}>
+      padding:'0 14px',pointerEvents:'none',zIndex:5}}>
+      {/* Flacher + breiter: die Bar streckt sich über die verfügbare
+          Breite (flex:1, gedeckelt), die Tabs teilen sie gleichmäßig. */}
       <div ref={navRef} onPointerDown={onBarPointerDown}
         className="glass-bar"
         style={{position:'relative',display:'flex',alignItems:'center',gap:2,
-        borderRadius:30,padding:'5px',pointerEvents:'auto',
+        flex:1,maxWidth:440,
+        borderRadius:26,padding:'4px 6px',pointerEvents:'auto',
         // touchAction none: während des Pill-Drags darf der Browser
         // die Pointer-Events nicht für Scroll/Swipe übernehmen.
         touchAction:'none',
@@ -2397,13 +2400,15 @@ function TabBar({active,onTab}){
                 if(e.pointerType==='mouse'&&!grabFlag.current) setHovered(null);
               }}
               style={{display:'flex',flexDirection:'column',alignItems:'center',
-                justifyContent:'center',gap:4,
-                /* eBay-Style: Icon oben, Label IMMER darunter — dadurch
-                   ist die Bar deutlich höher; alle Tabs gleich breit,
+                justifyContent:'center',gap:3,
+                /* eBay-Style: Icon oben, Label IMMER darunter. Flach
+                   gehalten (kompakte Paddings) und per flex:1 über die
+                   volle Bar-Breite verteilt — alle Tabs gleich breit,
                    die Pill bleibt damit konstant groß. */
-                padding:hidden?'13px 0':'13px 6px',
-                minWidth:hidden?0:62,
-                maxWidth:hidden?0:80,
+                padding:hidden?'9px 0':'9px 4px',
+                flex:hidden?'0 0 0':'1 1 0',
+                minWidth:0,
+                maxWidth:hidden?0:140,
                 opacity:hidden?0:1,
                 overflow:'hidden',
                 borderRadius:24,border:'none',cursor:'pointer',
@@ -2420,7 +2425,7 @@ function TabBar({active,onTab}){
               <span key={isActive?'on':'off'}
                 className={isActive?'nav-icon-active':''}
                 style={{display:'inline-flex',transformOrigin:'center'}}>
-                <Icon active={isActive||isPreview} size={23}/>
+                <Icon active={isActive||isPreview} size={21}/>
               </span>
               <span style={{fontSize:10,whiteSpace:'nowrap',letterSpacing:.1,
                 color:isActive?T.blue:T.t3,fontWeight:isActive?800:600,

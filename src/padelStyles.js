@@ -25,6 +25,9 @@ export const PADEL_STYLES={
       {id:'toro',why:'Du gleichst Toros Risiko aus und stabilisierst das Match.'},
       {id:'fantasma',why:'Du verankerst Fantasmas Chaos mit Konstanz.'},
     ],
+    persona:'Hinter Chico / Chica steckt meist der Teamplayer der Gruppe: ruhig, lösungsorientiert, eher Beobachter als Lautsprecher. Diese Spieler:innen wollen das Match erst verstehen, bevor sie es dominieren — sie sammeln Informationen, passen sich an und werden im Verlauf eines Satzes spürbar stärker. Partner lieben sie, weil sie Fehler verzeihen und Lücken füllen.',
+    watchout:'Deine Ausgewogenheit kann zur Komfortzone werden: Wer immer die sichere Lösung wählt, lässt Big Points liegen. Achte darauf, in entscheidenden Momenten bewusst Initiative zu übernehmen — sonst diktieren andere die Schlüsselpunkte und du verwaltest nur das Match, statt es zu gewinnen.',
+    counter:'Gegen Chico / Chica gewinnst du nicht über Geduld — die haben sie selbst. Zwing sie früh in extreme Situationen: hohes Tempo auf den Körper, klare Seitenwechsel, Druck auf den Big Points. Wer ihnen Zeit gibt, spielt am Ende gegen eine immer besser werdende Version des Gegners.',
     accent:'#C9943A', card:'#2E1E08', text:'#FFF3D9', symbol:'○',
   },
   toro:{
@@ -44,6 +47,9 @@ export const PADEL_STYLES={
       {id:'muro',why:'Muro liefert die Defensive, die deine Aggression absichert.'},
       {id:'chico',why:'Chico balanciert deine Spitzen und macht weniger Fehler.'},
     ],
+    persona:'Toros sind die Energiequelle auf dem Court: kompetitiv, laut, präsent. Sie brauchen das Gefühl, das Match zu führen — und bringen dafür eine Intensität mit, die Partner tragen und Gegner brechen kann. Hinter der Aggression steckt oft ein feines Gespür für Momentum: Toro riecht, wann ein Match kippt, und geht genau dann auf den Punkt.',
+    watchout:'Dein größter Gegner bist du selbst: Überhastung in engen Phasen, Frust nach zwei Fehlern in Folge, Risiko aus Prinzip statt aus Situation. Plane bewusst Reset-Punkte ein — ein hoher, ruhiger Lob ist keine Schwäche, sondern die Vorbereitung für deinen nächsten Angriff.',
+    counter:'Nimm Toro das Netz und das Tempo: tiefe Lobs, Bälle auf die Füße, keine Höhe zum Smashen. Lass ihn drei, vier Schläge mehr spielen, als er will — Toros schlagen sich an einer geduldigen Wand oft selbst. Und bleib ruhig: Jede sichtbare Emotion füttert seine Dominanz.',
     accent:'#C0392B', card:'#2A0808', text:'#FFE0DC', symbol:'▲',
   },
   individuoso:{
@@ -63,6 +69,9 @@ export const PADEL_STYLES={
       {id:'motor',why:'Motor exekutiert deine Pläne mit Tempo und Reichweite.'},
       {id:'toro',why:'Toro setzt deine taktischen Lücken in Punkte um.'},
     ],
+    persona:'Individuosos sind die Schachspieler: analytisch, strukturiert, oft die, die nach dem Match noch einzelne Punkte rekonstruieren. Sie lieben Muster — im Spiel wie im Kopf — und schlagen zu, wenn der Plan aufgeht. Emotionen zeigen sie selten, lesen sie beim Gegner aber präzise. Ihr bester Schlag ist die Entscheidung zwei Bälle vorher.',
+    watchout:'Overthinking ist deine Falle: Wenn der Plan nicht greift, brauchst du einen Plan B statt einer Analyse-Schleife mitten im Punkt. Und manchmal ist der einfache, direkte Ball die beste Strategie — nicht jeder Punkt braucht drei Ebenen und eine Pointe.',
+    counter:'Brich den Rhythmus, bevor er entsteht: Tempo-Wechsel, ungewöhnliche Positionen, bewusst „unlogische" Bälle. Individuoso lebt von Mustern — gib ihm keine. Kontrolliertes Chaos ist gegen diesen Typ keine Schwäche, sondern die wirksamste Taktik.',
     accent:'#2471A3', card:'#071828', text:'#D0E8FF', symbol:'■',
   },
   muro:{
@@ -82,6 +91,9 @@ export const PADEL_STYLES={
       {id:'toro',why:'Toro liefert die Offensive, die du absicherst.'},
       {id:'fantasma',why:'Fantasma erzeugt Überraschung, du bringst den Rest zurück.'},
     ],
+    persona:'Muros sind die Ruhepole: geduldig, mental stabil, oft die fairsten Spieler:innen auf der Anlage. Sie definieren Erfolg über Kontrolle statt über Highlights und feiern innerlich jeden Gegnerfehler wie einen eigenen Winner. Aus der Ruhe bringen kann sie wenig — und genau das macht sie über drei Sätze so unangenehm.',
+    watchout:'Pass auf, dass aus Geduld keine Passivität wird: Wer nur zurückbringt, gibt dem Gegner unendlich viele Versuche. Such dir in jedem Punkt einen Moment, in dem DU aktiv wirst — die überraschende Initiative der „Wand" ist doppelt so gefährlich wie jede erwartete.',
+    counter:'Gegen Muro gewinnt nicht der schönere Ball, sondern der klügere Aufbau: Spiel kurz-lang, hol ihn ans Netz (dort ist die Wand am dünnsten) und bleib mental ruhig. Muro gewinnt den Punkt nicht — er wartet auf deinen Fehler. Gib ihm keinen, dann wackelt die Wand.',
     accent:'#1E8449', card:'#071A0E', text:'#C8F0D8', symbol:'⬡',
   },
   fantasma:{
@@ -101,6 +113,9 @@ export const PADEL_STYLES={
       {id:'muro',why:'Muro fängt deine kreativen Risiken sicher auf.'},
       {id:'chico',why:'Chico bringt Konstanz in dein verspieltes Repertoire.'},
     ],
+    persona:'Fantasmas sind die Künstler: intuitiv, verspielt, allergisch gegen Routine. Sie spielen Padel, weil es schön sein kann — der unmögliche Winkel zählt für sie doppelt. Diese Spieler:innen spüren Momente, statt sie zu planen, und drehen Matches mit Ideen, die niemand trainiert hat. Mit Fantasma wird kein Match langweilig, versprochen.',
+    watchout:'Dein Risiko: Kreativität als Selbstzweck. Der Trickshot beim Satzball ist Instagram, nicht Matchgewinn. Definiere dir Zonen — in engen Phasen die einfache Lösung, deine Magie hebst du für Momente auf, in denen sie das Match dreht, statt es zu verschenken.',
+    counter:'Gegen Fantasma hilft Struktur: Erwarte das Unerwartete, statt es lesen zu wollen. Steh einen halben Schritt zentraler, spiel konsequent auf den Partner und bleib emotionslos bei seinen Highlights — Fantasma lebt vom Publikum. Ohne Bühne wird der Geist erstaunlich normal.',
     accent:'#7D3C98', card:'#180828', text:'#EDD8FF', symbol:'●',
   },
   motor:{
@@ -120,6 +135,9 @@ export const PADEL_STYLES={
       {id:'individuoso',why:'Individuoso lenkt deine Energie taktisch klug.'},
       {id:'muro',why:'Muro hält den Court, während du jagst.'},
     ],
+    persona:'Motors sind die Kämpfer: ehrgeizig, fit, mental unermüdlich. Aufgeben existiert in ihrem Vokabular nicht — der „verlorene" Ball ist für sie eine Einladung. Oft sind es die Spieler:innen, die als erste auf der Anlage stehen und als letzte gehen. Ihr Spiel ist ein Versprechen an den Partner: Ich bin da, immer.',
+    watchout:'Deine Energie ist endlich, auch wenn es sich nicht so anfühlt: Wer jeden Ball mit hundert Prozent jagt, hat im dritten Satz nichts mehr übrig. Lern, Punkte zu lesen — manche Bälle darf man ziehen lassen, damit die Beine die wirklich wichtigen gewinnen.',
+    counter:'Lauf Motor nicht hinterher — lass IHN laufen, aber klug: kurze Winkel statt langer Diagonalen leeren seinen Akku schneller als deinen. Und beende Punkte am Netz konsequent beim ersten Versuch: Gegen Motor ist der zweite Matchball immer schwerer als der erste.',
     accent:'#27AE60', card:'#071A10', text:'#C8FFE0', symbol:'▶▶',
   },
 };

@@ -1435,6 +1435,84 @@ function StyleVisual({styleId}){
   );
 }
 
+/* Kompakte 3D-Spielkarte für den DNA-Screen: Querformat, volle
+   Breite, NUR Labels (Name/Subtitle/Symbol) auf dem Stil-Bild in
+   einem Creme-Rahmen — die Beschreibung wohnt außerhalb der Karte. */
+function StylePlayingCard({styleId}){
+  const s=PADEL_STYLES[styleId];
+  const filename=STYLE_IMAGES[styleId];
+  const[imgError,setImgError]=useState(false);
+  if(!s) return null;
+  return(
+    <div style={{background:'#F5EDDC',borderRadius:22,padding:8,
+      boxShadow:'0 18px 44px rgba(0,0,0,.5), 0 4px 14px rgba(0,0,0,.35)'}}>
+      <div style={{position:'relative',height:116,borderRadius:15,overflow:'hidden',
+        background:s.accent}}>
+        {!imgError&&filename&&(
+          <img src={`${getAssetBase()}assets/${filename}`} alt={s.name}
+            onError={()=>setImgError(true)} draggable={false}
+            style={{position:'absolute',inset:0,width:'100%',height:'100%',
+              objectFit:'cover',objectPosition:'center 28%',userSelect:'none'}}/>
+        )}
+        <div aria-hidden="true" style={{position:'absolute',inset:0,
+          background:'linear-gradient(180deg, rgba(0,0,0,.04) 40%, rgba(0,0,0,.5) 100%)'}}/>
+        <div style={{position:'absolute',left:10,top:7,color:'#FFF',fontSize:17,
+          fontWeight:900,textShadow:'0 1px 6px rgba(0,0,0,.55)'}}>{s.symbol}</div>
+      </div>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',
+        gap:10,padding:'10px 8px 4px'}}>
+        <div style={{minWidth:0}}>
+          <div style={{color:'#1A1A1A',fontSize:24,fontWeight:900,letterSpacing:-.5,
+            lineHeight:1,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
+            {s.name.toUpperCase()}
+          </div>
+          <div style={{color:'#1A1A1A',fontSize:10,fontWeight:800,letterSpacing:2,
+            textTransform:'uppercase',marginTop:3,opacity:.65}}>
+            {s.subtitle.toUpperCase()}
+          </div>
+        </div>
+        <div style={{color:s.accent,fontSize:22,fontWeight:900,flexShrink:0}}>{s.symbol}</div>
+      </div>
+    </div>
+  );
+}
+
+/* Sektion im DNA-Screen: Accent-Icon-Chip + Titel + Fließtext,
+   optional Schwächen-Chips und ein großes, schwach sichtbares
+   animiertes Stil-Sigil als Hintergrund-Deko. */
+function DnaSection({icon,title,children,chips,accent,deco,delay}){
+  return(
+    <div className="fu" style={{animationDelay:delay,position:'relative',
+      background:T.card,border:`1px solid ${T.border}`,borderRadius:19,
+      padding:'16px 18px',marginBottom:14,overflow:'hidden'}}>
+      {deco&&(
+        <div aria-hidden="true" style={{position:'absolute',right:-12,bottom:-16,
+          opacity:.09,pointerEvents:'none'}}>{deco}</div>
+      )}
+      <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:9}}>
+        <span style={{width:30,height:30,borderRadius:11,flexShrink:0,
+          background:rgba(accent,0.14),border:`1px solid ${rgba(accent,0.5)}`,
+          color:accent,display:'inline-flex',alignItems:'center',justifyContent:'center'}}>
+          {icon}
+        </span>
+        <span style={{color:T.t1,fontSize:14,fontWeight:800,letterSpacing:-.2}}>{title}</span>
+      </div>
+      <div style={{color:T.t2,fontSize:13,lineHeight:1.65,position:'relative'}}>{children}</div>
+      {chips&&chips.length>0&&(
+        <div style={{display:'flex',flexWrap:'wrap',gap:6,marginTop:11,position:'relative'}}>
+          {chips.map(c=>(
+            <span key={c} style={{padding:'3px 9px',borderRadius:7,fontSize:10.5,
+              fontWeight:700,letterSpacing:.3,color:accent,
+              background:rgba(accent,0.1),border:`1px solid ${rgba(accent,0.45)}`}}>
+              {c}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function StyleHeroCard({styleId}){
   const s=PADEL_STYLES[styleId];
   if(!s) return null;
@@ -1647,14 +1725,65 @@ function ProfileRitmoDNA({profile,onBack,onHome}){
         position:'relative',zIndex:2,
       }}>
 
-        {/* Spielstil Hero — 35% kleiner, Swoosh-Entrance mit Drehung
-            im Charakter des Spielstils (aggro/calm/creative). */}
-        {profile.styleType&&(
+        {/* Spielkarte — volle Breite, flach, nur Labels. Dealt sich
+            wie eine echte 3D-Karte herein (rotateY-Drehung), Charakter
+            je Spielstil (aggro/calm/creative). */}
+        {profile.styleType&&(<>
           <div className={`dna-swoosh-${SWOOSH[profile.styleType]||'calm'}`}
-            style={{width:'65%',margin:'0 auto 18px',transformOrigin:'center'}}>
-            <StyleHeroCard styleId={profile.styleType}/>
+            style={{transformOrigin:'center',marginBottom:16}}>
+            <StylePlayingCard styleId={profile.styleType}/>
           </div>
-        )}
+
+          {/* Beschreibung — bewusst AUSSERHALB der Karte */}
+          <div className="fu" style={{animationDelay:'.4s',marginBottom:4,padding:'0 2px'}}>
+            <div style={{color:accent,fontSize:12.5,fontWeight:800,letterSpacing:1.4,
+              textTransform:'uppercase',marginBottom:8}}>
+              „{style.tagline}"
+            </div>
+            <div style={{color:T.t2,fontSize:13.5,lineHeight:1.65}}>
+              {style.desc}
+            </div>
+          </div>
+
+          {/* Animierte Stil-Sigille — jede Kategorie bringt ihre
+              eigene Bewegung mit (ArchetypeGlyph-Loops) */}
+          <div className="fu" aria-hidden="true" style={{animationDelay:'.5s',
+            display:'flex',justifyContent:'center',alignItems:'center',gap:22,
+            margin:'18px 0 22px'}}>
+            {[34,25,19].map((sz,i)=>(
+              <span key={i} className="float-y" style={{animationDelay:`${i*.45}s`,
+                opacity:[1,.5,.28][i],display:'inline-flex'}}>
+                <ArchetypeGlyph type={profile.styleType} active color={accent} size={sz}/>
+              </span>
+            ))}
+          </div>
+
+          {/* Die Persönlichkeit dahinter */}
+          {style.persona&&(
+            <DnaSection delay=".56s" accent={accent} title="Die Persönlichkeit dahinter"
+              icon={<MaskIcon size={18}/>}
+              deco={<ArchetypeGlyph type={profile.styleType} active color={accent} size={96}/>}>
+              {style.persona}
+            </DnaSection>
+          )}
+
+          {/* Worauf du achten musst */}
+          {style.watchout&&(
+            <DnaSection delay=".64s" accent={accent} title="Worauf du achten musst"
+              icon={<WarnIcon size={18}/>}
+              chips={style.weaknesses}>
+              {style.watchout}
+            </DnaSection>
+          )}
+
+          {/* So spielt man gegen dich */}
+          {style.counter&&(
+            <DnaSection delay=".72s" accent={accent} title="So spielt man gegen dich"
+              icon={<TargetIcon size={18}/>}>
+              {style.counter}
+            </DnaSection>
+          )}
+        </>)}
 
         {/* Section: Level & Ring */}
         {lvl!=null&&style&&(

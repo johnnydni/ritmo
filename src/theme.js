@@ -11,6 +11,7 @@
 
 export const T = {
   bg:       'var(--bg)',
+  bgGrad:   'var(--bgGrad)',    // Screen-Hintergrund: sanfter Tiefen-Gradient (endet in --bg)
   card:     'var(--card)',
   card2:    'var(--card2)',
   border:   'var(--border)',
@@ -56,6 +57,18 @@ export const CSS = `
   --blueGlow: rgba(10,132,255,0.5);
   --gold: #C8A878;
   --headerGrad: linear-gradient(90deg, #FFC037 0%, #5F4848 100%);
+  /* Screen-Hintergrund: statt flachem Schwarz ein angenehmer dunkler
+     Verlauf — oben eine weiche „Dome"-Aufhellung plus ein Hauch
+     Brand-Wärme rechts oben, unten exakt --bg (damit Bottom-Fade und
+     Navbar nahtlos einblenden). var()-Substitution passiert erst am
+     Verwendungsort → der Verlauf folgt automatisch jedem Theme,
+     obwohl er nur hier einmal definiert ist. Browser ohne color-mix
+     ignorieren den Wert; body bleibt als --bg-Fallback dahinter. */
+  --bgGrad:
+    radial-gradient(130% 55% at 84% -10%,
+      color-mix(in srgb, var(--o) 7%, transparent) 0%, transparent 58%),
+    radial-gradient(125% 80% at 50% 0%,
+      color-mix(in srgb, var(--t1) 7%, var(--bg)) 0%, var(--bg) 74%);
 }
 :root[data-theme="light"] {
   /* Clean-Modern: hellgrau abgestufte Flächen, weicheres Schwarz für
@@ -604,7 +617,7 @@ button:disabled{cursor:not-allowed;opacity:.55;}
   position:absolute;
   top:0;
   left:0;
-  border-radius:24px;
+  border-radius:999px; /* Kapsel — matcht die voll gerundete Bar */
   background:linear-gradient(135deg,
     rgba(255,255,255,.10) 0%,
     rgba(255,255,255,.04) 50%,
@@ -647,6 +660,30 @@ button:disabled{cursor:not-allowed;opacity:.55;}
     0 4px 14px rgba(0,0,0,.10),
     inset 0 1px 0 rgba(255,255,255,.55),
     inset 0 -1px 0 rgba(0,0,0,.06);
+}
+
+/* Tab-TAP: die Pill remountet am Ziel (key in App.jsx) und
+   „kondensiert" dort — Opacity + eigener Blur klingen ab, während
+   der Backdrop-Blur hochrampt. Liest sich wie flüssiges Glas, das
+   sich am neuen Tab sammelt. transform bleibt unangetastet, das
+   inline-translate positioniert weiterhin. */
+@keyframes pillBlend{
+  0%{
+    opacity:0;
+    filter:blur(7px);
+    -webkit-backdrop-filter:blur(2px) saturate(105%);
+    backdrop-filter:blur(2px) saturate(105%);
+  }
+  55%{opacity:1;}
+  100%{
+    opacity:1;
+    filter:blur(0px);
+    -webkit-backdrop-filter:blur(20px) saturate(180%);
+    backdrop-filter:blur(20px) saturate(180%);
+  }
+}
+.liquid-pill[data-blend="true"]{
+  animation:pillBlend 600ms var(--ease-out-expo) both;
 }
 
 /* Greif-Zustand der Pill: solange der Finger sie führt, KEINE
@@ -786,6 +823,11 @@ a:focus-visible{
   0%,100%{transform:translateY(0);}
   50%{transform:translateY(-3px);}
 }
+/* Zoom-In — Entrance mit leichtem Back-Overshoot (Profil-Stagger). */
+@keyframes zoomIn{
+  from{opacity:0;transform:scale(.9);}
+  to{opacity:1;transform:scale(1);}
+}
 
 /* ── Utility-Klassen ── */
 .nav-icon-active{animation:navIconBounce var(--anim-spring) ease both;}
@@ -794,6 +836,10 @@ a:focus-visible{
 .slide-down{animation:slideDown var(--anim-base) ease both;}
 .slide-in-right{animation:slideInRight var(--anim-base) ease both;}
 .press-pop{animation:pressPop var(--anim-spring) ease both;}
+.zi{animation:zoomIn .45s var(--ease-out-back) both;}
+/* Horizontale Card-Galerien (Discover): Scrollbar ausblenden, iOS-Look. */
+.hscroll{scrollbar-width:none;-ms-overflow-style:none;}
+.hscroll::-webkit-scrollbar{display:none;height:0;}
 .glow-pulse{animation:glowPulse 1.8s ease-in-out infinite;}
 .float-y{animation:floatY 3.2s ease-in-out infinite;}
 .skeleton{

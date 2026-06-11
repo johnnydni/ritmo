@@ -59,7 +59,7 @@ import { PADEL_STYLES, PADEL_QUIZ, computeStyle, computeMatchTier, STYLE_IMAGES 
 /* ─── Landing pages ─────────────────────────────────────────── */
 function RulesLanding({onHome,onContinue,onMarkRead,alreadyRead}){
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden'}}>
       {/* Header */}
       <div style={{paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',
@@ -106,7 +106,7 @@ function RulesLanding({onHome,onContinue,onMarkRead,alreadyRead}){
 
 function JourneyLanding({onHome,onContinue,onMarkRead,alreadyRead}){
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden'}}>
       {/* Header */}
       <div style={{padding:'calc(env(safe-area-inset-top,0px) + 60px) 22px 18px',
@@ -222,7 +222,7 @@ function ServiceIndicator({servingTeam,isDeuce}){
 ═══════════════════════════════════════════════════════════════ */
 function BetaLanding({onLogin,onRegister}){
   return(
-    <div style={{minHeight:'100dvh',background:T.bg,color:T.t1,
+    <div style={{minHeight:'100dvh',background:T.bgGrad,color:T.t1,
       display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 40px)',
       paddingBottom:'calc(env(safe-area-inset-bottom,0px) + 32px)',
@@ -460,7 +460,7 @@ function Login({onSuccess,onRegister}){
   const onKeyDown=(e)=>{ if(e.key==='Enter') tryLogin(); };
 
   return(
-    <div style={{minHeight:'100dvh',background:T.bg,display:'flex',
+    <div style={{minHeight:'100dvh',background:T.bgGrad,display:'flex',
       flexDirection:'column',alignItems:'center',justifyContent:'center',
       padding:'calc(env(safe-area-inset-top,0px) + 40px) 22px calc(env(safe-area-inset-bottom,0px) + 40px)',
       overflow:'auto'}}>
@@ -709,7 +709,7 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
   };
 
   return(
-    <div style={{minHeight:'100dvh',background:T.bg,display:'flex',
+    <div style={{minHeight:'100dvh',background:T.bgGrad,display:'flex',
       flexDirection:'column',alignItems:'center',justifyContent:'center',
       padding:'calc(env(safe-area-inset-top,0px) + 40px) 22px calc(env(safe-area-inset-bottom,0px) + 40px)',
       overflow:'auto'}}>
@@ -929,7 +929,7 @@ function EmailVerification({email,onBack,onSignIn}){
   };
 
   return(
-    <div style={{minHeight:'100dvh',background:T.bg,display:'flex',
+    <div style={{minHeight:'100dvh',background:T.bgGrad,display:'flex',
       flexDirection:'column',alignItems:'center',justifyContent:'center',
       padding:'calc(env(safe-area-inset-top,0px) + 40px) 22px calc(env(safe-area-inset-bottom,0px) + 40px)'}}>
       <div className="fi" style={{width:'100%',maxWidth:380,display:'flex',
@@ -1021,7 +1021,7 @@ function PasswordRecovery({onDone}){
   };
 
   return(
-    <div style={{minHeight:'100dvh',background:T.bg,display:'flex',
+    <div style={{minHeight:'100dvh',background:T.bgGrad,display:'flex',
       flexDirection:'column',alignItems:'center',justifyContent:'center',
       padding:'calc(env(safe-area-inset-top,0px) + 40px) 22px calc(env(safe-area-inset-bottom,0px) + 40px)'}}>
       <div className="fi" style={{width:'100%',maxWidth:380,display:'flex',flexDirection:'column'}}>
@@ -1635,7 +1635,7 @@ function ProfileRitmoDNA({profile,onBack,onHome}){
   const accent=style?.accent||T.o;
 
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden'}}>
 
       {/* HEADER ZONE — colored with style accent */}
@@ -2021,7 +2021,7 @@ function Welcome({profile,setProfile,theme,setTheme,onComplete}){
   const goBack=()=>{ if(step>0) setStep(s=>s-1); };
 
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 30px)',position:'relative',overflow:'hidden'}}>
 
       {/* Header: chapter counter + skip */}
@@ -2093,28 +2093,52 @@ function Welcome({profile,setProfile,theme,setTheme,onComplete}){
 /* ═══════════════════════════════════════════════════════════════
    BOTTOM TAB BAR
 ═══════════════════════════════════════════════════════════════ */
-/* Tab-Icons für Profil + Suche — gleiche active-Signatur wie
-   HomeIcon/LiveIcon/GearIcon (blau getönt wenn aktiv). */
+/* Tab-Icons — Auswahl-Logik: aktiv = Icon wird FILLED in der normalen
+   Textfarbe (T.t1, „bleibt weiß"), KEIN Blau. Inaktiv = Outline. */
 function ProfilTabIcon({active,size=22}){
-  return(<span style={{display:'inline-flex',color:active?T.blue:T.t1}}>
+  if(active){
+    return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="8" r="4.3" fill={T.t1}/>
+      <path d="M 4 20.6 Q 4 13.4 12 13.4 Q 20 13.4 20 20.6 Z" fill={T.t1}/>
+    </svg>);
+  }
+  return(<span style={{display:'inline-flex',color:T.t1}}>
     <PersonGlyph size={size}/>
   </span>);
 }
 function SucheTabIcon({active,size=22}){
   return(<svg width={size} height={size} viewBox="0 0 22 22" fill="none">
-    <circle cx="9.5" cy="9.5" r="6" stroke={active?T.blue:T.t1} strokeWidth="1.7"
-      fill={active?T.blueSoft:'none'}/>
-    <line x1="14" y1="14" x2="19" y2="19" stroke={active?T.blue:T.t1}
-      strokeWidth="1.9" strokeLinecap="round"/>
+    <circle cx="9.5" cy="9.5" r="6" stroke={T.t1} strokeWidth="1.7"
+      fill={active?T.t1:'none'}/>
+    <line x1="14" y1="14" x2="19" y2="19" stroke={T.t1}
+      strokeWidth={active?2.4:1.9} strokeLinecap="round"/>
   </svg>);
 }
 function BibelTabIcon({active,size=22}){
-  const c=active?T.blue:T.t1;
   return(<svg width={size} height={size} viewBox="0 0 32 32" fill="none">
-    <path d="M4 7 L4 25 L15 27 L15 9 Z" stroke={c} strokeWidth="2.2"
-      strokeLinejoin="round" fill={active?T.blueSoft:'none'}/>
-    <path d="M28 7 L28 25 L17 27 L17 9 Z" stroke={c} strokeWidth="2.2"
-      strokeLinejoin="round" fill={active?T.blueSoft:'none'}/>
+    <path d="M4 7 L4 25 L15 27 L15 9 Z" stroke={T.t1} strokeWidth="2.2"
+      strokeLinejoin="round" fill={active?T.t1:'none'}/>
+    <path d="M28 7 L28 25 L17 27 L17 9 Z" stroke={T.t1} strokeWidth="2.2"
+      strokeLinejoin="round" fill={active?T.t1:'none'}/>
+  </svg>);
+}
+/* Live-Tab: Padel-Schläger als SVG (das PNG-LiveIcon kann nicht
+   „filled" — andere Verwendungen behalten es). Aktiv = gefüllter
+   Schlägerkopf mit ausgestanzten Löchern (evenodd). */
+function LiveTabIcon({active,size=22}){
+  const head="M12 2.6 C16.6 2.6 19.2 5.7 19.2 9.6 C19.2 13.6 16.1 16.1 12 16.1 C7.9 16.1 4.8 13.6 4.8 9.6 C4.8 5.7 7.4 2.6 12 2.6 Z";
+  const holes="M8.7 8.5 a1 1 0 1 0 2 0 a1 1 0 1 0 -2 0 Z M13.3 8.5 a1 1 0 1 0 2 0 a1 1 0 1 0 -2 0 Z M11 12.1 a1 1 0 1 0 2 0 a1 1 0 1 0 -2 0 Z";
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    {active
+      ?<path d={`${head} ${holes}`} fill={T.t1} fillRule="evenodd"/>
+      :<>
+        <path d={head} stroke={T.t1} strokeWidth="1.7" strokeLinejoin="round"/>
+        <circle cx="9.7" cy="8.5" r="0.95" fill={T.t1}/>
+        <circle cx="14.3" cy="8.5" r="0.95" fill={T.t1}/>
+        <circle cx="12" cy="12.1" r="0.95" fill={T.t1}/>
+      </>}
+    <line x1="12" y1="16.6" x2="12" y2="21" stroke={T.t1}
+      strokeWidth={active?3:2.6} strokeLinecap="round"/>
   </svg>);
 }
 
@@ -2125,6 +2149,14 @@ function BottomFade({height=118}){
   return <div className="bottom-fade" aria-hidden="true" style={{height}}/>;
 }
 
+/* Tab-Tap → Pill-Blend-Handshake über den Screen-Wechsel hinweg.
+   Jeder Screen mountet seine EIGENE TabBar; beim Tap wird der Blend
+   hier „bewaffnet" und vom TabBar-Mount des Ziel-Screens konsumiert.
+   Event-Handler feuern genau einmal → StrictMode-sicher (im Gegensatz
+   zu Initializer-/Effect-Seiteneffekten). Drag-Commits armen nicht —
+   nach dem Snap sitzt die Pill bereits unterm Finger. */
+let __navBlendArm=false;
+
 function TabBar({active,onTab}){
   // Such-FAB + Navbar-Suchmodus sind entfernt (Einstellungen haben ein
   // eigenes Suchfeld im Screen). Die früheren searchable/rightAction-
@@ -2133,8 +2165,8 @@ function TabBar({active,onTab}){
   const tabs=[
     {id:'home',label:'Home',Icon:HomeIcon},
     {id:'profil',label:'Profil',Icon:ProfilTabIcon},
+    {id:'live',label:'Live',Icon:LiveTabIcon},
     {id:'suche',label:'Suche',Icon:SucheTabIcon},
-    {id:'live',label:'Live',Icon:LiveIcon},
     {id:'bibel',label:'Bibel',Icon:BibelTabIcon},
   ];
   // Search-Mode: nur aktiv wenn searchable=true. Tab "Home" bleibt sichtbar,
@@ -2162,6 +2194,14 @@ function TabBar({active,onTab}){
   const[grab,setGrab]=useState(false);
   const grabFlag=useRef(false);
   const movedRef=useRef(false);
+  // ── Blend-in der Pill bei Tab-TAP ──
+  // Wurde dieser Mount durch einen Tab-Tap ausgelöst (__navBlendArm),
+  // „kondensiert" die Pill am aktiven Tab: Opacity + Blur klingen ab,
+  // der Backdrop-Blur rampt hoch (pillBlend-Keyframes). Beide
+  // StrictMode-Render-Pässe lesen das Flag nur; zurückgesetzt wird es
+  // erst im Mount-Effect → konsistenter Wert.
+  const[blendIn]=useState(()=>__navBlendArm);
+  useEffect(()=>{__navBlendArm=false;},[]);
 
   // Tab-Geometrien relativ zur Padding-Box des Navbars (gleicher
   // Bezugsrahmen wie die absolute Pill).
@@ -2343,9 +2383,9 @@ function TabBar({active,onTab}){
   return(
     <div style={{position:'absolute',
       // Navbar tiefer ansetzen: nur ~30% des Bottom-Safe-Insets als Abstand
-      // (vorher fast der volle Inset) → die Pill rutscht näher an die
-      // untere Kante, der sichtbare „Strich"/Spalt darunter verschwindet.
-      bottom:'calc(env(safe-area-inset-bottom, 0px) * 0.3 + 2px)',
+      // (vorher fast der volle Inset), zusätzlich 5px tiefer → die Bar
+      // hugt die untere Kante.
+      bottom:'calc(env(safe-area-inset-bottom, 0px) * 0.3 - 3px)',
       left:0,right:0,display:'flex',alignItems:'center',justifyContent:'center',gap:10,
       padding:'0 14px',pointerEvents:'none',zIndex:5}}>
       {/* Flacher + breiter: die Bar streckt sich über die verfügbare
@@ -2354,7 +2394,9 @@ function TabBar({active,onTab}){
         className="glass-bar"
         style={{position:'relative',display:'flex',alignItems:'center',gap:2,
         flex:1,maxWidth:440,
-        borderRadius:26,padding:'4px 6px',pointerEvents:'auto',
+        /* Flach + Kapsel: voll gerundete Enden (999), minimale
+           vertikale Paddings — die Bar liest sich als echte Pille. */
+        borderRadius:999,padding:'3px 5px',pointerEvents:'auto',
         // touchAction none: während des Pill-Drags darf der Browser
         // die Pointer-Events nicht für Scroll/Swipe übernehmen.
         touchAction:'none',
@@ -2363,10 +2405,12 @@ function TabBar({active,onTab}){
         {/* Liquid-Glass-Pill — folgt dem aktiven (bzw. hovered) Tab.
             Greifbar: pointerdown + Bewegung löst sie vom Raster, sie
             folgt dem Finger (data-grab), Loslassen snappt mit Spring
-            auf den nächsten Tab (iOS-26-Gefühl). */}
+            auf den nächsten Tab (iOS-26-Gefühl). Nach Tab-Tap (blendIn)
+            kondensiert das Glas am Ziel weich ein statt zu sliden. */}
         <div className="liquid-pill"
           data-hover={hovered!=null?'true':'false'}
           data-grab={grab?'true':'false'}
+          data-blend={blendIn?'true':'false'}
           style={{
             transform:`translate(${pill.left}px, ${pill.top}px)`,
             width:pill.width,
@@ -2387,6 +2431,9 @@ function TabBar({active,onTab}){
                 // auf dem Button unterm Finger — schlucken, der Drag
                 // hat den Tab bereits committet.
                 if(movedRef.current) return;
+                // Tap auf einen ANDEREN Tab → Blend-in der Pill auf
+                // dem Ziel-Screen bewaffnen (siehe __navBlendArm).
+                if(id!==active) __navBlendArm=true;
                 onTab(id);
               }}
               ref={el=>{tabRefs.current[id]=el;}}
@@ -2400,22 +2447,22 @@ function TabBar({active,onTab}){
                 if(e.pointerType==='mouse'&&!grabFlag.current) setHovered(null);
               }}
               style={{display:'flex',flexDirection:'column',alignItems:'center',
-                justifyContent:'center',gap:3,
+                justifyContent:'center',gap:2,
                 /* eBay-Style: Icon oben, Label IMMER darunter. Flach
                    gehalten (kompakte Paddings) und per flex:1 über die
                    volle Bar-Breite verteilt — alle Tabs gleich breit,
                    die Pill bleibt damit konstant groß. */
-                padding:hidden?'9px 0':'9px 4px',
+                padding:hidden?'6px 0':'6px 4px',
                 flex:hidden?'0 0 0':'1 1 0',
                 minWidth:0,
                 maxWidth:hidden?0:140,
                 opacity:hidden?0:1,
                 overflow:'hidden',
-                borderRadius:24,border:'none',cursor:'pointer',
+                borderRadius:999,border:'none',cursor:'pointer',
                 /* Hintergrund ist transparent — die Pill übernimmt
                    das "Active"-Indicator-Bild. */
                 background:'transparent',
-                color:isActive?T.blue:T.t2,
+                color:isActive?T.t1:T.t2,
                 fontSize:10,fontWeight:600,
                 position:'relative',zIndex:1,
                 transition:'min-width .25s ease, max-width .25s ease, padding .25s ease, opacity .2s ease, color var(--anim-base)'}}>
@@ -2425,10 +2472,10 @@ function TabBar({active,onTab}){
               <span key={isActive?'on':'off'}
                 className={isActive?'nav-icon-active':''}
                 style={{display:'inline-flex',transformOrigin:'center'}}>
-                <Icon active={isActive||isPreview} size={21}/>
+                <Icon active={isActive||isPreview} size={23}/>
               </span>
               <span style={{fontSize:10,whiteSpace:'nowrap',letterSpacing:.1,
-                color:isActive?T.blue:T.t3,fontWeight:isActive?800:600,
+                color:isActive?T.t1:T.t3,fontWeight:isActive?800:600,
                 transition:'color var(--anim-base)'}}>
                 {label}
               </span>
@@ -2584,25 +2631,106 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
   const isPublic=!profile.private;
   const togglePublic=()=>setProfile(p=>({...p,private:!p.private?true:false}));
 
+  // Accent für Hero + 3D-Blend: Spielstil-Farbe, sonst Theme-Orange.
+  // tint() mischt per color-mix — funktioniert mit Hex UND var(--o)
+  // (Hex+Alpha-Konkatenation würde an var() scheitern).
+  const hasStyle=!!(profile.styleType&&PADEL_STYLES[profile.styleType]);
+  const accent=hasStyle?PADEL_STYLES[profile.styleType].accent:'var(--o)';
+  const tint=p=>`color-mix(in srgb, ${accent} ${p}%, transparent)`;
+
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
-      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
+      position:'relative',overflow:'hidden'}}>
 
-      <div style={{padding:'0 22px 18px'}}>
-        <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.5,marginBottom:4}}>PROFIL</div>
-        <div style={{color:T.t1,fontSize:26,fontWeight:800,letterSpacing:-.3}}>
-          {profile.name||'Spieler'}
+      <div style={{flex:1,overflowY:'auto',WebkitOverflowScrolling:'touch'}}>
+
+        {/* ── HERO — Accent-Gradient + große Headline + 3D-Avatar ──
+            Der Gradient zieht bis hinter die Statusbar. Das Avatar hängt
+            per negativem marginBottom über die Hero-Unterkante und
+            „steht" auf der DNA-Card darunter: zIndex 2 + getragener
+            Schatten + Lichtschein in der Card = der 3D-Blend. */}
+        <div className="fi" style={{position:'relative',zIndex:2,
+          padding:'calc(env(safe-area-inset-top,0px) + 58px) 22px 0'}}>
+          <div aria-hidden="true" style={{position:'absolute',left:0,right:0,top:0,bottom:0,
+            background:`linear-gradient(180deg, ${tint(19)} 0%, ${tint(8)} 52%, transparent 100%)`,
+            pointerEvents:'none'}}/>
+          {/* Artistisches Wasserzeichen: das Level riesig & fast unsichtbar */}
+          {lvl!=null&&(
+            <div aria-hidden="true" style={{position:'absolute',right:10,
+              top:'calc(env(safe-area-inset-top,0px) + 34px)',
+              fontSize:96,fontWeight:900,letterSpacing:-5,lineHeight:1,
+              color:T.t1,opacity:.05,pointerEvents:'none',userSelect:'none'}}>
+              {lvl.toFixed(2)}
+            </div>
+          )}
+          <div style={{position:'relative'}}>
+            <div className="fu" style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.5}}>PROFIL</div>
+            <div className="fu" style={{animationDelay:'.04s',color:T.t1,fontSize:34,fontWeight:900,
+              letterSpacing:-1,lineHeight:1.05,marginTop:4}}>
+              {profile.name||'Spieler'}
+            </div>
+          </div>
+          {/* Avatar — überlappt die DNA-Card (3D-Blend) */}
+          <div className="zi" style={{animationDelay:'.1s',display:'flex',justifyContent:'center',
+            marginTop:16,marginBottom:-56,position:'relative',zIndex:2}}>
+            <div className="float-y" style={{borderRadius:'50%',padding:5,
+              background:`linear-gradient(165deg, ${accent} 0%, ${tint(22)} 48%, transparent 78%)`,
+              boxShadow:`0 26px 50px -14px ${tint(36)}, 0 12px 26px rgba(0,0,0,.42)`}}>
+              <AvatarWithUpload profile={profile} setProfile={setProfile} size={118}/>
+            </div>
+          </div>
         </div>
-      </div>
 
-      <div style={{flex:1,padding:'0 22px',overflowY:'auto',WebkitOverflowScrolling:'touch'}}>
+        <div style={{padding:'0 22px'}}>
 
-        {/* Spielniveau — avatar + level (TOP) */}
-        <div className="fi" style={{background:T.card,border:`1px solid ${T.border}`,
-          borderRadius:21,padding:'24px 20px',marginBottom:14,
-          display:'flex',alignItems:'center',gap:18}}>
-          <AvatarWithUpload profile={profile} setProfile={setProfile} size={72}/>
-          <div style={{flex:1,minWidth:0}}>
+        {/* RITMO DNA — das Avatar steht auf dieser Card. Oben Platz
+            (padding) + radialer Lichtschein, als würde das Avatar auf
+            das Glas leuchten. */}
+        {hasStyle?(
+          <button onClick={()=>onOpenRitmoDNA&&onOpenRitmoDNA()} className="fu"
+            style={{animationDelay:'.16s',width:'100%',
+              background:'linear-gradient(135deg,#1A1A1A 0%,#000000 100%)',
+              border:`1px solid ${PADEL_STYLES[profile.styleType].accent}40`,
+              borderRadius:24,padding:'78px 20px 22px',marginBottom:14,
+              position:'relative',overflow:'hidden',
+              boxShadow:`0 0 0 1px ${PADEL_STYLES[profile.styleType].accent}20, 0 4px 20px rgba(0,0,0,0.4)`,
+              cursor:'pointer',textAlign:'center',color:'#FFF'}}>
+            <div aria-hidden="true" style={{position:'absolute',left:0,right:0,top:0,height:130,
+              background:`radial-gradient(ellipse 62% 100% at 50% 0%, ${tint(24)} 0%, transparent 70%)`,
+              pointerEvents:'none'}}/>
+            <div style={{position:'relative'}}>
+              <div style={{fontSize:21,fontWeight:900,letterSpacing:-.3}}>
+                RITMO <span style={{color:PADEL_STYLES[profile.styleType].accent}}>DNA</span>
+              </div>
+              <div style={{color:'rgba(255,255,255,0.6)',fontSize:12,marginTop:4,lineHeight:1.4}}>
+                Dein Stil · Dein Rhythmus · Deine Stats
+              </div>
+              <div style={{display:'inline-flex',alignItems:'center',gap:7,marginTop:13,
+                padding:'8px 15px',borderRadius:999,
+                background:`${PADEL_STYLES[profile.styleType].accent}1F`,
+                border:`1px solid ${PADEL_STYLES[profile.styleType].accent}`,
+                color:PADEL_STYLES[profile.styleType].accent,
+                fontSize:11,fontWeight:800,letterSpacing:.5,textTransform:'uppercase'}}>
+                {PADEL_STYLES[profile.styleType].name} · {PADEL_STYLES[profile.styleType].subtitle}
+                <span style={{fontWeight:600}}>›</span>
+              </div>
+            </div>
+          </button>
+        ):(
+          <div className="fu" style={{background:T.card,border:`1px solid ${T.border}`,
+            borderRadius:24,padding:'78px 18px 18px',marginBottom:14,animationDelay:'.16s',
+            textAlign:'center'}}>
+            <div style={{color:T.t3,fontSize:13,lineHeight:1.5}}>
+              Spielstil noch nicht bestimmt — Onboarding-Quiz abschließen.
+            </div>
+          </div>
+        )}
+
+        {/* Spielniveau — eigene Karte, große Zahl (Edit wie gehabt) */}
+        <div className="zi" style={{animationDelay:'.22s',background:T.card,
+          border:`1px solid ${T.border}`,borderRadius:21,
+          padding:'20px 20px',marginBottom:14}}>
+          <div style={{minWidth:0}}>
             {lvl!=null?(
               <>
                 <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.3,
@@ -2639,7 +2767,7 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
                   </div>
                 ):(
                   <div style={{display:'flex',alignItems:'center',gap:10}}>
-                    <div style={{color:T.o,fontSize:38,fontWeight:900,letterSpacing:-.8,lineHeight:1}}>
+                    <div style={{color:T.o,fontSize:44,fontWeight:900,letterSpacing:-1.2,lineHeight:1}}>
                       {lvl.toFixed(2)}
                     </div>
                     {isEstimated&&(
@@ -2706,70 +2834,22 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
           </div>
         </div>
 
-        {/* RITMO DNA — Entry card to dedicated screen */}
-        {profile.styleType?(
-          <button onClick={()=>onOpenRitmoDNA&&onOpenRitmoDNA()} className="fu"
-            style={{animationDelay:'.05s',width:'100%',
-              background:'linear-gradient(135deg,#1A1A1A 0%,#000000 100%)',
-              border:`1px solid ${PADEL_STYLES[profile.styleType].accent}40`,
-              borderRadius:21,padding:'20px 20px',marginBottom:14,
-              display:'flex',alignItems:'center',gap:16,cursor:'pointer',
-              boxShadow:`0 0 0 1px ${PADEL_STYLES[profile.styleType].accent}20, 0 4px 20px rgba(0,0,0,0.4)`,
-              textAlign:'left',color:'#FFF'}}>
-            {/* DNA helix icon */}
-            <div style={{width:56,height:56,borderRadius:'50%',flexShrink:0,
-              background:`${PADEL_STYLES[profile.styleType].accent}22`,
-              border:`1.5px solid ${PADEL_STYLES[profile.styleType].accent}`,
-              display:'flex',alignItems:'center',justifyContent:'center'}}>
-              <svg width="30" height="30" viewBox="0 0 24 24" fill="none"
-                stroke={PADEL_STYLES[profile.styleType].accent} strokeWidth="2"
-                strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4 4 C 4 10, 20 14, 20 20"/>
-                <path d="M20 4 C 20 10, 4 14, 4 20"/>
-                <line x1="6" y1="6" x2="18" y2="6"/>
-                <line x1="6" y1="18" x2="18" y2="18"/>
-                <line x1="9" y1="10" x2="15" y2="10"/>
-                <line x1="9" y1="14" x2="15" y2="14"/>
-              </svg>
-            </div>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:3}}>
-                <div style={{fontSize:18,fontWeight:900,letterSpacing:-.3,color:'#FFF'}}>
-                  RITMO <span style={{color:PADEL_STYLES[profile.styleType].accent}}>DNA</span>
-                </div>
-              </div>
-              <div style={{color:'rgba(255,255,255,0.6)',fontSize:12,lineHeight:1.4}}>
-                Dein Stil · Dein Rhythmus · Deine Stats
-              </div>
-              <div style={{color:PADEL_STYLES[profile.styleType].accent,fontSize:11,
-                fontWeight:700,marginTop:6,letterSpacing:.5,textTransform:'uppercase'}}>
-                {PADEL_STYLES[profile.styleType].name} · {PADEL_STYLES[profile.styleType].subtitle}
-              </div>
-            </div>
-            <div style={{color:'rgba(255,255,255,0.4)',fontSize:22,fontWeight:600}}>›</div>
-          </button>
-        ):(
-          <div className="fu" style={{background:T.card,border:`1px solid ${T.border}`,
-            borderRadius:19,padding:'16px 18px',marginBottom:14,animationDelay:'.05s'}}>
-            <div style={{color:T.t3,fontSize:13,lineHeight:1.5}}>
-              Spielstil noch nicht bestimmt — Onboarding-Quiz abschließen.
-            </div>
-          </div>
-        )}
-
-        {/* Followers / Following — Counter-Karten, tap öffnet die Liste */}
-        <div className="fu" style={{display:'flex',gap:10,marginBottom:14,animationDelay:'.08s'}}>
-          <button onClick={()=>onOpenFollowers&&onOpenFollowers()}
-            style={{flex:1,background:T.card,border:`1px solid ${T.border}`,borderRadius:15,
-              padding:'14px 12px',textAlign:'center',cursor:'pointer',color:T.t1}}>
-            <div style={{fontSize:22,fontWeight:900,letterSpacing:-.3}}>{counts.followers}</div>
+        {/* Followers / Following — Counter-Karten, tap öffnet die Liste.
+            Bewusst leicht asymmetrisch animiert (eigene Delays). */}
+        <div style={{display:'flex',gap:10,marginBottom:14}}>
+          <button onClick={()=>onOpenFollowers&&onOpenFollowers()} className="zi"
+            style={{animationDelay:'.3s',flex:1,background:T.card,
+              border:`1px solid ${T.border}`,borderRadius:17,
+              padding:'16px 12px',textAlign:'center',cursor:'pointer',color:T.t1}}>
+            <div style={{fontSize:27,fontWeight:900,letterSpacing:-.5}}>{counts.followers}</div>
             <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.3,
               textTransform:'uppercase',marginTop:2}}>Follower</div>
           </button>
-          <button onClick={()=>onOpenFollowing&&onOpenFollowing()}
-            style={{flex:1,background:T.card,border:`1px solid ${T.border}`,borderRadius:15,
-              padding:'14px 12px',textAlign:'center',cursor:'pointer',color:T.t1}}>
-            <div style={{fontSize:22,fontWeight:900,letterSpacing:-.3}}>{counts.following}</div>
+          <button onClick={()=>onOpenFollowing&&onOpenFollowing()} className="zi"
+            style={{animationDelay:'.38s',flex:1,background:T.card,
+              border:`1px solid ${T.border}`,borderRadius:17,
+              padding:'16px 12px',textAlign:'center',cursor:'pointer',color:T.t1}}>
+            <div style={{fontSize:27,fontWeight:900,letterSpacing:-.5}}>{counts.following}</div>
             <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.3,
               textTransform:'uppercase',marginTop:2}}>Folgt</div>
           </button>
@@ -2779,7 +2859,7 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
             Spiegelt profile.private; das Schema-Trigger synchronisiert
             is_public beim Save, sodass das Profil in Suchen auftaucht. */}
         <div className="fu" style={{background:T.card,border:`1px solid ${T.border}`,
-          borderRadius:19,padding:'14px 18px',marginBottom:14,animationDelay:'.1s',
+          borderRadius:19,padding:'14px 18px',marginBottom:14,animationDelay:'.46s',
           display:'flex',alignItems:'center',gap:12}}>
           <div style={{flexShrink:0,width:36,height:36,borderRadius:13,background:T.card2,
             border:`1px solid ${T.border}`,color:isPublic?T.o:T.t3,
@@ -2807,7 +2887,7 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
         </div>
 
         {/* Actions */}
-        <div className="fu" style={{animationDelay:'.15s',
+        <div className="fu" style={{animationDelay:'.54s',
           display:'flex',flexDirection:'column',gap:8,marginBottom:16}}>
           {/* Einstellungen wohnen jetzt im Profil (kein eigener Tab mehr) */}
           <button onClick={onOpenSettings}
@@ -2836,6 +2916,7 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
         </div>
 
         <div style={{height:120,flexShrink:0}}/>
+        </div>{/* /Cards-Wrapper (padding 0 22px) */}
       </div>
 
       <BottomFade/>
@@ -2846,13 +2927,68 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
   );
 }
 
+/* ── „Discover the RITMO" — horizontale Card-Galerie (Apple-Health-
+   Look): große Bild-Cards mit starkem Radius, Scroll-Snap, Titel auf
+   dunklem Verlauf. id = nav()-Ziel; Bilder aus public/assets. */
+const DISCOVER_CARDS=[
+  {id:'news',          eyebrow:'News',      title:'Was gibt es neues?', img:'motor.jpeg',        tint:'#FF7A1A'},
+  {id:'events',        eyebrow:'Community', title:'Events',             img:'toro.jpeg',         tint:'#0A84FF'},
+  {id:'booking-assist',eyebrow:'Courts',    title:'Buchungsassistent',  img:'individuoso.jpeg',  tint:'#30D158'},
+  {id:'rules',         eyebrow:'Regelwerk', title:'Neue Regularien',    img:'regelwerkhero.jpeg',tint:'#BF5AF2'},
+  {id:'weltrangliste', eyebrow:'Ranking',   title:'Weltrangliste',      img:'fantasma.jpeg',     tint:'#FFD60A'},
+];
+function DiscoverSection({nav}){
+  return(
+    <div className="fu" style={{animationDelay:'.14s'}}>
+      <div style={{color:T.t1,fontSize:20,fontWeight:800,letterSpacing:-.4,
+        margin:'8px 0 2px'}}>
+        Discover the RITMO
+      </div>
+      {/* Galerie blutet bis an die Screen-Kante (negiert das Corpus-
+          Padding), Cards snappen am linken Rand. */}
+      <div className="hscroll" style={{display:'flex',gap:12,overflowX:'auto',
+        margin:'0 -22px',padding:'10px 22px 6px',
+        scrollSnapType:'x mandatory',WebkitOverflowScrolling:'touch'}}>
+        {DISCOVER_CARDS.map(c=>(
+          <button key={c.id} onClick={()=>nav(c.id)} aria-label={c.title}
+            style={{position:'relative',flexShrink:0,width:190,height:248,
+              borderRadius:30,overflow:'hidden',border:`1px solid ${T.border}`,
+              scrollSnapAlign:'start',cursor:'pointer',padding:0,
+              background:T.card,textAlign:'left',
+              boxShadow:'0 10px 26px rgba(0,0,0,.32)'}}>
+            <img src={`${getAssetBase()}assets/${c.img}`} alt="" aria-hidden="true"
+              loading="lazy" draggable={false}
+              style={{position:'absolute',inset:0,width:'100%',height:'100%',
+                objectFit:'cover',userSelect:'none'}}/>
+            {/* Lesbarkeits-Verlauf + Tint-Hauch oben */}
+            <div aria-hidden="true" style={{position:'absolute',inset:0,
+              background:`linear-gradient(180deg, ${c.tint}26 0%, rgba(0,0,0,0) 28%, rgba(0,0,0,.06) 46%, rgba(0,0,0,.84) 100%)`}}/>
+            <div style={{position:'absolute',left:16,right:14,bottom:15}}>
+              <div style={{color:c.tint,fontSize:10,fontWeight:800,
+                letterSpacing:1.2,textTransform:'uppercase',marginBottom:4,
+                textShadow:'0 1px 6px rgba(0,0,0,.6)'}}>
+                {c.eyebrow}
+              </div>
+              <div style={{color:'#FFF',fontSize:17,fontWeight:800,
+                letterSpacing:-.3,lineHeight:1.18,
+                textShadow:'0 1px 8px rgba(0,0,0,.55)'}}>
+                {c.title}
+              </div>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
   // Hinweis-Banner falls Onboarding nicht abgeschlossen ist UND der
   // User nicht den Test-Bypass benutzt (Test-User hat onboarded=true).
   const needsOnboarding=!onboarded;
   const hasUnread=(unread||0)>0;
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden'}}>
 
       {/* HEADER ZONE — gradient via theme CSS var.
@@ -2868,7 +3004,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
       }} onClick={()=>nav('profile-ritmodna')}>
         <div style={{display:'flex',alignItems:'center',
           justifyContent:'space-between',gap:14}}>
-          <RitmoWordmark size={52} style={{marginLeft:-14}}/>
+          <RitmoWordmark size={52} style={{marginLeft:-24}}/>
           {/* Rechts gruppiert: RITMO Post Icon + Profil-Avatar, vertikal
               zentriert ausgerichtet zueinander. Beide stoppen die
               Header-onClick-Propagation, damit der Tap nicht durch zum
@@ -2912,7 +3048,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
       {/* CORPUS — drawer-style panel (rounded top, elevated shadow) */}
       <div style={{
         flex:1,
-        background:T.bg,
+        background:T.bgGrad,
         borderTopLeftRadius:24,
         borderTopRightRadius:24,
         marginTop:-20,
@@ -3000,6 +3136,9 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
           </div>
         </button>
 
+        {/* Discover the RITMO — horizontale Bild-Cards */}
+        <DiscoverSection nav={nav}/>
+
         {/* Internal scroll-bottom spacer so last card isn't hidden behind floating TabBar */}
         <div style={{height:120,flexShrink:0}}/>
       </div>
@@ -3015,7 +3154,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
 ═══════════════════════════════════════════════════════════════ */
 function SearchHub({nav,onTab}){
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
       <div className="fi" style={{padding:'0 22px 22px'}}>
@@ -3060,7 +3199,7 @@ function SearchHub({nav,onTab}){
 ═══════════════════════════════════════════════════════════════ */
 function ComingSoon({icon,title,desc,bullets=[],onHome}){
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
       <div style={{flex:1,padding:'0 22px 140px',overflowY:'auto',
@@ -3125,7 +3264,7 @@ const APP_FAQ=[
 function AppFAQ({onBack,onHome}){
   const[open,setOpen]=useState(null);
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
       <div className="fi" style={{padding:'0 22px 18px'}}>
@@ -3225,12 +3364,12 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
   const teamB=[players[2]||'Spieler 3',players[3]||'Spieler 4'].join(' & ');
 
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
       <div style={{padding:'0 9px 22px'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-          <RitmoWordmark size={52} style={{marginLeft:-14}}/>
+          <RitmoWordmark size={52} style={{marginLeft:-24}}/>
           <SingleMatchIcon size={40}/>
         </div>
         <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>Single Match</div>
@@ -3775,7 +3914,7 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
     // seitlich an Geschwister-Spalten anstoßen.
     const sidePad=Math.max(10,Math.round(28/Math.max(1,m)));
     return(
-      <div style={{height:'100dvh',width:'100vw',background:T.bg,
+      <div style={{height:'100dvh',width:'100vw',background:T.bgGrad,
         display:'flex',flexDirection:'column',animation:'fadeIn .2s ease',position:'relative'}}>
 
         {/* Progress bar (Americano with active timer) */}
@@ -4060,7 +4199,7 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
   // gewohnt (tm=1).
   const contentMaxWidth=tabletMode?720:'100%';
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
       <div style={{padding:`0 ${Math.round(9*tm)}px ${Math.round(22*tm)}px`,
@@ -5523,12 +5662,12 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
   const canStart=players.length>=4;
 
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
       <div style={{padding:'0 9px 22px'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-          <RitmoWordmark size={52} style={{marginLeft:-14}}/>
+          <RitmoWordmark size={52} style={{marginLeft:-24}}/>
           <TrophyIcon size={40}/>
         </div>
         <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>
@@ -6050,7 +6189,7 @@ function OnlineTournamentLobby({pin,onHome,onStart,onCancel}){
 
   if(!session){
     return(
-      <div style={{height:'100dvh',background:T.bg,display:'flex',
+      <div style={{height:'100dvh',background:T.bgGrad,display:'flex',
         alignItems:'center',justifyContent:'center'}}>
         <BallSpinner/>
       </div>
@@ -6058,12 +6197,12 @@ function OnlineTournamentLobby({pin,onHome,onStart,onCancel}){
   }
 
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
       <div style={{padding:'0 9px 22px'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-          <RitmoWordmark size={52} style={{marginLeft:-14}}/>
+          <RitmoWordmark size={52} style={{marginLeft:-24}}/>
           <TrophyIcon size={40}/>
         </div>
         <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>
@@ -6805,11 +6944,11 @@ function JoinTournament({initialPin,profile,onHome,onJoin,restored}){
   };
 
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
       <div style={{padding:'0 9px 22px'}}>
-        <RitmoWordmark size={52} style={{marginLeft:-14}}/>
+        <RitmoWordmark size={52} style={{marginLeft:-24}}/>
         <div style={{color:T.t2,fontSize:30,marginTop:8,marginLeft:10,fontWeight:800}}>
           Turnier beitreten
         </div>
@@ -8028,7 +8167,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
   const progress=totalSecs?(tourney.timerSecsLeft||0)/totalSecs:0;
 
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
       {/* Header — RITMO-Logo + Trophy mittig in einer Zeile, der
@@ -8037,7 +8176,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
           wirkte optisch versetzt zur Logo-Höhe. */}
       <div style={{padding:'0 22px 14px'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-          <RitmoWordmark size={52} style={{marginLeft:-14}}/>
+          <RitmoWordmark size={52} style={{marginLeft:-24}}/>
           <TrophyIcon size={40}/>
         </div>
         <div style={{color:T.t1,fontSize:26,marginTop:6,marginLeft:10,fontWeight:800,
@@ -8309,12 +8448,12 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
   const winner=sortedLb[0];
 
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
       <div style={{padding:'0 9px 22px'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-          <RitmoWordmark size={52} style={{marginLeft:-14}}/>
+          <RitmoWordmark size={52} style={{marginLeft:-24}}/>
           <TrophyIcon size={40}/>
         </div>
         <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>Endstand</div>
@@ -8438,11 +8577,11 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
     });
 
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
       <div style={{padding:'0 9px 24px'}}>
-        <RitmoWordmark size={52} style={{marginLeft:-14}}/>
+        <RitmoWordmark size={52} style={{marginLeft:-24}}/>
         <div style={{color:T.t2,fontSize:30,marginTop:8,marginLeft:10,fontWeight:800}}>
           {items.length===0?'Keine laufenden Spiele.':'Laufende Spiele und Turniere.'}
         </div>
@@ -8744,11 +8883,11 @@ function Settings({onHome,onBack,nav}){
   const q=query;
 
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
       <div style={{padding:'0 9px 22px'}}>
-        <RitmoWordmark size={52} style={{marginLeft:-14}}/>
+        <RitmoWordmark size={52} style={{marginLeft:-24}}/>
         <div style={{color:T.t2,fontSize:30,marginTop:8,marginLeft:10,fontWeight:800}}>
           <Hl text="Einstellungen" q={q}/>
         </div>
@@ -8842,7 +8981,7 @@ function SettingsSubLayout({title,desc,icon,onBack,onHome,children}){
     zIndex:5,
   };
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',
       position:'relative',overflow:'hidden'}}>
 
@@ -9808,7 +9947,7 @@ function RitmoPost({onHome,profile,onOpenChat,unread=0}){
   };
 
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',
       position:'relative',overflow:'hidden'}}>
 
@@ -10055,7 +10194,7 @@ function PlayerListItem({profile,onClick,trailing}){
    bleibt erhalten, damit ein User immer auch direkt nach Hause kann. */
 function SocialScreen({eyebrow,title,desc,icon,onHome,onBack,backLabel='Zurück',children}){
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',
       position:'relative',overflow:'hidden'}}>
       <div className="fi" style={{padding:'0 22px 14px'}}>
@@ -10810,7 +10949,7 @@ function ClubChat({clubId,currentUid,onHome,onBack}){
   };
 
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 40px)',
       position:'relative',overflow:'hidden'}}>
 
@@ -11017,7 +11156,7 @@ function HubBigCard({icon,title,desc,onClick,accent,delay='0s'}){
 
 function TournamentHub({onHome,onStart,onJoin,onDnaCup,hasDnaCup}){
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
       <div className="fi" style={{padding:'0 22px 22px'}}>
@@ -11171,7 +11310,7 @@ function DnaCupMatch({fmt,nameA,nameB,subA,subB,stageLabel,tier,courtNo,duration
   if(big){
     const totalSecs=(durationMin||10)*60, prog=totalSecs?secsLeft/totalSecs:0;
     return(
-      <div style={{height:'100dvh',width:'100vw',background:T.bg,display:'flex',
+      <div style={{height:'100dvh',width:'100vw',background:T.bgGrad,display:'flex',
         flexDirection:'column',position:'relative',animation:'fadeIn .2s ease'}}>
         {isPoints&&(
           <div style={{height:5,background:T.card2,overflow:'hidden'}}>
@@ -11256,7 +11395,7 @@ function DnaCupMatch({fmt,nameA,nameB,subA,subB,stageLabel,tier,courtNo,duration
 
   // ═══ PORTRAIT ═══
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 18px)',position:'relative',overflow:'hidden'}}>
       <div style={{padding:'0 18px 12px',display:'flex',alignItems:'center',gap:12}}>
         <button onClick={onCancel} style={{width:38,height:38,borderRadius:'50%',background:T.card,
@@ -11392,7 +11531,7 @@ function DnaTopBar({title,sub,onBack,onHome,right}){
     </div>
   );
 }
-const dnaScreen={height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+const dnaScreen={height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
   paddingTop:'calc(env(safe-area-inset-top,0px) + 56px)',position:'relative',overflow:'hidden'};
 const dnaScroll={flex:1,padding:'0 18px calc(env(safe-area-inset-bottom,0px) + 24px)',
   overflowY:'auto',WebkitOverflowScrolling:'touch',display:'flex',flexDirection:'column',gap:14};
@@ -12270,7 +12409,7 @@ function DnaCup({cup,setCup,onHome,ringId='ritmo'}){
   const[stylePickerFor,setStylePickerFor]=useState(null);
   const[editLineupCourtId,setEditLineupCourtId]=useState(null);
   useEffect(()=>{ if(!cup) setCup(makeDnaCup()); },[cup,setCup]);
-  if(!cup) return <div style={{height:'100dvh',background:T.bg}}/>;
+  if(!cup) return <div style={{height:'100dvh',background:T.bgGrad}}/>;
 
   const go=v=>setView(v);
   const backToDash=()=>setView('dashboard');
@@ -12437,18 +12576,19 @@ function DnaPinGate({onOk,onClose}){
 
 function RitmoBibel({onHome,onRules,onJourney,onFaq,onTab}){
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
-      <div className="fi" style={{padding:'0 22px 22px'}}>
-        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
-          <BookIcon size={32}/>
-          <div style={{flex:1,minWidth:0}}>
-            <div style={{color:T.t1,fontSize:26,fontWeight:800,letterSpacing:-.3}}>RITMO Bibel</div>
-            <div style={{color:T.t2,fontSize:14,marginTop:2,fontWeight:400}}>
-              Regeln, Taktik und alles dazwischen.
-            </div>
-          </div>
+      {/* Header wie auf den Setup-Screens: RITMO-Logo statt Schriftzug,
+          Icon rechts, Titel + Subtitle darunter. */}
+      <div className="fi" style={{padding:'0 9px 22px'}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+          <RitmoWordmark size={52} style={{marginLeft:-24}}/>
+          <BookIcon size={36}/>
+        </div>
+        <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>Bibel</div>
+        <div style={{color:T.t2,fontSize:14,marginTop:2,marginLeft:10,fontWeight:400}}>
+          Regeln, Taktik und alles dazwischen.
         </div>
       </div>
 
@@ -12564,7 +12704,7 @@ function RulesDetailLayout({icon,title,sub,visual,children,onBackToRules,onHome,
   };
 
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
       <div style={{padding:'0 22px 8px'}}>
@@ -13001,7 +13141,7 @@ function Rules({onHome,onSelect,alreadyRead,onToggleRead,onBibel}){
     {id:'glossar',   icon:<BookIcon size={24}/>,title:'Schlagarten',       sub:'Bandeja, Víbora, Smash & mehr'},
   ];
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
       <div style={{padding:'0 22px 22px'}}>
         <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
@@ -13474,7 +13614,7 @@ function Journey({onHome,onSelect,alreadyRead,onToggleRead,onBibel}){
     {id:'baelle',       icon:<TennisBallIcon size={24}/>,title:'Bälle',         sub:'Tennis vs Padel — die Unterschiede'},
   ];
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
       <div style={{padding:'0 22px 22px'}}>
         <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
@@ -13522,7 +13662,7 @@ function JourneySpielstileList({onBack,onHome,onSelect}){
   const[imgErr,setImgErr]=useState({});
 
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
       <div style={{padding:'0 22px 8px'}}>
         <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
@@ -15228,6 +15368,38 @@ export default function App(){
         'Court-Verfügbarkeit in Echtzeit',
         'Buchung direkt aus dem Match-Setup',
         'Vorschläge passend zu deinen Mitspielern',
+      ]}
+      onHome={goHome}/>}
+
+    {/* Discover-Teaser: News, Events, Weltrangliste */}
+    {scr==='news'&&<ComingSoon
+      icon={<ScrollIcon size={52} color={T.o}/>}
+      title="Was gibt es neues?"
+      desc="Alle Updates, neuen Features und Ankündigungen aus der RITMO Welt — gesammelt an einem Ort."
+      bullets={[
+        'Release Notes zu jeder App-Version',
+        'Feature-Previews & Abstimmungen',
+        'Community-Highlights des Monats',
+      ]}
+      onHome={goHome}/>}
+    {scr==='events'&&<ComingSoon
+      icon={<TrophyIcon size={52}/>}
+      title="RITMO Events"
+      desc="Cups, Socials und Special Events — vom RITMO DNA Cup bis zum Sunset Americano in deinem Club."
+      bullets={[
+        'Event-Kalender mit Anmeldung',
+        'RITMO DNA Cup — Founders Edition',
+        'Club-Socials & Open Plays',
+      ]}
+      onHome={goHome}/>}
+    {scr==='weltrangliste'&&<ComingSoon
+      icon={<TargetIcon size={52} color={T.o}/>}
+      title="Weltrangliste"
+      desc="Die besten Spieler:innen der Welt — und wo du stehst. Offizielle Tour-Rankings plus das RITMO Community-Ranking."
+      bullets={[
+        'FIP / Premier Padel Rankings',
+        'RITMO Community-Leaderboard',
+        'Dein Verlauf über die Saison',
       ]}
       onHome={goHome}/>}
 

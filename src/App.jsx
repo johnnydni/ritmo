@@ -39,7 +39,7 @@ import {
   HeroRulesVisual, HeroJourneyVisual,
   // Settings + RITMO Post line-art icons
   SteeringWheelIcon, PaletteIcon, EyeIcon, BellIcon, LockIcon, DoorOutIcon,
-  ChevronRightIcon, RitmoPostIcon, AirPlayIcon, CoffeeCupIcon,
+  ChevronRightIcon, AirPlayIcon, CoffeeCupIcon,
   ArchetypeGlyph, PauseIcon,
   // Emoji-Ersatz-Glyphen
   HeartIcon, MedalIcon, PhoneIcon, KeyboardIcon, RingIcon, WatchIcon, FlicIcon,
@@ -47,7 +47,7 @@ import {
   PeopleIcon, HandIcon, WarnIcon, SkipIcon, LaptopIcon, MonitorIcon,
   MenuIcon,
 } from "./icons.jsx";
-import { PADEL_STYLES, PADEL_QUIZ, computeStyle, computeMatchTier, STYLE_IMAGES } from "./padelStyles.js";
+import { PADEL_STYLES, PADEL_QUIZ, computeStyle, computeStyles, computeMatchTier, STYLE_IMAGES } from "./padelStyles.js";
 
 /* ═══════════════════════════════════════════════════════════════
    Theme/CSS, helpers, reducers, auth, audio and icons all live in
@@ -1600,40 +1600,14 @@ function StatTile({label,value,unit,trend,color,sparklineData}){
    PROFILE RITMO DNA SCREEN — Persönliche Stil + Analytics
 ═══════════════════════════════════════════════════════════════ */
 function ProfileRitmoDNA({profile,onBack,onHome}){
-  // Stats aus der DB (ritmo_matches). Null = noch nicht geladen,
-  // 0-Matches = Empty-State, sonst echte Aggregate.
-  const[stats,setStats]=useState(null);
-  useEffect(()=>{
-    let alive=true;
-    dbLoadMatchStats().then(s=>{
-      if(!alive) return;
-      // Falls keine Session/Supabase verfügbar (Test-User): Empty-State.
-      setStats(s||{
-        matches:0,wins:0,losses:0,winRate:0,
-        formTrend:[],weeklyMatches:[0,0,0,0,0,0,0],
-        weekDays:['M','D','M','D','F','S','S'],avgSets:'0',
-      });
-    }).catch(()=>{
-      if(alive) setStats({
-        matches:0,wins:0,losses:0,winRate:0,
-        formTrend:[],weeklyMatches:[0,0,0,0,0,0,0],
-        weekDays:['M','D','M','D','F','S','S'],avgSets:'0',
-      });
-    });
-    return ()=>{alive=false;};
-  },[]);
-  // Während des Loadings: einen sicheren Default zeigen, damit Renderer
-  // (Sparkline etc.) nicht auf undefined arrays crashen.
-  const safeStats=stats||{
-    matches:0,wins:0,losses:0,winRate:0,
-    formTrend:[],weeklyMatches:[0,0,0,0,0,0,0],
-    weekDays:['M','D','M','D','F','S','S'],avgSets:'0',
-  };
-  const hasMatches=safeStats.matches>0;
-
+  // Statistiken wohnen jetzt im Profil — dieser Screen fokussiert
+  // auf den Stil: Hero-Karte, Skill-Ring, Partner-Chemie.
   const style=profile.styleType?PADEL_STYLES[profile.styleType]:null;
   const lvl=profile.playtomicLevel??profile.estimatedLevel;
   const accent=style?.accent||T.o;
+  // Swoosh-Charakter je Spielstil (siehe theme.js Keyframes).
+  const SWOOSH={toro:'aggro',motor:'aggro',muro:'calm',chico:'calm',
+    fantasma:'creative',individuoso:'creative'};
 
   return(
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
@@ -1673,78 +1647,12 @@ function ProfileRitmoDNA({profile,onBack,onHome}){
         position:'relative',zIndex:2,
       }}>
 
-        {/* Spielstil Hero */}
+        {/* Spielstil Hero — 35% kleiner, Swoosh-Entrance mit Drehung
+            im Charakter des Spielstils (aggro/calm/creative). */}
         {profile.styleType&&(
-          <div className="fi" style={{marginBottom:18}}>
+          <div className={`dna-swoosh-${SWOOSH[profile.styleType]||'calm'}`}
+            style={{width:'65%',margin:'0 auto 18px',transformOrigin:'center'}}>
             <StyleHeroCard styleId={profile.styleType}/>
-          </div>
-        )}
-
-        {/* Section: Performance Übersicht */}
-        <div className="fu" style={{animationDelay:'.1s',marginBottom:18}}>
-          <div style={{color:T.t3,fontSize:11,fontWeight:800,letterSpacing:1.5,
-            textTransform:'uppercase',marginBottom:10,paddingLeft:2}}>
-            Performance Übersicht
-          </div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
-            <StatTile label="Matches" value={safeStats.matches} color={T.t1}/>
-            <StatTile label="Siege" value={safeStats.wins} color={'#1A8754'}/>
-            <StatTile label="Niederlagen" value={safeStats.losses} color={'#E84545'}/>
-            <StatTile label="Win Rate" value={safeStats.winRate} unit="%"
-              color={accent}/>
-          </div>
-        </div>
-
-        {hasMatches?(<>
-        {/* Section: Form Trend */}
-        <div className="fu" style={{animationDelay:'.15s',background:T.card,
-          border:`1px solid ${T.border}`,borderRadius:19,padding:'16px 18px',marginBottom:14}}>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',
-            marginBottom:10}}>
-            <div>
-              <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.3,
-                textTransform:'uppercase',marginBottom:3}}>Form-Verlauf</div>
-              <div style={{color:T.t1,fontSize:18,fontWeight:800,letterSpacing:-.3}}>
-                Letzte {Math.min(safeStats.formTrend.length,12)} Matches
-              </div>
-            </div>
-            <div style={{color:accent,fontSize:14,fontWeight:800}}>
-              {(()=>{
-                const f=safeStats.formTrend;
-                if(f.length<3) return '→ Neu';
-                const last=f.slice(-Math.min(4,f.length)).reduce((a,b)=>a+b,0)/Math.min(4,f.length);
-                const all=f.reduce((a,b)=>a+b,0)/f.length;
-                if(last>all+.3) return '↑ Steigend';
-                if(last<all-.3) return '↓ Fallend';
-                return '→ Stabil';
-              })()}
-            </div>
-          </div>
-          <Sparkline data={safeStats.formTrend} color={accent} height={70}/>
-        </div>
-
-        {/* Section: Match Aktivität pro Woche */}
-        <div className="fu" style={{animationDelay:'.2s',background:T.card,
-          border:`1px solid ${T.border}`,borderRadius:19,padding:'16px 18px',marginBottom:14}}>
-          <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.3,
-            textTransform:'uppercase',marginBottom:3}}>Aktivität</div>
-          <div style={{color:T.t1,fontSize:18,fontWeight:800,letterSpacing:-.3,marginBottom:14}}>
-            Matches pro Woche
-          </div>
-          <BarChart values={safeStats.weeklyMatches} labels={safeStats.weekDays}
-            color={accent} height={100}/>
-        </div>
-        </>):(
-          <div className="fu" style={{animationDelay:'.15s',background:T.card,
-            border:`1px solid ${T.border}`,borderRadius:19,padding:'24px 20px',
-            marginBottom:14,textAlign:'center'}}>
-            <div style={{color:T.t2,fontSize:14,fontWeight:700,marginBottom:6}}>
-              Noch keine Matches geloggt
-            </div>
-            <div style={{color:T.t3,fontSize:12,lineHeight:1.5}}>
-              Spiel ein Single Match oder ein Turnier — sobald es beendet ist,
-              landet es automatisch hier in deinen Stats.
-            </div>
           </div>
         )}
 
@@ -1846,8 +1754,10 @@ function ChapterPlaystyle({profile,setProfile}){
                 return(
                   <button key={o.id} onClick={()=>{
                     const newQa={...qa,[q.key]:o.id};
-                    const styleType=computeStyle(newQa);
-                    setProfile(p=>({...p,quizAnswers:newQa,styleType}));
+                    // Primär- UND Sekundär-Stil aus denselben Antworten
+                    const styles=computeStyles(newQa);
+                    setProfile(p=>({...p,quizAnswers:newQa,
+                      styleType:styles.primary,styleType2:styles.secondary}));
                   }} style={{display:'flex',alignItems:'center',gap:11,padding:'9px 11px',
                     background:sel?rgba(accent,0.14):T.card,
                     border:`1.5px solid ${sel?accent:T.border}`,
@@ -2168,6 +2078,26 @@ function BauhausStripes({delay=.15}){
     </div>
   );
 }
+/* Kleine Aktions-Glyphen — geteilt von Burger-Menü + Profil-Zeilen. */
+function RefreshGlyph({size=18}){
+  return(
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M20.5 12a8.5 8.5 0 1 1-2.5-6"/>
+      <path d="M20.5 2.5V6h-3.5"/>
+    </svg>
+  );
+}
+function ExitGlyph({size=18}){
+  return(
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M14.5 4H19a1.5 1.5 0 0 1 1.5 1.5v13A1.5 1.5 0 0 1 19 20h-4.5"/>
+      <path d="M10 8l4 4-4 4"/><path d="M14 12H3"/>
+    </svg>
+  );
+}
+
 function ScreenHeader({title,subtitle,icon,right,pad=22,ellipsis=false}){
   return(
     <div className="fi" style={{padding:`0 9px ${pad}px`,flexShrink:0}}>
@@ -2674,6 +2604,39 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
     return()=>{cancelled=true;};
   },[currentUid]);
 
+  // Statistiken (ritmo_matches) — aus dem DNA-Screen hierher umgezogen.
+  const STATS_EMPTY={matches:0,wins:0,losses:0,winRate:0,formTrend:[],
+    weeklyMatches:[0,0,0,0,0,0,0],weekDays:['M','D','M','D','F','S','S'],avgSets:'0'};
+  const[stats,setStats]=useState(null);
+  useEffect(()=>{
+    let alive=true;
+    dbLoadMatchStats().then(s=>{if(alive)setStats(s||STATS_EMPTY);})
+      .catch(()=>{if(alive)setStats(STATS_EMPTY);});
+    return()=>{alive=false;};
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[]);
+  const safeStats=stats||STATS_EMPTY;
+
+  // Scroll-Navigation: die rechte Dot-Leiste bildet die Sektionen ab
+  // (kopf · dna · stats · mehr) und füllt die Linie mit dem Fortschritt.
+  const SECTIONS=['kopf','dna','stats','mehr'];
+  const scrollRef=useRef(null);
+  const secRefs=useRef({});
+  const[navSec,setNavSec]=useState(0);
+  const[scrollProg,setScrollProg]=useState(0);
+  const onProfileScroll=()=>{
+    const el=scrollRef.current;if(!el)return;
+    const p=el.scrollTop/Math.max(1,el.scrollHeight-el.clientHeight);
+    setScrollProg(p);
+    const marker=el.scrollTop+el.clientHeight*0.35;
+    let act=0;
+    SECTIONS.forEach((k,i)=>{const r=secRefs.current[k];if(r&&r.offsetTop<=marker)act=i;});
+    // Am Scroll-Ende zählt immer die letzte Sektion — sonst wäre sie
+    // bei hohen Viewports nie erreichbar (Marker kommt nicht so tief).
+    if(p>=0.98) act=SECTIONS.length-1;
+    setNavSec(act);
+  };
+
   const lvl=profile.playtomicLevel??profile.estimatedLevel??estimateLevel(profile);
   const isEstimated=profile.playtomicLevel==null&&lvl!=null;
   const isPublic=!profile.private;
@@ -2683,6 +2646,11 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
   // keine Cards — Sektionen trennen sich über Hairlines (T.sep).
   const tint=p=>`color-mix(in srgb, var(--o) ${p}%, transparent)`;
   const hasStyle=!!(profile.styleType&&PADEL_STYLES[profile.styleType]);
+  // Zweiter Spielstil: gespeichert (styleType2) oder lazy aus den
+  // Quiz-Antworten abgeleitet (ältere Profile ohne Feld).
+  const style2=(profile.styleType2&&PADEL_STYLES[profile.styleType2])
+    ?profile.styleType2
+    :(profile.quizAnswers?computeStyles(profile.quizAnswers).secondary:null);
   const eyeb={color:T.t3,fontSize:9.5,fontWeight:700,letterSpacing:1.9,textTransform:'uppercase'};
   const statVal={color:T.t1,fontSize:11,fontWeight:800,letterSpacing:.4,textTransform:'uppercase',
     marginTop:9,lineHeight:1.3,minHeight:29,display:'flex',alignItems:'center',justifyContent:'center'};
@@ -2691,31 +2659,16 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
     cursor:'pointer',textAlign:'left'});
   const rowLbl={display:'block',color:T.t1,fontSize:12,fontWeight:800,letterSpacing:1.7,
     textTransform:'uppercase'};
-  const rowSub={display:'block',color:T.t3,fontSize:11,marginTop:3,lineHeight:1.45};
-  const RefreshGlyph=({size=18})=>(
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M20.5 12a8.5 8.5 0 1 1-2.5-6"/>
-      <path d="M20.5 2.5V6h-3.5"/>
-    </svg>
-  );
-  const ExitGlyph=({size=18})=>(
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M14.5 4H19a1.5 1.5 0 0 1 1.5 1.5v13A1.5 1.5 0 0 1 19 20h-4.5"/>
-      <path d="M10 8l4 4-4 4"/><path d="M14 12H3"/>
-    </svg>
-  );
 
   return(
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden'}}>
 
-      <div style={{flex:1,overflowY:'auto',WebkitOverflowScrolling:'touch',position:'relative',
+      <div ref={scrollRef} onScroll={onProfileScroll}
+        style={{flex:1,overflowY:'auto',WebkitOverflowScrolling:'touch',position:'relative',
         padding:'calc(env(safe-area-inset-top,0px) + 56px) 22px 0'}}>
 
-        {/* Deko — linke Dot-Kolonne + rechte Linie mit Dots (artistische
-            Marker aus dem Mock, rein dekorativ) */}
+        {/* Deko — linke Dot-Kolonne (artistischer Marker aus dem Mock) */}
         <div aria-hidden="true" className="fi" style={{position:'absolute',left:8,
           top:'calc(env(safe-area-inset-top,0px) + 78px)',
           display:'flex',flexDirection:'column',alignItems:'center',gap:5}}>
@@ -2728,18 +2681,11 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
             </span>
           ))}
         </div>
-        <div aria-hidden="true" className="fi" style={{position:'absolute',right:9,top:330,
-          display:'flex',flexDirection:'column',alignItems:'center',gap:6}}>
-          <span style={{width:1.5,height:40,background:T.t4,display:'block',borderRadius:1}}/>
-          <span style={{width:5,height:5,borderRadius:'50%',background:T.o,display:'block'}}/>
-          <span style={{width:3.5,height:3.5,borderRadius:'50%',background:T.t4,display:'block'}}/>
-          <span style={{width:3.5,height:3.5,borderRadius:'50%',background:T.t4,display:'block'}}/>
-          <span style={{width:3.5,height:3.5,borderRadius:'50%',background:T.t4,display:'block'}}/>
-        </div>
 
         {/* Kopf: links Eyebrow + Name + Tagline, rechts das große Level
-            (Dezimalpunkt in Orange — Mock-Detail) */}
-        <div className="fi" style={{display:'flex',justifyContent:'space-between',
+            (Dezimalpunkt in Orange) + kompakter Sichtbarkeits-Switch */}
+        <div ref={el=>{secRefs.current.kopf=el;}} className="fi"
+          style={{display:'flex',justifyContent:'space-between',
           alignItems:'flex-start',gap:12}}>
           <div style={{minWidth:0,flex:1}}>
             <div style={{display:'flex',alignItems:'center',gap:7}}>
@@ -2755,20 +2701,37 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
               Dein Stil · Dein Rhythmus · Deine Stats
             </div>
           </div>
-          {lvl!=null&&(
-            <div className="fu" style={{animationDelay:'.07s',textAlign:'right',flexShrink:0}}>
+          <div className="fu" style={{animationDelay:'.07s',textAlign:'right',flexShrink:0}}>
+            {lvl!=null&&(<>
               <div style={{...eyeb,marginBottom:5}}>RITMO Level</div>
               <div style={{color:T.t1,fontSize:48,fontWeight:900,letterSpacing:-2,lineHeight:.95}}>
                 {lvl.toFixed(2).split('.')[0]}
                 <span style={{color:T.o}}>.</span>
                 {lvl.toFixed(2).split('.')[1]}
               </div>
+            </>)}
+            {/* Sichtbarkeit: Auge + Switch — die ehemalige
+                „Profil öffentlich"-Zeile, kompakt unterm Level */}
+            <div style={{display:'flex',alignItems:'center',gap:8,
+              justifyContent:'flex-end',marginTop:lvl!=null?10:2}}>
+              <span style={{color:isPublic?T.o:T.t3,display:'inline-flex',
+                transition:'color .25s'}}><EyeIcon size={16}/></span>
+              <span onClick={togglePublic} role="switch" aria-checked={isPublic}
+                aria-label={isPublic?'Profil öffentlich':'Profil privat'}
+                style={{width:38,height:22,borderRadius:14,flexShrink:0,
+                  background:isPublic?T.o:'rgba(120,120,128,.32)',position:'relative',
+                  cursor:'pointer',transition:'background .25s',display:'inline-block'}}>
+                <span style={{width:18,height:18,borderRadius:'50%',background:T.bg,
+                  position:'absolute',top:2,left:isPublic?18:2,transition:'left .25s',
+                  boxShadow:'0 1px 3px rgba(0,0,0,.3)',display:'block'}}/>
+              </span>
             </div>
-          )}
+          </div>
         </div>
 
         {/* Avatar mit Orange-Glow → RITMO DNA → Stil-Pill */}
-        <div className="zi" style={{animationDelay:'.1s',display:'flex',flexDirection:'column',
+        <div ref={el=>{secRefs.current.dna=el;}} className="zi"
+          style={{animationDelay:'.1s',display:'flex',flexDirection:'column',
           alignItems:'center',marginTop:30}}>
           <div className="float-y" style={{borderRadius:'50%',
             boxShadow:`0 0 70px ${tint(26)}, 0 0 22px ${tint(20)}`}}>
@@ -2831,9 +2794,9 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
             </div>
           </div>
           <div style={{flex:1,minWidth:0,padding:'2px 4px',textAlign:'center'}}>
-            <div style={eyeb}>Stil</div>
-            <div style={{...statVal,color:hasStyle?T.o:T.t1}}>
-              {hasStyle?PADEL_STYLES[profile.styleType].name:'—'}
+            <div style={eyeb}>2. Stil</div>
+            <div style={{...statVal,color:style2?T.o:T.t1}}>
+              {style2?PADEL_STYLES[style2].name:'—'}
             </div>
             <div style={{marginTop:6,opacity:.7,display:'flex',justifyContent:'center'}}>
               <LiveTabIcon size={17}/>
@@ -2895,51 +2858,111 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
           </button>
         </div>
 
-        {/* Zeilen-Liste: Sichtbarkeit · Einstellungen · Onboarding ·
-            Abmelden — Hairlines statt Cards (Mock). Der Toggle ist rein
-            visuell, die ganze Zeile schaltet; das Schema-Trigger
-            synchronisiert is_public beim Save. */}
-        <button onClick={togglePublic} className="fu" style={{...rowSty(false),animationDelay:'.4s'}}>
-          <span style={{width:26,display:'inline-flex',justifyContent:'center',
-            flexShrink:0,color:T.o}}><EyeIcon size={20}/></span>
-          <span style={{flex:1,minWidth:0}}>
-            <span style={rowLbl}>{isPublic?'Profil öffentlich':'Profil privat'}</span>
-            <span style={rowSub}>
-              {isPublic
-                ?'Andere Spieler:innen können dich finden und folgen.'
-                :'Niemand kann dich finden — nur du siehst dein Profil.'}
-            </span>
-          </span>
-          <span style={{width:46,height:27,borderRadius:19,flexShrink:0,
-            background:isPublic?T.o:'rgba(120,120,128,.32)',position:'relative',
-            transition:'background .25s',display:'inline-block'}}>
-            <span style={{width:23,height:23,borderRadius:'50%',background:T.bg,
-              position:'absolute',top:2,left:isPublic?21:2,transition:'left .25s',
-              boxShadow:'0 1px 3px rgba(0,0,0,.3)',display:'block'}}/>
-          </span>
-        </button>
+        {/* ── STATISTIKEN — aus dem DNA-Screen umgezogen, im
+            Editorial-Stil: Hairlines, Eyebrows, große Ziffern. */}
+        <div ref={el=>{secRefs.current.stats=el;}} className="fu"
+          style={{animationDelay:'.4s',marginTop:34}}>
+          <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:18}}>
+            <span style={{width:5,height:5,borderRadius:'50%',background:T.o,flexShrink:0}}/>
+            <span style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:2.4,
+              textTransform:'uppercase'}}>Statistiken</span>
+            <span style={{flex:1,height:1,background:T.sep,display:'block'}}/>
+          </div>
+          {/* Kennzahlen-Zeile mit Hairline-Trennern */}
+          <div style={{display:'flex',alignItems:'stretch'}}>
+            {[
+              {l:'Matches',v:safeStats.matches,c:T.t1},
+              {l:'Siege',v:safeStats.wins,c:T.t1},
+              {l:'Niederl.',v:safeStats.losses,c:T.t1},
+              {l:'Win-Rate',v:`${safeStats.winRate}%`,c:T.o},
+            ].map((s,i)=>(
+              <div key={s.l} className="zi" style={{animationDelay:`${.46+i*.07}s`,
+                flex:1,minWidth:0,textAlign:'center',padding:'2px 4px',
+                borderRight:i<3?`1px solid ${T.sep}`:'none'}}>
+                <div style={eyeb}>{s.l}</div>
+                <div style={{color:s.c,fontSize:24,fontWeight:900,letterSpacing:-.8,
+                  lineHeight:1,marginTop:9}}>{s.v}</div>
+              </div>
+            ))}
+          </div>
+          {safeStats.matches>0?(<>
+            {/* Form-Verlauf */}
+            <div className="fu" style={{animationDelay:'.58s',marginTop:28}}>
+              <div style={{display:'flex',justifyContent:'space-between',
+                alignItems:'baseline',marginBottom:10}}>
+                <span style={eyeb}>
+                  Form-Verlauf · letzte {Math.min(safeStats.formTrend.length,12)} Matches
+                </span>
+                <span style={{color:T.o,fontSize:12,fontWeight:800,flexShrink:0}}>
+                  {(()=>{
+                    const f=safeStats.formTrend;
+                    if(f.length<3) return '→ Neu';
+                    const last=f.slice(-Math.min(4,f.length)).reduce((a,b)=>a+b,0)/Math.min(4,f.length);
+                    const all=f.reduce((a,b)=>a+b,0)/f.length;
+                    if(last>all+.3) return '↑ Steigend';
+                    if(last<all-.3) return '↓ Fallend';
+                    return '→ Stabil';
+                  })()}
+                </span>
+              </div>
+              <Sparkline data={safeStats.formTrend} color={T.o} height={64}/>
+            </div>
+            {/* Aktivität */}
+            <div className="fu" style={{animationDelay:'.66s',marginTop:26,
+              paddingBottom:26,borderBottom:`1px solid ${T.sep}`}}>
+              <div style={{...eyeb,marginBottom:12}}>Aktivität · Matches pro Woche</div>
+              <BarChart values={safeStats.weeklyMatches} labels={safeStats.weekDays}
+                color={T.o} height={86}/>
+            </div>
+          </>):(
+            <div className="fu" style={{animationDelay:'.58s',marginTop:26,paddingBottom:26,
+              borderBottom:`1px solid ${T.sep}`,textAlign:'center'}}>
+              <div style={{color:T.t2,fontSize:13,fontWeight:700,marginBottom:4}}>
+                Noch keine Matches geloggt
+              </div>
+              <div style={{color:T.t3,fontSize:11.5,lineHeight:1.5}}>
+                Spiel ein Single Match oder ein Turnier — die Stats landen automatisch hier.
+              </div>
+            </div>
+          )}
+        </div>
 
-        <button onClick={onOpenSettings} className="fu" style={{...rowSty(true),animationDelay:'.46s'}}>
-          <span style={{width:26,display:'inline-flex',justifyContent:'center',
-            flexShrink:0,color:T.t2}}><GearIcon size={19}/></span>
-          <span style={{flex:1,minWidth:0}}><span style={rowLbl}>Einstellungen</span></span>
-          <ChevronRightIcon size={15} color={T.t3}/>
-        </button>
-        <button onClick={onResetOnboarding} className="fu" style={{...rowSty(true),animationDelay:'.52s'}}>
+        {/* Onboarding — ganz unten (Einstellungen + Abmelden wohnen
+            jetzt im Burger-Menü des Home-Headers) */}
+        <button ref={el=>{secRefs.current.mehr=el;}} onClick={onResetOnboarding}
+          className="fu" style={{...rowSty(false),animationDelay:'.72s',
+          borderBottom:`1px solid ${T.sep}`}}>
           <span style={{width:26,display:'inline-flex',justifyContent:'center',
             flexShrink:0,color:T.t2}}><RefreshGlyph/></span>
           <span style={{flex:1,minWidth:0}}><span style={rowLbl}>Onboarding wiederholen</span></span>
           <ChevronRightIcon size={15} color={T.t3}/>
         </button>
-        <button onClick={onLogout} className="fu"
-          style={{...rowSty(true),animationDelay:'.58s',borderBottom:`1px solid ${T.sep}`}}>
-          <span style={{width:26,display:'inline-flex',justifyContent:'center',
-            flexShrink:0,color:T.o}}><RefreshGlyph/></span>
-          <span style={{flex:1,minWidth:0}}><span style={{...rowLbl,color:T.o}}>Abmelden</span></span>
-          <span style={{color:T.o,display:'inline-flex'}}><ExitGlyph/></span>
-        </button>
 
         <div style={{height:120,flexShrink:0}}/>
+      </div>
+
+      {/* Scroll-Navigation: rechte Dot-Leiste — Linie füllt sich mit
+          dem Scroll-Fortschritt, der aktive Abschnitt leuchtet orange;
+          Tap springt smooth zur Sektion. */}
+      <div style={{position:'absolute',right:6,top:'50%',transform:'translateY(-50%)',
+        display:'flex',flexDirection:'column',alignItems:'center',gap:5,zIndex:3}}>
+        <span aria-hidden="true" style={{width:1.5,height:42,background:T.t4,borderRadius:1,
+          position:'relative',overflow:'hidden',display:'block',marginBottom:3}}>
+          <span style={{position:'absolute',left:0,top:0,width:'100%',height:'100%',
+            background:T.o,transform:`scaleY(${scrollProg})`,transformOrigin:'top',
+            transition:'transform .12s linear',display:'block'}}/>
+        </span>
+        {SECTIONS.map((k,i)=>(
+          <button key={k} aria-label={`Zu Abschnitt ${i+1}`}
+            onClick={()=>{secRefs.current[k]?.scrollIntoView({behavior:'smooth',block:'start'});}}
+            style={{width:16,height:16,padding:0,background:'none',border:'none',
+              display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>
+            <span style={{width:i===navSec?6.5:4,height:i===navSec?6.5:4,
+              borderRadius:'50%',background:i===navSec?T.o:T.t4,
+              boxShadow:i===navSec?`0 0 9px ${tint(60)}`:'none',
+              transition:'all .3s var(--ease-out-expo)',display:'block'}}/>
+          </button>
+        ))}
       </div>
 
       <BottomFade/>
@@ -3005,11 +3028,16 @@ function DiscoverSection({nav}){
   );
 }
 
-function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
+function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onLogout}){
   // Hinweis-Banner falls Onboarding nicht abgeschlossen ist UND der
   // User nicht den Test-Bypass benutzt (Test-User hat onboarded=true).
   const needsOnboarding=!onboarded;
   const hasUnread=(unread||0)>0;
+  // Burger-Menü (Einstellungen + Abmelden) — aus dem Profil hierher.
+  const[menuOpen,setMenuOpen]=useState(false);
+  const menuRow={display:'flex',alignItems:'center',gap:11,padding:'13px 14px',
+    background:'none',border:'none',color:T.t1,fontSize:14,fontWeight:600,
+    cursor:'pointer',textAlign:'left',borderRadius:13,width:'100%'};
   return(
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden'}}>
@@ -3051,8 +3079,8 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
                     boxShadow:'0 0 0 2px rgba(232,69,69,.35)'}}/>
               )}
             </button>
-            <button onClick={(e)=>{e?.stopPropagation?.();nav('settings');}}
-              aria-label="Einstellungen"
+            <button onClick={(e)=>{e?.stopPropagation?.();setMenuOpen(o=>!o);}}
+              aria-label="Menü" aria-expanded={menuOpen}
               style={{width:44,height:44,borderRadius:'50%',flexShrink:0,
                 background:'rgba(0,0,0,0.22)',border:'1px solid rgba(255,255,255,0.18)',
                 color:'#FFFFFF',cursor:'pointer',padding:0,
@@ -3173,6 +3201,29 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
         {/* Internal scroll-bottom spacer so last card isn't hidden behind floating TabBar */}
         <div style={{height:120,flexShrink:0}}/>
       </div>
+
+      {/* Burger-Menü: Liquid-Glass-Dropdown unter dem Header-Button.
+          Backdrop fängt Outside-Taps; Einträge: Einstellungen + Abmelden. */}
+      {menuOpen&&(<>
+        <div onClick={(e)=>{e.stopPropagation();setMenuOpen(false);}}
+          style={{position:'absolute',inset:0,zIndex:8}}/>
+        <div className="glass-bar slide-down" style={{position:'absolute',zIndex:9,
+          top:'calc(env(safe-area-inset-top,0px) + 112px)',right:14,
+          borderRadius:19,padding:6,minWidth:208,
+          display:'flex',flexDirection:'column'}}>
+          <button onClick={()=>{setMenuOpen(false);nav('settings');}} style={menuRow}>
+            <span style={{color:T.t2,display:'inline-flex'}}><GearIcon size={18}/></span>
+            <span style={{flex:1}}>Einstellungen</span>
+            <ChevronRightIcon size={14} color={T.t3}/>
+          </button>
+          <div style={{height:1,background:T.sep,margin:'2px 12px'}}/>
+          <button onClick={()=>{setMenuOpen(false);onLogout&&onLogout();}}
+            style={{...menuRow,color:T.o,fontWeight:700}}>
+            <span style={{display:'inline-flex'}}><ExitGlyph size={18}/></span>
+            <span style={{flex:1}}>Abmelden</span>
+          </button>
+        </div>
+      </>)}
 
       <BottomFade/>
       <TabBar active={activeTab} onTab={setActiveTab}/>
@@ -9916,7 +9967,7 @@ function RitmoPost({onHome,profile,onOpenChat,unread=0}){
             width:38,height:38,background:T.card2,
             border:`1px solid ${T.border}`,borderRadius:13,
             display:'flex',alignItems:'center',justifyContent:'center'}}>
-            <RitmoPostIcon size={22} color="currentColor"/>
+            <BellIcon size={22} color="currentColor"/>
           </div>
           <div style={{flex:1,minWidth:0}}>
             <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.5,
@@ -9982,7 +10033,7 @@ function RitmoPost({onHome,profile,onOpenChat,unread=0}){
             <div style={{color:T.t3,fontSize:13,padding:'24px 0',textAlign:'center'}}>Lädt …</div>
           ):chats.length===0?(
             <RitmoPostEmpty
-              icon={<RitmoPostIcon size={28} color="currentColor"/>}
+              icon={<BellIcon size={28} color="currentColor"/>}
               title="Noch keine Chats"
               desc="Sobald du einem Club beitrittst, erscheint sein Chat hier."/>
           ):(
@@ -10760,7 +10811,7 @@ function ClubDetail({clubId,currentUid,onHome,onBack,onOpenPlayer,onOpenChat,onE
               <button onClick={()=>onOpenChat&&onOpenChat(clubId)}
                 style={{flex:1,background:T.oSoft,border:`1px solid ${T.o}`,borderRadius:15,
                   padding:'12px 14px',textAlign:'center',cursor:'pointer',color:T.o}}>
-                <RitmoPostIcon size={20} color="currentColor"/>
+                <BellIcon size={20} color="currentColor"/>
                 <div style={{color:T.o,fontSize:10,fontWeight:800,letterSpacing:1.3,
                   textTransform:'uppercase',marginTop:4}}>Chat öffnen</div>
               </button>
@@ -15077,7 +15128,12 @@ export default function App(){
       theme={theme} setTheme={setTheme}
       onComplete={()=>{setOnboarded(true);nav('home');}}/>}
     {scr==='home'&&<Home nav={nav} activeTab={activeTab} setActiveTab={handleTab}
-      profile={profile} onboarded={onboarded} unread={unreadTotal}/>}
+      profile={profile} onboarded={onboarded} unread={unreadTotal}
+      onLogout={async()=>{
+        try{await auth.signOut();}catch(e){}
+        setLoggedIn(false);
+        nav('login');
+      }}/>}
     {scr==='profile'&&<Profile profile={profile} setProfile={setProfile}
       onHome={goHome} currentUid={currentUid} onTab={handleTab}
       onOpenSettings={()=>setScr('settings')}

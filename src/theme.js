@@ -834,6 +834,25 @@ a:focus-visible{
   from{opacity:0;transform:translateX(-16px) scaleX(.3);}
   to{opacity:var(--so,1);transform:translateX(0) scaleX(1);}
 }
+/* DNA-Hero-Karte: Swoosh-Entrance mit smoother Drehung — Charakter
+   je Spielstil. Aggro (toro/motor): schnell, hart, Überschwinger.
+   Calm (muro/chico): ruhig von unten. Creative (fantasma/
+   individuoso): verspielter Bogen mit Gegen-Wippe. */
+@keyframes dnaSwooshAggro{
+  0%{opacity:0;transform:translateX(80px) rotate(10deg) scale(1.14);}
+  55%{opacity:1;transform:translateX(-10px) rotate(-3deg) scale(1.02);}
+  100%{opacity:1;transform:translateX(0) rotate(0deg) scale(1);}
+}
+@keyframes dnaSwooshCalm{
+  0%{opacity:0;transform:translateY(30px) rotate(-2deg) scale(.97);}
+  100%{opacity:1;transform:translateY(0) rotate(0deg) scale(1);}
+}
+@keyframes dnaSwooshCreative{
+  0%{opacity:0;transform:translate(-70px,20px) rotate(-12deg) scale(.88);}
+  45%{opacity:1;transform:translate(12px,-7px) rotate(4.5deg) scale(1.05);}
+  72%{transform:translate(-5px,3px) rotate(-1.8deg) scale(.99);}
+  100%{transform:translate(0,0) rotate(0deg) scale(1);}
+}
 
 /* ── Utility-Klassen ── */
 .nav-icon-active{animation:navIconBounce var(--anim-spring) ease both;}
@@ -844,6 +863,9 @@ a:focus-visible{
 .press-pop{animation:pressPop var(--anim-spring) ease both;}
 .zi{animation:zoomIn .45s var(--ease-out-back) both;}
 .stripe-in{animation:stripeIn .55s var(--ease-out-expo) both;transform-origin:left center;}
+.dna-swoosh-aggro{animation:dnaSwooshAggro .6s var(--ease-out-back) both;}
+.dna-swoosh-calm{animation:dnaSwooshCalm .95s var(--ease-out-expo) both;}
+.dna-swoosh-creative{animation:dnaSwooshCreative 1s var(--ease-out-expo) both;}
 /* Horizontale Card-Galerien (Discover): Scrollbar ausblenden, iOS-Look. */
 .hscroll{scrollbar-width:none;-ms-overflow-style:none;}
 .hscroll::-webkit-scrollbar{display:none;height:0;}

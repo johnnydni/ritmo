@@ -185,6 +185,22 @@ export function computeStyle(qa){
   return {a:'chico',b:'toro',c:'individuoso',d:'muro',e:'fantasma',f:'motor'}[winner]||null;
 }
 
+/* Primär- UND Sekundär-Stil aus denselben Antworten: nach Häufigkeit
+   sortiert (stabil — bei Gleichstand gewinnt die frühere Kategorie,
+   identisch zu computeStyle). Sekundär = zweithäufigster Archetyp mit
+   mindestens einer Stimme; gibt es nur einen, bleibt secondary null. */
+export function computeStyles(qa){
+  if(!qa) return {primary:null,secondary:null};
+  const counts={a:0,b:0,c:0,d:0,e:0,f:0};
+  Object.values(qa).forEach(v=>{if(v&&counts[v]!==undefined) counts[v]++;});
+  const MAP={a:'chico',b:'toro',c:'individuoso',d:'muro',e:'fantasma',f:'motor'};
+  const ranked=Object.entries(counts).filter(([,c])=>c>0).sort((a,b)=>b[1]-a[1]);
+  return {
+    primary:ranked[0]?MAP[ranked[0][0]]:null,
+    secondary:ranked[1]?MAP[ranked[1][0]]:null,
+  };
+}
+
 /* ═══════════════════════════════════════════════════════════════
    MATCH-TIER — RITMO DNA Rating einer 2-gegen-2-Paarung.
 

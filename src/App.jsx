@@ -2718,8 +2718,8 @@ function AvatarWithUpload({profile,setProfile,size=72}){
 
 function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRitmoDNA,
   currentUid,onOpenFollowers,onOpenFollowing,onTab,onOpenSettings}){
-  // Nur die Labels, die noch in der Tag-Reihe der Level-Karte gerendert werden.
-  const handLabels={right:'Rechtshänder',left:'Linkshänder'};
+  // Kurzlabels für die Stats-Spalten (Mock: nur „Rechts"/„Links").
+  const handLabels={right:'Rechts',left:'Links'};
   const sideLabels={left:'Ad-Seite (links)',right:'Deuce-Seite (rechts)',any:'Beides geht'};
 
   const[editingLevel,setEditingLevel]=useState(false);
@@ -2899,7 +2899,8 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
               {lvl!=null?lvl.toFixed(2):'—'}
             </div>
             {lvl!=null&&(
-              <div style={{display:'inline-flex',alignItems:'center',gap:5,marginTop:8}}>
+              <div style={{display:'flex',flexDirection:'column',alignItems:'center',
+                gap:4,marginTop:8}}>
                 <span style={{color:T.o,fontSize:9,fontWeight:800,letterSpacing:1,
                   textTransform:'uppercase'}}>{getLevelLabel(lvl)}</span>
                 <span style={{color:T.o,fontSize:8,fontWeight:900,letterSpacing:.5,
@@ -3106,15 +3107,77 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
 }
 
 /* ── „Discover the RITMO" — horizontale Card-Galerie (Apple-Health-
-   Look): große Bild-Cards mit starkem Radius, Scroll-Snap, Titel auf
-   dunklem Verlauf. id = nav()-Ziel; Bilder aus public/assets. */
+   Look): Bauhaus-Grafik-Cards mit starkem Radius, Scroll-Snap, Titel
+   auf dunklem Verlauf. id = nav()-Ziel. */
 const DISCOVER_CARDS=[
-  {id:'news',          eyebrow:'News',      title:'Was gibt es neues?', img:'motor.jpeg',        tint:'#FF7A1A'},
-  {id:'events',        eyebrow:'Community', title:'Events',             img:'toro.jpeg',         tint:'#0A84FF'},
-  {id:'booking-assist',eyebrow:'Courts',    title:'Buchungsassistent',  img:'individuoso.jpeg',  tint:'#30D158'},
-  {id:'rules',         eyebrow:'Regelwerk', title:'Neue Regularien',    img:'regelwerkhero.jpeg',tint:'#BF5AF2'},
-  {id:'weltrangliste', eyebrow:'Ranking',   title:'Weltrangliste',      img:'fantasma.jpeg',     tint:'#FFD60A'},
+  {id:'events',        eyebrow:'Community', title:'Events',            tint:'#0A84FF'},
+  {id:'booking-assist',eyebrow:'Courts',    title:'Buchungsassistent', tint:'#30D158'},
+  {id:'rules',         eyebrow:'Regelwerk', title:'Neue Regularien',   tint:'#BF5AF2'},
+  {id:'weltrangliste', eyebrow:'Ranking',   title:'Weltrangliste',     tint:'#FFD60A'},
 ];
+/* Bauhaus-Grafiken für die Discover-Karten — gleiche Formsprache wie
+   die RITMO Mail-Templates: tiefes Schwarz, Colour-Bar oben, Speed-
+   Lines, geometrische Kompositionen in Tint + Creme + Brand-Orange. */
+function DiscoverArt({id,tint}){
+  const cream='#F5EDDC';
+  return(
+    <svg viewBox="0 0 190 248" preserveAspectRatio="xMidYMid slice" aria-hidden="true"
+      style={{position:'absolute',inset:0,width:'100%',height:'100%',display:'block'}}>
+      <rect width="190" height="248" fill="#0C0C10"/>
+      {/* Bauhaus Colour-Bar (Mail-Template-Signatur) */}
+      <rect x="0" y="0" width="58" height="7" fill="var(--o)"/>
+      <rect x="58" y="0" width="52" height="7" fill={tint}/>
+      <rect x="110" y="0" width="44" height="7" fill={cream}/>
+      <rect x="154" y="0" width="36" height="7" fill={tint} opacity=".45"/>
+      {/* RITMO Speed-Lines */}
+      <rect x="14" y="24" width="26" height="3.5" rx="1.75" fill="var(--o)"/>
+      <rect x="14" y="32" width="17" height="3.5" rx="1.75" fill="var(--o)" opacity=".55"/>
+      <rect x="14" y="40" width="10" height="3.5" rx="1.75" fill="var(--o)" opacity=".3"/>
+      {id==='events'&&(<>
+        {/* Pokal aus Dreieck + Sockel, Tint-Sonne, Konfetti */}
+        <circle cx="152" cy="58" r="44" fill={tint} opacity=".92"/>
+        <polygon points="55,176 95,84 135,176" fill={cream}/>
+        <rect x="83" y="176" width="24" height="9" fill={cream}/>
+        <rect x="71" y="185" width="48" height="7" fill="var(--o)"/>
+        <circle cx="44" cy="92" r="5" fill="var(--o)"/>
+        <circle cx="156" cy="140" r="4" fill={cream} opacity=".8"/>
+        <line x1="26" y1="208" x2="84" y2="150" stroke={tint} strokeWidth="3"/>
+        <line x1="40" y1="218" x2="92" y2="166" stroke={tint} strokeWidth="3" opacity=".5"/>
+      </>)}
+      {id==='booking-assist'&&(<>
+        {/* Court von oben + Ball mit Flugkurve */}
+        <rect x="34" y="62" width="122" height="124" fill="none" stroke={cream} strokeWidth="3"/>
+        <line x1="34" y1="124" x2="156" y2="124" stroke={cream} strokeWidth="2"/>
+        <line x1="95" y1="62" x2="95" y2="124" stroke={cream} strokeWidth="2" opacity=".7"/>
+        <circle cx="138" cy="96" r="9" fill="var(--o)"/>
+        <path d="M52 180 Q95 138 138 105" fill="none" stroke="var(--o)" strokeWidth="2.5"
+          strokeDasharray="2 7" strokeLinecap="round"/>
+        <circle cx="-6" cy="240" r="52" fill={tint} opacity=".85"/>
+        <circle cx="160" cy="206" r="14" fill="none" stroke={tint} strokeWidth="3"/>
+      </>)}
+      {id==='rules'&&(<>
+        {/* Paragraphen-Zeilen + Viertelkreis */}
+        <circle cx="190" cy="64" r="58" fill={tint} opacity=".9"/>
+        <rect x="26" y="92" width="96" height="11" rx="2" fill={cream}/>
+        <rect x="26" y="114" width="124" height="11" rx="2" fill={cream} opacity=".85"/>
+        <rect x="26" y="136" width="78" height="11" rx="2" fill={cream} opacity=".65"/>
+        <rect x="26" y="158" width="106" height="11" rx="2" fill={cream} opacity=".45"/>
+        <circle cx="46" cy="200" r="9" fill="var(--o)"/>
+        <line x1="68" y1="200" x2="150" y2="200" stroke={tint} strokeWidth="4" strokeLinecap="round"/>
+      </>)}
+      {id==='weltrangliste'&&(<>
+        {/* Podium + Ball-Sonne */}
+        <circle cx="95" cy="74" r="22" fill="var(--o)"/>
+        <rect x="34" y="142" width="34" height="48" fill={cream} opacity=".8"/>
+        <rect x="78" y="112" width="34" height="78" fill={tint}/>
+        <rect x="122" y="158" width="34" height="32" fill={cream} opacity=".55"/>
+        <line x1="24" y1="190" x2="166" y2="190" stroke={cream} strokeWidth="3"/>
+        <circle cx="150" cy="74" r="4" fill={cream}/>
+        <circle cx="38" cy="96" r="3" fill={tint}/>
+      </>)}
+    </svg>
+  );
+}
 function DiscoverSection({nav}){
   return(
     <div className="fu" style={{animationDelay:'.14s'}}>
@@ -3134,13 +3197,10 @@ function DiscoverSection({nav}){
               scrollSnapAlign:'start',cursor:'pointer',padding:0,
               background:T.card,textAlign:'left',
               boxShadow:'0 10px 26px rgba(0,0,0,.32)'}}>
-            <img src={`${getAssetBase()}assets/${c.img}`} alt="" aria-hidden="true"
-              loading="lazy" draggable={false}
-              style={{position:'absolute',inset:0,width:'100%',height:'100%',
-                objectFit:'cover',userSelect:'none'}}/>
-            {/* Lesbarkeits-Verlauf + Tint-Hauch oben */}
+            <DiscoverArt id={c.id} tint={c.tint}/>
+            {/* Lesbarkeits-Verlauf für die Labels */}
             <div aria-hidden="true" style={{position:'absolute',inset:0,
-              background:`linear-gradient(180deg, ${c.tint}26 0%, rgba(0,0,0,0) 28%, rgba(0,0,0,.06) 46%, rgba(0,0,0,.84) 100%)`}}/>
+              background:'linear-gradient(180deg, rgba(0,0,0,0) 56%, rgba(0,0,0,.72) 100%)'}}/>
             <div style={{position:'absolute',left:16,right:14,bottom:15}}>
               <div style={{color:c.tint,fontSize:10,fontWeight:800,
                 letterSpacing:1.2,textTransform:'uppercase',marginBottom:4,
@@ -3180,7 +3240,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onLogout}){
           in einer eigenen flex row, vertikal mittig zueinander zentriert,
           damit der Avatar bündig mit dem Logo sitzt. Texte darunter. */}
       <div style={{
-        padding:'calc(env(safe-area-inset-top,0px) + 60px) 9px 40px',
+        padding:'calc(env(safe-area-inset-top,0px) + 52px) 9px 26px',
         background:'var(--headerGrad)',
         position:'relative',zIndex:1,
         cursor:'pointer',
@@ -3188,51 +3248,39 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onLogout}){
         <div style={{display:'flex',alignItems:'center',
           justifyContent:'space-between',gap:14}}>
           <RitmoWordmark size={52} style={{marginLeft:-24}}/>
-          {/* Rechts: Glocke (Benachrichtigungen → RITMO Post) + Burger
-              (→ Einstellungen). Profil wohnt in der Navbar — kein
-              Avatar mehr im Header. Beide stoppen die Header-onClick-
-              Propagation (Header-Tap geht zum DNA-Screen). */}
-          <div style={{display:'flex',alignItems:'center',gap:12,marginRight:5}}>
+          {/* Rechts: Glocke + Burger als pure Glyphen (Mock — keine
+              Kreis-Hintergründe mehr). Beide stoppen die Header-
+              onClick-Propagation (Header-Tap geht zum DNA-Screen). */}
+          <div style={{display:'flex',alignItems:'center',gap:22,marginRight:9}}>
             <button onClick={(e)=>{e?.stopPropagation?.();nav('ritmopost');}}
               aria-label="Benachrichtigungen"
-              style={{width:44,height:44,borderRadius:'50%',flexShrink:0,
-                background:'rgba(0,0,0,0.22)',border:'1px solid rgba(255,255,255,0.18)',
-                color:'#FFFFFF',cursor:'pointer',padding:0,position:'relative',
-                display:'flex',alignItems:'center',justifyContent:'center',
-                boxShadow:'0 2px 8px rgba(0,0,0,0.25)'}}>
-              <BellIcon size={21}/>
+              style={{background:'none',border:'none',padding:4,position:'relative',
+                color:'#FFFFFF',cursor:'pointer',display:'inline-flex',
+                filter:'drop-shadow(0 1px 4px rgba(0,0,0,.3))'}}>
+              <BellIcon size={24}/>
               {hasUnread&&(
-                /* Notification-Dot — roter Punkt oben-rechts wenn
-                   ungelesene Nachrichten existieren. */
                 <span aria-label="Ungelesene Nachrichten"
-                  style={{position:'absolute',top:4,right:5,
-                    width:11,height:11,borderRadius:'50%',
-                    background:'#E84545',border:'2px solid rgba(0,0,0,0.45)',
-                    boxShadow:'0 0 0 2px rgba(232,69,69,.35)'}}/>
+                  style={{position:'absolute',top:1,right:1,
+                    width:10,height:10,borderRadius:'50%',
+                    background:'#E84545',
+                    boxShadow:'0 0 0 2px rgba(0,0,0,.35)'}}/>
               )}
             </button>
             <button onClick={(e)=>{e?.stopPropagation?.();setMenuOpen(o=>!o);}}
               aria-label="Menü" aria-expanded={menuOpen}
-              style={{width:44,height:44,borderRadius:'50%',flexShrink:0,
-                background:'rgba(0,0,0,0.22)',border:'1px solid rgba(255,255,255,0.18)',
-                color:'#FFFFFF',cursor:'pointer',padding:0,
-                display:'flex',alignItems:'center',justifyContent:'center',
-                boxShadow:'0 2px 8px rgba(0,0,0,0.25)'}}>
-              <MenuIcon size={20}/>
+              style={{background:'none',border:'none',padding:4,
+                color:'#FFFFFF',cursor:'pointer',display:'inline-flex',
+                filter:'drop-shadow(0 1px 4px rgba(0,0,0,.3))'}}>
+              <MenuIcon size={25}/>
             </button>
           </div>
         </div>
-        <BauhausStripes/>
-        {profile?.name?(
-          <div style={{color:T.t1,fontSize:18,fontWeight:700,marginTop:10,marginLeft:10,letterSpacing:-.2}}>
-            Hi, {profile.name}!
-          </div>
-        ):null}
-        <div style={{color:T.t2,fontSize:14,marginTop:profile?.name?4:8,marginLeft:10,fontWeight:400}}>
+        <div style={{color:T.t1,fontSize:15,marginTop:-2,marginLeft:10,fontWeight:600,
+          letterSpacing:-.1,opacity:.96}}>
           Wähle deinen Modus.
         </div>
         {document.documentElement.getAttribute('data-theme')==='funky'&&(
-          <div style={{marginTop:14,marginLeft:10}}><FunkyFruitsRow size={20} gap={10}/></div>
+          <div style={{marginTop:12,marginLeft:10}}><FunkyFruitsRow size={20} gap={10}/></div>
         )}
       </div>
 
@@ -3274,56 +3322,63 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onLogout}){
           </button>
         )}
 
-        {/* Single Match */}
+        {/* Single Match — große Karte: Icon oben links, Texte unten (Mock) */}
         <button onClick={()=>nav('single-setup')} className="fu" data-lift
-          style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:23,
-            padding:'18px 20px',display:'flex',alignItems:'center',gap:18,
-            cursor:'pointer',color:T.t1,textAlign:'left'}}
-          onPointerDown={e=>e.currentTarget.style.background=T.card2}
-          onPointerUp={e=>e.currentTarget.style.background=T.card}
-          onPointerLeave={e=>e.currentTarget.style.background=T.card}>
-          <SingleMatchIcon size={42}/>
-          <div style={{flex:1}}>
-            <div style={{color:T.o,fontSize:18,fontWeight:700,marginBottom:3}}>Single Match</div>
-            <div style={{color:T.t3,fontSize:12,fontWeight:500}}>Best of 3 | Americano (Freestyle)</div>
+          style={{background:'linear-gradient(150deg, var(--card2) 0%, var(--card) 62%)',
+            border:`1px solid ${T.border}`,borderRadius:22,
+            padding:'18px 20px 16px',minHeight:148,display:'flex',flexDirection:'column',
+            alignItems:'flex-start',cursor:'pointer',color:T.t1,textAlign:'left',
+            transition:'filter .15s'}}
+          onPointerDown={e=>e.currentTarget.style.filter='brightness(1.15)'}
+          onPointerUp={e=>e.currentTarget.style.filter=''}
+          onPointerLeave={e=>e.currentTarget.style.filter=''}>
+          <SingleMatchIcon size={40}/>
+          <div style={{marginTop:'auto',paddingTop:18}}>
+            <div style={{color:T.o,fontSize:19,fontWeight:800,marginBottom:3,letterSpacing:-.2}}>Single Match</div>
+            <div style={{color:T.t3,fontSize:12,fontWeight:500}}>Best of 3 | Americano</div>
           </div>
         </button>
 
-        {/* Turnier — neuer Hub mit "Starten" + "Beitreten" */}
+        {/* Turnier — große Karte (Hub mit Starten/Beitreten/DNA Cup) */}
         <button onClick={()=>nav('tournament-hub')} className="fu" data-lift
-          style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:23,
-            padding:'18px 20px',display:'flex',alignItems:'center',gap:18,
-            cursor:'pointer',color:T.t1,textAlign:'left',
-            animationDelay:'.06s'}}
-          onPointerDown={e=>e.currentTarget.style.background=T.card2}
-          onPointerUp={e=>e.currentTarget.style.background=T.card}
-          onPointerLeave={e=>e.currentTarget.style.background=T.card}>
-          <TrophyIcon size={42}/>
-          <div style={{flex:1}}>
-            <div style={{color:T.o,fontSize:18,fontWeight:700,marginBottom:3}}>Turnier</div>
-            <div style={{color:T.t3,fontSize:12,fontWeight:500}}>Starten | Beitreten</div>
+          style={{background:'linear-gradient(150deg, var(--card2) 0%, var(--card) 62%)',
+            border:`1px solid ${T.border}`,borderRadius:22,
+            padding:'18px 20px 16px',minHeight:148,display:'flex',flexDirection:'column',
+            alignItems:'flex-start',cursor:'pointer',color:T.t1,textAlign:'left',
+            animationDelay:'.06s',transition:'filter .15s'}}
+          onPointerDown={e=>e.currentTarget.style.filter='brightness(1.15)'}
+          onPointerUp={e=>e.currentTarget.style.filter=''}
+          onPointerLeave={e=>e.currentTarget.style.filter=''}>
+          <TrophyIcon size={40}/>
+          <div style={{marginTop:'auto',paddingTop:18}}>
+            <div style={{color:T.o,fontSize:19,fontWeight:800,marginBottom:3,letterSpacing:-.2}}>Turnier</div>
+            <div style={{color:T.t3,fontSize:12,fontWeight:500}}>Americano | Mexicano & mehr</div>
           </div>
         </button>
 
-        {/* Liga — Saison-Spielbetrieb (Teaser). Spieler + Clubs sind in
-            den Suche-Tab umgezogen. */}
+        {/* RITMO DNA Liga — flache Karte (Mock) */}
         <button onClick={()=>nav('liga')} className="fu" data-lift
-          style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:23,
-            padding:'18px 20px',display:'flex',alignItems:'center',gap:18,
+          style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:18,
+            padding:'13px 18px',display:'flex',alignItems:'center',gap:14,
             cursor:'pointer',color:T.t1,textAlign:'left',
-            animationDelay:'.1s'}}
-          onPointerDown={e=>e.currentTarget.style.background=T.card2}
-          onPointerUp={e=>e.currentTarget.style.background=T.card}
-          onPointerLeave={e=>e.currentTarget.style.background=T.card}>
-          <MedalIcon size={42} rank={1}/>
-          <div style={{flex:1}}>
-            <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:3}}>
-              <div style={{color:T.o,fontSize:18,fontWeight:700}}>Liga</div>
-              <span style={{fontSize:9,fontWeight:800,letterSpacing:1,color:T.o,
-                background:T.oSoft,border:`1px solid ${T.o}55`,borderRadius:7,
-                padding:'2px 7px',textTransform:'uppercase'}}>Bald</span>
+            animationDelay:'.1s',transition:'filter .15s'}}
+          onPointerDown={e=>e.currentTarget.style.filter='brightness(1.15)'}
+          onPointerUp={e=>e.currentTarget.style.filter=''}
+          onPointerLeave={e=>e.currentTarget.style.filter=''}>
+          <span style={{display:'inline-flex',flexShrink:0,color:T.t1}}>
+            <svg width="27" height="27" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"
+              strokeLinejoin="round" aria-hidden="true">
+              <path d="M20 12a8 8 0 1 1-3.1-6.3"/>
+              <path d="M20 3.5V7h-3.5"/>
+              <circle cx="12" cy="12" r="2.4" fill={T.o} stroke="none"/>
+            </svg>
+          </span>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{color:T.o,fontSize:16,fontWeight:800,letterSpacing:-.2}}>RITMO DNA Liga</div>
+            <div style={{color:T.t3,fontSize:11.5,fontWeight:500,marginTop:2}}>
+              Die Liga mit der du wöchentlich wächst.
             </div>
-            <div style={{color:T.t3,fontSize:12,fontWeight:500}}>Saison | Spieltage | Tabelle</div>
           </div>
         </button>
 
@@ -15478,8 +15533,8 @@ export default function App(){
     {scr==='search-hub'&&<SearchHub nav={nav} onTab={handleTab}/>}
     {scr==='liga'&&<ComingSoon
       icon={<MedalIcon size={56} rank={1}/>}
-      title="RITMO Liga"
-      desc="Saison-Spielbetrieb für deine Community: feste Spieltage, Auf- und Abstieg, eine Tabelle über Wochen — nicht nur einen Abend."
+      title="RITMO DNA Liga"
+      desc="Die Liga, mit der du wöchentlich wächst: feste Spieltage, Auf- und Abstieg, eine Tabelle über Wochen — nicht nur einen Abend."
       bullets={[
         'Saisons mit Hin- und Rückrunde',
         'Spieltage mit automatischer Ansetzung',

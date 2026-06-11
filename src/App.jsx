@@ -2108,6 +2108,15 @@ function SucheTabIcon({active,size=22}){
       strokeWidth="1.9" strokeLinecap="round"/>
   </svg>);
 }
+function BibelTabIcon({active,size=22}){
+  const c=active?T.blue:T.t1;
+  return(<svg width={size} height={size} viewBox="0 0 32 32" fill="none">
+    <path d="M4 7 L4 25 L15 27 L15 9 Z" stroke={c} strokeWidth="2.2"
+      strokeLinejoin="round" fill={active?T.blueSoft:'none'}/>
+    <path d="M28 7 L28 25 L17 27 L17 9 Z" stroke={c} strokeWidth="2.2"
+      strokeLinejoin="round" fill={active?T.blueSoft:'none'}/>
+  </svg>);
+}
 
 /* Fade-out-Blur am unteren Rand — ersetzt die früheren Fußzeilen.
    Inhalte laufen unter Navbar/FABs progressiv in Blur + bg aus.
@@ -2116,13 +2125,17 @@ function BottomFade({height=118}){
   return <div className="bottom-fade" aria-hidden="true" style={{height}}/>;
 }
 
-function TabBar({active,onTab,rightAction,searchable=false,onSearch}){
+function TabBar({active,onTab}){
+  // Such-FAB + Navbar-Suchmodus sind entfernt (Einstellungen haben ein
+  // eigenes Suchfeld im Screen). Die früheren searchable/rightAction-
+  // Codepfade bleiben inert über diese Konstanten.
+  const searchable=false, rightAction=null, onSearch=null;
   const tabs=[
     {id:'home',label:'Home',Icon:HomeIcon},
     {id:'profil',label:'Profil',Icon:ProfilTabIcon},
     {id:'suche',label:'Suche',Icon:SucheTabIcon},
     {id:'live',label:'Live',Icon:LiveIcon},
-    {id:'settings',label:'Einstellungen',Icon:GearIcon},
+    {id:'bibel',label:'Bibel',Icon:BibelTabIcon},
   ];
   // Search-Mode: nur aktiv wenn searchable=true. Tab "Home" bleibt sichtbar,
   // die anderen schrumpfen via maxWidth/opacity raus, ein Such-Input
@@ -2418,49 +2431,7 @@ function TabBar({active,onTab,rightAction,searchable=false,onSearch}){
             </button>
           );
         })}
-        {searchable&&(
-          <input ref={inputRef}
-            value={searchValue}
-            onChange={e=>setSearchValue(e.target.value)}
-            onKeyDown={e=>{
-              if(e.key==='Enter') submit();
-              else if(e.key==='Escape') exitSearch();
-            }}
-            placeholder="Einstellungen durchsuchen…"
-            autoCorrect="off" autoCapitalize="off" spellCheck={false}
-            style={{
-              flex:isSearching?1:0,
-              maxWidth:isSearching?260:0,
-              opacity:isSearching?1:0,
-              padding:isSearching?'8px 10px':'8px 0',
-              minWidth:0,
-              border:'none',background:'transparent',outline:'none',
-              color:T.t1,fontSize:13,fontWeight:500,
-              transition:'max-width .25s ease, padding .25s ease, opacity .2s ease'}}/>
-        )}
-        {searchable&&isSearching&&searchValue&&(
-          <button onClick={clearText} title="Eingabe löschen"
-            className="fi"
-            style={{
-              width:22,height:22,borderRadius:'50%',
-              background:T.card2,border:'none',
-              color:T.t1,fontSize:12,fontWeight:700,
-              cursor:'pointer',marginRight:4,
-              display:'flex',alignItems:'center',justifyContent:'center',
-              flexShrink:0,lineHeight:1}}>
-            ×
-          </button>
-        )}
       </div>
-      <button onClick={rightClick} title={rightTitle} data-lift
-        className={'glass-bar'+(rightHighlight?' glow-pulse':'')}
-        style={{width:48,height:48,borderRadius:'50%',
-          display:'flex',alignItems:'center',justifyContent:'center',
-          cursor:rightClick?'pointer':'default',pointerEvents:'auto',
-          ...(rightHighlight?{border:`1px solid ${T.o}`,
-            boxShadow:`0 8px 28px rgba(0,0,0,.28), 0 0 0 2px ${T.o}33`}:{})}}>
-        {rightIcon}
-      </button>
     </div>
   );
 }
@@ -2588,7 +2559,7 @@ function AvatarWithUpload({profile,setProfile,size=72}){
 
 
 function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRitmoDNA,
-  currentUid,onOpenFollowers,onOpenFollowing,onTab}){
+  currentUid,onOpenFollowers,onOpenFollowing,onTab,onOpenSettings}){
   // Nur die Labels, die noch in der Tag-Reihe der Level-Karte gerendert werden.
   const handLabels={right:'Rechtshänder',left:'Linkshänder'};
   const sideLabels={left:'Ad-Seite (links)',right:'Deuce-Seite (rechts)',any:'Beides geht'};
@@ -2834,6 +2805,16 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
         {/* Actions */}
         <div className="fu" style={{animationDelay:'.15s',
           display:'flex',flexDirection:'column',gap:8,marginBottom:16}}>
+          {/* Einstellungen wohnen jetzt im Profil (kein eigener Tab mehr) */}
+          <button onClick={onOpenSettings}
+            style={{padding:'13px 16px',background:T.card,
+              border:`1px solid ${T.border}`,borderRadius:15,
+              color:T.t1,fontSize:14,fontWeight:600,cursor:'pointer',
+              textAlign:'left',display:'flex',alignItems:'center',gap:10}}>
+            <GearIcon size={17}/>
+            <span style={{flex:1}}>Einstellungen</span>
+            <ChevronRightIcon size={15} color={T.t3}/>
+          </button>
           <button onClick={onResetOnboarding}
             style={{padding:'13px 16px',background:T.card,
               border:`1px solid ${T.border}`,borderRadius:15,
@@ -3012,22 +2993,6 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
                 padding:'2px 7px',textTransform:'uppercase'}}>Bald</span>
             </div>
             <div style={{color:T.t3,fontSize:12,fontWeight:500}}>Saison | Spieltage | Tabelle</div>
-          </div>
-        </button>
-
-        {/* RITMO Bibel — gebündelt: Regelwerk + Journey */}
-        <button onClick={()=>nav('ritmo-bibel')} className="fu"
-          style={{background:'transparent',border:`1px solid ${T.border}`,borderRadius:21,
-            padding:'14px 20px',display:'flex',alignItems:'center',gap:16,
-            cursor:'pointer',color:T.t1,textAlign:'left',transition:'background .15s',
-            animationDelay:'.18s'}}
-          onPointerDown={e=>e.currentTarget.style.background=T.card2}
-          onPointerUp={e=>e.currentTarget.style.background='transparent'}
-          onPointerLeave={e=>e.currentTarget.style.background='transparent'}>
-          <BookIcon size={28}/>
-          <div style={{flex:1}}>
-            <div style={{color:T.o,fontSize:15,fontWeight:700,marginBottom:1}}>RITMO Bibel</div>
-            <div style={{color:T.t3,fontSize:11,fontWeight:500}}>Regelwerk | Journey | FAQ</div>
           </div>
         </button>
 
@@ -8480,8 +8445,9 @@ function SettingsCard({icon,title,desc,onClick,destructive=false,q=''}){
   );
 }
 
-function Settings({onHome,activeTab,setActiveTab,nav}){
-  // Such-Query — TabBar setzt sie via onSearch.
+function Settings({onHome,onBack,nav}){
+  // Such-Query — eigenes Suchfeld im Screen (die Navbar-Suche ist weg,
+  // Einstellungen sind kein Tab mehr und wohnen im Profil).
   const[query,setQuery]=useState('');
   const q=query;
 
@@ -8493,6 +8459,24 @@ function Settings({onHome,activeTab,setActiveTab,nav}){
         <RitmoWordmark size={52} style={{marginLeft:-3}}/>
         <div style={{color:T.t2,fontSize:30,marginTop:8,marginLeft:10,fontWeight:800}}>
           <Hl text="Einstellungen" q={q}/>
+        </div>
+        {/* iOS-style Suchfeld unter dem Large Title */}
+        <div style={{margin:'14px 13px 0',display:'flex',alignItems:'center',gap:8,
+          background:T.card,border:`1px solid ${T.border}`,borderRadius:13,
+          padding:'9px 12px'}}>
+          <SearchIcon size={16}/>
+          <input value={query} onChange={e=>setQuery(e.target.value)}
+            placeholder="Einstellungen durchsuchen…"
+            autoCorrect="off" autoCapitalize="off" spellCheck={false}
+            style={{flex:1,minWidth:0,border:'none',background:'transparent',
+              outline:'none',color:T.t1,fontSize:14,fontWeight:500}}/>
+          {query&&(
+            <button onClick={()=>setQuery('')} aria-label="Eingabe löschen"
+              style={{width:20,height:20,borderRadius:'50%',background:T.card2,
+                border:'none',color:T.t1,fontSize:11,fontWeight:700,cursor:'pointer',
+                display:'flex',alignItems:'center',justifyContent:'center',
+                flexShrink:0,lineHeight:1}}>×</button>
+          )}
         </div>
       </div>
 
@@ -8540,8 +8524,8 @@ function Settings({onHome,activeTab,setActiveTab,nav}){
       </div>
 
       <BottomFade/>
-      <TabBar active={activeTab} onTab={setActiveTab}
-        searchable={true} onSearch={setQuery}/>
+      <MatchBar onHome={onHome}
+        rightButtons={[{icon:<PersonGlyph size={20}/>,onClick:onBack}]}/>
     </div>
   );
 }
@@ -12159,7 +12143,7 @@ function DnaPinGate({onOk,onClose}){
   );
 }
 
-function RitmoBibel({onHome,onRules,onJourney,onFaq}){
+function RitmoBibel({onHome,onRules,onJourney,onFaq,onTab}){
   return(
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden',
@@ -12196,7 +12180,8 @@ function RitmoBibel({onHome,onRules,onJourney,onFaq}){
       </div>
 
       <BottomFade/>
-      <MatchBar onHome={onHome}/>
+      {/* Bibel ist jetzt Haupt-Tab → Navbar; Fallback für alte Aufrufer. */}
+      {onTab?<TabBar active="bibel" onTab={onTab}/>:<MatchBar onHome={onHome}/>}
     </div>
   );
 }
@@ -14575,7 +14560,7 @@ export default function App(){
     else if(t==='profil') setScr('profile');
     else if(t==='suche') setScr('search-hub');
     else if(t==='live') setScr('live');
-    else if(t==='settings') setScr('settings');
+    else if(t==='bibel') setScr('ritmo-bibel');
   };
 
   const[tourneyEditMode,setTourneyEditMode]=useState(false);
@@ -14724,6 +14709,7 @@ export default function App(){
       profile={profile} onboarded={onboarded} unread={unreadTotal}/>}
     {scr==='profile'&&<Profile profile={profile} setProfile={setProfile}
       onHome={goHome} currentUid={currentUid} onTab={handleTab}
+      onOpenSettings={()=>setScr('settings')}
       onOpenRitmoDNA={()=>setScr('profile-ritmodna')}
       onOpenFollowers={()=>{ if(currentUid){ setViewPlayerId(currentUid); setFollowListInitial('followers'); setScr('follow-list'); } }}
       onOpenFollowing={()=>{ if(currentUid){ setViewPlayerId(currentUid); setFollowListInitial('following'); setScr('follow-list'); } }}
@@ -14821,7 +14807,7 @@ export default function App(){
       joinedSession={joinedSession}
       onLeaveJoined={()=>setJoinedSession(null)}/>}
     {scr==='settings'&&<Settings onHome={goHome} nav={nav}
-      activeTab={activeTab} setActiveTab={handleTab}/>}
+      onBack={()=>setScr('profile')}/>}
     {scr==='settings-steuerung'&&<SettingsSteuerung
       onBack={()=>setScr('settings')} onHome={goHome}
       inputMode={inputMode} setInputMode={setInputMode}
@@ -14925,7 +14911,8 @@ export default function App(){
       onHome={goHome}
       onRules={()=>nav('rules')}
       onJourney={()=>nav('journey')}
-      onFaq={()=>setScr('app-faq')}/>}
+      onFaq={()=>setScr('app-faq')}
+      onTab={handleTab}/>}
     {scr==='app-faq'&&<AppFAQ onBack={()=>setScr('ritmo-bibel')} onHome={goHome}/>}
 
     {/* Suche-Tab-Hub + Coming-Soon-Teaser (Liga, Buchungsassistent) */}

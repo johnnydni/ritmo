@@ -327,9 +327,6 @@ function BetaLanding({onLogin,onRegister}){
           </button>
         </div>
 
-        <div style={{color:T.t3,fontSize:10,letterSpacing:.4,opacity:0.7,marginTop:6}}>
-          Made by Team RITMO · with love for Padel <HeartIcon size={11} color={T.o}/>
-        </div>
       </div>
     </div>
   );
@@ -615,10 +612,6 @@ function Login({onSuccess,onRegister}){
           </button>
         </div>
 
-        <div style={{color:T.t3,fontSize:10,textAlign:'center',marginTop:18,
-          letterSpacing:.3,opacity:0.7}}>
-          Made by Team RITMO. With love for Padel <HeartIcon size={11} color={T.o}/>
-        </div>
       </div>
     </div>
   );
@@ -912,10 +905,6 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
           </Fragment>
         )}
 
-        <div style={{color:T.t3,fontSize:10,textAlign:'center',marginTop:18,
-          letterSpacing:.3,opacity:0.7}}>
-          Made by Team RITMO. With love for Padel <HeartIcon size={11} color={T.o}/>
-        </div>
       </div>
     </div>
   );
@@ -1129,10 +1118,6 @@ function VerifiedLanding(){
           Logge dich nun gerne in der Applikation ein.
         </div>
 
-        <div style={{color:T.t3,fontSize:10,textAlign:'center',marginTop:28,
-          letterSpacing:.3,opacity:0.7}}>
-          Made by Team RITMO. With love for Padel <HeartIcon size={11} color={T.o}/>
-        </div>
       </div>
     </div>
   );
@@ -2108,9 +2093,34 @@ function Welcome({profile,setProfile,theme,setTheme,onComplete}){
 /* ═══════════════════════════════════════════════════════════════
    BOTTOM TAB BAR
 ═══════════════════════════════════════════════════════════════ */
+/* Tab-Icons für Profil + Suche — gleiche active-Signatur wie
+   HomeIcon/LiveIcon/GearIcon (blau getönt wenn aktiv). */
+function ProfilTabIcon({active,size=22}){
+  return(<span style={{display:'inline-flex',color:active?T.blue:T.t1}}>
+    <PersonGlyph size={size}/>
+  </span>);
+}
+function SucheTabIcon({active,size=22}){
+  return(<svg width={size} height={size} viewBox="0 0 22 22" fill="none">
+    <circle cx="9.5" cy="9.5" r="6" stroke={active?T.blue:T.t1} strokeWidth="1.7"
+      fill={active?T.blueSoft:'none'}/>
+    <line x1="14" y1="14" x2="19" y2="19" stroke={active?T.blue:T.t1}
+      strokeWidth="1.9" strokeLinecap="round"/>
+  </svg>);
+}
+
+/* Fade-out-Blur am unteren Rand — ersetzt die früheren Fußzeilen.
+   Inhalte laufen unter Navbar/FABs progressiv in Blur + bg aus.
+   Sitzt als Sibling VOR TabBar/MatchBar (zIndex 4 < Bar zIndex 5). */
+function BottomFade({height=118}){
+  return <div className="bottom-fade" aria-hidden="true" style={{height}}/>;
+}
+
 function TabBar({active,onTab,rightAction,searchable=false,onSearch}){
   const tabs=[
     {id:'home',label:'Home',Icon:HomeIcon},
+    {id:'profil',label:'Profil',Icon:ProfilTabIcon},
+    {id:'suche',label:'Suche',Icon:SucheTabIcon},
     {id:'live',label:'Live',Icon:LiveIcon},
     {id:'settings',label:'Einstellungen',Icon:GearIcon},
   ];
@@ -2131,6 +2141,78 @@ function TabBar({active,onTab,rightAction,searchable=false,onSearch}){
   const[hovered,setHovered]=useState(null);
   const[pill,setPill]=useState({left:0,top:0,width:0,height:0,ready:false});
   const targetTab=hovered||active;
+  // ── Greifbare Pill (Apple-style) ──
+  // grab=true solange der Finger die Pill hält und führt. grabFlag
+  // spiegelt den State als Ref, damit der Mess-Loop (rAF) nicht
+  // gegen den Finger kämpft. movedRef schluckt den Klick, der nach
+  // einem Drag auf dem darunterliegenden Tab-Button landen würde.
+  const[grab,setGrab]=useState(false);
+  const grabFlag=useRef(false);
+  const movedRef=useRef(false);
+
+  // Tab-Geometrien relativ zur Padding-Box des Navbars (gleicher
+  // Bezugsrahmen wie die absolute Pill).
+  const tabRects=()=>{
+    const navEl=navRef.current; if(!navEl) return [];
+    const navRect=navEl.getBoundingClientRect();
+    const cs=window.getComputedStyle(navEl);
+    const bL=parseFloat(cs.borderLeftWidth)||0;
+    const bT=parseFloat(cs.borderTopWidth)||0;
+    return tabs.map(t=>{
+      const el=tabRefs.current[t.id]; if(!el) return null;
+      const r=el.getBoundingClientRect();
+      return {id:t.id,left:r.left-navRect.left-bL,top:r.top-navRect.top-bT,
+        width:r.width,height:r.height,center:r.left-navRect.left-bL+r.width/2};
+    }).filter(Boolean);
+  };
+  const nearestTab=(x)=>{
+    const rs=tabRects(); if(!rs.length) return null;
+    let best=rs[0];
+    for(const r of rs){ if(Math.abs(r.center-x)<Math.abs(best.center-x)) best=r; }
+    return best;
+  };
+  const navX=(clientX)=>{
+    const navEl=navRef.current; if(!navEl) return 0;
+    return clientX-navEl.getBoundingClientRect().left;
+  };
+
+  // Pointer-Down auf der Bar: ab 6px Bewegung „löst" sich die Pill
+  // und folgt dem Finger (geclampt zwischen erstem/letztem Tab-Center);
+  // der nächstgelegene Tab bekommt eine Preview-Tönung. Loslassen
+  // snappt auf den nächsten Tab und committet ihn.
+  const onBarPointerDown=(e)=>{
+    if(searchable&&searchMode) return;          // im Such-Modus kein Drag
+    if(e.pointerType==='mouse'&&e.button!==0) return;
+    const startX=e.clientX; let moved=false;
+    const move=(ev)=>{
+      if(!moved&&Math.abs(ev.clientX-startX)<6) return;
+      if(!moved){ moved=true; movedRef.current=true; grabFlag.current=true; setGrab(true); }
+      const x=navX(ev.clientX);
+      const t=nearestTab(x);
+      if(!t) return;
+      setHovered(t.id);
+      const rs=tabRects();
+      const minC=rs[0].center, maxC=rs[rs.length-1].center;
+      const cx=Math.max(minC,Math.min(maxC,x));
+      setPill({left:cx-t.width/2,top:t.top,width:t.width,height:t.height,ready:true});
+    };
+    const up=(ev)=>{
+      window.removeEventListener('pointermove',move);
+      window.removeEventListener('pointerup',up);
+      window.removeEventListener('pointercancel',up);
+      if(!moved) return;                         // Tap → Button-onClick übernimmt
+      grabFlag.current=false; setGrab(false); setHovered(null);
+      const t=nearestTab(navX(ev.clientX));
+      if(t&&t.id!==active) onTab(t.id);
+      else { const m=measurePill(); if(m) setPill({...m,ready:true}); }
+      // Klick-Event des Buttons unter dem Finger schlucken (feuert
+      // direkt nach pointerup, vor dem Timeout).
+      setTimeout(()=>{movedRef.current=false;},0);
+    };
+    window.addEventListener('pointermove',move);
+    window.addEventListener('pointerup',up);
+    window.addEventListener('pointercancel',up);
+  };
 
   // Mess-Helper: liefert die Position des Ziel-Tabs RELATIV zur
   // Padding-Box des Navbar-Containers — das ist auch der Bezugsrahmen
@@ -2169,9 +2251,20 @@ function TabBar({active,onTab,rightAction,searchable=false,onSearch}){
       setPill(p=>({...p,ready:false}));
       return;
     }
-    const m=measurePill();
-    if(!m) return;
-    setPill({...m,ready:true});
+    // rAF-Follow statt Einmal-Messung: der aktive Tab animiert seine
+    // Breite (Label klappt auf), also läuft die Messung ~520ms mit,
+    // damit die Pill der wachsenden Kante folgt. Während eines Drags
+    // (grabFlag) führt der Finger — kein Auto-Snap dazwischenfunken.
+    let raf; const t0=performance.now();
+    const tick=()=>{
+      if(!grabFlag.current){
+        const m=measurePill();
+        if(m) setPill({...m,ready:true});
+      }
+      if(performance.now()-t0<520) raf=requestAnimationFrame(tick);
+    };
+    tick();
+    return()=>cancelAnimationFrame(raf);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[targetTab,searchMode]);
 
@@ -2242,20 +2335,22 @@ function TabBar({active,onTab,rightAction,searchable=false,onSearch}){
       bottom:'calc(env(safe-area-inset-bottom, 0px) * 0.3 + 2px)',
       left:0,right:0,display:'flex',alignItems:'center',justifyContent:'center',gap:10,
       padding:'0 20px',pointerEvents:'none',zIndex:5}}>
-      <div ref={navRef} style={{position:'relative',display:'flex',alignItems:'center',gap:2,
-        background:T.card,borderRadius:30,padding:'5px',
-        border:`1px solid ${T.border}`,pointerEvents:'auto',
-        // Weicherer, flacherer Schatten: der frühere harte 0.6-Schatten
-        // wurde an der unteren Screen-Kante (overflow:hidden) abgeschnitten
-        // und sah wie ein „Strich" aus — v. a. auf hellen Themes.
-        boxShadow:'0 2px 14px rgba(0,0,0,.3)',
+      <div ref={navRef} onPointerDown={onBarPointerDown}
+        className="glass-bar"
+        style={{position:'relative',display:'flex',alignItems:'center',gap:2,
+        borderRadius:30,padding:'5px',pointerEvents:'auto',
+        // touchAction none: während des Pill-Drags darf der Browser
+        // die Pointer-Events nicht für Scroll/Swipe übernehmen.
+        touchAction:'none',
         transition:'padding .25s ease'}}>
 
         {/* Liquid-Glass-Pill — folgt dem aktiven (bzw. hovered) Tab.
-            position:absolute über transform/width animiert, damit GPU
-            sie übernimmt; spring-easing für das iOS-26-Gefühl. */}
+            Greifbar: pointerdown + Bewegung löst sie vom Raster, sie
+            folgt dem Finger (data-grab), Loslassen snappt mit Spring
+            auf den nächsten Tab (iOS-26-Gefühl). */}
         <div className="liquid-pill"
           data-hover={hovered!=null?'true':'false'}
+          data-grab={grab?'true':'false'}
           style={{
             transform:`translate(${pill.left}px, ${pill.top}px)`,
             width:pill.width,
@@ -2265,23 +2360,31 @@ function TabBar({active,onTab,rightAction,searchable=false,onSearch}){
 
         {tabs.map(({id,label,Icon})=>{
           const isActive=active===id;
-          // Im Search-Mode bleibt nur Home sichtbar; Live + Settings
+          const isPreview=hovered===id;       // Drag/Maus-Preview-Tönung
+          // Im Search-Mode bleibt nur Home sichtbar; die übrigen Tabs
           // animieren weg (Breite/Padding/Opacity).
           const hidden=isSearching&&id!=='home';
           return(
-            <button key={id} onClick={()=>onTab(id)}
+            <button key={id}
+              onClick={()=>{
+                // Nach einem Pill-Drag landet der synthetische Klick
+                // auf dem Button unterm Finger — schlucken, der Drag
+                // hat den Tab bereits committet.
+                if(movedRef.current) return;
+                onTab(id);
+              }}
               ref={el=>{tabRefs.current[id]=el;}}
               onPointerEnter={e=>{
                 // Nur Maus-Hover → Preview-Position der Pill.
                 // Touch-Devices triggern pointerEnter beim ersten
                 // Berühren — das wäre ein versehentlicher Preview.
-                if(e.pointerType==='mouse'&&!hidden) setHovered(id);
+                if(e.pointerType==='mouse'&&!hidden&&!grabFlag.current) setHovered(id);
               }}
               onPointerLeave={e=>{
-                if(e.pointerType==='mouse') setHovered(null);
+                if(e.pointerType==='mouse'&&!grabFlag.current) setHovered(null);
               }}
-              style={{display:'flex',alignItems:'center',gap:7,
-                padding:hidden?'10px 0':'10px 14px',
+              style={{display:'flex',alignItems:'center',
+                padding:hidden?'11px 0':'11px 13px',
                 maxWidth:hidden?0:200,
                 opacity:hidden?0:1,
                 overflow:'hidden',
@@ -2299,11 +2402,19 @@ function TabBar({active,onTab,rightAction,searchable=false,onSearch}){
               <span key={isActive?'on':'off'}
                 className={isActive?'nav-icon-active':''}
                 style={{display:'inline-flex',transformOrigin:'center'}}>
-                <Icon active={isActive} size={20}/>
+                <Icon active={isActive||isPreview} size={21}/>
               </span>
-              <span style={{fontSize:11,color:isActive?T.blue:T.t3,
-                fontWeight:isActive?700:500,whiteSpace:'nowrap',
-                transition:'color var(--anim-base)'}}>{label}</span>
+              {/* Label nur am AKTIVEN Tab (Apple-style): klappt mit
+                  Spring auf, inaktive Tabs sind icon-only — so passen
+                  5 Tabs entspannt auf 360-px-Screens. */}
+              <span style={{fontSize:11,color:T.blue,fontWeight:700,
+                whiteSpace:'nowrap',overflow:'hidden',
+                maxWidth:isActive&&!hidden?112:0,
+                opacity:isActive&&!hidden?1:0,
+                marginLeft:isActive&&!hidden?7:0,
+                transition:'max-width var(--anim-pill), opacity .22s ease, margin-left var(--anim-pill)'}}>
+                {label}
+              </span>
             </button>
           );
         })}
@@ -2342,15 +2453,12 @@ function TabBar({active,onTab,rightAction,searchable=false,onSearch}){
         )}
       </div>
       <button onClick={rightClick} title={rightTitle} data-lift
-        className={rightHighlight?'glow-pulse':''}
+        className={'glass-bar'+(rightHighlight?' glow-pulse':'')}
         style={{width:48,height:48,borderRadius:'50%',
-          background:T.card,
-          border:`1px solid ${rightHighlight?T.o:T.border}`,
           display:'flex',alignItems:'center',justifyContent:'center',
           cursor:rightClick?'pointer':'default',pointerEvents:'auto',
-          boxShadow:rightHighlight
-            ?`0 2px 14px rgba(0,0,0,.3), 0 0 0 2px ${T.o}33`
-            :'0 2px 14px rgba(0,0,0,.3)'}}>
+          ...(rightHighlight?{border:`1px solid ${T.o}`,
+            boxShadow:`0 8px 28px rgba(0,0,0,.28), 0 0 0 2px ${T.o}33`}:{})}}>
         {rightIcon}
       </button>
     </div>
@@ -2361,12 +2469,13 @@ function TabBar({active,onTab,rightAction,searchable=false,onSearch}){
    IN-MATCH BOTTOM BAR (Home + Search separat)
 ═══════════════════════════════════════════════════════════════ */
 function MatchBar({onHome,rightIcon,onRight,rightButtons}){
+  // Liquid-Glass-FABs: Material kommt aus der .glass-bar-Klasse
+  // (Backdrop-Blur + Tönung); eigene btn.style-Overrides (z. B. der
+  // grüne Start-Button) gewinnen als Inline-Styles weiterhin.
   const baseStyle={
     width:48,height:48,borderRadius:'50%',
-    background:T.card,border:`1px solid ${T.border}`,
     display:'flex',alignItems:'center',justifyContent:'center',
     pointerEvents:'auto',
-    boxShadow:'0 2px 14px rgba(0,0,0,.3)',
     flexShrink:0,
   };
   // Legacy single-button mode → wrap into array
@@ -2375,12 +2484,13 @@ function MatchBar({onHome,rightIcon,onRight,rightButtons}){
     <div style={{position:'absolute',bottom:'calc(env(safe-area-inset-bottom,0px) + 20px)',
       left:0,right:0,display:'flex',alignItems:'center',justifyContent:'space-between',
       padding:'0 24px',pointerEvents:'none',zIndex:5}}>
-      <button onClick={onHome} style={{...baseStyle,cursor:'pointer'}}>
+      <button onClick={onHome} className="glass-bar" style={{...baseStyle,cursor:'pointer'}}>
         <HomeIcon size={20}/>
       </button>
       <div style={{display:'flex',gap:10,alignItems:'center',pointerEvents:'auto'}}>
         {buttons.map((btn,i)=>(
           <button key={i} onClick={btn.onClick} disabled={btn.disabled}
+            className="glass-bar"
             style={{
               ...baseStyle,
               ...(btn.style||{}),
@@ -2478,7 +2588,7 @@ function AvatarWithUpload({profile,setProfile,size=72}){
 
 
 function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRitmoDNA,
-  currentUid,onOpenFollowers,onOpenFollowing}){
+  currentUid,onOpenFollowers,onOpenFollowing,onTab}){
   // Nur die Labels, die noch in der Tag-Reihe der Level-Karte gerendert werden.
   const handLabels={right:'Rechtshänder',left:'Linkshänder'};
   const sideLabels={left:'Ad-Seite (links)',right:'Deuce-Seite (rechts)',any:'Beides geht'};
@@ -2743,7 +2853,10 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
         <div style={{height:120,flexShrink:0}}/>
       </div>
 
-      <MatchBar onHome={onHome}/>
+      <BottomFade/>
+      {/* Profil ist jetzt ein Haupt-Tab → Navbar statt Home-FAB.
+          Fallback MatchBar, falls (alte Aufrufer) kein onTab geben. */}
+      {onTab?<TabBar active="profil" onTab={onTab}/>:<MatchBar onHome={onHome}/>}
     </div>
   );
 }
@@ -2880,35 +2993,27 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
           </div>
         </button>
 
-        {/* Community: Spieler-Suche + Clubs in einer Zeile */}
-        <div className="fu" style={{display:'flex',gap:10,animationDelay:'.1s'}}>
-          <button onClick={()=>nav('player-search')}
-            style={{flex:1,background:'transparent',border:`1px solid ${T.border}`,borderRadius:21,
-              padding:'14px 14px',display:'flex',flexDirection:'column',alignItems:'flex-start',
-              gap:8,cursor:'pointer',color:T.t1,textAlign:'left',transition:'background .15s'}}
-            onPointerDown={e=>e.currentTarget.style.background=T.card2}
-            onPointerUp={e=>e.currentTarget.style.background='transparent'}
-            onPointerLeave={e=>e.currentTarget.style.background='transparent'}>
-            <SearchIcon size={22}/>
-            <div>
-              <div style={{color:T.o,fontSize:14,fontWeight:700,marginBottom:1}}>Spieler</div>
-              <div style={{color:T.t3,fontSize:11,fontWeight:500}}>Suchen | Folgen</div>
+        {/* Liga — Saison-Spielbetrieb (Teaser). Spieler + Clubs sind in
+            den Suche-Tab umgezogen. */}
+        <button onClick={()=>nav('liga')} className="fu" data-lift
+          style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:23,
+            padding:'18px 20px',display:'flex',alignItems:'center',gap:18,
+            cursor:'pointer',color:T.t1,textAlign:'left',
+            animationDelay:'.1s'}}
+          onPointerDown={e=>e.currentTarget.style.background=T.card2}
+          onPointerUp={e=>e.currentTarget.style.background=T.card}
+          onPointerLeave={e=>e.currentTarget.style.background=T.card}>
+          <MedalIcon size={42} rank={1}/>
+          <div style={{flex:1}}>
+            <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:3}}>
+              <div style={{color:T.o,fontSize:18,fontWeight:700}}>Liga</div>
+              <span style={{fontSize:9,fontWeight:800,letterSpacing:1,color:T.o,
+                background:T.oSoft,border:`1px solid ${T.o}55`,borderRadius:7,
+                padding:'2px 7px',textTransform:'uppercase'}}>Bald</span>
             </div>
-          </button>
-          <button onClick={()=>nav('clubs')}
-            style={{flex:1,background:'transparent',border:`1px solid ${T.border}`,borderRadius:21,
-              padding:'14px 14px',display:'flex',flexDirection:'column',alignItems:'flex-start',
-              gap:8,cursor:'pointer',color:T.t1,textAlign:'left',transition:'background .15s'}}
-            onPointerDown={e=>e.currentTarget.style.background=T.card2}
-            onPointerUp={e=>e.currentTarget.style.background='transparent'}
-            onPointerLeave={e=>e.currentTarget.style.background='transparent'}>
-            <CoffeeCupIcon size={22} color={T.o}/>
-            <div>
-              <div style={{color:T.o,fontSize:14,fontWeight:700,marginBottom:1}}>Clubs</div>
-              <div style={{color:T.t3,fontSize:11,fontWeight:500}}>Beitreten | Gründen</div>
-            </div>
-          </button>
-        </div>
+            <div style={{color:T.t3,fontSize:12,fontWeight:500}}>Saison | Spieltage | Tabelle</div>
+          </div>
+        </button>
 
         {/* RITMO Bibel — gebündelt: Regelwerk + Journey */}
         <button onClick={()=>nav('ritmo-bibel')} className="fu"
@@ -2922,7 +3027,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
           <BookIcon size={28}/>
           <div style={{flex:1}}>
             <div style={{color:T.o,fontSize:15,fontWeight:700,marginBottom:1}}>RITMO Bibel</div>
-            <div style={{color:T.t3,fontSize:11,fontWeight:500}}>Regelwerk | Journey</div>
+            <div style={{color:T.t3,fontSize:11,fontWeight:500}}>Regelwerk | Journey | FAQ</div>
           </div>
         </button>
 
@@ -2930,7 +3035,172 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
         <div style={{height:120,flexShrink:0}}/>
       </div>
 
+      <BottomFade/>
       <TabBar active={activeTab} onTab={setActiveTab}/>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SUCHE-HUB — eigener Tab: Spieler, Clubs, Buchungsassistent.
+═══════════════════════════════════════════════════════════════ */
+function SearchHub({nav,onTab}){
+  return(
+    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+      position:'relative',overflow:'hidden',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
+      <div className="fi" style={{padding:'0 22px 22px'}}>
+        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
+          <SearchIcon size={30}/>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{color:T.t1,fontSize:26,fontWeight:800,letterSpacing:-.3}}>Suche</div>
+            <div style={{color:T.t2,fontSize:14,marginTop:2,fontWeight:400}}>
+              Finde Spieler, Clubs und Courts.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{flex:1,padding:'0 22px 140px',overflowY:'auto',
+        WebkitOverflowScrolling:'touch',display:'flex',flexDirection:'column',gap:14}}>
+        <HubBigCard
+          icon={<PersonGlyph size={28}/>}
+          title="Spieler"
+          desc="Suchen, folgen, Profile entdecken."
+          onClick={()=>nav('player-search')} delay=".02s"/>
+        <HubBigCard
+          icon={<CoffeeCupIcon size={28} color={T.o}/>}
+          title="Clubs"
+          desc="Beitreten, gründen, Club-Chat."
+          onClick={()=>nav('clubs')} delay=".06s"/>
+        <HubBigCard
+          icon={<AirPlayIcon size={28} color={T.o}/>}
+          title="Buchungsassistent"
+          desc="Freie Courts finden & direkt buchen — bald."
+          onClick={()=>nav('booking-assist')} delay=".1s"/>
+      </div>
+
+      <BottomFade/>
+      <TabBar active="suche" onTab={onTab}/>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   COMING SOON — Teaser-Shell für Liga + Buchungsassistent.
+═══════════════════════════════════════════════════════════════ */
+function ComingSoon({icon,title,desc,bullets=[],onHome}){
+  return(
+    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+      position:'relative',overflow:'hidden',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
+      <div style={{flex:1,padding:'0 22px 140px',overflowY:'auto',
+        WebkitOverflowScrolling:'touch'}}>
+        <div className="fi" style={{
+          background:`linear-gradient(135deg, ${T.o}18 0%, ${T.card} 100%)`,
+          border:`1px solid ${T.o}55`,borderRadius:23,padding:'30px 24px',
+          textAlign:'center'}}>
+          <div style={{display:'flex',justifyContent:'center',marginBottom:14}}>{icon}</div>
+          <div style={{color:T.t1,fontSize:26,fontWeight:900,letterSpacing:-.4}}>{title}</div>
+          <div style={{display:'inline-block',marginTop:10,fontSize:10,fontWeight:800,
+            letterSpacing:1.6,color:T.o,background:T.oSoft,border:`1px solid ${T.o}55`,
+            borderRadius:9,padding:'4px 11px',textTransform:'uppercase'}}>Bald verfügbar</div>
+          <div style={{color:T.t2,fontSize:14,lineHeight:1.6,marginTop:16}}>{desc}</div>
+        </div>
+        {bullets.length>0&&(
+          <div className="fu" style={{background:T.card,border:`1px solid ${T.border}`,
+            borderRadius:19,padding:'18px',marginTop:14,animationDelay:'.08s'}}>
+            <div style={{color:T.o,fontSize:11,fontWeight:700,letterSpacing:1.3,
+              textTransform:'uppercase',marginBottom:10}}>Was kommt</div>
+            {bullets.map((b,i)=>(
+              <div key={i} style={{display:'flex',gap:10,alignItems:'flex-start',
+                padding:'7px 0',borderTop:i>0?`1px solid ${T.sep}`:'none'}}>
+                <span style={{color:T.o,fontWeight:800,lineHeight:1.45}}>·</span>
+                <span style={{color:T.t2,fontSize:13,lineHeight:1.45}}>{b}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <BottomFade/>
+      <MatchBar onHome={onHome}/>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   APP-FAQ — häufige Fragen zur App (Teil der RITMO Bibel).
+═══════════════════════════════════════════════════════════════ */
+const APP_FAQ=[
+  {q:'Was ist der Unterschied zwischen Americano und Mexicano?',
+   a:'Americano lost jede Runde zufällige Partner aus, Punkte zählen individuell. Mexicano paart ab Runde 2 nach Tabellenstand (1+4 gegen 2+3) — enger, fairer, spannender.'},
+  {q:'Wie funktioniert der Pausen-Bonus?',
+   a:'Wer aussetzen muss, bekommt den aufgerundeten Mittelwert aller Punkte dieser Runde gutgeschrieben. Niemand wird durch eine erzwungene Pause benachteiligt.'},
+  {q:'Kann ich ein Turnier als Entwurf speichern?',
+   a:'Ja — im Turnier-Setup auf das Lesezeichen-Symbol tippen. Der Entwurf erscheint unter Live → Entwürfe und lässt sich jederzeit weiterbearbeiten und starten.'},
+  {q:'Wie ändere ich den Timer-Klingelton?',
+   a:'Einstellungen → Steuerung → Timer-Klingelton. Der RITMO-Ton ist Standard; antippen zum Vorhören, auswählen zum Setzen — gilt für alle Timer in der App.'},
+  {q:'Wie verbinde ich einen Smart Ring oder Presenter?',
+   a:'Gerät per Bluetooth mit dem Smartphone koppeln, dann Einstellungen → Steuerung → Score-Gerät wählen. Der Eingabe-Tester zeigt live, welche Tasten ankommen.'},
+  {q:'Funktioniert RITMO ohne Internet?',
+   a:'Lokale Matches und Turniere laufen komplett offline auf deinem Gerät. Online-Turniere, Profile-Sync und Clubs brauchen eine Verbindung.'},
+  {q:'Wie treten andere meinem Online-Turnier bei?',
+   a:'Beim Erstellen „Online" wählen — du bekommst PIN + QR-Code in der Lobby. Mitspieler scannen den Code oder geben den PIN unter Turnier beitreten ein.'},
+  {q:'Wer sieht mein Profil und meine Statistiken?',
+   a:'Das steuerst du selbst: Profil → „Profil öffentlich" oder Einstellungen → Privatsphäre. Privat heißt: niemand findet dich, nur du siehst deine Daten.'},
+  {q:'Wie wechsle ich das Design?',
+   a:'Einstellungen → Anpassung → Theme. Fünf Looks von RITMO BAUHAUS Dark bis Funky — die ganze App färbt sich sofort um.'},
+  {q:'Wie lösche ich mein Konto?',
+   a:'Einstellungen → Privatsphäre → Konto und Daten löschen. Dort siehst du vorab, welche Daten entfernt werden (DSGVO-konform).'},
+];
+function AppFAQ({onBack,onHome}){
+  const[open,setOpen]=useState(null);
+  return(
+    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+      position:'relative',overflow:'hidden',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
+      <div className="fi" style={{padding:'0 22px 18px'}}>
+        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
+          <BookIcon size={30}/>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{color:T.t1,fontSize:26,fontWeight:800,letterSpacing:-.3}}>App FAQ</div>
+            <div style={{color:T.t2,fontSize:14,marginTop:2,fontWeight:400}}>
+              Häufige Fragen, kurze Antworten.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{flex:1,padding:'0 22px 140px',overflowY:'auto',
+        WebkitOverflowScrolling:'touch',display:'flex',flexDirection:'column',gap:10}}>
+        {APP_FAQ.map((f,i)=>{
+          const isOpen=open===i;
+          return(
+            <button key={i} onClick={()=>setOpen(isOpen?null:i)} className="fu"
+              style={{background:isOpen?T.card2:T.card,border:`1px solid ${isOpen?T.o:T.border}`,
+                borderRadius:17,padding:'15px 17px',textAlign:'left',cursor:'pointer',
+                color:T.t1,animationDelay:`${Math.min(i*0.04,0.3)}s`,
+                transition:'background var(--anim-base), border-color var(--anim-base)'}}>
+              <div style={{display:'flex',alignItems:'center',gap:10}}>
+                <div style={{flex:1,color:isOpen?T.o:T.t1,fontSize:14,fontWeight:700,
+                  lineHeight:1.4,transition:'color var(--anim-base)'}}>{f.q}</div>
+                <span style={{flexShrink:0,display:'inline-flex',
+                  transform:isOpen?'rotate(90deg)':'rotate(0deg)',
+                  transition:'transform var(--anim-spring)'}}>
+                  <ChevronRightIcon size={16} color={isOpen?T.o:T.t3}/>
+                </span>
+              </div>
+              <div style={{maxHeight:isOpen?220:0,opacity:isOpen?1:0,overflow:'hidden',
+                transition:'max-height var(--anim-slow), opacity .25s ease'}}>
+                <div style={{color:T.t2,fontSize:13,lineHeight:1.6,paddingTop:10}}>{f.a}</div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      <BottomFade/>
+      <MatchBar onHome={onHome} rightButtons={[{icon:<BookIcon size={22}/>,onClick:onBack}]}/>
     </div>
   );
 }
@@ -7868,7 +8138,7 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
       id:'match',type:'match',
       title:`${matchCfg.nameA} vs ${matchCfg.nameB}`,
       sub:matchCfg.format==='bo3'?'Best of Three':'Americano',
-      navTo:'match',
+      navTo:'match',group:'active',
       onDelete:onDeleteMatch,
     });
   }
@@ -7880,6 +8150,7 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
       const fmt=t.format==='mexicano'?'Mexicano':'Americano';
       items.push({
         id:'t-'+t.id,type:'tourney',finished:!!t.finished,draft:isDraft,
+        group:isDraft?'drafts':(t.finished?'done':'active'),
         title:t.name||(isDraft?'Entwurf':'Turnier'),
         sub:isDraft
           ?`Entwurf · ${fmt} · ${(t.players||[]).length} Spieler`
@@ -7893,10 +8164,21 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
       id:'joined',type:'joined',
       title:`Online-Turnier · ${joinedSession.name||'Du'}`,
       sub:`PIN ${joinedSession.pin?.toUpperCase()} · Tippen zum Wiedereintreten`,
-      navTo:'remote',
+      navTo:'remote',group:'active',
       onDelete:onLeaveJoined,
     });
   }
+
+  // Gruppierte Anzeige: Laufend & anstehend → Entwürfe → Beendet.
+  // Header werden als Pseudo-Items eingestreut; leere Gruppen entfallen.
+  const renderList=[];
+  [['active','Laufend & anstehend'],['drafts','Entwürfe'],['done','Beendet']]
+    .forEach(([g,label])=>{
+      const list=items.filter(it=>it.group===g);
+      if(!list.length) return;
+      renderList.push({id:'h-'+g,header:label});
+      renderList.push(...list);
+    });
 
   return(
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
@@ -7922,8 +8204,13 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
           </div>
         )}
 
-        {items.map((item,i)=>(
-          <div key={item.id} className="fu" style={{animationDelay:`${i*0.06}s`}}>
+        {renderList.map((item,i)=> item.header?(
+          <div key={item.id} className="fi" style={{color:T.t3,fontSize:11,fontWeight:800,
+            letterSpacing:1.4,textTransform:'uppercase',margin:'6px 2px -4px'}}>
+            {item.header}
+          </div>
+        ):(
+          <div key={item.id} className="fu" style={{animationDelay:`${Math.min(i*0.06,0.4)}s`}}>
             <SwipeableCard onDelete={item.onDelete}>
               <button onClick={()=>item.onClick?item.onClick():nav(item.navTo)}
                 style={{width:'100%',background:T.card,border:`1px solid ${item.finished?T.border:T.border}`,
@@ -7953,6 +8240,7 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
       </div>
 
       <div style={{height:120}}/>
+      <BottomFade/>
       <TabBar active={activeTab} onTab={setActiveTab}/>
     </div>
   );
@@ -8248,15 +8536,10 @@ function Settings({onHome,activeTab,setActiveTab,nav}){
             Privatsphäre → "Konto und Daten löschen", damit User vor
             dem Schritt erst die DSGVO-Konsequenzen sehen. */}
 
-        {/* About — schlichte Marker, kein Tap-Target */}
-        <div style={{background:'transparent',border:`1px solid ${T.border}`,borderRadius:19,
-          padding:'14px 18px',color:T.t3,fontSize:11,lineHeight:1.6,textAlign:'center'}}>
-          <Hl text="Made by Team RITMO." q={q}/><br/><Hl text="With love for Padel " q={q}/><HeartIcon size={11} color={T.o}/>
-        </div>
-
         <div style={{height:120,flexShrink:0}}/>
       </div>
 
+      <BottomFade/>
       <TabBar active={activeTab} onTab={setActiveTab}
         searchable={true} onSearch={setQuery}/>
     </div>
@@ -8273,14 +8556,14 @@ function Settings({onHome,activeTab,setActiveTab,nav}){
 function SettingsSubLayout({title,desc,icon,onBack,onHome,children}){
   // Wiederverwendbarer FAB-Stil — beide Buttons sind identisch aufgebaut,
   // nur die Position (links vs. rechts) und das Icon unterscheiden sich.
+  // Liquid-Glass-FABs — Material liefert die .glass-bar-Klasse.
   const fabBase={
     position:'absolute',
     bottom:'calc(env(safe-area-inset-bottom,0px) + 28px)',
     width:54,height:54,borderRadius:'50%',
-    background:T.card,border:`1px solid ${T.border}`,
     color:T.t1,cursor:'pointer',
     display:'flex',alignItems:'center',justifyContent:'center',
-    boxShadow:'0 8px 24px rgba(0,0,0,.45)',zIndex:5,
+    zIndex:5,
   };
   return(
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
@@ -8315,17 +8598,19 @@ function SettingsSubLayout({title,desc,icon,onBack,onHome,children}){
         {children}
       </div>
 
+      <BottomFade/>
+
       {/* Floating Home-FAB links → zur Startseite */}
       {onHome&&(
         <button onClick={onHome} aria-label="Zurück zur Startseite"
-          style={{...fabBase,left:22}}>
+          className="glass-bar" style={{...fabBase,left:22}}>
           <HomeIcon size={22}/>
         </button>
       )}
 
       {/* Floating Gear-FAB rechts → zurück zur Settings-Übersicht */}
       <button onClick={onBack} aria-label="Zurück zu Einstellungen"
-        style={{...fabBase,right:22}}>
+        className="glass-bar" style={{...fabBase,right:22}}>
         <GearIcon size={22}/>
       </button>
     </div>
@@ -11874,7 +12159,7 @@ function DnaPinGate({onOk,onClose}){
   );
 }
 
-function RitmoBibel({onHome,onRules,onJourney}){
+function RitmoBibel({onHome,onRules,onJourney,onFaq}){
   return(
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden',
@@ -11903,8 +12188,14 @@ function RitmoBibel({onHome,onRules,onJourney}){
           title="Journey"
           desc="Tipps & Tricks, Taktik, Material."
           onClick={onJourney} delay=".06s"/>
+        <HubBigCard
+          icon={<BookIcon size={28}/>}
+          title="App FAQ"
+          desc="Häufige Fragen zur RITMO App."
+          onClick={onFaq} delay=".1s"/>
       </div>
 
+      <BottomFade/>
       <MatchBar onHome={onHome}/>
     </div>
   );
@@ -14281,6 +14572,8 @@ export default function App(){
   const handleTab=(t)=>{
     setActiveTab(t);
     if(t==='home') setScr('home');
+    else if(t==='profil') setScr('profile');
+    else if(t==='suche') setScr('search-hub');
     else if(t==='live') setScr('live');
     else if(t==='settings') setScr('settings');
   };
@@ -14430,7 +14723,7 @@ export default function App(){
     {scr==='home'&&<Home nav={nav} activeTab={activeTab} setActiveTab={handleTab}
       profile={profile} onboarded={onboarded} unread={unreadTotal}/>}
     {scr==='profile'&&<Profile profile={profile} setProfile={setProfile}
-      onHome={goHome} currentUid={currentUid}
+      onHome={goHome} currentUid={currentUid} onTab={handleTab}
       onOpenRitmoDNA={()=>setScr('profile-ritmodna')}
       onOpenFollowers={()=>{ if(currentUid){ setViewPlayerId(currentUid); setFollowListInitial('followers'); setScr('follow-list'); } }}
       onOpenFollowing={()=>{ if(currentUid){ setViewPlayerId(currentUid); setFollowListInitial('following'); setScr('follow-list'); } }}
@@ -14631,7 +14924,33 @@ export default function App(){
     {scr==='ritmo-bibel'&&<RitmoBibel
       onHome={goHome}
       onRules={()=>nav('rules')}
-      onJourney={()=>nav('journey')}/>}
+      onJourney={()=>nav('journey')}
+      onFaq={()=>setScr('app-faq')}/>}
+    {scr==='app-faq'&&<AppFAQ onBack={()=>setScr('ritmo-bibel')} onHome={goHome}/>}
+
+    {/* Suche-Tab-Hub + Coming-Soon-Teaser (Liga, Buchungsassistent) */}
+    {scr==='search-hub'&&<SearchHub nav={nav} onTab={handleTab}/>}
+    {scr==='liga'&&<ComingSoon
+      icon={<MedalIcon size={56} rank={1}/>}
+      title="RITMO Liga"
+      desc="Saison-Spielbetrieb für deine Community: feste Spieltage, Auf- und Abstieg, eine Tabelle über Wochen — nicht nur einen Abend."
+      bullets={[
+        'Saisons mit Hin- und Rückrunde',
+        'Spieltage mit automatischer Ansetzung',
+        'Live-Tabelle mit Form-Kurve',
+        'Auf-/Abstieg zwischen Divisionen',
+      ]}
+      onHome={goHome}/>}
+    {scr==='booking-assist'&&<ComingSoon
+      icon={<AirPlayIcon size={52} color={T.o}/>}
+      title="Buchungsassistent"
+      desc="Finde freie Courts in deiner Nähe und buche direkt aus RITMO — abgestimmt auf deine Matches und deinen Club."
+      bullets={[
+        'Court-Verfügbarkeit in Echtzeit',
+        'Buchung direkt aus dem Match-Setup',
+        'Vorschläge passend zu deinen Mitspielern',
+      ]}
+      onHome={goHome}/>}
 
     {/* First-launch disclaimer — liegt über allen Screens, blockiert
         Interaktion bis OK gedrückt wurde */}

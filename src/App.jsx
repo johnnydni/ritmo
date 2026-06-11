@@ -337,10 +337,15 @@ function BetaLanding({onLogin,onRegister}){
    SPLASH SCREEN
 ═══════════════════════════════════════════════════════════════ */
 function Splash({onDone}){
-  // Der fancy Ladebalken läuft in ~4 s voll und öffnet danach die App;
-  // ein Tap überspringt sofort. (Tennisball entfernt.)
+  // Nach ~4 s öffnet die App automatisch (vorher hing das am
+  // animationend des Ladebalkens); ein Tap überspringt sofort.
   const doneRef=useRef(false);
   const finish=()=>{ if(doneRef.current) return; doneRef.current=true; onDone(); };
+  useEffect(()=>{
+    const t=setTimeout(finish,4000);
+    return()=>clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[]);
   return(
     <div onClick={finish} style={{height:'100dvh',width:'100vw',
       /* Ladebildschirm IMMER schwarz — bewusst hartkodiert (#000),
@@ -354,25 +359,18 @@ function Splash({onDone}){
         style={{position:'absolute',inset:0,width:'100%',height:'100%',
           objectFit:'contain',background:'#000',pointerEvents:'none'}}/>
 
-      {/* Fancy Ladebalken — knapp unter dem "R" des Splash-Logos. */}
+      {/* Pulsierende RITMO-Streifen statt Ladebalken — schlicht, im
+          Loop (Echo der Logo-Speed-Lines), knapp unter dem Splash-Logo.
+          Brand-Orange bewusst hartkodiert wie der schwarze Grund. */}
       <div style={{position:'absolute',left:0,right:0,top:'47%',
         display:'flex',justifyContent:'center',pointerEvents:'none',zIndex:2}}>
-        {/* Glüh-Wrapper (box-shadow außerhalb des Track-overflow). */}
-        <div style={{width:'min(240px,62vw)',borderRadius:999,
-          animation:'splashBarGlow 2s ease-in-out infinite'}}>
-          <div style={{position:'relative',height:7,borderRadius:999,overflow:'hidden',
-            background:'rgba(255,255,255,0.12)'}}>
-            {/* Füllung: wächst 0→100 % und fließt im Farbverlauf. */}
-            <div onAnimationEnd={e=>{ if(e.animationName==='splashLoad') finish(); }}
-              style={{position:'absolute',left:0,top:0,bottom:0,width:0,borderRadius:999,
-                background:'linear-gradient(90deg,#E85D00,#FF7A1A,#FFB877,#FF7A1A,#E85D00)',
-                backgroundSize:'200% 100%',
-                animation:'splashLoad 4s cubic-bezier(.45,.05,.2,1) forwards, splashBarFlow 2.2s linear infinite'}}/>
-            {/* Comet-Shine zieht über den Balken. */}
-            <div style={{position:'absolute',top:0,bottom:0,left:0,width:'42%',
-              background:'linear-gradient(90deg,transparent,rgba(255,255,255,.9),transparent)',
-              animation:'splashBarComet 1.9s ease-in-out infinite'}}/>
-          </div>
+        <div style={{display:'flex',flexDirection:'column',gap:7}}>
+          {[64,42,26].map((w,i)=>(
+            <span key={i} style={{width:w,height:5.5,borderRadius:3,
+              background:'#FF7A1A',transformOrigin:'left center',
+              animation:`stripePulse 1.5s ease-in-out ${i*0.18}s infinite`,
+              display:'block'}}/>
+          ))}
         </div>
       </div>
     </div>

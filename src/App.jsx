@@ -2108,6 +2108,15 @@ function SucheTabIcon({active,size=22}){
       strokeWidth="1.9" strokeLinecap="round"/>
   </svg>);
 }
+function BibelTabIcon({active,size=22}){
+  const c=active?T.blue:T.t1;
+  return(<svg width={size} height={size} viewBox="0 0 32 32" fill="none">
+    <path d="M4 7 L4 25 L15 27 L15 9 Z" stroke={c} strokeWidth="2.2"
+      strokeLinejoin="round" fill={active?T.blueSoft:'none'}/>
+    <path d="M28 7 L28 25 L17 27 L17 9 Z" stroke={c} strokeWidth="2.2"
+      strokeLinejoin="round" fill={active?T.blueSoft:'none'}/>
+  </svg>);
+}
 
 /* Fade-out-Blur am unteren Rand — ersetzt die früheren Fußzeilen.
    Inhalte laufen unter Navbar/FABs progressiv in Blur + bg aus.
@@ -2116,13 +2125,17 @@ function BottomFade({height=118}){
   return <div className="bottom-fade" aria-hidden="true" style={{height}}/>;
 }
 
-function TabBar({active,onTab,rightAction,searchable=false,onSearch}){
+function TabBar({active,onTab}){
+  // Such-FAB + Navbar-Suchmodus sind entfernt (Einstellungen haben ein
+  // eigenes Suchfeld im Screen). Die früheren searchable/rightAction-
+  // Codepfade bleiben inert über diese Konstanten.
+  const searchable=false, rightAction=null, onSearch=null;
   const tabs=[
     {id:'home',label:'Home',Icon:HomeIcon},
     {id:'profil',label:'Profil',Icon:ProfilTabIcon},
     {id:'suche',label:'Suche',Icon:SucheTabIcon},
     {id:'live',label:'Live',Icon:LiveIcon},
-    {id:'settings',label:'Einstellungen',Icon:GearIcon},
+    {id:'bibel',label:'Bibel',Icon:BibelTabIcon},
   ];
   // Search-Mode: nur aktiv wenn searchable=true. Tab "Home" bleibt sichtbar,
   // die anderen schrumpfen via maxWidth/opacity raus, ein Such-Input
@@ -2334,11 +2347,14 @@ function TabBar({active,onTab,rightAction,searchable=false,onSearch}){
       // untere Kante, der sichtbare „Strich"/Spalt darunter verschwindet.
       bottom:'calc(env(safe-area-inset-bottom, 0px) * 0.3 + 2px)',
       left:0,right:0,display:'flex',alignItems:'center',justifyContent:'center',gap:10,
-      padding:'0 20px',pointerEvents:'none',zIndex:5}}>
+      padding:'0 14px',pointerEvents:'none',zIndex:5}}>
+      {/* Flacher + breiter: die Bar streckt sich über die verfügbare
+          Breite (flex:1, gedeckelt), die Tabs teilen sie gleichmäßig. */}
       <div ref={navRef} onPointerDown={onBarPointerDown}
         className="glass-bar"
         style={{position:'relative',display:'flex',alignItems:'center',gap:2,
-        borderRadius:30,padding:'5px',pointerEvents:'auto',
+        flex:1,maxWidth:440,
+        borderRadius:26,padding:'4px 6px',pointerEvents:'auto',
         // touchAction none: während des Pill-Drags darf der Browser
         // die Pointer-Events nicht für Scroll/Swipe übernehmen.
         touchAction:'none',
@@ -2383,9 +2399,16 @@ function TabBar({active,onTab,rightAction,searchable=false,onSearch}){
               onPointerLeave={e=>{
                 if(e.pointerType==='mouse'&&!grabFlag.current) setHovered(null);
               }}
-              style={{display:'flex',alignItems:'center',
-                padding:hidden?'11px 0':'11px 13px',
-                maxWidth:hidden?0:200,
+              style={{display:'flex',flexDirection:'column',alignItems:'center',
+                justifyContent:'center',gap:3,
+                /* eBay-Style: Icon oben, Label IMMER darunter. Flach
+                   gehalten (kompakte Paddings) und per flex:1 über die
+                   volle Bar-Breite verteilt — alle Tabs gleich breit,
+                   die Pill bleibt damit konstant groß. */
+                padding:hidden?'9px 0':'9px 4px',
+                flex:hidden?'0 0 0':'1 1 0',
+                minWidth:0,
+                maxWidth:hidden?0:140,
                 opacity:hidden?0:1,
                 overflow:'hidden',
                 borderRadius:24,border:'none',cursor:'pointer',
@@ -2393,9 +2416,9 @@ function TabBar({active,onTab,rightAction,searchable=false,onSearch}){
                    das "Active"-Indicator-Bild. */
                 background:'transparent',
                 color:isActive?T.blue:T.t2,
-                fontSize:11,fontWeight:600,
+                fontSize:10,fontWeight:600,
                 position:'relative',zIndex:1,
-                transition:'max-width .25s ease, padding .25s ease, opacity .2s ease, color var(--anim-base)'}}>
+                transition:'min-width .25s ease, max-width .25s ease, padding .25s ease, opacity .2s ease, color var(--anim-base)'}}>
               {/* key=isActive zwingt das Icon-Wrapper-Element zum Remount
                   beim Tab-Wechsel, sodass die Bounce-Animation jedes Mal
                   neu durchläuft. */}
@@ -2404,63 +2427,15 @@ function TabBar({active,onTab,rightAction,searchable=false,onSearch}){
                 style={{display:'inline-flex',transformOrigin:'center'}}>
                 <Icon active={isActive||isPreview} size={21}/>
               </span>
-              {/* Label nur am AKTIVEN Tab (Apple-style): klappt mit
-                  Spring auf, inaktive Tabs sind icon-only — so passen
-                  5 Tabs entspannt auf 360-px-Screens. */}
-              <span style={{fontSize:11,color:T.blue,fontWeight:700,
-                whiteSpace:'nowrap',overflow:'hidden',
-                maxWidth:isActive&&!hidden?112:0,
-                opacity:isActive&&!hidden?1:0,
-                marginLeft:isActive&&!hidden?7:0,
-                transition:'max-width var(--anim-pill), opacity .22s ease, margin-left var(--anim-pill)'}}>
+              <span style={{fontSize:10,whiteSpace:'nowrap',letterSpacing:.1,
+                color:isActive?T.blue:T.t3,fontWeight:isActive?800:600,
+                transition:'color var(--anim-base)'}}>
                 {label}
               </span>
             </button>
           );
         })}
-        {searchable&&(
-          <input ref={inputRef}
-            value={searchValue}
-            onChange={e=>setSearchValue(e.target.value)}
-            onKeyDown={e=>{
-              if(e.key==='Enter') submit();
-              else if(e.key==='Escape') exitSearch();
-            }}
-            placeholder="Einstellungen durchsuchen…"
-            autoCorrect="off" autoCapitalize="off" spellCheck={false}
-            style={{
-              flex:isSearching?1:0,
-              maxWidth:isSearching?260:0,
-              opacity:isSearching?1:0,
-              padding:isSearching?'8px 10px':'8px 0',
-              minWidth:0,
-              border:'none',background:'transparent',outline:'none',
-              color:T.t1,fontSize:13,fontWeight:500,
-              transition:'max-width .25s ease, padding .25s ease, opacity .2s ease'}}/>
-        )}
-        {searchable&&isSearching&&searchValue&&(
-          <button onClick={clearText} title="Eingabe löschen"
-            className="fi"
-            style={{
-              width:22,height:22,borderRadius:'50%',
-              background:T.card2,border:'none',
-              color:T.t1,fontSize:12,fontWeight:700,
-              cursor:'pointer',marginRight:4,
-              display:'flex',alignItems:'center',justifyContent:'center',
-              flexShrink:0,lineHeight:1}}>
-            ×
-          </button>
-        )}
       </div>
-      <button onClick={rightClick} title={rightTitle} data-lift
-        className={'glass-bar'+(rightHighlight?' glow-pulse':'')}
-        style={{width:48,height:48,borderRadius:'50%',
-          display:'flex',alignItems:'center',justifyContent:'center',
-          cursor:rightClick?'pointer':'default',pointerEvents:'auto',
-          ...(rightHighlight?{border:`1px solid ${T.o}`,
-            boxShadow:`0 8px 28px rgba(0,0,0,.28), 0 0 0 2px ${T.o}33`}:{})}}>
-        {rightIcon}
-      </button>
     </div>
   );
 }
@@ -2588,7 +2563,7 @@ function AvatarWithUpload({profile,setProfile,size=72}){
 
 
 function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRitmoDNA,
-  currentUid,onOpenFollowers,onOpenFollowing,onTab}){
+  currentUid,onOpenFollowers,onOpenFollowing,onTab,onOpenSettings}){
   // Nur die Labels, die noch in der Tag-Reihe der Level-Karte gerendert werden.
   const handLabels={right:'Rechtshänder',left:'Linkshänder'};
   const sideLabels={left:'Ad-Seite (links)',right:'Deuce-Seite (rechts)',any:'Beides geht'};
@@ -2834,6 +2809,16 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
         {/* Actions */}
         <div className="fu" style={{animationDelay:'.15s',
           display:'flex',flexDirection:'column',gap:8,marginBottom:16}}>
+          {/* Einstellungen wohnen jetzt im Profil (kein eigener Tab mehr) */}
+          <button onClick={onOpenSettings}
+            style={{padding:'13px 16px',background:T.card,
+              border:`1px solid ${T.border}`,borderRadius:15,
+              color:T.t1,fontSize:14,fontWeight:600,cursor:'pointer',
+              textAlign:'left',display:'flex',alignItems:'center',gap:10}}>
+            <GearIcon size={17}/>
+            <span style={{flex:1}}>Einstellungen</span>
+            <ChevronRightIcon size={15} color={T.t3}/>
+          </button>
           <button onClick={onResetOnboarding}
             style={{padding:'13px 16px',background:T.card,
               border:`1px solid ${T.border}`,borderRadius:15,
@@ -2883,7 +2868,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
       }} onClick={()=>nav('profile-ritmodna')}>
         <div style={{display:'flex',alignItems:'center',
           justifyContent:'space-between',gap:14}}>
-          <RitmoWordmark size={52} style={{marginLeft:-3}}/>
+          <RitmoWordmark size={52} style={{marginLeft:-14}}/>
           {/* Rechts gruppiert: RITMO Post Icon + Profil-Avatar, vertikal
               zentriert ausgerichtet zueinander. Beide stoppen die
               Header-onClick-Propagation, damit der Tap nicht durch zum
@@ -3012,22 +2997,6 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
                 padding:'2px 7px',textTransform:'uppercase'}}>Bald</span>
             </div>
             <div style={{color:T.t3,fontSize:12,fontWeight:500}}>Saison | Spieltage | Tabelle</div>
-          </div>
-        </button>
-
-        {/* RITMO Bibel — gebündelt: Regelwerk + Journey */}
-        <button onClick={()=>nav('ritmo-bibel')} className="fu"
-          style={{background:'transparent',border:`1px solid ${T.border}`,borderRadius:21,
-            padding:'14px 20px',display:'flex',alignItems:'center',gap:16,
-            cursor:'pointer',color:T.t1,textAlign:'left',transition:'background .15s',
-            animationDelay:'.18s'}}
-          onPointerDown={e=>e.currentTarget.style.background=T.card2}
-          onPointerUp={e=>e.currentTarget.style.background='transparent'}
-          onPointerLeave={e=>e.currentTarget.style.background='transparent'}>
-          <BookIcon size={28}/>
-          <div style={{flex:1}}>
-            <div style={{color:T.o,fontSize:15,fontWeight:700,marginBottom:1}}>RITMO Bibel</div>
-            <div style={{color:T.t3,fontSize:11,fontWeight:500}}>Regelwerk | Journey | FAQ</div>
           </div>
         </button>
 
@@ -3261,7 +3230,7 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
 
       <div style={{padding:'0 9px 22px'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-          <RitmoWordmark size={52} style={{marginLeft:-3}}/>
+          <RitmoWordmark size={52} style={{marginLeft:-14}}/>
           <SingleMatchIcon size={40}/>
         </div>
         <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>Single Match</div>
@@ -5559,7 +5528,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
 
       <div style={{padding:'0 9px 22px'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-          <RitmoWordmark size={52} style={{marginLeft:-3}}/>
+          <RitmoWordmark size={52} style={{marginLeft:-14}}/>
           <TrophyIcon size={40}/>
         </div>
         <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>
@@ -6094,7 +6063,7 @@ function OnlineTournamentLobby({pin,onHome,onStart,onCancel}){
 
       <div style={{padding:'0 9px 22px'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-          <RitmoWordmark size={52} style={{marginLeft:-3}}/>
+          <RitmoWordmark size={52} style={{marginLeft:-14}}/>
           <TrophyIcon size={40}/>
         </div>
         <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>
@@ -6840,7 +6809,7 @@ function JoinTournament({initialPin,profile,onHome,onJoin,restored}){
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
       <div style={{padding:'0 9px 22px'}}>
-        <RitmoWordmark size={52} style={{marginLeft:-3}}/>
+        <RitmoWordmark size={52} style={{marginLeft:-14}}/>
         <div style={{color:T.t2,fontSize:30,marginTop:8,marginLeft:10,fontWeight:800}}>
           Turnier beitreten
         </div>
@@ -7550,10 +7519,259 @@ function TournamentCourtCard({court,courtIndex,playerById,onScoreChange,onConfir
 /* ═══════════════════════════════════════════════════════════════
    TOURNAMENT PLAY
 ═══════════════════════════════════════════════════════════════ */
+/* ── Pausen-Ausgleich einer Runde: aufgerundeter Mittelwert aller
+   Punkte aus BESTÄTIGTEN Matches (spiegelt calcLeaderboard). null,
+   wenn noch kein Match bestätigt ist. */
+function roundMeanBonus(round){
+  const scores=[];
+  (round?.courts||[]).forEach(m=>{
+    if(!m.done) return;
+    (m.t1||[]).forEach(()=>scores.push(m.s1??0));
+    (m.t2||[]).forEach(()=>scores.push(m.s2??0));
+  });
+  if(!scores.length) return null;
+  return Math.ceil(scores.reduce((a,b)=>a+b,0)/scores.length);
+}
+
+/* Kleiner blauer Chip „⏸ +X" — kennzeichnet im Leaderboard farblich,
+   wie viele Punkte/Siege aus dem Pausen-Ausgleich stammen. */
+function PauseBonusChip({value,size=9.5}){
+  if(!value) return null;
+  return(
+    <span title="Aus Pausen-Ausgleich (aufgerundeter Runden-Mittelwert)"
+      style={{display:'inline-flex',alignItems:'center',gap:3,
+        background:T.blueSoft,border:`1px solid ${T.blue}`,borderRadius:8,
+        padding:'1px 6px',color:T.blue,fontSize:size,fontWeight:800,lineHeight:1.4}}>
+      <PauseIcon size={size} color={T.blue}/>+{value}
+    </span>
+  );
+}
+
+/* Uhr mit Rückwärts-Pfeil — Runden-Historie. */
+function HistoryIcon({size=22,color=T.o}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke={color} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M20.5 12a8.5 8.5 0 1 1-2.6-6.1"/>
+    <path d="M18.5 2.5v3.6h-3.6"/>
+    <path d="M12 8v4.3l2.9 1.7"/>
+  </svg>);
+}
+
+/* Court/Leaderboard-Umschalter — ANIMIERT: die beiden Mini-Glyphs
+   tauschen beim Umschalten diagonal die Plätze. Der abgehende rotiert
+   dabei einmal um sich selbst und „swooshed" HINTER den anderen
+   (kleiner + gedimmt, z-Index wechselt), der ankommende dreht sich
+   groß nach vorn. Der Slash bleibt statisch. mode = aktueller Tab
+   ('round' → Court vorn, 'board' → Spieler vorn). */
+function ViewSwitchIcon({mode='round',size=24,color=T.o}){
+  const g=Math.round(size*0.58);   // Glyph-Box
+  const d=size-g;                  // diagonaler Versatz nach unten-rechts
+  const courtFront=mode!=='board';
+  const sty=(front,dir)=>({
+    position:'absolute',top:0,left:0,width:g,height:g,
+    display:'flex',alignItems:'center',justifyContent:'center',
+    zIndex:front?2:1,
+    opacity:front?1:.4,
+    transform:front
+      ?'translate(0px,0px) rotate(0deg) scale(1)'
+      :`translate(${d}px,${d}px) rotate(${dir*360}deg) scale(.78)`,
+    transition:'transform .55s var(--ease-out-back), opacity .35s ease',
+    willChange:'transform',
+  });
+  return(
+    <span aria-hidden="true" style={{position:'relative',width:size,height:size,
+      display:'inline-block',flexShrink:0}}>
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+        style={{position:'absolute',inset:0}}
+        stroke={color} strokeWidth="1.6" strokeLinecap="round">
+        <line x1="14.8" y1="2.5" x2="9.2" y2="21.5"/>
+      </svg>
+      {/* Mini-Court */}
+      <span style={sty(courtFront,1)}>
+        <svg width={g} height={g} viewBox="0 0 12 10" fill="none" stroke={color}
+          strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="1" y="1" width="10" height="8" rx="1.6"/>
+          <line x1="6" y1="1" x2="6" y2="9"/>
+        </svg>
+      </span>
+      {/* Mini-Spieler */}
+      <span style={sty(!courtFront,-1)}>
+        <svg width={g} height={g} viewBox="0 0 12 12" fill="none" stroke={color}
+          strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="6" cy="4.2" r="2.1"/>
+          <path d="M1.9 11c0-2.4 1.8-3.7 4.1-3.7s4.1 1.3 4.1 3.7"/>
+        </svg>
+      </span>
+    </span>
+  );
+}
+
+/* ── Runden-Abschluss-Bestätigung — macht den Pausen-Ausgleich
+   TRANSPARENT: zeigt vor dem Rundenwechsel den aufgerundeten
+   Mittelwert dieser Runde und wer ihn gutgeschrieben bekommt. */
+function RoundEndModal({roundNo,bonus,names,winMode,onConfirm,onCancel}){
+  return(
+    <div onClick={onCancel} style={{position:'fixed',inset:0,zIndex:300,
+      background:'rgba(0,0,0,.72)',backdropFilter:'blur(4px)',
+      display:'flex',alignItems:'center',justifyContent:'center',
+      padding:'0 26px',animation:'fadeIn .15s ease'}}>
+      <div onClick={e=>e.stopPropagation()} className="slide-up"
+        style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:21,
+          width:'100%',maxWidth:380,padding:'22px 20px'}}>
+        <div style={{color:T.t1,fontSize:18,fontWeight:800,letterSpacing:-.2}}>
+          Runde {roundNo} abschließen
+        </div>
+        <div style={{color:T.t3,fontSize:12,lineHeight:1.5,marginTop:4,marginBottom:14}}>
+          Pausen-Ausgleich dieser Runde — wird dem Gesamtscore gutgeschrieben.
+        </div>
+
+        {winMode==='points'?(
+          bonus!=null?(
+            <div style={{background:T.blueSoft,border:`1px solid ${T.blue}`,
+              borderRadius:15,padding:'14px 16px',marginBottom:14}}>
+              <div style={{display:'flex',alignItems:'center',gap:10}}>
+                <div style={{width:34,height:34,borderRadius:'50%',flexShrink:0,
+                  background:T.card,border:`1.5px solid ${T.blue}`,
+                  display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  <PauseIcon size={15} color={T.blue}/>
+                </div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{color:T.blue,fontSize:20,fontWeight:900,lineHeight:1.1}}>
+                    +{bonus} Punkte
+                  </div>
+                  <div style={{color:T.t2,fontSize:11,fontWeight:500,marginTop:2,lineHeight:1.45}}>
+                    Aufgerundeter Mittelwert aller Punkte dieser Runde.
+                  </div>
+                </div>
+              </div>
+              <div style={{color:T.t1,fontSize:13,fontWeight:600,marginTop:10}}>
+                geht an: <span style={{color:T.blue,fontWeight:800}}>{names.join(', ')}</span>
+              </div>
+            </div>
+          ):(
+            <div style={{background:T.card2,border:`1px solid ${T.border}`,
+              borderRadius:15,padding:'12px 14px',marginBottom:14,
+              color:T.t3,fontSize:12,lineHeight:1.5}}>
+              Noch kein Ergebnis bestätigt — ohne bestätigte Matches gibt es keinen
+              Ausgleich für {names.join(', ')}.
+            </div>
+          )
+        ):(
+          <div style={{background:T.blueSoft,border:`1px solid ${T.blue}`,
+            borderRadius:15,padding:'12px 14px',marginBottom:14}}>
+            <div style={{color:T.blue,fontSize:14,fontWeight:800}}>+1 Sieg pro Pause</div>
+            <div style={{color:T.t2,fontSize:11,marginTop:3,lineHeight:1.45}}>
+              Gutschrift für pausierte Spieler der unteren Tabellenhälfte:
+              {' '}{names.join(', ')}
+            </div>
+          </div>
+        )}
+
+        <div style={{display:'flex',gap:10}}>
+          <button onClick={onCancel}
+            style={{flex:1,padding:'12px',borderRadius:13,background:T.card2,
+              border:`1px solid ${T.border}`,color:T.t1,fontSize:13,fontWeight:600,
+              cursor:'pointer'}}>
+            Zurück
+          </button>
+          <button onClick={onConfirm}
+            style={{flex:1.4,padding:'12px',borderRadius:13,background:T.o,
+              border:'none',color:T.bg,fontSize:13,fontWeight:800,cursor:'pointer'}}>
+            Bestätigen & weiter
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Runden-Historie — alle gespielten Runden mit Paarungen,
+   Ergebnissen, Pausen und dem jeweils angewandten Ausgleich.
+   Die Runden liegen vollständig in tourney.rounds (persistiert
+   via localStorage zusammen mit dem Turnier). */
+function RoundHistorySheet({tourney,onClose}){
+  const pById=id=>tourney.players.find(p=>p.id===id);
+  const teamNames=ids=>(ids||[]).map(id=>pById(id)?.name||'?').join(' + ');
+  return(
+    <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:300,
+      background:'rgba(0,0,0,.7)',backdropFilter:'blur(4px)',display:'flex',
+      alignItems:'flex-end',justifyContent:'center',animation:'fadeIn .15s ease'}}>
+      <div onClick={e=>e.stopPropagation()} className="slide-up"
+        style={{background:T.card,borderTopLeftRadius:20,borderTopRightRadius:20,
+          borderTop:`1px solid ${T.border}`,width:'100%',maxWidth:480,
+          padding:'16px 18px calc(env(safe-area-inset-bottom,0px) + 18px)',
+          maxHeight:'82vh',overflowY:'auto',WebkitOverflowScrolling:'touch'}}>
+        <div style={{width:36,height:4,borderRadius:2,background:T.border,margin:'0 auto 14px'}}/>
+        <div style={{display:'flex',alignItems:'center',gap:9,marginBottom:3}}>
+          <HistoryIcon size={19} color={T.o}/>
+          <div style={{color:T.t1,fontSize:17,fontWeight:800}}>Runden-Historie</div>
+        </div>
+        <div style={{color:T.t3,fontSize:12,lineHeight:1.5,marginBottom:14}}>
+          Alle Runden mit Ergebnissen & Pausen-Ausgleich — bleiben über das
+          ganze Turnier gespeichert.
+        </div>
+        {tourney.rounds.map((r,ri)=>{
+          const isCurrent=ri===tourney.current;
+          const bonus=tourney.winMode==='points'?roundMeanBonus(r):null;
+          return(
+            <div key={ri} style={{background:T.card2,borderRadius:15,marginBottom:10,
+              border:`1px solid ${isCurrent?T.o:T.border}`,padding:'12px 14px'}}>
+              <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
+                <span style={{color:isCurrent?T.o:T.t1,fontSize:13,fontWeight:800}}>
+                  Runde {ri+1}
+                </span>
+                {isCurrent&&(
+                  <span style={{fontSize:9,fontWeight:800,letterSpacing:1,color:T.o,
+                    background:T.oSoft,border:`1px solid ${T.o}55`,borderRadius:7,
+                    padding:'1px 7px',textTransform:'uppercase'}}>laufend</span>
+                )}
+              </div>
+              {(r.courts||[]).map((c,ci)=>(
+                <div key={ci} style={{display:'flex',alignItems:'center',gap:8,
+                  padding:'6px 0',borderTop:ci>0?`1px solid ${T.sep}`:'none'}}>
+                  <span style={{color:T.t4,fontSize:10,fontWeight:800,width:18,flexShrink:0}}>
+                    C{ci+1}
+                  </span>
+                  <span style={{flex:1,minWidth:0,color:T.t2,fontSize:12,fontWeight:600,
+                    textAlign:'right',overflow:'hidden',textOverflow:'ellipsis',
+                    whiteSpace:'nowrap'}}>{teamNames(c.t1)}</span>
+                  <span style={{flexShrink:0,fontFamily:'monospace',fontSize:13,fontWeight:800,
+                    color:c.done?T.o:T.t4,padding:'0 4px'}}>
+                    {c.done?`${c.s1??0}:${c.s2??0}`:'– : –'}
+                  </span>
+                  <span style={{flex:1,minWidth:0,color:T.t2,fontSize:12,fontWeight:600,
+                    overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                    {teamNames(c.t2)}
+                  </span>
+                </div>
+              ))}
+              {(r.sitOut||[]).length>0&&(
+                <div style={{display:'flex',alignItems:'center',gap:7,marginTop:8,
+                  paddingTop:8,borderTop:`1px solid ${T.sep}`}}>
+                  <PauseBonusChip value={tourney.winMode==='points'?bonus:(r.sitOut.length?1:0)}/>
+                  <span style={{color:T.t3,fontSize:11,fontWeight:500,minWidth:0,
+                    overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                    Pause: <span style={{color:T.t1,fontWeight:600}}>
+                      {r.sitOut.map(id=>pById(id)?.name||'?').join(', ')}
+                    </span>
+                  </span>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onMatchLogged}){
   const[tab,setTab]=useState('round');
   const[confirmEnd,setConfirmEnd]=useState(false);
   const[showSitOutInfo,setShowSitOutInfo]=useState(false);
+  // Runden-Historie-Sheet + Transparenz-Popup vor dem Rundenwechsel.
+  const[showHistory,setShowHistory]=useState(false);
+  const[roundEndInfo,setRoundEndInfo]=useState(null);
   const[editLineupCourtId,setEditLineupCourtId]=useState(null);
   const[editPtsId,setEditPtsId]=useState(null);
   const round=tourney.rounds[tourney.current];
@@ -7780,6 +7998,19 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
     });
   };
 
+  // Vor dem Rundenwechsel: Pausen-Ausgleich transparent bestätigen
+  // lassen (Popup mit Mittelwert + Empfängern). Ohne Pausierte geht
+  // es direkt weiter.
+  const requestNextRound=()=>{
+    const so=round.sitOut||[];
+    if(so.length===0){ nextRound(); return; }
+    setRoundEndInfo({
+      roundNo:tourney.current+1,
+      bonus:tourney.winMode==='points'?roundMeanBonus(round):null,
+      names:so.map(id=>playerById(id)?.name||'?'),
+    });
+  };
+
   const endTournament=()=>{
     setTourney(t=>({...t,finished:true,timerRunning:false}));
     nav('tournament-leaderboard');
@@ -7806,7 +8037,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
           wirkte optisch versetzt zur Logo-Höhe. */}
       <div style={{padding:'0 22px 14px'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-          <RitmoWordmark size={52} style={{marginLeft:-3}}/>
+          <RitmoWordmark size={52} style={{marginLeft:-14}}/>
           <TrophyIcon size={40}/>
         </div>
         <div style={{color:T.t1,fontSize:26,marginTop:6,marginLeft:10,fontWeight:800,
@@ -7822,7 +8053,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
       {/* Timer + Leaderboard Toggle */}
       <div style={{display:'flex',gap:10,padding:'0 22px 14px'}}>
         {/* Timer Card */}
-        <div style={{flex:'1 1 60%',
+        <div style={{flex:1,minWidth:0,
           background:T.bg,
           border:`2px solid ${tourney.timerFinished?T.r:T.o}`,
           borderRadius:19,padding:'10px 14px',
@@ -7849,15 +8080,26 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
           </button>
         </div>
 
-        {/* Leaderboard Toggle */}
+        {/* Courts ⇄ Leaderboard — Icon-Umschalter */}
         <button onClick={()=>setTab(tab==='board'?'round':'board')}
-          style={{flex:'1 1 40%',
-            background:tab==='board'?T.oSoft:T.card,
-            border:`1px solid ${tab==='board'?T.o:T.border}`,
-            borderRadius:19,padding:'10px 14px',
-            color:tab==='board'?T.o:T.t1,fontSize:14,fontWeight:600,
-            cursor:'pointer',transition:'all .2s'}}>
-          {tab==='board'?'Courts':'Leaderboard'}
+          title={tab==='board'?'Courts anzeigen':'Leaderboard anzeigen'}
+          aria-label="Courts/Leaderboard umschalten"
+          style={{width:58,flexShrink:0,
+            background:tab==='board'?T.oSoft:T.bg,
+            border:`2px solid ${T.o}`,
+            borderRadius:19,cursor:'pointer',
+            display:'flex',alignItems:'center',justifyContent:'center',
+            transition:'background .2s'}}>
+          <ViewSwitchIcon mode={tab} size={27} color={T.o}/>
+        </button>
+
+        {/* Runden-Historie */}
+        <button onClick={()=>setShowHistory(true)}
+          title="Runden-Historie" aria-label="Runden-Historie"
+          style={{width:58,flexShrink:0,background:T.bg,
+            border:`2px solid ${T.o}`,borderRadius:19,cursor:'pointer',
+            display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <HistoryIcon size={25} color={T.o}/>
         </button>
       </div>
 
@@ -7930,9 +8172,10 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
             </div>
           )}
 
-          {/* Next round (when allDone) */}
+          {/* Next round (when allDone) — öffnet erst das Transparenz-
+              Popup zum Pausen-Ausgleich (wenn jemand pausiert hat). */}
           {allDone&&(
-            <button onClick={nextRound}
+            <button onClick={requestNextRound}
               style={{padding:'14px',borderRadius:19,border:'none',
                 background:T.o,color:T.bg,fontSize:15,fontWeight:800,cursor:'pointer',
                 marginTop:6}}>
@@ -7973,12 +8216,13 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
                         {tourney.winMode==='wins'?p.totalWins:p.totalPts}
                       </span>
                     </div>
-                    <div style={{color:(tourney.winMode==='wins'?p.adjWins:p.adjPts)?T.o:T.t3,
-                      fontSize:10,fontWeight:600}}>
-                      {tourney.winMode==='wins'
-                        ?(p.bonusWins>0?`Siege +${p.bonusWins}`:'Siege')
-                        :(p.bonusPts>0?`Punkte +${p.bonusPts}`:'Punkte')}
-                      {(tourney.winMode==='wins'?p.adjWins:p.adjPts)?' · angepasst':''}
+                    <div style={{display:'flex',alignItems:'center',gap:5}}>
+                      <PauseBonusChip value={tourney.winMode==='wins'?p.bonusWins:p.bonusPts}/>
+                      <span style={{color:(tourney.winMode==='wins'?p.adjWins:p.adjPts)?T.o:T.t3,
+                        fontSize:10,fontWeight:600}}>
+                        {tourney.winMode==='wins'?'Siege':'Punkte'}
+                        {(tourney.winMode==='wins'?p.adjWins:p.adjPts)?' · angepasst':''}
+                      </span>
                     </div>
                   </button>
                 </div>
@@ -8036,6 +8280,22 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
           onSave={(v)=>{savePlayerPoints(editPtsEntry.id,v);setEditPtsId(null);}}
           onClose={()=>setEditPtsId(null)}/>
       )}
+
+      {/* Runden-Abschluss: Pausen-Ausgleich bestätigen */}
+      {roundEndInfo&&(
+        <RoundEndModal
+          roundNo={roundEndInfo.roundNo}
+          bonus={roundEndInfo.bonus}
+          names={roundEndInfo.names}
+          winMode={tourney.winMode}
+          onCancel={()=>setRoundEndInfo(null)}
+          onConfirm={()=>{setRoundEndInfo(null);nextRound();}}/>
+      )}
+
+      {/* Runden-Historie */}
+      {showHistory&&(
+        <RoundHistorySheet tourney={tourney} onClose={()=>setShowHistory(false)}/>
+      )}
     </div>
   );
 }
@@ -8054,7 +8314,7 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
 
       <div style={{padding:'0 9px 22px'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-          <RitmoWordmark size={52} style={{marginLeft:-3}}/>
+          <RitmoWordmark size={52} style={{marginLeft:-14}}/>
           <TrophyIcon size={40}/>
         </div>
         <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>Endstand</div>
@@ -8091,15 +8351,12 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
                     {p.sitOut>0&&<> · {p.sitOut} Pause{p.sitOut>1?'n':''}</>}
                   </div>
                 </div>
-                <div style={{textAlign:'right'}}>
+                <div style={{textAlign:'right',display:'flex',flexDirection:'column',
+                  alignItems:'flex-end',gap:2}}>
                   <div style={{color:T.o,fontSize:16,fontWeight:800}}>
                     {tourney.winMode==='wins'?p.totalWins:p.totalPts}
                   </div>
-                  {((tourney.winMode==='wins'?p.bonusWins:p.bonusPts)>0)&&(
-                    <div style={{color:T.t3,fontSize:10,fontWeight:600}}>
-                      +{tourney.winMode==='wins'?p.bonusWins:p.bonusPts} Pause
-                    </div>
-                  )}
+                  <PauseBonusChip value={tourney.winMode==='wins'?p.bonusWins:p.bonusPts}/>
                 </div>
               </div>
             ))}
@@ -8185,7 +8442,7 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
       <div style={{padding:'0 9px 24px'}}>
-        <RitmoWordmark size={52} style={{marginLeft:-3}}/>
+        <RitmoWordmark size={52} style={{marginLeft:-14}}/>
         <div style={{color:T.t2,fontSize:30,marginTop:8,marginLeft:10,fontWeight:800}}>
           {items.length===0?'Keine laufenden Spiele.':'Laufende Spiele und Turniere.'}
         </div>
@@ -8480,8 +8737,9 @@ function SettingsCard({icon,title,desc,onClick,destructive=false,q=''}){
   );
 }
 
-function Settings({onHome,activeTab,setActiveTab,nav}){
-  // Such-Query — TabBar setzt sie via onSearch.
+function Settings({onHome,onBack,nav}){
+  // Such-Query — eigenes Suchfeld im Screen (die Navbar-Suche ist weg,
+  // Einstellungen sind kein Tab mehr und wohnen im Profil).
   const[query,setQuery]=useState('');
   const q=query;
 
@@ -8490,9 +8748,27 @@ function Settings({onHome,activeTab,setActiveTab,nav}){
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
       <div style={{padding:'0 9px 22px'}}>
-        <RitmoWordmark size={52} style={{marginLeft:-3}}/>
+        <RitmoWordmark size={52} style={{marginLeft:-14}}/>
         <div style={{color:T.t2,fontSize:30,marginTop:8,marginLeft:10,fontWeight:800}}>
           <Hl text="Einstellungen" q={q}/>
+        </div>
+        {/* iOS-style Suchfeld unter dem Large Title */}
+        <div style={{margin:'14px 13px 0',display:'flex',alignItems:'center',gap:8,
+          background:T.card,border:`1px solid ${T.border}`,borderRadius:13,
+          padding:'9px 12px'}}>
+          <SearchIcon size={16}/>
+          <input value={query} onChange={e=>setQuery(e.target.value)}
+            placeholder="Einstellungen durchsuchen…"
+            autoCorrect="off" autoCapitalize="off" spellCheck={false}
+            style={{flex:1,minWidth:0,border:'none',background:'transparent',
+              outline:'none',color:T.t1,fontSize:14,fontWeight:500}}/>
+          {query&&(
+            <button onClick={()=>setQuery('')} aria-label="Eingabe löschen"
+              style={{width:20,height:20,borderRadius:'50%',background:T.card2,
+                border:'none',color:T.t1,fontSize:11,fontWeight:700,cursor:'pointer',
+                display:'flex',alignItems:'center',justifyContent:'center',
+                flexShrink:0,lineHeight:1}}>×</button>
+          )}
         </div>
       </div>
 
@@ -8540,8 +8816,8 @@ function Settings({onHome,activeTab,setActiveTab,nav}){
       </div>
 
       <BottomFade/>
-      <TabBar active={activeTab} onTab={setActiveTab}
-        searchable={true} onSearch={setQuery}/>
+      <MatchBar onHome={onHome}
+        rightButtons={[{icon:<PersonGlyph size={20}/>,onClick:onBack}]}/>
     </div>
   );
 }
@@ -12159,7 +12435,7 @@ function DnaPinGate({onOk,onClose}){
   );
 }
 
-function RitmoBibel({onHome,onRules,onJourney,onFaq}){
+function RitmoBibel({onHome,onRules,onJourney,onFaq,onTab}){
   return(
     <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden',
@@ -12196,7 +12472,8 @@ function RitmoBibel({onHome,onRules,onJourney,onFaq}){
       </div>
 
       <BottomFade/>
-      <MatchBar onHome={onHome}/>
+      {/* Bibel ist jetzt Haupt-Tab → Navbar; Fallback für alte Aufrufer. */}
+      {onTab?<TabBar active="bibel" onTab={onTab}/>:<MatchBar onHome={onHome}/>}
     </div>
   );
 }
@@ -14575,7 +14852,7 @@ export default function App(){
     else if(t==='profil') setScr('profile');
     else if(t==='suche') setScr('search-hub');
     else if(t==='live') setScr('live');
-    else if(t==='settings') setScr('settings');
+    else if(t==='bibel') setScr('ritmo-bibel');
   };
 
   const[tourneyEditMode,setTourneyEditMode]=useState(false);
@@ -14724,6 +15001,7 @@ export default function App(){
       profile={profile} onboarded={onboarded} unread={unreadTotal}/>}
     {scr==='profile'&&<Profile profile={profile} setProfile={setProfile}
       onHome={goHome} currentUid={currentUid} onTab={handleTab}
+      onOpenSettings={()=>setScr('settings')}
       onOpenRitmoDNA={()=>setScr('profile-ritmodna')}
       onOpenFollowers={()=>{ if(currentUid){ setViewPlayerId(currentUid); setFollowListInitial('followers'); setScr('follow-list'); } }}
       onOpenFollowing={()=>{ if(currentUid){ setViewPlayerId(currentUid); setFollowListInitial('following'); setScr('follow-list'); } }}
@@ -14821,7 +15099,7 @@ export default function App(){
       joinedSession={joinedSession}
       onLeaveJoined={()=>setJoinedSession(null)}/>}
     {scr==='settings'&&<Settings onHome={goHome} nav={nav}
-      activeTab={activeTab} setActiveTab={handleTab}/>}
+      onBack={()=>setScr('profile')}/>}
     {scr==='settings-steuerung'&&<SettingsSteuerung
       onBack={()=>setScr('settings')} onHome={goHome}
       inputMode={inputMode} setInputMode={setInputMode}
@@ -14925,7 +15203,8 @@ export default function App(){
       onHome={goHome}
       onRules={()=>nav('rules')}
       onJourney={()=>nav('journey')}
-      onFaq={()=>setScr('app-faq')}/>}
+      onFaq={()=>setScr('app-faq')}
+      onTab={handleTab}/>}
     {scr==='app-faq'&&<AppFAQ onBack={()=>setScr('ritmo-bibel')} onHome={goHome}/>}
 
     {/* Suche-Tab-Hub + Coming-Soon-Teaser (Liga, Buchungsassistent) */}

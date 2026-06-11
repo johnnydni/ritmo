@@ -45,6 +45,7 @@ import {
   HeartIcon, MedalIcon, PhoneIcon, KeyboardIcon, RingIcon, WatchIcon, FlicIcon,
   MoonIcon, SunIcon, LeafIcon, TargetIcon, ScrollIcon, StopwatchIcon, MaskIcon,
   PeopleIcon, HandIcon, WarnIcon, SkipIcon, LaptopIcon, MonitorIcon,
+  MenuIcon,
 } from "./icons.jsx";
 import { PADEL_STYLES, PADEL_QUIZ, computeStyle, computeMatchTier, STYLE_IMAGES } from "./padelStyles.js";
 
@@ -2149,6 +2150,51 @@ function BottomFade({height=118}){
   return <div className="bottom-fade" aria-hidden="true" style={{height}}/>;
 }
 
+/* ── Einheitlicher Screen-Header ──
+   Alle Screens teilen dieselbe Kopf-Geometrie: RITMO-Logo links
+   (optisch bündig bei marginLeft -24), Aktions-Icon rechts, darunter
+   die drei animierten Bauhaus-Streifen (Echo der Logo-Speed-Lines)
+   und der Titel (30/800, T.t2) + optionaler Untertitel. Padding
+   überall '0 9px <pad>', Texte/Streifen bei marginLeft 10. */
+function BauhausStripes({delay=.15}){
+  return(
+    <div aria-hidden="true" style={{display:'flex',flexDirection:'column',
+      gap:3.5,marginLeft:10,marginTop:2}}>
+      {[26,17,10].map((w,i)=>(
+        <span key={i} className="stripe-in" style={{width:w,height:3,
+          borderRadius:2,background:T.o,'--so':[1,.55,.3][i],
+          animationDelay:`${delay+i*.1}s`,display:'block'}}/>
+      ))}
+    </div>
+  );
+}
+function ScreenHeader({title,subtitle,icon,right,pad=22,ellipsis=false}){
+  return(
+    <div className="fi" style={{padding:`0 9px ${pad}px`,flexShrink:0}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+        <RitmoWordmark size={52} style={{marginLeft:-24}}/>
+        {(right||icon)&&(
+          <span style={{marginRight:5,display:'inline-flex',alignItems:'center'}}>
+            {right||icon}
+          </span>
+        )}
+      </div>
+      <BauhausStripes/>
+      {title!=null&&(
+        <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800,
+          ...(ellipsis?{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}:{})}}>
+          {title}
+        </div>
+      )}
+      {subtitle&&(
+        <div style={{color:T.t2,fontSize:14,marginTop:2,marginLeft:10,fontWeight:400}}>
+          {subtitle}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* Tab-Tap → Pill-Blend-Handshake über den Screen-Wechsel hinweg.
    Jeder Screen mountet seine EIGENE TabBar; beim Tap wird der Blend
    hier „bewaffnet" und vom TabBar-Mount des Ziel-Screens konsumiert.
@@ -2982,19 +3028,19 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
         <div style={{display:'flex',alignItems:'center',
           justifyContent:'space-between',gap:14}}>
           <RitmoWordmark size={52} style={{marginLeft:-24}}/>
-          {/* Rechts gruppiert: RITMO Post Icon + Profil-Avatar, vertikal
-              zentriert ausgerichtet zueinander. Beide stoppen die
-              Header-onClick-Propagation, damit der Tap nicht durch zum
-              DNA-Screen rutscht. */}
-          <div style={{display:'flex',alignItems:'center',gap:14,marginRight:5}}>
+          {/* Rechts: Glocke (Benachrichtigungen → RITMO Post) + Burger
+              (→ Einstellungen). Profil wohnt in der Navbar — kein
+              Avatar mehr im Header. Beide stoppen die Header-onClick-
+              Propagation (Header-Tap geht zum DNA-Screen). */}
+          <div style={{display:'flex',alignItems:'center',gap:12,marginRight:5}}>
             <button onClick={(e)=>{e?.stopPropagation?.();nav('ritmopost');}}
-              aria-label="RITMO Post"
+              aria-label="Benachrichtigungen"
               style={{width:44,height:44,borderRadius:'50%',flexShrink:0,
                 background:'rgba(0,0,0,0.22)',border:'1px solid rgba(255,255,255,0.18)',
                 color:'#FFFFFF',cursor:'pointer',padding:0,position:'relative',
                 display:'flex',alignItems:'center',justifyContent:'center',
                 boxShadow:'0 2px 8px rgba(0,0,0,0.25)'}}>
-              <RitmoPostIcon size={22} color="currentColor"/>
+              <BellIcon size={21}/>
               {hasUnread&&(
                 /* Notification-Dot — roter Punkt oben-rechts wenn
                    ungelesene Nachrichten existieren. */
@@ -3005,10 +3051,18 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
                     boxShadow:'0 0 0 2px rgba(232,69,69,.35)'}}/>
               )}
             </button>
-            <ProfileAvatar name={profile?.name} avatar={profile?.avatar} size={88}
-              onClick={(e)=>{e?.stopPropagation?.();nav('profile');}}/>
+            <button onClick={(e)=>{e?.stopPropagation?.();nav('settings');}}
+              aria-label="Einstellungen"
+              style={{width:44,height:44,borderRadius:'50%',flexShrink:0,
+                background:'rgba(0,0,0,0.22)',border:'1px solid rgba(255,255,255,0.18)',
+                color:'#FFFFFF',cursor:'pointer',padding:0,
+                display:'flex',alignItems:'center',justifyContent:'center',
+                boxShadow:'0 2px 8px rgba(0,0,0,0.25)'}}>
+              <MenuIcon size={20}/>
+            </button>
           </div>
         </div>
+        <BauhausStripes/>
         {profile?.name?(
           <div style={{color:T.t1,fontSize:18,fontWeight:700,marginTop:10,marginLeft:10,letterSpacing:-.2}}>
             Hi, {profile.name}!
@@ -3134,17 +3188,8 @@ function SearchHub({nav,onTab}){
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
-      <div className="fi" style={{padding:'0 22px 22px'}}>
-        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
-          <SearchIcon size={30}/>
-          <div style={{flex:1,minWidth:0}}>
-            <div style={{color:T.t1,fontSize:26,fontWeight:800,letterSpacing:-.3}}>Suche</div>
-            <div style={{color:T.t2,fontSize:14,marginTop:2,fontWeight:400}}>
-              Finde Spieler, Clubs und Courts.
-            </div>
-          </div>
-        </div>
-      </div>
+      <ScreenHeader title="Suche" subtitle="Finde Spieler, Clubs und Courts."
+        icon={<SearchIcon size={34}/>}/>
 
       <div style={{flex:1,padding:'0 22px 140px',overflowY:'auto',
         WebkitOverflowScrolling:'touch',display:'flex',flexDirection:'column',gap:14}}>
@@ -3244,17 +3289,8 @@ function AppFAQ({onBack,onHome}){
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
-      <div className="fi" style={{padding:'0 22px 18px'}}>
-        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
-          <BookIcon size={30}/>
-          <div style={{flex:1,minWidth:0}}>
-            <div style={{color:T.t1,fontSize:26,fontWeight:800,letterSpacing:-.3}}>App FAQ</div>
-            <div style={{color:T.t2,fontSize:14,marginTop:2,fontWeight:400}}>
-              Häufige Fragen, kurze Antworten.
-            </div>
-          </div>
-        </div>
-      </div>
+      <ScreenHeader pad={18} title="App FAQ" subtitle="Häufige Fragen, kurze Antworten."
+        icon={<BookIcon size={36}/>}/>
 
       <div style={{flex:1,padding:'0 22px 140px',overflowY:'auto',
         WebkitOverflowScrolling:'touch',display:'flex',flexDirection:'column',gap:10}}>
@@ -3344,13 +3380,7 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
-      <div style={{padding:'0 9px 22px'}}>
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-          <RitmoWordmark size={52} style={{marginLeft:-24}}/>
-          <SingleMatchIcon size={40}/>
-        </div>
-        <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>Single Match</div>
-      </div>
+      <ScreenHeader title="Single Match" icon={<SingleMatchIcon size={40}/>}/>
 
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
 
@@ -5642,15 +5672,8 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
-      <div style={{padding:'0 9px 22px'}}>
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-          <RitmoWordmark size={52} style={{marginLeft:-24}}/>
-          <TrophyIcon size={40}/>
-        </div>
-        <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>
-          {isEdit?'Turnier bearbeiten':saved?.draft?'Entwurf':'Turnier'}
-        </div>
-      </div>
+      <ScreenHeader title={isEdit?'Turnier bearbeiten':saved?.draft?'Entwurf':'Turnier'}
+        icon={<TrophyIcon size={40}/>}/>
 
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
 
@@ -6177,15 +6200,7 @@ function OnlineTournamentLobby({pin,onHome,onStart,onCancel}){
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
-      <div style={{padding:'0 9px 22px'}}>
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-          <RitmoWordmark size={52} style={{marginLeft:-24}}/>
-          <TrophyIcon size={40}/>
-        </div>
-        <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>
-          Online-Lobby
-        </div>
-      </div>
+      <ScreenHeader title="Online-Lobby" icon={<TrophyIcon size={40}/>}/>
 
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
 
@@ -6924,12 +6939,7 @@ function JoinTournament({initialPin,profile,onHome,onJoin,restored}){
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
-      <div style={{padding:'0 9px 22px'}}>
-        <RitmoWordmark size={52} style={{marginLeft:-24}}/>
-        <div style={{color:T.t2,fontSize:30,marginTop:8,marginLeft:10,fontWeight:800}}>
-          Turnier beitreten
-        </div>
-      </div>
+      <ScreenHeader title="Turnier beitreten" icon={<JoinIcon size={36}/>}/>
 
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
         {status==='input'||status==='joining'?(<>
@@ -8147,24 +8157,10 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
-      {/* Header — RITMO-Logo + Trophy mittig in einer Zeile, der
-          Subtitle "Americano · Runde N" hängt darunter. Vorher saß
-          die Trophy am oberen Rand (alignItems:'flex-start') und
-          wirkte optisch versetzt zur Logo-Höhe. */}
-      <div style={{padding:'0 22px 14px'}}>
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-          <RitmoWordmark size={52} style={{marginLeft:-24}}/>
-          <TrophyIcon size={40}/>
-        </div>
-        <div style={{color:T.t1,fontSize:26,marginTop:6,marginLeft:10,fontWeight:800,
-          overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-          {tourney.name||(tourney.format==='mexicano'?'Mexicano':'Americano')}
-        </div>
-        <div style={{color:T.t3,fontSize:14,marginLeft:10,fontWeight:600,marginTop:1}}>
-          {tourney.format==='mexicano'?'Mexicano':'Americano'} · Runde {tourney.current+1}
-          {tourney.endTime?` · bis ${tourney.endTime}`:''}
-        </div>
-      </div>
+      <ScreenHeader pad={14} ellipsis
+        title={tourney.name||(tourney.format==='mexicano'?'Mexicano':'Americano')}
+        subtitle={`${tourney.format==='mexicano'?'Mexicano':'Americano'} · Runde ${tourney.current+1}${tourney.endTime?` · bis ${tourney.endTime}`:''}`}
+        icon={<TrophyIcon size={40}/>}/>
 
       {/* Timer + Leaderboard Toggle */}
       <div style={{display:'flex',gap:10,padding:'0 22px 14px'}}>
@@ -8428,13 +8424,7 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
-      <div style={{padding:'0 9px 22px'}}>
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-          <RitmoWordmark size={52} style={{marginLeft:-24}}/>
-          <TrophyIcon size={40}/>
-        </div>
-        <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>Endstand</div>
-      </div>
+      <ScreenHeader title="Endstand" icon={<TrophyIcon size={40}/>}/>
 
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
 
@@ -8557,17 +8547,10 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
-      <div style={{padding:'0 9px 24px'}}>
-        <RitmoWordmark size={52} style={{marginLeft:-24}}/>
-        <div style={{color:T.t2,fontSize:30,marginTop:8,marginLeft:10,fontWeight:800}}>
-          {items.length===0?'Keine laufenden Spiele.':'Laufende Spiele und Turniere.'}
-        </div>
-        {items.length>0&&(
-          <div style={{color:T.t3,fontSize:11,marginTop:4,fontWeight:500}}>
-            ← Wische nach links zum Löschen
-          </div>
-        )}
-      </div>
+      <ScreenHeader pad={24}
+        title={items.length===0?'Keine laufenden Spiele.':'Laufende Spiele und Turniere.'}
+        subtitle={items.length>0?'← Wische nach links zum Löschen':null}
+        icon={<LiveTabIcon size={34}/>}/>
 
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
 
@@ -8863,11 +8846,9 @@ function Settings({onHome,onBack,nav}){
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
+      <ScreenHeader pad={0} title={<Hl text="Einstellungen" q={q}/>}
+        icon={<GearIcon size={34}/>}/>
       <div style={{padding:'0 9px 22px'}}>
-        <RitmoWordmark size={52} style={{marginLeft:-24}}/>
-        <div style={{color:T.t2,fontSize:30,marginTop:8,marginLeft:10,fontWeight:800}}>
-          <Hl text="Einstellungen" q={q}/>
-        </div>
         {/* iOS-style Suchfeld unter dem Large Title */}
         <div style={{margin:'14px 13px 0',display:'flex',alignItems:'center',gap:8,
           background:T.card,border:`1px solid ${T.border}`,borderRadius:13,
@@ -11136,17 +11117,8 @@ function TournamentHub({onHome,onStart,onJoin,onDnaCup,hasDnaCup}){
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
-      <div className="fi" style={{padding:'0 22px 22px'}}>
-        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
-          <TrophyIcon size={32}/>
-          <div style={{flex:1,minWidth:0}}>
-            <div style={{color:T.t1,fontSize:26,fontWeight:800,letterSpacing:-.3}}>Turnier</div>
-            <div style={{color:T.t2,fontSize:14,marginTop:2,fontWeight:400}}>
-              Spiele austragen oder einsteigen.
-            </div>
-          </div>
-        </div>
-      </div>
+      <ScreenHeader title="Turnier" subtitle="Spiele austragen oder einsteigen."
+        icon={<TrophyIcon size={40}/>}/>
 
       <div style={{flex:1,padding:'0 22px 120px',overflowY:'auto',
         WebkitOverflowScrolling:'touch',display:'flex',flexDirection:'column',gap:14}}>
@@ -12556,18 +12528,8 @@ function RitmoBibel({onHome,onRules,onJourney,onFaq,onTab}){
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
-      {/* Header wie auf den Setup-Screens: RITMO-Logo statt Schriftzug,
-          Icon rechts, Titel + Subtitle darunter. */}
-      <div className="fi" style={{padding:'0 9px 22px'}}>
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-          <RitmoWordmark size={52} style={{marginLeft:-24}}/>
-          <BookIcon size={36}/>
-        </div>
-        <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>Bibel</div>
-        <div style={{color:T.t2,fontSize:14,marginTop:2,marginLeft:10,fontWeight:400}}>
-          Regeln, Taktik und alles dazwischen.
-        </div>
-      </div>
+      <ScreenHeader title="Bibel" subtitle="Regeln, Taktik und alles dazwischen."
+        icon={<BookIcon size={36}/>}/>
 
       <div style={{flex:1,padding:'0 22px 120px',overflowY:'auto',
         WebkitOverflowScrolling:'touch',display:'flex',flexDirection:'column',gap:14}}>

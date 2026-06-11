@@ -59,7 +59,7 @@ import { PADEL_STYLES, PADEL_QUIZ, computeStyle, computeMatchTier, STYLE_IMAGES 
 /* ─── Landing pages ─────────────────────────────────────────── */
 function RulesLanding({onHome,onContinue,onMarkRead,alreadyRead}){
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden'}}>
       {/* Header */}
       <div style={{paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',
@@ -106,7 +106,7 @@ function RulesLanding({onHome,onContinue,onMarkRead,alreadyRead}){
 
 function JourneyLanding({onHome,onContinue,onMarkRead,alreadyRead}){
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden'}}>
       {/* Header */}
       <div style={{padding:'calc(env(safe-area-inset-top,0px) + 60px) 22px 18px',
@@ -222,7 +222,7 @@ function ServiceIndicator({servingTeam,isDeuce}){
 ═══════════════════════════════════════════════════════════════ */
 function BetaLanding({onLogin,onRegister}){
   return(
-    <div style={{minHeight:'100dvh',background:T.bg,color:T.t1,
+    <div style={{minHeight:'100dvh',background:T.bgGrad,color:T.t1,
       display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 40px)',
       paddingBottom:'calc(env(safe-area-inset-bottom,0px) + 32px)',
@@ -460,7 +460,7 @@ function Login({onSuccess,onRegister}){
   const onKeyDown=(e)=>{ if(e.key==='Enter') tryLogin(); };
 
   return(
-    <div style={{minHeight:'100dvh',background:T.bg,display:'flex',
+    <div style={{minHeight:'100dvh',background:T.bgGrad,display:'flex',
       flexDirection:'column',alignItems:'center',justifyContent:'center',
       padding:'calc(env(safe-area-inset-top,0px) + 40px) 22px calc(env(safe-area-inset-bottom,0px) + 40px)',
       overflow:'auto'}}>
@@ -709,7 +709,7 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
   };
 
   return(
-    <div style={{minHeight:'100dvh',background:T.bg,display:'flex',
+    <div style={{minHeight:'100dvh',background:T.bgGrad,display:'flex',
       flexDirection:'column',alignItems:'center',justifyContent:'center',
       padding:'calc(env(safe-area-inset-top,0px) + 40px) 22px calc(env(safe-area-inset-bottom,0px) + 40px)',
       overflow:'auto'}}>
@@ -929,7 +929,7 @@ function EmailVerification({email,onBack,onSignIn}){
   };
 
   return(
-    <div style={{minHeight:'100dvh',background:T.bg,display:'flex',
+    <div style={{minHeight:'100dvh',background:T.bgGrad,display:'flex',
       flexDirection:'column',alignItems:'center',justifyContent:'center',
       padding:'calc(env(safe-area-inset-top,0px) + 40px) 22px calc(env(safe-area-inset-bottom,0px) + 40px)'}}>
       <div className="fi" style={{width:'100%',maxWidth:380,display:'flex',
@@ -1021,7 +1021,7 @@ function PasswordRecovery({onDone}){
   };
 
   return(
-    <div style={{minHeight:'100dvh',background:T.bg,display:'flex',
+    <div style={{minHeight:'100dvh',background:T.bgGrad,display:'flex',
       flexDirection:'column',alignItems:'center',justifyContent:'center',
       padding:'calc(env(safe-area-inset-top,0px) + 40px) 22px calc(env(safe-area-inset-bottom,0px) + 40px)'}}>
       <div className="fi" style={{width:'100%',maxWidth:380,display:'flex',flexDirection:'column'}}>
@@ -1635,7 +1635,7 @@ function ProfileRitmoDNA({profile,onBack,onHome}){
   const accent=style?.accent||T.o;
 
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden'}}>
 
       {/* HEADER ZONE — colored with style accent */}
@@ -2021,7 +2021,7 @@ function Welcome({profile,setProfile,theme,setTheme,onComplete}){
   const goBack=()=>{ if(step>0) setStep(s=>s-1); };
 
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 30px)',position:'relative',overflow:'hidden'}}>
 
       {/* Header: chapter counter + skip */}
@@ -2394,7 +2394,9 @@ function TabBar({active,onTab}){
         className="glass-bar"
         style={{position:'relative',display:'flex',alignItems:'center',gap:2,
         flex:1,maxWidth:440,
-        borderRadius:29,padding:'4px 6px',pointerEvents:'auto',
+        /* Flach + Kapsel: voll gerundete Enden (999), minimale
+           vertikale Paddings — die Bar liest sich als echte Pille. */
+        borderRadius:999,padding:'3px 5px',pointerEvents:'auto',
         // touchAction none: während des Pill-Drags darf der Browser
         // die Pointer-Events nicht für Scroll/Swipe übernehmen.
         touchAction:'none',
@@ -2445,18 +2447,18 @@ function TabBar({active,onTab}){
                 if(e.pointerType==='mouse'&&!grabFlag.current) setHovered(null);
               }}
               style={{display:'flex',flexDirection:'column',alignItems:'center',
-                justifyContent:'center',gap:3,
+                justifyContent:'center',gap:2,
                 /* eBay-Style: Icon oben, Label IMMER darunter. Flach
                    gehalten (kompakte Paddings) und per flex:1 über die
                    volle Bar-Breite verteilt — alle Tabs gleich breit,
                    die Pill bleibt damit konstant groß. */
-                padding:hidden?'9px 0':'9px 4px',
+                padding:hidden?'6px 0':'6px 4px',
                 flex:hidden?'0 0 0':'1 1 0',
                 minWidth:0,
                 maxWidth:hidden?0:140,
                 opacity:hidden?0:1,
                 overflow:'hidden',
-                borderRadius:24,border:'none',cursor:'pointer',
+                borderRadius:999,border:'none',cursor:'pointer',
                 /* Hintergrund ist transparent — die Pill übernimmt
                    das "Active"-Indicator-Bild. */
                 background:'transparent',
@@ -2637,7 +2639,7 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
   const tint=p=>`color-mix(in srgb, ${accent} ${p}%, transparent)`;
 
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden'}}>
 
       <div style={{flex:1,overflowY:'auto',WebkitOverflowScrolling:'touch'}}>
@@ -2931,7 +2933,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
   const needsOnboarding=!onboarded;
   const hasUnread=(unread||0)>0;
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden'}}>
 
       {/* HEADER ZONE — gradient via theme CSS var.
@@ -2947,7 +2949,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
       }} onClick={()=>nav('profile-ritmodna')}>
         <div style={{display:'flex',alignItems:'center',
           justifyContent:'space-between',gap:14}}>
-          <RitmoWordmark size={52} style={{marginLeft:-14}}/>
+          <RitmoWordmark size={52} style={{marginLeft:-26}}/>
           {/* Rechts gruppiert: RITMO Post Icon + Profil-Avatar, vertikal
               zentriert ausgerichtet zueinander. Beide stoppen die
               Header-onClick-Propagation, damit der Tap nicht durch zum
@@ -2991,7 +2993,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
       {/* CORPUS — drawer-style panel (rounded top, elevated shadow) */}
       <div style={{
         flex:1,
-        background:T.bg,
+        background:T.bgGrad,
         borderTopLeftRadius:24,
         borderTopRightRadius:24,
         marginTop:-20,
@@ -3094,7 +3096,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
 ═══════════════════════════════════════════════════════════════ */
 function SearchHub({nav,onTab}){
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
       <div className="fi" style={{padding:'0 22px 22px'}}>
@@ -3139,7 +3141,7 @@ function SearchHub({nav,onTab}){
 ═══════════════════════════════════════════════════════════════ */
 function ComingSoon({icon,title,desc,bullets=[],onHome}){
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
       <div style={{flex:1,padding:'0 22px 140px',overflowY:'auto',
@@ -3204,7 +3206,7 @@ const APP_FAQ=[
 function AppFAQ({onBack,onHome}){
   const[open,setOpen]=useState(null);
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
       <div className="fi" style={{padding:'0 22px 18px'}}>
@@ -3304,12 +3306,12 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
   const teamB=[players[2]||'Spieler 3',players[3]||'Spieler 4'].join(' & ');
 
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
       <div style={{padding:'0 9px 22px'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-          <RitmoWordmark size={52} style={{marginLeft:-14}}/>
+          <RitmoWordmark size={52} style={{marginLeft:-26}}/>
           <SingleMatchIcon size={40}/>
         </div>
         <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>Single Match</div>
@@ -3854,7 +3856,7 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
     // seitlich an Geschwister-Spalten anstoßen.
     const sidePad=Math.max(10,Math.round(28/Math.max(1,m)));
     return(
-      <div style={{height:'100dvh',width:'100vw',background:T.bg,
+      <div style={{height:'100dvh',width:'100vw',background:T.bgGrad,
         display:'flex',flexDirection:'column',animation:'fadeIn .2s ease',position:'relative'}}>
 
         {/* Progress bar (Americano with active timer) */}
@@ -4139,7 +4141,7 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
   // gewohnt (tm=1).
   const contentMaxWidth=tabletMode?720:'100%';
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
       <div style={{padding:`0 ${Math.round(9*tm)}px ${Math.round(22*tm)}px`,
@@ -5602,12 +5604,12 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
   const canStart=players.length>=4;
 
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
       <div style={{padding:'0 9px 22px'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-          <RitmoWordmark size={52} style={{marginLeft:-14}}/>
+          <RitmoWordmark size={52} style={{marginLeft:-26}}/>
           <TrophyIcon size={40}/>
         </div>
         <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>
@@ -6129,7 +6131,7 @@ function OnlineTournamentLobby({pin,onHome,onStart,onCancel}){
 
   if(!session){
     return(
-      <div style={{height:'100dvh',background:T.bg,display:'flex',
+      <div style={{height:'100dvh',background:T.bgGrad,display:'flex',
         alignItems:'center',justifyContent:'center'}}>
         <BallSpinner/>
       </div>
@@ -6137,12 +6139,12 @@ function OnlineTournamentLobby({pin,onHome,onStart,onCancel}){
   }
 
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
       <div style={{padding:'0 9px 22px'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-          <RitmoWordmark size={52} style={{marginLeft:-14}}/>
+          <RitmoWordmark size={52} style={{marginLeft:-26}}/>
           <TrophyIcon size={40}/>
         </div>
         <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>
@@ -6884,11 +6886,11 @@ function JoinTournament({initialPin,profile,onHome,onJoin,restored}){
   };
 
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
       <div style={{padding:'0 9px 22px'}}>
-        <RitmoWordmark size={52} style={{marginLeft:-14}}/>
+        <RitmoWordmark size={52} style={{marginLeft:-26}}/>
         <div style={{color:T.t2,fontSize:30,marginTop:8,marginLeft:10,fontWeight:800}}>
           Turnier beitreten
         </div>
@@ -8107,7 +8109,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
   const progress=totalSecs?(tourney.timerSecsLeft||0)/totalSecs:0;
 
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
       {/* Header — RITMO-Logo + Trophy mittig in einer Zeile, der
@@ -8116,7 +8118,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
           wirkte optisch versetzt zur Logo-Höhe. */}
       <div style={{padding:'0 22px 14px'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-          <RitmoWordmark size={52} style={{marginLeft:-14}}/>
+          <RitmoWordmark size={52} style={{marginLeft:-26}}/>
           <TrophyIcon size={40}/>
         </div>
         <div style={{color:T.t1,fontSize:26,marginTop:6,marginLeft:10,fontWeight:800,
@@ -8388,12 +8390,12 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
   const winner=sortedLb[0];
 
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
       <div style={{padding:'0 9px 22px'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-          <RitmoWordmark size={52} style={{marginLeft:-14}}/>
+          <RitmoWordmark size={52} style={{marginLeft:-26}}/>
           <TrophyIcon size={40}/>
         </div>
         <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>Endstand</div>
@@ -8517,11 +8519,11 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
     });
 
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
       <div style={{padding:'0 9px 24px'}}>
-        <RitmoWordmark size={52} style={{marginLeft:-14}}/>
+        <RitmoWordmark size={52} style={{marginLeft:-26}}/>
         <div style={{color:T.t2,fontSize:30,marginTop:8,marginLeft:10,fontWeight:800}}>
           {items.length===0?'Keine laufenden Spiele.':'Laufende Spiele und Turniere.'}
         </div>
@@ -8823,11 +8825,11 @@ function Settings({onHome,onBack,nav}){
   const q=query;
 
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
       <div style={{padding:'0 9px 22px'}}>
-        <RitmoWordmark size={52} style={{marginLeft:-14}}/>
+        <RitmoWordmark size={52} style={{marginLeft:-26}}/>
         <div style={{color:T.t2,fontSize:30,marginTop:8,marginLeft:10,fontWeight:800}}>
           <Hl text="Einstellungen" q={q}/>
         </div>
@@ -8921,7 +8923,7 @@ function SettingsSubLayout({title,desc,icon,onBack,onHome,children}){
     zIndex:5,
   };
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',
       position:'relative',overflow:'hidden'}}>
 
@@ -9887,7 +9889,7 @@ function RitmoPost({onHome,profile,onOpenChat,unread=0}){
   };
 
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',
       position:'relative',overflow:'hidden'}}>
 
@@ -10134,7 +10136,7 @@ function PlayerListItem({profile,onClick,trailing}){
    bleibt erhalten, damit ein User immer auch direkt nach Hause kann. */
 function SocialScreen({eyebrow,title,desc,icon,onHome,onBack,backLabel='Zurück',children}){
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',
       position:'relative',overflow:'hidden'}}>
       <div className="fi" style={{padding:'0 22px 14px'}}>
@@ -10889,7 +10891,7 @@ function ClubChat({clubId,currentUid,onHome,onBack}){
   };
 
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 40px)',
       position:'relative',overflow:'hidden'}}>
 
@@ -11096,7 +11098,7 @@ function HubBigCard({icon,title,desc,onClick,accent,delay='0s'}){
 
 function TournamentHub({onHome,onStart,onJoin,onDnaCup,hasDnaCup}){
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
       <div className="fi" style={{padding:'0 22px 22px'}}>
@@ -11250,7 +11252,7 @@ function DnaCupMatch({fmt,nameA,nameB,subA,subB,stageLabel,tier,courtNo,duration
   if(big){
     const totalSecs=(durationMin||10)*60, prog=totalSecs?secsLeft/totalSecs:0;
     return(
-      <div style={{height:'100dvh',width:'100vw',background:T.bg,display:'flex',
+      <div style={{height:'100dvh',width:'100vw',background:T.bgGrad,display:'flex',
         flexDirection:'column',position:'relative',animation:'fadeIn .2s ease'}}>
         {isPoints&&(
           <div style={{height:5,background:T.card2,overflow:'hidden'}}>
@@ -11335,7 +11337,7 @@ function DnaCupMatch({fmt,nameA,nameB,subA,subB,stageLabel,tier,courtNo,duration
 
   // ═══ PORTRAIT ═══
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 18px)',position:'relative',overflow:'hidden'}}>
       <div style={{padding:'0 18px 12px',display:'flex',alignItems:'center',gap:12}}>
         <button onClick={onCancel} style={{width:38,height:38,borderRadius:'50%',background:T.card,
@@ -11471,7 +11473,7 @@ function DnaTopBar({title,sub,onBack,onHome,right}){
     </div>
   );
 }
-const dnaScreen={height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+const dnaScreen={height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
   paddingTop:'calc(env(safe-area-inset-top,0px) + 56px)',position:'relative',overflow:'hidden'};
 const dnaScroll={flex:1,padding:'0 18px calc(env(safe-area-inset-bottom,0px) + 24px)',
   overflowY:'auto',WebkitOverflowScrolling:'touch',display:'flex',flexDirection:'column',gap:14};
@@ -12349,7 +12351,7 @@ function DnaCup({cup,setCup,onHome,ringId='ritmo'}){
   const[stylePickerFor,setStylePickerFor]=useState(null);
   const[editLineupCourtId,setEditLineupCourtId]=useState(null);
   useEffect(()=>{ if(!cup) setCup(makeDnaCup()); },[cup,setCup]);
-  if(!cup) return <div style={{height:'100dvh',background:T.bg}}/>;
+  if(!cup) return <div style={{height:'100dvh',background:T.bgGrad}}/>;
 
   const go=v=>setView(v);
   const backToDash=()=>setView('dashboard');
@@ -12516,7 +12518,7 @@ function DnaPinGate({onOk,onClose}){
 
 function RitmoBibel({onHome,onRules,onJourney,onFaq,onTab}){
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
       <div className="fi" style={{padding:'0 22px 22px'}}>
@@ -12643,7 +12645,7 @@ function RulesDetailLayout({icon,title,sub,visual,children,onBackToRules,onHome,
   };
 
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
       <div style={{padding:'0 22px 8px'}}>
@@ -13080,7 +13082,7 @@ function Rules({onHome,onSelect,alreadyRead,onToggleRead,onBibel}){
     {id:'glossar',   icon:<BookIcon size={24}/>,title:'Schlagarten',       sub:'Bandeja, Víbora, Smash & mehr'},
   ];
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
       <div style={{padding:'0 22px 22px'}}>
         <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
@@ -13553,7 +13555,7 @@ function Journey({onHome,onSelect,alreadyRead,onToggleRead,onBibel}){
     {id:'baelle',       icon:<TennisBallIcon size={24}/>,title:'Bälle',         sub:'Tennis vs Padel — die Unterschiede'},
   ];
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
       <div style={{padding:'0 22px 22px'}}>
         <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
@@ -13601,7 +13603,7 @@ function JourneySpielstileList({onBack,onHome,onSelect}){
   const[imgErr,setImgErr]=useState({});
 
   return(
-    <div style={{height:'100dvh',background:T.bg,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
       <div style={{padding:'0 22px 8px'}}>
         <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>

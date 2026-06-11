@@ -11,6 +11,7 @@
 
 export const T = {
   bg:       'var(--bg)',
+  bgGrad:   'var(--bgGrad)',    // Screen-Hintergrund: sanfter Tiefen-Gradient (endet in --bg)
   card:     'var(--card)',
   card2:    'var(--card2)',
   border:   'var(--border)',
@@ -56,6 +57,18 @@ export const CSS = `
   --blueGlow: rgba(10,132,255,0.5);
   --gold: #C8A878;
   --headerGrad: linear-gradient(90deg, #FFC037 0%, #5F4848 100%);
+  /* Screen-Hintergrund: statt flachem Schwarz ein angenehmer dunkler
+     Verlauf — oben eine weiche „Dome"-Aufhellung plus ein Hauch
+     Brand-Wärme rechts oben, unten exakt --bg (damit Bottom-Fade und
+     Navbar nahtlos einblenden). var()-Substitution passiert erst am
+     Verwendungsort → der Verlauf folgt automatisch jedem Theme,
+     obwohl er nur hier einmal definiert ist. Browser ohne color-mix
+     ignorieren den Wert; body bleibt als --bg-Fallback dahinter. */
+  --bgGrad:
+    radial-gradient(130% 55% at 84% -10%,
+      color-mix(in srgb, var(--o) 7%, transparent) 0%, transparent 58%),
+    radial-gradient(125% 80% at 50% 0%,
+      color-mix(in srgb, var(--t1) 7%, var(--bg)) 0%, var(--bg) 74%);
 }
 :root[data-theme="light"] {
   /* Clean-Modern: hellgrau abgestufte Flächen, weicheres Schwarz für
@@ -604,7 +617,7 @@ button:disabled{cursor:not-allowed;opacity:.55;}
   position:absolute;
   top:0;
   left:0;
-  border-radius:24px;
+  border-radius:999px; /* Kapsel — matcht die voll gerundete Bar */
   background:linear-gradient(135deg,
     rgba(255,255,255,.10) 0%,
     rgba(255,255,255,.04) 50%,

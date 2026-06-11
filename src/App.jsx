@@ -2716,6 +2716,23 @@ function AvatarWithUpload({profile,setProfile,size=72}){
 }
 
 
+/* Dezente Gradient-Töne für die Stil-Buttons im Profil (User-Spec):
+   toro rot · motor dunkelgrün · muro hellgrün · individuoso dunkel-
+   blau · fantasma dezentes violett · chico/chica beige. */
+const STYLE_GRAD={
+  toro:'#C0392B',
+  motor:'#1B5E20',
+  muro:'#2ECC71',
+  individuoso:'#1F4E8C',
+  fantasma:'#6E5A8E',
+  chico:'#C9B18C',
+};
+/* Subtiler Stil-Gradient: Farbton oben links, läuft ins Transparente. */
+const styleGrad=id=>{
+  const g=STYLE_GRAD[id];
+  return g?`linear-gradient(135deg, ${g}45 0%, ${g}1C 55%, rgba(0,0,0,0) 100%)`:'transparent';
+};
+
 function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRitmoDNA,
   currentUid,onOpenFollowers,onOpenFollowing,onTab,onOpenSettings}){
   // Kurzlabels für die Stats-Spalten (Mock: nur „Rechts"/„Links").
@@ -2875,8 +2892,10 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
           </div>
           <button className="fu" onClick={hasStyle?()=>onOpenRitmoDNA&&onOpenRitmoDNA():onResetOnboarding}
             style={{animationDelay:'.22s',marginTop:15,display:'inline-flex',alignItems:'center',
-              gap:11,padding:'12px 24px',borderRadius:999,background:'transparent',
-              border:`1px solid ${T.t4}`,color:T.t1,fontSize:11.5,fontWeight:800,
+              gap:11,padding:'12px 24px',borderRadius:999,
+              background:hasStyle?styleGrad(profile.styleType):'transparent',
+              border:`1px solid ${hasStyle?`${STYLE_GRAD[profile.styleType]}66`:T.t4}`,
+              color:T.t1,fontSize:11.5,fontWeight:800,
               letterSpacing:2,textTransform:'uppercase',cursor:'pointer'}}>
             {hasStyle
               ?`${PADEL_STYLES[profile.styleType].name} · ${PADEL_STYLES[profile.styleType].subtitle}`
@@ -2928,8 +2947,15 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
           </div>
           <div style={{flex:1,minWidth:0,padding:'2px 4px',textAlign:'center'}}>
             <div style={eyeb}>2. Stil</div>
-            <div style={{...statVal,color:style2?T.o:T.t1}}>
-              {style2?PADEL_STYLES[style2].name:'—'}
+            <div style={statVal}>
+              {style2?(
+                <span style={{padding:'3px 9px',borderRadius:999,fontSize:10,
+                  whiteSpace:'nowrap',color:T.t1,
+                  background:styleGrad(style2),
+                  border:`1px solid ${STYLE_GRAD[style2]}59`}}>
+                  {PADEL_STYLES[style2].name}
+                </span>
+              ):'—'}
             </div>
             <div style={{marginTop:6,opacity:.7,display:'flex',justifyContent:'center'}}>
               <LiveTabIcon size={17}/>

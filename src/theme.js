@@ -467,7 +467,7 @@ export const CSS = `
   display: flex; align-items: center;
   overflow: hidden;
   text-transform: uppercase;
-  font-family: 'Courier New', Courier, monospace;
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
   pointer-events: none;
 }
 
@@ -488,7 +488,7 @@ html,body,#root{background:var(--bg);height:100%;min-height:100dvh;overflow:hidd
   text-rendering:optimizeLegibility;letter-spacing:-0.011em;color:var(--t1);}
 /* Branded Text-Selektion statt Browser-Default-Blau. */
 ::selection{background:var(--oSoft);color:var(--t1);}
-button,input{font-family:inherit;color:inherit;}
+button,input,textarea,select{font-family:inherit;color:inherit;}
 input{outline:none;border:none;background:none;}
 ::-webkit-scrollbar{display:none;}
 input[type=number]::-webkit-inner-spin-button,

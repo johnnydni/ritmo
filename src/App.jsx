@@ -2589,13 +2589,15 @@ function AvatarWithUpload({profile,setProfile,size=72}){
       <ProfileAvatar name={profile.name} avatar={profile.avatar}
         size={size} emphasize
         onClick={()=>inputRef.current?.click()}/>
+      {/* Edit-Badge im Outline-Look: dunkler Kreis, oranger Ring +
+          oranger Stift — sitzt auf dem Avatar-Ring (vgl. Mock). */}
       <button onClick={()=>inputRef.current?.click()} aria-label="Profilbild ändern"
-        style={{position:'absolute',right:-2,bottom:-2,
-          width:26,height:26,borderRadius:'50%',
-          background:T.o,border:`2px solid ${T.bg}`,color:'#000',
+        style={{position:'absolute',right:size*0.02,bottom:size*0.02,
+          width:Math.max(26,size*0.2),height:Math.max(26,size*0.2),borderRadius:'50%',
+          background:T.bg,border:`1.5px solid ${T.o}`,color:T.o,
           fontSize:13,fontWeight:800,cursor:'pointer',
           display:'flex',alignItems:'center',justifyContent:'center',
-          boxShadow:'0 2px 6px rgba(0,0,0,.35)'}}>
+          boxShadow:'0 2px 8px rgba(0,0,0,.45)'}}>
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
           stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -2631,292 +2633,267 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
   const isPublic=!profile.private;
   const togglePublic=()=>setProfile(p=>({...p,private:!p.private?true:false}));
 
-  // Accent für Hero + 3D-Blend: Spielstil-Farbe, sonst Theme-Orange.
-  // tint() mischt per color-mix — funktioniert mit Hex UND var(--o)
-  // (Hex+Alpha-Konkatenation würde an var() scheitern).
+  // Editorial-Look (per Design-Mock): pures Orange als einziger Accent,
+  // keine Cards — Sektionen trennen sich über Hairlines (T.sep).
+  const tint=p=>`color-mix(in srgb, var(--o) ${p}%, transparent)`;
   const hasStyle=!!(profile.styleType&&PADEL_STYLES[profile.styleType]);
-  const accent=hasStyle?PADEL_STYLES[profile.styleType].accent:'var(--o)';
-  const tint=p=>`color-mix(in srgb, ${accent} ${p}%, transparent)`;
+  const eyeb={color:T.t3,fontSize:9.5,fontWeight:700,letterSpacing:1.9,textTransform:'uppercase'};
+  const statVal={color:T.t1,fontSize:11,fontWeight:800,letterSpacing:.4,textTransform:'uppercase',
+    marginTop:9,lineHeight:1.3,minHeight:29,display:'flex',alignItems:'center',justifyContent:'center'};
+  const rowSty=top=>({width:'100%',display:'flex',alignItems:'center',gap:14,padding:'17px 2px',
+    background:'none',border:'none',borderTop:top?`1px solid ${T.sep}`:'none',
+    cursor:'pointer',textAlign:'left'});
+  const rowLbl={display:'block',color:T.t1,fontSize:12,fontWeight:800,letterSpacing:1.7,
+    textTransform:'uppercase'};
+  const rowSub={display:'block',color:T.t3,fontSize:11,marginTop:3,lineHeight:1.45};
+  const RefreshGlyph=({size=18})=>(
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M20.5 12a8.5 8.5 0 1 1-2.5-6"/>
+      <path d="M20.5 2.5V6h-3.5"/>
+    </svg>
+  );
+  const ExitGlyph=({size=18})=>(
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M14.5 4H19a1.5 1.5 0 0 1 1.5 1.5v13A1.5 1.5 0 0 1 19 20h-4.5"/>
+      <path d="M10 8l4 4-4 4"/><path d="M14 12H3"/>
+    </svg>
+  );
 
   return(
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden'}}>
 
-      <div style={{flex:1,overflowY:'auto',WebkitOverflowScrolling:'touch'}}>
+      <div style={{flex:1,overflowY:'auto',WebkitOverflowScrolling:'touch',position:'relative',
+        padding:'calc(env(safe-area-inset-top,0px) + 56px) 22px 0'}}>
 
-        {/* ── HERO — Accent-Gradient + große Headline + 3D-Avatar ──
-            Der Gradient zieht bis hinter die Statusbar. Das Avatar hängt
-            per negativem marginBottom über die Hero-Unterkante und
-            „steht" auf der DNA-Card darunter: zIndex 2 + getragener
-            Schatten + Lichtschein in der Card = der 3D-Blend. */}
-        <div className="fi" style={{position:'relative',zIndex:2,
-          padding:'calc(env(safe-area-inset-top,0px) + 58px) 22px 0'}}>
-          <div aria-hidden="true" style={{position:'absolute',left:0,right:0,top:0,bottom:0,
-            background:`linear-gradient(180deg, ${tint(19)} 0%, ${tint(8)} 52%, transparent 100%)`,
-            pointerEvents:'none'}}/>
-          {/* Artistisches Wasserzeichen: das Level riesig & fast unsichtbar */}
-          {lvl!=null&&(
-            <div aria-hidden="true" style={{position:'absolute',right:10,
-              top:'calc(env(safe-area-inset-top,0px) + 34px)',
-              fontSize:96,fontWeight:900,letterSpacing:-5,lineHeight:1,
-              color:T.t1,opacity:.05,pointerEvents:'none',userSelect:'none'}}>
-              {lvl.toFixed(2)}
+        {/* Deko — linke Dot-Kolonne + rechte Linie mit Dots (artistische
+            Marker aus dem Mock, rein dekorativ) */}
+        <div aria-hidden="true" className="fi" style={{position:'absolute',left:8,
+          top:'calc(env(safe-area-inset-top,0px) + 78px)',
+          display:'flex',flexDirection:'column',alignItems:'center',gap:5}}>
+          {[0,1,2].map(i=>(
+            <span key={i} style={{display:'flex',gap:3.5}}>
+              <span style={{width:3.5,height:3.5,borderRadius:'50%',
+                border:`1px solid ${T.t4}`,display:'block'}}/>
+              <span style={{width:3.5,height:3.5,borderRadius:'50%',
+                border:`1px solid ${T.t4}`,display:'block'}}/>
+            </span>
+          ))}
+        </div>
+        <div aria-hidden="true" className="fi" style={{position:'absolute',right:9,top:330,
+          display:'flex',flexDirection:'column',alignItems:'center',gap:6}}>
+          <span style={{width:1.5,height:40,background:T.t4,display:'block',borderRadius:1}}/>
+          <span style={{width:5,height:5,borderRadius:'50%',background:T.o,display:'block'}}/>
+          <span style={{width:3.5,height:3.5,borderRadius:'50%',background:T.t4,display:'block'}}/>
+          <span style={{width:3.5,height:3.5,borderRadius:'50%',background:T.t4,display:'block'}}/>
+          <span style={{width:3.5,height:3.5,borderRadius:'50%',background:T.t4,display:'block'}}/>
+        </div>
+
+        {/* Kopf: links Eyebrow + Name + Tagline, rechts das große Level
+            (Dezimalpunkt in Orange — Mock-Detail) */}
+        <div className="fi" style={{display:'flex',justifyContent:'space-between',
+          alignItems:'flex-start',gap:12}}>
+          <div style={{minWidth:0,flex:1}}>
+            <div style={{display:'flex',alignItems:'center',gap:7}}>
+              <span style={{width:5,height:5,borderRadius:'50%',background:T.o,flexShrink:0}}/>
+              <span style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:2.4,
+                textTransform:'uppercase'}}>Profil</span>
             </div>
-          )}
-          <div style={{position:'relative'}}>
-            <div className="fu" style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.5}}>PROFIL</div>
-            <div className="fu" style={{animationDelay:'.04s',color:T.t1,fontSize:34,fontWeight:900,
-              letterSpacing:-1,lineHeight:1.05,marginTop:4}}>
+            <div className="fu" style={{color:T.t1,fontSize:38,fontWeight:900,letterSpacing:-1.4,
+              lineHeight:1.02,marginTop:8,overflowWrap:'anywhere'}}>
               {profile.name||'Spieler'}
             </div>
+            <div className="fu" style={{animationDelay:'.05s',...eyeb,marginTop:11}}>
+              Dein Stil · Dein Rhythmus · Deine Stats
+            </div>
           </div>
-          {/* Avatar — überlappt die DNA-Card (3D-Blend) */}
-          <div className="zi" style={{animationDelay:'.1s',display:'flex',justifyContent:'center',
-            marginTop:16,marginBottom:-56,position:'relative',zIndex:2}}>
-            <div className="float-y" style={{borderRadius:'50%',padding:5,
-              background:`linear-gradient(165deg, ${accent} 0%, ${tint(22)} 48%, transparent 78%)`,
-              boxShadow:`0 26px 50px -14px ${tint(36)}, 0 12px 26px rgba(0,0,0,.42)`}}>
-              <AvatarWithUpload profile={profile} setProfile={setProfile} size={118}/>
+          {lvl!=null&&(
+            <div className="fu" style={{animationDelay:'.07s',textAlign:'right',flexShrink:0}}>
+              <div style={{...eyeb,marginBottom:5}}>RITMO Level</div>
+              <div style={{color:T.t1,fontSize:48,fontWeight:900,letterSpacing:-2,lineHeight:.95}}>
+                {lvl.toFixed(2).split('.')[0]}
+                <span style={{color:T.o}}>.</span>
+                {lvl.toFixed(2).split('.')[1]}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Avatar mit Orange-Glow → RITMO DNA → Stil-Pill */}
+        <div className="zi" style={{animationDelay:'.1s',display:'flex',flexDirection:'column',
+          alignItems:'center',marginTop:30}}>
+          <div className="float-y" style={{borderRadius:'50%',
+            boxShadow:`0 0 70px ${tint(26)}, 0 0 22px ${tint(20)}`}}>
+            <AvatarWithUpload profile={profile} setProfile={setProfile} size={150}/>
+          </div>
+          <div className="fu" style={{animationDelay:'.18s',marginTop:26,color:T.t1,
+            fontSize:16,fontWeight:800,letterSpacing:4.5,textTransform:'uppercase'}}>
+            RITMO <span style={{color:T.o}}>DNA</span>
+          </div>
+          <button className="fu" onClick={hasStyle?()=>onOpenRitmoDNA&&onOpenRitmoDNA():onResetOnboarding}
+            style={{animationDelay:'.22s',marginTop:15,display:'inline-flex',alignItems:'center',
+              gap:11,padding:'12px 24px',borderRadius:999,background:'transparent',
+              border:`1px solid ${T.t4}`,color:T.t1,fontSize:11.5,fontWeight:800,
+              letterSpacing:2,textTransform:'uppercase',cursor:'pointer'}}>
+            {hasStyle
+              ?`${PADEL_STYLES[profile.styleType].name} · ${PADEL_STYLES[profile.styleType].subtitle}`
+              :'Spielstil bestimmen'}
+            <ChevronRightIcon size={13} color={T.t2}/>
+          </button>
+        </div>
+
+        {/* Stats-Zeile: 4 Spalten mit Hairline-Trennern.
+            Level (tap = geschätztes Level editieren) · Hand · Seite · Stil */}
+        <div className="fu" style={{animationDelay:'.26s',display:'flex',
+          alignItems:'stretch',marginTop:36}}>
+          <button onClick={()=>{if(isEstimated)setEditingLevel(e=>!e);}}
+            style={{flex:1,minWidth:0,background:'none',border:'none',
+              borderRight:`1px solid ${T.sep}`,padding:'2px 4px',textAlign:'center',
+              cursor:isEstimated?'pointer':'default',color:T.t1}}>
+            <div style={eyeb}>Level</div>
+            <div style={{color:T.o,fontSize:23,fontWeight:900,letterSpacing:-.8,
+              lineHeight:1,marginTop:10}}>
+              {lvl!=null?lvl.toFixed(2):'—'}
+            </div>
+            {lvl!=null&&(
+              <div style={{display:'inline-flex',alignItems:'center',gap:5,marginTop:8}}>
+                <span style={{color:T.o,fontSize:9,fontWeight:800,letterSpacing:1,
+                  textTransform:'uppercase'}}>{getLevelLabel(lvl)}</span>
+                <span style={{color:T.o,fontSize:8,fontWeight:900,letterSpacing:.5,
+                  padding:'1.5px 4px',border:`1px solid ${T.o}`,borderRadius:4}}>
+                  {getLevelTier(lvl)}
+                </span>
+              </div>
+            )}
+          </button>
+          <div style={{flex:1,minWidth:0,borderRight:`1px solid ${T.sep}`,
+            padding:'2px 4px',textAlign:'center'}}>
+            <div style={eyeb}>Hand</div>
+            <div style={statVal}>{handLabels[profile.handPreference]||'—'}</div>
+            <div style={{marginTop:6,color:T.t2,display:'flex',justifyContent:'center'}}>
+              <HandIcon size={17}/>
+            </div>
+          </div>
+          <div style={{flex:1,minWidth:0,borderRight:`1px solid ${T.sep}`,
+            padding:'2px 4px',textAlign:'center'}}>
+            <div style={eyeb}>Seite</div>
+            <div style={statVal}>{sideLabels[profile.courtSide]||'—'}</div>
+            <div style={{marginTop:6,color:T.t2,display:'flex',justifyContent:'center'}}>
+              <TargetIcon size={17}/>
+            </div>
+          </div>
+          <div style={{flex:1,minWidth:0,padding:'2px 4px',textAlign:'center'}}>
+            <div style={eyeb}>Stil</div>
+            <div style={{...statVal,color:hasStyle?T.o:T.t1}}>
+              {hasStyle?PADEL_STYLES[profile.styleType].name:'—'}
+            </div>
+            <div style={{marginTop:6,opacity:.7,display:'flex',justifyContent:'center'}}>
+              <LiveTabIcon size={17}/>
             </div>
           </div>
         </div>
 
-        <div style={{padding:'0 22px'}}>
-
-        {/* RITMO DNA — das Avatar steht auf dieser Card. Oben Platz
-            (padding) + radialer Lichtschein, als würde das Avatar auf
-            das Glas leuchten. */}
-        {hasStyle?(
-          <button onClick={()=>onOpenRitmoDNA&&onOpenRitmoDNA()} className="fu"
-            style={{animationDelay:'.16s',width:'100%',
-              background:'linear-gradient(135deg,#1A1A1A 0%,#000000 100%)',
-              border:`1px solid ${PADEL_STYLES[profile.styleType].accent}40`,
-              borderRadius:24,padding:'78px 20px 22px',marginBottom:14,
-              position:'relative',overflow:'hidden',
-              boxShadow:`0 0 0 1px ${PADEL_STYLES[profile.styleType].accent}20, 0 4px 20px rgba(0,0,0,0.4)`,
-              cursor:'pointer',textAlign:'center',color:'#FFF'}}>
-            <div aria-hidden="true" style={{position:'absolute',left:0,right:0,top:0,height:130,
-              background:`radial-gradient(ellipse 62% 100% at 50% 0%, ${tint(24)} 0%, transparent 70%)`,
-              pointerEvents:'none'}}/>
-            <div style={{position:'relative'}}>
-              <div style={{fontSize:21,fontWeight:900,letterSpacing:-.3}}>
-                RITMO <span style={{color:PADEL_STYLES[profile.styleType].accent}}>DNA</span>
-              </div>
-              <div style={{color:'rgba(255,255,255,0.6)',fontSize:12,marginTop:4,lineHeight:1.4}}>
-                Dein Stil · Dein Rhythmus · Deine Stats
-              </div>
-              <div style={{display:'inline-flex',alignItems:'center',gap:7,marginTop:13,
-                padding:'8px 15px',borderRadius:999,
-                background:`${PADEL_STYLES[profile.styleType].accent}1F`,
-                border:`1px solid ${PADEL_STYLES[profile.styleType].accent}`,
-                color:PADEL_STYLES[profile.styleType].accent,
-                fontSize:11,fontWeight:800,letterSpacing:.5,textTransform:'uppercase'}}>
-                {PADEL_STYLES[profile.styleType].name} · {PADEL_STYLES[profile.styleType].subtitle}
-                <span style={{fontWeight:600}}>›</span>
-              </div>
+        {/* Inline-Editor fürs geschätzte RITMO-Level (tap auf Level) */}
+        {isEstimated&&editingLevel&&lvl!=null&&(
+          <div className="fi" style={{maxWidth:300,margin:'20px auto 0',
+            display:'flex',flexDirection:'column',gap:8}}>
+            <div style={{display:'flex',alignItems:'center',gap:6,minWidth:0}}>
+              <button onClick={()=>setProfile(p=>({...p,estimatedLevel:Math.max(0.30,Math.round((lvl-0.03)*100)/100)}))}
+                style={{width:30,height:30,borderRadius:'50%',background:T.card2,
+                  border:`1px solid ${T.border}`,color:T.o,fontSize:15,fontWeight:700,
+                  cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>−</button>
+              <input key={lvl.toFixed(2)} type="text" inputMode="decimal" defaultValue={lvl.toFixed(2)}
+                onBlur={e=>{
+                  const v=parseFloat(e.target.value.replace(',','.'));
+                  if(!isNaN(v)) setProfile(p=>({...p,estimatedLevel:Math.min(7.0,Math.max(0.3,Math.round(v*100)/100))}));
+                  else e.target.value=lvl.toFixed(2);
+                }}
+                onKeyDown={e=>{if(e.key==='Enter') e.target.blur();}}
+                style={{flex:1,minWidth:0,width:0,
+                  textAlign:'center',background:T.card2,
+                  border:`1px solid ${T.o}`,borderRadius:8,padding:'5px 4px',
+                  color:T.o,fontSize:22,fontWeight:900,outline:'none',
+                  boxSizing:'border-box'}}/>
+              <button onClick={()=>setProfile(p=>({...p,estimatedLevel:Math.min(7.00,Math.round((lvl+0.03)*100)/100)}))}
+                style={{width:30,height:30,borderRadius:'50%',background:T.card2,
+                  border:`1px solid ${T.border}`,color:T.o,fontSize:15,fontWeight:700,
+                  cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>+</button>
             </div>
-          </button>
-        ):(
-          <div className="fu" style={{background:T.card,border:`1px solid ${T.border}`,
-            borderRadius:24,padding:'78px 18px 18px',marginBottom:14,animationDelay:'.16s',
-            textAlign:'center'}}>
-            <div style={{color:T.t3,fontSize:13,lineHeight:1.5}}>
-              Spielstil noch nicht bestimmt — Onboarding-Quiz abschließen.
-            </div>
+            <button onClick={()=>setEditingLevel(false)}
+              style={{padding:'8px',background:T.o,border:'none',borderRadius:8,
+                color:'#000',fontSize:12,fontWeight:800,cursor:'pointer'}}>Fertig</button>
           </div>
         )}
 
-        {/* Spielniveau — eigene Karte, große Zahl (Edit wie gehabt) */}
-        <div className="zi" style={{animationDelay:'.22s',background:T.card,
-          border:`1px solid ${T.border}`,borderRadius:21,
-          padding:'20px 20px',marginBottom:14}}>
-          <div style={{minWidth:0}}>
-            {lvl!=null?(
-              <>
-                <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.3,
-                  textTransform:'uppercase',marginBottom:2}}>
-                  {isEstimated?'RITMO Level':'Playtomic Level'}
-                </div>
-                {isEstimated&&editingLevel?(
-                  <div style={{display:'flex',flexDirection:'column',gap:8,marginTop:4}}>
-                    <div style={{display:'flex',alignItems:'center',gap:6,minWidth:0}}>
-                      <button onClick={()=>setProfile(p=>({...p,estimatedLevel:Math.max(0.30,Math.round((lvl-0.03)*100)/100)}))}
-                        style={{width:30,height:30,borderRadius:'50%',background:T.card2,
-                          border:`1px solid ${T.border}`,color:T.o,fontSize:15,fontWeight:700,
-                          cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>−</button>
-                      <input key={lvl.toFixed(2)} type="text" inputMode="decimal" defaultValue={lvl.toFixed(2)}
-                        onBlur={e=>{
-                          const v=parseFloat(e.target.value.replace(',','.'));
-                          if(!isNaN(v)) setProfile(p=>({...p,estimatedLevel:Math.min(7.0,Math.max(0.3,Math.round(v*100)/100))}));
-                          else e.target.value=lvl.toFixed(2);
-                        }}
-                        onKeyDown={e=>{if(e.key==='Enter') e.target.blur();}}
-                        style={{flex:1,minWidth:0,width:0,
-                          textAlign:'center',background:T.card2,
-                          border:`1px solid ${T.o}`,borderRadius:8,padding:'5px 4px',
-                          color:T.o,fontSize:22,fontWeight:900,outline:'none',
-                          boxSizing:'border-box'}}/>
-                      <button onClick={()=>setProfile(p=>({...p,estimatedLevel:Math.min(7.00,Math.round((lvl+0.03)*100)/100)}))}
-                        style={{width:30,height:30,borderRadius:'50%',background:T.card2,
-                          border:`1px solid ${T.border}`,color:T.o,fontSize:15,fontWeight:700,
-                          cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>+</button>
-                    </div>
-                    <button onClick={()=>setEditingLevel(false)}
-                      style={{padding:'8px',background:T.o,border:'none',borderRadius:8,
-                        color:'#000',fontSize:12,fontWeight:800,cursor:'pointer'}}>Fertig</button>
-                  </div>
-                ):(
-                  <div style={{display:'flex',alignItems:'center',gap:10}}>
-                    <div style={{color:T.o,fontSize:44,fontWeight:900,letterSpacing:-1.2,lineHeight:1}}>
-                      {lvl.toFixed(2)}
-                    </div>
-                    {isEstimated&&(
-                      <button onClick={()=>setEditingLevel(true)}
-                        style={{background:'none',border:'none',padding:4,cursor:'pointer',
-                          display:'flex',alignItems:'center',color:T.t3,flexShrink:0}}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                          stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                        </svg>
-                      </button>
-                    )}
-                  </div>
-                )}
-                <div style={{display:'flex',alignItems:'center',gap:8,marginTop:4}}>
-                  <div style={{color:T.o,fontSize:12,fontWeight:700}}>
-                    {getLevelLabel(lvl)}
-                  </div>
-                  <div style={{padding:'1px 6px',background:getLevelColor(lvl),
-                    color:'#fff',borderRadius:4,fontSize:9,fontWeight:900,letterSpacing:.5}}>
-                    {getLevelTier(lvl)}
-                  </div>
-                </div>
-                {/* RITMO-DNA Tags: Hand · Seite · Spielstil-Archetyp.
-                    Jedes Tag wird nur gerendert, wenn der zugehörige
-                    Profil-Wert gesetzt ist — fehlt alles, fällt der
-                    ganze Block weg. */}
-                {(profile.handPreference||profile.courtSide||profile.styleType)&&(
-                  <div style={{display:'flex',flexWrap:'wrap',gap:6,marginTop:10}}>
-                    {profile.handPreference&&(
-                      <span style={{padding:'3px 8px',background:T.card2,
-                        border:`1px solid ${T.border}`,borderRadius:6,
-                        color:T.t2,fontSize:10,fontWeight:700,letterSpacing:.3,
-                        textTransform:'uppercase'}}>
-                        {handLabels[profile.handPreference]||profile.handPreference}
-                      </span>
-                    )}
-                    {profile.courtSide&&(
-                      <span style={{padding:'3px 8px',background:T.card2,
-                        border:`1px solid ${T.border}`,borderRadius:6,
-                        color:T.t2,fontSize:10,fontWeight:700,letterSpacing:.3,
-                        textTransform:'uppercase'}}>
-                        {sideLabels[profile.courtSide]||profile.courtSide}
-                      </span>
-                    )}
-                    {profile.styleType&&PADEL_STYLES[profile.styleType]&&(
-                      <span style={{padding:'3px 8px',
-                        background:`${PADEL_STYLES[profile.styleType].accent}22`,
-                        border:`1px solid ${PADEL_STYLES[profile.styleType].accent}`,
-                        borderRadius:6,
-                        color:PADEL_STYLES[profile.styleType].accent,
-                        fontSize:10,fontWeight:800,letterSpacing:.3,
-                        textTransform:'uppercase'}}>
-                        {PADEL_STYLES[profile.styleType].name}
-                      </span>
-                    )}
-                  </div>
-                )}
-              </>
-            ):(
-              <div style={{color:T.t3,fontSize:13,lineHeight:1.5}}>Noch kein Spielniveau eingetragen.</div>
-            )}
-          </div>
-        </div>
-
-        {/* Followers / Following — Counter-Karten, tap öffnet die Liste.
-            Bewusst leicht asymmetrisch animiert (eigene Delays). */}
-        <div style={{display:'flex',gap:10,marginBottom:14}}>
-          <button onClick={()=>onOpenFollowers&&onOpenFollowers()} className="zi"
-            style={{animationDelay:'.3s',flex:1,background:T.card,
-              border:`1px solid ${T.border}`,borderRadius:17,
-              padding:'16px 12px',textAlign:'center',cursor:'pointer',color:T.t1}}>
-            <div style={{fontSize:27,fontWeight:900,letterSpacing:-.5}}>{counts.followers}</div>
-            <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.3,
-              textTransform:'uppercase',marginTop:2}}>Follower</div>
-          </button>
-          <button onClick={()=>onOpenFollowing&&onOpenFollowing()} className="zi"
-            style={{animationDelay:'.38s',flex:1,background:T.card,
-              border:`1px solid ${T.border}`,borderRadius:17,
-              padding:'16px 12px',textAlign:'center',cursor:'pointer',color:T.t1}}>
-            <div style={{fontSize:27,fontWeight:900,letterSpacing:-.5}}>{counts.following}</div>
-            <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.3,
-              textTransform:'uppercase',marginTop:2}}>Folgt</div>
-          </button>
-        </div>
-
-        {/* Sichtbarkeit — Public Profile Toggle.
-            Spiegelt profile.private; das Schema-Trigger synchronisiert
-            is_public beim Save, sodass das Profil in Suchen auftaucht. */}
-        <div className="fu" style={{background:T.card,border:`1px solid ${T.border}`,
-          borderRadius:19,padding:'14px 18px',marginBottom:14,animationDelay:'.46s',
-          display:'flex',alignItems:'center',gap:12}}>
-          <div style={{flexShrink:0,width:36,height:36,borderRadius:13,background:T.card2,
-            border:`1px solid ${T.border}`,color:isPublic?T.o:T.t3,
-            display:'flex',alignItems:'center',justifyContent:'center'}}>
-            <EyeIcon size={20}/>
-          </div>
-          <div style={{flex:1,minWidth:0}}>
-            <div style={{color:T.t1,fontSize:14,fontWeight:700}}>
-              {isPublic?'Profil öffentlich':'Profil privat'}
+        {/* Follower / Folgt — Hairline-Sektion, tap öffnet die Listen */}
+        <div className="fu" style={{animationDelay:'.32s',display:'flex',marginTop:30,
+          borderTop:`1px solid ${T.sep}`,borderBottom:`1px solid ${T.sep}`,padding:'15px 0'}}>
+          <button onClick={()=>onOpenFollowers&&onOpenFollowers()}
+            style={{flex:1,background:'none',border:'none',cursor:'pointer',
+              textAlign:'center',borderRight:`1px solid ${T.sep}`}}>
+            <div style={eyeb}>Follower</div>
+            <div style={{display:'inline-flex',alignItems:'center',gap:8,marginTop:5}}>
+              <span style={{color:T.t1,fontSize:27,fontWeight:900,letterSpacing:-.5}}>{counts.followers}</span>
+              <span style={{color:T.t2,display:'inline-flex'}}><PeopleIcon size={16}/></span>
             </div>
-            <div style={{color:T.t3,fontSize:11,marginTop:2,lineHeight:1.45}}>
+          </button>
+          <button onClick={()=>onOpenFollowing&&onOpenFollowing()}
+            style={{flex:1,background:'none',border:'none',cursor:'pointer',textAlign:'center'}}>
+            <div style={eyeb}>Folgt</div>
+            <div style={{display:'inline-flex',alignItems:'center',gap:8,marginTop:5}}>
+              <span style={{color:T.t1,fontSize:27,fontWeight:900,letterSpacing:-.5}}>{counts.following}</span>
+              <span style={{color:T.t2,display:'inline-flex'}}><PeopleIcon size={16}/></span>
+            </div>
+          </button>
+        </div>
+
+        {/* Zeilen-Liste: Sichtbarkeit · Einstellungen · Onboarding ·
+            Abmelden — Hairlines statt Cards (Mock). Der Toggle ist rein
+            visuell, die ganze Zeile schaltet; das Schema-Trigger
+            synchronisiert is_public beim Save. */}
+        <button onClick={togglePublic} className="fu" style={{...rowSty(false),animationDelay:'.4s'}}>
+          <span style={{width:26,display:'inline-flex',justifyContent:'center',
+            flexShrink:0,color:T.o}}><EyeIcon size={20}/></span>
+          <span style={{flex:1,minWidth:0}}>
+            <span style={rowLbl}>{isPublic?'Profil öffentlich':'Profil privat'}</span>
+            <span style={rowSub}>
               {isPublic
                 ?'Andere Spieler:innen können dich finden und folgen.'
                 :'Niemand kann dich finden — nur du siehst dein Profil.'}
-            </div>
-          </div>
-          <div onClick={togglePublic}
-            style={{width:48,height:28,borderRadius:19,
-              background:isPublic?T.o:'rgba(120,120,128,.32)',
-              position:'relative',cursor:'pointer',transition:'background .25s',flexShrink:0}}>
-            <div style={{width:24,height:24,borderRadius:'50%',background:T.bg,
-              position:'absolute',top:2,left:isPublic?22:2,transition:'left .25s',
-              boxShadow:'0 1px 3px rgba(0,0,0,.3)'}}/>
-          </div>
-        </div>
+            </span>
+          </span>
+          <span style={{width:46,height:27,borderRadius:19,flexShrink:0,
+            background:isPublic?T.o:'rgba(120,120,128,.32)',position:'relative',
+            transition:'background .25s',display:'inline-block'}}>
+            <span style={{width:23,height:23,borderRadius:'50%',background:T.bg,
+              position:'absolute',top:2,left:isPublic?21:2,transition:'left .25s',
+              boxShadow:'0 1px 3px rgba(0,0,0,.3)',display:'block'}}/>
+          </span>
+        </button>
 
-        {/* Actions */}
-        <div className="fu" style={{animationDelay:'.54s',
-          display:'flex',flexDirection:'column',gap:8,marginBottom:16}}>
-          {/* Einstellungen wohnen jetzt im Profil (kein eigener Tab mehr) */}
-          <button onClick={onOpenSettings}
-            style={{padding:'13px 16px',background:T.card,
-              border:`1px solid ${T.border}`,borderRadius:15,
-              color:T.t1,fontSize:14,fontWeight:600,cursor:'pointer',
-              textAlign:'left',display:'flex',alignItems:'center',gap:10}}>
-            <GearIcon size={17}/>
-            <span style={{flex:1}}>Einstellungen</span>
-            <ChevronRightIcon size={15} color={T.t3}/>
-          </button>
-          <button onClick={onResetOnboarding}
-            style={{padding:'13px 16px',background:T.card,
-              border:`1px solid ${T.border}`,borderRadius:15,
-              color:T.t1,fontSize:14,fontWeight:600,cursor:'pointer',
-              textAlign:'left'}}>
-            Onboarding wiederholen
-          </button>
-          <button onClick={onLogout}
-            style={{padding:'13px 16px',background:'rgba(232,69,69,0.08)',
-              border:'1px solid rgba(232,69,69,0.35)',borderRadius:15,
-              color:'#FF6B6B',fontSize:14,fontWeight:700,cursor:'pointer',
-              textAlign:'left'}}>
-            Abmelden
-          </button>
-        </div>
+        <button onClick={onOpenSettings} className="fu" style={{...rowSty(true),animationDelay:'.46s'}}>
+          <span style={{width:26,display:'inline-flex',justifyContent:'center',
+            flexShrink:0,color:T.t2}}><GearIcon size={19}/></span>
+          <span style={{flex:1,minWidth:0}}><span style={rowLbl}>Einstellungen</span></span>
+          <ChevronRightIcon size={15} color={T.t3}/>
+        </button>
+        <button onClick={onResetOnboarding} className="fu" style={{...rowSty(true),animationDelay:'.52s'}}>
+          <span style={{width:26,display:'inline-flex',justifyContent:'center',
+            flexShrink:0,color:T.t2}}><RefreshGlyph/></span>
+          <span style={{flex:1,minWidth:0}}><span style={rowLbl}>Onboarding wiederholen</span></span>
+          <ChevronRightIcon size={15} color={T.t3}/>
+        </button>
+        <button onClick={onLogout} className="fu"
+          style={{...rowSty(true),animationDelay:'.58s',borderBottom:`1px solid ${T.sep}`}}>
+          <span style={{width:26,display:'inline-flex',justifyContent:'center',
+            flexShrink:0,color:T.o}}><RefreshGlyph/></span>
+          <span style={{flex:1,minWidth:0}}><span style={{...rowLbl,color:T.o}}>Abmelden</span></span>
+          <span style={{color:T.o,display:'inline-flex'}}><ExitGlyph/></span>
+        </button>
 
         <div style={{height:120,flexShrink:0}}/>
-        </div>{/* /Cards-Wrapper (padding 0 22px) */}
       </div>
 
       <BottomFade/>
@@ -3934,7 +3911,7 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
             </div>
           </div>
           {!isB&&hasStarted&&(
-            <div style={{fontFamily:'monospace',fontSize:20,fontWeight:800,
+            <div style={{fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',fontSize:20,fontWeight:800,
               color:timerFinished?T.r:T.t1,letterSpacing:1,flexShrink:0}}>
               {fmtT(secsLeft)}
             </div>
@@ -5375,7 +5352,7 @@ function TimerCard({minutes,setMinutes,running,secsLeft,finished,onStart,onPause
           <div style={{position:'relative',zIndex:1,
             display:'flex',alignItems:'center',justifyContent:'space-between'}}>
             <div style={{fontSize:34,fontWeight:800,color:T.o,
-              fontFamily:'monospace',letterSpacing:1.5}}>
+              fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',letterSpacing:1.5}}>
               {fmtTime(secsLeft)}
             </div>
             <div style={{display:'flex',gap:8}}>
@@ -6218,7 +6195,7 @@ function OnlineTournamentLobby({pin,onHome,onStart,onCancel}){
           <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.3,
             textTransform:'uppercase',marginBottom:6}}>Beitritts-PIN</div>
           <div style={{color:T.o,fontSize:34,fontWeight:900,letterSpacing:6,
-            fontFamily:'monospace',marginBottom:14}}>
+            fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',marginBottom:14}}>
             {pin.toUpperCase()}
           </div>
           <div style={{display:'flex',justifyContent:'center',marginBottom:10}}>
@@ -6378,7 +6355,7 @@ function ParticipantScoreSheet({court,labelA,labelB,myTeam,initialA,initialB,
           overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',
           lineHeight:1.25}}>{label}</div>
         <div style={{color:mine?T.o:T.t1,fontSize:72,fontWeight:900,lineHeight:1,
-          letterSpacing:-2,fontFamily:'monospace'}}>{score}</div>
+          letterSpacing:-2,fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace'}}>{score}</div>
         <button onClick={e=>{e.stopPropagation();setScore(s=>Math.max(0,s-1));}}
           style={{width:40,height:40,borderRadius:'50%',background:T.card2,
             border:`1px solid ${T.border}`,color:T.t1,fontSize:22,fontWeight:800,
@@ -6619,7 +6596,7 @@ function TournamentParticipantView({session,participantId,pin}){
         </div>
         {typeof ts.timerSecsLeft==='number'&&(
           <div style={{color:ts.timerFinished?T.r:T.o,fontSize:20,fontWeight:800,
-            fontFamily:'monospace',letterSpacing:1}}>
+            fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',letterSpacing:1}}>
             {Math.floor(ts.timerSecsLeft/60)}:{String(ts.timerSecsLeft%60).padStart(2,'0')}
           </div>
         )}
@@ -6662,7 +6639,7 @@ function TournamentParticipantView({session,participantId,pin}){
             padding:'12px',textAlign:'center'}}>
             <div style={{color:T.g,fontSize:11,fontWeight:800,letterSpacing:1,
               textTransform:'uppercase',marginBottom:4}}>Vom Host bestätigt</div>
-            <div style={{color:T.t1,fontSize:24,fontWeight:900,fontFamily:'monospace'}}>
+            <div style={{color:T.t1,fontSize:24,fontWeight:900,fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace'}}>
               {myCourt.s1??0} : {myCourt.s2??0}
             </div>
           </div>
@@ -6671,7 +6648,7 @@ function TournamentParticipantView({session,participantId,pin}){
             padding:'12px',textAlign:'center'}}>
             <div style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:1,
               textTransform:'uppercase',marginBottom:4}}>Wartet auf Host</div>
-            <div style={{color:T.t1,fontSize:22,fontWeight:900,fontFamily:'monospace',marginBottom:8}}>
+            <div style={{color:T.t1,fontSize:22,fontWeight:900,fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',marginBottom:8}}>
               {mySubmission.scoreA} : {mySubmission.scoreB}
             </div>
             <button onClick={()=>{setSA(String(mySubmission.scoreA));setSB(String(mySubmission.scoreB));}}
@@ -6694,7 +6671,7 @@ function TournamentParticipantView({session,participantId,pin}){
                 style={{flex:1,minWidth:0,width:0,padding:'12px',
                   background:T.card2,boxSizing:'border-box',
                   border:`1px solid ${T.border}`,borderRadius:13,
-                  color:T.t1,fontSize:20,fontWeight:800,fontFamily:'monospace',
+                  color:T.t1,fontSize:20,fontWeight:800,fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',
                   textAlign:'center',outline:'none'}}/>
               <span style={{color:T.t3,fontSize:18,fontWeight:700,flexShrink:0}}>:</span>
               <input type="number" inputMode="numeric" min="0"
@@ -6703,7 +6680,7 @@ function TournamentParticipantView({session,participantId,pin}){
                 style={{flex:1,minWidth:0,width:0,padding:'12px',
                   background:T.card2,boxSizing:'border-box',
                   border:`1px solid ${T.border}`,borderRadius:13,
-                  color:T.t1,fontSize:20,fontWeight:800,fontFamily:'monospace',
+                  color:T.t1,fontSize:20,fontWeight:800,fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',
                   textAlign:'center',outline:'none'}}/>
             </div>
             {err&&<div style={{color:'#FF6B6B',fontSize:11,fontWeight:600,marginTop:6}}>{err}</div>}
@@ -6739,7 +6716,7 @@ function TournamentParticipantView({session,participantId,pin}){
               </div>
             </div>
             <div style={{color:c.done?T.g:T.t3,fontSize:13,fontWeight:700,
-              fontFamily:'monospace',flexShrink:0}}>
+              fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',flexShrink:0}}>
               {c.done?`${c.s1??0} : ${c.s2??0}`:'–'}
             </div>
           </div>
@@ -6993,7 +6970,7 @@ function JoinTournament({initialPin,profile,onHome,onJoin,restored}){
               maxLength={8}
               style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
                 borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:18,
-                fontFamily:'monospace',letterSpacing:4,
+                fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',letterSpacing:4,
                 outline:'none',boxSizing:'border-box',textAlign:'center'}}/>
             <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
               textTransform:'uppercase',marginTop:14,marginBottom:6}}>Dein Name</div>
@@ -7137,7 +7114,7 @@ function PendingSubmissionRow({sub,tourney,onApprove,onReject}){
           style={{flex:1,minWidth:0,width:0,padding:'8px',
             background:T.card2,boxSizing:'border-box',
             border:`1px solid ${T.border}`,
-            borderRadius:8,color:T.t1,fontSize:18,fontWeight:800,fontFamily:'monospace',
+            borderRadius:8,color:T.t1,fontSize:18,fontWeight:800,fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',
             textAlign:'center',outline:'none'}}/>
         <span style={{color:T.t3,fontSize:16,fontWeight:700,flexShrink:0}}>:</span>
         <input type="number" inputMode="numeric" min="0" value={b}
@@ -7145,7 +7122,7 @@ function PendingSubmissionRow({sub,tourney,onApprove,onReject}){
           style={{flex:1,minWidth:0,width:0,padding:'8px',
             background:T.card2,boxSizing:'border-box',
             border:`1px solid ${T.border}`,
-            borderRadius:8,color:T.t1,fontSize:18,fontWeight:800,fontFamily:'monospace',
+            borderRadius:8,color:T.t1,fontSize:18,fontWeight:800,fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',
             textAlign:'center',outline:'none'}}/>
         <button onClick={()=>handle(()=>onApprove(sub,a,b))} disabled={busy}
           title="Bestätigen"
@@ -7377,7 +7354,7 @@ function PointsEditModal({entry,winMode,onSave,onClose}){
           onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();save();}}}
           style={{width:'100%',background:T.card2,border:`1.5px solid ${T.o}`,borderRadius:15,
             padding:'14px',color:T.t1,fontSize:24,fontWeight:900,textAlign:'center',
-            fontFamily:'monospace',outline:'none',boxSizing:'border-box',marginBottom:16}}/>
+            fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',outline:'none',boxSizing:'border-box',marginBottom:16}}/>
         <div style={{display:'flex',gap:10}}>
           <button onClick={onClose}
             style={{flex:1,padding:'12px',background:T.card2,border:`1px solid ${T.border}`,
@@ -7874,7 +7851,7 @@ function RoundHistorySheet({tourney,onClose}){
                   <span style={{flex:1,minWidth:0,color:T.t2,fontSize:12,fontWeight:600,
                     textAlign:'right',overflow:'hidden',textOverflow:'ellipsis',
                     whiteSpace:'nowrap'}}>{teamNames(c.t1)}</span>
-                  <span style={{flexShrink:0,fontFamily:'monospace',fontSize:13,fontWeight:800,
+                  <span style={{flexShrink:0,fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',fontSize:13,fontWeight:800,
                     color:c.done?T.o:T.t4,padding:'0 4px'}}>
                     {c.done?`${c.s1??0}:${c.s2??0}`:'– : –'}
                   </span>
@@ -8205,7 +8182,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
             transition:'width 1s linear'}}/>
           <div style={{flex:1,fontSize:30,fontWeight:800,
             color:tourney.timerFinished?T.r:T.o,
-            fontFamily:'monospace',letterSpacing:1.5,
+            fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',letterSpacing:1.5,
             position:'relative',zIndex:1}}>
             {fmtT(tourney.timerSecsLeft||0)}
           </div>
@@ -8788,10 +8765,10 @@ function InputTester(){
         {last?(
           <>
             <div style={{color:fresh?T.o:T.t1,fontSize:22,fontWeight:800,
-              fontFamily:'monospace',transition:'color .2s',letterSpacing:.5}}>
+              fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',transition:'color .2s',letterSpacing:.5}}>
               {last.key}
             </div>
-            <div style={{color:T.t3,fontSize:10,marginTop:4,fontFamily:'monospace'}}>
+            <div style={{color:T.t3,fontSize:10,marginTop:4,fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace'}}>
               {last.code}
             </div>
           </>
@@ -9096,10 +9073,10 @@ function SettingsSteuerung({onBack,onHome,inputMode,setInputMode,voiceOn,setVoic
           <div style={{margin:'8px 0 14px',padding:'12px 14px',background:T.card2,borderRadius:13,
             border:`1px solid ${T.border}`,color:T.t2,fontSize:12,lineHeight:1.7}}>
             <div style={{color:T.t1,fontWeight:700,marginBottom:6}}>Tasten-Belegung:</div>
-            <div><span style={{color:T.t1,fontWeight:700,fontFamily:'monospace'}}>2</span> → Punkt Team A</div>
-            <div><span style={{color:T.t1,fontWeight:700,fontFamily:'monospace'}}>4</span> → Punkt Team B</div>
-            <div><span style={{color:T.t1,fontWeight:700,fontFamily:'monospace'}}>Leertaste</span> → Letzten Punkt rückgängig</div>
-            <div><span style={{color:T.t1,fontWeight:700,fontFamily:'monospace'}}>1</span> → Spiel zurücksetzen</div>
+            <div><span style={{color:T.t1,fontWeight:700,fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace'}}>2</span> → Punkt Team A</div>
+            <div><span style={{color:T.t1,fontWeight:700,fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace'}}>4</span> → Punkt Team B</div>
+            <div><span style={{color:T.t1,fontWeight:700,fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace'}}>Leertaste</span> → Letzten Punkt rückgängig</div>
+            <div><span style={{color:T.t1,fontWeight:700,fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace'}}>1</span> → Spiel zurücksetzen</div>
             <div style={{color:T.t1,fontWeight:700,marginTop:10,marginBottom:4}}>Reset rückgängig:</div>
             <div style={{color:T.t3}}>
               Nach Reset hast du 1.5 Sekunden Zeit, durch erneutes Drücken von 1 den vorherigen Spielstand wiederherzustellen.
@@ -11322,7 +11299,7 @@ function DnaCupMatch({fmt,nameA,nameB,subA,subB,stageLabel,tier,courtNo,duration
             overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{nameA}</div>
           <div style={{flexShrink:0,display:'flex',flexDirection:'column',alignItems:'center',gap:2}}>
             <DnaChip color={T.t2}>{stageLabel}</DnaChip>
-            {isPoints&&<div style={{fontFamily:'monospace',fontSize:18,fontWeight:800,
+            {isPoints&&<div style={{fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',fontSize:18,fontWeight:800,
               color:tFin?T.r:T.t1}}>{fmtClock(secsLeft)}</div>}
           </div>
           <div style={{flex:1,minWidth:0,textAlign:'right',color:T.o,fontSize:20,fontWeight:800,
@@ -11422,7 +11399,7 @@ function DnaCupMatch({fmt,nameA,nameB,subA,subB,stageLabel,tier,courtNo,duration
             <div style={{height:'100%',background:tFin?T.r:T.o,borderRadius:99,
               width:`${(((durationMin||10)*60-secsLeft)/((durationMin||10)*60))*100}%`,transition:'width 1s linear'}}/>
           </div>
-          <div style={{fontFamily:'monospace',fontSize:15,fontWeight:800,color:tFin?T.r:T.t1,minWidth:48,textAlign:'right'}}>
+          <div style={{fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',fontSize:15,fontWeight:800,color:tFin?T.r:T.t1,minWidth:48,textAlign:'right'}}>
             {fmtClock(secsLeft)}
           </div>
           <button onClick={()=>setRunning(r=>!r)} style={{padding:'6px 14px',borderRadius:99,
@@ -12017,7 +11994,7 @@ function DnaCupSchedule({cup,onBack,onHome}){
           return(
           <div key={i} style={{display:'flex',gap:14,alignItems:'flex-start',background:T.card,
             border:`1px solid ${active?T.o:T.border}`,borderRadius:14,padding:'12px 14px'}}>
-            <div style={{color:active?T.o:T.t2,fontSize:14,fontWeight:900,fontFamily:'monospace',
+            <div style={{color:active?T.o:T.t2,fontSize:14,fontWeight:900,fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',
               minWidth:46}}>{row.time}</div>
             <div style={{flex:1,minWidth:0}}>
               <div style={{color:T.t1,fontSize:13,fontWeight:700}}>{row.title}</div>

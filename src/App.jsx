@@ -2864,7 +2864,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
       }} onClick={()=>nav('profile-ritmodna')}>
         <div style={{display:'flex',alignItems:'center',
           justifyContent:'space-between',gap:14}}>
-          <RitmoWordmark size={52} style={{marginLeft:-3}}/>
+          <RitmoWordmark size={52} style={{marginLeft:-14}}/>
           {/* Rechts gruppiert: RITMO Post Icon + Profil-Avatar, vertikal
               zentriert ausgerichtet zueinander. Beide stoppen die
               Header-onClick-Propagation, damit der Tap nicht durch zum
@@ -3226,7 +3226,7 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
 
       <div style={{padding:'0 9px 22px'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-          <RitmoWordmark size={52} style={{marginLeft:-3}}/>
+          <RitmoWordmark size={52} style={{marginLeft:-14}}/>
           <SingleMatchIcon size={40}/>
         </div>
         <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>Single Match</div>
@@ -5524,7 +5524,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
 
       <div style={{padding:'0 9px 22px'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-          <RitmoWordmark size={52} style={{marginLeft:-3}}/>
+          <RitmoWordmark size={52} style={{marginLeft:-14}}/>
           <TrophyIcon size={40}/>
         </div>
         <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>
@@ -6059,7 +6059,7 @@ function OnlineTournamentLobby({pin,onHome,onStart,onCancel}){
 
       <div style={{padding:'0 9px 22px'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-          <RitmoWordmark size={52} style={{marginLeft:-3}}/>
+          <RitmoWordmark size={52} style={{marginLeft:-14}}/>
           <TrophyIcon size={40}/>
         </div>
         <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>
@@ -6805,7 +6805,7 @@ function JoinTournament({initialPin,profile,onHome,onJoin,restored}){
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
       <div style={{padding:'0 9px 22px'}}>
-        <RitmoWordmark size={52} style={{marginLeft:-3}}/>
+        <RitmoWordmark size={52} style={{marginLeft:-14}}/>
         <div style={{color:T.t2,fontSize:30,marginTop:8,marginLeft:10,fontWeight:800}}>
           Turnier beitreten
         </div>
@@ -7515,10 +7515,223 @@ function TournamentCourtCard({court,courtIndex,playerById,onScoreChange,onConfir
 /* ═══════════════════════════════════════════════════════════════
    TOURNAMENT PLAY
 ═══════════════════════════════════════════════════════════════ */
+/* ── Pausen-Ausgleich einer Runde: aufgerundeter Mittelwert aller
+   Punkte aus BESTÄTIGTEN Matches (spiegelt calcLeaderboard). null,
+   wenn noch kein Match bestätigt ist. */
+function roundMeanBonus(round){
+  const scores=[];
+  (round?.courts||[]).forEach(m=>{
+    if(!m.done) return;
+    (m.t1||[]).forEach(()=>scores.push(m.s1??0));
+    (m.t2||[]).forEach(()=>scores.push(m.s2??0));
+  });
+  if(!scores.length) return null;
+  return Math.ceil(scores.reduce((a,b)=>a+b,0)/scores.length);
+}
+
+/* Kleiner blauer Chip „⏸ +X" — kennzeichnet im Leaderboard farblich,
+   wie viele Punkte/Siege aus dem Pausen-Ausgleich stammen. */
+function PauseBonusChip({value,size=9.5}){
+  if(!value) return null;
+  return(
+    <span title="Aus Pausen-Ausgleich (aufgerundeter Runden-Mittelwert)"
+      style={{display:'inline-flex',alignItems:'center',gap:3,
+        background:T.blueSoft,border:`1px solid ${T.blue}`,borderRadius:8,
+        padding:'1px 6px',color:T.blue,fontSize:size,fontWeight:800,lineHeight:1.4}}>
+      <PauseIcon size={size} color={T.blue}/>+{value}
+    </span>
+  );
+}
+
+/* Uhr mit Rückwärts-Pfeil — Runden-Historie. */
+function HistoryIcon({size=22,color=T.o}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke={color} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M20.5 12a8.5 8.5 0 1 1-2.6-6.1"/>
+    <path d="M18.5 2.5v3.6h-3.6"/>
+    <path d="M12 8v4.3l2.9 1.7"/>
+  </svg>);
+}
+
+/* Court/Leaderboard-Umschalter — Mini-Court oben links, Slash,
+   Spieler unten rechts (wie im Mockup). */
+function ViewSwitchIcon({size=24,color=T.o}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="2.5" y="3" width="9" height="7.5" rx="1.6"/>
+    <line x1="7" y1="3" x2="7" y2="10.5"/>
+    <line x1="14.8" y1="2.5" x2="9.2" y2="21.5"/>
+    <circle cx="17" cy="14" r="2.1"/>
+    <path d="M13.4 21.5c0-2.4 1.6-3.7 3.6-3.7s3.6 1.3 3.6 3.7"/>
+  </svg>);
+}
+
+/* ── Runden-Abschluss-Bestätigung — macht den Pausen-Ausgleich
+   TRANSPARENT: zeigt vor dem Rundenwechsel den aufgerundeten
+   Mittelwert dieser Runde und wer ihn gutgeschrieben bekommt. */
+function RoundEndModal({roundNo,bonus,names,winMode,onConfirm,onCancel}){
+  return(
+    <div onClick={onCancel} style={{position:'fixed',inset:0,zIndex:300,
+      background:'rgba(0,0,0,.72)',backdropFilter:'blur(4px)',
+      display:'flex',alignItems:'center',justifyContent:'center',
+      padding:'0 26px',animation:'fadeIn .15s ease'}}>
+      <div onClick={e=>e.stopPropagation()} className="slide-up"
+        style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:21,
+          width:'100%',maxWidth:380,padding:'22px 20px'}}>
+        <div style={{color:T.t1,fontSize:18,fontWeight:800,letterSpacing:-.2}}>
+          Runde {roundNo} abschließen
+        </div>
+        <div style={{color:T.t3,fontSize:12,lineHeight:1.5,marginTop:4,marginBottom:14}}>
+          Pausen-Ausgleich dieser Runde — wird dem Gesamtscore gutgeschrieben.
+        </div>
+
+        {winMode==='points'?(
+          bonus!=null?(
+            <div style={{background:T.blueSoft,border:`1px solid ${T.blue}`,
+              borderRadius:15,padding:'14px 16px',marginBottom:14}}>
+              <div style={{display:'flex',alignItems:'center',gap:10}}>
+                <div style={{width:34,height:34,borderRadius:'50%',flexShrink:0,
+                  background:T.card,border:`1.5px solid ${T.blue}`,
+                  display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  <PauseIcon size={15} color={T.blue}/>
+                </div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{color:T.blue,fontSize:20,fontWeight:900,lineHeight:1.1}}>
+                    +{bonus} Punkte
+                  </div>
+                  <div style={{color:T.t2,fontSize:11,fontWeight:500,marginTop:2,lineHeight:1.45}}>
+                    Aufgerundeter Mittelwert aller Punkte dieser Runde.
+                  </div>
+                </div>
+              </div>
+              <div style={{color:T.t1,fontSize:13,fontWeight:600,marginTop:10}}>
+                geht an: <span style={{color:T.blue,fontWeight:800}}>{names.join(', ')}</span>
+              </div>
+            </div>
+          ):(
+            <div style={{background:T.card2,border:`1px solid ${T.border}`,
+              borderRadius:15,padding:'12px 14px',marginBottom:14,
+              color:T.t3,fontSize:12,lineHeight:1.5}}>
+              Noch kein Ergebnis bestätigt — ohne bestätigte Matches gibt es keinen
+              Ausgleich für {names.join(', ')}.
+            </div>
+          )
+        ):(
+          <div style={{background:T.blueSoft,border:`1px solid ${T.blue}`,
+            borderRadius:15,padding:'12px 14px',marginBottom:14}}>
+            <div style={{color:T.blue,fontSize:14,fontWeight:800}}>+1 Sieg pro Pause</div>
+            <div style={{color:T.t2,fontSize:11,marginTop:3,lineHeight:1.45}}>
+              Gutschrift für pausierte Spieler der unteren Tabellenhälfte:
+              {' '}{names.join(', ')}
+            </div>
+          </div>
+        )}
+
+        <div style={{display:'flex',gap:10}}>
+          <button onClick={onCancel}
+            style={{flex:1,padding:'12px',borderRadius:13,background:T.card2,
+              border:`1px solid ${T.border}`,color:T.t1,fontSize:13,fontWeight:600,
+              cursor:'pointer'}}>
+            Zurück
+          </button>
+          <button onClick={onConfirm}
+            style={{flex:1.4,padding:'12px',borderRadius:13,background:T.o,
+              border:'none',color:T.bg,fontSize:13,fontWeight:800,cursor:'pointer'}}>
+            Bestätigen & weiter
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Runden-Historie — alle gespielten Runden mit Paarungen,
+   Ergebnissen, Pausen und dem jeweils angewandten Ausgleich.
+   Die Runden liegen vollständig in tourney.rounds (persistiert
+   via localStorage zusammen mit dem Turnier). */
+function RoundHistorySheet({tourney,onClose}){
+  const pById=id=>tourney.players.find(p=>p.id===id);
+  const teamNames=ids=>(ids||[]).map(id=>pById(id)?.name||'?').join(' + ');
+  return(
+    <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:300,
+      background:'rgba(0,0,0,.7)',backdropFilter:'blur(4px)',display:'flex',
+      alignItems:'flex-end',justifyContent:'center',animation:'fadeIn .15s ease'}}>
+      <div onClick={e=>e.stopPropagation()} className="slide-up"
+        style={{background:T.card,borderTopLeftRadius:20,borderTopRightRadius:20,
+          borderTop:`1px solid ${T.border}`,width:'100%',maxWidth:480,
+          padding:'16px 18px calc(env(safe-area-inset-bottom,0px) + 18px)',
+          maxHeight:'82vh',overflowY:'auto',WebkitOverflowScrolling:'touch'}}>
+        <div style={{width:36,height:4,borderRadius:2,background:T.border,margin:'0 auto 14px'}}/>
+        <div style={{display:'flex',alignItems:'center',gap:9,marginBottom:3}}>
+          <HistoryIcon size={19} color={T.o}/>
+          <div style={{color:T.t1,fontSize:17,fontWeight:800}}>Runden-Historie</div>
+        </div>
+        <div style={{color:T.t3,fontSize:12,lineHeight:1.5,marginBottom:14}}>
+          Alle Runden mit Ergebnissen & Pausen-Ausgleich — bleiben über das
+          ganze Turnier gespeichert.
+        </div>
+        {tourney.rounds.map((r,ri)=>{
+          const isCurrent=ri===tourney.current;
+          const bonus=tourney.winMode==='points'?roundMeanBonus(r):null;
+          return(
+            <div key={ri} style={{background:T.card2,borderRadius:15,marginBottom:10,
+              border:`1px solid ${isCurrent?T.o:T.border}`,padding:'12px 14px'}}>
+              <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
+                <span style={{color:isCurrent?T.o:T.t1,fontSize:13,fontWeight:800}}>
+                  Runde {ri+1}
+                </span>
+                {isCurrent&&(
+                  <span style={{fontSize:9,fontWeight:800,letterSpacing:1,color:T.o,
+                    background:T.oSoft,border:`1px solid ${T.o}55`,borderRadius:7,
+                    padding:'1px 7px',textTransform:'uppercase'}}>laufend</span>
+                )}
+              </div>
+              {(r.courts||[]).map((c,ci)=>(
+                <div key={ci} style={{display:'flex',alignItems:'center',gap:8,
+                  padding:'6px 0',borderTop:ci>0?`1px solid ${T.sep}`:'none'}}>
+                  <span style={{color:T.t4,fontSize:10,fontWeight:800,width:18,flexShrink:0}}>
+                    C{ci+1}
+                  </span>
+                  <span style={{flex:1,minWidth:0,color:T.t2,fontSize:12,fontWeight:600,
+                    textAlign:'right',overflow:'hidden',textOverflow:'ellipsis',
+                    whiteSpace:'nowrap'}}>{teamNames(c.t1)}</span>
+                  <span style={{flexShrink:0,fontFamily:'monospace',fontSize:13,fontWeight:800,
+                    color:c.done?T.o:T.t4,padding:'0 4px'}}>
+                    {c.done?`${c.s1??0}:${c.s2??0}`:'– : –'}
+                  </span>
+                  <span style={{flex:1,minWidth:0,color:T.t2,fontSize:12,fontWeight:600,
+                    overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                    {teamNames(c.t2)}
+                  </span>
+                </div>
+              ))}
+              {(r.sitOut||[]).length>0&&(
+                <div style={{display:'flex',alignItems:'center',gap:7,marginTop:8,
+                  paddingTop:8,borderTop:`1px solid ${T.sep}`}}>
+                  <PauseBonusChip value={tourney.winMode==='points'?bonus:(r.sitOut.length?1:0)}/>
+                  <span style={{color:T.t3,fontSize:11,fontWeight:500,minWidth:0,
+                    overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                    Pause: <span style={{color:T.t1,fontWeight:600}}>
+                      {r.sitOut.map(id=>pById(id)?.name||'?').join(', ')}
+                    </span>
+                  </span>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onMatchLogged}){
   const[tab,setTab]=useState('round');
   const[confirmEnd,setConfirmEnd]=useState(false);
   const[showSitOutInfo,setShowSitOutInfo]=useState(false);
+  // Runden-Historie-Sheet + Transparenz-Popup vor dem Rundenwechsel.
+  const[showHistory,setShowHistory]=useState(false);
+  const[roundEndInfo,setRoundEndInfo]=useState(null);
   const[editLineupCourtId,setEditLineupCourtId]=useState(null);
   const[editPtsId,setEditPtsId]=useState(null);
   const round=tourney.rounds[tourney.current];
@@ -7745,6 +7958,19 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
     });
   };
 
+  // Vor dem Rundenwechsel: Pausen-Ausgleich transparent bestätigen
+  // lassen (Popup mit Mittelwert + Empfängern). Ohne Pausierte geht
+  // es direkt weiter.
+  const requestNextRound=()=>{
+    const so=round.sitOut||[];
+    if(so.length===0){ nextRound(); return; }
+    setRoundEndInfo({
+      roundNo:tourney.current+1,
+      bonus:tourney.winMode==='points'?roundMeanBonus(round):null,
+      names:so.map(id=>playerById(id)?.name||'?'),
+    });
+  };
+
   const endTournament=()=>{
     setTourney(t=>({...t,finished:true,timerRunning:false}));
     nav('tournament-leaderboard');
@@ -7771,7 +7997,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
           wirkte optisch versetzt zur Logo-Höhe. */}
       <div style={{padding:'0 22px 14px'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-          <RitmoWordmark size={52} style={{marginLeft:-3}}/>
+          <RitmoWordmark size={52} style={{marginLeft:-14}}/>
           <TrophyIcon size={40}/>
         </div>
         <div style={{color:T.t1,fontSize:26,marginTop:6,marginLeft:10,fontWeight:800,
@@ -7787,7 +8013,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
       {/* Timer + Leaderboard Toggle */}
       <div style={{display:'flex',gap:10,padding:'0 22px 14px'}}>
         {/* Timer Card */}
-        <div style={{flex:'1 1 60%',
+        <div style={{flex:1,minWidth:0,
           background:T.bg,
           border:`2px solid ${tourney.timerFinished?T.r:T.o}`,
           borderRadius:19,padding:'10px 14px',
@@ -7814,15 +8040,26 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
           </button>
         </div>
 
-        {/* Leaderboard Toggle */}
+        {/* Courts ⇄ Leaderboard — Icon-Umschalter */}
         <button onClick={()=>setTab(tab==='board'?'round':'board')}
-          style={{flex:'1 1 40%',
-            background:tab==='board'?T.oSoft:T.card,
-            border:`1px solid ${tab==='board'?T.o:T.border}`,
-            borderRadius:19,padding:'10px 14px',
-            color:tab==='board'?T.o:T.t1,fontSize:14,fontWeight:600,
-            cursor:'pointer',transition:'all .2s'}}>
-          {tab==='board'?'Courts':'Leaderboard'}
+          title={tab==='board'?'Courts anzeigen':'Leaderboard anzeigen'}
+          aria-label="Courts/Leaderboard umschalten"
+          style={{width:58,flexShrink:0,
+            background:tab==='board'?T.oSoft:T.bg,
+            border:`2px solid ${T.o}`,
+            borderRadius:19,cursor:'pointer',
+            display:'flex',alignItems:'center',justifyContent:'center',
+            transition:'background .2s'}}>
+          <ViewSwitchIcon size={27} color={T.o}/>
+        </button>
+
+        {/* Runden-Historie */}
+        <button onClick={()=>setShowHistory(true)}
+          title="Runden-Historie" aria-label="Runden-Historie"
+          style={{width:58,flexShrink:0,background:T.bg,
+            border:`2px solid ${T.o}`,borderRadius:19,cursor:'pointer',
+            display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <HistoryIcon size={25} color={T.o}/>
         </button>
       </div>
 
@@ -7895,9 +8132,10 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
             </div>
           )}
 
-          {/* Next round (when allDone) */}
+          {/* Next round (when allDone) — öffnet erst das Transparenz-
+              Popup zum Pausen-Ausgleich (wenn jemand pausiert hat). */}
           {allDone&&(
-            <button onClick={nextRound}
+            <button onClick={requestNextRound}
               style={{padding:'14px',borderRadius:19,border:'none',
                 background:T.o,color:T.bg,fontSize:15,fontWeight:800,cursor:'pointer',
                 marginTop:6}}>
@@ -7938,12 +8176,13 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
                         {tourney.winMode==='wins'?p.totalWins:p.totalPts}
                       </span>
                     </div>
-                    <div style={{color:(tourney.winMode==='wins'?p.adjWins:p.adjPts)?T.o:T.t3,
-                      fontSize:10,fontWeight:600}}>
-                      {tourney.winMode==='wins'
-                        ?(p.bonusWins>0?`Siege +${p.bonusWins}`:'Siege')
-                        :(p.bonusPts>0?`Punkte +${p.bonusPts}`:'Punkte')}
-                      {(tourney.winMode==='wins'?p.adjWins:p.adjPts)?' · angepasst':''}
+                    <div style={{display:'flex',alignItems:'center',gap:5}}>
+                      <PauseBonusChip value={tourney.winMode==='wins'?p.bonusWins:p.bonusPts}/>
+                      <span style={{color:(tourney.winMode==='wins'?p.adjWins:p.adjPts)?T.o:T.t3,
+                        fontSize:10,fontWeight:600}}>
+                        {tourney.winMode==='wins'?'Siege':'Punkte'}
+                        {(tourney.winMode==='wins'?p.adjWins:p.adjPts)?' · angepasst':''}
+                      </span>
                     </div>
                   </button>
                 </div>
@@ -8001,6 +8240,22 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
           onSave={(v)=>{savePlayerPoints(editPtsEntry.id,v);setEditPtsId(null);}}
           onClose={()=>setEditPtsId(null)}/>
       )}
+
+      {/* Runden-Abschluss: Pausen-Ausgleich bestätigen */}
+      {roundEndInfo&&(
+        <RoundEndModal
+          roundNo={roundEndInfo.roundNo}
+          bonus={roundEndInfo.bonus}
+          names={roundEndInfo.names}
+          winMode={tourney.winMode}
+          onCancel={()=>setRoundEndInfo(null)}
+          onConfirm={()=>{setRoundEndInfo(null);nextRound();}}/>
+      )}
+
+      {/* Runden-Historie */}
+      {showHistory&&(
+        <RoundHistorySheet tourney={tourney} onClose={()=>setShowHistory(false)}/>
+      )}
     </div>
   );
 }
@@ -8019,7 +8274,7 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
 
       <div style={{padding:'0 9px 22px'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-          <RitmoWordmark size={52} style={{marginLeft:-3}}/>
+          <RitmoWordmark size={52} style={{marginLeft:-14}}/>
           <TrophyIcon size={40}/>
         </div>
         <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>Endstand</div>
@@ -8056,15 +8311,12 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
                     {p.sitOut>0&&<> · {p.sitOut} Pause{p.sitOut>1?'n':''}</>}
                   </div>
                 </div>
-                <div style={{textAlign:'right'}}>
+                <div style={{textAlign:'right',display:'flex',flexDirection:'column',
+                  alignItems:'flex-end',gap:2}}>
                   <div style={{color:T.o,fontSize:16,fontWeight:800}}>
                     {tourney.winMode==='wins'?p.totalWins:p.totalPts}
                   </div>
-                  {((tourney.winMode==='wins'?p.bonusWins:p.bonusPts)>0)&&(
-                    <div style={{color:T.t3,fontSize:10,fontWeight:600}}>
-                      +{tourney.winMode==='wins'?p.bonusWins:p.bonusPts} Pause
-                    </div>
-                  )}
+                  <PauseBonusChip value={tourney.winMode==='wins'?p.bonusWins:p.bonusPts}/>
                 </div>
               </div>
             ))}
@@ -8150,7 +8402,7 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
       <div style={{padding:'0 9px 24px'}}>
-        <RitmoWordmark size={52} style={{marginLeft:-3}}/>
+        <RitmoWordmark size={52} style={{marginLeft:-14}}/>
         <div style={{color:T.t2,fontSize:30,marginTop:8,marginLeft:10,fontWeight:800}}>
           {items.length===0?'Keine laufenden Spiele.':'Laufende Spiele und Turniere.'}
         </div>
@@ -8456,7 +8708,7 @@ function Settings({onHome,onBack,nav}){
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
       <div style={{padding:'0 9px 22px'}}>
-        <RitmoWordmark size={52} style={{marginLeft:-3}}/>
+        <RitmoWordmark size={52} style={{marginLeft:-14}}/>
         <div style={{color:T.t2,fontSize:30,marginTop:8,marginLeft:10,fontWeight:800}}>
           <Hl text="Einstellungen" q={q}/>
         </div>

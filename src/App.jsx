@@ -2396,9 +2396,14 @@ function TabBar({active,onTab}){
               onPointerLeave={e=>{
                 if(e.pointerType==='mouse'&&!grabFlag.current) setHovered(null);
               }}
-              style={{display:'flex',alignItems:'center',
-                padding:hidden?'11px 0':'11px 13px',
-                maxWidth:hidden?0:200,
+              style={{display:'flex',flexDirection:'column',alignItems:'center',
+                justifyContent:'center',gap:4,
+                /* eBay-Style: Icon oben, Label IMMER darunter — dadurch
+                   ist die Bar deutlich höher; alle Tabs gleich breit,
+                   die Pill bleibt damit konstant groß. */
+                padding:hidden?'13px 0':'13px 6px',
+                minWidth:hidden?0:62,
+                maxWidth:hidden?0:80,
                 opacity:hidden?0:1,
                 overflow:'hidden',
                 borderRadius:24,border:'none',cursor:'pointer',
@@ -2406,26 +2411,20 @@ function TabBar({active,onTab}){
                    das "Active"-Indicator-Bild. */
                 background:'transparent',
                 color:isActive?T.blue:T.t2,
-                fontSize:11,fontWeight:600,
+                fontSize:10,fontWeight:600,
                 position:'relative',zIndex:1,
-                transition:'max-width .25s ease, padding .25s ease, opacity .2s ease, color var(--anim-base)'}}>
+                transition:'min-width .25s ease, max-width .25s ease, padding .25s ease, opacity .2s ease, color var(--anim-base)'}}>
               {/* key=isActive zwingt das Icon-Wrapper-Element zum Remount
                   beim Tab-Wechsel, sodass die Bounce-Animation jedes Mal
                   neu durchläuft. */}
               <span key={isActive?'on':'off'}
                 className={isActive?'nav-icon-active':''}
                 style={{display:'inline-flex',transformOrigin:'center'}}>
-                <Icon active={isActive||isPreview} size={21}/>
+                <Icon active={isActive||isPreview} size={23}/>
               </span>
-              {/* Label nur am AKTIVEN Tab (Apple-style): klappt mit
-                  Spring auf, inaktive Tabs sind icon-only — so passen
-                  5 Tabs entspannt auf 360-px-Screens. */}
-              <span style={{fontSize:11,color:T.blue,fontWeight:700,
-                whiteSpace:'nowrap',overflow:'hidden',
-                maxWidth:isActive&&!hidden?112:0,
-                opacity:isActive&&!hidden?1:0,
-                marginLeft:isActive&&!hidden?7:0,
-                transition:'max-width var(--anim-pill), opacity .22s ease, margin-left var(--anim-pill)'}}>
+              <span style={{fontSize:10,whiteSpace:'nowrap',letterSpacing:.1,
+                color:isActive?T.blue:T.t3,fontWeight:isActive?800:600,
+                transition:'color var(--anim-base)'}}>
                 {label}
               </span>
             </button>
@@ -7553,17 +7552,53 @@ function HistoryIcon({size=22,color=T.o}){
   </svg>);
 }
 
-/* Court/Leaderboard-Umschalter — Mini-Court oben links, Slash,
-   Spieler unten rechts (wie im Mockup). */
-function ViewSwitchIcon({size=24,color=T.o}){
-  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <rect x="2.5" y="3" width="9" height="7.5" rx="1.6"/>
-    <line x1="7" y1="3" x2="7" y2="10.5"/>
-    <line x1="14.8" y1="2.5" x2="9.2" y2="21.5"/>
-    <circle cx="17" cy="14" r="2.1"/>
-    <path d="M13.4 21.5c0-2.4 1.6-3.7 3.6-3.7s3.6 1.3 3.6 3.7"/>
-  </svg>);
+/* Court/Leaderboard-Umschalter — ANIMIERT: die beiden Mini-Glyphs
+   tauschen beim Umschalten diagonal die Plätze. Der abgehende rotiert
+   dabei einmal um sich selbst und „swooshed" HINTER den anderen
+   (kleiner + gedimmt, z-Index wechselt), der ankommende dreht sich
+   groß nach vorn. Der Slash bleibt statisch. mode = aktueller Tab
+   ('round' → Court vorn, 'board' → Spieler vorn). */
+function ViewSwitchIcon({mode='round',size=24,color=T.o}){
+  const g=Math.round(size*0.58);   // Glyph-Box
+  const d=size-g;                  // diagonaler Versatz nach unten-rechts
+  const courtFront=mode!=='board';
+  const sty=(front,dir)=>({
+    position:'absolute',top:0,left:0,width:g,height:g,
+    display:'flex',alignItems:'center',justifyContent:'center',
+    zIndex:front?2:1,
+    opacity:front?1:.4,
+    transform:front
+      ?'translate(0px,0px) rotate(0deg) scale(1)'
+      :`translate(${d}px,${d}px) rotate(${dir*360}deg) scale(.78)`,
+    transition:'transform .55s var(--ease-out-back), opacity .35s ease',
+    willChange:'transform',
+  });
+  return(
+    <span aria-hidden="true" style={{position:'relative',width:size,height:size,
+      display:'inline-block',flexShrink:0}}>
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+        style={{position:'absolute',inset:0}}
+        stroke={color} strokeWidth="1.6" strokeLinecap="round">
+        <line x1="14.8" y1="2.5" x2="9.2" y2="21.5"/>
+      </svg>
+      {/* Mini-Court */}
+      <span style={sty(courtFront,1)}>
+        <svg width={g} height={g} viewBox="0 0 12 10" fill="none" stroke={color}
+          strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="1" y="1" width="10" height="8" rx="1.6"/>
+          <line x1="6" y1="1" x2="6" y2="9"/>
+        </svg>
+      </span>
+      {/* Mini-Spieler */}
+      <span style={sty(!courtFront,-1)}>
+        <svg width={g} height={g} viewBox="0 0 12 12" fill="none" stroke={color}
+          strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="6" cy="4.2" r="2.1"/>
+          <path d="M1.9 11c0-2.4 1.8-3.7 4.1-3.7s4.1 1.3 4.1 3.7"/>
+        </svg>
+      </span>
+    </span>
+  );
 }
 
 /* ── Runden-Abschluss-Bestätigung — macht den Pausen-Ausgleich
@@ -8050,7 +8085,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
             borderRadius:19,cursor:'pointer',
             display:'flex',alignItems:'center',justifyContent:'center',
             transition:'background .2s'}}>
-          <ViewSwitchIcon size={27} color={T.o}/>
+          <ViewSwitchIcon mode={tab} size={27} color={T.o}/>
         </button>
 
         {/* Runden-Historie */}

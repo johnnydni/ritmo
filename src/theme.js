@@ -505,13 +505,12 @@ input[type="time"]::-webkit-datetime-edit{padding:0;text-align:center;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 @keyframes scaleIn{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-/* Splash/Ladebalken — füllt sich linear über die Mindestlaufzeit. */
-@keyframes splashLoad{from{width:0%}to{width:100%}}
-/* Super-fancy Ladebalken: fließender Farbverlauf (background-position),
-   ein durchziehender Comet-Shine und ein pulsierendes Außen-Glühen. */
-@keyframes splashBarFlow{0%{background-position:0% 50%}100%{background-position:200% 50%}}
-@keyframes splashBarComet{0%{transform:translateX(-160%)}60%,100%{transform:translateX(460%)}}
-@keyframes splashBarGlow{0%,100%{box-shadow:0 0 8px 1px rgba(255,122,26,.4)}50%{box-shadow:0 0 22px 5px rgba(255,122,26,.85)}}
+/* Splash: pulsierende RITMO-Streifen statt Ladebalken — schlichter
+   Loop (Opacity + leichtes Längen-Atmen, links verankert). */
+@keyframes stripePulse{
+  0%,100%{opacity:.22;transform:scaleX(.86);}
+  50%{opacity:1;transform:scaleX(1);}
+}
 /* Diashow: langsames vertikales Auto-Scrollen langer Listen. Die
    Distanz wird per --dnaDist (negativ) gesetzt; kurzer Halt oben,
    dann eine ruhige Fahrt nach unten. */

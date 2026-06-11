@@ -649,6 +649,57 @@ button:disabled{cursor:not-allowed;opacity:.55;}
     inset 0 -1px 0 rgba(0,0,0,.06);
 }
 
+/* Greif-Zustand der Pill: solange der Finger sie führt, KEINE
+   Position/Größen-Transition (sonst „schwimmt" sie hinterher) —
+   dafür sichtbar „angehoben": hellere Kante, tieferer Schatten,
+   wie eine vom Glas gelöste Linse. */
+.liquid-pill[data-grab="true"]{
+  transition:
+    opacity 200ms var(--ease-out-expo),
+    box-shadow 200ms var(--ease-out-expo);
+  box-shadow:
+    0 16px 36px rgba(0,0,0,.45),
+    inset 0 1px 0 rgba(255,255,255,.55),
+    inset 0 -1px 0 rgba(0,0,0,.12);
+}
+
+/* ── Liquid-Glass-Material für Bottom-Bars & FABs ──
+   Echtes Hintergrund-Blur + Sättigung (iOS-Look). Tönung via
+   color-mix aus der Theme-Card-Farbe → passt automatisch in allen
+   5 Themes; die erste background-Zeile ist der Fallback für
+   Browser ohne color-mix. */
+.glass-bar{
+  background:var(--card);
+  background:color-mix(in srgb, var(--card) 55%, transparent);
+  -webkit-backdrop-filter:blur(22px) saturate(180%);
+  backdrop-filter:blur(22px) saturate(180%);
+  border:1px solid color-mix(in srgb, var(--t1) 13%, transparent);
+  box-shadow:
+    0 8px 28px rgba(0,0,0,.28),
+    inset 0 1px 0 color-mix(in srgb, #fff 16%, transparent);
+}
+
+/* ── Bottom-Fade — ersetzt die Fußzeilen: Inhalte laufen unter
+   Navbar/FABs in einen PROGRESSIVEN Blur + Farb-Fade aus (iOS-Look).
+   ::before blurt den dahinterliegenden Content mit Maskenverlauf,
+   ::after legt einen sanften Verlauf zur Hintergrundfarbe darüber. */
+.bottom-fade{
+  position:absolute;left:0;right:0;bottom:0;height:118px;
+  pointer-events:none;z-index:4;
+}
+.bottom-fade::before{
+  content:'';position:absolute;inset:0;
+  -webkit-backdrop-filter:blur(12px);
+  backdrop-filter:blur(12px);
+  -webkit-mask-image:linear-gradient(to bottom,transparent 0%,#000 72%);
+  mask-image:linear-gradient(to bottom,transparent 0%,#000 72%);
+}
+.bottom-fade::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(to bottom,transparent 0%,var(--bg) 96%);
+  opacity:.94;
+}
+
 /* Inputs animieren ihren Focus-State sanft. */
 input,textarea,select{
   transition:

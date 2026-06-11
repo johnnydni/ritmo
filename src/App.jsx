@@ -2066,10 +2066,10 @@ function BottomFade({height=118}){
    die drei animierten Bauhaus-Streifen (Echo der Logo-Speed-Lines)
    und der Titel (30/800, T.t2) + optionaler Untertitel. Padding
    überall '0 9px <pad>', Texte/Streifen bei marginLeft 10. */
-function BauhausStripes({delay=.15}){
+function BauhausStripes({delay=.15,style}){
   return(
     <div aria-hidden="true" style={{display:'flex',flexDirection:'column',
-      gap:3.5,marginLeft:10,marginTop:2}}>
+      gap:3.5,marginLeft:10,marginTop:2,...style}}>
       {[26,17,10].map((w,i)=>(
         <span key={i} className="stripe-in" style={{width:w,height:3,
           borderRadius:2,background:T.o,'--so':[1,.55,.3][i],
@@ -2688,6 +2688,9 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
           style={{display:'flex',justifyContent:'space-between',
           alignItems:'flex-start',gap:12}}>
           <div style={{minWidth:0,flex:1}}>
+            {/* Bauhaus-Streifen wie in den Screen-Headern — links,
+                über dem Eyebrow */}
+            <BauhausStripes delay={.05} style={{marginLeft:0,marginTop:0,marginBottom:9}}/>
             <div style={{display:'flex',alignItems:'center',gap:7}}>
               <span style={{width:5,height:5,borderRadius:'50%',background:T.o,flexShrink:0}}/>
               <span style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:2.4,

@@ -2927,6 +2927,61 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
   );
 }
 
+/* ── „Discover the RITMO" — horizontale Card-Galerie (Apple-Health-
+   Look): große Bild-Cards mit starkem Radius, Scroll-Snap, Titel auf
+   dunklem Verlauf. id = nav()-Ziel; Bilder aus public/assets. */
+const DISCOVER_CARDS=[
+  {id:'news',          eyebrow:'News',      title:'Was gibt es neues?', img:'motor.jpeg',        tint:'#FF7A1A'},
+  {id:'events',        eyebrow:'Community', title:'Events',             img:'toro.jpeg',         tint:'#0A84FF'},
+  {id:'booking-assist',eyebrow:'Courts',    title:'Buchungsassistent',  img:'individuoso.jpeg',  tint:'#30D158'},
+  {id:'rules',         eyebrow:'Regelwerk', title:'Neue Regularien',    img:'regelwerkhero.jpeg',tint:'#BF5AF2'},
+  {id:'weltrangliste', eyebrow:'Ranking',   title:'Weltrangliste',      img:'fantasma.jpeg',     tint:'#FFD60A'},
+];
+function DiscoverSection({nav}){
+  return(
+    <div className="fu" style={{animationDelay:'.14s'}}>
+      <div style={{color:T.t1,fontSize:20,fontWeight:800,letterSpacing:-.4,
+        margin:'8px 0 2px'}}>
+        Discover the RITMO
+      </div>
+      {/* Galerie blutet bis an die Screen-Kante (negiert das Corpus-
+          Padding), Cards snappen am linken Rand. */}
+      <div className="hscroll" style={{display:'flex',gap:12,overflowX:'auto',
+        margin:'0 -22px',padding:'10px 22px 6px',
+        scrollSnapType:'x mandatory',WebkitOverflowScrolling:'touch'}}>
+        {DISCOVER_CARDS.map(c=>(
+          <button key={c.id} onClick={()=>nav(c.id)} aria-label={c.title}
+            style={{position:'relative',flexShrink:0,width:190,height:248,
+              borderRadius:30,overflow:'hidden',border:`1px solid ${T.border}`,
+              scrollSnapAlign:'start',cursor:'pointer',padding:0,
+              background:T.card,textAlign:'left',
+              boxShadow:'0 10px 26px rgba(0,0,0,.32)'}}>
+            <img src={`${getAssetBase()}assets/${c.img}`} alt="" aria-hidden="true"
+              loading="lazy" draggable={false}
+              style={{position:'absolute',inset:0,width:'100%',height:'100%',
+                objectFit:'cover',userSelect:'none'}}/>
+            {/* Lesbarkeits-Verlauf + Tint-Hauch oben */}
+            <div aria-hidden="true" style={{position:'absolute',inset:0,
+              background:`linear-gradient(180deg, ${c.tint}26 0%, rgba(0,0,0,0) 28%, rgba(0,0,0,.06) 46%, rgba(0,0,0,.84) 100%)`}}/>
+            <div style={{position:'absolute',left:16,right:14,bottom:15}}>
+              <div style={{color:c.tint,fontSize:10,fontWeight:800,
+                letterSpacing:1.2,textTransform:'uppercase',marginBottom:4,
+                textShadow:'0 1px 6px rgba(0,0,0,.6)'}}>
+                {c.eyebrow}
+              </div>
+              <div style={{color:'#FFF',fontSize:17,fontWeight:800,
+                letterSpacing:-.3,lineHeight:1.18,
+                textShadow:'0 1px 8px rgba(0,0,0,.55)'}}>
+                {c.title}
+              </div>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
   // Hinweis-Banner falls Onboarding nicht abgeschlossen ist UND der
   // User nicht den Test-Bypass benutzt (Test-User hat onboarded=true).
@@ -2949,7 +3004,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
       }} onClick={()=>nav('profile-ritmodna')}>
         <div style={{display:'flex',alignItems:'center',
           justifyContent:'space-between',gap:14}}>
-          <RitmoWordmark size={52} style={{marginLeft:-26}}/>
+          <RitmoWordmark size={52} style={{marginLeft:-24}}/>
           {/* Rechts gruppiert: RITMO Post Icon + Profil-Avatar, vertikal
               zentriert ausgerichtet zueinander. Beide stoppen die
               Header-onClick-Propagation, damit der Tap nicht durch zum
@@ -3080,6 +3135,9 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
             <div style={{color:T.t3,fontSize:12,fontWeight:500}}>Saison | Spieltage | Tabelle</div>
           </div>
         </button>
+
+        {/* Discover the RITMO — horizontale Bild-Cards */}
+        <DiscoverSection nav={nav}/>
 
         {/* Internal scroll-bottom spacer so last card isn't hidden behind floating TabBar */}
         <div style={{height:120,flexShrink:0}}/>
@@ -3311,7 +3369,7 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
 
       <div style={{padding:'0 9px 22px'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-          <RitmoWordmark size={52} style={{marginLeft:-26}}/>
+          <RitmoWordmark size={52} style={{marginLeft:-24}}/>
           <SingleMatchIcon size={40}/>
         </div>
         <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>Single Match</div>
@@ -5609,7 +5667,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
 
       <div style={{padding:'0 9px 22px'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-          <RitmoWordmark size={52} style={{marginLeft:-26}}/>
+          <RitmoWordmark size={52} style={{marginLeft:-24}}/>
           <TrophyIcon size={40}/>
         </div>
         <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>
@@ -6144,7 +6202,7 @@ function OnlineTournamentLobby({pin,onHome,onStart,onCancel}){
 
       <div style={{padding:'0 9px 22px'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-          <RitmoWordmark size={52} style={{marginLeft:-26}}/>
+          <RitmoWordmark size={52} style={{marginLeft:-24}}/>
           <TrophyIcon size={40}/>
         </div>
         <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>
@@ -6890,7 +6948,7 @@ function JoinTournament({initialPin,profile,onHome,onJoin,restored}){
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
       <div style={{padding:'0 9px 22px'}}>
-        <RitmoWordmark size={52} style={{marginLeft:-26}}/>
+        <RitmoWordmark size={52} style={{marginLeft:-24}}/>
         <div style={{color:T.t2,fontSize:30,marginTop:8,marginLeft:10,fontWeight:800}}>
           Turnier beitreten
         </div>
@@ -8118,7 +8176,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
           wirkte optisch versetzt zur Logo-Höhe. */}
       <div style={{padding:'0 22px 14px'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-          <RitmoWordmark size={52} style={{marginLeft:-26}}/>
+          <RitmoWordmark size={52} style={{marginLeft:-24}}/>
           <TrophyIcon size={40}/>
         </div>
         <div style={{color:T.t1,fontSize:26,marginTop:6,marginLeft:10,fontWeight:800,
@@ -8395,7 +8453,7 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
 
       <div style={{padding:'0 9px 22px'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-          <RitmoWordmark size={52} style={{marginLeft:-26}}/>
+          <RitmoWordmark size={52} style={{marginLeft:-24}}/>
           <TrophyIcon size={40}/>
         </div>
         <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>Endstand</div>
@@ -8523,7 +8581,7 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
       <div style={{padding:'0 9px 24px'}}>
-        <RitmoWordmark size={52} style={{marginLeft:-26}}/>
+        <RitmoWordmark size={52} style={{marginLeft:-24}}/>
         <div style={{color:T.t2,fontSize:30,marginTop:8,marginLeft:10,fontWeight:800}}>
           {items.length===0?'Keine laufenden Spiele.':'Laufende Spiele und Turniere.'}
         </div>
@@ -8829,7 +8887,7 @@ function Settings({onHome,onBack,nav}){
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
       <div style={{padding:'0 9px 22px'}}>
-        <RitmoWordmark size={52} style={{marginLeft:-26}}/>
+        <RitmoWordmark size={52} style={{marginLeft:-24}}/>
         <div style={{color:T.t2,fontSize:30,marginTop:8,marginLeft:10,fontWeight:800}}>
           <Hl text="Einstellungen" q={q}/>
         </div>
@@ -12521,15 +12579,16 @@ function RitmoBibel({onHome,onRules,onJourney,onFaq,onTab}){
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
-      <div className="fi" style={{padding:'0 22px 22px'}}>
-        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
-          <BookIcon size={32}/>
-          <div style={{flex:1,minWidth:0}}>
-            <div style={{color:T.t1,fontSize:26,fontWeight:800,letterSpacing:-.3}}>RITMO Bibel</div>
-            <div style={{color:T.t2,fontSize:14,marginTop:2,fontWeight:400}}>
-              Regeln, Taktik und alles dazwischen.
-            </div>
-          </div>
+      {/* Header wie auf den Setup-Screens: RITMO-Logo statt Schriftzug,
+          Icon rechts, Titel + Subtitle darunter. */}
+      <div className="fi" style={{padding:'0 9px 22px'}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+          <RitmoWordmark size={52} style={{marginLeft:-24}}/>
+          <BookIcon size={36}/>
+        </div>
+        <div style={{color:T.t2,fontSize:30,marginTop:6,marginLeft:10,fontWeight:800}}>Bibel</div>
+        <div style={{color:T.t2,fontSize:14,marginTop:2,marginLeft:10,fontWeight:400}}>
+          Regeln, Taktik und alles dazwischen.
         </div>
       </div>
 
@@ -15309,6 +15368,38 @@ export default function App(){
         'Court-Verfügbarkeit in Echtzeit',
         'Buchung direkt aus dem Match-Setup',
         'Vorschläge passend zu deinen Mitspielern',
+      ]}
+      onHome={goHome}/>}
+
+    {/* Discover-Teaser: News, Events, Weltrangliste */}
+    {scr==='news'&&<ComingSoon
+      icon={<ScrollIcon size={52} color={T.o}/>}
+      title="Was gibt es neues?"
+      desc="Alle Updates, neuen Features und Ankündigungen aus der RITMO Welt — gesammelt an einem Ort."
+      bullets={[
+        'Release Notes zu jeder App-Version',
+        'Feature-Previews & Abstimmungen',
+        'Community-Highlights des Monats',
+      ]}
+      onHome={goHome}/>}
+    {scr==='events'&&<ComingSoon
+      icon={<TrophyIcon size={52}/>}
+      title="RITMO Events"
+      desc="Cups, Socials und Special Events — vom RITMO DNA Cup bis zum Sunset Americano in deinem Club."
+      bullets={[
+        'Event-Kalender mit Anmeldung',
+        'RITMO DNA Cup — Founders Edition',
+        'Club-Socials & Open Plays',
+      ]}
+      onHome={goHome}/>}
+    {scr==='weltrangliste'&&<ComingSoon
+      icon={<TargetIcon size={52} color={T.o}/>}
+      title="Weltrangliste"
+      desc="Die besten Spieler:innen der Welt — und wo du stehst. Offizielle Tour-Rankings plus das RITMO Community-Ranking."
+      bullets={[
+        'FIP / Premier Padel Rankings',
+        'RITMO Community-Leaderboard',
+        'Dein Verlauf über die Saison',
       ]}
       onHome={goHome}/>}
 

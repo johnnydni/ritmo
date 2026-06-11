@@ -837,6 +837,9 @@ a:focus-visible{
 .slide-in-right{animation:slideInRight var(--anim-base) ease both;}
 .press-pop{animation:pressPop var(--anim-spring) ease both;}
 .zi{animation:zoomIn .45s var(--ease-out-back) both;}
+/* Horizontale Card-Galerien (Discover): Scrollbar ausblenden, iOS-Look. */
+.hscroll{scrollbar-width:none;-ms-overflow-style:none;}
+.hscroll::-webkit-scrollbar{display:none;height:0;}
 .glow-pulse{animation:glowPulse 1.8s ease-in-out infinite;}
 .float-y{animation:floatY 3.2s ease-in-out infinite;}
 .skeleton{

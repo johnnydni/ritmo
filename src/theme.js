@@ -828,6 +828,12 @@ a:focus-visible{
   from{opacity:0;transform:scale(.9);}
   to{opacity:1;transform:scale(1);}
 }
+/* Bauhaus-Streifen im Screen-Header — Echo der Logo-Speed-Lines.
+   End-Opacity pro Streifen via --so (Custom Property in Keyframes). */
+@keyframes stripeIn{
+  from{opacity:0;transform:translateX(-16px) scaleX(.3);}
+  to{opacity:var(--so,1);transform:translateX(0) scaleX(1);}
+}
 
 /* ── Utility-Klassen ── */
 .nav-icon-active{animation:navIconBounce var(--anim-spring) ease both;}
@@ -837,6 +843,7 @@ a:focus-visible{
 .slide-in-right{animation:slideInRight var(--anim-base) ease both;}
 .press-pop{animation:pressPop var(--anim-spring) ease both;}
 .zi{animation:zoomIn .45s var(--ease-out-back) both;}
+.stripe-in{animation:stripeIn .55s var(--ease-out-expo) both;transform-origin:left center;}
 /* Horizontale Card-Galerien (Discover): Scrollbar ausblenden, iOS-Look. */
 .hscroll{scrollbar-width:none;-ms-overflow-style:none;}
 .hscroll::-webkit-scrollbar{display:none;height:0;}

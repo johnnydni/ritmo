@@ -3130,6 +3130,15 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
   );
 }
 
+/* Event-Tage im Juli — orange markiert in der Home-Datums-Leiste. */
+const HOME_EVENTS={18:'RITMO X Padel Haus'};
+
+/* Match-Vorschläge für „Matches für dich" (Feature-Preview). */
+const MATCH_SLOTS=[
+  {loc:'Padel Haus Großmehring',date:'29. Juni',time:'18:00–19:30',players:['Chris','Daniel','Michael']},
+  {loc:'Padel Haus Großmehring',date:'4. Juli', time:'18:00–19:30',players:['Nadin','Alessa.','Nora']},
+];
+
 /* ── „Discover the RITMO" — horizontale Card-Galerie (Apple-Health-
    Look): Bauhaus-Grafik-Cards mit starkem Radius, Scroll-Snap, Titel
    auf dunklem Verlauf. id = nav()-Ziel. */
@@ -3244,6 +3253,144 @@ function DiscoverSection({nav}){
   );
 }
 
+/* ── Match-Präferenzen — neuer Screen hinter dem Herz in „Matches
+   für dich": Mit welchen Spielstilen man spielen will (horizontale
+   Karten, Mehrfachauswahl), Spielort sowie Tage + Uhrzeit. Persistiert
+   in profile.matchPrefs (läuft den normalen Profil-Sync mit). */
+function MatchPrefs({profile,setProfile,onHome}){
+  const DEFAULTS={styles:[],location:'',days:[],from:'18:00',to:'20:00'};
+  const prefs={...DEFAULTS,...(profile.matchPrefs||{})};
+  // Patches IMMER aus dem aktuellen State ableiten (nicht aus dem
+  // Render-Closure) — sonst überschreiben sich schnelle Taps in einem
+  // React-Batch gegenseitig.
+  const setPrefs=patch=>setProfile(p=>({...p,
+    matchPrefs:{...DEFAULTS,...(p.matchPrefs||{}),...patch}}));
+  const toggleIn=(key,val)=>setProfile(p=>{
+    const cur={...DEFAULTS,...(p.matchPrefs||{})};
+    const next=cur[key].includes(val)
+      ?cur[key].filter(x=>x!==val):[...cur[key],val];
+    return {...p,matchPrefs:{...cur,[key]:next}};
+  });
+  const toggleStyle=id=>toggleIn('styles',id);
+  const toggleDay=d=>toggleIn('days',d);
+  const DAYS=['Mo','Di','Mi','Do','Fr','Sa','So'];
+  const lbl={color:T.o,fontSize:18,fontWeight:800,marginBottom:4};
+  const sub={color:T.t3,fontSize:11,fontWeight:500,lineHeight:1.5,marginBottom:12};
+  return(
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
+      <ScreenHeader title="Matches für dich"
+        subtitle="Sag uns, wie du spielen willst — wir schlagen passende Matches vor."
+        icon={<span style={{color:T.t1,display:'inline-flex'}}><HeartIcon size={30} filled/></span>}/>
+
+      <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,
+        overflowY:'auto',WebkitOverflowScrolling:'touch'}}>
+
+        {/* Spielstile — horizontale Karten, Mehrfachauswahl */}
+        <div className="fu" style={{background:T.card,border:`1px solid ${T.border}`,
+          borderRadius:19,padding:'16px 18px'}}>
+          <div style={lbl}>Mit wem willst du spielen?</div>
+          <div style={sub}>Spielstile, die dir liegen — Mehrfachauswahl.</div>
+          <div className="hscroll" style={{display:'flex',gap:10,overflowX:'auto',
+            margin:'0 -18px',padding:'4px 18px 6px',
+            scrollSnapType:'x mandatory',WebkitOverflowScrolling:'touch'}}>
+            {Object.entries(PADEL_STYLES).map(([id,s])=>{
+              const sel=prefs.styles.includes(id);
+              return(
+                <button key={id} onClick={()=>toggleStyle(id)}
+                  aria-pressed={sel}
+                  style={{flexShrink:0,width:124,borderRadius:18,padding:'14px 10px 12px',
+                    scrollSnapAlign:'start',cursor:'pointer',textAlign:'center',
+                    background:sel?styleGrad(id):T.card2,
+                    border:`1.5px solid ${sel?(STYLE_GRAD[id]||T.o):T.border}`,
+                    color:T.t1,transition:'all .2s var(--ease-out-expo)'}}>
+                  <div style={{display:'flex',justifyContent:'center',marginBottom:8}}>
+                    <ArchetypeGlyph type={id} active={sel} color={s.accent} size={30}/>
+                  </div>
+                  <div style={{fontSize:12.5,fontWeight:800,letterSpacing:-.2,
+                    whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{s.name}</div>
+                  <div style={{color:T.t3,fontSize:9,fontWeight:700,marginTop:2,
+                    textTransform:'uppercase',letterSpacing:.5,whiteSpace:'nowrap',
+                    overflow:'hidden',textOverflow:'ellipsis'}}>{s.subtitle}</div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Spielort */}
+        <div className="fu" style={{animationDelay:'.06s',background:T.card,
+          border:`1px solid ${T.border}`,borderRadius:19,padding:'16px 18px'}}>
+          <div style={lbl}>Spielort</div>
+          <div style={sub}>Wo sollen deine Matches stattfinden?</div>
+          <input value={prefs.location} onChange={e=>setPrefs({location:e.target.value})}
+            maxLength={60} placeholder="z. B. Padel Haus Großmehring"
+            style={{width:'100%',height:46,borderRadius:13,background:T.card2,
+              border:`1px solid ${T.border}`,color:T.t1,fontSize:15,fontWeight:600,
+              padding:'0 14px',outline:'none',boxSizing:'border-box'}}/>
+          {prefs.location!=='Padel Haus Großmehring'&&(
+            <button onClick={()=>setPrefs({location:'Padel Haus Großmehring'})}
+              style={{marginTop:10,padding:'6px 12px',borderRadius:999,
+                background:T.oSoft,border:`1px solid ${T.o}55`,color:T.o,
+                fontSize:11,fontWeight:800,cursor:'pointer',
+                display:'inline-flex',alignItems:'center',gap:5}}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"
+                strokeLinejoin="round" aria-hidden="true">
+                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/>
+                <circle cx="12" cy="10" r="3"/>
+              </svg>
+              Padel Haus Großmehring
+            </button>
+          )}
+        </div>
+
+        {/* Tag & Uhrzeit */}
+        <div className="fu" style={{animationDelay:'.1s',background:T.card,
+          border:`1px solid ${T.border}`,borderRadius:19,padding:'16px 18px'}}>
+          <div style={lbl}>Tag &amp; Uhrzeit</div>
+          <div style={sub}>An welchen Tagen und in welchem Zeitfenster passt es dir?</div>
+          <div style={{display:'flex',gap:7,flexWrap:'wrap',marginBottom:14}}>
+            {DAYS.map(d=>{
+              const sel=prefs.days.includes(d);
+              return(
+                <button key={d} onClick={()=>toggleDay(d)} aria-pressed={sel}
+                  style={{width:40,height:40,borderRadius:13,cursor:'pointer',
+                    background:sel?T.o:T.card2,
+                    border:`1.5px solid ${sel?T.o:T.border}`,
+                    color:sel?'#000':T.t2,fontSize:12.5,fontWeight:800,
+                    transition:'all .2s var(--ease-out-expo)'}}>
+                  {d}
+                </button>
+              );
+            })}
+          </div>
+          <div style={{display:'flex',alignItems:'center',gap:10}}>
+            <input type="time" value={prefs.from}
+              onChange={e=>setPrefs({from:e.target.value})}
+              style={{flex:1,minWidth:0,height:44,borderRadius:13,background:T.card2,
+                border:`1px solid ${T.border}`,color:T.t1,fontSize:15,fontWeight:700,
+                padding:'0 10px',outline:'none',boxSizing:'border-box',
+                textAlign:'center'}}/>
+            <span style={{color:T.t3,fontSize:14,fontWeight:700,flexShrink:0}}>–</span>
+            <input type="time" value={prefs.to}
+              onChange={e=>setPrefs({to:e.target.value})}
+              style={{flex:1,minWidth:0,height:44,borderRadius:13,background:T.card2,
+                border:`1px solid ${T.border}`,color:T.t1,fontSize:15,fontWeight:700,
+                padding:'0 10px',outline:'none',boxSizing:'border-box',
+                textAlign:'center'}}/>
+          </div>
+        </div>
+
+        <div style={{height:110,flexShrink:0}}/>
+      </div>
+
+      <BottomFade/>
+      <MatchBar onHome={onHome}/>
+    </div>
+  );
+}
+
 function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onLogout}){
   // Hinweis-Banner falls Onboarding nicht abgeschlossen ist UND der
   // User nicht den Test-Bypass benutzt (Test-User hat onboarded=true).
@@ -3264,7 +3411,9 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onLogout}){
           in einer eigenen flex row, vertikal mittig zueinander zentriert,
           damit der Avatar bündig mit dem Logo sitzt. Texte darunter. */}
       <div style={{
-        padding:'calc(env(safe-area-inset-top,0px) + 52px) 9px 26px',
+        /* Gleiche Kopf-Höhe wie alle anderen Screens (ScreenHeader
+           startet bei safe-area + 60px). */
+        padding:'calc(env(safe-area-inset-top,0px) + 60px) 9px 26px',
         background:'var(--headerGrad)',
         position:'relative',zIndex:1,
         cursor:'pointer',
@@ -3299,7 +3448,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onLogout}){
             </button>
           </div>
         </div>
-        <BauhausStripes delay={.1} style={{marginTop:-2}}/>
+        <BauhausStripes delay={.1}/>
         {/* Tagline links, Gruß rechts — eine Zeile (Mock) */}
         <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',
           gap:12,marginTop:16,marginLeft:10,marginRight:9}}>
@@ -3416,85 +3565,111 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onLogout}){
           </div>
         </button>
 
-        {/* ── Events — Datums-Leiste, Heading rechts mit Tick (Mock).
-            18. Juli = RITMO DNA Cup (Founders Edition). */}
+        {/* ── Events — Datums-Leiste, scrollbar bis Monatsende.
+            Tage MIT Event sind orange markiert; der 18. zeigt auf das
+            RITMO X Padel Haus Event (DNA Cup, 18. Juli). */}
         <div className="fu" style={{animationDelay:'.14s',marginTop:6}}>
-          <div style={{display:'flex',justifyContent:'flex-end',paddingRight:40}}>
-            <div style={{textAlign:'center'}}>
-              <div style={{color:T.t1,fontSize:20,fontWeight:800,letterSpacing:-.4}}>Events</div>
-              <span style={{display:'block',width:1.5,height:13,background:T.t2,
-                margin:'5px auto 0',borderRadius:1}}/>
-            </div>
+          <div style={{display:'flex',justifyContent:'flex-end',alignItems:'center',
+            gap:9,paddingRight:14}}>
+            <div style={{color:T.t1,fontSize:21,fontWeight:800,letterSpacing:-.4}}>Events</div>
+            <span style={{width:27,height:27,borderRadius:7,border:`1.8px solid ${T.t1}`,
+              display:'inline-flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={T.t1}
+                strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                <rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/>
+                <line x1="3.5" y1="10" x2="20.5" y2="10"/>
+                <line x1="8" y1="2.8" x2="8" y2="6.6"/>
+                <line x1="16" y1="2.8" x2="16" y2="6.6"/>
+              </svg>
+            </span>
           </div>
-          <div className="hscroll" style={{display:'flex',gap:10,overflowX:'auto',
-            margin:'10px -22px 0',padding:'2px 22px 4px',
+          <div style={{display:'flex',justifyContent:'flex-end',paddingRight:84}}>
+            <span style={{display:'block',width:1.5,height:13,background:T.t2,
+              marginTop:5,borderRadius:1}}/>
+          </div>
+          <div className="hscroll" style={{display:'flex',gap:11,overflowX:'auto',
+            margin:'9px -22px 0',padding:'2px 22px 4px',
             scrollSnapType:'x mandatory',WebkitOverflowScrolling:'touch'}}>
-            {[{d:15},{d:16},{d:17},{d:18,active:true},{d:19}].map(({d,active})=>(
-              <button key={d} onClick={()=>nav('events')} aria-label={`Events am ${d}. Juli`}
-                style={{flexShrink:0,width:66,height:66,borderRadius:17,
-                  background:'transparent',scrollSnapAlign:'start',cursor:'pointer',
-                  border:`2.5px solid ${active?T.o:T.t1}`,
-                  color:active?T.o:T.t1,fontSize:29,fontWeight:800,
-                  display:'flex',alignItems:'center',justifyContent:'center'}}>
-                {d}
-              </button>
-            ))}
+            {Array.from({length:17},(_,i)=>15+i).map(d=>{
+              const ev=HOME_EVENTS[d];
+              return(
+                <button key={d} onClick={()=>nav('events')}
+                  aria-label={ev?`${d}. Juli — ${ev}`:`Events am ${d}. Juli`}
+                  title={ev||undefined}
+                  style={{flexShrink:0,width:72,height:72,borderRadius:18,
+                    background:'transparent',scrollSnapAlign:'start',cursor:'pointer',
+                    border:`2.5px solid ${ev?T.o:T.t1}`,
+                    color:ev?T.o:T.t1,fontSize:32,fontWeight:800,letterSpacing:-1,
+                    display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  {d}
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* ── Matches für dich — Slot-Karte in Amber (Mock-Teaser,
-            öffnet den Buchungsassistenten) */}
+        {/* ── Matches für dich — zwei Vorschläge; das Herz öffnet die
+            Match-Präferenzen (neuer Screen). */}
         <div className="fu" style={{animationDelay:'.18s'}}>
-          <div style={{color:T.t1,fontSize:20,fontWeight:800,letterSpacing:-.4,
-            margin:'4px 0 12px'}}>
-            Matches für dich
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',
+            margin:'4px 2px 12px 0'}}>
+            <div style={{color:T.t1,fontSize:21,fontWeight:800,letterSpacing:-.4}}>
+              Matches für dich
+            </div>
+            <button onClick={()=>nav('match-prefs')} aria-label="Match-Präferenzen"
+              style={{background:'none',border:'none',padding:4,cursor:'pointer',
+                color:T.t1,display:'inline-flex'}}>
+              <HeartIcon size={24} filled/>
+            </button>
           </div>
           <button onClick={()=>nav('booking-assist')}
             style={{width:'100%',display:'flex',alignItems:'stretch',
-              background:'linear-gradient(160deg,#D98A24 0%,#B06A12 100%)',
-              border:'none',borderRadius:22,padding:'14px 6px',cursor:'pointer',
-              textAlign:'center',color:'#241300',transition:'filter .15s'}}
+              background:'linear-gradient(160deg,#C87E1C 0%,#9A5D10 100%)',
+              border:`1.5px solid ${T.o}`,borderRadius:19,padding:'12px 4px',
+              cursor:'pointer',textAlign:'left',color:'#241300',transition:'filter .15s'}}
             onPointerDown={e=>e.currentTarget.style.filter='brightness(1.08)'}
             onPointerUp={e=>e.currentTarget.style.filter=''}
             onPointerLeave={e=>e.currentTarget.style.filter=''}>
-            {[
-              {date:'29. Juni',time:'18:00–19:30',loc:'Padel Haus Großmehring',players:['Chris','Daniel','Michael']},
-              {date:'4. Juli',players:[]},
-              {date:'12. Juli',players:[]},
-            ].map((s,i)=>(
-              <span key={s.date} style={{flex:1,minWidth:0,padding:'2px 8px',
-                display:'flex',flexDirection:'column',alignItems:'center',gap:5,
-                borderLeft:i>0?'1.5px solid rgba(255,255,255,.5)':'none'}}>
-                <span style={{fontSize:17,fontWeight:800,letterSpacing:-.3,whiteSpace:'nowrap'}}>{s.date}</span>
-                {s.time&&<span style={{fontSize:10.5,fontWeight:700,marginTop:-3}}>{s.time}</span>}
-                {s.loc&&(
+            {MATCH_SLOTS.map((s,i)=>(
+              <span key={s.date} style={{flex:1,minWidth:0,padding:'2px 10px',
+                display:'flex',flexDirection:'column',gap:6,
+                borderLeft:i>0?'1.5px solid rgba(36,19,0,.55)':'none'}}>
+                {/* Zeile 1: Standort-Chip links · Datum rechts */}
+                <span style={{display:'flex',alignItems:'flex-start',
+                  justifyContent:'space-between',gap:6}}>
                   <span style={{display:'inline-flex',alignItems:'center',gap:3,
-                    padding:'2px 7px',borderRadius:999,border:'1.5px solid #241300',
-                    background:'rgba(255,248,238,.85)',fontSize:8,fontWeight:800,
-                    whiteSpace:'nowrap',maxWidth:'100%',overflow:'hidden'}}>
+                    padding:'2.5px 8px',borderRadius:999,
+                    border:'1.5px solid #FFC078',background:'rgba(36,19,0,.32)',
+                    color:'#FFF',fontSize:8,fontWeight:800,letterSpacing:.2,
+                    whiteSpace:'nowrap',overflow:'hidden',marginTop:3,minWidth:0}}>
                     <svg width="8" height="8" viewBox="0 0 24 24" fill="none"
-                      stroke="#241300" strokeWidth="2.6" strokeLinecap="round"
+                      stroke="#FFF" strokeWidth="2.6" strokeLinecap="round"
                       strokeLinejoin="round" aria-hidden="true" style={{flexShrink:0}}>
                       <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/>
                       <circle cx="12" cy="10" r="3"/>
                     </svg>
-                    {s.loc}
+                    <span style={{overflow:'hidden',textOverflow:'ellipsis'}}>{s.loc}</span>
                   </span>
-                )}
-                <span style={{display:'flex',gap:4,alignItems:'flex-start',marginTop:3}}>
-                  {[0,1,2].map(p=>(
+                  <span style={{fontSize:20,fontWeight:800,letterSpacing:-.4,
+                    whiteSpace:'nowrap',flexShrink:0}}>{s.date}</span>
+                </span>
+                {/* Zeile 2: Uhrzeit rechts */}
+                <span style={{fontSize:12.5,fontWeight:700,textAlign:'right'}}>{s.time}</span>
+                {/* Zeile 3: Avatare + Namen + Plus */}
+                <span style={{display:'flex',gap:7,alignItems:'flex-start',marginTop:2}}>
+                  {s.players.map(p=>(
                     <span key={p} style={{display:'flex',flexDirection:'column',
-                      alignItems:'center',gap:2}}>
-                      <span style={{width:21,height:21,borderRadius:'50%',
+                      alignItems:'center',gap:2,minWidth:0}}>
+                      <span style={{width:26,height:26,borderRadius:'50%',
                         background:'#EFE7DB',display:'block',
                         boxShadow:'inset 0 -1px 2px rgba(0,0,0,.12)'}}/>
-                      {s.players[p]&&<span style={{fontSize:6.5,fontWeight:700}}>{s.players[p]}</span>}
+                      <span style={{fontSize:7.5,fontWeight:800,color:'#FFF'}}>{p}</span>
                     </span>
                   ))}
-                  <span style={{width:21,height:21,borderRadius:'50%',
-                    background:'rgba(255,248,238,.55)',color:'#241300',
+                  <span style={{width:26,height:26,borderRadius:'50%',
+                    background:'rgba(120,80,15,.85)',color:'#FFF',
                     display:'flex',alignItems:'center',justifyContent:'center',
-                    fontSize:13,fontWeight:800,lineHeight:1}}>+</span>
+                    fontSize:14,fontWeight:800,lineHeight:1}}>+</span>
                 </span>
               </span>
             ))}
@@ -15670,6 +15845,10 @@ export default function App(){
         'Buchung direkt aus dem Match-Setup',
         'Vorschläge passend zu deinen Mitspielern',
       ]}
+      onHome={goHome}/>}
+
+    {/* Match-Präferenzen (Herz auf der Startseite) */}
+    {scr==='match-prefs'&&<MatchPrefs profile={profile} setProfile={setProfile}
       onHome={goHome}/>}
 
     {/* Discover-Teaser: News, Events, Weltrangliste */}

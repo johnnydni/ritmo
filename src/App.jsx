@@ -3502,7 +3502,8 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onLogout}){
         <div style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',
           gap:12,marginTop:4,marginRight:9}}>
           <div aria-hidden="true" style={{display:'flex',flexDirection:'column',
-            gap:6,marginLeft:10,position:'relative',top:-4}}>
+            gap:6,marginLeft:10,position:'relative',top:-9,
+            transform:'scale(.9)',transformOrigin:'left top'}}>
             {[84,52,30].map((w,i)=>(
               <span key={i} className="stripe-in" style={{width:w,height:7,
                 borderRadius:4,background:'#FFFFFF','--so':[1,.7,.45][i],

@@ -3497,15 +3497,15 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onLogout}){
             </button>
           </div>
         </div>
-        {/* Große Bauhaus-Streifen in Orange→Braun (Mock) links,
-            Gruß rechts unten in der Zeile */}
+        {/* Weiße Bauhaus-Streifen — kompakt, dicht unterm Logo (mit
+            sanftem Opacity-Abfall), Gruß rechts unten in der Zeile */}
         <div style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',
-          gap:12,marginTop:12,marginRight:9}}>
+          gap:12,marginTop:4,marginRight:9}}>
           <div aria-hidden="true" style={{display:'flex',flexDirection:'column',
-            gap:8,marginLeft:10}}>
-            {[{w:112,c:'#FF7A1A'},{w:70,c:'#A05C1C'},{w:42,c:'#5C3A14'}].map((s,i)=>(
-              <span key={i} className="stripe-in" style={{width:s.w,height:10,
-                borderRadius:6,background:s.c,'--so':1,
+            gap:6,marginLeft:10}}>
+            {[84,52,30].map((w,i)=>(
+              <span key={i} className="stripe-in" style={{width:w,height:7,
+                borderRadius:4,background:'#FFFFFF','--so':[1,.7,.45][i],
                 animationDelay:`${.12+i*.1}s`,display:'block'}}/>
             ))}
           </div>

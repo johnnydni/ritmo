@@ -822,6 +822,8 @@ a:focus-visible{
   0%,100%{transform:translateY(0);}
   50%{transform:translateY(-3px);}
 }
+/* Undo-Toast: Restzeit-Balken läuft in 5s auf Null. */
+@keyframes undoShrink{from{transform:scaleX(1);}to{transform:scaleX(0);}}
 /* Zoom-In — Entrance mit leichtem Back-Overshoot (Profil-Stagger). */
 @keyframes zoomIn{
   from{opacity:0;transform:scale(.9);}

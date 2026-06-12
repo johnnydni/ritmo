@@ -3144,6 +3144,18 @@ const MATCH_SLOTS=[
   {loc:'Padel Haus Großmehring',date:'12. Juli',time:'10:00–11:30',players:[]},
 ];
 
+/* Padel-Clubs in der Nähe — Pins auf der RITMO-Map in den Match-
+   Präferenzen (x/y in % der Kartenfläche; Mock-Distanzen). */
+const NEARBY_CLUBS=[
+  {id:'phg',name:'Padel Haus Großmehring', dist:'2,1 km',x:58,y:34},
+  {id:'pai',name:'Padel Arena Ingolstadt', dist:'8,4 km',x:26,y:58},
+  {id:'mpc',name:'Munich Padel Club',      dist:'58 km', x:79,y:74},
+];
+
+/* Fallback-Spieler für die Präferenz-Auswahl, falls (noch) niemandem
+   gefolgt wird. */
+const PREF_PLAYERS_MOCK=['Chris','Daniel','Michael','Nadin','Alessa.','Nora','Jonas','Mia','Tom'];
+
 /* ── „Discover the RITMO" — horizontale Card-Galerie (Apple-Health-
    Look): Bauhaus-Grafik-Cards mit starkem Radius, Scroll-Snap, Titel
    auf dunklem Verlauf. id = nav()-Ziel. */
@@ -3220,7 +3232,7 @@ function DiscoverSection({nav}){
   return(
     <div className="fu" style={{animationDelay:'.14s'}}>
       <div style={{color:T.t1,fontSize:20,fontWeight:800,letterSpacing:-.4,
-        margin:'8px 0 2px'}}>
+        margin:'22px 0 2px'}}>
         Discover the RITMO
       </div>
       {/* Galerie blutet bis an die Screen-Kante (negiert das Corpus-
@@ -3263,8 +3275,22 @@ function DiscoverSection({nav}){
    für dich": Mit welchen Spielstilen man spielen will (horizontale
    Karten, Mehrfachauswahl), Spielort sowie Tage + Uhrzeit. Persistiert
    in profile.matchPrefs (läuft den normalen Profil-Sync mit). */
-function MatchPrefs({profile,setProfile,onHome}){
-  const DEFAULTS={styles:[],location:'',days:[],from:'18:00',to:'20:00'};
+function MatchPrefs({profile,setProfile,currentUid,onHome}){
+  const DEFAULTS={styles:[],players:[],location:'',days:[],from:'18:00',to:'20:00'};
+  // Bevorzugte Spieler: gefolgte Nutzer; ohne Follows dienen die
+  // Mock-Namen aus den Match-Vorschlägen als Auswahl.
+  const[following,setFollowing]=useState([]);
+  useEffect(()=>{
+    if(!currentUid) return;
+    let alive=true;
+    listFollowing(currentUid,{limit:50})
+      .then(r=>{if(alive)setFollowing(r||[]);})
+      .catch(()=>{});
+    return()=>{alive=false;};
+  },[currentUid]);
+  const playerChoices=following.length
+    ?following.map(f=>f.name||f.username||'Spieler:in')
+    :PREF_PLAYERS_MOCK;
   const prefs={...DEFAULTS,...(profile.matchPrefs||{})};
   // Patches IMMER aus dem aktuellen State ableiten (nicht aus dem
   // Render-Closure) — sonst überschreiben sich schnelle Taps in einem
@@ -3278,6 +3304,7 @@ function MatchPrefs({profile,setProfile,onHome}){
     return {...p,matchPrefs:{...cur,[key]:next}};
   });
   const toggleStyle=id=>toggleIn('styles',id);
+  const togglePlayer=n=>toggleIn('players',n);
   const toggleDay=d=>toggleIn('days',d);
   const DAYS=['Mo','Di','Mi','Do','Fr','Sa','So'];
   const lbl={color:T.o,fontSize:18,fontWeight:800,marginBottom:4};
@@ -3325,35 +3352,124 @@ function MatchPrefs({profile,setProfile,onHome}){
           </div>
         </div>
 
-        {/* Spielort */}
-        <div className="fu" style={{animationDelay:'.06s',background:T.card,
+        {/* Bevorzugte Spieler */}
+        <div className="fu" style={{animationDelay:'.04s',background:T.card,
+          border:`1px solid ${T.border}`,borderRadius:19,padding:'16px 18px'}}>
+          <div style={lbl}>Bevorzugte Spieler</div>
+          <div style={sub}>Mit wem willst du am liebsten auf dem Court stehen?</div>
+          <div className="hscroll" style={{display:'flex',gap:10,overflowX:'auto',
+            margin:'0 -18px',padding:'4px 18px 6px',
+            scrollSnapType:'x mandatory',scrollPaddingLeft:18,
+            WebkitOverflowScrolling:'touch'}}>
+            {playerChoices.map(n=>{
+              const sel=prefs.players.includes(n);
+              return(
+                <button key={n} onClick={()=>togglePlayer(n)} aria-pressed={sel}
+                  style={{flexShrink:0,width:74,borderRadius:16,padding:'10px 6px 9px',
+                    scrollSnapAlign:'start',cursor:'pointer',textAlign:'center',
+                    background:sel?T.oSoft:T.card2,
+                    border:`1.5px solid ${sel?T.o:T.border}`,
+                    color:T.t1,transition:'all .2s var(--ease-out-expo)'}}>
+                  <span style={{width:40,height:40,borderRadius:'50%',margin:'0 auto 6px',
+                    background:sel?T.o:T.card,display:'flex',alignItems:'center',
+                    justifyContent:'center',color:sel?'#000':T.o,fontSize:14,
+                    fontWeight:800,border:`1.5px solid ${sel?T.o:T.border}`,
+                    transition:'all .2s var(--ease-out-expo)'}}>
+                    {getInitials(n)||'?'}
+                  </span>
+                  <span style={{display:'block',fontSize:10,fontWeight:700,
+                    whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{n}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Spielort — RITMO-Map mit Clubs in der Nähe */}
+        <div className="fu" style={{animationDelay:'.08s',background:T.card,
           border:`1px solid ${T.border}`,borderRadius:19,padding:'16px 18px'}}>
           <div style={lbl}>Spielort</div>
-          <div style={sub}>Wo sollen deine Matches stattfinden?</div>
-          <input value={prefs.location} onChange={e=>setPrefs({location:e.target.value})}
-            maxLength={60} placeholder="z. B. Padel Haus Großmehring"
-            style={{width:'100%',height:46,borderRadius:13,background:T.card2,
-              border:`1px solid ${T.border}`,color:T.t1,fontSize:15,fontWeight:600,
-              padding:'0 14px',outline:'none',boxSizing:'border-box'}}/>
-          {prefs.location!=='Padel Haus Großmehring'&&(
-            <button onClick={()=>setPrefs({location:'Padel Haus Großmehring'})}
-              style={{marginTop:10,padding:'6px 12px',borderRadius:999,
-                background:T.oSoft,border:`1px solid ${T.o}55`,color:T.o,
-                fontSize:11,fontWeight:800,cursor:'pointer',
-                display:'inline-flex',alignItems:'center',gap:5}}>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"
-                strokeLinejoin="round" aria-hidden="true">
-                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/>
-                <circle cx="12" cy="10" r="3"/>
-              </svg>
-              Padel Haus Großmehring
-            </button>
-          )}
+          <div style={sub}>Padel-Clubs in deiner Nähe — tippe einen Pin oder Club an.</div>
+          {/* Bauhaus-Karte: Straßenraster, Blöcke, Du-Punkt, Club-Pins */}
+          <div style={{position:'relative',borderRadius:16,overflow:'hidden',
+            border:`1px solid ${T.border}`,height:172,marginBottom:12,
+            background:'#0C0C10'}}>
+            <svg viewBox="0 0 340 172" preserveAspectRatio="xMidYMid slice"
+              style={{position:'absolute',inset:0,width:'100%',height:'100%'}}
+              aria-hidden="true">
+              <path d="M0 118 C70 104 120 132 200 112 S320 96 340 104"
+                stroke="rgba(255,255,255,.14)" strokeWidth="7" fill="none"/>
+              <path d="M0 60 C90 72 150 48 230 64 S320 78 340 70"
+                stroke="rgba(255,255,255,.1)" strokeWidth="5" fill="none"/>
+              <path d="M96 0 C88 60 110 110 92 172"
+                stroke="rgba(255,255,255,.1)" strokeWidth="5" fill="none"/>
+              <path d="M236 0 C246 50 224 120 240 172"
+                stroke="rgba(255,255,255,.08)" strokeWidth="4" fill="none"/>
+              <rect x="18" y="14" width="44" height="26" rx="4" fill="rgba(255,255,255,.05)"/>
+              <rect x="262" y="120" width="52" height="30" rx="4" fill="rgba(255,255,255,.05)"/>
+              <rect x="150" y="22" width="36" height="22" rx="4" fill="rgba(255,255,255,.04)"/>
+              <rect x="40" y="128" width="34" height="22" rx="4" fill="rgba(255,255,255,.04)"/>
+              <rect x="12" y="150" width="22" height="3" rx="1.5" fill="var(--o)"/>
+              <rect x="12" y="157" width="14" height="3" rx="1.5" fill="var(--o)" opacity=".55"/>
+            </svg>
+            <span aria-label="Dein Standort" style={{position:'absolute',left:'46%',top:'52%',
+              width:11,height:11,borderRadius:'50%',background:'#0A84FF',
+              border:'2px solid #FFF',boxShadow:'0 0 0 5px rgba(10,132,255,.25)',
+              transform:'translate(-50%,-50%)',display:'block'}}/>
+            {NEARBY_CLUBS.map(c=>{
+              const sel=prefs.location===c.name;
+              return(
+                <button key={c.id} onClick={()=>setPrefs({location:c.name})}
+                  aria-label={`${c.name} auswählen`} aria-pressed={sel}
+                  style={{position:'absolute',left:`${c.x}%`,top:`${c.y}%`,
+                    transform:'translate(-50%,-90%)',background:'none',border:'none',
+                    padding:4,cursor:'pointer',
+                    filter:sel?'drop-shadow(0 0 7px rgba(255,122,26,.85))':'drop-shadow(0 2px 4px rgba(0,0,0,.5))'}}>
+                  <svg width={sel?30:24} height={sel?30:24} viewBox="0 0 24 24"
+                    fill={sel?T.o:'#0C0C10'} stroke={sel?'#FFF':T.o} strokeWidth="2"
+                    strokeLinejoin="round" style={{transition:'all .2s var(--ease-out-back)',display:'block'}}>
+                    <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/>
+                    <circle cx="12" cy="10" r="3" fill={sel?'#FFF':T.o} stroke="none"/>
+                  </svg>
+                </button>
+              );
+            })}
+          </div>
+          {/* Club-Liste zur Auswahl */}
+          <div style={{display:'flex',flexDirection:'column',gap:8}}>
+            {NEARBY_CLUBS.map(c=>{
+              const sel=prefs.location===c.name;
+              return(
+                <button key={c.id} onClick={()=>setPrefs({location:c.name})} aria-pressed={sel}
+                  style={{display:'flex',alignItems:'center',gap:10,padding:'11px 13px',
+                    borderRadius:13,cursor:'pointer',textAlign:'left',width:'100%',
+                    background:sel?T.oSoft:T.card2,
+                    border:`1.5px solid ${sel?T.o:T.border}`,
+                    transition:'all .2s var(--ease-out-expo)'}}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                    stroke={sel?T.o:T.t3} strokeWidth="2.2" strokeLinecap="round"
+                    strokeLinejoin="round" aria-hidden="true" style={{flexShrink:0}}>
+                    <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/>
+                    <circle cx="12" cy="10" r="3"/>
+                  </svg>
+                  <span style={{flex:1,minWidth:0,color:T.t1,fontSize:13,fontWeight:700,
+                    overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{c.name}</span>
+                  <span style={{color:T.t3,fontSize:11,fontWeight:700,flexShrink:0}}>{c.dist}</span>
+                  {sel&&(
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                      stroke={T.o} strokeWidth="3" strokeLinecap="round"
+                      strokeLinejoin="round" aria-hidden="true" style={{flexShrink:0}}>
+                      <path d="M4.5 12.5 10 18 19.5 6.5"/>
+                    </svg>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Tag & Uhrzeit */}
-        <div className="fu" style={{animationDelay:'.1s',background:T.card,
+        <div className="fu" style={{animationDelay:'.12s',background:T.card,
           border:`1px solid ${T.border}`,borderRadius:19,padding:'16px 18px'}}>
           <div style={lbl}>Tag &amp; Uhrzeit</div>
           <div style={sub}>An welchen Tagen und in welchem Zeitfenster passt es dir?</div>
@@ -3444,99 +3560,80 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onLogout}){
     setSnapBack(true);
     setStretch(0);
   };
+
+  // Collapse-Fortschritt (Health-App-Style): 0 = ganz oben, 1 = ein-
+  // geklappt. Treibt Logo-Schwenk, Glas-Bar und das Ausblenden von
+  // Begrüßung + Streifen.
+  const[scrollY,setScrollY]=useState(0);
+  const onHomeScroll=()=>setScrollY(corpusRef.current?.scrollTop||0);
+  const tCol=Math.min(1,Math.max(0,scrollY/90));
+  const barGlass=Math.min(1,Math.max(0,(scrollY-8)/56));
+  // Home-Tab erneut antippen → smooth zurück nach oben.
+  const onTabLocal=id=>{
+    if(id==='home') corpusRef.current?.scrollTo({top:0,behavior:'smooth'});
+    setActiveTab(id);
+  };
   return(
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden'}}>
 
-      {/* HEADER ZONE — gradient via theme CSS var.
-          Reduziertes Horizontal-Padding (14px statt 22px) lässt das Logo
-          und den Avatar näher an den Rand rücken. Logo + Avatar liegen
-          in einer eigenen flex row, vertikal mittig zueinander zentriert,
-          damit der Avatar bündig mit dem Logo sitzt. Texte darunter. */}
-      <div style={{
-        /* Gleiche Kopf-Höhe wie alle anderen Screens (ScreenHeader
-           startet bei safe-area + 60px). paddingBottom wächst beim
-           Pull-to-Stretch elastisch mit. */
-        paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',
-        paddingLeft:9,paddingRight:9,
-        paddingBottom:26+stretch,
-        transition:snapBack?'padding-bottom .5s var(--ease-out-back)':'none',
-        background:'var(--headerGrad)',
-        position:'relative',zIndex:1,
-        cursor:'pointer',
-      }} onClick={()=>nav('profile-ritmodna')}>
-        <div style={{display:'flex',alignItems:'center',
-          justifyContent:'space-between',gap:14}}>
-          {/* Größeres Logo (Mock) — Margin hält die solide R-Kante
-              optisch bündig bei den Überschriften (skaliert mit size). */}
-          <RitmoWordmark size={66} style={{marginLeft:-35}}/>
-          {/* Rechts: Glocke + Burger als pure Glyphen (Mock — keine
-              Kreis-Hintergründe mehr). Beide stoppen die Header-
-              onClick-Propagation (Header-Tap geht zum DNA-Screen). */}
-          <div style={{display:'flex',alignItems:'center',gap:22,marginRight:9}}>
-            <button onClick={(e)=>{e?.stopPropagation?.();nav('ritmopost');}}
-              aria-label="Benachrichtigungen"
-              style={{background:'none',border:'none',padding:4,position:'relative',
-                color:'#FFFFFF',cursor:'pointer',display:'inline-flex',
-                filter:'drop-shadow(0 1px 4px rgba(0,0,0,.3))'}}>
-              <BellIcon size={24}/>
-              {hasUnread&&(
-                <span aria-label="Ungelesene Nachrichten"
-                  style={{position:'absolute',top:1,right:1,
-                    width:10,height:10,borderRadius:'50%',
-                    background:'#E84545',
-                    boxShadow:'0 0 0 2px rgba(0,0,0,.35)'}}/>
-              )}
-            </button>
-            <button onClick={(e)=>{e?.stopPropagation?.();setMenuOpen(o=>!o);}}
-              aria-label="Menü" aria-expanded={menuOpen}
-              style={{background:'none',border:'none',padding:4,
-                color:'#FFFFFF',cursor:'pointer',display:'inline-flex',
-                filter:'drop-shadow(0 1px 4px rgba(0,0,0,.3))'}}>
-              <MenuIcon size={25}/>
-            </button>
-          </div>
-        </div>
-        {/* Weiße Bauhaus-Streifen — kompakt, dicht unterm Logo (mit
-            sanftem Opacity-Abfall), Gruß rechts unten in der Zeile */}
-        <div style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',
-          gap:12,marginTop:4,marginRight:9}}>
-          <div aria-hidden="true" style={{display:'flex',flexDirection:'column',
-            gap:6,marginLeft:10,position:'relative',top:-9,
-            transform:'scale(.9)',transformOrigin:'left top'}}>
-            {[84,52,30].map((w,i)=>(
-              <span key={i} className="stripe-in" style={{width:w,height:7,
-                borderRadius:4,background:'#FFFFFF','--so':[1,.7,.45][i],
-                animationDelay:`${.12+i*.1}s`,display:'block'}}/>
-            ))}
-          </div>
-          <div style={{color:T.t1,fontSize:20,fontWeight:700,letterSpacing:-.3,
-            flexShrink:0}}>
-            Hi, {profile?.name?.split(' ')[0]||'Spieler'}!
-          </div>
-        </div>
-        {document.documentElement.getAttribute('data-theme')==='funky'&&(
-          <div style={{marginTop:12,marginLeft:10}}><FunkyFruitsRow size={20} gap={10}/></div>
-        )}
-      </div>
+      {/* 1) Gradient-Backdrop — liegt HINTER dem Content; der Content
+          scrollt darüber hinweg (Health-App-Look). Höhe wächst beim
+          Pull-to-Stretch elastisch. Tap → RITMO DNA. */}
+      <div aria-hidden="true" onClick={()=>nav('profile-ritmodna')}
+        style={{position:'absolute',top:0,left:0,right:0,
+          height:`calc(env(safe-area-inset-top,0px) + ${238+stretch}px)`,
+          transition:snapBack?'height .5s var(--ease-out-back)':'none',
+          background:'var(--headerGrad)',cursor:'pointer'}}/>
 
-      {/* CORPUS — drawer-style panel (rounded top, elevated shadow).
-          Pointer-Handler treiben den Pull-to-Stretch des Headers. */}
-      <div ref={corpusRef}
+      {/* 2) Scroller — voll-hoch; Inhalte ziehen beim Hochscrollen
+          über den Gradient. Pointer-Handler treiben Pull-to-Stretch. */}
+      <div ref={corpusRef} onScroll={onHomeScroll}
         onPointerDown={pullStart} onPointerMove={pullMove}
         onPointerUp={pullEnd} onPointerCancel={pullEnd} onPointerLeave={pullEnd}
-        style={{
-        flex:1,
+        style={{position:'absolute',inset:0,zIndex:2,
+          overflowY:'auto',WebkitOverflowScrolling:'touch',
+          overscrollBehavior:'contain'}}>
+
+        {/* Scroll-Header: Streifen + Name am Ende des oberen Strichs —
+            die Begrüßung blendet beim Hochscrollen aus. */}
+        <div onClick={()=>nav('profile-ritmodna')}
+          style={{padding:'calc(env(safe-area-inset-top,0px) + 150px) 19px 0',
+            height:'calc(env(safe-area-inset-top,0px) + 218px)',
+            boxSizing:'border-box',cursor:'pointer',
+            opacity:1-tCol,pointerEvents:tCol>.6?'none':'auto'}}>
+          <div style={{display:'flex',flexDirection:'column',gap:6,
+            transform:'scale(.9)',transformOrigin:'left top'}}>
+            <div style={{display:'flex',alignItems:'center',gap:12}}>
+              <span className="stripe-in" aria-hidden="true" style={{width:84,height:7,
+                borderRadius:4,background:'#FFFFFF','--so':1,
+                animationDelay:'.12s',display:'block'}}/>
+              <span style={{color:'#FFF',fontSize:18,fontWeight:700,letterSpacing:-.3,
+                whiteSpace:'nowrap',lineHeight:1}}>
+                Hi, {profile?.name?.split(' ')[0]||'Spieler'}!
+              </span>
+            </div>
+            <span className="stripe-in" aria-hidden="true" style={{width:52,height:7,
+              borderRadius:4,background:'#FFFFFF','--so':.7,
+              animationDelay:'.22s',display:'block'}}/>
+            <span className="stripe-in" aria-hidden="true" style={{width:30,height:7,
+              borderRadius:4,background:'#FFFFFF','--so':.45,
+              animationDelay:'.32s',display:'block'}}/>
+          </div>
+          {document.documentElement.getAttribute('data-theme')==='funky'&&(
+            <div style={{marginTop:12}}><FunkyFruitsRow size={20} gap={10}/></div>
+          )}
+        </div>
+
+        {/* CORPUS — drawer-style panel, scrollt über den Gradient */}
+        <div style={{
         background:T.bgGrad,
         borderTopLeftRadius:24,
         borderTopRightRadius:24,
-        marginTop:-20,
         boxShadow:'0 -10px 28px rgba(0,0,0,0.55), 0 -1px 0 rgba(255,255,255,0.04) inset',
         padding:'26px 22px 0',
         display:'flex',flexDirection:'column',gap:14,
-        overflowY:'auto',WebkitOverflowScrolling:'touch',
-        overscrollBehavior:'contain',
-        position:'relative',zIndex:2,
+        minHeight:'calc(100dvh - env(safe-area-inset-top,0px) - 198px)',
       }}>
 
         {/* Onboarding-Prompt — sichtbar wenn das Profil noch nicht
@@ -3628,7 +3725,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onLogout}){
         {/* ── Events — Datums-Leiste, scrollbar bis Monatsende.
             Tage MIT Event sind orange markiert; der 18. zeigt auf das
             RITMO X Padel Haus Event (DNA Cup, 18. Juli). */}
-        <div className="fu" style={{animationDelay:'.14s',marginTop:6}}>
+        <div className="fu" style={{animationDelay:'.14s',marginTop:22}}>
           <div style={{display:'flex',justifyContent:'flex-end',alignItems:'center',
             gap:9,paddingRight:14}}>
             <div style={{color:T.t1,fontSize:21,fontWeight:800,letterSpacing:-.4}}>Events</div>
@@ -3676,7 +3773,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onLogout}){
             Match-Präferenzen (neuer Screen). */}
         <div className="fu" style={{animationDelay:'.18s'}}>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',
-            margin:'4px 2px 12px 0'}}>
+            margin:'18px 2px 12px 0'}}>
             <div style={{color:T.t1,fontSize:21,fontWeight:800,letterSpacing:-.4}}>
               Matches für dich
             </div>
@@ -3694,67 +3791,112 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onLogout}){
             WebkitOverflowScrolling:'touch'}}>
             {MATCH_SLOTS.slice(0,5).map(s=>(
               <button key={s.date} onClick={()=>nav('booking-assist')}
-                style={{flexShrink:0,width:272,scrollSnapAlign:'start',
-                  background:'linear-gradient(160deg,#C87E1C 0%,#9A5D10 100%)',
-                  border:`1.5px solid ${T.o}`,borderRadius:19,padding:'15px 16px 13px',
-                  cursor:'pointer',textAlign:'left',color:'#241300',
-                  display:'flex',flexDirection:'column',gap:12,
-                  transition:'filter .15s'}}
-                onPointerDown={e=>e.currentTarget.style.filter='brightness(1.08)'}
+                style={{flexShrink:0,width:'calc(100vw - 56px)',maxWidth:420,
+                  height:168,position:'relative',overflow:'hidden',
+                  scrollSnapAlign:'start',border:`1.5px solid ${T.o}`,
+                  borderRadius:22,padding:0,cursor:'pointer',textAlign:'left',
+                  color:'#FFF',background:'#1A1208',transition:'filter .15s'}}
+                onPointerDown={e=>e.currentTarget.style.filter='brightness(1.1)'}
                 onPointerUp={e=>e.currentTarget.style.filter=''}
                 onPointerLeave={e=>e.currentTarget.style.filter=''}>
-                {/* Kopf: Standort-Chip links · Datum + Uhrzeit rechts */}
-                <span style={{display:'flex',alignItems:'flex-start',
-                  justifyContent:'space-between',gap:8}}>
-                  <span style={{display:'inline-flex',alignItems:'center',gap:4,
-                    padding:'3.5px 10px',borderRadius:999,
-                    border:'1.5px solid #FFC078',background:'rgba(36,19,0,.32)',
-                    color:'#FFF',fontSize:9,fontWeight:800,letterSpacing:.2,
-                    whiteSpace:'nowrap',overflow:'hidden',marginTop:4,minWidth:0}}>
-                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none"
-                      stroke="#FFF" strokeWidth="2.6" strokeLinecap="round"
-                      strokeLinejoin="round" aria-hidden="true" style={{flexShrink:0}}>
-                      <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/>
-                      <circle cx="12" cy="10" r="3"/>
-                    </svg>
-                    <span style={{overflow:'hidden',textOverflow:'ellipsis'}}>{s.loc}</span>
-                  </span>
-                  <span style={{textAlign:'right',flexShrink:0}}>
-                    {/* Datum/Uhrzeit: weiß, SF Pro Semibold, -2px Tracking
-                        bei 22px (-0.1em, proportional für die Uhrzeit) */}
-                    <span style={{display:'block',fontSize:22,fontWeight:600,
-                      letterSpacing:'-0.1em',color:'#FFF',whiteSpace:'nowrap'}}>{s.date}</span>
-                    <span style={{display:'block',fontSize:13,fontWeight:600,
-                      letterSpacing:'-0.1em',color:'#FFF',marginTop:2}}>{s.time}</span>
-                  </span>
-                </span>
-                {/* Plätze: gefüllt → Plus (erster freie) → offene Kreise */}
-                <span style={{display:'flex',gap:11,alignItems:'flex-start'}}>
-                  {[0,1,2,3].map(i=>{
-                    const p=s.players[i];
-                    if(p) return(
-                      <span key={i} style={{display:'flex',flexDirection:'column',
-                        alignItems:'center',gap:3,minWidth:0}}>
-                        <span style={{width:34,height:34,borderRadius:'50%',
-                          background:'#EFE7DB',display:'block',
-                          boxShadow:'inset 0 -2px 3px rgba(0,0,0,.14)'}}/>
-                        <span style={{fontSize:9,fontWeight:800,color:'#FFF',
-                          maxWidth:44,overflow:'hidden',textOverflow:'ellipsis',
-                          whiteSpace:'nowrap'}}>{p}</span>
+                {/* Hero-Bild + Lesbarkeits-Verlauf */}
+                <img src={`${getAssetBase()}assets/regelwerkhero.jpeg`} alt=""
+                  aria-hidden="true" loading="lazy" draggable={false}
+                  style={{position:'absolute',inset:0,width:'100%',height:'100%',
+                    objectFit:'cover',userSelect:'none'}}/>
+                <span aria-hidden="true" style={{position:'absolute',inset:0,
+                  background:'linear-gradient(180deg, rgba(0,0,0,.42) 0%, rgba(0,0,0,.08) 38%, rgba(0,0,0,.74) 100%)'}}/>
+                {/* Overlay-Inhalte */}
+                <span style={{position:'absolute',inset:0,padding:'12px 14px',
+                  display:'flex',flexDirection:'column',justifyContent:'space-between'}}>
+                  {/* Oben: Standort-Chip · Wegbeschreibung + Chat (Mock) */}
+                  <span style={{display:'flex',alignItems:'flex-start',
+                    justifyContent:'space-between',gap:8}}>
+                    <span style={{display:'inline-flex',alignItems:'center',gap:4,
+                      padding:'4px 10px',borderRadius:999,
+                      border:'1.5px solid #FFC078',background:'rgba(20,12,2,.55)',
+                      color:'#FFF',fontSize:9,fontWeight:800,letterSpacing:.2,
+                      whiteSpace:'nowrap',overflow:'hidden',minWidth:0,marginTop:1}}>
+                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none"
+                        stroke="#FFF" strokeWidth="2.6" strokeLinecap="round"
+                        strokeLinejoin="round" aria-hidden="true" style={{flexShrink:0}}>
+                        <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/>
+                        <circle cx="12" cy="10" r="3"/>
+                      </svg>
+                      <span style={{overflow:'hidden',textOverflow:'ellipsis'}}>{s.loc}</span>
+                    </span>
+                    <span style={{display:'flex',gap:8,flexShrink:0}}>
+                      {/* Wegbeschreibung zum Court (öffnet Maps) */}
+                      <span role="button" aria-label="Wegbeschreibung"
+                        onClick={e=>{e.stopPropagation();
+                          window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(s.loc)}`,'_blank','noopener');}}
+                        style={{width:30,height:30,borderRadius:'50%',
+                          background:'rgba(20,12,2,.55)',border:'1px solid rgba(255,255,255,.35)',
+                          display:'inline-flex',alignItems:'center',justifyContent:'center',
+                          cursor:'pointer'}}>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                          stroke="#FFF" strokeWidth="2" strokeLinecap="round"
+                          strokeLinejoin="round" aria-hidden="true">
+                          <path d="M12 2.5 21.5 12 12 21.5 2.5 12 12 2.5z"/>
+                          <path d="M9.5 13.5v-2.2a1.3 1.3 0 0 1 1.3-1.3h3.7"/>
+                          <path d="M12.6 8.2 14.5 10l-1.9 1.8"/>
+                        </svg>
                       </span>
-                    );
-                    if(i===s.players.length) return(
-                      <span key={i} style={{width:34,height:34,borderRadius:'50%',
-                        background:'rgba(120,80,15,.85)',color:'#FFF',
-                        display:'flex',alignItems:'center',justifyContent:'center',
-                        fontSize:17,fontWeight:800,lineHeight:1,flexShrink:0}}>+</span>
-                    );
-                    return(
-                      <span key={i} style={{width:34,height:34,borderRadius:'50%',
-                        border:'1.5px dashed rgba(255,248,238,.55)',
-                        display:'block',flexShrink:0,boxSizing:'border-box'}}/>
-                    );
-                  })}
+                      {/* Match-Chat (Mock) */}
+                      <span role="button" aria-label="Match-Chat (bald)"
+                        onClick={e=>e.stopPropagation()}
+                        style={{width:30,height:30,borderRadius:'50%',
+                          background:'rgba(20,12,2,.55)',border:'1px solid rgba(255,255,255,.35)',
+                          display:'inline-flex',alignItems:'center',justifyContent:'center',
+                          cursor:'pointer'}}>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                          stroke="#FFF" strokeWidth="2" strokeLinecap="round"
+                          strokeLinejoin="round" aria-hidden="true">
+                          <path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5c-1.6 0-3.1-.4-4.4-1.2L3 20l1.2-5.1A8.5 8.5 0 1 1 21 11.5z"/>
+                        </svg>
+                      </span>
+                    </span>
+                  </span>
+                  {/* Unten: Avatare links · Uhrzeit MITTIG · Datum rechts */}
+                  <span style={{position:'relative',display:'flex',alignItems:'flex-end',
+                    justifyContent:'space-between',gap:8}}>
+                    <span style={{display:'flex',gap:7,alignItems:'flex-start'}}>
+                      {[0,1,2,3].map(i=>{
+                        const p=s.players[i];
+                        if(p) return(
+                          <span key={i} style={{display:'flex',flexDirection:'column',
+                            alignItems:'center',gap:2,minWidth:0}}>
+                            <span style={{width:27,height:27,borderRadius:'50%',
+                              background:'#EFE7DB',display:'block',
+                              boxShadow:'0 1px 4px rgba(0,0,0,.4)'}}/>
+                            <span style={{fontSize:8,fontWeight:800,color:'#FFF',
+                              maxWidth:38,overflow:'hidden',textOverflow:'ellipsis',
+                              whiteSpace:'nowrap',textShadow:'0 1px 3px rgba(0,0,0,.6)'}}>{p}</span>
+                          </span>
+                        );
+                        if(i===s.players.length) return(
+                          <span key={i} style={{width:27,height:27,borderRadius:'50%',
+                            background:'rgba(255,122,26,.92)',color:'#000',
+                            display:'flex',alignItems:'center',justifyContent:'center',
+                            fontSize:15,fontWeight:800,lineHeight:1,flexShrink:0}}>+</span>
+                        );
+                        return(
+                          <span key={i} style={{width:27,height:27,borderRadius:'50%',
+                            border:'1.5px dashed rgba(255,255,255,.6)',
+                            display:'block',flexShrink:0,boxSizing:'border-box'}}/>
+                        );
+                      })}
+                    </span>
+                    {/* Uhrzeit — mittig auf der Karte */}
+                    <span style={{position:'absolute',left:'50%',bottom:1,
+                      transform:'translateX(-50%)',fontSize:13.5,fontWeight:600,
+                      letterSpacing:'-0.1em',color:'#FFF',whiteSpace:'nowrap',
+                      textShadow:'0 1px 4px rgba(0,0,0,.55)'}}>{s.time}</span>
+                    {/* Datum — weiß, Semibold, -0.1em */}
+                    <span style={{fontSize:22,fontWeight:600,letterSpacing:'-0.1em',
+                      color:'#FFF',whiteSpace:'nowrap',flexShrink:0,
+                      textShadow:'0 1px 5px rgba(0,0,0,.55)'}}>{s.date}</span>
+                  </span>
                 </span>
               </button>
             ))}
@@ -3766,6 +3908,55 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onLogout}){
 
         {/* Internal scroll-bottom spacer so last card isn't hidden behind floating TabBar */}
         <div style={{height:120,flexShrink:0}}/>
+        </div>{/* /CORPUS */}
+      </div>{/* /Scroller */}
+
+      {/* 3) Fixe Top-Bar — Glas blendet beim Scrollen ein, das Logo
+          schwenkt von links in die Mitte und bleibt oben fixiert;
+          Glocke + Burger sind dauerhaft fixiert. */}
+      <div style={{position:'absolute',top:0,left:0,right:0,zIndex:5,
+        height:'calc(env(safe-area-inset-top,0px) + 72px)',pointerEvents:'none'}}>
+        <div aria-hidden="true" style={{position:'absolute',inset:0,
+          opacity:barGlass,
+          background:'color-mix(in srgb, var(--card) 55%, transparent)',
+          WebkitBackdropFilter:'blur(18px) saturate(160%)',
+          backdropFilter:'blur(18px) saturate(160%)',
+          borderBottom:'1px solid color-mix(in srgb, var(--t1) 10%, transparent)'}}/>
+        {/* Logo: links groß → mittig kompakt (per Scroll interpoliert).
+            Die calc-Formel zentriert die SICHTBARE Wortmarke. */}
+        <div onClick={()=>nav('profile-ritmodna')}
+          style={{position:'absolute',left:9,
+            top:`calc(env(safe-area-inset-top,0px) + ${Math.round(60-54*tCol)}px)`,
+            transform:`translateX(calc((50vw - 51.5px) * ${tCol.toFixed(3)})) scale(${(1-0.38*tCol).toFixed(3)})`,
+            transformOrigin:'left top',pointerEvents:'auto',cursor:'pointer'}}>
+          <RitmoWordmark size={66} style={{marginLeft:-35,display:'block'}}/>
+        </div>
+        {/* Glocke + Burger — fixiert, unabhängig vom Scroll */}
+        <div style={{position:'absolute',right:13,
+          top:'calc(env(safe-area-inset-top,0px) + 20px)',
+          display:'flex',alignItems:'center',gap:22,pointerEvents:'auto'}}>
+          <button onClick={()=>nav('ritmopost')}
+            aria-label="Benachrichtigungen"
+            style={{background:'none',border:'none',padding:4,position:'relative',
+              color:'#FFFFFF',cursor:'pointer',display:'inline-flex',
+              filter:'drop-shadow(0 1px 4px rgba(0,0,0,.3))'}}>
+            <BellIcon size={24}/>
+            {hasUnread&&(
+              <span aria-label="Ungelesene Nachrichten"
+                style={{position:'absolute',top:1,right:1,
+                  width:10,height:10,borderRadius:'50%',
+                  background:'#E84545',
+                  boxShadow:'0 0 0 2px rgba(0,0,0,.35)'}}/>
+            )}
+          </button>
+          <button onClick={()=>setMenuOpen(o=>!o)}
+            aria-label="Menü" aria-expanded={menuOpen}
+            style={{background:'none',border:'none',padding:4,
+              color:'#FFFFFF',cursor:'pointer',display:'inline-flex',
+              filter:'drop-shadow(0 1px 4px rgba(0,0,0,.3))'}}>
+            <MenuIcon size={25}/>
+          </button>
+        </div>
       </div>
 
       {/* Burger-Menü: Liquid-Glass-Dropdown unter dem Header-Button.
@@ -3774,7 +3965,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onLogout}){
         <div onClick={(e)=>{e.stopPropagation();setMenuOpen(false);}}
           style={{position:'absolute',inset:0,zIndex:8}}/>
         <div className="glass-bar slide-down" style={{position:'absolute',zIndex:9,
-          top:'calc(env(safe-area-inset-top,0px) + 112px)',right:14,
+          top:'calc(env(safe-area-inset-top,0px) + 62px)',right:14,
           borderRadius:19,padding:6,minWidth:208,
           display:'flex',flexDirection:'column'}}>
           <button onClick={()=>{setMenuOpen(false);nav('settings');}} style={menuRow}>
@@ -3792,7 +3983,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onLogout}){
       </>)}
 
       <BottomFade/>
-      <TabBar active={activeTab} onTab={setActiveTab}/>
+      <TabBar active={activeTab} onTab={onTabLocal}/>
     </div>
   );
 }
@@ -8517,7 +8708,13 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
   const[roundEndInfo,setRoundEndInfo]=useState(null);
   const[editLineupCourtId,setEditLineupCourtId]=useState(null);
   const[editPtsId,setEditPtsId]=useState(null);
-  const round=tourney.rounds[tourney.current];
+  // Defensive: korrupte/unvollständige persistierte Turniere (z. B.
+  // ohne generierte Runde) würden hart crashen — leeres Fallback
+  // rendern und sauber zur Home navigieren (kein früher Return, damit
+  // die Hook-Reihenfolge stabil bleibt).
+  const rawRound=tourney.rounds[tourney.current];
+  const round=rawRound||{courts:[],sitOut:[]};
+  useEffect(()=>{ if(!rawRound) onHome&&onHome(); },[rawRound]);  // eslint-disable-line react-hooks/exhaustive-deps
   const playerById=id=>tourney.players.find(p=>p.id===id);
 
   // ── Online-Sync (nur wenn dieses Turnier eine Online-Session hat) ──
@@ -15603,14 +15800,42 @@ export default function App(){
     setScr('tournament-play');
   };
 
+  // ── Undo nach Löschen: 5s-Fenster mit „Rückgängig"-Toast.
+  // restore() stellt das gelöschte Objekt wieder her; nach Ablauf
+  // (oder neuem Löschen) verfällt die Option.
+  const[undoInfo,setUndoInfo]=useState(null);
+  const undoTimer=useRef(null);
+  const offerUndo=(label,restore)=>{
+    clearTimeout(undoTimer.current);
+    setUndoInfo({label,restore,key:Date.now()});
+    undoTimer.current=setTimeout(()=>setUndoInfo(null),5000);
+  };
+  const runUndo=()=>{
+    clearTimeout(undoTimer.current);
+    undoInfo?.restore?.();
+    setUndoInfo(null);
+  };
+
   const deleteMatch=()=>{
+    // Snapshot der Reducer-States — die '_R'-Action hydriert sie zurück.
+    const snap={bo3,am};
     dBo3({type:'RESET'});
     dAm({type:'RESET',limit:cfg.amLimit??21});
+    offerUndo('Match gelöscht',()=>{
+      dBo3({type:'_R',s:snap.bo3});
+      dAm({type:'_R',s:snap.am});
+    });
   };
   const deleteTourney=(id)=>{
     const target=id||currentTourneyId;
+    const removed=tourneys.find(t=>t.id===target);
+    const wasCurrent=target===currentTourneyId;
     setTourneys(list=>list.filter(t=>t.id!==target));
-    if(target===currentTourneyId) setCurrentTourneyId(null);
+    if(wasCurrent) setCurrentTourneyId(null);
+    if(removed) offerUndo(removed.draft?'Entwurf gelöscht':'Turnier gelöscht',()=>{
+      setTourneys(list=>[removed,...list.filter(t=>t.id!==removed.id)]);
+      if(wasCurrent) setCurrentTourneyId(removed.id);
+    });
   };
 
   // Wird von Match + TournamentPlay aufgerufen, sobald ein Match
@@ -15934,7 +16159,7 @@ export default function App(){
 
     {/* Match-Präferenzen (Herz auf der Startseite) */}
     {scr==='match-prefs'&&<MatchPrefs profile={profile} setProfile={setProfile}
-      onHome={goHome}/>}
+      currentUid={currentUid} onHome={goHome}/>}
 
     {/* Discover-Teaser: News, Events, Weltrangliste */}
     {scr==='news'&&<ComingSoon
@@ -15967,6 +16192,29 @@ export default function App(){
         'Dein Verlauf über die Saison',
       ]}
       onHome={goHome}/>}
+
+    {/* Undo-Toast — 5s Rückgängig-Fenster nach einem Löschen. Der
+        dünne Balken unten läuft die Restzeit ab. */}
+    {undoInfo&&(
+      <div key={undoInfo.key} className="glass-bar slide-up"
+        style={{position:'fixed',left:'50%',transform:'translateX(-50%)',
+          bottom:'calc(env(safe-area-inset-bottom,0px) + 86px)',zIndex:60,
+          borderRadius:17,padding:'11px 12px 13px 16px',overflow:'hidden',
+          display:'flex',alignItems:'center',gap:14,maxWidth:'calc(100vw - 44px)'}}>
+        <span style={{color:T.t1,fontSize:13.5,fontWeight:600,whiteSpace:'nowrap'}}>
+          {undoInfo.label}
+        </span>
+        <button onClick={runUndo}
+          style={{background:T.o,border:'none',borderRadius:10,padding:'7px 13px',
+            color:'#000',fontSize:12.5,fontWeight:800,cursor:'pointer',
+            flexShrink:0,letterSpacing:.2}}>
+          Rückgängig
+        </button>
+        <span aria-hidden="true" style={{position:'absolute',left:0,right:0,bottom:0,
+          height:2.5,background:T.o,transformOrigin:'left center',
+          animation:'undoShrink 5s linear forwards',display:'block'}}/>
+      </div>
+    )}
 
     {/* First-launch disclaimer — liegt über allen Screens, blockiert
         Interaktion bis OK gedrückt wurde */}

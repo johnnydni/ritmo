@@ -3573,10 +3573,10 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onLogout}){
             onPointerDown={e=>e.currentTarget.style.filter='brightness(1.15)'}
             onPointerUp={e=>e.currentTarget.style.filter=''}
             onPointerLeave={e=>e.currentTarget.style.filter=''}>
-            <SingleMatchIcon size={40}/>
+            <SingleMatchIcon size={52}/>
             <div style={{marginTop:14}}>
-              <div style={{color:T.o,fontSize:18,fontWeight:800,marginBottom:3,letterSpacing:-.2}}>Single Match</div>
-              <div style={{color:T.t1,fontSize:11.5,fontWeight:500,lineHeight:1.35}}>Best of 3 | Americano</div>
+              <div style={{color:T.o,fontSize:23,fontWeight:800,marginBottom:4,letterSpacing:-.4}}>Single Match</div>
+              <div style={{color:T.t1,fontSize:13.5,fontWeight:600,lineHeight:1.35}}>Best of 3 | Americano</div>
             </div>
           </button>
           <button onClick={()=>nav('tournament-hub')} className="fu" data-lift
@@ -3588,10 +3588,10 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onLogout}){
             onPointerDown={e=>e.currentTarget.style.filter='brightness(1.15)'}
             onPointerUp={e=>e.currentTarget.style.filter=''}
             onPointerLeave={e=>e.currentTarget.style.filter=''}>
-            <TrophyIcon size={40}/>
+            <TrophyIcon size={52}/>
             <div style={{marginTop:14}}>
-              <div style={{color:T.o,fontSize:18,fontWeight:800,marginBottom:3,letterSpacing:-.2}}>Turnier</div>
-              <div style={{color:T.t1,fontSize:11.5,fontWeight:500,lineHeight:1.35}}>Americano | Mexicano &amp; mehr</div>
+              <div style={{color:T.o,fontSize:23,fontWeight:800,marginBottom:4,letterSpacing:-.4}}>Turnier</div>
+              <div style={{color:T.t1,fontSize:13.5,fontWeight:600,lineHeight:1.35}}>Americano | Mexicano &amp; mehr</div>
             </div>
           </button>
         </div>
@@ -3607,7 +3607,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onLogout}){
           onPointerUp={e=>e.currentTarget.style.filter=''}
           onPointerLeave={e=>e.currentTarget.style.filter=''}>
           <span style={{display:'inline-flex',flexShrink:0,color:T.t1}}>
-            <svg width="30" height="30" viewBox="0 0 24 24" fill="none"
+            <svg width="44" height="44" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"
               strokeLinejoin="round" aria-hidden="true">
               <path d="M20 12a8 8 0 1 1-3.1-6.3"/>
@@ -3616,9 +3616,9 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onLogout}){
             </svg>
           </span>
           <div style={{marginTop:14}}>
-            <div style={{color:T.o,fontSize:19,fontWeight:800,letterSpacing:-.2}}>RITMO DNA Liga</div>
-            <div style={{color:T.t1,fontSize:12,fontWeight:500,marginTop:4,
-              maxWidth:150,lineHeight:1.4}}>
+            <div style={{color:T.o,fontSize:25,fontWeight:800,letterSpacing:-.4}}>RITMO DNA Liga</div>
+            <div style={{color:T.t1,fontSize:14,fontWeight:600,marginTop:5,
+              maxWidth:170,lineHeight:1.4}}>
               Die Liga mit der du wöchentlich wächst.
             </div>
           </div>

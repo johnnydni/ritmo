@@ -3130,8 +3130,9 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
   );
 }
 
-/* Event-Tage im Juli — orange markiert in der Home-Datums-Leiste. */
-const HOME_EVENTS={18:'RITMO X Padel Haus'};
+/* Event-Tage — Schlüssel 'Monat-Tag' (1-basiert), orange markiert in
+   der Home-Datums-Leiste (die immer am heutigen Tag startet). */
+const HOME_EVENTS={'7-18':'RITMO X Padel Haus'};
 
 /* Match-Vorschläge für „Matches für dich" (Feature-Preview). */
 const MATCH_SLOTS=[
@@ -3222,7 +3223,8 @@ function DiscoverSection({nav}){
           Padding), Cards snappen am linken Rand. */}
       <div className="hscroll" style={{display:'flex',gap:12,overflowX:'auto',
         margin:'0 -22px',padding:'10px 22px 6px',
-        scrollSnapType:'x mandatory',WebkitOverflowScrolling:'touch'}}>
+        scrollSnapType:'x mandatory',scrollPaddingLeft:22,
+        WebkitOverflowScrolling:'touch'}}>
         {DISCOVER_CARDS.map(c=>(
           <button key={c.id} onClick={()=>nav(c.id)} aria-label={c.title}
             style={{position:'relative',flexShrink:0,width:190,height:248,
@@ -3293,7 +3295,8 @@ function MatchPrefs({profile,setProfile,onHome}){
           <div style={sub}>Spielstile, die dir liegen — Mehrfachauswahl.</div>
           <div className="hscroll" style={{display:'flex',gap:10,overflowX:'auto',
             margin:'0 -18px',padding:'4px 18px 6px',
-            scrollSnapType:'x mandatory',WebkitOverflowScrolling:'touch'}}>
+            scrollSnapType:'x mandatory',scrollPaddingLeft:18,
+            WebkitOverflowScrolling:'touch'}}>
             {Object.entries(PADEL_STYLES).map(([id,s])=>{
               const sel=prefs.styles.includes(id);
               return(
@@ -3401,6 +3404,42 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onLogout}){
   const menuRow={display:'flex',alignItems:'center',gap:11,padding:'13px 14px',
     background:'none',border:'none',color:T.t1,fontSize:14,fontWeight:600,
     cursor:'pointer',textAlign:'left',borderRadius:13,width:'100%'};
+
+  // Events-Leiste: startet IMMER am heutigen Tag, läuft bis Monatsende.
+  // Event-Tage kommen aus HOME_EVENTS ('Monat-Tag', 1-basiert).
+  const today=new Date();
+  const MONTH_NAMES=['Januar','Februar','März','April','Mai','Juni','Juli',
+    'August','September','Oktober','November','Dezember'];
+  const monthName=MONTH_NAMES[today.getMonth()];
+  const lastDay=new Date(today.getFullYear(),today.getMonth()+1,0).getDate();
+  const eventDays=Array.from({length:lastDay-today.getDate()+1},(_,i)=>today.getDate()+i);
+  const eventFor=d=>HOME_EVENTS[`${today.getMonth()+1}-${d}`];
+
+  // Pull-to-Stretch: Ist der Corpus ganz oben gescrollt und zieht der
+  // Finger weiter nach unten, wächst der Header-Gradient elastisch mit;
+  // Loslassen federt zurück (Spring-Transition nur beim Snap-Back).
+  const corpusRef=useRef(null);
+  const pullRef=useRef({startY:0,pulling:false});
+  const[stretch,setStretch]=useState(0);
+  const[snapBack,setSnapBack]=useState(false);
+  const pullStart=e=>{
+    if((corpusRef.current?.scrollTop||0)<=0){
+      pullRef.current={startY:e.clientY,pulling:true};
+      setSnapBack(false);
+    }
+  };
+  const pullMove=e=>{
+    if(!pullRef.current.pulling) return;
+    if((corpusRef.current?.scrollTop||0)>0){pullRef.current.pulling=false;setStretch(0);return;}
+    const dy=e.clientY-pullRef.current.startY;
+    setStretch(dy>0?Math.min(96,dy*0.45):0);
+  };
+  const pullEnd=()=>{
+    if(!pullRef.current.pulling) return;
+    pullRef.current.pulling=false;
+    setSnapBack(true);
+    setStretch(0);
+  };
   return(
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden'}}>
@@ -3412,15 +3451,21 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onLogout}){
           damit der Avatar bündig mit dem Logo sitzt. Texte darunter. */}
       <div style={{
         /* Gleiche Kopf-Höhe wie alle anderen Screens (ScreenHeader
-           startet bei safe-area + 60px). */
-        padding:'calc(env(safe-area-inset-top,0px) + 60px) 9px 26px',
+           startet bei safe-area + 60px). paddingBottom wächst beim
+           Pull-to-Stretch elastisch mit. */
+        paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',
+        paddingLeft:9,paddingRight:9,
+        paddingBottom:26+stretch,
+        transition:snapBack?'padding-bottom .5s var(--ease-out-back)':'none',
         background:'var(--headerGrad)',
         position:'relative',zIndex:1,
         cursor:'pointer',
       }} onClick={()=>nav('profile-ritmodna')}>
         <div style={{display:'flex',alignItems:'center',
           justifyContent:'space-between',gap:14}}>
-          <RitmoWordmark size={52} style={{marginLeft:-24}}/>
+          {/* Größeres Logo (Mock) — Margin hält die solide R-Kante
+              optisch bündig bei den Überschriften (skaliert mit size). */}
+          <RitmoWordmark size={66} style={{marginLeft:-35}}/>
           {/* Rechts: Glocke + Burger als pure Glyphen (Mock — keine
               Kreis-Hintergründe mehr). Beide stoppen die Header-
               onClick-Propagation (Header-Tap geht zum DNA-Screen). */}
@@ -3448,15 +3493,20 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onLogout}){
             </button>
           </div>
         </div>
-        <BauhausStripes delay={.1}/>
-        {/* Tagline links, Gruß rechts — eine Zeile (Mock) */}
-        <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',
-          gap:12,marginTop:16,marginLeft:10,marginRight:9}}>
-          <div style={{color:T.t1,fontSize:21,fontWeight:800,letterSpacing:-.4}}>
-            It's all about Padel.
+        {/* Große Bauhaus-Streifen in Orange→Braun (Mock) links,
+            Gruß rechts unten in der Zeile */}
+        <div style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',
+          gap:12,marginTop:12,marginRight:9}}>
+          <div aria-hidden="true" style={{display:'flex',flexDirection:'column',
+            gap:8,marginLeft:10}}>
+            {[{w:112,c:'#FF7A1A'},{w:70,c:'#A05C1C'},{w:42,c:'#5C3A14'}].map((s,i)=>(
+              <span key={i} className="stripe-in" style={{width:s.w,height:10,
+                borderRadius:6,background:s.c,'--so':1,
+                animationDelay:`${.12+i*.1}s`,display:'block'}}/>
+            ))}
           </div>
-          <div style={{color:T.t1,fontSize:16,fontWeight:600,letterSpacing:-.2,
-            flexShrink:0,opacity:.95}}>
+          <div style={{color:T.t1,fontSize:20,fontWeight:700,letterSpacing:-.3,
+            flexShrink:0}}>
             Hi, {profile?.name?.split(' ')[0]||'Spieler'}!
           </div>
         </div>
@@ -3465,8 +3515,12 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onLogout}){
         )}
       </div>
 
-      {/* CORPUS — drawer-style panel (rounded top, elevated shadow) */}
-      <div style={{
+      {/* CORPUS — drawer-style panel (rounded top, elevated shadow).
+          Pointer-Handler treiben den Pull-to-Stretch des Headers. */}
+      <div ref={corpusRef}
+        onPointerDown={pullStart} onPointerMove={pullMove}
+        onPointerUp={pullEnd} onPointerCancel={pullEnd} onPointerLeave={pullEnd}
+        style={{
         flex:1,
         background:T.bgGrad,
         borderTopLeftRadius:24,
@@ -3476,6 +3530,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onLogout}){
         padding:'26px 22px 0',
         display:'flex',flexDirection:'column',gap:14,
         overflowY:'auto',WebkitOverflowScrolling:'touch',
+        overscrollBehavior:'contain',
         position:'relative',zIndex:2,
       }}>
 
@@ -3517,7 +3572,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onLogout}){
             <SingleMatchIcon size={40}/>
             <div style={{marginTop:14}}>
               <div style={{color:T.o,fontSize:18,fontWeight:800,marginBottom:3,letterSpacing:-.2}}>Single Match</div>
-              <div style={{color:T.t3,fontSize:11.5,fontWeight:500,lineHeight:1.35}}>Best of 3 | Americano</div>
+              <div style={{color:T.t1,fontSize:11.5,fontWeight:500,lineHeight:1.35}}>Best of 3 | Americano</div>
             </div>
           </button>
           <button onClick={()=>nav('tournament-hub')} className="fu" data-lift
@@ -3532,7 +3587,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onLogout}){
             <TrophyIcon size={40}/>
             <div style={{marginTop:14}}>
               <div style={{color:T.o,fontSize:18,fontWeight:800,marginBottom:3,letterSpacing:-.2}}>Turnier</div>
-              <div style={{color:T.t3,fontSize:11.5,fontWeight:500,lineHeight:1.35}}>Americano | Mexicano &amp; mehr</div>
+              <div style={{color:T.t1,fontSize:11.5,fontWeight:500,lineHeight:1.35}}>Americano | Mexicano &amp; mehr</div>
             </div>
           </button>
         </div>
@@ -3558,7 +3613,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onLogout}){
           </span>
           <div style={{marginTop:14}}>
             <div style={{color:T.o,fontSize:19,fontWeight:800,letterSpacing:-.2}}>RITMO DNA Liga</div>
-            <div style={{color:T.t3,fontSize:12,fontWeight:500,marginTop:4,
+            <div style={{color:T.t1,fontSize:12,fontWeight:500,marginTop:4,
               maxWidth:150,lineHeight:1.4}}>
               Die Liga mit der du wöchentlich wächst.
             </div>
@@ -3589,12 +3644,16 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onLogout}){
           </div>
           <div className="hscroll" style={{display:'flex',gap:11,overflowX:'auto',
             margin:'9px -22px 0',padding:'2px 22px 4px',
-            scrollSnapType:'x mandatory',WebkitOverflowScrolling:'touch'}}>
-            {Array.from({length:17},(_,i)=>15+i).map(d=>{
-              const ev=HOME_EVENTS[d];
+            /* scrollPaddingLeft: sonst snappt 'mandatory' das erste
+               Tile an die Container-Kante (x=0) statt bündig zu den
+               Karten bei 22px. */
+            scrollSnapType:'x mandatory',scrollPaddingLeft:22,
+            WebkitOverflowScrolling:'touch'}}>
+            {eventDays.map(d=>{
+              const ev=eventFor(d);
               return(
                 <button key={d} onClick={()=>nav('events')}
-                  aria-label={ev?`${d}. Juli — ${ev}`:`Events am ${d}. Juli`}
+                  aria-label={ev?`${d}. ${monthName} — ${ev}`:`Events am ${d}. ${monthName}`}
                   title={ev||undefined}
                   style={{flexShrink:0,width:72,height:72,borderRadius:18,
                     background:'transparent',scrollSnapAlign:'start',cursor:'pointer',
@@ -3650,11 +3709,14 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onLogout}){
                     </svg>
                     <span style={{overflow:'hidden',textOverflow:'ellipsis'}}>{s.loc}</span>
                   </span>
-                  <span style={{fontSize:20,fontWeight:800,letterSpacing:-.4,
-                    whiteSpace:'nowrap',flexShrink:0}}>{s.date}</span>
+                  {/* Datum: weiß, SF Pro Semibold, -2px Tracking bei 20px
+                      (-0.1em — skaliert proportional für die Uhrzeit) */}
+                  <span style={{fontSize:20,fontWeight:600,letterSpacing:'-0.1em',
+                    color:'#FFF',whiteSpace:'nowrap',flexShrink:0}}>{s.date}</span>
                 </span>
-                {/* Zeile 2: Uhrzeit rechts */}
-                <span style={{fontSize:12.5,fontWeight:700,textAlign:'right'}}>{s.time}</span>
+                {/* Zeile 2: Uhrzeit rechts — gleiche Spec wie das Datum */}
+                <span style={{fontSize:12.5,fontWeight:600,letterSpacing:'-0.1em',
+                  color:'#FFF',textAlign:'right'}}>{s.time}</span>
                 {/* Zeile 3: Avatare + Namen + Plus */}
                 <span style={{display:'flex',gap:7,alignItems:'flex-start',marginTop:2}}>
                   {s.players.map(p=>(

@@ -3299,9 +3299,17 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onLogout}){
             </button>
           </div>
         </div>
-        <div style={{color:T.t1,fontSize:15,marginTop:-2,marginLeft:10,fontWeight:600,
-          letterSpacing:-.1,opacity:.96}}>
-          Wähle deinen Modus.
+        <BauhausStripes delay={.1} style={{marginTop:-2}}/>
+        {/* Tagline links, Gruß rechts — eine Zeile (Mock) */}
+        <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',
+          gap:12,marginTop:16,marginLeft:10,marginRight:9}}>
+          <div style={{color:T.t1,fontSize:21,fontWeight:800,letterSpacing:-.4}}>
+            It's all about Padel.
+          </div>
+          <div style={{color:T.t1,fontSize:16,fontWeight:600,letterSpacing:-.2,
+            flexShrink:0,opacity:.95}}>
+            Hi, {profile?.name?.split(' ')[0]||'Spieler'}!
+          </div>
         </div>
         {document.documentElement.getAttribute('data-theme')==='funky'&&(
           <div style={{marginTop:12,marginLeft:10}}><FunkyFruitsRow size={20} gap={10}/></div>
@@ -3346,51 +3354,52 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onLogout}){
           </button>
         )}
 
-        {/* Single Match — große Karte: Icon oben links, Texte unten (Mock) */}
-        <button onClick={()=>nav('single-setup')} className="fu" data-lift
-          style={{background:'linear-gradient(150deg, var(--card2) 0%, var(--card) 62%)',
-            border:`1px solid ${T.border}`,borderRadius:22,
-            padding:'18px 20px 16px',minHeight:148,display:'flex',flexDirection:'column',
-            alignItems:'flex-start',cursor:'pointer',color:T.t1,textAlign:'left',
-            transition:'filter .15s'}}
-          onPointerDown={e=>e.currentTarget.style.filter='brightness(1.15)'}
-          onPointerUp={e=>e.currentTarget.style.filter=''}
-          onPointerLeave={e=>e.currentTarget.style.filter=''}>
-          <SingleMatchIcon size={40}/>
-          <div style={{marginTop:'auto',paddingTop:18}}>
-            <div style={{color:T.o,fontSize:19,fontWeight:800,marginBottom:3,letterSpacing:-.2}}>Single Match</div>
-            <div style={{color:T.t3,fontSize:12,fontWeight:500}}>Best of 3 | Americano</div>
-          </div>
-        </button>
+        {/* Single Match + Turnier — nebeneinander (Mock) */}
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+          <button onClick={()=>nav('single-setup')} className="fu" data-lift
+            style={{background:'linear-gradient(150deg, var(--card2) 0%, var(--card) 62%)',
+              border:`1px solid ${T.border}`,borderRadius:22,
+              padding:'18px 18px 16px',minHeight:172,display:'flex',flexDirection:'column',
+              alignItems:'flex-start',cursor:'pointer',color:T.t1,textAlign:'left',
+              transition:'filter .15s'}}
+            onPointerDown={e=>e.currentTarget.style.filter='brightness(1.15)'}
+            onPointerUp={e=>e.currentTarget.style.filter=''}
+            onPointerLeave={e=>e.currentTarget.style.filter=''}>
+            <SingleMatchIcon size={40}/>
+            <div style={{marginTop:14}}>
+              <div style={{color:T.o,fontSize:18,fontWeight:800,marginBottom:3,letterSpacing:-.2}}>Single Match</div>
+              <div style={{color:T.t3,fontSize:11.5,fontWeight:500,lineHeight:1.35}}>Best of 3 | Americano</div>
+            </div>
+          </button>
+          <button onClick={()=>nav('tournament-hub')} className="fu" data-lift
+            style={{background:'linear-gradient(150deg, var(--card2) 0%, var(--card) 62%)',
+              border:`1px solid ${T.border}`,borderRadius:22,
+              padding:'18px 18px 16px',minHeight:172,display:'flex',flexDirection:'column',
+              alignItems:'flex-start',cursor:'pointer',color:T.t1,textAlign:'left',
+              animationDelay:'.06s',transition:'filter .15s'}}
+            onPointerDown={e=>e.currentTarget.style.filter='brightness(1.15)'}
+            onPointerUp={e=>e.currentTarget.style.filter=''}
+            onPointerLeave={e=>e.currentTarget.style.filter=''}>
+            <TrophyIcon size={40}/>
+            <div style={{marginTop:14}}>
+              <div style={{color:T.o,fontSize:18,fontWeight:800,marginBottom:3,letterSpacing:-.2}}>Turnier</div>
+              <div style={{color:T.t3,fontSize:11.5,fontWeight:500,lineHeight:1.35}}>Americano | Mexicano &amp; mehr</div>
+            </div>
+          </button>
+        </div>
 
-        {/* Turnier — große Karte (Hub mit Starten/Beitreten/DNA Cup) */}
-        <button onClick={()=>nav('tournament-hub')} className="fu" data-lift
-          style={{background:'linear-gradient(150deg, var(--card2) 0%, var(--card) 62%)',
-            border:`1px solid ${T.border}`,borderRadius:22,
-            padding:'18px 20px 16px',minHeight:148,display:'flex',flexDirection:'column',
-            alignItems:'flex-start',cursor:'pointer',color:T.t1,textAlign:'left',
-            animationDelay:'.06s',transition:'filter .15s'}}
-          onPointerDown={e=>e.currentTarget.style.filter='brightness(1.15)'}
-          onPointerUp={e=>e.currentTarget.style.filter=''}
-          onPointerLeave={e=>e.currentTarget.style.filter=''}>
-          <TrophyIcon size={40}/>
-          <div style={{marginTop:'auto',paddingTop:18}}>
-            <div style={{color:T.o,fontSize:19,fontWeight:800,marginBottom:3,letterSpacing:-.2}}>Turnier</div>
-            <div style={{color:T.t3,fontSize:12,fontWeight:500}}>Americano | Mexicano & mehr</div>
-          </div>
-        </button>
-
-        {/* RITMO DNA Liga — flache Karte (Mock) */}
+        {/* RITMO DNA Liga — große Karte mit Luft (Mock) */}
         <button onClick={()=>nav('liga')} className="fu" data-lift
-          style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:18,
-            padding:'13px 18px',display:'flex',alignItems:'center',gap:14,
-            cursor:'pointer',color:T.t1,textAlign:'left',
+          style={{background:'linear-gradient(150deg, var(--card2) 0%, var(--card) 62%)',
+            border:`1px solid ${T.border}`,borderRadius:22,
+            padding:'18px 20px 16px',minHeight:168,display:'flex',flexDirection:'column',
+            alignItems:'flex-start',cursor:'pointer',color:T.t1,textAlign:'left',
             animationDelay:'.1s',transition:'filter .15s'}}
           onPointerDown={e=>e.currentTarget.style.filter='brightness(1.15)'}
           onPointerUp={e=>e.currentTarget.style.filter=''}
           onPointerLeave={e=>e.currentTarget.style.filter=''}>
           <span style={{display:'inline-flex',flexShrink:0,color:T.t1}}>
-            <svg width="27" height="27" viewBox="0 0 24 24" fill="none"
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"
               strokeLinejoin="round" aria-hidden="true">
               <path d="M20 12a8 8 0 1 1-3.1-6.3"/>
@@ -3398,13 +3407,99 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onLogout}){
               <circle cx="12" cy="12" r="2.4" fill={T.o} stroke="none"/>
             </svg>
           </span>
-          <div style={{flex:1,minWidth:0}}>
-            <div style={{color:T.o,fontSize:16,fontWeight:800,letterSpacing:-.2}}>RITMO DNA Liga</div>
-            <div style={{color:T.t3,fontSize:11.5,fontWeight:500,marginTop:2}}>
+          <div style={{marginTop:14}}>
+            <div style={{color:T.o,fontSize:19,fontWeight:800,letterSpacing:-.2}}>RITMO DNA Liga</div>
+            <div style={{color:T.t3,fontSize:12,fontWeight:500,marginTop:4,
+              maxWidth:150,lineHeight:1.4}}>
               Die Liga mit der du wöchentlich wächst.
             </div>
           </div>
         </button>
+
+        {/* ── Events — Datums-Leiste, Heading rechts mit Tick (Mock).
+            18. Juli = RITMO DNA Cup (Founders Edition). */}
+        <div className="fu" style={{animationDelay:'.14s',marginTop:6}}>
+          <div style={{display:'flex',justifyContent:'flex-end',paddingRight:40}}>
+            <div style={{textAlign:'center'}}>
+              <div style={{color:T.t1,fontSize:20,fontWeight:800,letterSpacing:-.4}}>Events</div>
+              <span style={{display:'block',width:1.5,height:13,background:T.t2,
+                margin:'5px auto 0',borderRadius:1}}/>
+            </div>
+          </div>
+          <div className="hscroll" style={{display:'flex',gap:10,overflowX:'auto',
+            margin:'10px -22px 0',padding:'2px 22px 4px',
+            scrollSnapType:'x mandatory',WebkitOverflowScrolling:'touch'}}>
+            {[{d:15},{d:16},{d:17},{d:18,active:true},{d:19}].map(({d,active})=>(
+              <button key={d} onClick={()=>nav('events')} aria-label={`Events am ${d}. Juli`}
+                style={{flexShrink:0,width:66,height:66,borderRadius:17,
+                  background:'transparent',scrollSnapAlign:'start',cursor:'pointer',
+                  border:`2.5px solid ${active?T.o:T.t1}`,
+                  color:active?T.o:T.t1,fontSize:29,fontWeight:800,
+                  display:'flex',alignItems:'center',justifyContent:'center'}}>
+                {d}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Matches für dich — Slot-Karte in Amber (Mock-Teaser,
+            öffnet den Buchungsassistenten) */}
+        <div className="fu" style={{animationDelay:'.18s'}}>
+          <div style={{color:T.t1,fontSize:20,fontWeight:800,letterSpacing:-.4,
+            margin:'4px 0 12px'}}>
+            Matches für dich
+          </div>
+          <button onClick={()=>nav('booking-assist')}
+            style={{width:'100%',display:'flex',alignItems:'stretch',
+              background:'linear-gradient(160deg,#D98A24 0%,#B06A12 100%)',
+              border:'none',borderRadius:22,padding:'14px 6px',cursor:'pointer',
+              textAlign:'center',color:'#241300',transition:'filter .15s'}}
+            onPointerDown={e=>e.currentTarget.style.filter='brightness(1.08)'}
+            onPointerUp={e=>e.currentTarget.style.filter=''}
+            onPointerLeave={e=>e.currentTarget.style.filter=''}>
+            {[
+              {date:'29. Juni',time:'18:00–19:30',loc:'Padel Haus Großmehring',players:['Chris','Daniel','Michael']},
+              {date:'4. Juli',players:[]},
+              {date:'12. Juli',players:[]},
+            ].map((s,i)=>(
+              <span key={s.date} style={{flex:1,minWidth:0,padding:'2px 8px',
+                display:'flex',flexDirection:'column',alignItems:'center',gap:5,
+                borderLeft:i>0?'1.5px solid rgba(255,255,255,.5)':'none'}}>
+                <span style={{fontSize:17,fontWeight:800,letterSpacing:-.3,whiteSpace:'nowrap'}}>{s.date}</span>
+                {s.time&&<span style={{fontSize:10.5,fontWeight:700,marginTop:-3}}>{s.time}</span>}
+                {s.loc&&(
+                  <span style={{display:'inline-flex',alignItems:'center',gap:3,
+                    padding:'2px 7px',borderRadius:999,border:'1.5px solid #241300',
+                    background:'rgba(255,248,238,.85)',fontSize:8,fontWeight:800,
+                    whiteSpace:'nowrap',maxWidth:'100%',overflow:'hidden'}}>
+                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none"
+                      stroke="#241300" strokeWidth="2.6" strokeLinecap="round"
+                      strokeLinejoin="round" aria-hidden="true" style={{flexShrink:0}}>
+                      <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/>
+                      <circle cx="12" cy="10" r="3"/>
+                    </svg>
+                    {s.loc}
+                  </span>
+                )}
+                <span style={{display:'flex',gap:4,alignItems:'flex-start',marginTop:3}}>
+                  {[0,1,2].map(p=>(
+                    <span key={p} style={{display:'flex',flexDirection:'column',
+                      alignItems:'center',gap:2}}>
+                      <span style={{width:21,height:21,borderRadius:'50%',
+                        background:'#EFE7DB',display:'block',
+                        boxShadow:'inset 0 -1px 2px rgba(0,0,0,.12)'}}/>
+                      {s.players[p]&&<span style={{fontSize:6.5,fontWeight:700}}>{s.players[p]}</span>}
+                    </span>
+                  ))}
+                  <span style={{width:21,height:21,borderRadius:'50%',
+                    background:'rgba(255,248,238,.55)',color:'#241300',
+                    display:'flex',alignItems:'center',justifyContent:'center',
+                    fontSize:13,fontWeight:800,lineHeight:1}}>+</span>
+                </span>
+              </span>
+            ))}
+          </button>
+        </div>
 
         {/* Discover the RITMO — horizontale Bild-Cards */}
         <DiscoverSection nav={nav}/>

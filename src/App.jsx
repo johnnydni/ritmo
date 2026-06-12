@@ -3134,10 +3134,14 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
    der Home-Datums-Leiste (die immer am heutigen Tag startet). */
 const HOME_EVENTS={'7-18':'RITMO X Padel Haus'};
 
-/* Match-Vorschläge für „Matches für dich" (Feature-Preview). */
+/* Match-Vorschläge für „Matches für dich" (Feature-Preview) —
+   bis zu 5, horizontal swipebar, eine Karte pro Match. */
 const MATCH_SLOTS=[
   {loc:'Padel Haus Großmehring',date:'29. Juni',time:'18:00–19:30',players:['Chris','Daniel','Michael']},
   {loc:'Padel Haus Großmehring',date:'4. Juli', time:'18:00–19:30',players:['Nadin','Alessa.','Nora']},
+  {loc:'Padel Haus Großmehring',date:'6. Juli', time:'19:30–21:00',players:['Jonas','Mia']},
+  {loc:'Padel Haus Großmehring',date:'9. Juli', time:'17:00–18:30',players:['Tom']},
+  {loc:'Padel Haus Großmehring',date:'12. Juli',time:'10:00–11:30',players:[]},
 ];
 
 /* ── „Discover the RITMO" — horizontale Card-Galerie (Apple-Health-
@@ -3681,27 +3685,32 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onLogout}){
               <HeartIcon size={24} filled/>
             </button>
           </div>
-          <button onClick={()=>nav('booking-assist')}
-            style={{width:'100%',display:'flex',alignItems:'stretch',
-              background:'linear-gradient(160deg,#C87E1C 0%,#9A5D10 100%)',
-              border:`1.5px solid ${T.o}`,borderRadius:19,padding:'12px 4px',
-              cursor:'pointer',textAlign:'left',color:'#241300',transition:'filter .15s'}}
-            onPointerDown={e=>e.currentTarget.style.filter='brightness(1.08)'}
-            onPointerUp={e=>e.currentTarget.style.filter=''}
-            onPointerLeave={e=>e.currentTarget.style.filter=''}>
-            {MATCH_SLOTS.map((s,i)=>(
-              <span key={s.date} style={{flex:1,minWidth:0,padding:'2px 10px',
-                display:'flex',flexDirection:'column',gap:6,
-                borderLeft:i>0?'1.5px solid rgba(36,19,0,.55)':'none'}}>
-                {/* Zeile 1: Standort-Chip links · Datum rechts */}
+          {/* Horizontal swipebar — EINE Karte pro Match (bis zu 5),
+              großzügiger skaliert; nächste Karte peekt rechts an. */}
+          <div className="hscroll" style={{display:'flex',gap:12,overflowX:'auto',
+            margin:'0 -22px',padding:'2px 22px 6px',
+            scrollSnapType:'x mandatory',scrollPaddingLeft:22,
+            WebkitOverflowScrolling:'touch'}}>
+            {MATCH_SLOTS.slice(0,5).map(s=>(
+              <button key={s.date} onClick={()=>nav('booking-assist')}
+                style={{flexShrink:0,width:272,scrollSnapAlign:'start',
+                  background:'linear-gradient(160deg,#C87E1C 0%,#9A5D10 100%)',
+                  border:`1.5px solid ${T.o}`,borderRadius:19,padding:'15px 16px 13px',
+                  cursor:'pointer',textAlign:'left',color:'#241300',
+                  display:'flex',flexDirection:'column',gap:12,
+                  transition:'filter .15s'}}
+                onPointerDown={e=>e.currentTarget.style.filter='brightness(1.08)'}
+                onPointerUp={e=>e.currentTarget.style.filter=''}
+                onPointerLeave={e=>e.currentTarget.style.filter=''}>
+                {/* Kopf: Standort-Chip links · Datum + Uhrzeit rechts */}
                 <span style={{display:'flex',alignItems:'flex-start',
-                  justifyContent:'space-between',gap:6}}>
-                  <span style={{display:'inline-flex',alignItems:'center',gap:3,
-                    padding:'2.5px 8px',borderRadius:999,
+                  justifyContent:'space-between',gap:8}}>
+                  <span style={{display:'inline-flex',alignItems:'center',gap:4,
+                    padding:'3.5px 10px',borderRadius:999,
                     border:'1.5px solid #FFC078',background:'rgba(36,19,0,.32)',
-                    color:'#FFF',fontSize:8,fontWeight:800,letterSpacing:.2,
-                    whiteSpace:'nowrap',overflow:'hidden',marginTop:3,minWidth:0}}>
-                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none"
+                    color:'#FFF',fontSize:9,fontWeight:800,letterSpacing:.2,
+                    whiteSpace:'nowrap',overflow:'hidden',marginTop:4,minWidth:0}}>
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none"
                       stroke="#FFF" strokeWidth="2.6" strokeLinecap="round"
                       strokeLinejoin="round" aria-hidden="true" style={{flexShrink:0}}>
                       <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/>
@@ -3709,33 +3718,46 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onLogout}){
                     </svg>
                     <span style={{overflow:'hidden',textOverflow:'ellipsis'}}>{s.loc}</span>
                   </span>
-                  {/* Datum: weiß, SF Pro Semibold, -2px Tracking bei 20px
-                      (-0.1em — skaliert proportional für die Uhrzeit) */}
-                  <span style={{fontSize:20,fontWeight:600,letterSpacing:'-0.1em',
-                    color:'#FFF',whiteSpace:'nowrap',flexShrink:0}}>{s.date}</span>
+                  <span style={{textAlign:'right',flexShrink:0}}>
+                    {/* Datum/Uhrzeit: weiß, SF Pro Semibold, -2px Tracking
+                        bei 22px (-0.1em, proportional für die Uhrzeit) */}
+                    <span style={{display:'block',fontSize:22,fontWeight:600,
+                      letterSpacing:'-0.1em',color:'#FFF',whiteSpace:'nowrap'}}>{s.date}</span>
+                    <span style={{display:'block',fontSize:13,fontWeight:600,
+                      letterSpacing:'-0.1em',color:'#FFF',marginTop:2}}>{s.time}</span>
+                  </span>
                 </span>
-                {/* Zeile 2: Uhrzeit rechts — gleiche Spec wie das Datum */}
-                <span style={{fontSize:12.5,fontWeight:600,letterSpacing:'-0.1em',
-                  color:'#FFF',textAlign:'right'}}>{s.time}</span>
-                {/* Zeile 3: Avatare + Namen + Plus */}
-                <span style={{display:'flex',gap:7,alignItems:'flex-start',marginTop:2}}>
-                  {s.players.map(p=>(
-                    <span key={p} style={{display:'flex',flexDirection:'column',
-                      alignItems:'center',gap:2,minWidth:0}}>
-                      <span style={{width:26,height:26,borderRadius:'50%',
-                        background:'#EFE7DB',display:'block',
-                        boxShadow:'inset 0 -1px 2px rgba(0,0,0,.12)'}}/>
-                      <span style={{fontSize:7.5,fontWeight:800,color:'#FFF'}}>{p}</span>
-                    </span>
-                  ))}
-                  <span style={{width:26,height:26,borderRadius:'50%',
-                    background:'rgba(120,80,15,.85)',color:'#FFF',
-                    display:'flex',alignItems:'center',justifyContent:'center',
-                    fontSize:14,fontWeight:800,lineHeight:1}}>+</span>
+                {/* Plätze: gefüllt → Plus (erster freie) → offene Kreise */}
+                <span style={{display:'flex',gap:11,alignItems:'flex-start'}}>
+                  {[0,1,2,3].map(i=>{
+                    const p=s.players[i];
+                    if(p) return(
+                      <span key={i} style={{display:'flex',flexDirection:'column',
+                        alignItems:'center',gap:3,minWidth:0}}>
+                        <span style={{width:34,height:34,borderRadius:'50%',
+                          background:'#EFE7DB',display:'block',
+                          boxShadow:'inset 0 -2px 3px rgba(0,0,0,.14)'}}/>
+                        <span style={{fontSize:9,fontWeight:800,color:'#FFF',
+                          maxWidth:44,overflow:'hidden',textOverflow:'ellipsis',
+                          whiteSpace:'nowrap'}}>{p}</span>
+                      </span>
+                    );
+                    if(i===s.players.length) return(
+                      <span key={i} style={{width:34,height:34,borderRadius:'50%',
+                        background:'rgba(120,80,15,.85)',color:'#FFF',
+                        display:'flex',alignItems:'center',justifyContent:'center',
+                        fontSize:17,fontWeight:800,lineHeight:1,flexShrink:0}}>+</span>
+                    );
+                    return(
+                      <span key={i} style={{width:34,height:34,borderRadius:'50%',
+                        border:'1.5px dashed rgba(255,248,238,.55)',
+                        display:'block',flexShrink:0,boxSizing:'border-box'}}/>
+                    );
+                  })}
                 </span>
-              </span>
+              </button>
             ))}
-          </button>
+          </div>
         </div>
 
         {/* Discover the RITMO — horizontale Bild-Cards */}

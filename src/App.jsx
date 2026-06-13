@@ -2606,7 +2606,12 @@ function MatchBar({onHome,rightIcon,onRight,rightButtons}){
   // Legacy single-button mode → wrap into array
   const buttons=rightButtons||(rightIcon?[{icon:rightIcon,onClick:onRight}]:[]);
   return(
-    <div style={{position:'absolute',bottom:'calc(env(safe-area-inset-bottom,0px) + 20px)',
+    <div style={{position:'absolute',
+      // Auf Navbar-Hoehe: gleicher Bottom-Anchor wie die TabBar
+      // (calc(...*0.3 - 3px)) + feste Hoehe = Navbar-Pillen-Hoehe (57px).
+      // So sitzen Home/Start/Index/Weiter exakt auf der Navbar-Mittel-
+      // linie; alignItems:center zentriert auch groessere FABs (56px) darauf.
+      bottom:'calc(env(safe-area-inset-bottom, 0px) * 0.3 - 3px)',height:57,
       left:0,right:0,display:'flex',alignItems:'center',justifyContent:'space-between',
       padding:'0 24px',pointerEvents:'none',zIndex:5}}>
       <button onClick={onHome} className="glass-bar" style={{...baseStyle,cursor:'pointer'}}>
@@ -3514,16 +3519,11 @@ function MatchPrefs({profile,setProfile,currentUid,onHome}){
   );
 }
 
-function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onLogout}){
+function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
   // Hinweis-Banner falls Onboarding nicht abgeschlossen ist UND der
   // User nicht den Test-Bypass benutzt (Test-User hat onboarded=true).
   const needsOnboarding=!onboarded;
   const hasUnread=(unread||0)>0;
-  // Burger-Menü (Einstellungen + Abmelden) — aus dem Profil hierher.
-  const[menuOpen,setMenuOpen]=useState(false);
-  const menuRow={display:'flex',alignItems:'center',gap:11,padding:'13px 14px',
-    background:'none',border:'none',color:T.t1,fontSize:14,fontWeight:600,
-    cursor:'pointer',textAlign:'left',borderRadius:13,width:'100%'};
 
   // Events-Leiste: startet IMMER am heutigen Tag, läuft bis Monatsende.
   // Event-Tage kommen aus HOME_EVENTS ('Monat-Tag', 1-basiert).
@@ -3949,8 +3949,10 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onLogout}){
                   boxShadow:'0 0 0 2px rgba(0,0,0,.35)'}}/>
             )}
           </button>
-          <button onClick={()=>setMenuOpen(o=>!o)}
-            aria-label="Menü" aria-expanded={menuOpen}
+          {/* Burger fuehrt direkt in die Einstellungen (Abmelden wohnt
+              jetzt ganz unten in den Einstellungen). */}
+          <button onClick={()=>nav('settings')}
+            aria-label="Einstellungen"
             style={{background:'none',border:'none',padding:4,
               color:'#FFFFFF',cursor:'pointer',display:'inline-flex',
               filter:'drop-shadow(0 1px 4px rgba(0,0,0,.3))'}}>
@@ -3958,29 +3960,6 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onLogout}){
           </button>
         </div>
       </div>
-
-      {/* Burger-Menü: Liquid-Glass-Dropdown unter dem Header-Button.
-          Backdrop fängt Outside-Taps; Einträge: Einstellungen + Abmelden. */}
-      {menuOpen&&(<>
-        <div onClick={(e)=>{e.stopPropagation();setMenuOpen(false);}}
-          style={{position:'absolute',inset:0,zIndex:8}}/>
-        <div className="glass-bar slide-down" style={{position:'absolute',zIndex:9,
-          top:'calc(env(safe-area-inset-top,0px) + 62px)',right:14,
-          borderRadius:19,padding:6,minWidth:208,
-          display:'flex',flexDirection:'column'}}>
-          <button onClick={()=>{setMenuOpen(false);nav('settings');}} style={menuRow}>
-            <span style={{color:T.t2,display:'inline-flex'}}><GearIcon size={18}/></span>
-            <span style={{flex:1}}>Einstellungen</span>
-            <ChevronRightIcon size={14} color={T.t3}/>
-          </button>
-          <div style={{height:1,background:T.sep,margin:'2px 12px'}}/>
-          <button onClick={()=>{setMenuOpen(false);onLogout&&onLogout();}}
-            style={{...menuRow,color:T.o,fontWeight:700}}>
-            <span style={{display:'inline-flex'}}><ExitGlyph size={18}/></span>
-            <span style={{flex:1}}>Abmelden</span>
-          </button>
-        </div>
-      </>)}
 
       <BottomFade/>
       <TabBar active={activeTab} onTab={onTabLocal}/>
@@ -9650,7 +9629,7 @@ function SettingsCard({icon,title,desc,onClick,destructive=false,q=''}){
   );
 }
 
-function Settings({onHome,onBack,nav}){
+function Settings({onHome,onBack,nav,onLogout}){
   // Such-Query — eigenes Suchfeld im Screen (die Navbar-Suche ist weg,
   // Einstellungen sind kein Tab mehr und wohnen im Profil).
   const[query,setQuery]=useState('');
@@ -9723,6 +9702,25 @@ function Settings({onHome,onBack,nav}){
             Privatsphäre → "Konto und Daten löschen", damit User vor
             dem Schritt erst die DSGVO-Konsequenzen sehen. */}
 
+        {/* Abmelden — ganz unten in den Einstellungen (aus dem
+            Home-Burger hierher verlegt). */}
+        <button onClick={onLogout}
+          style={{width:'100%',marginTop:4,background:T.card,
+            border:`1px solid ${T.border}`,borderRadius:19,
+            padding:'16px 18px',display:'flex',alignItems:'center',gap:16,
+            color:T.o,fontWeight:800,fontSize:15,letterSpacing:-.1,
+            cursor:'pointer',textAlign:'left'}}
+          onPointerDown={e=>e.currentTarget.style.background=T.card2}
+          onPointerUp={e=>e.currentTarget.style.background=T.card}
+          onPointerLeave={e=>e.currentTarget.style.background=T.card}>
+          <div style={{flexShrink:0,color:T.o,display:'flex',alignItems:'center',
+            justifyContent:'center',width:38,height:38,background:T.card2,
+            border:`1px solid ${T.border}`,borderRadius:13}}>
+            <ExitGlyph size={20}/>
+          </div>
+          <span style={{flex:1}}>Abmelden</span>
+        </button>
+
         <div style={{height:120,flexShrink:0}}/>
       </div>
 
@@ -9746,7 +9744,10 @@ function SettingsSubLayout({title,desc,icon,onBack,onHome,children}){
   // Liquid-Glass-FABs — Material liefert die .glass-bar-Klasse.
   const fabBase={
     position:'absolute',
-    bottom:'calc(env(safe-area-inset-bottom,0px) + 28px)',
+    // Auf Navbar-Hoehe: 54px-FAB so setzen, dass sein Zentrum auf der
+    // Navbar-Mittellinie liegt (Navbar-Center = inset*0.3 + 25.5px →
+    // FAB-bottom = center - 27 = inset*0.3 - 1.5px).
+    bottom:'calc(env(safe-area-inset-bottom, 0px) * 0.3 - 1.5px)',
     width:54,height:54,borderRadius:'50%',
     color:T.t1,cursor:'pointer',
     display:'flex',alignItems:'center',justifyContent:'center',
@@ -10184,11 +10185,6 @@ function SettingsPrivatsphaere({onBack,onHome,profile,setProfile,onOpenDelete}){
         </button>
       </SettingsSection>
 
-      <div style={{padding:'4px 14px 16px',color:T.t3,fontSize:11,lineHeight:1.6}}>
-        Profil-Daten liegen Ende-zu-Ende auf Supabase (EU). Row-Level-Security
-        stellt sicher: nur du kannst dein Profil schreiben. Andere können nur
-        Profile sehen, die du explizit öffentlich gestellt hast.
-      </div>
     </SettingsSubLayout>
   );
 }
@@ -10333,10 +10329,6 @@ function SettingsBenachrichtigungen({onBack,onHome,notify,setNotify}){
           on={notify.redDot} onToggle={()=>tog('redDot')}/>
       </SettingsSection>
 
-      <div style={{padding:'4px 14px 16px',color:T.t3,fontSize:11,lineHeight:1.6}}>
-        Push-Benachrichtigungen laufen über deinen Browser bzw. dein OS — RITMO
-        speichert nur die Präferenzen, keine eigenen Push-Tokens auf dem Server.
-      </div>
     </SettingsSubLayout>
   );
 }
@@ -10507,10 +10499,6 @@ function SettingsSicherheit({onBack,onHome}){
         </div>
       </SettingsSection>
 
-      <div style={{padding:'4px 14px 16px',color:T.t3,fontSize:11,lineHeight:1.6}}>
-        RITMO speichert keine Klartext-Passwörter — die Hash-Berechnung (bcrypt)
-        und Rate-Limiting laufen serverseitig bei Supabase.
-      </div>
     </SettingsSubLayout>
   );
 }
@@ -15919,12 +15907,7 @@ export default function App(){
       theme={theme} setTheme={setTheme}
       onComplete={()=>{setOnboarded(true);nav('home');}}/>}
     {scr==='home'&&<Home nav={nav} activeTab={activeTab} setActiveTab={handleTab}
-      profile={profile} onboarded={onboarded} unread={unreadTotal}
-      onLogout={async()=>{
-        try{await auth.signOut();}catch(e){}
-        setLoggedIn(false);
-        nav('login');
-      }}/>}
+      profile={profile} onboarded={onboarded} unread={unreadTotal}/>}
     {scr==='profile'&&<Profile profile={profile} setProfile={setProfile}
       onHome={goHome} currentUid={currentUid} onTab={handleTab}
       onOpenSettings={()=>setScr('settings')}
@@ -16025,7 +16008,12 @@ export default function App(){
       joinedSession={joinedSession}
       onLeaveJoined={()=>setJoinedSession(null)}/>}
     {scr==='settings'&&<Settings onHome={goHome} nav={nav}
-      onBack={()=>setScr('profile')}/>}
+      onBack={()=>setScr('profile')}
+      onLogout={async()=>{
+        try{await auth.signOut();}catch(e){}
+        setLoggedIn(false);
+        nav('login');
+      }}/>}
     {scr==='settings-steuerung'&&<SettingsSteuerung
       onBack={()=>setScr('settings')} onHome={goHome}
       inputMode={inputMode} setInputMode={setInputMode}

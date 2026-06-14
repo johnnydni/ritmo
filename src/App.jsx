@@ -3,7 +3,7 @@ import { SKILL_DESCRIPTIONS } from "./skillDescriptions.js";
 import { loadProfile as dbLoadProfile, saveProfile as dbSaveProfile, logMatch as dbLogMatch, loadMatchStats as dbLoadMatchStats,
   createOnlineTournament, joinOnlineTournament, fetchOnlineTournament, updateOnlineTournament, subscribeToTournament,
   publishTournamentState, submitScore, approveScore, rejectScore, sendReadyCheck, confirmReady, clearReadyCheck,
-  checkBetaKey, redeemBetaKey,
+  checkBetaKey, redeemBetaKey, deleteMyMatches as dbDeleteMyMatches,
   // Social layer
   fetchPublicProfile, searchPlayers, followUser, unfollowUser, followCounts, isFollowing,
   listFollowers, listFollowing,
@@ -416,12 +416,97 @@ function WelcomeNotice({onConfirm}){
   );
 }
 
+/* ── Anzeige-Name: Spitzname hat Vorrang vor dem echten Namen. ── */
+function displayName(p){
+  return (p&&(p.nickname||'').trim())||(p&&(p.name||'').trim())||'Spieler';
+}
+
+/* ═══ Login-Drosselung (clientseitig, eskalierend) ═══
+   Ab dem 3. Fehlversuch in Folge greift eine Sperre: 1 → 3 → 10 → 30 min
+   (kappt bei 30). Reiner Brute-Force-Deterrent im Browser; das echte
+   Rate-Limiting macht Supabase serverseitig. Ein erfolgreicher Login
+   setzt den Zähler zurück. Persistiert in localStorage (übersteht Reload). */
+const LOGIN_LOCK_TIERS=[1,3,10,30]; // Minuten
+const LOGIN_THROTTLE_KEY='ritmo_login_throttle';
+function readLoginThrottle(){
+  const t=lsGet(LOGIN_THROTTLE_KEY,null);
+  return (t&&typeof t==='object')?{fails:t.fails||0,lockUntil:t.lockUntil||0}:{fails:0,lockUntil:0};
+}
+function recordLoginFail(){
+  const t=readLoginThrottle();
+  const fails=t.fails+1;
+  let lockUntil=0;
+  if(fails>=3){
+    const tier=Math.min(fails-3,LOGIN_LOCK_TIERS.length-1);
+    lockUntil=Date.now()+LOGIN_LOCK_TIERS[tier]*60000;
+  }
+  const next={fails,lockUntil};
+  lsSet(LOGIN_THROTTLE_KEY,next);
+  return next;
+}
+function clearLoginThrottle(){ lsSet(LOGIN_THROTTLE_KEY,{fails:0,lockUntil:0}); }
+function fmtLockRemain(ms){
+  const s=Math.max(0,Math.ceil(ms/1000));
+  const m=Math.floor(s/60), ss=s%60;
+  return m>0?`${m}:${String(ss).padStart(2,'0')} min`:`${ss}s`;
+}
+
+/* ═══ Länder (DACH) für die Telefon-Vorwahl bei der Registrierung ═══ */
+const PHONE_COUNTRIES=[
+  {code:'DE',dial:'+49',name:'Deutschland'},
+  {code:'AT',dial:'+43',name:'Österreich'},
+  {code:'CH',dial:'+41',name:'Schweiz'},
+];
+/* Schlichte SVG-Flaggen (keine Emojis — renderkonsistent über alle OS). */
+function FlagIcon({code,size=20}){
+  const w=size, h=Math.round(size*0.72);
+  const box={borderRadius:3,display:'block',flexShrink:0,border:`1px solid ${T.border}`};
+  if(code==='DE') return(
+    <svg width={w} height={h} viewBox="0 0 30 21" style={box} aria-hidden="true">
+      <rect width="30" height="7" y="0" fill="#000"/>
+      <rect width="30" height="7" y="7" fill="#DD0000"/>
+      <rect width="30" height="7" y="14" fill="#FFCE00"/>
+    </svg>
+  );
+  if(code==='AT') return(
+    <svg width={w} height={h} viewBox="0 0 30 21" style={box} aria-hidden="true">
+      <rect width="30" height="7" y="0" fill="#ED2939"/>
+      <rect width="30" height="7" y="7" fill="#fff"/>
+      <rect width="30" height="7" y="14" fill="#ED2939"/>
+    </svg>
+  );
+  // CH — quadratisch, weißes Kreuz auf Rot
+  return(
+    <svg width={h} height={h} viewBox="0 0 21 21" style={box} aria-hidden="true">
+      <rect width="21" height="21" fill="#D52B1E"/>
+      <rect x="9" y="4" width="3" height="13" fill="#fff"/>
+      <rect x="4" y="9" width="13" height="3" fill="#fff"/>
+    </svg>
+  );
+}
+
 function Login({onSuccess,onRegister}){
   const[username,setUsername]=useState('');
   const[password,setPassword]=useState('');
   const[error,setError]=useState('');
   const[shake,setShake]=useState(false);
   const[busy,setBusy]=useState(false);
+
+  // Eskalierende Login-Sperre (siehe recordLoginFail). lockUntil aus
+  // localStorage gelesen → übersteht Reload; nowTs tickt für den
+  // Live-Countdown im Button/Fehlertext.
+  const[lockUntil,setLockUntil]=useState(()=>readLoginThrottle().lockUntil);
+  const[nowTs,setNowTs]=useState(()=>Date.now());
+  const locked=lockUntil>nowTs;
+  const lockRemain=Math.max(0,lockUntil-nowTs);
+  useEffect(()=>{
+    if(lockUntil<=Date.now()) return;
+    const id=setInterval(()=>{
+      const n=Date.now(); setNowTs(n);
+      if(n>=lockUntil) clearInterval(id);
+    },500);
+    return()=>clearInterval(id);
+  },[lockUntil]);
 
   // Passwort-Reset-Inline-Flow
   const[resetMode,setResetMode]=useState(false);
@@ -447,16 +532,29 @@ function Login({onSuccess,onRegister}){
   };
 
   const tryLogin=async()=>{
+    if(lockUntil>Date.now()){
+      fail(`Zu viele Versuche — gesperrt für ${fmtLockRemain(lockUntil-Date.now())}.`);
+      return;
+    }
     setBusy(true);setError('');
     try{
       const result=await auth.signInWithEmail(username,password);
+      clearLoginThrottle(); setLockUntil(0);
       onSuccess(result);
     }catch(e){
-      fail(e.message||'Anmeldung fehlgeschlagen');
+      // Jeder Fehlversuch zählt; ab dem 3. greift die eskalierende Sperre.
+      const t=recordLoginFail();
+      setLockUntil(t.lockUntil); setNowTs(Date.now());
+      if(t.lockUntil>Date.now()){
+        fail(`Zu viele Fehlversuche — gesperrt für ${fmtLockRemain(t.lockUntil-Date.now())}.`);
+      }else{
+        const left=Math.max(0,3-t.fails);
+        fail((e.message||'Anmeldung fehlgeschlagen')+(left>0?` · noch ${left} Versuch${left===1?'':'e'}`:''));
+      }
     }finally{setBusy(false);}
   };
 
-  const onKeyDown=(e)=>{ if(e.key==='Enter') tryLogin(); };
+  const onKeyDown=(e)=>{ if(e.key==='Enter'&&!locked) tryLogin(); };
 
   return(
     <div style={{minHeight:'100dvh',background:T.bgGrad,display:'flex',
@@ -548,13 +646,14 @@ function Login({onSuccess,onRegister}){
           </div>
         )}
 
-        {/* Submit */}
-        <button onClick={tryLogin} disabled={busy}
-          style={{background:T.o,border:'none',borderRadius:15,
-            padding:'14px 16px',color:'#000',fontSize:15,fontWeight:800,letterSpacing:.2,
-            cursor:busy?'not-allowed':'pointer',opacity:busy?.6:1,
-            boxShadow:'0 4px 14px var(--oGlow)'}}>
-          {busy?'…':'Anmelden'}
+        {/* Submit — bei aktiver Sperre disabled + Live-Countdown */}
+        <button onClick={tryLogin} disabled={busy||locked}
+          style={{background:locked?T.card2:T.o,border:locked?`1px solid ${T.border}`:'none',
+            borderRadius:15,
+            padding:'14px 16px',color:locked?T.t2:'#000',fontSize:15,fontWeight:800,letterSpacing:.2,
+            cursor:(busy||locked)?'not-allowed':'pointer',opacity:busy?.6:1,
+            boxShadow:locked?'none':'0 4px 14px var(--oGlow)'}}>
+          {locked?`Gesperrt · ${fmtLockRemain(lockRemain)}`:(busy?'…':'Anmelden')}
         </button>
 
         {/* Passwort vergessen */}
@@ -634,6 +733,9 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
   const[email,setEmail]=useState('');
   const[password,setPassword]=useState('');
   const[password2,setPassword2]=useState('');
+  const[phone,setPhone]=useState('');
+  const[phoneCountry,setPhoneCountry]=useState('DE');
+  const[ccOpen,setCcOpen]=useState(false);
   const[error,setError]=useState('');
   const[shake,setShake]=useState(false);
   const[busy,setBusy]=useState(false);
@@ -666,6 +768,14 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
       fail('Passwörter stimmen nicht überein');
       return;
     }
+    // Telefon: Pflichtfeld, nur Format-Check (DACH-Vorwahl + 6–14 Ziffern).
+    const dial=PHONE_COUNTRIES.find(c=>c.code===phoneCountry)?.dial||'';
+    const nat=(phone||'').replace(/[^\d]/g,'').replace(/^0+/,'');
+    if(nat.length<6||nat.length>14){
+      fail('Bitte gültige Telefonnummer eingeben.');
+      return;
+    }
+    const fullPhone=dial+nat;
     setBusy(true);setError('');
     try{
       // Final guard: Beta-Key noch unverbraucht? Verhindert Edge-Case,
@@ -679,7 +789,7 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
         fail('Beta-Key wurde inzwischen anderweitig eingelöst — bitte neuen Key eingeben.');
         return;
       }
-      const r=await auth.signUpWithEmail(email,password);
+      const r=await auth.signUpWithEmail(email,password,fullPhone);
       // Erst nach erfolgreichem signUp wird der Key atomar verbraucht.
       // Race-edge-case ist akzeptiert: Account funktioniert weiter, Key
       // wurde ggf. von jemand anderem gleichzeitig verbraucht.
@@ -848,6 +958,48 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
                 style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
                   borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
                   outline:'none',boxSizing:'border-box'}}/>
+            </div>
+
+            {/* Telefon — Pflichtfeld, nur Format-Check; Länder-Vorwahl
+                (DACH) mit Flagge im Dropdown davor. */}
+            <div style={{marginBottom:10}}>
+              <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
+                textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Telefon</div>
+              <div style={{display:'flex',gap:8,position:'relative'}}>
+                <button type="button" onClick={()=>setCcOpen(o=>!o)}
+                  aria-label="Ländervorwahl wählen" aria-expanded={ccOpen}
+                  style={{display:'flex',alignItems:'center',gap:7,flexShrink:0,
+                    background:T.card2,border:`1px solid ${T.border}`,borderRadius:13,
+                    padding:'12px 12px',color:T.t1,fontSize:14,fontWeight:700,cursor:'pointer'}}>
+                  <FlagIcon code={phoneCountry} size={20}/>
+                  <span>{PHONE_COUNTRIES.find(c=>c.code===phoneCountry)?.dial}</span>
+                  <span style={{display:'inline-flex',transform:ccOpen?'rotate(90deg)':'none',
+                    transition:'transform .2s'}}><ChevronRightIcon size={12} color={T.t3}/></span>
+                </button>
+                <input value={phone} onChange={e=>{setPhone(e.target.value);setError('');}}
+                  onKeyDown={onKeyDown} type="tel" inputMode="tel" autoComplete="tel"
+                  placeholder="170 1234567"
+                  style={{flex:1,minWidth:0,background:T.card2,border:`1px solid ${T.border}`,
+                    borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
+                    outline:'none',boxSizing:'border-box'}}/>
+                {ccOpen&&(
+                  <div className="fi" style={{position:'absolute',top:'calc(100% + 6px)',left:0,
+                    zIndex:20,background:T.card,border:`1px solid ${T.border}`,borderRadius:13,
+                    padding:6,minWidth:210,boxShadow:'0 12px 30px rgba(0,0,0,.45)'}}>
+                    {PHONE_COUNTRIES.map(c=>(
+                      <button key={c.code} type="button"
+                        onClick={()=>{setPhoneCountry(c.code);setCcOpen(false);}}
+                        style={{display:'flex',alignItems:'center',gap:10,width:'100%',
+                          background:c.code===phoneCountry?T.card2:'none',border:'none',
+                          borderRadius:9,padding:'10px 10px',cursor:'pointer',textAlign:'left'}}>
+                        <FlagIcon code={c.code} size={20}/>
+                        <span style={{flex:1,color:T.t1,fontSize:13,fontWeight:600}}>{c.name}</span>
+                        <span style={{color:T.t3,fontSize:13,fontWeight:700}}>{c.dial}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Password */}
@@ -2737,7 +2889,7 @@ const styleGrad=id=>{
 };
 
 function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRitmoDNA,
-  currentUid,onOpenFollowers,onOpenFollowing,onTab,onOpenSettings}){
+  currentUid,onOpenFollowers,onOpenFollowing,onTab,onOpenSettings,onOpenEdit}){
   // Kurzlabels für die Stats-Spalten (Mock: nur „Rechts"/„Links").
   const handLabels={right:'Rechts',left:'Links'};
   const sideLabels={left:'Ad-Seite (links)',right:'Deuce-Seite (rechts)',any:'Beides geht'};
@@ -2847,7 +2999,7 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
             </div>
             <div className="fu" style={{color:T.t1,fontSize:38,fontWeight:900,letterSpacing:-1.4,
               lineHeight:1.02,marginTop:8,overflowWrap:'anywhere'}}>
-              {profile.name||'Spieler'}
+              {displayName(profile)}
             </div>
             <div className="fu" style={{animationDelay:'.05s',...eyeb,marginTop:11}}>
               Dein Stil · Dein Rhythmus · Deine Stats
@@ -2906,6 +3058,9 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
             <ChevronRightIcon size={13} color={T.t2}/>
           </button>
         </div>
+
+        {/* Bio — Spruch fürs Profil (max. 200), den andere sehen */}
+        <ProfileBio profile={profile} setProfile={setProfile}/>
 
         {/* Stats-Zeile: 4 Spalten mit Hairline-Trennern.
             Level (tap = geschätztes Level editieren) · Hand · Seite · Stil */}
@@ -3089,10 +3244,18 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
           )}
         </div>
 
-        {/* Onboarding — ganz unten (Einstellungen + Abmelden wohnen
-            jetzt im Burger-Menü des Home-Headers) */}
-        <button ref={el=>{secRefs.current.mehr=el;}} onClick={onResetOnboarding}
-          className="fu" style={{...rowSty(false),animationDelay:'.72s',
+        {/* ── MEHR: Profil bearbeiten (Name, Spitzname, Vorlieben,
+            Stats-Reset) + Onboarding. Einstellungen + Abmelden wohnen
+            im Burger des Home-Headers. */}
+        <button ref={el=>{secRefs.current.mehr=el;}} onClick={onOpenEdit}
+          className="fu" style={{...rowSty(true),animationDelay:'.70s'}}>
+          <span style={{width:26,display:'inline-flex',justifyContent:'center',
+            flexShrink:0,color:T.t2}}><EditIcon size={17}/></span>
+          <span style={{flex:1,minWidth:0}}><span style={rowLbl}>Profil bearbeiten</span></span>
+          <ChevronRightIcon size={15} color={T.t3}/>
+        </button>
+        <button onClick={onResetOnboarding}
+          className="fu" style={{...rowSty(true),animationDelay:'.74s',
           borderBottom:`1px solid ${T.sep}`}}>
           <span style={{width:26,display:'inline-flex',justifyContent:'center',
             flexShrink:0,color:T.t2}}><RefreshGlyph/></span>
@@ -3131,6 +3294,175 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
       {/* Profil ist jetzt ein Haupt-Tab → Navbar statt Home-FAB.
           Fallback MatchBar, falls (alte Aufrufer) kein onTab geben. */}
       {onTab?<TabBar active="profil" onTab={onTab}/>:<MatchBar onHome={onHome}/>}
+    </div>
+  );
+}
+
+/* ─── Profil-Bio — Spruch (max. 200 Zeichen) mit Inline-Editor.
+   Wird auf dem eigenen Profil mit Edit-Stift gezeigt; andere Spieler
+   sehen ihn read-only im PublicProfile. ─────────────────────────── */
+function ProfileBio({profile,setProfile}){
+  const[editing,setEditing]=useState(false);
+  const[val,setVal]=useState(profile.bio||'');
+  const bio=(profile.bio||'').trim();
+  const save=()=>{ setProfile(p=>({...p,bio:val.trim().slice(0,200)})); setEditing(false); };
+  if(editing){
+    return(
+      <div className="fi" style={{marginTop:22,width:'100%',maxWidth:520,
+        marginLeft:'auto',marginRight:'auto'}}>
+        <textarea value={val} onChange={e=>setVal(e.target.value.slice(0,200))}
+          maxLength={200} rows={3} autoFocus
+          placeholder="Dein Spruch fürs Profil … (max. 200 Zeichen)"
+          style={{width:'100%',background:T.card2,border:`1px solid ${T.o}`,borderRadius:14,
+            padding:'12px 14px',color:T.t1,fontSize:14,lineHeight:1.5,fontWeight:500,
+            outline:'none',boxSizing:'border-box',resize:'none',fontFamily:'inherit'}}/>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginTop:8}}>
+          <span style={{color:val.length>=200?T.r:T.t3,fontSize:11,fontWeight:700,
+            fontVariantNumeric:'tabular-nums'}}>{val.length}/200</span>
+          <div style={{display:'flex',gap:8}}>
+            <button onClick={()=>{setVal(profile.bio||'');setEditing(false);}}
+              style={{padding:'7px 14px',background:'none',border:`1px solid ${T.border}`,
+                borderRadius:10,color:T.t2,fontSize:12,fontWeight:700,cursor:'pointer'}}>Abbrechen</button>
+            <button onClick={save}
+              style={{padding:'7px 16px',background:T.o,border:'none',borderRadius:10,
+                color:'#000',fontSize:12,fontWeight:800,cursor:'pointer'}}>Speichern</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  return(
+    <button onClick={()=>{setVal(profile.bio||'');setEditing(true);}} className="fu"
+      style={{animationDelay:'.24s',marginTop:22,width:'100%',background:'none',
+        border:'none',cursor:'pointer',display:'flex',alignItems:'center',
+        justifyContent:'center',gap:9,padding:0}}>
+      <span style={{color:bio?T.t2:T.t3,fontSize:14,fontWeight:bio?600:500,
+        fontStyle:bio?'italic':'normal',lineHeight:1.5,maxWidth:430,textAlign:'center'}}>
+        {bio?`„${bio}"`:'Bio hinzufügen — dein Spruch fürs Profil'}
+      </span>
+      <span style={{color:T.o,display:'inline-flex',flexShrink:0}}><EditIcon size={15}/></span>
+    </button>
+  );
+}
+
+/* ─── Profil bearbeiten — Name, Spitzname, Vorlieben + Stats-Reset.
+   Macht die letzten Onboarding-Schritte überflüssig. Eigene Chrome
+   (Person-FAB → zurück ins Profil), FABs auf Navbar-Höhe. ────────── */
+function ProfileEdit({profile,setProfile,onBack,onHome,onResetStats}){
+  const set=(patch)=>setProfile(p=>({...p,...patch}));
+  const[confirmReset,setConfirmReset]=useState(false);
+  const HANDS=[{id:'right',label:'Rechts'},{id:'left',label:'Links'}];
+  const SIDES=[{id:'left',label:'Ad-Seite'},{id:'right',label:'Deuce-Seite'},{id:'any',label:'Beides'}];
+  const seg=(opts,val,onPick)=>(
+    <div style={{display:'flex',gap:8}}>
+      {opts.map(o=>{
+        const active=val===o.id;
+        return(
+          <button key={o.id} onClick={()=>onPick(o.id)}
+            style={{flex:1,padding:'11px 6px',borderRadius:12,
+              background:active?T.o:'transparent',color:active?'#000':T.t2,
+              border:`1px solid ${active?T.o:T.border}`,fontSize:13,
+              fontWeight:active?800:600,letterSpacing:.2,cursor:'pointer',
+              transition:'all .18s'}}>{o.label}</button>
+        );
+      })}
+    </div>
+  );
+  const lblSty={color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
+    textTransform:'uppercase',marginBottom:7,paddingLeft:2};
+  const inputSty={width:'100%',background:T.card2,border:`1px solid ${T.border}`,
+    borderRadius:13,padding:'13px 15px',color:T.t1,fontSize:15,fontWeight:500,
+    outline:'none',boxSizing:'border-box'};
+  const fabBase={position:'absolute',
+    bottom:'calc(env(safe-area-inset-bottom, 0px) * 0.3 - 1.5px)',
+    width:54,height:54,borderRadius:'50%',color:T.t1,cursor:'pointer',
+    display:'flex',alignItems:'center',justifyContent:'center',zIndex:5};
+  return(
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',
+      position:'relative',overflow:'hidden'}}>
+      <div style={{padding:'0 22px 18px'}}>
+        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
+          <div style={{flexShrink:0,color:T.o,width:36,height:36,background:T.card2,
+            border:`1px solid ${T.border}`,borderRadius:13,display:'flex',
+            alignItems:'center',justifyContent:'center'}}><EditIcon size={18}/></div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.5,
+              textTransform:'uppercase'}}>Profil</div>
+            <div style={{color:T.t1,fontSize:24,fontWeight:800,letterSpacing:-.3,marginTop:2}}>
+              Bearbeiten
+            </div>
+          </div>
+        </div>
+        <div style={{color:T.t3,fontSize:13,lineHeight:1.5,marginTop:8}}>
+          Name, Spitzname und Vorlieben — jederzeit änderbar.
+        </div>
+      </div>
+
+      <div style={{flex:1,padding:'0 22px 140px',overflowY:'auto',
+        WebkitOverflowScrolling:'touch',display:'flex',flexDirection:'column',gap:22}}>
+        <div>
+          <div style={lblSty}>Name</div>
+          <input value={profile.name||''} onChange={e=>set({name:e.target.value})}
+            placeholder="Dein Name" autoCapitalize="words" style={inputSty}/>
+        </div>
+        <div>
+          <div style={lblSty}>Spitzname · wird in der App angezeigt</div>
+          <input value={profile.nickname||''} onChange={e=>set({nickname:e.target.value})}
+            placeholder="z. B. Felix" autoCapitalize="words" style={inputSty}/>
+        </div>
+        <div>
+          <div style={lblSty}>Bevorzugte Hand</div>
+          {seg(HANDS,profile.handPreference,v=>set({handPreference:v}))}
+        </div>
+        <div>
+          <div style={lblSty}>Bevorzugte Seite</div>
+          {seg(SIDES,profile.courtSide,v=>set({courtSide:v}))}
+        </div>
+
+        <div style={{marginTop:6,paddingTop:18,borderTop:`1px solid ${T.sep}`}}>
+          <div style={lblSty}>Zurücksetzen</div>
+          {!confirmReset?(
+            <button onClick={()=>setConfirmReset(true)}
+              style={{width:'100%',background:'rgba(232,69,69,0.08)',
+                border:'1px solid rgba(232,69,69,0.35)',borderRadius:13,
+                padding:'14px 16px',color:'#FF6B6B',fontSize:14,fontWeight:700,
+                letterSpacing:.2,cursor:'pointer',textAlign:'left',
+                display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+              <span>Spiele & Statistik zurücksetzen</span>
+              <RefreshGlyph/>
+            </button>
+          ):(
+            <div className="fi" style={{background:'rgba(232,69,69,0.08)',
+              border:'1px solid rgba(232,69,69,0.35)',borderRadius:13,padding:'14px 16px'}}>
+              <div style={{color:T.t1,fontSize:13,fontWeight:600,lineHeight:1.5,marginBottom:12}}>
+                Alle geloggten Matches und das laufende Scoreboard werden gelöscht.
+                Das kann nicht rückgängig gemacht werden.
+              </div>
+              <div style={{display:'flex',gap:8}}>
+                <button onClick={()=>setConfirmReset(false)}
+                  style={{flex:1,padding:'11px',background:'none',border:`1px solid ${T.border}`,
+                    borderRadius:11,color:T.t2,fontSize:13,fontWeight:700,cursor:'pointer'}}>Abbrechen</button>
+                <button onClick={()=>{onResetStats&&onResetStats();setConfirmReset(false);}}
+                  style={{flex:1,padding:'11px',background:'#E84545',border:'none',
+                    borderRadius:11,color:'#fff',fontSize:13,fontWeight:800,cursor:'pointer'}}>Zurücksetzen</button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <BottomFade/>
+      {onHome&&(
+        <button onClick={onHome} aria-label="Zurück zur Startseite"
+          className="glass-bar" style={{...fabBase,left:22}}>
+          <HomeIcon size={22}/>
+        </button>
+      )}
+      <button onClick={onBack} aria-label="Zurück zum Profil"
+        className="glass-bar" style={{...fabBase,right:22}}>
+        <PersonGlyph size={22}/>
+      </button>
     </div>
   );
 }
@@ -3610,7 +3942,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
                 animationDelay:'.12s',display:'block'}}/>
               <span style={{color:'#FFF',fontSize:18,fontWeight:700,letterSpacing:-.3,
                 whiteSpace:'nowrap',lineHeight:1}}>
-                Hi, {profile?.name?.split(' ')[0]||'Spieler'}!
+                Hi, {displayName(profile).split(' ')[0]}!
               </span>
             </div>
             <span className="stripe-in" aria-hidden="true" style={{width:52,height:7,
@@ -11090,7 +11422,8 @@ function PublicProfile({userId,currentUid,onHome,onBack,backLabel}){
   };
 
   const data=prof?.data||{};
-  const name=prof?.display_name||data.name||'Spieler';
+  const name=prof?.display_name||data.nickname||data.name||'Spieler';
+  const bio=(data.bio||'').trim();
   const lvl=data.playtomicLevel??data.estimatedLevel;
   const styleType=data.styleType;
   const style=styleType?PADEL_STYLES[styleType]:null;
@@ -11142,6 +11475,15 @@ function PublicProfile({userId,currentUid,onHome,onBack,backLabel}){
               )}
             </div>
           </div>
+
+          {/* Bio — Spruch des Spielers (read-only) */}
+          {bio&&(
+            <div className="fu" style={{background:T.card,border:`1px solid ${T.border}`,
+              borderRadius:15,padding:'14px 16px',marginBottom:12,animationDelay:'.03s'}}>
+              <div style={{color:T.t2,fontSize:14,fontStyle:'italic',lineHeight:1.55,
+                fontWeight:500}}>„{bio}"</div>
+            </div>
+          )}
 
           {/* Follower / Following */}
           <div className="fu" style={{display:'flex',gap:10,marginBottom:12,animationDelay:'.04s'}}>
@@ -11691,7 +12033,8 @@ function ClubChat({clubId,currentUid,onHome,onBack}){
   }
 
   const send=async()=>{
-    const body=text.trim();
+    // Harte 500-Zeichen-Grenze (zusätzlich zu maxLength am Input).
+    const body=text.trim().slice(0,500);
     if(!body||busy) return;
     setBusy(true);
     try{
@@ -11706,6 +12049,16 @@ function ClubChat({clubId,currentUid,onHome,onBack}){
   const fmtTime=(iso)=>{
     try{ return new Date(iso).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}); }
     catch{ return ''; }
+  };
+  const fmtDay=(iso)=>{
+    try{
+      const d=new Date(iso), now=new Date();
+      const same=(a,b)=>a.toDateString()===b.toDateString();
+      if(same(d,now)) return 'Heute';
+      const y=new Date(now); y.setDate(now.getDate()-1);
+      if(same(d,y)) return 'Gestern';
+      return d.toLocaleDateString('de-DE',{day:'2-digit',month:'long'});
+    }catch{ return ''; }
   };
 
   return(
@@ -11745,66 +12098,112 @@ function ClubChat({clubId,currentUid,onHome,onBack}){
       </div>
 
       {/* Message-Stream */}
-      <div ref={scrollRef} style={{flex:1,overflowY:'auto',padding:'4px 22px 88px',
-        display:'flex',flexDirection:'column',gap:8,WebkitOverflowScrolling:'touch'}}>
+      <div ref={scrollRef} style={{flex:1,overflowY:'auto',padding:'4px 18px 96px',
+        display:'flex',flexDirection:'column',gap:7,WebkitOverflowScrolling:'touch'}}>
         {msgs.length===0?(
-          <div style={{color:T.t3,fontSize:13,padding:'40px 0',textAlign:'center',lineHeight:1.6}}>
-            Schreib die erste Nachricht im Club-Chat.
+          <div className="fi" style={{margin:'auto',textAlign:'center',padding:'24px',
+            display:'flex',flexDirection:'column',alignItems:'center',gap:14,maxWidth:260}}>
+            <div style={{width:60,height:60,borderRadius:'50%',background:T.card,
+              border:`1px solid ${T.border}`,display:'flex',alignItems:'center',
+              justifyContent:'center',color:T.o}}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+              </svg>
+            </div>
+            <div>
+              <div style={{color:T.t1,fontSize:15,fontWeight:800,letterSpacing:-.2,marginBottom:4}}>
+                Noch keine Nachrichten
+              </div>
+              <div style={{color:T.t3,fontSize:12.5,lineHeight:1.55}}>
+                Schreib die erste Nachricht im Club-Chat.
+              </div>
+            </div>
           </div>
         ):msgs.map((m,i)=>{
           const mine=m.user_id===currentUid;
           const name=m.profile?.display_name||m.profile?.data?.name||'Spieler';
           const prev=msgs[i-1];
           const showHeader=!prev||prev.user_id!==m.user_id;
+          const showDay=!prev||(()=>{try{return new Date(prev.created_at).toDateString()!==new Date(m.created_at).toDateString();}catch{return false;}})();
           return(
-            <div key={m.id} className="fi" style={{
-              display:'flex',gap:8,alignItems:'flex-end',
-              flexDirection:mine?'row-reverse':'row'}}>
-              {!mine&&showHeader?(
-                <ProfileAvatar name={name} avatar={m.profile?.data?.avatar} size={28}/>
-              ):(<div style={{width:28,flexShrink:0}}/>)}
-              <div style={{maxWidth:'78%',display:'flex',flexDirection:'column',
-                alignItems:mine?'flex-end':'flex-start',gap:2}}>
-                {!mine&&showHeader&&(
-                  <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:.3,
-                    paddingLeft:4}}>{name}</div>
-                )}
-                <div style={{padding:'8px 12px',borderRadius:19,
-                  background:mine?T.o:T.card,
-                  border:mine?'none':`1px solid ${T.border}`,
-                  color:mine?'#000':T.t1,fontSize:14,lineHeight:1.45,
-                  whiteSpace:'pre-wrap',wordBreak:'break-word',
-                  borderBottomRightRadius:mine?4:14,
-                  borderBottomLeftRadius:mine?14:4}}>
-                  {m.body}
+            <Fragment key={m.id}>
+              {showDay&&(
+                <div style={{alignSelf:'center',margin:'10px 0 6px',padding:'4px 12px',
+                  borderRadius:999,background:T.card2,border:`1px solid ${T.border}`,
+                  color:T.t3,fontSize:10.5,fontWeight:800,letterSpacing:.8,
+                  textTransform:'uppercase'}}>
+                  {fmtDay(m.created_at)}
                 </div>
-                <div style={{color:T.t3,fontSize:10,paddingLeft:mine?0:4,paddingRight:mine?4:0}}>
-                  {fmtTime(m.created_at)}
+              )}
+              <div className="fi" style={{display:'flex',gap:8,alignItems:'flex-end',
+                marginTop:showHeader?5:0,
+                flexDirection:mine?'row-reverse':'row'}}>
+                {!mine&&showHeader?(
+                  <ProfileAvatar name={name} avatar={m.profile?.data?.avatar} size={28}/>
+                ):(<div style={{width:28,flexShrink:0}}/>)}
+                <div style={{maxWidth:'76%',display:'flex',flexDirection:'column',
+                  alignItems:mine?'flex-end':'flex-start',gap:3}}>
+                  {!mine&&showHeader&&(
+                    <div style={{color:T.o,fontSize:10.5,fontWeight:800,letterSpacing:.4,
+                      paddingLeft:6}}>{name}</div>
+                  )}
+                  <div style={{padding:'9px 13px',
+                    background:mine?T.o:T.card,
+                    border:mine?'none':`1px solid ${T.border}`,
+                    color:mine?'#000':T.t1,fontSize:14,lineHeight:1.45,
+                    whiteSpace:'pre-wrap',wordBreak:'break-word',
+                    borderRadius:18,
+                    borderBottomRightRadius:mine?5:18,
+                    borderBottomLeftRadius:mine?18:5,
+                    boxShadow:mine?'0 2px 10px var(--oGlow)':'0 1px 4px rgba(0,0,0,.18)'}}>
+                    {m.body}
+                  </div>
+                  <div style={{color:T.t3,fontSize:9.5,fontWeight:600,
+                    paddingLeft:mine?0:6,paddingRight:mine?6:0}}>
+                    {fmtTime(m.created_at)}
+                  </div>
                 </div>
               </div>
-            </div>
+            </Fragment>
           );
         })}
       </div>
 
-      {/* Composer */}
+      {/* Composer — RITMO-Pille mit 500-Zeichen-Limit + Rund-Send */}
       <div style={{position:'absolute',left:0,right:0,
         bottom:'calc(env(safe-area-inset-bottom,0px) + 14px)',
-        padding:'0 22px',zIndex:5}}>
-        <div style={{display:'flex',gap:8,background:T.card,
-          border:`1px solid ${T.border}`,borderRadius:19,padding:'8px 8px 8px 14px',
-          boxShadow:'0 8px 24px rgba(0,0,0,.4)'}}>
-          <input value={text} onChange={e=>setText(e.target.value)}
+        padding:'0 18px',zIndex:5}}>
+        {text.length>=440&&(
+          <div style={{textAlign:'right',padding:'0 10px 5px',
+            color:text.length>=500?T.r:T.t3,fontSize:10.5,fontWeight:800,
+            fontVariantNumeric:'tabular-nums'}}>
+            {text.length}/500
+          </div>
+        )}
+        <div style={{display:'flex',alignItems:'flex-end',gap:9,background:T.card,
+          border:`1px solid ${T.border}`,borderRadius:24,padding:'6px 6px 6px 16px',
+          boxShadow:'0 10px 30px rgba(0,0,0,.45)'}}>
+          <input value={text}
+            onChange={e=>setText(e.target.value.slice(0,500))}
             onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}}}
+            maxLength={500}
             placeholder="Nachricht …"
             style={{flex:1,background:'transparent',border:'none',color:T.t1,
-              fontSize:14,fontWeight:500,outline:'none',minWidth:0}}/>
-          <button onClick={send} disabled={busy||!text.trim()}
-            style={{padding:'8px 14px',background:T.o,border:'none',borderRadius:13,
-              color:'#000',fontSize:13,fontWeight:800,letterSpacing:.3,
+              fontSize:14,fontWeight:500,outline:'none',minWidth:0,padding:'9px 0'}}/>
+          <button onClick={send} disabled={busy||!text.trim()} aria-label="Senden"
+            style={{flexShrink:0,width:40,height:40,borderRadius:'50%',background:T.o,
+              border:'none',display:'flex',alignItems:'center',justifyContent:'center',
               cursor:(busy||!text.trim())?'not-allowed':'pointer',
-              opacity:(busy||!text.trim())?.5:1}}>
-            Senden
+              opacity:(busy||!text.trim())?.45:1,
+              transition:'opacity .15s, transform .12s'}}
+            onPointerDown={e=>{if(!(busy||!text.trim()))e.currentTarget.style.transform='scale(.88)';}}
+            onPointerUp={e=>e.currentTarget.style.transform='scale(1)'}
+            onPointerLeave={e=>e.currentTarget.style.transform='scale(1)'}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000"
+              strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/>
+            </svg>
           </button>
         </div>
       </div>
@@ -15814,6 +16213,15 @@ export default function App(){
       dAm({type:'_R',s:snap.am});
     });
   };
+  // „Spiele & Statistik zurücksetzen" (aus Profil bearbeiten): aktive
+  // Scoreboards leeren + geloggte Matches (Supabase, RLS) löschen +
+  // Match-Zähler im Profil nullen (fließen ins Level-Estimate ein).
+  const resetStats=()=>{
+    dBo3({type:'RESET'});
+    dAm({type:'RESET',limit:cfg.amLimit??21});
+    setProfile(p=>({...p,matchesPlayed:0,winsCount:0}));
+    dbDeleteMyMatches();
+  };
   const deleteTourney=(id)=>{
     const target=id||currentTourneyId;
     const removed=tourneys.find(t=>t.id===target);
@@ -15911,6 +16319,7 @@ export default function App(){
     {scr==='profile'&&<Profile profile={profile} setProfile={setProfile}
       onHome={goHome} currentUid={currentUid} onTab={handleTab}
       onOpenSettings={()=>setScr('settings')}
+      onOpenEdit={()=>setScr('profile-edit')}
       onOpenRitmoDNA={()=>setScr('profile-ritmodna')}
       onOpenFollowers={()=>{ if(currentUid){ setViewPlayerId(currentUid); setFollowListInitial('followers'); setScr('follow-list'); } }}
       onOpenFollowing={()=>{ if(currentUid){ setViewPlayerId(currentUid); setFollowListInitial('following'); setScr('follow-list'); } }}
@@ -15927,6 +16336,9 @@ export default function App(){
     {scr==='profile-ritmodna'&&<ProfileRitmoDNA profile={profile}
       onBack={()=>setScr('profile')}
       onHome={goHome}/>}
+    {scr==='profile-edit'&&<ProfileEdit profile={profile} setProfile={setProfile}
+      onBack={()=>setScr('profile')} onHome={goHome}
+      onResetStats={resetStats}/>}
     {scr==='rules'&&<RulesLanding onHome={goHome}
       onContinue={()=>setScr('rules-overview')}
       onMarkRead={()=>{setRulesRead(true);setScr('rules-overview');}}

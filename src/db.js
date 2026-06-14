@@ -133,6 +133,24 @@ export async function loadMatchStats() {
   }
 }
 
+/**
+ * Löscht alle geloggten Matches des aktuellen Users (Stats-Reset).
+ * RLS erlaubt dem Owner das Delete (auth.uid() = user_id). No-op ohne
+ * Session / Supabase — dann gibt es serverseitig nichts zu löschen.
+ */
+export async function deleteMyMatches() {
+  const c = sb();
+  if (!c) return;
+  const uid = await currentUserId();
+  if (!uid) return;
+  try {
+    const { error } = await c.from('ritmo_matches').delete().eq('user_id', uid);
+    if (error) console.warn('[db] deleteMyMatches failed:', error.message);
+  } catch (e) {
+    console.warn('[db] deleteMyMatches exception:', e?.message || e);
+  }
+}
+
 function computeStats(rows) {
   const total = rows.length;
   const wins = rows.filter(r => r.user_won === true).length;

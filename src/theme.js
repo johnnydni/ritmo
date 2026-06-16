@@ -179,6 +179,22 @@ export const CSS = `
   --funky-hot:     #FF1A8C;
 }
 
+/* ── Home-Header-Gradient ──────────────────────────────────────
+   "RITMO BAUHAUS Dark" → dunkel + orange (Brand-Orange oben, faded
+   ins Near-Black). Alle anderen Themes nutzen ihren eigenen
+   headerGrad. (Reihenfolge: erst die anderen, dann Dark — der
+   :root-Teil unten greift nur fuers Default/Dark-Theme.) */
+:root[data-theme="light"],
+:root[data-theme="padel"],
+:root[data-theme="wimbledon"],
+:root[data-theme="funky"]{
+  --homeHeaderGrad: var(--headerGrad);
+}
+:root, :root[data-theme="dark"]{
+  --homeHeaderGrad: linear-gradient(160deg,
+    #FF7A1A 0%, #8A3D0B 30%, #1E1208 64%, var(--bg) 100%);
+}
+
 /* ════ Funky Globals — Body, Headings, Cards ════════════════════
    Scoped: nur aktiv wenn data-theme="funky" am :root sitzt.
 ═══════════════════════════════════════════════════════════════ */

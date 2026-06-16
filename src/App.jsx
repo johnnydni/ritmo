@@ -2108,8 +2108,7 @@ function ChapterTheme({theme,setTheme}){
     {id:'dark',     label:'RITMO BAUHAUS Dark',  swatch:['#000000','#FF7A1A','#FFFFFF']},
     {id:'light',    label:'Federleicht',         swatch:['#FFFFFF','#FF9500','#000000']},
     {id:'padel',    label:'Padelhaus Blue',      swatch:['#0018F9','#FFD60A','#FFFFFF']},
-    {id:'wimbledon',label:'Wimbledon Green',     swatch:['#006039','#D4B98F','#F4EFE3']},
-    {id:'funky',    label:'RITMO BAUHAUS Funky', swatch:['#1A0918','#FFE52D','#FF3D5A']},
+    // Wimbledon Green + RITMO BAUHAUS Funky vorerst ausgeblendet.
   ];
   return(
     <div style={{display:'flex',flexDirection:'column',gap:10}}>
@@ -3922,7 +3921,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
         style={{position:'absolute',top:0,left:0,right:0,
           height:`calc(env(safe-area-inset-top,0px) + ${238+stretch}px)`,
           transition:snapBack?'height .5s var(--ease-out-back)':'none',
-          background:'var(--headerGrad)',cursor:'pointer'}}/>
+          background:'var(--homeHeaderGrad)',cursor:'pointer'}}/>
 
       {/* 2) Scroller — voll-hoch; Inhalte ziehen beim Hochscrollen
           über den Gradient. Pointer-Handler treiben Pull-to-Stretch. */}
@@ -4063,7 +4062,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
         {/* ── Events — Datums-Leiste, scrollbar bis Monatsende.
             Tage MIT Event sind orange markiert; der 18. zeigt auf das
             RITMO X Padel Haus Event. */}
-        <div className="fu" style={{animationDelay:'.14s',marginTop:22}}>
+        <div className="fu" style={{animationDelay:'.14s',marginTop:17}}>
           <div style={{display:'flex',justifyContent:'flex-end',alignItems:'center',
             gap:9,paddingRight:14}}>
             <div style={{color:T.t1,fontSize:21,fontWeight:800,letterSpacing:-.4}}>Events</div>
@@ -10302,8 +10301,7 @@ function SettingsAnpassung({onBack,onHome,theme,setTheme,tabletMode,setTabletMod
     {id:'dark',label:'RITMO BAUHAUS Dark',icon:<MoonIcon size={20} color={T.t1}/>,desc:'Schwarz, weiß, orange'},
     {id:'light',label:'Federleicht',icon:<SunIcon size={20} color={T.t1}/>,desc:'Weiß, schwarz, blau'},
     {id:'padel',label:'Padelhaus Blue',icon:<TennisBallIcon size={20}/>,desc:'Elektroblau, weiß, gelb'},
-    {id:'wimbledon',label:'Wimbledon Green',icon:<LeafIcon size={20} color={T.t1}/>,desc:'Rolex-Grün, beige, bone white'},
-    {id:'funky',label:'RITMO BAUHAUS Funky',icon:<ParrotIcon size={20}/>,desc:'Tropisch — Gelb, Papageienrot, Kiwi'},
+    // Wimbledon Green + RITMO BAUHAUS Funky vorerst ausgeblendet.
   ];
   return(
     <SettingsSubLayout title="Anpassung"

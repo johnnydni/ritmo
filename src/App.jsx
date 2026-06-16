@@ -3857,6 +3857,16 @@ function MatchPrefs({profile,setProfile,currentUid,onHome}){
   );
 }
 
+/* Liquid-Glass-Props fuer die Home-Karten — gleiches Material wie die
+   Navbar, als absoluter Hintergrund-Layer hinter dem Karten-Inhalt.
+   Chromium → echte SVG-Refraktion, Safari/iOS → Blur-Fallback. */
+const HOME_CARD_GLASS={
+  width:'100%',height:'100%',borderRadius:22,
+  brightness:58,opacity:0.9,blur:10,displace:0.5,distortionScale:-120,
+  redOffset:0,greenOffset:8,blueOffset:16,backgroundOpacity:0.06,
+  style:{position:'absolute',inset:0,pointerEvents:'none'},
+};
+
 function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
   // Hinweis-Banner falls Onboarding nicht abgeschlossen ist UND der
   // User nicht den Test-Bypass benutzt (Test-User hat onboarded=true).
@@ -4001,61 +4011,70 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
         {/* Single Match + Turnier — nebeneinander (Mock) */}
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
           <button onClick={()=>nav('single-setup')} className="fu" data-lift
-            style={{background:'linear-gradient(150deg, var(--card2) 0%, var(--card) 62%)',
-              border:`1px solid ${T.border}`,borderRadius:22,
-              padding:'18px 18px 16px',minHeight:172,display:'flex',flexDirection:'column',
-              alignItems:'flex-start',cursor:'pointer',color:T.t1,textAlign:'left',
+            style={{position:'relative',overflow:'hidden',background:'transparent',
+              border:`1px solid ${T.border}`,borderRadius:22,padding:0,width:'100%',
+              minHeight:172,cursor:'pointer',color:T.t1,textAlign:'left',
               transition:'filter .15s'}}
             onPointerDown={e=>e.currentTarget.style.filter='brightness(1.15)'}
             onPointerUp={e=>e.currentTarget.style.filter=''}
             onPointerLeave={e=>e.currentTarget.style.filter=''}>
-            <SingleMatchIcon size={52}/>
-            <div style={{marginTop:14}}>
-              <div style={{color:T.o,fontSize:23,fontWeight:800,marginBottom:4,letterSpacing:-.4}}>Single Match</div>
-              <div style={{color:T.t1,fontSize:13.5,fontWeight:600,lineHeight:1.35}}>Best of 3 | Americano</div>
+            <GlassSurface {...HOME_CARD_GLASS}/>
+            <div style={{position:'relative',zIndex:1,display:'flex',flexDirection:'column',
+              alignItems:'flex-start',padding:'18px 18px 16px'}}>
+              <SingleMatchIcon size={52}/>
+              <div style={{marginTop:14}}>
+                <div style={{color:T.o,fontSize:23,fontWeight:800,marginBottom:4,letterSpacing:-.4}}>Single Match</div>
+                <div style={{color:T.t1,fontSize:13.5,fontWeight:600,lineHeight:1.35}}>Best of 3 | Americano</div>
+              </div>
             </div>
           </button>
           <button onClick={()=>nav('tournament-hub')} className="fu" data-lift
-            style={{background:'linear-gradient(150deg, var(--card2) 0%, var(--card) 62%)',
-              border:`1px solid ${T.border}`,borderRadius:22,
-              padding:'18px 18px 16px',minHeight:172,display:'flex',flexDirection:'column',
-              alignItems:'flex-start',cursor:'pointer',color:T.t1,textAlign:'left',
+            style={{position:'relative',overflow:'hidden',background:'transparent',
+              border:`1px solid ${T.border}`,borderRadius:22,padding:0,width:'100%',
+              minHeight:172,cursor:'pointer',color:T.t1,textAlign:'left',
               animationDelay:'.06s',transition:'filter .15s'}}
             onPointerDown={e=>e.currentTarget.style.filter='brightness(1.15)'}
             onPointerUp={e=>e.currentTarget.style.filter=''}
             onPointerLeave={e=>e.currentTarget.style.filter=''}>
-            <TrophyIcon size={52}/>
-            <div style={{marginTop:14}}>
-              <div style={{color:T.o,fontSize:23,fontWeight:800,marginBottom:4,letterSpacing:-.4}}>Turnier</div>
-              <div style={{color:T.t1,fontSize:13.5,fontWeight:600,lineHeight:1.35}}>Americano | Mexicano &amp; mehr</div>
+            <GlassSurface {...HOME_CARD_GLASS}/>
+            <div style={{position:'relative',zIndex:1,display:'flex',flexDirection:'column',
+              alignItems:'flex-start',padding:'18px 18px 16px'}}>
+              <TrophyIcon size={52}/>
+              <div style={{marginTop:14}}>
+                <div style={{color:T.o,fontSize:23,fontWeight:800,marginBottom:4,letterSpacing:-.4}}>Turnier</div>
+                <div style={{color:T.t1,fontSize:13.5,fontWeight:600,lineHeight:1.35}}>Americano | Mexicano &amp; mehr</div>
+              </div>
             </div>
           </button>
         </div>
 
         {/* RITMO DNA Liga — große Karte mit Luft (Mock) */}
         <button onClick={()=>nav('liga')} className="fu" data-lift
-          style={{background:'linear-gradient(150deg, var(--card2) 0%, var(--card) 62%)',
-            border:`1px solid ${T.border}`,borderRadius:22,
-            padding:'18px 20px 16px',minHeight:168,display:'flex',flexDirection:'column',
-            alignItems:'flex-start',cursor:'pointer',color:T.t1,textAlign:'left',
+          style={{position:'relative',overflow:'hidden',background:'transparent',
+            border:`1px solid ${T.border}`,borderRadius:22,padding:0,width:'100%',
+            minHeight:168,cursor:'pointer',color:T.t1,textAlign:'left',
             animationDelay:'.1s',transition:'filter .15s'}}
           onPointerDown={e=>e.currentTarget.style.filter='brightness(1.15)'}
           onPointerUp={e=>e.currentTarget.style.filter=''}
           onPointerLeave={e=>e.currentTarget.style.filter=''}>
-          <span style={{display:'inline-flex',flexShrink:0,color:T.t1}}>
-            <svg width="44" height="44" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"
-              strokeLinejoin="round" aria-hidden="true">
-              <path d="M20 12a8 8 0 1 1-3.1-6.3"/>
-              <path d="M20 3.5V7h-3.5"/>
-              <circle cx="12" cy="12" r="2.4" fill={T.o} stroke="none"/>
-            </svg>
-          </span>
-          <div style={{marginTop:14}}>
-            <div style={{color:T.o,fontSize:25,fontWeight:800,letterSpacing:-.4}}>RITMO DNA Liga</div>
-            <div style={{color:T.t1,fontSize:14,fontWeight:600,marginTop:5,
-              maxWidth:170,lineHeight:1.4}}>
-              Die Liga mit der du wöchentlich wächst.
+          <GlassSurface {...HOME_CARD_GLASS}/>
+          <div style={{position:'relative',zIndex:1,display:'flex',flexDirection:'column',
+            alignItems:'flex-start',padding:'18px 20px 16px'}}>
+            <span style={{display:'inline-flex',flexShrink:0,color:T.t1}}>
+              <svg width="44" height="44" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"
+                strokeLinejoin="round" aria-hidden="true">
+                <path d="M20 12a8 8 0 1 1-3.1-6.3"/>
+                <path d="M20 3.5V7h-3.5"/>
+                <circle cx="12" cy="12" r="2.4" fill={T.o} stroke="none"/>
+              </svg>
+            </span>
+            <div style={{marginTop:14}}>
+              <div style={{color:T.o,fontSize:25,fontWeight:800,letterSpacing:-.4}}>RITMO DNA Liga</div>
+              <div style={{color:T.t1,fontSize:14,fontWeight:600,marginTop:5,
+                maxWidth:170,lineHeight:1.4}}>
+                Die Liga mit der du wöchentlich wächst.
+              </div>
             </div>
           </div>
         </button>

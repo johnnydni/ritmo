@@ -6777,6 +6777,23 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
   useEffect(()=>{ if(suggest){ setRoundDur(suggest.roundTime); setPickerKey(k=>k+1); }
     /* eslint-disable-next-line */ },[startTime,endTime,players.length,numCourts,mode,roundPrio]);
 
+  // ── Pausen pro Spieler ("jeder gegen jeden") ──────────────────────
+  //  Haengt an Rundendauer (→ wie viele Runden ins Zeitfenster passen),
+  //  Court-Zahl (4 Spieler/Court → Sit-Outs/Runde) und Spielerzahl. Der
+  //  Runden-Generator laesst immer die mit den wenigsten Pausen spielen,
+  //  also verteilt sich's fair (±1). Ohne Zeitfenster gibt es keine feste
+  //  Rundenzahl → dann nur Sit-Outs/Runde, keine Gesamt-Pausen.
+  const pauseStats=(()=>{
+    if(players.length<4) return null;
+    const P=players.length;
+    const C=Math.max(1,Math.min(numCourts,Math.floor(P/4)));
+    const sitOut=P-4*C;
+    if(sitOut<=0) return {sitOut:0,pauses:0,rounds:null};
+    if(!windowMin) return {sitOut,pauses:null,rounds:null};
+    const rounds=Math.max(1,Math.floor(windowMin/((roundDur||1)+ROT)));
+    return {sitOut,rounds,pauses:Math.round(rounds*sitOut/P)};
+  })();
+
   const addPlayer=()=>{
     // Keine Obergrenze mehr — beliebig viele Spieler. Farben zyklen via
     // Modulo durch die PCOLS-Palette, Courts werden separat auf
@@ -7103,9 +7120,12 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
               Mindestens 4 Spieler nötig
             </div>
           )}
-          {canStart&&(players.length-numCourts*4)>0&&(
-            <div style={{color:T.t3,fontSize:11,marginTop:10,paddingBottom:6,fontWeight:500}}>
-              {players.length-numCourts*4} Spieler {(players.length-numCourts*4)===1?'rotiert':'rotieren'} pro Runde durch den Pausen-Pool
+          {canStart&&pauseStats&&pauseStats.sitOut>0&&(
+            <div style={{color:T.t3,fontSize:11,marginTop:10,paddingBottom:6,fontWeight:500,lineHeight:1.55}}>
+              {pauseStats.sitOut} {pauseStats.sitOut===1?'Spieler rotiert':'Spieler rotieren'} pro Runde durch den Pausen-Pool.
+              {pauseStats.pauses!=null
+                ?<> Bei {roundDur}-Min-Runden: <span style={{color:T.o,fontWeight:800}}>≈ {pauseStats.pauses} Pause{pauseStats.pauses===1?'':'n'} pro Spieler</span> ({pauseStats.rounds} Runden · alle ±1 gleich oft).</>
+                :<> <span style={{color:T.t2}}>Setze ein Zeitfenster, um die Pausen pro Spieler zu sehen.</span></>}
             </div>
           )}
         </div>

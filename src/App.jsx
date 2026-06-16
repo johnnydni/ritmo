@@ -6770,6 +6770,9 @@ function StylePickerSheet({current,onSelect,onClose}){
   );
 }
 
+/* Court-Label: eigener Name (aus dem Setup) oder Default "Court N". */
+const courtLabel=(names,i)=>((names&&names[i]&&String(names[i]).trim())||`Court ${i+1}`);
+
 function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,profile,onCreateOnline}){
   // mode: 'lokal' = bestehender Flow (lokale Spielerliste).
   // 'online' = Host erstellt Session, Player joinen via PIN/QR.
@@ -6796,6 +6799,14 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
   // nur beim Mount, nicht bei externer value-Änderung).
   const[pickerKey,setPickerKey]=useState(0);
   const[creatingOnline,setCreatingOnline]=useState(false);
+  // Court-Namen — werden auf die Matches angewendet. Sparse-Array:
+  // Index i = eigener Name fuer Court i, sonst Default "Court i+1".
+  const[courtNames,setCourtNames]=useState(saved?.courtNames||[]);
+  const setCourtName=(i,val)=>setCourtNames(a=>{const n=[...a];n[i]=val;return n;});
+  const courtInputRefs=useRef({});
+  // Edit-Scope-Popup: haelt die zu speichernden Updates, bis der Host
+  // waehlt, ob sie fuer die aktuelle oder die naechste Runde gelten.
+  const[editScopePrompt,setEditScopePrompt]=useState(null);
 
   // Refs auf alle Spieler-Inputs — Enter springt zum nächsten Slot,
   // damit man die Liste in einem Rutsch durchtippen kann.
@@ -7000,7 +7011,8 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
                     border:`1px solid ${T.border}`,color:T.t1,fontSize:15,fontWeight:700,padding:'0 4px',
                     outline:'none',boxSizing:'border-box',colorScheme:'dark',minWidth:0,
                     textAlign:'center',WebkitAppearance:'none',appearance:'none',
-                    fontFamily:'inherit',display:'block'}}/>
+                    fontFamily:'inherit',display:'flex',alignItems:'center',
+                    justifyContent:'center'}}/>
               </div>
               <div style={{minWidth:0}}>
                 <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:.4,marginBottom:5}}>ENDE</div>
@@ -7009,7 +7021,8 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
                     border:`1px solid ${T.border}`,color:T.t1,fontSize:15,fontWeight:700,padding:'0 4px',
                     outline:'none',boxSizing:'border-box',colorScheme:'dark',minWidth:0,
                     textAlign:'center',WebkitAppearance:'none',appearance:'none',
-                    fontFamily:'inherit',display:'block'}}/>
+                    fontFamily:'inherit',display:'flex',alignItems:'center',
+                    justifyContent:'center'}}/>
               </div>
             </div>
 
@@ -7075,7 +7088,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
               onChange={setRoundDur}
               options={Array.from({length:60},(_,i)=>i+1)}
               bgColor={T.card}
-              itemW={56}
+              itemW={67}
               visible={5}
               unit="min"/>
           </div>
@@ -7099,6 +7112,53 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
               style={{width:32,height:32,borderRadius:'50%',background:T.card2,border:`1px solid ${T.border}`,
                 color:T.t1,fontSize:16,cursor:'pointer'}}>+</button>
           </div>
+        </div>
+
+        {/* Court-Namen — werden auf die Matches angewendet. +/- ändert
+            die Court-Zahl, Enter springt zum nächsten Court. Standard:
+            "Court 1", "Court 2" … */}
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19,
+          padding:'18px 18px 8px'}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
+            <div style={{color:T.o,fontSize:18,fontWeight:800}}>Court-Namen</div>
+            <div style={{display:'flex',alignItems:'center',gap:10}}>
+              <span style={{color:T.t3,fontSize:12,fontWeight:600}}>{numCourts} Court{numCourts>1?'s':''}</span>
+              {numCourts>1&&(
+                <button onClick={()=>setNumCourts(c=>Math.max(1,c-1))}
+                  title="Court entfernen" aria-label="Court entfernen"
+                  style={{width:30,height:30,borderRadius:'50%',background:T.card2,
+                    border:`1px solid ${T.border}`,color:T.t1,fontSize:18,fontWeight:800,
+                    cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',
+                    lineHeight:1,paddingBottom:3}}>−</button>
+              )}
+              <button onClick={()=>setNumCourts(c=>Math.min(maxCourts,c+1))}
+                title="Court hinzufügen" aria-label="Court hinzufügen"
+                style={{width:30,height:30,borderRadius:'50%',background:T.o,border:'none',
+                  color:T.bg,fontSize:18,fontWeight:800,cursor:'pointer',display:'flex',
+                  alignItems:'center',justifyContent:'center',lineHeight:1,paddingBottom:2}}>+</button>
+            </div>
+          </div>
+          {Array.from({length:numCourts},(_,i)=>(
+            <div key={i} style={{display:'flex',alignItems:'center',padding:'10px 0',
+              borderBottom:i<numCourts-1?`1px solid ${T.sep}`:'none',gap:10}}>
+              <span style={{width:24,height:24,borderRadius:7,flexShrink:0,background:T.oSoft,
+                border:`1px solid ${T.o}`,color:T.o,fontSize:11,fontWeight:800,
+                display:'flex',alignItems:'center',justifyContent:'center'}}>{i+1}</span>
+              <input value={courtNames[i]??''}
+                ref={el=>{courtInputRefs.current[i]=el;}}
+                onChange={e=>setCourtName(i,e.target.value)}
+                onKeyDown={e=>{
+                  if(e.key==='Enter'){
+                    e.preventDefault();
+                    const next=courtInputRefs.current[i+1];
+                    if(next) next.focus(); else e.currentTarget.blur();
+                  }
+                }}
+                autoCapitalize="words" autoCorrect="off" spellCheck={false} enterKeyHint="next"
+                placeholder={`Court ${i+1}`}
+                style={{flex:1,fontSize:14,color:T.t1,fontWeight:500}}/>
+            </div>
+          ))}
         </div>
 
         {/* Spieler — nur im Lokal-Modus editierbar.
@@ -7179,6 +7239,8 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
                     }
                   }
                 }}
+                autoCapitalize="words" autoCorrect="off" spellCheck={false}
+                enterKeyHint="next"
                 placeholder={`Spieler ${i+1}`}
                 style={{flex:1,fontSize:14,color:T.t1,fontWeight:500}}/>
               {/* Spielstil-Picker — Glyph des gewählten Archetyps, sonst
@@ -7246,7 +7308,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
           onClick:()=>onSaveDraft?.({
             id:saved?.id,createdAt:saved?.createdAt,
             name:name.trim(),startTime,endTime,roundPrio,
-            players,format,winMode,numCourts,roundDurationMin:roundDur,
+            players,format,winMode,numCourts,roundDurationMin:roundDur,courtNames,
           }),
           style:{width:56,height:56,background:T.card2,border:`1px solid ${T.border}`,color:T.t1},
         }]:[]),
@@ -7256,8 +7318,10 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
         onClick:async()=>{
           if(creatingOnline) return;
           if(isEdit){
-            onSave({players,format,winMode,numCourts,roundDurationMin:roundDur,
-              name:name.trim(),startTime,endTime,roundPrio});
+            // Änderungen am laufenden Turnier → erst fragen, ob sie für
+            // die aktuelle oder die nächste Runde wirksam werden.
+            setEditScopePrompt({players,format,winMode,numCourts,roundDurationMin:roundDur,
+              name:name.trim(),startTime,endTime,roundPrio,courtNames});
             return;
           }
           if(mode==='online'){
@@ -7291,7 +7355,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
             name:name.trim()||('Turnier '+new Date().toLocaleDateString('de-DE')),
             startTime,endTime,roundPrio,
             players,format,winMode,
-            numCourts,
+            numCourts,courtNames,
             roundDurationMin:roundDur,
             rounds:[r0],
             current:0,
@@ -7316,6 +7380,44 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
           current={players.find(p=>p.id===stylePickerFor)?.style||null}
           onSelect={(style)=>setPlayerStyle(stylePickerFor,style)}
           onClose={()=>setStylePickerFor(null)}/>
+      )}
+
+      {/* Edit-Scope: gelten die Änderungen ab der nächsten Runde
+          (sicher) oder schon für die laufende (neu gemischt)? */}
+      {editScopePrompt&&(
+        <div onClick={()=>setEditScopePrompt(null)}
+          style={{position:'fixed',inset:0,zIndex:400,background:'rgba(0,0,0,.7)',
+            backdropFilter:'blur(4px)',display:'flex',alignItems:'center',
+            justifyContent:'center',padding:24,animation:'fadeIn .15s ease'}}>
+          <div onClick={e=>e.stopPropagation()} className="si"
+            style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:23,
+              padding:'22px',width:'100%',maxWidth:360}}>
+            <div style={{color:T.t1,fontSize:18,fontWeight:800,marginBottom:6}}>Änderungen anwenden</div>
+            <div style={{color:T.t3,fontSize:13,lineHeight:1.55,marginBottom:18}}>
+              Sollen die Änderungen schon für die aktuelle Runde gelten oder erst
+              ab der nächsten? „Aktuelle Runde" mischt die laufende Runde neu
+              (Paarungen & Courts werden neu gelost).
+            </div>
+            <div style={{display:'flex',flexDirection:'column',gap:10}}>
+              <button onClick={()=>{const u=editScopePrompt;setEditScopePrompt(null);onSave(u,'next');}}
+                style={{width:'100%',padding:'13px',borderRadius:13,border:'none',background:T.o,
+                  color:'#000',fontSize:14,fontWeight:800,cursor:'pointer'}}>
+                Ab nächster Runde
+              </button>
+              <button onClick={()=>{const u=editScopePrompt;setEditScopePrompt(null);onSave(u,'current');}}
+                style={{width:'100%',padding:'13px',borderRadius:13,
+                  border:`1px solid ${T.border}`,background:T.card2,
+                  color:T.t1,fontSize:14,fontWeight:700,cursor:'pointer'}}>
+                Aktuelle Runde (neu mischen)
+              </button>
+              <button onClick={()=>setEditScopePrompt(null)}
+                style={{width:'100%',padding:'11px',borderRadius:13,border:'none',background:'none',
+                  color:T.t3,fontSize:13,fontWeight:600,cursor:'pointer'}}>
+                Abbrechen
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -8643,7 +8745,7 @@ function ScoreWheel({value,onChange,max=40,color=T.o,w=52}){
   );
 }
 
-function TournamentCourtCard({court,courtIndex,playerById,onScoreChange,onConfirm,onEditLineup,scoreMax=40}){
+function TournamentCourtCard({court,courtIndex,courtName,playerById,onScoreChange,onConfirm,onEditLineup,scoreMax=40}){
   // Score-Werte aus dem Court ziehen. null/undefined = noch nicht
   // eingegeben → Input rendert leer, damit Tippen "5" auch wirklich
   // "5" wird und nicht "05". Beim Abschluss zählt 0 als gültiger
@@ -8753,7 +8855,7 @@ function TournamentCourtCard({court,courtIndex,playerById,onScoreChange,onConfir
             border:`1px solid ${T.o}`,
             color:T.o,fontSize:11,fontWeight:900,letterSpacing:1.4,
             textTransform:'uppercase'}}>
-            Court {courtIndex+1}
+            {courtName||`Court ${courtIndex+1}`}
           </div>
         </div>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
@@ -9300,7 +9402,8 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
   // auf dem Spieler, damit künftige Matches normal weiterzählen.
   const savePlayerPoints=(playerId,newTotal)=>{
     setTourney(t=>{
-      const lb=calcLeaderboard(t.players,t.rounds,t.winMode);
+      // Gleiche (bestätigte) Basis wie das angezeigte Leaderboard.
+      const lb=calcLeaderboard(t.players,t.finished?t.rounds:t.rounds.slice(0,t.current),t.winMode);
       const e=lb.find(x=>x.id===playerId);
       if(!e) return t;
       const players=t.players.map(p=>{
@@ -9383,7 +9486,11 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
   };
 
   const allDone=round.courts.every(c=>c.done);
-  const lb=calcLeaderboard(tourney.players,tourney.rounds,tourney.winMode);
+  // Leaderboard nur aus BESTÄTIGTEN Runden (vor der laufenden) — er
+  // aktualisiert sich erst beim Rundenwechsel ("Nächste Runde"), nicht
+  // schon beim Bestätigen einzelner Courts in der aktuellen Runde.
+  const lbRounds=tourney.finished?tourney.rounds:tourney.rounds.slice(0,tourney.current);
+  const lb=calcLeaderboard(tourney.players,lbRounds,tourney.winMode);
   const sortedLb=lb.sort((a,b)=>tourney.winMode==='points'?b.totalPts-a.totalPts||b.totalWins-a.totalWins:b.totalWins-a.totalWins||b.totalPts-a.totalPts);
   // Live nachgeschlagen, damit die offenen Modals immer den frischen
   // Court/Leaderboard-Eintrag bekommen (sonst stale nach setTourney).
@@ -9486,6 +9593,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
           {round.courts.map((court,ci)=>(
             <TournamentCourtCard key={court.id}
               court={court} courtIndex={ci}
+              courtName={courtLabel(tourney.courtNames,ci)}
               playerById={playerById}
               onScoreChange={(field,val)=>updateScore(court.id,field,val)}
               onConfirm={()=>confirmCourt(court.id)}
@@ -14912,20 +15020,37 @@ export default function App(){
   };
 
   const editTourney=()=>{setTourneyEditMode(true);setScr('tournament-setup');};
-  const saveTourneyEdit=(updates)=>{
+  // scope='next' (Standard): Settings gelten ab der nächsten Runde, die
+  // laufende Runde bleibt unangetastet. scope='current': die laufende
+  // Runde wird mit den neuen Settings neu generiert (Paarungen/Courts/
+  // Pausen neu) — frühere Runden bleiben erhalten.
+  const saveTourneyEdit=(updates,scope='next')=>{
     setTourney(prev=>{
       if(!prev)return prev;
-      return {...prev,
+      let next={...prev,
         players:updates.players,
         format:updates.format,
         winMode:updates.winMode,
         numCourts:updates.numCourts,
         roundDurationMin:updates.roundDurationMin,
+        courtNames:updates.courtNames,
         name:updates.name||prev.name,
         startTime:updates.startTime,
         endTime:updates.endTime,
         roundPrio:updates.roundPrio,
       };
+      if(scope==='current'&&Array.isArray(next.rounds)){
+        const prevRounds=next.rounds.slice(0,next.current);
+        const lb=calcLeaderboard(next.players,prevRounds,next.winMode);
+        const sortedLb=lb.sort((a,b)=>next.winMode==='points'?b.totalPts-a.totalPts:b.totalWins-a.totalWins);
+        const newR=next.format==='mexicano'
+          ?genMexicanoRound(next.players.map(p=>p.id),sortedLb,next.numCourts,prevRounds)
+          :genAmericanoRound(next.players.map(p=>p.id),prevRounds,next.numCourts);
+        next={...next,rounds:[...prevRounds,newR],
+          timerSecsLeft:(updates.roundDurationMin||10)*60,
+          timerRunning:false,timerFinished:false};
+      }
+      return next;
     });
     setTourneyEditMode(false);
     setScr('tournament-play');

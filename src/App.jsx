@@ -4,6 +4,7 @@ import { loadProfile as dbLoadProfile, saveProfile as dbSaveProfile, logMatch as
   createOnlineTournament, joinOnlineTournament, fetchOnlineTournament, updateOnlineTournament, subscribeToTournament,
   publishTournamentState, submitScore, approveScore, rejectScore, sendReadyCheck, confirmReady, clearReadyCheck,
   checkBetaKey, redeemBetaKey, deleteMyMatches as dbDeleteMyMatches,
+  logMatchLocal, loadMatchStatsLocal as dbLoadMatchStatsLocal, clearMatchLog,
   // Social layer
   fetchPublicProfile, searchPlayers, followUser, unfollowUser, followCounts, isFollowing,
   listFollowers, listFollowing,
@@ -2893,13 +2894,38 @@ const styleGrad=id=>{
   return g?`linear-gradient(135deg, ${g}45 0%, ${g}1C 55%, rgba(0,0,0,0) 100%)`:'transparent';
 };
 
+/* Zähl-Animation für die Auswertungs-Zahlen — 0 → Zielwert (easeOutCubic).
+   Re-triggert, sobald sich der Wert ändert (Stats geladen / Reset). */
+function CountUp({value,dur=750,suffix=''}){
+  const target=Number(value)||0;
+  // Reduced-Motion (Accessibility) ODER kein rAF → direkt den Zielwert
+  // zeigen statt zu animieren (sonst bliebe die Zahl auf 0 stehen).
+  const reduce=typeof window!=='undefined'&&window.matchMedia
+    &&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const[n,setN]=useState(reduce?target:0);
+  useEffect(()=>{
+    if(reduce||target<=0){setN(target>0?target:0);return;}
+    let raf,start=null;
+    const tick=(ts)=>{
+      if(start===null)start=ts;
+      const p=Math.min(1,(ts-start)/dur);
+      setN(Math.round(target*(1-Math.pow(1-p,3))));
+      if(p<1) raf=requestAnimationFrame(tick);
+    };
+    raf=requestAnimationFrame(tick);
+    return()=>cancelAnimationFrame(raf);
+  },[target,dur,reduce]);
+  return <>{n}{suffix}</>;
+}
+
 function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRitmoDNA,
-  currentUid,onOpenFollowers,onOpenFollowing,onTab,onOpenSettings,onOpenEdit}){
+  currentUid,onOpenFollowers,onOpenFollowing,onTab,onOpenSettings,onOpenEdit,onResetStats}){
   // Kurzlabels für die Stats-Spalten (Mock: nur „Rechts"/„Links").
   const handLabels={right:'Rechts',left:'Links'};
   const sideLabels={left:'Ad-Seite (links)',right:'Deuce-Seite (rechts)',any:'Beides geht'};
 
   const[editingLevel,setEditingLevel]=useState(false);
+  const[confirmReset,setConfirmReset]=useState(false);
   // Follower-Counts werden bei jedem Mount frisch geladen, damit nach
   // Follow/Unfollow im anderen Screen die Anzeige aktualisiert.
   const[counts,setCounts]=useState({followers:0,following:0});
@@ -2916,11 +2942,15 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
   const[stats,setStats]=useState(null);
   useEffect(()=>{
     let alive=true;
-    dbLoadMatchStats().then(s=>{if(alive)setStats(s||STATS_EMPTY);})
-      .catch(()=>{if(alive)setStats(STATS_EMPTY);});
+    // Supabase hat Vorrang; ohne Backend/Session greift das lokale
+    // Match-Log → gespielte Single Matches (Best of 3) und Turniere
+    // fliessen so auch offline in die Auswertung ein.
+    dbLoadMatchStats().then(s=>{if(alive)setStats(s||dbLoadMatchStatsLocal()||STATS_EMPTY);})
+      .catch(()=>{if(alive)setStats(dbLoadMatchStatsLocal()||STATS_EMPTY);});
     return()=>{alive=false;};
+  // Neu laden nach Reset (matchesPlayed→0) bzw. neu geloggten Matches.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[]);
+  },[profile.matchesPlayed]);
   const safeStats=stats||STATS_EMPTY;
 
   // Scroll-Navigation: die rechte Dot-Leiste bildet die Sektionen ab
@@ -3193,17 +3223,19 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
           {/* Kennzahlen-Zeile mit Hairline-Trennern */}
           <div style={{display:'flex',alignItems:'stretch'}}>
             {[
-              {l:'Matches',v:safeStats.matches,c:T.t1},
-              {l:'Siege',v:safeStats.wins,c:T.t1},
-              {l:'Niederl.',v:safeStats.losses,c:T.t1},
-              {l:'Win-Rate',v:`${safeStats.winRate}%`,c:T.o},
+              {l:'Matches',v:safeStats.matches,suf:'',c:T.t1},
+              {l:'Siege',v:safeStats.wins,suf:'',c:T.t1},
+              {l:'Niederl.',v:safeStats.losses,suf:'',c:T.t1},
+              {l:'Win-Rate',v:safeStats.winRate,suf:'%',c:T.o},
             ].map((s,i)=>(
               <div key={s.l} className="zi" style={{animationDelay:`${.46+i*.07}s`,
                 flex:1,minWidth:0,textAlign:'center',padding:'2px 4px',
                 borderRight:i<3?`1px solid ${T.sep}`:'none'}}>
                 <div style={eyeb}>{s.l}</div>
                 <div style={{color:s.c,fontSize:24,fontWeight:900,letterSpacing:-.8,
-                  lineHeight:1,marginTop:9}}>{s.v}</div>
+                  lineHeight:1,marginTop:9}}>
+                  <CountUp value={s.v} suffix={s.suf}/>
+                </div>
               </div>
             ))}
           </div>
@@ -3260,13 +3292,39 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
           <ChevronRightIcon size={15} color={T.t3}/>
         </button>
         <button onClick={onResetOnboarding}
-          className="fu" style={{...rowSty(true),animationDelay:'.74s',
-          borderBottom:`1px solid ${T.sep}`}}>
+          className="fu" style={{...rowSty(true),animationDelay:'.74s'}}>
           <span style={{width:26,display:'inline-flex',justifyContent:'center',
             flexShrink:0,color:T.t2}}><RefreshGlyph/></span>
           <span style={{flex:1,minWidth:0}}><span style={rowLbl}>Onboarding wiederholen</span></span>
           <ChevronRightIcon size={15} color={T.t3}/>
         </button>
+        {/* Statistik zurücksetzen — alle Auswertungen auf 0 (geloggte
+            Matches + laufendes Scoreboard). */}
+        <button onClick={()=>setConfirmReset(true)}
+          className="fu" style={{...rowSty(true),animationDelay:'.78s',
+          borderBottom:`1px solid ${T.sep}`}}>
+          <span style={{width:26,display:'inline-flex',justifyContent:'center',
+            flexShrink:0,color:T.r}}><RefreshGlyph/></span>
+          <span style={{flex:1,minWidth:0}}><span style={{...rowLbl,color:T.r}}>Statistik zurücksetzen</span></span>
+          <ChevronRightIcon size={15} color={T.t3}/>
+        </button>
+        {confirmReset&&(
+          <div className="fi" style={{marginTop:12,background:'rgba(232,69,69,0.08)',
+            border:'1px solid rgba(232,69,69,0.35)',borderRadius:14,padding:'14px 16px'}}>
+            <div style={{color:T.t1,fontSize:13,fontWeight:600,lineHeight:1.5,marginBottom:12}}>
+              Alle Statistiken auf 0 setzen? Geloggte Matches und das laufende
+              Scoreboard werden gelöscht — das lässt sich nicht rückgängig machen.
+            </div>
+            <div style={{display:'flex',gap:8}}>
+              <button onClick={()=>setConfirmReset(false)}
+                style={{flex:1,padding:'11px',background:'none',border:`1px solid ${T.border}`,
+                  borderRadius:11,color:T.t2,fontSize:13,fontWeight:700,cursor:'pointer'}}>Abbrechen</button>
+              <button onClick={()=>{onResetStats&&onResetStats();setConfirmReset(false);}}
+                style={{flex:1,padding:'11px',background:'#E84545',border:'none',
+                  borderRadius:11,color:'#fff',fontSize:13,fontWeight:800,cursor:'pointer'}}>Auf 0 setzen</button>
+            </div>
+          </div>
+        )}
 
         <div style={{height:120,flexShrink:0}}/>
       </div>
@@ -3494,9 +3552,6 @@ const NEARBY_CLUBS=[
   {id:'mpc',name:'Munich Padel Club',      dist:'58 km', x:79,y:74},
 ];
 
-/* Fallback-Spieler für die Präferenz-Auswahl, falls (noch) niemandem
-   gefolgt wird. */
-const PREF_PLAYERS_MOCK=['Chris','Daniel','Michael','Nadin','Alessa.','Nora','Jonas','Mia','Tom'];
 
 /* ── „Discover the RITMO" — horizontale Card-Galerie (Apple-Health-
    Look): Bauhaus-Grafik-Cards mit starkem Radius, Scroll-Snap, Titel
@@ -3619,8 +3674,7 @@ function DiscoverSection({nav}){
    in profile.matchPrefs (läuft den normalen Profil-Sync mit). */
 function MatchPrefs({profile,setProfile,currentUid,onHome}){
   const DEFAULTS={styles:[],players:[],location:'',days:[],from:'18:00',to:'20:00'};
-  // Bevorzugte Spieler: gefolgte Nutzer; ohne Follows dienen die
-  // Mock-Namen aus den Match-Vorschlägen als Auswahl.
+  // Bevorzugte Spieler: ausschliesslich die Nutzer, denen man folgt.
   const[following,setFollowing]=useState([]);
   useEffect(()=>{
     if(!currentUid) return;
@@ -3630,9 +3684,10 @@ function MatchPrefs({profile,setProfile,currentUid,onHome}){
       .catch(()=>{});
     return()=>{alive=false;};
   },[currentUid]);
-  const playerChoices=following.length
-    ?following.map(f=>f.name||f.username||'Spieler:in')
-    :PREF_PLAYERS_MOCK;
+  const playerChoices=following.map(f=>{
+    const p=f.profile||{};
+    return p.display_name||p.data?.name||p.data?.nickname||'Spieler:in';
+  });
   const prefs={...DEFAULTS,...(profile.matchPrefs||{})};
   // Patches IMMER aus dem aktuellen State ableiten (nicht aus dem
   // Render-Closure) — sonst überschreiben sich schnelle Taps in einem
@@ -3699,6 +3754,13 @@ function MatchPrefs({profile,setProfile,currentUid,onHome}){
           border:`1px solid ${T.border}`,borderRadius:19,padding:'16px 18px'}}>
           <div style={lbl}>Bevorzugte Spieler</div>
           <div style={sub}>Mit wem willst du am liebsten auf dem Court stehen?</div>
+          {playerChoices.length===0?(
+            <div style={{color:T.t3,fontSize:12,fontWeight:500,lineHeight:1.5,
+              padding:'6px 0 2px'}}>
+              Du folgst noch niemandem. Folge Spielern (Suche → Spieler),
+              dann erscheinen sie hier zur Auswahl.
+            </div>
+          ):(
           <div className="hscroll" style={{display:'flex',gap:10,overflowX:'auto',
             margin:'0 -18px',padding:'4px 18px 6px',
             scrollSnapType:'x mandatory',scrollPaddingLeft:18,
@@ -3725,6 +3787,7 @@ function MatchPrefs({profile,setProfile,currentUid,onHome}){
               );
             })}
           </div>
+          )}
         </div>
 
         {/* Spielort — RITMO-Map mit Clubs in der Nähe */}
@@ -4213,8 +4276,8 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
                       </span>
                     </span>
                   </span>
-                  {/* Unten: Avatare links · Uhrzeit MITTIG · Datum rechts */}
-                  <span style={{position:'relative',display:'flex',alignItems:'flex-end',
+                  {/* Unten: Avatare links · Uhrzeit ÜBER Datum (rechts) */}
+                  <span style={{display:'flex',alignItems:'flex-end',
                     justifyContent:'space-between',gap:8}}>
                     <span style={{display:'flex',gap:7,alignItems:'flex-start'}}>
                       {[0,1,2,3].map(i=>{
@@ -4223,8 +4286,9 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
                           <span key={i} style={{display:'flex',flexDirection:'column',
                             alignItems:'center',gap:2,minWidth:0}}>
                             <span style={{width:27,height:27,borderRadius:'50%',
-                              background:'#EFE7DB',display:'block',
-                              boxShadow:'0 1px 4px rgba(0,0,0,.4)'}}/>
+                              background:'linear-gradient(140deg,#FFD9A8 0%,#FF7A1A 55%,#C25A12 100%)',
+                              display:'block',boxShadow:'0 1px 4px rgba(0,0,0,.4)',
+                              border:'1px solid rgba(255,255,255,.35)'}}/>
                             <span style={{fontSize:8,fontWeight:800,color:'#FFF',
                               maxWidth:38,overflow:'hidden',textOverflow:'ellipsis',
                               whiteSpace:'nowrap',textShadow:'0 1px 3px rgba(0,0,0,.6)'}}>{p}</span>
@@ -4243,15 +4307,16 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
                         );
                       })}
                     </span>
-                    {/* Uhrzeit — mittig auf der Karte */}
-                    <span style={{position:'absolute',left:'50%',bottom:1,
-                      transform:'translateX(-50%)',fontSize:13.5,fontWeight:600,
-                      letterSpacing:'-0.1em',color:'#FFF',whiteSpace:'nowrap',
-                      textShadow:'0 1px 4px rgba(0,0,0,.55)'}}>{s.time}</span>
-                    {/* Datum — weiß, Semibold, -0.1em */}
-                    <span style={{fontSize:22,fontWeight:600,letterSpacing:'-0.1em',
-                      color:'#FFF',whiteSpace:'nowrap',flexShrink:0,
-                      textShadow:'0 1px 5px rgba(0,0,0,.55)'}}>{s.date}</span>
+                    {/* Uhrzeit exakt ÜBER dem Datum — rechtsbündig gestapelt */}
+                    <span style={{display:'flex',flexDirection:'column',alignItems:'flex-end',
+                      flexShrink:0,lineHeight:1}}>
+                      <span style={{fontSize:12,fontWeight:600,letterSpacing:'-0.02em',
+                        color:'#FFF',whiteSpace:'nowrap',marginBottom:3,
+                        textShadow:'0 1px 4px rgba(0,0,0,.55)'}}>{s.time}</span>
+                      <span style={{fontSize:22,fontWeight:600,letterSpacing:'-0.1em',
+                        color:'#FFF',whiteSpace:'nowrap',
+                        textShadow:'0 1px 5px rgba(0,0,0,.55)'}}>{s.date}</span>
+                    </span>
                   </span>
                 </span>
               </button>
@@ -4999,6 +5064,9 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
         user_team:'A', // Konvention: User ist im Single immer Team A
         user_won:userWon,
       }).catch(()=>{});
+      // Lokales Match-Log (Fallback ohne Supabase) → fliesst in die
+      // Profil-Statistik ein, auch wenn kein Backend verbunden ist.
+      logMatchLocal({format:isB?'bo3':'americano',user_won:userWon,sets:isB?sets:null});
       // Counter im Profil hochzählen (matchesPlayed + ggf. winsCount),
       // damit App-Matches in den Spielniveau-Estimate einfließen.
       onMatchLogged?.({userWon});
@@ -9162,9 +9230,12 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
           tournament_id:tourney.id||tourney.createdAt||null,
           round_index:rIdx,
         }).catch(()=>{});
-        // Profile-Counter aktualisieren — nur wenn der User
-        // identifizierbar ist (sonst kein userWon).
-        if(userTeam) onMatchLogged?.({userWon});
+        // Lokales Match-Log (Fallback ohne Supabase) + Profil-Counter —
+        // nur wenn der User identifizierbar ist (sonst kein userWon).
+        if(userTeam){
+          logMatchLocal({format:'tournament-'+(tourney.format||'americano'),user_won:userWon,sets:null});
+          onMatchLogged?.({userWon});
+        }
         return {...c,logged:true};
       }),
     }));
@@ -11453,6 +11524,13 @@ function PublicProfile({userId,currentUid,onHome,onBack,backLabel}){
   const lvl=data.playtomicLevel??data.estimatedLevel;
   const styleType=data.styleType;
   const style=styleType?PADEL_STYLES[styleType]:null;
+  // Sichtbarkeit: öffentliche Profile zeigen alles inkl. Statistik;
+  // private nur Spielstil (DNA) + Bio.
+  const isPriv=prof?(data.private===true||prof.is_public===false):false;
+  const pMatches=parseInt(data.matchesPlayed||'0',10)||0;
+  const pWins=parseInt(data.winsCount||'0',10)||0;
+  const pLosses=Math.max(0,pMatches-pWins);
+  const pWinRate=pMatches>0?Math.round(pWins/pMatches*100):0;
 
   return(
     <SocialScreen eyebrow="Profil" title={name}
@@ -11471,7 +11549,7 @@ function PublicProfile({userId,currentUid,onHome,onBack,backLabel}){
             display:'flex',alignItems:'center',gap:16}}>
             <ProfileAvatar name={name} avatar={data.avatar} size={72}/>
             <div style={{flex:1,minWidth:0}}>
-              {lvl!=null&&(
+              {!isPriv&&lvl!=null&&(
                 <Fragment>
                   <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.3,
                     textTransform:'uppercase',marginBottom:2}}>
@@ -11488,6 +11566,12 @@ function PublicProfile({userId,currentUid,onHome,onBack,backLabel}){
                     </span>
                   </div>
                 </Fragment>
+              )}
+              {isPriv&&(
+                <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:.3,
+                  display:'inline-flex',alignItems:'center',gap:6}}>
+                  <LockIcon size={13}/> Privates Profil
+                </div>
               )}
               {style&&(
                 <div style={{marginTop:8}}>
@@ -11511,7 +11595,8 @@ function PublicProfile({userId,currentUid,onHome,onBack,backLabel}){
             </div>
           )}
 
-          {/* Follower / Following */}
+          {/* Follower / Following — nur öffentlich */}
+          {!isPriv&&(
           <div className="fu" style={{display:'flex',gap:10,marginBottom:12,animationDelay:'.04s'}}>
             <div style={{flex:1,background:T.card,border:`1px solid ${T.border}`,borderRadius:15,
               padding:'14px 12px',textAlign:'center'}}>
@@ -11526,6 +11611,7 @@ function PublicProfile({userId,currentUid,onHome,onBack,backLabel}){
                 textTransform:'uppercase',marginTop:2}}>Folgt</div>
             </div>
           </div>
+          )}
 
           {/* Follow button */}
           {!isSelf&&(
@@ -11538,6 +11624,31 @@ function PublicProfile({userId,currentUid,onHome,onBack,backLabel}){
                 animationDelay:'.08s'}}>
               {following?'Du folgst':'Folgen'}
             </button>
+          )}
+
+          {/* Statistik — nur bei öffentlichem Profil (komplettes Profil). */}
+          {!isPriv&&(
+            <div className="fu" style={{background:T.card,border:`1px solid ${T.border}`,
+              borderRadius:15,padding:'16px 16px 14px',marginBottom:12,animationDelay:'.1s'}}>
+              <div style={{color:T.o,fontSize:10,fontWeight:800,letterSpacing:1.8,
+                textTransform:'uppercase',marginBottom:12}}>Statistik</div>
+              <div style={{display:'flex',alignItems:'stretch'}}>
+                {[
+                  {l:'Matches',v:`${pMatches}`},
+                  {l:'Siege',v:`${pWins}`},
+                  {l:'Niederl.',v:`${pLosses}`},
+                  {l:'Win-Rate',v:`${pWinRate}%`,o:true},
+                ].map((s,i)=>(
+                  <div key={s.l} style={{flex:1,minWidth:0,textAlign:'center',
+                    borderRight:i<3?`1px solid ${T.sep}`:'none'}}>
+                    <div style={{color:T.t3,fontSize:9,fontWeight:700,letterSpacing:1,
+                      textTransform:'uppercase'}}>{s.l}</div>
+                    <div style={{color:s.o?T.o:T.t1,fontSize:22,fontWeight:900,
+                      letterSpacing:-.5,marginTop:7}}>{s.v}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
 
           {/* RITMO DNA Card (wenn vorhanden) */}
@@ -14854,6 +14965,7 @@ export default function App(){
     dAm({type:'RESET',limit:cfg.amLimit??21});
     setProfile(p=>({...p,matchesPlayed:0,winsCount:0}));
     dbDeleteMyMatches();
+    clearMatchLog();
   };
   const deleteTourney=(id)=>{
     const target=id||currentTourneyId;
@@ -14953,6 +15065,7 @@ export default function App(){
       onHome={goHome} currentUid={currentUid} onTab={handleTab}
       onOpenSettings={()=>setScr('settings')}
       onOpenEdit={()=>setScr('profile-edit')}
+      onResetStats={resetStats}
       onOpenRitmoDNA={()=>setScr('profile-ritmodna')}
       onOpenFollowers={()=>{ if(currentUid){ setViewPlayerId(currentUid); setFollowListInitial('followers'); setScr('follow-list'); } }}
       onOpenFollowing={()=>{ if(currentUid){ setViewPlayerId(currentUid); setFollowListInitial('following'); setScr('follow-list'); } }}

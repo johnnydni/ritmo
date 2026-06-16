@@ -511,10 +511,6 @@ input[type="time"]::-webkit-datetime-edit{padding:0;text-align:center;}
   0%,100%{opacity:.22;transform:scaleX(.86);}
   50%{opacity:1;transform:scaleX(1);}
 }
-/* Diashow: langsames vertikales Auto-Scrollen langer Listen. Die
-   Distanz wird per --dnaDist (negativ) gesetzt; kurzer Halt oben,
-   dann eine ruhige Fahrt nach unten. */
-@keyframes dnaScrollY{0%,7%{transform:translateY(0)}100%{transform:translateY(var(--dnaDist,0px))}}
 @keyframes flashOrange{0%,100%{background:var(--card)}40%{background:var(--oFlash)}}
 /* Court-View: Live-Pulse (Punkt + Border), VS-Pulse (rotation + scale)
    und Score-Pop (Skalierung beim Punkte-Update). Eigene Animationen,

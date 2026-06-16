@@ -20,8 +20,8 @@
    classic Bo3 behaviour (6-game sets, tiebreak at 6-6, best of 3) —
    so the existing Match screen, which never sets cfg, is unchanged.
 
-   The RITMO DNA Cup seeds bespoke cfg blocks via makeBo3() to drive
-   single-set / two-set-no-decider / short-set / best-of-3 formats.
+   makeBo3(cfg) seeds bespoke cfg blocks for custom formats
+   (single-set / two-set-no-decider / short-set / best-of-3).
 
    amR is point-based to a configurable limit (lim<=0 = ∞ mode).
 ═══════════════════════════════════════════════════════════════ */
@@ -36,7 +36,7 @@ export const B0 = {
   winner:null,sets:[],hist:[],deuces:0,matchTb:false,
 };
 
-// Seed a Bo3 state with a specific format cfg (used by the DNA Cup).
+// Seed a Bo3 state with a specific format cfg.
 export function makeBo3(cfg){ return {...B0,cfg:{...DEFCFG,...(cfg||{})}}; }
 
 export const PL = ['0','15','30','40'];

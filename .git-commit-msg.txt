@@ -1,0 +1,21 @@
+refactor: RITMO DNA Cup komplett entfernt (Modul, Diashow, Event-Inhalte)
+
+- src/dnaCup.js geloescht (gesamte Cup-Logik).
+- App.jsx: das komplette <DnaCup/>-Modul entfernt — Konsole, alle Sub-
+  Views, DnaCupMatch, DnaCupSlideshow/Diashow, DnaPinGate und Helpers;
+  dazu der dnaCup.js-Import, der DNA-Cup-Eintrag im Turnier-Hub und die
+  App-Verdrahtung (Route dna-cup, State dnaCup/dnaPinPrompt/dnaUnlocked,
+  ritmo_dnacup-Persistenz).
+- theme.js: dnaScrollY-Keyframe (Diashow-Auto-Scroll) entfernt.
+- Event-/Marketing-Inhalte zum DNA Cup entfernt: kuratierte Event-Karte
+  (POST_EVENTS -> leer, Events-Feed zeigt Empty-State), Teaser im
+  RITMO-Events-Screen und Home-Kommentar.
+- CLAUDE.md: DNA-Cup-Doku entfernt.
+- game.js: nur Kommentare entstaubt (makeBo3/makeAm bleiben — vom
+  bo3R-RESET-Reducer genutzt).
+
+Nicht angetastet: die persoenliche "RITMO DNA"-Spielstil-Funktion
+(ProfileRitmoDNA, DNA-Karte, padelStyles, dna-swoosh) und alle anderen
+Features. Build sauber; im Preview verifiziert.
+
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>

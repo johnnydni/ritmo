@@ -48,6 +48,7 @@ import {
   MenuIcon,
 } from "./icons.jsx";
 import { PADEL_STYLES, PADEL_QUIZ, computeStyle, computeStyles, computeMatchTier, STYLE_IMAGES } from "./padelStyles.js";
+import GlassSurface from "./GlassSurface.jsx";
 
 /* ═══════════════════════════════════════════════════════════════
    Theme/CSS, helpers, reducers, auth, audio and icons all live in
@@ -2643,15 +2644,25 @@ function TabBar({active,onTab}){
       bottom:'calc(env(safe-area-inset-bottom, 0px) * 0.3 - 3px)',
       left:0,right:0,display:'flex',alignItems:'center',justifyContent:'center',gap:10,
       padding:'0 14px',pointerEvents:'none',zIndex:5}}>
-      {/* Flacher + breiter: die Bar streckt sich über die verfügbare
-          Breite (flex:1, gedeckelt), die Tabs teilen sie gleichmäßig. */}
+      {/* Liquid-Glass-Surface (reactbits GlassSurface) als Glas-
+          HINTERGRUND — echte SVG-Refraktion auf Chromium, Blur-Fallback
+          auf Safari/iOS. Die interaktive Bar (Pill + Tabs) liegt als
+          Geschwister DARUEBER: so bleibt die Pill-Messung unveraendert
+          und sie steckt nicht im gefilterten/geklippten Glas-Subtree
+          (das sonst die Transitions der Pill einfriert). */}
+      <div style={{position:'relative',flex:1,maxWidth:440,height:57,pointerEvents:'auto'}}>
+      <GlassSurface width="100%" height="100%" borderRadius={28}
+        className="nav-glass"
+        brightness={58} opacity={0.92} blur={11}
+        displace={0.6} distortionScale={-130}
+        redOffset={0} greenOffset={8} blueOffset={16}
+        style={{position:'absolute',inset:0,pointerEvents:'none'}}/>
       <div ref={navRef} onPointerDown={onBarPointerDown}
-        className="glass-bar"
-        style={{position:'relative',display:'flex',alignItems:'center',gap:2,
-        flex:1,maxWidth:440,
-        /* Flach + Kapsel: voll gerundete Enden (999), minimale
-           vertikale Paddings — die Bar liest sich als echte Pille. */
-        borderRadius:999,padding:'3px 5px',pointerEvents:'auto',
+        style={{position:'relative',zIndex:1,display:'flex',alignItems:'center',gap:2,
+        width:'100%',height:'100%',
+        /* Voll gerundete Enden (999), minimale vertikale Paddings —
+           die Bar liest sich als echte Pille. */
+        borderRadius:999,padding:'3px 5px',
         // touchAction none: während des Pill-Drags darf der Browser
         // die Pointer-Events nicht für Scroll/Swipe übernehmen.
         touchAction:'none',
@@ -2737,6 +2748,7 @@ function TabBar({active,onTab}){
             </button>
           );
         })}
+      </div>
       </div>
     </div>
   );

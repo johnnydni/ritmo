@@ -720,6 +720,44 @@ button:disabled{cursor:not-allowed;opacity:.55;}
     inset 0 -1px 0 color-mix(in srgb, #000 18%, transparent);
 }
 
+/* ── GlassSurface (reactbits) — Liquid-Glass-Refraktion.
+   Auf Chromium echte SVG-Displacement (--svg), sonst Blur-Fallback.
+   Rim-Werte fix auf hell gehalten (passt zur dunklen App-Bar). */
+.glass-surface{
+  position:relative;display:flex;align-items:center;justify-content:center;
+  overflow:hidden;transition:opacity .26s ease-out;
+}
+.glass-surface__filter{
+  width:100%;height:100%;pointer-events:none;position:absolute;inset:0;
+  opacity:0;z-index:-1;
+}
+.glass-surface__content{
+  width:100%;height:100%;display:flex;align-items:center;justify-content:center;
+  padding:.5rem;border-radius:inherit;position:relative;z-index:1;
+}
+.glass-surface--svg{
+  background:hsl(0 0% 100% / var(--glass-frost, 0));
+  -webkit-backdrop-filter:saturate(var(--glass-saturation, 1));
+  backdrop-filter:var(--filter-id, url(#glass-filter)) saturate(var(--glass-saturation, 1));
+  box-shadow:
+    0 0 2px 1px color-mix(in srgb, #fff 35%, transparent) inset,
+    0 0 10px 4px color-mix(in srgb, #fff 15%, transparent) inset,
+    0 4px 16px rgba(0,0,0,.18),
+    0 8px 28px rgba(0,0,0,.14);
+}
+.glass-surface--fallback{
+  background:color-mix(in srgb, var(--card) 46%, transparent);
+  -webkit-backdrop-filter:blur(24px) saturate(180%) brightness(1.1);
+  backdrop-filter:blur(24px) saturate(180%) brightness(1.1);
+  border:1px solid color-mix(in srgb, var(--t1) 12%, transparent);
+  box-shadow:
+    0 10px 30px rgba(0,0,0,.26),
+    inset 0 1px 0 color-mix(in srgb, #fff 20%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, #000 16%, transparent);
+}
+/* Navbar-Variante: kein Content-Padding (die Bar fuellt die Flaeche). */
+.nav-glass .glass-surface__content{padding:0;}
+
 /* ── Bottom-Fade — ersetzt die Fußzeilen: Inhalte laufen unter
    Navbar/FABs in einen PROGRESSIVEN Blur + Farb-Fade aus (iOS-Look).
    ::before blurt den dahinterliegenden Content mit Maskenverlauf,

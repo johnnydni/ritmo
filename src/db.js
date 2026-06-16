@@ -192,6 +192,40 @@ function computeStats(rows) {
   };
 }
 
+/* ───────── LOKALES MATCH-LOG (Fallback ohne Supabase) ─────────
+   Damit gespielte Matches (Single Match Best-of-3, Turniere) auch ohne
+   Backend in die Profil-Statistik einfliessen, spiegeln wir jedes
+   geloggte Match nach localStorage. loadMatchStats() (Supabase) hat
+   Vorrang; fehlt Backend/Session, greift loadMatchStatsLocal(). */
+const MATCHLOG_KEY = 'ritmo_matchlog';
+function readMatchLog() {
+  try {
+    const r = JSON.parse(localStorage.getItem(MATCHLOG_KEY) || '[]');
+    return Array.isArray(r) ? r : [];
+  } catch { return []; }
+}
+export function logMatchLocal(match) {
+  try {
+    const log = readMatchLog();
+    log.push({
+      format: match.format,
+      user_won: match.user_won ?? null,
+      sets: match.sets ?? null,
+      finished_at: new Date().toISOString(),
+    });
+    localStorage.setItem(MATCHLOG_KEY, JSON.stringify(log.slice(-200)));
+  } catch (e) { /* Quota / Private Mode → still ignorieren */ }
+}
+export function loadMatchStatsLocal() {
+  const log = readMatchLog();
+  if (!log.length) return null;
+  // computeStats erwartet neueste zuerst (slice(0,12) = jüngste Matches).
+  return computeStats([...log].reverse());
+}
+export function clearMatchLog() {
+  try { localStorage.removeItem(MATCHLOG_KEY); } catch (e) {}
+}
+
 /* ═══════════════════════════════════════════════════════════════
    ONLINE TOURNAMENT (ritmo_sessions Tabelle)
 
@@ -513,9 +547,13 @@ export async function fetchPublicProfile(userId) {
   try {
     const { data, error } = await c
       .from('ritmo_profiles')
+      // is_public NICHT mehr serverseitig filtern: private Profile
+      // werden ebenfalls geladen, der Client zeigt dann nur Spielstil +
+      // Bio (volles Profil + Statistik nur wenn is_public). Hinweis: fuer
+      // echte Wire-Privacy muesste die RLS bei privaten Profilen nur die
+      // Minimal-Felder ausliefern (Server-Follow-up).
       .select('user_id,data,display_name,is_public,updated_at')
       .eq('user_id', userId)
-      .eq('is_public', true)
       .maybeSingle();
     if (error) { console.warn('[db] fetchPublicProfile:', error.message); return null; }
     return data || null;

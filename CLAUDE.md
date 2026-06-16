@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 npm install        # install deps
-npm run dev        # Vite dev server on http://localhost:5173
+npm run dev        # Vite dev server on http://localhost:5180
 npm run build      # production build → /dist (set BASE_PATH for sub-path deploys)
 npm run preview    # preview built /dist
 ```

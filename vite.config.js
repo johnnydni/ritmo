@@ -11,6 +11,13 @@ export default defineConfig({
   // React-Kopie ab → "Invalid hook call" + Blackscreen. dedupe zwingt
   // ALLE Imports von 'react' und 'react-dom' auf dasselbe Modul-Objekt.
   resolve: { dedupe: ["react", "react-dom"] },
+  // Fester eigener Port, damit RITMO sich nicht mit anderen lokalen
+  // Vite-Projekten (z. B. "shop" auf 5173) um denselben Port streitet.
+  // strictPort: true → Vite faellt NICHT still auf einen Nachbarport
+  // zurueck, sondern bricht ab, falls 5180 belegt ist. So weiss man
+  // sofort, dass wirklich ein Konflikt vorliegt.
+  server: { port: 5180, strictPort: true },
+  preview: { port: 5181, strictPort: true },
   plugins: [
     react(),
     {

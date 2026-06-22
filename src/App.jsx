@@ -1592,7 +1592,7 @@ function StylePlayingCard({styleId}){
   return(
     <div style={{background:'#F5EDDC',borderRadius:22,padding:8,
       boxShadow:'0 18px 44px rgba(0,0,0,.5), 0 4px 14px rgba(0,0,0,.35)'}}>
-      <div style={{position:'relative',height:116,borderRadius:15,overflow:'hidden',
+      <div style={{position:'relative',height:162,borderRadius:15,overflow:'hidden',
         background:s.accent}}>
         {!imgError&&filename&&(
           <img src={`${getAssetBase()}assets/${filename}`} alt={s.name}

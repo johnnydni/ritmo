@@ -6774,6 +6774,330 @@ function StylePickerSheet({current,onSelect,onClose}){
 /* Court-Label: eigener Name (aus dem Setup) oder Default "Court N". */
 const courtLabel=(names,i)=>((names&&names[i]&&String(names[i]).trim())||`Court ${i+1}`);
 
+/* ═══════════════════════════════════════════════════════════════
+   TURNIER-ASSISTENT — geführter Setup-Wizard (6 Schritte).
+
+   Format → Spieler → Courts → Zeit → Wertung → Zusammenfassung.
+   Schreibt DIREKT in die TournamentSetup-States (Setter-Props):
+   nichts geht beim Schließen verloren, das klassische Formular
+   spiegelt jeden Schritt live. Nur für den Lokal-Modus — Online
+   hat mit der Lobby bereits einen eigenen geführten Flow.
+═══════════════════════════════════════════════════════════════ */
+function TournamentWizard({onClose,onFinish,canStart,
+  format,setFormat,winMode,setWinMode,name,setName,
+  players,addPlayer,addPlayerNamed,removePlayer,renamePlayer,
+  numCourts,setNumCourts,maxCourts,courtNames,setCourtName,
+  startTime,setStartTime,endTime,setEndTime,roundPrio,setRoundPrio,
+  roundDur,setRoundDur,suggest,pauseStats,nameHistory}){
+  const[step,setStep]=useState(0);
+  const inputRefs=useRef({});
+  // Validierung je Schritt — „Weiter" bleibt aus, bis der Schritt steht.
+  const namesOk=players.every(p=>(p.name||'').trim().length>0);
+  const valid=[true,players.length>=4&&namesOk,true,true,true,canStart][step];
+  const next=()=>{if(!valid)return;buzz(6);setStep(s=>Math.min(s+1,5));};
+  const back=()=>{buzz(6);setStep(s=>Math.max(s-1,0));};
+  // Historie-Chips: nur Namen, die noch nicht in der Liste stehen.
+  const inList=new Set(players.map(p=>(p.name||'').trim().toLowerCase()));
+  const histFree=(nameHistory||[]).filter(n=>!inList.has(n.toLowerCase())).slice(0,8);
+
+  // ── Shared Styles ──
+  const card=sel=>({width:'100%',textAlign:'left',padding:'16px 18px',borderRadius:19,
+    background:sel?T.oSoft:T.card2,border:`1.5px solid ${sel?T.o:T.border}`,
+    cursor:'pointer',display:'flex',alignItems:'center',gap:14});
+  const chip=sel=>({flex:1,padding:'12px 10px',borderRadius:13,
+    background:sel?T.oSoft:T.card2,border:`1.5px solid ${sel?T.o:T.border}`,
+    color:sel?T.o:T.t2,fontSize:13,fontWeight:700,cursor:'pointer'});
+  const stepTitle={color:T.t1,fontSize:22,fontWeight:900,letterSpacing:-.4,marginBottom:6};
+  const stepSub={color:T.t3,fontSize:13,lineHeight:1.55,marginBottom:18};
+  const label={color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.3,
+    textTransform:'uppercase',marginBottom:8};
+  const inp={width:'100%',height:46,borderRadius:13,background:T.card2,
+    border:`1px solid ${T.border}`,color:T.t1,fontSize:16,fontWeight:600,
+    padding:'0 12px',outline:'none',boxSizing:'border-box'};
+  const timeInp={width:'100%',height:46,borderRadius:13,background:T.card2,
+    border:`1px solid ${T.border}`,color:T.t1,fontSize:16,fontWeight:700,textAlign:'center',
+    outline:'none',boxSizing:'border-box',fontFamily:'inherit',
+    display:'flex',alignItems:'center',justifyContent:'center'};
+  const stepBtn={width:38,height:38,borderRadius:12,background:T.card2,
+    border:`1px solid ${T.border}`,color:T.t1,fontSize:18,fontWeight:800,cursor:'pointer',
+    display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0};
+  const infoBox={padding:'12px 16px',borderRadius:13,background:T.oSoft,
+    border:`1px solid ${T.o}`,color:T.t2,fontSize:12.5,lineHeight:1.6};
+
+  // Zusammenfassungs-Zeilen (Schritt 6) — [Label, Wert, Ziel-Schritt].
+  const fmtLabel=format==='mexicano'?'Mexicano':'Americano';
+  const wmLabel=winMode==='wins'?'Siege':'Punkte';
+  const rows=[
+    ['Format',fmtLabel,0],
+    ['Spieler',`${players.length} — ${players.slice(0,4).map(p=>(p.name||'').trim().split(/\s+/)[0]).join(', ')}${players.length>4?' …':''}`,1],
+    ['Courts',String(numCourts),2],
+    ['Zeit',startTime&&endTime?`${startTime}–${endTime} · ${roundDur} Min/Runde`:`${roundDur} Min/Runde`,3],
+    ['Wertung',wmLabel,4],
+    ...(name.trim()?[['Name',name.trim(),4]]:[]),
+  ];
+
+  return(
+    <div className="fi" style={{position:'fixed',inset:0,zIndex:300,background:T.bg,
+      display:'flex',flexDirection:'column',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 18px)'}}>
+
+      {/* Kopf: Fortschritt + Schließen */}
+      <div style={{padding:'0 22px 14px',flexShrink:0}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
+          <div style={{color:T.o,fontSize:12,fontWeight:800,letterSpacing:1.4,textTransform:'uppercase'}}>
+            Turnier-Assistent · {step+1}/6
+          </div>
+          <button onClick={onClose} aria-label="Assistent schließen"
+            style={{width:34,height:34,borderRadius:'50%',background:T.card2,
+              border:`1px solid ${T.border}`,color:T.t2,fontSize:16,fontWeight:700,
+              cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1}}>×</button>
+        </div>
+        <div style={{height:5,borderRadius:3,background:T.card2,overflow:'hidden'}}>
+          <div style={{height:'100%',width:`${((step+1)/6)*100}%`,borderRadius:3,
+            background:T.o,transition:'width .35s var(--ease-out-expo)'}}/>
+        </div>
+      </div>
+
+      {/* Body — key={step} remountet pro Schritt → Entrance-Animation */}
+      <div style={{flex:1,overflowY:'auto',WebkitOverflowScrolling:'touch',padding:'8px 22px 20px'}}>
+        <div key={step} className="fu">
+
+          {step===0&&(<>
+            <div style={stepTitle}>Welches Format passt zu euch?</div>
+            <div style={stepSub}>Beides sind Rotations-Formate ab 4 Spielern — der Unterschied ist die Paarungslogik.</div>
+            <button onClick={()=>setFormat('americano')} style={card(format==='americano')}>
+              <span style={{flex:1,minWidth:0}}>
+                <span style={{display:'flex',alignItems:'center',gap:8}}>
+                  <span style={{color:T.t1,fontSize:17,fontWeight:800}}>Americano</span>
+                  <span style={{padding:'2px 8px',borderRadius:999,background:T.oSoft,
+                    color:T.o,fontSize:10,fontWeight:800,letterSpacing:.5}}>BELIEBT</span>
+                </span>
+                <span style={{display:'block',color:T.t3,fontSize:12.5,lineHeight:1.55,marginTop:4}}>
+                  Zufällige Partner, jede Runde neu gemischt — locker & sozial. Ideal für bunte Gruppen.
+                </span>
+              </span>
+              {format==='americano'&&<span style={{color:T.o,fontSize:18,fontWeight:900,flexShrink:0}}>✓</span>}
+            </button>
+            <div style={{height:10}}/>
+            <button onClick={()=>setFormat('mexicano')} style={card(format==='mexicano')}>
+              <span style={{flex:1,minWidth:0}}>
+                <span style={{color:T.t1,fontSize:17,fontWeight:800}}>Mexicano</span>
+                <span style={{display:'block',color:T.t3,fontSize:12.5,lineHeight:1.55,marginTop:4}}>
+                  Paarungen nach Tabellenstand (1+4 vs 2+3) — enge, ausgeglichene Matches. Ideal, wenn's kompetitiv sein darf.
+                </span>
+              </span>
+              {format==='mexicano'&&<span style={{color:T.o,fontSize:18,fontWeight:900,flexShrink:0}}>✓</span>}
+            </button>
+          </>)}
+
+          {step===1&&(<>
+            <div style={stepTitle}>Wer spielt mit?</div>
+            <div style={stepSub}>Mindestens 4 Spieler — Enter springt zum nächsten Namen.</div>
+            {histFree.length>0&&(<>
+              <div style={label}>Zuletzt dabei</div>
+              <div style={{display:'flex',flexWrap:'wrap',gap:6,marginBottom:16}}>
+                {histFree.map(n=>(
+                  <button key={n} onClick={()=>{buzz(6);addPlayerNamed(n);}}
+                    style={{padding:'7px 12px',borderRadius:999,background:T.card2,
+                      border:`1px solid ${T.border}`,color:T.t2,fontSize:13,fontWeight:600,cursor:'pointer'}}>
+                    + {n}
+                  </button>
+                ))}
+              </div>
+            </>)}
+            {players.map((p,idx)=>(
+              <div key={p.id} style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
+                <span style={{width:26,height:26,borderRadius:'50%',background:p.color,flexShrink:0,
+                  display:'flex',alignItems:'center',justifyContent:'center',
+                  color:'#000',fontSize:12,fontWeight:900}}>{idx+1}</span>
+                <input ref={el=>{inputRefs.current[p.id]=el;}} value={p.name}
+                  onChange={e=>renamePlayer(p.id,e.target.value)}
+                  autoCapitalize="words" autoCorrect="off" spellCheck={false} enterKeyHint="next"
+                  onFocus={e=>e.target.select()}
+                  onKeyDown={e=>{if(e.key==='Enter'){
+                    const nx=players[idx+1];
+                    if(nx) inputRefs.current[nx.id]?.focus(); else addPlayer();
+                  }}}
+                  style={{...inp,flex:1,width:'auto',minWidth:0,height:44,borderRadius:12}}/>
+                {players.length>4&&(
+                  <button onClick={()=>removePlayer(p.id)} aria-label="Spieler entfernen"
+                    style={{...stepBtn,width:34,height:34,color:T.t3}}>×</button>
+                )}
+              </div>
+            ))}
+            <button onClick={addPlayer}
+              style={{width:'100%',padding:'12px',borderRadius:12,background:'none',
+                border:`1.5px dashed ${T.border}`,color:T.o,fontSize:16,fontWeight:700,
+                cursor:'pointer',marginTop:2}}>
+              + Spieler hinzufügen
+            </button>
+            {pauseStats&&pauseStats.sitOut>0&&(
+              <div style={{marginTop:14,padding:'10px 14px',borderRadius:12,background:T.card2,
+                border:`1px solid ${T.border}`,color:T.t3,fontSize:12,lineHeight:1.55}}>
+                Bei {players.length} Spielern pausieren {pauseStats.sitOut} pro Runde — RITMO rotiert fair (±1 Pause).
+              </div>
+            )}
+          </>)}
+
+          {step===2&&(<>
+            <div style={stepTitle}>Wie viele Courts habt ihr?</div>
+            <div style={stepSub}>4 Spieler pro Court — mehr Courts bedeuten weniger Pausen.</div>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:20,margin:'6px 0 14px'}}>
+              <button onClick={()=>setNumCourts(Math.max(1,numCourts-1))}
+                style={{...stepBtn,width:52,height:52,borderRadius:16,fontSize:24}}>−</button>
+              <div style={{textAlign:'center',minWidth:84}}>
+                <div style={{color:T.t1,fontSize:46,fontWeight:900,lineHeight:1}}>{numCourts}</div>
+                <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.2,
+                  textTransform:'uppercase',marginTop:5}}>Court{numCourts>1?'s':''}</div>
+              </div>
+              <button onClick={()=>setNumCourts(Math.min(maxCourts,numCourts+1))}
+                style={{...stepBtn,width:52,height:52,borderRadius:16,fontSize:24}}>+</button>
+            </div>
+            <div style={{color:T.t3,fontSize:12,textAlign:'center',marginBottom:18}}>
+              Maximal {maxCourts} bei {players.length} Spielern.
+            </div>
+            <div style={label}>Court-Namen (optional)</div>
+            {Array.from({length:numCourts}).map((_,i)=>(
+              <input key={i} value={courtNames[i]??''} onChange={e=>setCourtName(i,e.target.value)}
+                placeholder={`Court ${i+1}`} autoCapitalize="words" autoCorrect="off" spellCheck={false}
+                style={{...inp,height:44,borderRadius:12,marginBottom:8}}/>
+            ))}
+          </>)}
+
+          {step===3&&(<>
+            <div style={stepTitle}>Wie lange wollt ihr spielen?</div>
+            <div style={stepSub}>Mit Start & Ende schlägt RITMO Rundenzahl und -dauer automatisch vor.</div>
+            <div style={{display:'flex',gap:10,marginBottom:16}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={label}>Start</div>
+                <input type="time" value={startTime} onChange={e=>setStartTime(e.target.value)} style={timeInp}/>
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={label}>Ende</div>
+                <input type="time" value={endTime} onChange={e=>setEndTime(e.target.value)} style={timeInp}/>
+              </div>
+            </div>
+            <div style={label}>Was ist euch wichtiger?</div>
+            <div style={{display:'flex',gap:8,marginBottom:18}}>
+              <button onClick={()=>setRoundPrio('variety')} style={chip(roundPrio==='variety')}>
+                Jeder mit jedem
+              </button>
+              <button onClick={()=>setRoundPrio('length')} style={chip(roundPrio==='length')}>
+                Längere Runden
+              </button>
+            </div>
+            <div style={label}>Rundendauer</div>
+            <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:16}}>
+              <button onClick={()=>setRoundDur(Math.max(4,roundDur-1))} style={stepBtn}>−</button>
+              <div style={{flex:1,textAlign:'center',color:T.t1,fontSize:24,fontWeight:900}}>
+                {roundDur} Min
+              </div>
+              <button onClick={()=>setRoundDur(Math.min(45,roundDur+1))} style={stepBtn}>+</button>
+            </div>
+            {suggest?(
+              <div style={infoBox}>
+                <span style={{color:T.o,fontWeight:800}}>Empfehlung:</span>{' '}
+                ≈ {suggest.rounds} Runden à {suggest.roundTime} Min — jede:r spielt ~{suggest.gamesEach} Matches
+                {pauseStats&&pauseStats.pauses!=null&&pauseStats.sitOut>0?` und pausiert ~${pauseStats.pauses}×`:''}.
+              </div>
+            ):(
+              <div style={{color:T.t3,fontSize:12,lineHeight:1.55}}>
+                Ohne Zeitfenster läuft das Turnier einfach Runde für Runde weiter — du beendest es manuell.
+              </div>
+            )}
+          </>)}
+
+          {step===4&&(<>
+            <div style={stepTitle}>Wie wird gewertet?</div>
+            <div style={stepSub}>Bestimmt, wonach das Leaderboard sortiert.</div>
+            <button onClick={()=>setWinMode('points')} style={card(winMode==='points')}>
+              <span style={{flex:1,minWidth:0}}>
+                <span style={{color:T.t1,fontSize:17,fontWeight:800}}>Punkte zählen</span>
+                <span style={{display:'block',color:T.t3,fontSize:12.5,lineHeight:1.55,marginTop:4}}>
+                  Jeder gewonnene Punkt zählt fürs Ranking — der Americano-Klassiker.
+                </span>
+              </span>
+              {winMode==='points'&&<span style={{color:T.o,fontSize:18,fontWeight:900,flexShrink:0}}>✓</span>}
+            </button>
+            <div style={{height:10}}/>
+            <button onClick={()=>setWinMode('wins')} style={card(winMode==='wins')}>
+              <span style={{flex:1,minWidth:0}}>
+                <span style={{color:T.t1,fontSize:17,fontWeight:800}}>Siege zählen</span>
+                <span style={{display:'block',color:T.t3,fontSize:12.5,lineHeight:1.55,marginTop:4}}>
+                  Nur Match-Siege zählen — einfach & klar.
+                </span>
+              </span>
+              {winMode==='wins'&&<span style={{color:T.o,fontSize:18,fontWeight:900,flexShrink:0}}>✓</span>}
+            </button>
+            <div style={{height:18}}/>
+            <div style={label}>Turniername (optional)</div>
+            <input value={name} onChange={e=>setName(e.target.value)} maxLength={40}
+              placeholder="z. B. Sunset Americano · Fr" style={inp}/>
+          </>)}
+
+          {step===5&&(<>
+            <div style={stepTitle}>Alles bereit?</div>
+            <div style={stepSub}>Kurz prüfen — jeden Punkt kannst du noch anpassen.</div>
+            <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19,
+              padding:'6px 18px',marginBottom:14}}>
+              {rows.map(([k,v,s],i)=>(
+                <div key={k+i} style={{display:'flex',alignItems:'center',gap:10,
+                  padding:'13px 0',borderTop:i>0?`1px solid ${T.sep}`:'none'}}>
+                  <div style={{width:74,flexShrink:0,color:T.t3,fontSize:11,fontWeight:700,
+                    letterSpacing:1,textTransform:'uppercase'}}>{k}</div>
+                  <div style={{flex:1,minWidth:0,color:T.t1,fontSize:16,fontWeight:600,
+                    overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{v}</div>
+                  <button onClick={()=>setStep(s)}
+                    style={{padding:'6px 11px',borderRadius:999,background:T.card2,
+                      border:`1px solid ${T.border}`,color:T.o,fontSize:11.5,fontWeight:700,
+                      cursor:'pointer',flexShrink:0}}>
+                    Ändern
+                  </button>
+                </div>
+              ))}
+            </div>
+            {suggest&&(
+              <div style={infoBox}>
+                Plan: ≈ {suggest.rounds} Runden à {suggest.roundTime} Min auf {suggest.courts} Court{suggest.courts>1?'s':''}
+                {suggest.sitOut>0?` · ${suggest.sitOut} pausieren pro Runde`:''}.
+              </div>
+            )}
+          </>)}
+
+        </div>
+      </div>
+
+      {/* Footer: Zurück / Weiter bzw. Starten */}
+      <div style={{flexShrink:0,display:'flex',gap:10,
+        padding:'14px 22px calc(env(safe-area-inset-bottom,0px) + 18px)',
+        borderTop:`1px solid ${T.sep}`,background:T.bg}}>
+        {step>0&&(
+          <button onClick={back}
+            style={{flex:1,padding:'15px',borderRadius:15,background:T.card2,
+              border:`1px solid ${T.border}`,color:T.t1,fontSize:16,fontWeight:700,cursor:'pointer'}}>
+            Zurück
+          </button>
+        )}
+        {step<5?(
+          <button onClick={next} disabled={!valid}
+            style={{flex:2,padding:'15px',borderRadius:15,border:'none',
+              background:valid?T.o:T.card2,color:valid?'#000':T.t3,
+              fontSize:16,fontWeight:800,cursor:valid?'pointer':'not-allowed'}}>
+            Weiter
+          </button>
+        ):(
+          <button onClick={()=>{if(!canStart)return;buzz(18);onFinish();}} disabled={!canStart}
+            style={{flex:2,padding:'15px',borderRadius:15,border:'none',
+              background:canStart?T.g:T.card2,color:canStart?T.t1:T.t3,
+              fontSize:16,fontWeight:800,cursor:canStart?'pointer':'not-allowed'}}>
+            Turnier starten
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,profile,onCreateOnline}){
   // mode: 'lokal' = bestehender Flow (lokale Spielerliste).
   // 'online' = Host erstellt Session, Player joinen via PIN/QR.
@@ -6808,6 +7132,11 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
   // Edit-Scope-Popup: haelt die zu speichernden Updates, bis der Host
   // waehlt, ob sie fuer die aktuelle oder die naechste Runde gelten.
   const[editScopePrompt,setEditScopePrompt]=useState(null);
+  // Turnier-Assistent (geführter Setup) — nur im Lokal-Modus.
+  const[wizardOpen,setWizardOpen]=useState(false);
+  // Namens-Historie für die Schnellauswahl im Assistenten (LRU, max 24;
+  // wird bei jedem lokalen Start in startLocal() gepflegt).
+  const[nameHistory]=useState(()=>lsGet('ritmo_player_history',[]));
 
   // Refs auf alle Spieler-Inputs — Enter springt zum nächsten Slot,
   // damit man die Liste in einem Rutsch durchtippen kann.
@@ -6901,12 +7230,45 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
   };
   const removePlayer=id=>setPlayers(p=>p.filter(x=>x.id!==id));
   const renamePlayer=(id,name)=>setPlayers(p=>p.map(x=>x.id===id?{...x,name}:x));
+  // Spieler mit fertigem Namen anlegen (Historie-Chips im Assistenten).
+  const addPlayerNamed=(nm)=>{const id=nextId.current++;
+    setPlayers(p=>[...p,{id,name:nm,color:PCOLS[id%PCOLS.length]}]);};
   // Spielstil je Spieler — treibt das Match-Tier-Rating der Paarungen.
   const setPlayerStyle=(id,style)=>setPlayers(p=>p.map(x=>x.id===id?{...x,style:style||null}:x));
   // Welcher Spieler hat gerade den Stil-Picker offen (id | null).
   const[stylePickerFor,setStylePickerFor]=useState(null);
 
   const canStart=players.length>=4;
+
+  // Lokalen Start bündeln — MatchBar-Button UND Assistent nutzen ihn.
+  const startLocal=()=>{
+    if(!canStart) return;
+    // Namens-Historie pflegen (echte Namen, keine "Spieler N"-Defaults).
+    const hist=lsGet('ritmo_player_history',[]);
+    const cur=players.map(p=>(p.name||'').trim()).filter(n=>n&&!/^Spieler \d+$/i.test(n));
+    lsSet('ritmo_player_history',[...new Set([...cur,...hist])].slice(0,24));
+    const lb=calcLeaderboard(players,[],winMode);
+    const r0=format==='mexicano'
+      ?genMexicanoRound(players.map(p=>p.id),lb,numCourts)
+      :genAmericanoRound(players.map(p=>p.id),[],numCourts);
+    onStart({
+      // id/createdAt durchreichen, falls aus einem Entwurf gestartet —
+      // startTourney ersetzt den Eintrag dann in-place (Entwurf-Flag
+      // fällt weg, da es hier nicht mitgegeben wird).
+      id:saved?.id,createdAt:saved?.createdAt,
+      name:name.trim()||('Turnier '+new Date().toLocaleDateString('de-DE')),
+      startTime,endTime,roundPrio,
+      players,format,winMode,
+      numCourts,courtNames,
+      roundDurationMin:roundDur,
+      rounds:[r0],
+      current:0,
+      finished:false,
+      timerSecsLeft:roundDur*60,
+      timerRunning:false,
+      timerFinished:false,
+    });
+  };
 
   return(
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
@@ -6921,6 +7283,31 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
           icon={<TrophyIcon size={40}/>}
           title="Turnier erstellen"
           desc="Mehrere Runden, rotierende Partner oder Mexicano-Pairings. Beliebig viele Spieler — lokal oder online via QR-Code."/>
+
+        {/* Turnier-Assistent — geführter Einstieg (nur neu + lokal) */}
+        {!isEdit&&mode==='lokal'&&(
+          <button onClick={()=>{buzz(6);setWizardOpen(true);}} data-lift
+            style={{width:'100%',textAlign:'left',padding:'16px 18px',borderRadius:19,
+              background:T.oSoft,border:`1.5px solid ${T.o}`,cursor:'pointer',
+              display:'flex',alignItems:'center',gap:14,flexShrink:0}}>
+            <span style={{width:44,height:44,borderRadius:14,background:T.o,flexShrink:0,
+              display:'flex',alignItems:'center',justifyContent:'center'}} aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                <path d="M4 17.5 9.5 12 4 6.5M11.5 17.5 17 12l-5.5-5.5"
+                  stroke="#000" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </span>
+            <span style={{flex:1,minWidth:0}}>
+              <span style={{display:'block',color:T.t1,fontSize:17,fontWeight:800,letterSpacing:-.2}}>
+                Turnier-Assistent
+              </span>
+              <span style={{display:'block',color:T.t2,fontSize:12.5,marginTop:3,lineHeight:1.5}}>
+                In 6 Schritten zum fertigen Turnier — mit Empfehlungen.
+              </span>
+            </span>
+            <span style={{color:T.o,fontSize:20,fontWeight:900,flexShrink:0}}>›</span>
+          </button>
+        )}
 
         {/* Turniername — damit Turniere unter „Live" einzeln gespeichert
             werden (laufende werden nicht mehr überschrieben). */}
@@ -7344,27 +7731,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
             return;
           }
           if(!canStart) return;
-          const lb=calcLeaderboard(players,[],winMode);
-          const r0=format==='mexicano'
-            ?genMexicanoRound(players.map(p=>p.id),lb,numCourts)
-            :genAmericanoRound(players.map(p=>p.id),[],numCourts);
-          onStart({
-            // id/createdAt durchreichen, falls aus einem Entwurf gestartet —
-            // startTourney ersetzt den Eintrag dann in-place (Entwurf-Flag
-            // fällt weg, da es hier nicht mitgegeben wird).
-            id:saved?.id,createdAt:saved?.createdAt,
-            name:name.trim()||('Turnier '+new Date().toLocaleDateString('de-DE')),
-            startTime,endTime,roundPrio,
-            players,format,winMode,
-            numCourts,courtNames,
-            roundDurationMin:roundDur,
-            rounds:[r0],
-            current:0,
-            finished:false,
-            timerSecsLeft:roundDur*60,
-            timerRunning:false,
-            timerFinished:false,
-          });
+          startLocal();
         },
         style:{
           width:56,height:56,
@@ -7375,6 +7742,27 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
           fontWeight:800,
         }
       }]}/>
+
+      {/* Turnier-Assistent — Vollbild-Overlay über dem Formular. */}
+      {wizardOpen&&(
+        <TournamentWizard
+          onClose={()=>setWizardOpen(false)}
+          onFinish={()=>{setWizardOpen(false);startLocal();}}
+          canStart={canStart}
+          format={format} setFormat={setFormat}
+          winMode={winMode} setWinMode={setWinMode}
+          name={name} setName={setName}
+          players={players} addPlayer={addPlayer} addPlayerNamed={addPlayerNamed}
+          removePlayer={removePlayer} renamePlayer={renamePlayer}
+          numCourts={numCourts} setNumCourts={setNumCourts} maxCourts={maxCourts}
+          courtNames={courtNames} setCourtName={setCourtName}
+          startTime={startTime} setStartTime={setStartTime}
+          endTime={endTime} setEndTime={setEndTime}
+          roundPrio={roundPrio} setRoundPrio={setRoundPrio}
+          roundDur={roundDur} setRoundDur={setRoundDur}
+          suggest={suggest} pauseStats={pauseStats}
+          nameHistory={nameHistory}/>
+      )}
 
       {stylePickerFor!=null&&(
         <StylePickerSheet

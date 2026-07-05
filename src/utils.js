@@ -74,6 +74,14 @@ export function safeImageSrc(src) {
   return SAFE_IMAGE_PREFIX.test(src) ? src : null;
 }
 
+/* ── Haptik (Quality-of-Life) ─────────────────────────────────── */
+// Kurzes Vibrations-Feedback auf unterstützten Geräten (Android
+// Chrome etc.). iOS Safari ignoriert navigator.vibrate — der Guard
+// macht den Call überall crash-frei. pattern: ms oder [ms,pause,ms].
+export const buzz=(pattern=10)=>{
+  try{navigator.vibrate&&navigator.vibrate(pattern);}catch(e){}
+};
+
 // Zeichnet die Source-DataURL auf ein Canvas <= maxDim x maxDim und
 // gibt eine JPEG-DataURL zurück. Klein genug für JSONB-Persistenz
 // und das Re-Encoding entfernt EXIF/Geo-Daten aus User-Uploads.

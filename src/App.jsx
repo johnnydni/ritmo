@@ -4608,8 +4608,11 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
             return(
               <div key={idx} style={{display:'flex',alignItems:'center',
                 padding:'14px 18px',borderTop:`1px solid ${T.sep}`,gap:12}}>
-                <span style={{color:T.t1,fontSize:16,fontWeight:600,
-                  width:94,flexShrink:0,display:'flex',alignItems:'center',gap:5}}>
+                {/* Kein festes width mehr: seit 16px-Schrift passte
+                    "Spieler 1" nicht mehr in 94px und die Ziffer brach
+                    um. nowrap + Eigenbreite hält das Label einzeilig. */}
+                <span style={{color:T.t1,fontSize:16,fontWeight:600,whiteSpace:'nowrap',
+                  flexShrink:0,display:'flex',alignItems:'center',gap:5}}>
                   Spieler {idx+1}
                   {isUser&&<span style={{color:T.o,fontWeight:700}}>(Du)</span>}
                 </span>
@@ -4638,7 +4641,7 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
             <div key={idx} style={{display:'flex',alignItems:'center',
               padding:'14px 18px',borderTop:`1px solid ${T.sep}`,gap:12}}>
               <span style={{color:T.t1,fontSize:16,fontWeight:600,
-                width:94,flexShrink:0}}>
+                whiteSpace:'nowrap',flexShrink:0}}>
                 Spieler {idx+1}
               </span>
               <input value={players[idx]}
@@ -9304,9 +9307,9 @@ function TournamentCourtCard({court,courtIndex,courtName,playerById,onScoreChang
   );
 
   // Spieler-Namen leicht VERSETZT (gestaffelt) übereinander: der 2. Spieler
-  // ist nach innen eingerückt, damit beide Zeilen klar getrennt und voll
-  // ausgeschrieben lesbar sind. Namen brechen auf max. 2 Zeilen um statt
-  // hart mit „…" abzuschneiden.
+  // ist nach innen eingerückt, damit beide Zeilen klar getrennt lesbar
+  // sind. Namen bleiben EINZEILIG (nowrap + Ellipsis) — kein Umbruch
+  // mitten im Namen ("Spieler 1" brach als "Spieler"/"1" um).
   const teamSide=(playerIds,align)=>(
     <div style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',gap:8,
       alignItems:align==='right'?'flex-end':'flex-start'}}>
@@ -9323,8 +9326,8 @@ function TournamentCourtCard({court,courtIndex,courtName,playerById,onScoreChang
             <div style={{minWidth:0,flex:'1 1 auto',
               textAlign:align==='right'?'right':'left'}}>
               <div style={{color:T.t1,fontSize:12.5,fontWeight:700,letterSpacing:-.2,
-                lineHeight:1.16,display:'-webkit-box',WebkitLineClamp:2,
-                WebkitBoxOrient:'vertical',overflow:'hidden',wordBreak:'break-word'}}>
+                lineHeight:1.16,whiteSpace:'nowrap',overflow:'hidden',
+                textOverflow:'ellipsis'}}>
                 {p?.name||'—'}
               </div>
             </div>

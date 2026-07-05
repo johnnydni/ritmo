@@ -66,7 +66,7 @@ function RulesLanding({onHome,onContinue,onMarkRead,alreadyRead}){
           <BookIcon size={32}/>
           <div style={{flex:1,minWidth:0}}>
             <div style={{color:T.t1,fontSize:26,fontWeight:800,letterSpacing:-.3}}>Regelwerk</div>
-            <div style={{color:T.t2,fontSize:14,marginTop:2,fontWeight:400}}>
+            <div style={{color:T.t2,fontSize:16,marginTop:2,fontWeight:400}}>
               Padel-Regeln, Formate, Begriffe.
             </div>
           </div>
@@ -112,7 +112,7 @@ function JourneyLanding({onHome,onContinue,onMarkRead,alreadyRead}){
           <JourneyIcon size={32}/>
           <div style={{flex:1,minWidth:0}}>
             <div style={{color:T.t1,fontSize:26,fontWeight:800,letterSpacing:-.3}}>Journey</div>
-            <div style={{color:T.t2,fontSize:14,marginTop:2,fontWeight:400}}>
+            <div style={{color:T.t2,fontSize:16,marginTop:2,fontWeight:400}}>
               Tipps & Tricks für dein Padel-Spiel.
             </div>
           </div>
@@ -309,7 +309,7 @@ function BetaLanding({onLogin,onRegister}){
           <button onClick={onLogin}
             style={{flex:1,padding:'14px 16px',background:T.card,
               border:`1px solid ${T.border}`,borderRadius:15,
-              color:T.t1,fontSize:14,fontWeight:800,letterSpacing:.3,
+              color:T.t1,fontSize:16,fontWeight:800,letterSpacing:.3,
               cursor:'pointer',transition:'background .15s'}}
             onPointerDown={e=>e.currentTarget.style.background=T.card2}
             onPointerUp={e=>e.currentTarget.style.background=T.card}
@@ -318,7 +318,7 @@ function BetaLanding({onLogin,onRegister}){
           </button>
           <button onClick={onRegister}
             style={{flex:1,padding:'14px 16px',background:T.o,border:'none',borderRadius:15,
-              color:'#000',fontSize:14,fontWeight:800,letterSpacing:.3,
+              color:'#000',fontSize:16,fontWeight:800,letterSpacing:.3,
               cursor:'pointer',boxShadow:'0 6px 18px var(--oGlow)'}}>
             Registrierung
           </button>
@@ -617,7 +617,7 @@ function Login({onSuccess,onRegister}){
             autoCapitalize="off" autoCorrect="off" spellCheck={false}
             placeholder="du@example.com"
             style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-              borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
+              borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:16,fontWeight:500,
               outline:'none',boxSizing:'border-box'}}/>
         </div>
 
@@ -629,7 +629,7 @@ function Login({onSuccess,onRegister}){
             onKeyDown={onKeyDown} autoComplete="current-password"
             placeholder="••••••••"
             style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-              borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
+              borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:16,fontWeight:500,
               outline:'none',boxSizing:'border-box'}}/>
         </div>
 
@@ -952,7 +952,7 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
                 autoCapitalize="off" autoCorrect="off" spellCheck={false}
                 placeholder="du@example.com"
                 style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-                  borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
+                  borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:16,fontWeight:500,
                   outline:'none',boxSizing:'border-box'}}/>
             </div>
 
@@ -966,7 +966,7 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
                   aria-label="Ländervorwahl wählen" aria-expanded={ccOpen}
                   style={{display:'flex',alignItems:'center',gap:7,flexShrink:0,
                     background:T.card2,border:`1px solid ${T.border}`,borderRadius:13,
-                    padding:'12px 12px',color:T.t1,fontSize:14,fontWeight:700,cursor:'pointer'}}>
+                    padding:'12px 12px',color:T.t1,fontSize:16,fontWeight:700,cursor:'pointer'}}>
                   <FlagIcon code={phoneCountry} size={20}/>
                   <span>{PHONE_COUNTRIES.find(c=>c.code===phoneCountry)?.dial}</span>
                   <span style={{display:'inline-flex',transform:ccOpen?'rotate(90deg)':'none',
@@ -976,7 +976,7 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
                   onKeyDown={onKeyDown} type="tel" inputMode="tel" autoComplete="tel"
                   placeholder="170 1234567"
                   style={{flex:1,minWidth:0,background:T.card2,border:`1px solid ${T.border}`,
-                    borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
+                    borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:16,fontWeight:500,
                     outline:'none',boxSizing:'border-box'}}/>
                 {ccOpen&&(
                   <div className="fi" style={{position:'absolute',top:'calc(100% + 6px)',left:0,
@@ -1007,7 +1007,7 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
                 onKeyDown={onKeyDown} autoComplete="new-password"
                 placeholder="Min. 10 Zeichen, mit Ziffer"
                 style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-                  borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
+                  borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:16,fontWeight:500,
                   outline:'none',boxSizing:'border-box'}}/>
             </div>
 
@@ -1020,7 +1020,7 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
                 onKeyDown={onKeyDown} autoComplete="new-password"
                 placeholder="••••••••"
                 style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-                  borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
+                  borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:16,fontWeight:500,
                   outline:'none',boxSizing:'border-box'}}/>
             </div>
 
@@ -1097,7 +1097,7 @@ function EmailVerification({email,onBack,onSignIn}){
           textAlign:'center',marginBottom:8}}>
           Bestätige deine E-Mail
         </div>
-        <div style={{color:T.t2,fontSize:14,lineHeight:1.5,textAlign:'center',
+        <div style={{color:T.t2,fontSize:16,lineHeight:1.5,textAlign:'center',
           maxWidth:320,marginBottom:6}}>
           Wir haben einen Link an
         </div>
@@ -1129,7 +1129,7 @@ function EmailVerification({email,onBack,onSignIn}){
 
         <button onClick={()=>onSignIn?.(email)}
           style={{width:'100%',background:T.o,border:'none',borderRadius:15,
-            padding:'14px 16px',color:'#000',fontSize:14,fontWeight:800,letterSpacing:.3,
+            padding:'14px 16px',color:'#000',fontSize:16,fontWeight:800,letterSpacing:.3,
             cursor:'pointer',marginBottom:18,
             boxShadow:'0 4px 14px var(--oGlow)'}}>
           Bestätigt? Auf zum Login →
@@ -1190,7 +1190,7 @@ function PasswordRecovery({onDone}){
             autoComplete="new-password"
             placeholder="Min. 10 Zeichen, mit Ziffer"
             style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-              borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
+              borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:16,fontWeight:500,
               outline:'none',boxSizing:'border-box'}}/>
         </div>
 
@@ -1203,7 +1203,7 @@ function PasswordRecovery({onDone}){
             autoComplete="new-password"
             placeholder="••••••••"
             style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-              borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
+              borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:16,fontWeight:500,
               outline:'none',boxSizing:'border-box'}}/>
         </div>
 
@@ -1260,7 +1260,7 @@ function VerifiedLanding(){
           Deine Email ist nun bestätigt.
         </div>
 
-        <div style={{color:T.t2,fontSize:14,lineHeight:1.55,textAlign:'center',
+        <div style={{color:T.t2,fontSize:16,lineHeight:1.55,textAlign:'center',
           maxWidth:320}}>
           Logge dich nun gerne in der Applikation ein.
         </div>
@@ -1288,7 +1288,7 @@ function ChapterWelcome(){
   return(
     <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:20,padding:'30px 0'}}>
       <RitmoSplashLogo size={130}/>
-      <div style={{color:T.t2,fontSize:14,textAlign:'center',maxWidth:300,lineHeight:1.6}}>
+      <div style={{color:T.t2,fontSize:16,textAlign:'center',maxWidth:300,lineHeight:1.6}}>
         Lass uns RITMO kurz für dich einrichten — dauert keine Minute.
       </div>
       {/* Beruhigungs-Hinweis: Onboarding ist nicht "jetzt oder nie" — nimmt
@@ -1334,7 +1334,7 @@ function ChapterName({profile,setProfile,onEnter}){
 function QuestionGroup({label,value,onChange,options,sub}){
   return(
     <div style={{marginBottom:18}}>
-      <div style={{color:T.t1,fontSize:14,fontWeight:700,marginBottom:sub?2:8,paddingLeft:2}}>{label}</div>
+      <div style={{color:T.t1,fontSize:16,fontWeight:700,marginBottom:sub?2:8,paddingLeft:2}}>{label}</div>
       {sub&&<div style={{color:T.t3,fontSize:11,marginBottom:8,paddingLeft:2,lineHeight:1.4}}>{sub}</div>}
       <div style={{display:'flex',flexDirection:'column',gap:8}}>
         {options.map(o=>{
@@ -1485,7 +1485,7 @@ function ChapterPlaytomic({profile,setProfile}){
 
           {/* Matches — Zahlen-Input */}
           <div style={{marginBottom:18}}>
-            <div style={{color:T.t1,fontSize:14,fontWeight:700,marginBottom:8,paddingLeft:2}}>
+            <div style={{color:T.t1,fontSize:16,fontWeight:700,marginBottom:8,paddingLeft:2}}>
               Wettbewerbsfähige Matches gespielt?
             </div>
             <input
@@ -1503,7 +1503,7 @@ function ChapterPlaytomic({profile,setProfile}){
 
           {m>0&&(
             <div style={{marginBottom:18}}>
-              <div style={{color:T.t1,fontSize:14,fontWeight:700,marginBottom:8,paddingLeft:2}}>
+              <div style={{color:T.t1,fontSize:16,fontWeight:700,marginBottom:8,paddingLeft:2}}>
                 Davon Siege?
               </div>
               <input
@@ -1641,7 +1641,7 @@ function DnaSection({icon,title,children,chips,accent,deco,delay}){
           color:accent,display:'inline-flex',alignItems:'center',justifyContent:'center'}}>
           {icon}
         </span>
-        <span style={{color:T.t1,fontSize:14,fontWeight:800,letterSpacing:-.2}}>{title}</span>
+        <span style={{color:T.t1,fontSize:16,fontWeight:800,letterSpacing:-.2}}>{title}</span>
       </div>
       <div style={{color:T.t2,fontSize:13,lineHeight:1.65,position:'relative'}}>{children}</div>
       {chips&&chips.length>0&&(
@@ -2128,7 +2128,7 @@ function ChapterTheme({theme,setTheme}){
                 <div key={i} style={{width:18,height:30,background:c}}/>
               ))}
             </div>
-            <div style={{flex:1,color:T.t1,fontSize:14,fontWeight:sel?700:500}}>
+            <div style={{flex:1,color:T.t1,fontSize:16,fontWeight:sel?700:500}}>
               {t.label}
             </div>
             {sel&&<span style={{color:T.o,fontSize:18,width:16,textAlign:'center'}}>✓</span>}
@@ -2235,7 +2235,7 @@ function Welcome({profile,setProfile,theme,setTheme,onComplete}){
           <div style={{color:T.t1,fontSize:28,fontWeight:900,letterSpacing:-.5,lineHeight:1.15}}>
             {current.title}
           </div>
-          <div style={{color:T.t2,fontSize:14,marginTop:10,lineHeight:1.55,fontWeight:400}}>
+          <div style={{color:T.t2,fontSize:16,marginTop:10,lineHeight:1.55,fontWeight:400}}>
             {current.subtitle}
           </div>
         </div>
@@ -2253,7 +2253,7 @@ function Welcome({profile,setProfile,theme,setTheme,onComplete}){
           <button onClick={goBack}
             style={{padding:'14px 18px',background:T.card,
               border:`1px solid ${T.border}`,borderRadius:15,
-              color:T.t1,fontSize:14,fontWeight:600,cursor:'pointer'}}>
+              color:T.t1,fontSize:16,fontWeight:600,cursor:'pointer'}}>
             Zurück
           </button>
         )}
@@ -2391,7 +2391,7 @@ function ScreenHeader({title,subtitle,icon,right,pad=22,ellipsis=false}){
         </div>
       )}
       {subtitle&&(
-        <div style={{color:T.t2,fontSize:14,marginTop:2,marginLeft:10,fontWeight:400}}>
+        <div style={{color:T.t2,fontSize:16,marginTop:2,marginLeft:10,fontWeight:400}}>
           {subtitle}
         </div>
       )}
@@ -3377,7 +3377,7 @@ function ProfileBio({profile,setProfile}){
           maxLength={200} rows={3} autoFocus
           placeholder="Dein Spruch fürs Profil … (max. 200 Zeichen)"
           style={{width:'100%',background:T.card2,border:`1px solid ${T.o}`,borderRadius:14,
-            padding:'12px 14px',color:T.t1,fontSize:14,lineHeight:1.5,fontWeight:500,
+            padding:'12px 14px',color:T.t1,fontSize:16,lineHeight:1.5,fontWeight:500,
             outline:'none',boxSizing:'border-box',resize:'none',fontFamily:'inherit'}}/>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginTop:8}}>
           <span style={{color:val.length>=200?T.r:T.t3,fontSize:11,fontWeight:700,
@@ -3399,7 +3399,7 @@ function ProfileBio({profile,setProfile}){
       style={{animationDelay:'.24s',marginTop:22,width:'100%',background:'none',
         border:'none',cursor:'pointer',display:'flex',alignItems:'center',
         justifyContent:'center',gap:9,padding:0}}>
-      <span style={{color:bio?T.t2:T.t3,fontSize:14,fontWeight:bio?600:500,
+      <span style={{color:bio?T.t2:T.t3,fontSize:16,fontWeight:bio?600:500,
         fontStyle:bio?'italic':'normal',lineHeight:1.5,maxWidth:430,textAlign:'center'}}>
         {bio?`„${bio}"`:'Bio hinzufügen — dein Spruch fürs Profil'}
       </span>
@@ -3489,7 +3489,7 @@ function ProfileEdit({profile,setProfile,onBack,onHome,onResetStats}){
             <button onClick={()=>setConfirmReset(true)}
               style={{width:'100%',background:'rgba(232,69,69,0.08)',
                 border:'1px solid rgba(232,69,69,0.35)',borderRadius:13,
-                padding:'14px 16px',color:'#FF6B6B',fontSize:14,fontWeight:700,
+                padding:'14px 16px',color:'#FF6B6B',fontSize:16,fontWeight:700,
                 letterSpacing:.2,cursor:'pointer',textAlign:'left',
                 display:'flex',alignItems:'center',justifyContent:'space-between'}}>
               <span>Spiele & Statistik zurücksetzen</span>
@@ -3776,7 +3776,7 @@ function MatchPrefs({profile,setProfile,currentUid,onHome}){
                     color:T.t1,transition:'all .2s var(--ease-out-expo)'}}>
                   <span style={{width:40,height:40,borderRadius:'50%',margin:'0 auto 6px',
                     background:sel?T.o:T.card,display:'flex',alignItems:'center',
-                    justifyContent:'center',color:sel?'#000':T.o,fontSize:14,
+                    justifyContent:'center',color:sel?'#000':T.o,fontSize:16,
                     fontWeight:800,border:`1.5px solid ${sel?T.o:T.border}`,
                     transition:'all .2s var(--ease-out-expo)'}}>
                     {getInitials(n)||'?'}
@@ -3900,7 +3900,7 @@ function MatchPrefs({profile,setProfile,currentUid,onHome}){
                 border:`1px solid ${T.border}`,color:T.t1,fontSize:15,fontWeight:700,
                 padding:'0 10px',outline:'none',boxSizing:'border-box',
                 textAlign:'center'}}/>
-            <span style={{color:T.t3,fontSize:14,fontWeight:700,flexShrink:0}}>–</span>
+            <span style={{color:T.t3,fontSize:16,fontWeight:700,flexShrink:0}}>–</span>
             <input type="time" value={prefs.to}
               onChange={e=>setPrefs({to:e.target.value})}
               style={{flex:1,minWidth:0,height:44,borderRadius:13,background:T.card2,
@@ -4059,7 +4059,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
             onPointerLeave={e=>e.currentTarget.style.background=T.oSoft}>
             <div style={{flexShrink:0,display:'flex',alignItems:'center'}}><WandIcon size={26}/></div>
             <div style={{flex:1,minWidth:0}}>
-              <div style={{color:T.o,fontSize:14,fontWeight:800,marginBottom:2,letterSpacing:.2}}>
+              <div style={{color:T.o,fontSize:16,fontWeight:800,marginBottom:2,letterSpacing:.2}}>
                 Profil vervollständigen
               </div>
               <div style={{color:T.t2,fontSize:11,fontWeight:500,lineHeight:1.45}}>
@@ -4133,7 +4133,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
             </span>
             <div style={{marginTop:14}}>
               <div style={{color:T.o,fontSize:25,fontWeight:800,letterSpacing:-.4}}>RITMO DNA Liga</div>
-              <div style={{color:T.t1,fontSize:14,fontWeight:600,marginTop:5,
+              <div style={{color:T.t1,fontSize:16,fontWeight:600,marginTop:5,
                 maxWidth:170,lineHeight:1.4}}>
                 Die Liga mit der du wöchentlich wächst.
               </div>
@@ -4443,7 +4443,7 @@ function ComingSoon({icon,title,desc,bullets=[],onHome}){
           <div style={{display:'inline-block',marginTop:10,fontSize:10,fontWeight:800,
             letterSpacing:1.6,color:T.o,background:T.oSoft,border:`1px solid ${T.o}55`,
             borderRadius:9,padding:'4px 11px',textTransform:'uppercase'}}>Bald verfügbar</div>
-          <div style={{color:T.t2,fontSize:14,lineHeight:1.6,marginTop:16}}>{desc}</div>
+          <div style={{color:T.t2,fontSize:16,lineHeight:1.6,marginTop:16}}>{desc}</div>
         </div>
         {bullets.length>0&&(
           <div className="fu" style={{background:T.card,border:`1px solid ${T.border}`,
@@ -4511,7 +4511,7 @@ function AppFAQ({onBack,onHome}){
                 color:T.t1,animationDelay:`${Math.min(i*0.04,0.3)}s`,
                 transition:'background var(--anim-base), border-color var(--anim-base)'}}>
               <div style={{display:'flex',alignItems:'center',gap:10}}>
-                <div style={{flex:1,color:isOpen?T.o:T.t1,fontSize:14,fontWeight:700,
+                <div style={{flex:1,color:isOpen?T.o:T.t1,fontSize:16,fontWeight:700,
                   lineHeight:1.4,transition:'color var(--anim-base)'}}>{f.q}</div>
                 <span style={{flexShrink:0,display:'inline-flex',
                   transform:isOpen?'rotate(90deg)':'rotate(0deg)',
@@ -4608,7 +4608,7 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
             return(
               <div key={idx} style={{display:'flex',alignItems:'center',
                 padding:'14px 18px',borderTop:`1px solid ${T.sep}`,gap:12}}>
-                <span style={{color:T.t1,fontSize:14,fontWeight:600,
+                <span style={{color:T.t1,fontSize:16,fontWeight:600,
                   width:94,flexShrink:0,display:'flex',alignItems:'center',gap:5}}>
                   Spieler {idx+1}
                   {isUser&&<span style={{color:T.o,fontWeight:700}}>(Du)</span>}
@@ -4617,7 +4617,7 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
                   onChange={e=>setPlayer(idx,e.target.value)}
                   placeholder={isUser?'Dein Name':`Spieler ${idx+1}`}
                   autoCapitalize="words" autoCorrect="off" spellCheck={false}
-                  style={{flex:1,fontSize:14,color:T.t2,fontWeight:500,textAlign:'right',
+                  style={{flex:1,fontSize:16,color:T.t2,fontWeight:500,textAlign:'right',
                     background:'transparent',border:'none',outline:'none'}}/>
                 <button onClick={()=>setPlayer(idx,'')}
                   style={{width:20,height:20,borderRadius:'50%',background:T.t4,border:'none',
@@ -4637,7 +4637,7 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
           {[2,3].map(idx=>(
             <div key={idx} style={{display:'flex',alignItems:'center',
               padding:'14px 18px',borderTop:`1px solid ${T.sep}`,gap:12}}>
-              <span style={{color:T.t1,fontSize:14,fontWeight:600,
+              <span style={{color:T.t1,fontSize:16,fontWeight:600,
                 width:94,flexShrink:0}}>
                 Spieler {idx+1}
               </span>
@@ -4645,7 +4645,7 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
                 onChange={e=>setPlayer(idx,e.target.value)}
                 placeholder={`Spieler ${idx+1}`}
                 autoCapitalize="words" autoCorrect="off" spellCheck={false}
-                style={{flex:1,fontSize:14,color:T.t2,fontWeight:500,textAlign:'right',
+                style={{flex:1,fontSize:16,color:T.t2,fontWeight:500,textAlign:'right',
                   background:'transparent',border:'none',outline:'none'}}/>
               <button onClick={()=>setPlayer(idx,'')}
                 style={{width:20,height:20,borderRadius:'50%',background:T.t4,border:'none',
@@ -4737,7 +4737,7 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
                   <button onClick={()=>setAmLim(0)}
                     style={{padding:'5px 14px',borderRadius:25,border:'none',cursor:'pointer',
                       background:amLim===0?T.t4:'transparent',
-                      color:T.t1,fontSize:14,fontWeight:600,transition:'background .2s',
+                      color:T.t1,fontSize:16,fontWeight:600,transition:'background .2s',
                       display:'flex',alignItems:'center'}}>
                     {'∞'}
                   </button>
@@ -5583,7 +5583,7 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
             <AirPlayIcon size={20} color="currentColor"/>
           </div>
           <div style={{flex:1,minWidth:0}}>
-            <div style={{color:T.t1,fontSize:14,fontWeight:700,letterSpacing:-.1,marginBottom:2}}>
+            <div style={{color:T.t1,fontSize:16,fontWeight:700,letterSpacing:-.1,marginBottom:2}}>
               Anzeigetafel verbinden
             </div>
             <div style={{color:T.t3,fontSize:11,fontWeight:500,lineHeight:1.45}}>
@@ -5886,7 +5886,7 @@ function CastSheet({onClose,onEnterBigScreen}){
         {/* Pro-Tip: BigScreen zuerst */}
         <div style={{background:T.oSoft,border:`1px solid ${T.o}`,borderRadius:15,
           padding:'12px 14px',marginBottom:16,display:'flex',alignItems:'flex-start',gap:10}}>
-          <span style={{color:T.o,fontSize:14,lineHeight:1.4,flexShrink:0}}>★</span>
+          <span style={{color:T.o,fontSize:16,lineHeight:1.4,flexShrink:0}}>★</span>
           <div style={{color:T.t1,fontSize:12,lineHeight:1.55,flex:1}}>
             <strong style={{color:T.o,fontWeight:800}}>Tipp:</strong> Erst
             BigScreen einschalten, dann spiegeln — so erscheint sofort die
@@ -5960,7 +5960,7 @@ function CastSheet({onClose,onEnterBigScreen}){
                   padding:'22px 14px',display:'flex',flexDirection:'column',
                   alignItems:'center',gap:8,transition:'border-color .2s,background .2s'}}>
                   <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:44}}>{d.emoji}</div>
-                  <div style={{color:T.t1,fontSize:14,fontWeight:800,letterSpacing:-.1}}>
+                  <div style={{color:T.t1,fontSize:16,fontWeight:800,letterSpacing:-.1}}>
                     {d.label}
                   </div>
                   {d.detected&&(
@@ -6058,18 +6058,18 @@ function ResetModal({onCancel,onConfirm,
         </div>
         <div style={{background:T.card2,borderRadius:13,padding:'12px 14px',marginBottom:16,
           border:`1px solid ${T.border}`}}>
-          <div style={{color:T.t1,fontSize:14,fontWeight:600}}>{question}</div>
+          <div style={{color:T.t1,fontSize:16,fontWeight:600}}>{question}</div>
         </div>
         <div style={{display:'flex',gap:10}}>
           <button onClick={onCancel}
             style={{flex:1,padding:'12px',background:T.card2,border:`1px solid ${T.border}`,
-              borderRadius:13,color:T.t1,fontSize:14,fontWeight:600,cursor:'pointer'}}>
+              borderRadius:13,color:T.t1,fontSize:16,fontWeight:600,cursor:'pointer'}}>
             {cancelLabel}
           </button>
           <button onClick={onConfirm}
             style={{flex:1,padding:'12px',background:'rgba(232,69,69,0.18)',
               border:`1px solid ${T.r}`,borderRadius:13,color:T.r,
-              fontSize:14,fontWeight:700,cursor:'pointer'}}>
+              fontSize:16,fontWeight:700,cursor:'pointer'}}>
             {confirmLabel}
           </button>
         </div>
@@ -6529,7 +6529,7 @@ function WimbledonTimerCard({minutes,setMinutes,running,secsLeft,finished,onStar
 
       {finished&&(
         <div style={{display:'flex',alignItems:'center',gap:14}}>
-          <div style={{color:T.r,fontSize:14,fontWeight:700,letterSpacing:.5}}>
+          <div style={{color:T.r,fontSize:16,fontWeight:700,letterSpacing:.5}}>
             Zeit abgelaufen
           </div>
           <button onClick={onReset}
@@ -6600,7 +6600,7 @@ function TimerCard({minutes,setMinutes,running,secsLeft,finished,onStart,onPause
               <button onClick={running?onPause:onStart}
                 style={{width:42,height:42,borderRadius:'50%',
                   background:T.o,border:'none',color:T.bg,
-                  fontSize:14,fontWeight:800,cursor:'pointer',
+                  fontSize:16,fontWeight:800,cursor:'pointer',
                   display:'flex',alignItems:'center',justifyContent:'center'}}>
                 {running?<PauseGlyph size={16} color={T.bg}/>:<PlayGlyph size={16} color={T.bg}/>}
               </button>
@@ -6747,7 +6747,7 @@ function StylePickerSheet({current,onSelect,onClose}){
                   transition:'all .18s var(--ease-out-expo)'}}>
                 <ArchetypeGlyph type={key} active color={st.accent} size={26}/>
                 <div style={{flex:1,minWidth:0}}>
-                  <div style={{color:T.t1,fontSize:14,fontWeight:800}}>{st.name}</div>
+                  <div style={{color:T.t1,fontSize:16,fontWeight:800}}>{st.name}</div>
                   <div style={{color:T.t3,fontSize:11,fontWeight:500,
                     overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
                     {st.subtitle} — {st.tagline}
@@ -7156,7 +7156,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
                 }}
                 autoCapitalize="words" autoCorrect="off" spellCheck={false} enterKeyHint="next"
                 placeholder={`Court ${i+1}`}
-                style={{flex:1,fontSize:14,color:T.t1,fontWeight:500}}/>
+                style={{flex:1,fontSize:16,color:T.t1,fontWeight:500}}/>
             </div>
           ))}
         </div>
@@ -7242,7 +7242,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
                 autoCapitalize="words" autoCorrect="off" spellCheck={false}
                 enterKeyHint="next"
                 placeholder={`Spieler ${i+1}`}
-                style={{flex:1,fontSize:14,color:T.t1,fontWeight:500}}/>
+                style={{flex:1,fontSize:16,color:T.t1,fontWeight:500}}/>
               {/* Spielstil-Picker — Glyph des gewählten Archetyps, sonst
                   DNA-Platzhalter. Bestimmt das Match-Tier der Paarungen. */}
               <button onClick={()=>setStylePickerFor(p.id)}
@@ -7401,13 +7401,13 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
             <div style={{display:'flex',flexDirection:'column',gap:10}}>
               <button onClick={()=>{const u=editScopePrompt;setEditScopePrompt(null);onSave(u,'next');}}
                 style={{width:'100%',padding:'13px',borderRadius:13,border:'none',background:T.o,
-                  color:'#000',fontSize:14,fontWeight:800,cursor:'pointer'}}>
+                  color:'#000',fontSize:16,fontWeight:800,cursor:'pointer'}}>
                 Ab nächster Runde
               </button>
               <button onClick={()=>{const u=editScopePrompt;setEditScopePrompt(null);onSave(u,'current');}}
                 style={{width:'100%',padding:'13px',borderRadius:13,
                   border:`1px solid ${T.border}`,background:T.card2,
-                  color:T.t1,fontSize:14,fontWeight:700,cursor:'pointer'}}>
+                  color:T.t1,fontSize:16,fontWeight:700,cursor:'pointer'}}>
                 Aktuelle Runde (neu mischen)
               </button>
               <button onClick={()=>setEditScopePrompt(null)}
@@ -7579,7 +7579,7 @@ function OnlineTournamentLobby({pin,onHome,onStart,onCancel}){
               <div style={{width:10,height:10,borderRadius:'50%',
                 background:p.approved?T.g:T.t4,flexShrink:0}}/>
               <div style={{flex:1,minWidth:0}}>
-                <div style={{color:T.t1,fontSize:14,fontWeight:600,
+                <div style={{color:T.t1,fontSize:16,fontWeight:600,
                   display:'flex',alignItems:'center',gap:6}}>
                   {p.name}
                   {p.isHost&&(
@@ -7850,7 +7850,7 @@ function TournamentParticipantView({session,participantId,pin}){
         <div style={{fontSize:24,fontWeight:800,color:T.t1,letterSpacing:-.3}}>
           {winner?.name||'?'}
         </div>
-        <div style={{fontSize:14,color:T.o,fontWeight:700,marginTop:4}}>
+        <div style={{fontSize:16,color:T.o,fontWeight:700,marginTop:4}}>
           {ts.winMode==='wins'?`${winner?.totalWins??0} Siege`:`${winner?.totalPts??0} Punkte`}
         </div>
         {myRow&&myRank&&winner&&myRow.id!==winner.id&&(
@@ -7876,7 +7876,7 @@ function TournamentParticipantView({session,participantId,pin}){
               </div>
               <div style={{width:8,height:8,borderRadius:'50%',background:p.color,flexShrink:0}}/>
               <div style={{flex:1,minWidth:0}}>
-                <div style={{color:T.t1,fontSize:14,fontWeight:isMe||i===0?700:600,
+                <div style={{color:T.t1,fontSize:16,fontWeight:isMe||i===0?700:600,
                   overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
                   {p.name}{isMe?' (Du)':''}
                 </div>
@@ -7959,14 +7959,14 @@ function TournamentParticipantView({session,participantId,pin}){
           textTransform:'uppercase',marginBottom:10}}>Dein Match</div>
         <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:14}}>
           <div style={{flex:1,minWidth:0}}>
-            <div style={{color:myTeam==='A'?T.o:T.t1,fontSize:14,fontWeight:myTeam==='A'?800:600,
+            <div style={{color:myTeam==='A'?T.o:T.t1,fontSize:16,fontWeight:myTeam==='A'?800:600,
               textOverflow:'ellipsis',overflow:'hidden',whiteSpace:'nowrap'}}>
               {teamLabel(myCourt.t1)}
             </div>
           </div>
           <div style={{color:T.t3,fontSize:12,fontWeight:700,padding:'0 6px'}}>vs</div>
           <div style={{flex:1,minWidth:0,textAlign:'right'}}>
-            <div style={{color:myTeam==='B'?T.o:T.t1,fontSize:14,fontWeight:myTeam==='B'?800:600,
+            <div style={{color:myTeam==='B'?T.o:T.t1,fontSize:16,fontWeight:myTeam==='B'?800:600,
               textOverflow:'ellipsis',overflow:'hidden',whiteSpace:'nowrap'}}>
               {teamLabel(myCourt.t2)}
             </div>
@@ -7976,7 +7976,7 @@ function TournamentParticipantView({session,participantId,pin}){
         {!courtDone&&(
           <button onClick={()=>setScoreMode(true)}
             style={{width:'100%',marginBottom:14,padding:'13px',background:T.o,border:'none',
-              borderRadius:13,color:'#000',fontSize:14,fontWeight:800,letterSpacing:.3,
+              borderRadius:13,color:'#000',fontSize:16,fontWeight:800,letterSpacing:.3,
               cursor:'pointer',boxShadow:'0 4px 14px var(--oGlow)',
               display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
             <span style={{fontSize:12}}>▶</span> Score-Modus öffnen
@@ -8034,7 +8034,7 @@ function TournamentParticipantView({session,participantId,pin}){
             {err&&<div style={{color:'#FF6B6B',fontSize:11,fontWeight:600,marginTop:6}}>{err}</div>}
             <button onClick={submit} disabled={busy}
               style={{width:'100%',marginTop:10,padding:'12px',background:T.o,
-                border:'none',borderRadius:13,color:'#000',fontSize:14,fontWeight:800,
+                border:'none',borderRadius:13,color:'#000',fontSize:16,fontWeight:800,
                 cursor:busy?'not-allowed':'pointer',opacity:busy?.6:1,
                 boxShadow:'0 4px 14px var(--oGlow)'}}>
               {busy?'…':(mySubmission?'Neu einreichen':'Ergebnis einreichen')}
@@ -8153,7 +8153,7 @@ function QRScannerModal({onResult,onClose}){
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',
         padding:'calc(env(safe-area-inset-top,0px) + 14px) 18px 14px',
         background:'rgba(0,0,0,.7)',color:'#fff'}}>
-        <div style={{fontSize:14,fontWeight:700,letterSpacing:.3}}>QR-Code scannen</div>
+        <div style={{fontSize:16,fontWeight:700,letterSpacing:.3}}>QR-Code scannen</div>
         <button onClick={onClose}
           style={{width:36,height:36,borderRadius:'50%',background:'rgba(255,255,255,.15)',
             border:'none',color:'#fff',fontSize:18,cursor:'pointer',
@@ -8167,7 +8167,7 @@ function QRScannerModal({onResult,onClose}){
             alignItems:'center',justifyContent:'center',padding:24}}>
             <div style={{background:T.card,border:`1px solid ${T.r}`,
               borderRadius:19,padding:'20px',maxWidth:320,textAlign:'center'}}>
-              <div style={{color:T.r,fontSize:14,fontWeight:800,marginBottom:8}}>
+              <div style={{color:T.r,fontSize:16,fontWeight:800,marginBottom:8}}>
                 Kamera nicht verfügbar
               </div>
               <div style={{color:T.t2,fontSize:12,lineHeight:1.55}}>
@@ -8286,7 +8286,7 @@ function JoinTournament({initialPin,profile,onHome,onJoin,restored}){
             <button onClick={()=>setScannerOpen(true)}
               style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'center',gap:10,
                 background:T.oSoft,border:`1px solid ${T.o}`,borderRadius:13,
-                padding:'12px 14px',color:T.o,fontSize:14,fontWeight:700,
+                padding:'12px 14px',color:T.o,fontSize:16,fontWeight:700,
                 cursor:'pointer',marginBottom:14,letterSpacing:.2}}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -8322,7 +8322,7 @@ function JoinTournament({initialPin,profile,onHome,onJoin,restored}){
               placeholder="Wie du im Tournament heißt"
               autoCapitalize="words" autoCorrect="off" spellCheck={false}
               style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-                borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
+                borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:16,fontWeight:500,
                 outline:'none',boxSizing:'border-box'}}/>
             {err&&(
               <div style={{color:'#FF6B6B',fontSize:12,fontWeight:600,marginTop:10}}>
@@ -8588,7 +8588,7 @@ function LineupEditSheet({court,courtIndex,players,round,onAssign,onClose}){
           background:`${p?.color||T.t3}22`,border:`1.5px solid ${p?.color||T.border}`,
           color:p?.color||T.t1,display:'flex',alignItems:'center',justifyContent:'center',
           fontSize:10,fontWeight:800}}>{getInitials(p?.name||'?')}</div>
-        <div style={{flex:1,minWidth:0,color:T.t1,fontSize:14,fontWeight:600,
+        <div style={{flex:1,minWidth:0,color:T.t1,fontSize:16,fontWeight:600,
           overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p?.name||'—'}</div>
         <EditIcon size={14} color={T.t3}/>
       </button>
@@ -8623,7 +8623,7 @@ function LineupEditSheet({court,courtIndex,players,round,onAssign,onClose}){
           </div>
           <button onClick={onClose}
             style={{width:'100%',padding:'12px',background:T.o,border:'none',borderRadius:13,
-              color:'#000',fontSize:14,fontWeight:800,cursor:'pointer'}}>Fertig</button>
+              color:'#000',fontSize:16,fontWeight:800,cursor:'pointer'}}>Fertig</button>
         </>):(<>
           <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:14}}>
             <button onClick={()=>setPick(null)}
@@ -8648,7 +8648,7 @@ function LineupEditSheet({court,courtIndex,players,round,onAssign,onClose}){
                     background:`${p.color||T.t3}22`,border:`1.5px solid ${p.color||T.border}`,
                     color:p.color||T.t1,display:'flex',alignItems:'center',justifyContent:'center',
                     fontSize:10,fontWeight:800}}>{getInitials(p.name||'?')}</div>
-                  <div style={{flex:1,minWidth:0,color:T.t1,fontSize:14,fontWeight:600,
+                  <div style={{flex:1,minWidth:0,color:T.t1,fontSize:16,fontWeight:600,
                     overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.name}</div>
                   <span style={{color:st.color,fontSize:10,fontWeight:700,letterSpacing:.5,
                     flexShrink:0,padding:'3px 8px',borderRadius:6,background:`${st.color}1A`}}>
@@ -8701,10 +8701,10 @@ function PointsEditModal({entry,winMode,onSave,onClose}){
         <div style={{display:'flex',gap:10}}>
           <button onClick={onClose}
             style={{flex:1,padding:'12px',background:T.card2,border:`1px solid ${T.border}`,
-              borderRadius:13,color:T.t1,fontSize:14,fontWeight:600,cursor:'pointer'}}>Abbrechen</button>
+              borderRadius:13,color:T.t1,fontSize:16,fontWeight:600,cursor:'pointer'}}>Abbrechen</button>
           <button onClick={save}
             style={{flex:1,padding:'12px',background:T.o,border:'none',borderRadius:13,
-              color:'#000',fontSize:14,fontWeight:800,cursor:'pointer'}}>Speichern</button>
+              color:'#000',fontSize:16,fontWeight:800,cursor:'pointer'}}>Speichern</button>
         </div>
       </div>
     </div>
@@ -9118,7 +9118,7 @@ function RoundEndModal({roundNo,bonus,names,winMode,onConfirm,onCancel}){
         ):(
           <div style={{background:T.blueSoft,border:`1px solid ${T.blue}`,
             borderRadius:15,padding:'12px 14px',marginBottom:14}}>
-            <div style={{color:T.blue,fontSize:14,fontWeight:800}}>+1 Sieg pro Pause</div>
+            <div style={{color:T.blue,fontSize:16,fontWeight:800}}>+1 Sieg pro Pause</div>
             <div style={{color:T.t2,fontSize:11,marginTop:3,lineHeight:1.45}}>
               Gutschrift für pausierte Spieler der unteren Tabellenhälfte:
               {' '}{names.join(', ')}
@@ -9532,7 +9532,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
           <button onClick={toggleTimer}
             style={{width:40,height:40,borderRadius:'50%',
               background:tourney.timerFinished?T.r:T.o,border:'none',
-              color:T.bg,fontSize:14,fontWeight:800,
+              color:T.bg,fontSize:16,fontWeight:800,
               cursor:'pointer',position:'relative',zIndex:1,
               display:'flex',alignItems:'center',justifyContent:'center'}}>
             {tourney.timerFinished?'↺':tourney.timerRunning?<PauseGlyph size={15} color={T.bg}/>:<PlayGlyph size={15} color={T.bg}/>}
@@ -9658,7 +9658,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
                   </div>
                   <div style={{width:8,height:8,borderRadius:'50%',background:p.color,flexShrink:0}}/>
                   <div style={{flex:1,minWidth:0}}>
-                    <div style={{color:T.t1,fontSize:14,fontWeight:i===0?700:600,
+                    <div style={{color:T.t1,fontSize:16,fontWeight:i===0?700:600,
                       overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.name}</div>
                     <div style={{color:T.t3,fontSize:11,marginTop:1}}>
                       {p.played} Spiele · {p.wins}S {p.losses}N
@@ -9781,7 +9781,7 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
           padding:'24px 22px',textAlign:'center'}}>
           <div style={{marginBottom:8,display:'flex',justifyContent:'center'}}><MedalIcon size={50} rank={1}/></div>
           <div style={{fontSize:24,fontWeight:800,color:T.t1,letterSpacing:-.3}}>{winner?.name}</div>
-          <div style={{fontSize:14,color:T.o,fontWeight:700,marginTop:4}}>
+          <div style={{fontSize:16,color:T.o,fontWeight:700,marginTop:4}}>
             {tourney.winMode==='wins'?`${winner?.totalWins} Siege`:`${winner?.totalPts} Punkte`}
           </div>
         </div>
@@ -9799,7 +9799,7 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
                 </div>
                 <div style={{width:8,height:8,borderRadius:'50%',background:p.color,flexShrink:0}}/>
                 <div style={{flex:1}}>
-                  <div style={{color:T.t1,fontSize:14,fontWeight:i===0?700:600}}>{p.name}</div>
+                  <div style={{color:T.t1,fontSize:16,fontWeight:i===0?700:600}}>{p.name}</div>
                   <div style={{color:T.t3,fontSize:11}}>
                     {p.played} Spiele · {p.wins}S {p.losses}N
                     {p.sitOut>0&&<> · {p.sitOut} Pause{p.sitOut>1?'n':''}</>}
@@ -9820,13 +9820,13 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
         <div style={{display:'flex',gap:10,marginTop:6}}>
           <button onClick={onNew}
             style={{flex:1,padding:'14px',borderRadius:19,border:'none',
-              background:T.o,color:T.bg,fontSize:14,fontWeight:800,cursor:'pointer'}}>
+              background:T.o,color:T.bg,fontSize:16,fontWeight:800,cursor:'pointer'}}>
             <span style={{display:'inline-flex',alignItems:'center',gap:7,justifyContent:'center'}}><TrophyIcon size={17} color={T.bg}/>Neues Turnier</span>
           </button>
           <button onClick={onHome}
             style={{flex:1,padding:'14px',borderRadius:19,
               border:`1px solid ${T.border}`,background:T.card,
-              color:T.t1,fontSize:14,fontWeight:600,cursor:'pointer'}}>
+              color:T.t1,fontSize:16,fontWeight:600,cursor:'pointer'}}>
             <span style={{display:'inline-flex',alignItems:'center',gap:7,justifyContent:'center'}}><HomeIcon size={16}/>Home</span>
           </button>
         </div>
@@ -9903,7 +9903,7 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
 
         {items.length===0&&(
-          <div style={{textAlign:'center',color:T.t3,fontSize:14,padding:'40px 20px',lineHeight:1.6}}>
+          <div style={{textAlign:'center',color:T.t3,fontSize:16,padding:'40px 20px',lineHeight:1.6}}>
             Starte ein neues Spiel oder Turnier auf dem Home-Screen, um es hier wieder aufzunehmen.
           </div>
         )}
@@ -10206,7 +10206,7 @@ function Settings({onHome,onBack,nav,onLogout}){
             placeholder="Einstellungen durchsuchen…"
             autoCorrect="off" autoCapitalize="off" spellCheck={false}
             style={{flex:1,minWidth:0,border:'none',background:'transparent',
-              outline:'none',color:T.t1,fontSize:14,fontWeight:500}}/>
+              outline:'none',color:T.t1,fontSize:16,fontWeight:500}}/>
           {query&&(
             <button onClick={()=>setQuery('')} aria-label="Eingabe löschen"
               style={{width:20,height:20,borderRadius:'50%',background:T.card2,
@@ -10487,7 +10487,7 @@ function SettingsSteuerung({onBack,onHome,inputMode,setInputMode,voiceOn,setVoic
             style={{display:'flex',alignItems:'center',padding:'12px 0',
               borderBottom:i<RINGS.length-1?`1px solid ${T.sep}`:'none',cursor:'pointer'}}>
             <div style={{flex:1}}>
-              <div style={{color:T.t1,fontSize:14,fontWeight:ringId===r.id?700:500}}>{r.label}</div>
+              <div style={{color:T.t1,fontSize:16,fontWeight:ringId===r.id?700:500}}>{r.label}</div>
               <div style={{color:T.t3,fontSize:11,marginTop:1}}>{r.desc}</div>
             </div>
             <div style={{display:'flex',alignItems:'center',gap:10}}>
@@ -10536,7 +10536,7 @@ function SettingsAnpassung({onBack,onHome,theme,setTheme,tabletMode,setTabletMod
               borderBottom:i<themes.length-1?`1px solid ${T.sep}`:'none',cursor:'pointer'}}>
             <div style={{marginRight:12,width:22,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>{th.icon}</div>
             <div style={{flex:1,minWidth:0}}>
-              <div style={{color:T.t1,fontSize:14,fontWeight:theme===th.id?700:500}}>{th.label}</div>
+              <div style={{color:T.t1,fontSize:16,fontWeight:theme===th.id?700:500}}>{th.label}</div>
               <div style={{color:T.t3,fontSize:11,marginTop:1}}>{th.desc}</div>
               {th.id==='funky'&&<div style={{marginTop:6}}><FunkyFruitsRow size={14} gap={6}/></div>}
             </div>
@@ -10555,7 +10555,7 @@ function SettingsAnpassung({onBack,onHome,theme,setTheme,tabletMode,setTabletMod
         <div style={{display:'flex',alignItems:'center',gap:14}}>
           <div style={{width:32,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,color:T.t1}}><PhoneIcon size={22}/></div>
           <div style={{flex:1,minWidth:0}}>
-            <div style={{color:T.t1,fontSize:14,fontWeight:700}}>Tablet-Modus</div>
+            <div style={{color:T.t1,fontSize:16,fontWeight:700}}>Tablet-Modus</div>
             <div style={{color:T.t3,fontSize:11,marginTop:2,lineHeight:1.5}}>
               Score-Anzeige wird für iPad-Größen optimiert: größere Karten,
               dickere Zahlen, mehr Luft. Service-Indikator und Punkte-Verlauf
@@ -10595,7 +10595,7 @@ function SettingsToggleRow({title,desc,on,onToggle,first=false,disabled=false}){
     <div style={{display:'flex',alignItems:'center',padding:'14px 0',gap:12,
       borderTop:first?'none':`1px solid ${T.sep}`}}>
       <div style={{flex:1,minWidth:0}}>
-        <div style={{color:disabled?T.t3:T.t1,fontSize:14,fontWeight:600}}>{title}</div>
+        <div style={{color:disabled?T.t3:T.t1,fontSize:16,fontWeight:600}}>{title}</div>
         {desc&&(
           <div style={{color:T.t3,fontSize:11,marginTop:2,lineHeight:1.45}}>{desc}</div>
         )}
@@ -10814,7 +10814,7 @@ function SettingsBenachrichtigungen({onBack,onHome,notify,setNotify}){
       <SettingsSection eyebrow="Push-Status">
         <div style={{display:'flex',alignItems:'center',gap:14,padding:'6px 0 14px'}}>
           <div style={{flex:1,minWidth:0}}>
-            <div style={{color:T.t1,fontSize:14,fontWeight:700,marginBottom:2}}>
+            <div style={{color:T.t1,fontSize:16,fontWeight:700,marginBottom:2}}>
               Push-Benachrichtigungen
             </div>
             <div style={{display:'flex',alignItems:'center',gap:8,marginTop:6}}>
@@ -10973,7 +10973,7 @@ function SettingsSicherheit({onBack,onHome}){
         <div style={{padding:'4px 0 14px'}}>
           <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1,
             textTransform:'uppercase',marginBottom:4}}>E-Mail</div>
-          <div style={{color:T.t1,fontSize:14,fontWeight:600,wordBreak:'break-all'}}>
+          <div style={{color:T.t1,fontSize:16,fontWeight:600,wordBreak:'break-all'}}>
             {email||'—'}
           </div>
           <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1,
@@ -11091,7 +11091,7 @@ function SettingsKonto({onBack,onHome,onLogout}){
           autoCapitalize="characters" autoCorrect="off" spellCheck={false}
           placeholder="LÖSCHEN"
           style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-            borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:700,
+            borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:16,fontWeight:700,
             letterSpacing:1,outline:'none',boxSizing:'border-box',
             fontFamily:'-apple-system,SFMono-Regular,Menlo,monospace'}}/>
         <button disabled={!ready}
@@ -11106,7 +11106,7 @@ function SettingsKonto({onBack,onHome,onLogout}){
             background:ready?'#E84545':'rgba(232,69,69,0.25)',
             border:'none',borderRadius:15,
             color:ready?'#FFFFFF':'rgba(255,255,255,0.5)',
-            fontSize:14,fontWeight:800,letterSpacing:.3,
+            fontSize:16,fontWeight:800,letterSpacing:.3,
             cursor:ready?'pointer':'not-allowed',
             transition:'background .15s'}}>
           Konto endgültig löschen
@@ -11203,7 +11203,7 @@ function PostEventCard({ev,i=0}){
         <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:6,
           marginTop:14,background:T.o,color:'#000',borderRadius:13,padding:'11px 14px',
           fontSize:13,fontWeight:800,letterSpacing:.2}}>
-          {ev.cta||'Zur Event-Seite'} <span style={{fontSize:14,lineHeight:1}}>→</span>
+          {ev.cta||'Zur Event-Seite'} <span style={{fontSize:16,lineHeight:1}}>→</span>
         </div>
       </div>
     </a>
@@ -11347,7 +11347,7 @@ function RitmoPost({onHome,profile,onOpenChat,unread=0}){
                   );})()}
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{display:'flex',alignItems:'baseline',gap:8}}>
-                      <div style={{color:T.t1,fontSize:14,fontWeight:c.unread>0?800:700,
+                      <div style={{color:T.t1,fontSize:16,fontWeight:c.unread>0?800:700,
                         letterSpacing:-.1,
                         whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',flex:1}}>
                         {c.club.name}
@@ -11462,7 +11462,7 @@ function PlayerListItem({profile,onClick,trailing}){
       onPointerLeave={e=>e.currentTarget.style.background=T.card}>
       <ProfileAvatar name={name} avatar={data.avatar} size={42}/>
       <div style={{flex:1,minWidth:0}}>
-        <div style={{color:T.t1,fontSize:14,fontWeight:700,letterSpacing:-.1,
+        <div style={{color:T.t1,fontSize:16,fontWeight:700,letterSpacing:-.1,
           whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{name}</div>
         <div style={{display:'flex',alignItems:'center',gap:6,marginTop:3,flexWrap:'wrap'}}>
           {lvl!=null&&(
@@ -11698,7 +11698,7 @@ function PublicProfile({userId,currentUid,onHome,onBack,backLabel}){
           {bio&&(
             <div className="fu" style={{background:T.card,border:`1px solid ${T.border}`,
               borderRadius:15,padding:'14px 16px',marginBottom:12,animationDelay:'.03s'}}>
-              <div style={{color:T.t2,fontSize:14,fontStyle:'italic',lineHeight:1.55,
+              <div style={{color:T.t2,fontSize:16,fontStyle:'italic',lineHeight:1.55,
                 fontWeight:500}}>„{bio}"</div>
             </div>
           )}
@@ -11727,7 +11727,7 @@ function PublicProfile({userId,currentUid,onHome,onBack,backLabel}){
               style={{width:'100%',marginBottom:12,padding:'14px 16px',
                 background:following?T.card:T.o,
                 border:following?`1px solid ${T.border}`:'none',borderRadius:15,
-                color:following?T.t1:'#000',fontSize:14,fontWeight:800,letterSpacing:.3,
+                color:following?T.t1:'#000',fontSize:16,fontWeight:800,letterSpacing:.3,
                 cursor:busy?'not-allowed':'pointer',opacity:busy?.6:1,
                 animationDelay:'.08s'}}>
               {following?'Du folgst':'Folgen'}
@@ -11822,7 +11822,7 @@ function Clubs({onHome,onOpenClub,onCreateClub}){
         <input value={q} onChange={e=>setQ(e.target.value)}
           placeholder="Name oder Stadt …"
           style={{flex:1,background:T.card2,border:`1px solid ${T.border}`,
-            borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
+            borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:16,fontWeight:500,
             outline:'none',boxSizing:'border-box',minWidth:0}}/>
         <button onClick={onCreateClub} disabled={!!ownedId}
           title={ownedId?'Du hast bereits einen Club.':'Neuen Club gründen'}
@@ -11860,7 +11860,7 @@ function Clubs({onHome,onOpenClub,onCreateClub}){
                 </div>
               );})()}
               <div style={{flex:1,minWidth:0}}>
-                <div style={{color:T.t1,fontSize:14,fontWeight:700,letterSpacing:-.1}}>{mine.name}</div>
+                <div style={{color:T.t1,fontSize:16,fontWeight:700,letterSpacing:-.1}}>{mine.name}</div>
                 {mine.city&&<div style={{color:T.t3,fontSize:11,marginTop:2}}>{mine.city}</div>}
               </div>
               <span style={{padding:'2px 8px',background:T.oSoft,color:T.o,borderRadius:5,
@@ -11912,7 +11912,7 @@ function Clubs({onHome,onOpenClub,onCreateClub}){
                     </div>
                   );})()}
                   <div style={{flex:1,minWidth:0}}>
-                    <div style={{color:T.t1,fontSize:14,fontWeight:700,letterSpacing:-.1}}>{c.name}</div>
+                    <div style={{color:T.t1,fontSize:16,fontWeight:700,letterSpacing:-.1}}>{c.name}</div>
                     {c.city&&<div style={{color:T.t3,fontSize:11,marginTop:2}}>{c.city}</div>}
                   </div>
                   <ChevronRightIcon size={16} color={T.t3}/>
@@ -12008,7 +12008,7 @@ function ClubCreate({onHome,onDone,onCancel,initial}){
           <input value={name} onChange={e=>setName(e.target.value)}
             placeholder="z.B. Padelhaus München"
             style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-              borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:600,
+              borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:16,fontWeight:600,
               outline:'none',boxSizing:'border-box'}}/>
         </div>
         <div>
@@ -12017,7 +12017,7 @@ function ClubCreate({onHome,onDone,onCancel,initial}){
           <input value={city} onChange={e=>setCity(e.target.value)}
             placeholder="z.B. München"
             style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-              borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:600,
+              borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:16,fontWeight:600,
               outline:'none',boxSizing:'border-box'}}/>
         </div>
         <div>
@@ -12026,7 +12026,7 @@ function ClubCreate({onHome,onDone,onCancel,initial}){
           <textarea value={desc} onChange={e=>setDesc(e.target.value)} rows={4}
             placeholder="Was zeichnet euch aus? Wann trefft ihr euch? Welche Levels seid ihr?"
             style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-              borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:14,fontWeight:500,
+              borderRadius:13,padding:'12px 14px',color:T.t1,fontSize:16,fontWeight:500,
               outline:'none',boxSizing:'border-box',resize:'vertical',lineHeight:1.55}}/>
         </div>
         {err&&(
@@ -12037,7 +12037,7 @@ function ClubCreate({onHome,onDone,onCancel,initial}){
         )}
         <button onClick={save} disabled={busy||!name.trim()}
           style={{padding:'14px 16px',background:T.o,border:'none',borderRadius:15,
-            color:'#000',fontSize:14,fontWeight:800,letterSpacing:.3,
+            color:'#000',fontSize:16,fontWeight:800,letterSpacing:.3,
             cursor:(busy||!name.trim())?'not-allowed':'pointer',
             opacity:(busy||!name.trim())?.55:1,marginTop:6}}>
           {busy?'…':editMode?'Änderungen speichern':'Club gründen'}
@@ -12132,7 +12132,7 @@ function ClubDetail({clubId,currentUid,onHome,onBack,onOpenPlayer,onOpenChat,onE
           {club.description&&(
             <div className="fu" style={{background:T.card,border:`1px solid ${T.border}`,
               borderRadius:19,padding:'16px 18px',marginBottom:12,
-              color:T.t2,fontSize:14,lineHeight:1.6,animationDelay:'.03s',whiteSpace:'pre-wrap'}}>
+              color:T.t2,fontSize:16,lineHeight:1.6,animationDelay:'.03s',whiteSpace:'pre-wrap'}}>
               {club.description}
             </div>
           )}
@@ -12161,7 +12161,7 @@ function ClubDetail({clubId,currentUid,onHome,onBack,onOpenPlayer,onOpenChat,onE
               style={{width:'100%',marginBottom:14,padding:'14px 16px',
                 background:joined?T.card:T.o,
                 border:joined?`1px solid ${T.border}`:'none',borderRadius:15,
-                color:joined?T.t1:'#000',fontSize:14,fontWeight:800,letterSpacing:.3,
+                color:joined?T.t1:'#000',fontSize:16,fontWeight:800,letterSpacing:.3,
                 cursor:busy?'not-allowed':'pointer',opacity:busy?.6:1,
                 animationDelay:'.07s'}}>
               {joined?'Mitglied · Austreten':'Club beitreten'}
@@ -12396,7 +12396,7 @@ function ClubChat({clubId,currentUid,onHome,onBack}){
                   <div style={{padding:'9px 13px',
                     background:mine?T.o:T.card,
                     border:mine?'none':`1px solid ${T.border}`,
-                    color:mine?'#000':T.t1,fontSize:14,lineHeight:1.45,
+                    color:mine?'#000':T.t1,fontSize:16,lineHeight:1.45,
                     whiteSpace:'pre-wrap',wordBreak:'break-word',
                     borderRadius:18,
                     borderBottomRightRadius:mine?5:18,
@@ -12435,7 +12435,7 @@ function ClubChat({clubId,currentUid,onHome,onBack}){
             maxLength={500}
             placeholder="Nachricht …"
             style={{flex:1,background:'transparent',border:'none',color:T.t1,
-              fontSize:14,fontWeight:500,outline:'none',minWidth:0,padding:'9px 0'}}/>
+              fontSize:16,fontWeight:500,outline:'none',minWidth:0,padding:'9px 0'}}/>
           <button onClick={send} disabled={busy||!text.trim()} aria-label="Senden"
             style={{flexShrink:0,width:40,height:40,borderRadius:'50%',background:T.o,
               border:'none',display:'flex',alignItems:'center',justifyContent:'center',
@@ -13149,7 +13149,7 @@ function Rules({onHome,onSelect,alreadyRead,onToggleRead,onBibel}){
           <BookIcon size={32}/>
           <div style={{flex:1,minWidth:0}}>
             <div style={{color:T.t1,fontSize:26,fontWeight:800,letterSpacing:-.3}}>Regelwerk</div>
-            <div style={{color:T.t2,fontSize:14,marginTop:2,fontWeight:400}}>
+            <div style={{color:T.t2,fontSize:16,marginTop:2,fontWeight:400}}>
               Padel-Regeln, Formate, Begriffe.
             </div>
           </div>
@@ -13367,7 +13367,7 @@ function RulesGlossar({onBackToRules,onHome,onNext,onPrev,currentIdx,totalSectio
               <s.Fig/>
             </div>
             <div style={{flex:1,minWidth:0}}>
-              <div style={{color:T.o,fontSize:14,fontWeight:800,marginBottom:4,letterSpacing:.2}}>{s.title}</div>
+              <div style={{color:T.o,fontSize:16,fontWeight:800,marginBottom:4,letterSpacing:.2}}>{s.title}</div>
               <div style={{color:T.t2,fontSize:12,lineHeight:1.5,marginBottom:6}}>{s.desc}</div>
               <div style={{color:T.t3,fontSize:11,lineHeight:1.5,
                 padding:'6px 8px',background:T.card2,borderRadius:6,
@@ -13622,7 +13622,7 @@ function Journey({onHome,onSelect,alreadyRead,onToggleRead,onBibel}){
           <JourneyIcon size={32}/>
           <div style={{flex:1,minWidth:0}}>
             <div style={{color:T.t1,fontSize:26,fontWeight:800,letterSpacing:-.3}}>Journey</div>
-            <div style={{color:T.t2,fontSize:14,marginTop:2,fontWeight:400}}>
+            <div style={{color:T.t2,fontSize:16,marginTop:2,fontWeight:400}}>
               Tipps & Tricks für dein Padel-Spiel.
             </div>
           </div>
@@ -13712,7 +13712,7 @@ function JourneySpielstileList({onBack,onHome,onSelect}){
               <div style={{flex:1,minWidth:0,padding:'14px 14px 14px 16px',
                 display:'flex',flexDirection:'column',justifyContent:'center'}}>
                 <div style={{display:'flex',alignItems:'baseline',gap:7,marginBottom:3}}>
-                  <div style={{color:s.accent,fontSize:14,fontWeight:900,letterSpacing:-.2}}>
+                  <div style={{color:s.accent,fontSize:16,fontWeight:900,letterSpacing:-.2}}>
                     {s.name}
                   </div>
                   <div style={{color:T.t3,fontSize:10,fontWeight:600,letterSpacing:.5,
@@ -13772,13 +13772,13 @@ function JourneySpielstile({styleId,onBack,onHome,onNext,onPrev,currentIdx,total
       backIcon={<JourneyIcon size={18}/>}>
 
       {/* Tagline */}
-      <div style={{color:style.accent,fontSize:14,fontWeight:600,fontStyle:'italic',
+      <div style={{color:style.accent,fontSize:16,fontWeight:600,fontStyle:'italic',
         marginBottom:14,lineHeight:1.4}}>
         „{style.tagline}"
       </div>
 
       {/* Description */}
-      <div style={{color:T.t2,fontSize:14,lineHeight:1.6,marginBottom:18}}>
+      <div style={{color:T.t2,fontSize:16,lineHeight:1.6,marginBottom:18}}>
         {style.desc}
       </div>
 
@@ -13956,7 +13956,7 @@ function JourneyRitmoDNA({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalS
       totalSections={totalSections}
       backIcon={<JourneyIcon size={18}/>}>
 
-      <div style={{color:T.t2,fontSize:14,lineHeight:1.6,marginBottom:22}}>
+      <div style={{color:T.t2,fontSize:16,lineHeight:1.6,marginBottom:22}}>
         RITMO DNA ist das System hinter den Partner- und Gegner-Matchings.
         Es kombiniert Spielstil-Chemie und Spielniveau zu einem Tier-Ranking — damit du
         weißt, wie gut Spieler:innen zusammenpassen.
@@ -13976,7 +13976,7 @@ function JourneyRitmoDNA({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalS
             display:'flex',alignItems:'center',justifyContent:'center',
             color:m.color,fontSize:22,fontWeight:900}}>{m.symbol}</div>
           <div style={{flex:1,minWidth:0}}>
-            <div style={{color:m.color,fontSize:14,fontWeight:900,letterSpacing:-.2,
+            <div style={{color:m.color,fontSize:16,fontWeight:900,letterSpacing:-.2,
               marginBottom:2}}>{m.name}</div>
             <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1,
               textTransform:'uppercase',marginBottom:6}}>{m.subtitle}</div>
@@ -13999,7 +13999,7 @@ function JourneyRitmoDNA({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalS
           <div style={{width:36,height:36,borderRadius:'50%',flexShrink:0,
             background:t.color,color:'white',
             display:'flex',alignItems:'center',justifyContent:'center',
-            fontSize:14,fontWeight:900,letterSpacing:-.5}}>{t.id}</div>
+            fontSize:16,fontWeight:900,letterSpacing:-.5}}>{t.id}</div>
           <div style={{flex:1,minWidth:0}}>
             <div style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:2}}>
               <div style={{color:t.color,fontSize:13,fontWeight:900,letterSpacing:-.2}}>
@@ -14032,7 +14032,7 @@ function JourneyRitmoDNA({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalS
               background:lv.color,color:'white',
               display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',
               gap:0}}>
-              <div style={{fontSize:14,fontWeight:900,letterSpacing:-.5,lineHeight:1}}>{lv.id}</div>
+              <div style={{fontSize:16,fontWeight:900,letterSpacing:-.5,lineHeight:1}}>{lv.id}</div>
             </div>
             <div style={{flex:1,minWidth:0}}>
               <div style={{color:lv.color,fontSize:13,fontWeight:800,marginBottom:1}}>
@@ -14065,7 +14065,7 @@ function JourneyRitmoDNA({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalS
           <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:8}}>
             <div style={{padding:'5px 11px',background:'#C0392B',color:'white',
               borderRadius:6,fontSize:11,fontWeight:800,letterSpacing:.5}}>TORO L3</div>
-            <div style={{color:T.t3,fontSize:14}}>+</div>
+            <div style={{color:T.t3,fontSize:16}}>+</div>
             <div style={{padding:'5px 11px',background:'#1E8449',color:'white',
               borderRadius:6,fontSize:11,fontWeight:800,letterSpacing:.5}}>MURO L3</div>
           </div>
@@ -14107,7 +14107,7 @@ function JourneyRitmoDNA({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalS
           <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:8}}>
             <div style={{padding:'5px 11px',background:'#C0392B',color:'white',
               borderRadius:6,fontSize:11,fontWeight:800,letterSpacing:.5}}>TORO L3</div>
-            <div style={{color:T.t3,fontSize:14}}>+</div>
+            <div style={{color:T.t3,fontSize:16}}>+</div>
             <div style={{padding:'5px 11px',background:'#C0392B',color:'white',
               borderRadius:6,fontSize:11,fontWeight:800,letterSpacing:.5}}>TORO L3</div>
           </div>
@@ -14133,7 +14133,7 @@ function JourneyRitmoDNA({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalS
               display:'flex',alignItems:'center',justifyContent:'center',
               fontSize:13,fontWeight:900,flexShrink:0}}>{step.n.replace('.','')}</div>
             <div style={{flex:1,minWidth:0,paddingTop:4}}>
-              <div style={{color:T.t1,fontSize:14,fontWeight:800,marginBottom:3}}>{step.title}</div>
+              <div style={{color:T.t1,fontSize:16,fontWeight:800,marginBottom:3}}>{step.title}</div>
               <div style={{color:T.t2,fontSize:12,lineHeight:1.5}}>{step.desc}</div>
             </div>
           </div>

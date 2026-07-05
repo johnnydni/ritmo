@@ -21,7 +21,7 @@ import { T, CSS, rgba } from "./theme.js";
 import { lsGet, lsSet, getAssetBase, getInitials, readImageAsDataUrl, resizeImage, safeImageSrc, buzz } from "./utils.js";
 import { getLevelLabel, getLevelTier, getLevelColor, estimateLevel } from "./levels.js";
 import { B0, A0, PL, ptD, wG, bo3R, amR, DEFCFG } from "./game.js";
-import { PCOLS, shuffle, genAmericanoRound, genMexicanoRound, calcLeaderboard } from "./tournament.js";
+import { PCOLS, shuffle, genAmericanoRound, genMexicanoRound, calcLeaderboard, FORMATS, genRound } from "./tournament.js";
 import { RINGS, playRing, unlockAudio } from "./audio.js";
 import { auth } from "./auth.js";
 import {
@@ -6785,7 +6785,7 @@ const courtLabel=(names,i)=>((names&&names[i]&&String(names[i]).trim())||`Court 
 ═══════════════════════════════════════════════════════════════ */
 function TournamentWizard({onClose,onFinish,canStart,
   format,setFormat,winMode,setWinMode,name,setName,
-  players,addPlayer,addPlayerNamed,removePlayer,renamePlayer,
+  players,addPlayer,addPlayerNamed,removePlayer,renamePlayer,setPlayerGroup,
   numCourts,setNumCourts,maxCourts,courtNames,setCourtName,
   startTime,setStartTime,endTime,setEndTime,roundPrio,setRoundPrio,
   roundDur,setRoundDur,suggest,pauseStats,nameHistory}){
@@ -6793,7 +6793,13 @@ function TournamentWizard({onClose,onFinish,canStart,
   const inputRefs=useRef({});
   // Validierung je Schritt — „Weiter" bleibt aus, bis der Schritt steht.
   const namesOk=players.every(p=>(p.name||'').trim().length>0);
-  const valid=[true,players.length>=4&&namesOk,true,true,true,canStart][step];
+  const meta=FORMATS[format]||FORMATS.americano;
+  const wGrpA=players.filter(p=>(p.group||'A')!=='B').length;
+  const wGrpB=players.length-wGrpA;
+  const wTeamOk=!meta.team||players.length%2===0;
+  const wGroupsOk=!meta.groups||(wGrpA>=2&&wGrpB>=2);
+  const GRPB=PCOLS[1]; // Gruppe-B-Farbe (aus der Spieler-Palette)
+  const valid=[true,players.length>=4&&namesOk&&wTeamOk&&wGroupsOk,true,true,true,canStart][step];
   const next=()=>{if(!valid)return;buzz(6);setStep(s=>Math.min(s+1,5));};
   const back=()=>{buzz(6);setStep(s=>Math.max(s-1,0));};
   // Historie-Chips: nur Namen, die noch nicht in der Liste stehen.
@@ -6825,7 +6831,7 @@ function TournamentWizard({onClose,onFinish,canStart,
     border:`1px solid ${T.o}`,color:T.t2,fontSize:12.5,lineHeight:1.6};
 
   // Zusammenfassungs-Zeilen (Schritt 6) — [Label, Wert, Ziel-Schritt].
-  const fmtLabel=format==='mexicano'?'Mexicano':'Americano';
+  const fmtLabel=meta.name;
   const wmLabel=winMode==='wins'?'Siege':'Punkte';
   const rows=[
     ['Format',fmtLabel,0],
@@ -6864,30 +6870,35 @@ function TournamentWizard({onClose,onFinish,canStart,
 
           {step===0&&(<>
             <div style={stepTitle}>Welches Format passt zu euch?</div>
-            <div style={stepSub}>Beides sind Rotations-Formate ab 4 Spielern — der Unterschied ist die Paarungslogik.</div>
-            <button onClick={()=>setFormat('americano')} style={card(format==='americano')}>
-              <span style={{flex:1,minWidth:0}}>
-                <span style={{display:'flex',alignItems:'center',gap:8}}>
-                  <span style={{color:T.t1,fontSize:17,fontWeight:800}}>Americano</span>
-                  <span style={{padding:'2px 8px',borderRadius:999,background:T.oSoft,
-                    color:T.o,fontSize:10,fontWeight:800,letterSpacing:.5}}>BELIEBT</span>
+            <div style={stepSub}>7 klassische Modi — von locker gemischt bis K.-o.-Bracket.</div>
+            {Object.entries(FORMATS).map(([id,f],i)=>(
+              <button key={id} onClick={()=>setFormat(id)}
+                style={{...card(format===id),marginTop:i?10:0}}>
+                <span style={{flex:1,minWidth:0}}>
+                  <span style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+                    <span style={{color:T.t1,fontSize:17,fontWeight:800}}>{f.name}</span>
+                    {id==='americano'&&(
+                      <span style={{padding:'2px 8px',borderRadius:999,background:T.oSoft,
+                        color:T.o,fontSize:10,fontWeight:800,letterSpacing:.5}}>BELIEBT</span>
+                    )}
+                    {f.team&&(
+                      <span style={{padding:'2px 8px',borderRadius:999,background:T.card,
+                        border:`1px solid ${T.border}`,color:T.t2,fontSize:10,fontWeight:800,
+                        letterSpacing:.5}}>FESTE TEAMS</span>
+                    )}
+                    {f.groups&&(
+                      <span style={{padding:'2px 8px',borderRadius:999,background:T.card,
+                        border:`1px solid ${T.border}`,color:T.t2,fontSize:10,fontWeight:800,
+                        letterSpacing:.5}}>MIXED</span>
+                    )}
+                  </span>
+                  <span style={{display:'block',color:T.t3,fontSize:12.5,lineHeight:1.55,marginTop:4}}>
+                    {f.short}
+                  </span>
                 </span>
-                <span style={{display:'block',color:T.t3,fontSize:12.5,lineHeight:1.55,marginTop:4}}>
-                  Zufällige Partner, jede Runde neu gemischt — locker & sozial. Ideal für bunte Gruppen.
-                </span>
-              </span>
-              {format==='americano'&&<span style={{color:T.o,fontSize:18,fontWeight:900,flexShrink:0}}>✓</span>}
-            </button>
-            <div style={{height:10}}/>
-            <button onClick={()=>setFormat('mexicano')} style={card(format==='mexicano')}>
-              <span style={{flex:1,minWidth:0}}>
-                <span style={{color:T.t1,fontSize:17,fontWeight:800}}>Mexicano</span>
-                <span style={{display:'block',color:T.t3,fontSize:12.5,lineHeight:1.55,marginTop:4}}>
-                  Paarungen nach Tabellenstand (1+4 vs 2+3) — enge, ausgeglichene Matches. Ideal, wenn's kompetitiv sein darf.
-                </span>
-              </span>
-              {format==='mexicano'&&<span style={{color:T.o,fontSize:18,fontWeight:900,flexShrink:0}}>✓</span>}
-            </button>
+                {format===id&&<span style={{color:T.o,fontSize:18,fontWeight:900,flexShrink:0}}>✓</span>}
+              </button>
+            ))}
           </>)}
 
           {step===1&&(<>
@@ -6919,6 +6930,16 @@ function TournamentWizard({onClose,onFinish,canStart,
                     if(nx) inputRefs.current[nx.id]?.focus(); else addPlayer();
                   }}}
                   style={{...inp,flex:1,width:'auto',minWidth:0,height:44,borderRadius:12}}/>
+                {meta.groups&&(
+                  <button onClick={()=>setPlayerGroup(p.id,(p.group||'A')==='B'?'A':'B')}
+                    aria-label="Gruppe wechseln" title="Gruppe A/B wechseln"
+                    style={{...stepBtn,width:34,height:34,fontSize:13,
+                      background:(p.group||'A')==='B'?rgba(GRPB,0.16):T.oSoft,
+                      border:`1.5px solid ${(p.group||'A')==='B'?GRPB:T.o}`,
+                      color:(p.group||'A')==='B'?GRPB:T.o}}>
+                    {(p.group||'A')==='B'?'B':'A'}
+                  </button>
+                )}
                 {players.length>4&&(
                   <button onClick={()=>removePlayer(p.id)} aria-label="Spieler entfernen"
                     style={{...stepBtn,width:34,height:34,color:T.t3}}>×</button>
@@ -6931,10 +6952,46 @@ function TournamentWizard({onClose,onFinish,canStart,
                 cursor:'pointer',marginTop:2}}>
               + Spieler hinzufügen
             </button>
-            {pauseStats&&pauseStats.sitOut>0&&(
+            {format!=='knockout'&&pauseStats&&pauseStats.sitOut>0&&(
               <div style={{marginTop:14,padding:'10px 14px',borderRadius:12,background:T.card2,
                 border:`1px solid ${T.border}`,color:T.t3,fontSize:12,lineHeight:1.55}}>
                 Bei {players.length} Spielern pausieren {pauseStats.sitOut} pro Runde — RITMO rotiert fair (±1 Pause).
+              </div>
+            )}
+            {/* Team-Formate: feste Paare nach Listen-Reihenfolge */}
+            {meta.team&&wTeamOk&&(
+              <div style={{marginTop:14,display:'flex',flexDirection:'column',gap:6}}>
+                {Array.from({length:Math.floor(players.length/2)}).map((_,ti)=>(
+                  <div key={ti} style={{display:'flex',alignItems:'center',gap:8,padding:'8px 12px',
+                    borderRadius:11,background:T.card2,border:`1px solid ${T.border}`}}>
+                    <span style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:.5,
+                      width:56,flexShrink:0}}>TEAM {ti+1}</span>
+                    <span style={{color:T.t1,fontSize:13,fontWeight:600,minWidth:0,
+                      overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                      {(players[2*ti]?.name||'?')} & {(players[2*ti+1]?.name||'?')}
+                    </span>
+                  </div>
+                ))}
+                <div style={{color:T.t3,fontSize:11,lineHeight:1.5}}>
+                  Feste Teams nach Listen-Reihenfolge — Liste ändern = Teams ändern.
+                </div>
+              </div>
+            )}
+            {meta.team&&!wTeamOk&&(
+              <div style={{marginTop:14,padding:'10px 14px',borderRadius:12,
+                background:'rgba(232,69,69,0.08)',border:'1px solid rgba(232,69,69,0.4)',
+                color:'#FF6B6B',fontSize:12,fontWeight:600,lineHeight:1.55}}>
+                {meta.name} braucht eine gerade Spielerzahl — aktuell {players.length}.
+              </div>
+            )}
+            {/* Mixicano: Gruppen-Zähler + Anleitung */}
+            {meta.groups&&(
+              <div style={{marginTop:14,padding:'10px 14px',borderRadius:12,background:T.card2,
+                border:`1px solid ${T.border}`,color:T.t3,fontSize:12,lineHeight:1.55}}>
+                Gruppen: <span style={{color:T.o,fontWeight:800}}>A ×{wGrpA}</span>
+                {' · '}<span style={{color:GRPB,fontWeight:800}}>B ×{wGrpB}</span>
+                {!wGroupsOk&&<span style={{color:'#FF6B6B',fontWeight:600}}> — mind. 2 pro Gruppe nötig.</span>}
+                {' '}Jedes Team = 1×A + 1×B (z. B. Damen/Herren) — per Knopf neben dem Namen.
               </div>
             )}
           </>)}
@@ -7150,11 +7207,22 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
   const[onlineError,setOnlineError]=useState('');
   const nextId=useRef(players.reduce((m,p)=>Math.max(m,p.id),0)+1);
 
+  // Format-Meta: Team-Formate brauchen gerade Spielerzahl, Mixicano
+  // zwei Gruppen (A/B) mit je >= 2 Spielern.
+  const fmtMeta=FORMATS[format]||FORMATS.americano;
+  const grpA=players.filter(p=>(p.group||'A')!=='B').length;
+  const grpB=players.length-grpA;
+  const teamOk=!fmtMeta.team||players.length%2===0;
+  const groupsOk=!fmtMeta.groups||(grpA>=2&&grpB>=2);
   // Im Online-Modus joinen Spieler erst nach Erstellung — daher hier
   // keine Cap durch lokale Spielerzahl. Trotzdem ein sinnvolles UI-
   // Maximum (20 Courts), damit der +/-/Picker nicht ins Endlose läuft.
-  // Lokal: weiterhin floor(players/4) als Obergrenze.
-  const maxCourts=mode==='online'?20:Math.max(1,Math.floor(players.length/4));
+  // Lokal: floor(players/4); Mixicano: pro Court 2×A + 2×B.
+  const maxCourts=mode==='online'?20:Math.max(1,fmtMeta.groups
+    ?Math.floor(Math.min(grpA,grpB)/2)
+    :Math.floor(players.length/4));
+  // Online unterstützt Mixicano nicht (Teilnehmer haben keine Gruppen).
+  useEffect(()=>{if(mode==='online'&&fmtMeta.online===false)setFormat('americano');},[mode,format]); // eslint-disable-line react-hooks/exhaustive-deps
   // Auto-clamp courts when players reduced (gilt nur im Lokal-Modus)
   useEffect(()=>{if(numCourts>maxCourts)setNumCourts(maxCourts);},[maxCourts,numCourts]);
 
@@ -7235,10 +7303,21 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
     setPlayers(p=>[...p,{id,name:nm,color:PCOLS[id%PCOLS.length]}]);};
   // Spielstil je Spieler — treibt das Match-Tier-Rating der Paarungen.
   const setPlayerStyle=(id,style)=>setPlayers(p=>p.map(x=>x.id===id?{...x,style:style||null}:x));
+  // Gruppe A/B je Spieler (Mixicano). Beim Wechsel auf ein Gruppen-
+  // Format bekommen Spieler ohne Gruppe alternierend A/B zugewiesen.
+  const setPlayerGroup=(id,g)=>setPlayers(p=>p.map(x=>x.id===id?{...x,group:g}:x));
+  useEffect(()=>{
+    if(!FORMATS[format]?.groups) return;
+    setPlayers(p=>{
+      let changed=false;
+      const n=p.map((x,i)=>{if(x.group)return x;changed=true;return {...x,group:i%2?'B':'A'};});
+      return changed?n:p;
+    });
+  },[format]);
   // Welcher Spieler hat gerade den Stil-Picker offen (id | null).
   const[stylePickerFor,setStylePickerFor]=useState(null);
 
-  const canStart=players.length>=4;
+  const canStart=players.length>=4&&teamOk&&groupsOk;
 
   // Lokalen Start bündeln — MatchBar-Button UND Assistent nutzen ihn.
   const startLocal=()=>{
@@ -7248,9 +7327,8 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
     const cur=players.map(p=>(p.name||'').trim()).filter(n=>n&&!/^Spieler \d+$/i.test(n));
     lsSet('ritmo_player_history',[...new Set([...cur,...hist])].slice(0,24));
     const lb=calcLeaderboard(players,[],winMode);
-    const r0=format==='mexicano'
-      ?genMexicanoRound(players.map(p=>p.id),lb,numCourts)
-      :genAmericanoRound(players.map(p=>p.id),[],numCourts);
+    const r0=genRound(format,players,{leaderboard:lb,maxCourts:numCourts});
+    if(!r0) return; // defensiv — kann bei gültigem canStart nicht passieren
     onStart({
       // id/createdAt durchreichen, falls aus einem Entwurf gestartet —
       // startTourney ersetzt den Eintrag dann in-place (Entwurf-Flag
@@ -7345,22 +7423,27 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
           </div>
         )}
 
-        {/* Format */}
+        {/* Format — 7 klassische Modi als 2-Spalten-Grid */}
         <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19,padding:'18px'}}>
           <div style={{color:T.o,fontSize:18,fontWeight:800,marginBottom:12}}>Format</div>
-          <div style={{display:'flex',background:T.card2,borderRadius:30,padding:4,gap:4,
-            border:`1px solid ${T.border}`}}>
-            {[{v:'americano',l:'Americano'},{v:'mexicano',l:'Mexicano'}].map(o=>(
-              <button key={o.v} onClick={()=>setFormat(o.v)}
-                style={{flex:1,padding:'10px',borderRadius:24,border:'none',cursor:'pointer',
-                  background:format===o.v?T.t4:'transparent',color:T.t1,fontSize:13,fontWeight:600,
-                  transition:'background .2s'}}>
-                {o.l}
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+            {Object.entries(FORMATS)
+              .filter(([,f])=>mode!=='online'||f.online!==false)
+              .map(([id,f])=>(
+              <button key={id} onClick={()=>setFormat(id)}
+                style={{padding:'11px 10px',borderRadius:13,cursor:'pointer',textAlign:'center',
+                  background:format===id?T.oSoft:T.card2,
+                  border:`1.5px solid ${format===id?T.o:T.border}`,
+                  color:format===id?T.o:T.t1,fontSize:13,fontWeight:700,
+                  transition:'background .2s, border-color .2s'}}>
+                {f.name}
               </button>
             ))}
           </div>
-          <div style={{color:T.t3,fontSize:12,lineHeight:1.6,marginTop:10,fontWeight:500}}>
-            {format==='americano'?'Zufällige Partner jede Runde, Punkte zählen individuell.':'Ranking-basierte Paarungen ab Runde 2 (1+4 vs 2+3).'}
+          <div style={{color:T.t3,fontSize:12,lineHeight:1.6,marginTop:12,fontWeight:500}}>
+            {fmtMeta.short}
+            {fmtMeta.team&&' Feste Teams nach Listen-Reihenfolge (1+2, 3+4, …) — gerade Spielerzahl nötig.'}
+            {fmtMeta.groups&&' Gruppen per A/B-Knopf neben den Namen zuweisen (z. B. Damen/Herren).'}
           </div>
         </div>
 
@@ -7643,6 +7726,17 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
                   ?<ArchetypeGlyph type={p.style} active color={PADEL_STYLES[p.style].accent} size={20}/>
                   :<DNAIcon size={16} color={T.t3}/>}
               </button>
+              {fmtMeta.groups&&(
+                <button onClick={()=>setPlayerGroup(p.id,(p.group||'A')==='B'?'A':'B')}
+                  aria-label="Gruppe wechseln" title="Gruppe A/B wechseln"
+                  style={{width:26,height:26,borderRadius:9,flexShrink:0,cursor:'pointer',
+                    background:(p.group||'A')==='B'?rgba(PCOLS[1],0.16):T.oSoft,
+                    border:`1.5px solid ${(p.group||'A')==='B'?PCOLS[1]:T.o}`,
+                    color:(p.group||'A')==='B'?PCOLS[1]:T.o,fontSize:11,fontWeight:900,
+                    display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1}}>
+                  {(p.group||'A')==='B'?'B':'A'}
+                </button>
+              )}
               {players.length>4&&(
                 <button onClick={()=>removePlayer(p.id)}
                   style={{width:22,height:22,borderRadius:'50%',background:T.t4,border:'none',
@@ -7653,10 +7747,12 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
           ))}
           {!canStart&&(
             <div style={{color:T.r,fontSize:11,marginTop:10,paddingBottom:6,fontWeight:500}}>
-              Mindestens 4 Spieler nötig
+              {players.length<4?'Mindestens 4 Spieler nötig'
+                :!teamOk?`${fmtMeta.name} braucht eine gerade Spielerzahl — aktuell ${players.length}.`
+                :`Mixicano braucht mind. 2 pro Gruppe (aktuell A ×${grpA} · B ×${grpB}).`}
             </div>
           )}
-          {canStart&&pauseStats&&pauseStats.sitOut>0&&(
+          {canStart&&format!=='knockout'&&pauseStats&&pauseStats.sitOut>0&&(
             <div style={{color:T.t3,fontSize:11,marginTop:10,paddingBottom:6,fontWeight:500,lineHeight:1.55}}>
               {pauseStats.sitOut} {pauseStats.sitOut===1?'Spieler rotiert':'Spieler rotieren'} pro Runde durch den Pausen-Pool.
               {pauseStats.pauses!=null
@@ -7753,7 +7849,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
           winMode={winMode} setWinMode={setWinMode}
           name={name} setName={setName}
           players={players} addPlayer={addPlayer} addPlayerNamed={addPlayerNamed}
-          removePlayer={removePlayer} renamePlayer={renamePlayer}
+          removePlayer={removePlayer} renamePlayer={renamePlayer} setPlayerGroup={setPlayerGroup}
           numCourts={numCourts} setNumCourts={setNumCourts} maxCourts={maxCourts}
           courtNames={courtNames} setCourtName={setCourtName}
           startTime={startTime} setStartTime={setStartTime}
@@ -7881,7 +7977,9 @@ function OnlineTournamentLobby({pin,onHome,onStart,onCancel}){
     await updateOnlineTournament(pin,{...session,participants:newParticipants});
   };
 
-  const canStart=approved.length>=4;
+  // Team-Formate (feste Paare) brauchen eine gerade Teilnehmerzahl.
+  const lobbyFmt=FORMATS[session?.format]||FORMATS.americano;
+  const canStart=approved.length>=4&&(!lobbyFmt.team||approved.length%2===0);
   const startTournament=async()=>{
     if(!canStart||busy) return;
     setBusy(true);setErr('');
@@ -7894,9 +7992,9 @@ function OnlineTournamentLobby({pin,onHome,onStart,onCancel}){
         sessionParticipantId:p.id,
       }));
       const lb=calcLeaderboard(tPlayers,[],session.winMode||'points');
-      const r0=session.format==='mexicano'
-        ?genMexicanoRound(tPlayers.map(p=>p.id),lb,session.numCourts)
-        :genAmericanoRound(tPlayers.map(p=>p.id),[],session.numCourts);
+      const r0=genRound(session.format||'americano',tPlayers,
+        {leaderboard:lb,maxCourts:session.numCourts});
+      if(!r0) throw new Error('Zu wenige Teams für dieses Format.');
       const tourneyState={
         players:tPlayers,
         format:session.format,
@@ -8358,7 +8456,7 @@ function TournamentParticipantView({session,participantId,pin}){
         <div>
           <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.3,
             textTransform:'uppercase',marginBottom:2}}>
-            {ts.format==='mexicano'?'Mexicano':'Americano'}
+            {(FORMATS[ts.format]||FORMATS.americano).name}
           </div>
           <div style={{color:T.t1,fontSize:20,fontWeight:800,letterSpacing:-.3}}>
             Runde {roundIndex+1}{ts.rounds?.length>1?` / ${ts.rounds.length}`:''}
@@ -9873,20 +9971,21 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
   const fmtT=(s)=>`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
 
   const nextRound=()=>{
-    setTourney(t=>{
-      const lb=calcLeaderboard(t.players,t.rounds,t.winMode);
-      const sortedLb=lb.sort((a,b)=>t.winMode==='points'?b.totalPts-a.totalPts:b.totalWins-a.totalWins);
-      const newR=t.format==='mexicano'
-        ?genMexicanoRound(t.players.map(p=>p.id),sortedLb,t.numCourts,t.rounds)
-        :genAmericanoRound(t.players.map(p=>p.id),t.rounds,t.numCourts);
-      return {...t,
-        rounds:[...t.rounds,newR],
-        current:t.current+1,
-        timerSecsLeft:t.roundDurationMin*60,
-        timerRunning:false,
-        timerFinished:false,
-      };
-    });
+    // Außerhalb von setTourney generieren: bei K.-o. kann null kommen
+    // (Finale entschieden) → Turnier direkt sauber beenden.
+    const t=tourney;
+    const lb=calcLeaderboard(t.players,t.rounds,t.winMode);
+    const sortedLb=lb.sort((a,b)=>t.winMode==='points'?b.totalPts-a.totalPts:b.totalWins-a.totalWins);
+    const newR=genRound(t.format,t.players,
+      {history:t.rounds,leaderboard:sortedLb,maxCourts:t.numCourts});
+    if(!newR){ endTournament(); return; }
+    setTourney(tt=>({...tt,
+      rounds:[...tt.rounds,newR],
+      current:tt.current+1,
+      timerSecsLeft:tt.roundDurationMin*60,
+      timerRunning:false,
+      timerFinished:false,
+    }));
   };
 
   // Vor dem Rundenwechsel: Pausen-Ausgleich transparent bestätigen
@@ -9927,8 +10026,8 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
       <ScreenHeader pad={14} ellipsis
-        title={tourney.name||(tourney.format==='mexicano'?'Mexicano':'Americano')}
-        subtitle={`${tourney.format==='mexicano'?'Mexicano':'Americano'} · Runde ${tourney.current+1}${tourney.endTime?` · bis ${tourney.endTime}`:''}`}
+        title={tourney.name||(FORMATS[tourney.format]||FORMATS.americano).name}
+        subtitle={`${(FORMATS[tourney.format]||FORMATS.americano).name} · Runde ${tourney.current+1}${round.koPhase?` · ${round.koPhase}`:''}${tourney.endTime?` · bis ${tourney.endTime}`:''}`}
         icon={<TrophyIcon size={40}/>}/>
 
       {/* Timer + Leaderboard Toggle */}
@@ -10021,6 +10120,23 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
               onConfirm={()=>confirmCourt(court.id)}
               onEditLineup={()=>setEditLineupCourtId(court.id)}/>
           ))}
+
+          {/* K.-o.: Wartende dieser Welle (Freilos / Warteschlange) —
+              bewusst NICHT in sitOut (keine Pausen-Boni im Bracket). */}
+          {round.koIdle?.length>0&&(
+            <div style={{background:T.card2,borderRadius:13,border:`1px solid ${T.border}`,
+              padding:'10px 14px',display:'flex',alignItems:'center',gap:10}}>
+              <div style={{width:26,height:26,borderRadius:'50%',flexShrink:0,background:T.oSoft,
+                border:`1px solid ${T.o}`,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                <PauseIcon size={13} color={T.o}/>
+              </div>
+              <div style={{flex:1,minWidth:0,color:T.t3,fontSize:12,fontWeight:500}}>
+                Wartet (K.-o.): <span style={{color:T.t1,fontWeight:600}}>
+                  {round.koIdle.map(id=>playerById(id)?.name).join(', ')}
+                </span>
+              </div>
+            </div>
+          )}
 
           {round.sitOut?.length>0&&(
             <div style={{background:T.card2,borderRadius:13,
@@ -10280,7 +10396,7 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
     .sort((a,b)=>(a.finished?1:0)-(b.finished?1:0)||(b.createdAt||0)-(a.createdAt||0))
     .forEach(t=>{
       const isDraft=!!t.draft;
-      const fmt=t.format==='mexicano'?'Mexicano':'Americano';
+      const fmt=(FORMATS[t.format]||FORMATS.americano).name;
       items.push({
         id:'t-'+t.id,type:'tourney',finished:!!t.finished,draft:isDraft,
         group:isDraft?'drafts':(t.finished?'done':'active'),
@@ -15481,12 +15597,14 @@ export default function App(){
         const prevRounds=next.rounds.slice(0,next.current);
         const lb=calcLeaderboard(next.players,prevRounds,next.winMode);
         const sortedLb=lb.sort((a,b)=>next.winMode==='points'?b.totalPts-a.totalPts:b.totalWins-a.totalWins);
-        const newR=next.format==='mexicano'
-          ?genMexicanoRound(next.players.map(p=>p.id),sortedLb,next.numCourts,prevRounds)
-          :genAmericanoRound(next.players.map(p=>p.id),prevRounds,next.numCourts);
-        next={...next,rounds:[...prevRounds,newR],
-          timerSecsLeft:(updates.roundDurationMin||10)*60,
-          timerRunning:false,timerFinished:false};
+        const newR=genRound(next.format,next.players,
+          {history:prevRounds,leaderboard:sortedLb,maxCourts:next.numCourts});
+        // K.-o. fertig (null) → keine neue Runde, Turnier gilt als beendet.
+        next=newR
+          ?{...next,rounds:[...prevRounds,newR],
+            timerSecsLeft:(updates.roundDurationMin||10)*60,
+            timerRunning:false,timerFinished:false}
+          :{...next,rounds:prevRounds,finished:true,timerRunning:false};
       }
       return next;
     });

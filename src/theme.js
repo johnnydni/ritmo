@@ -499,11 +499,14 @@ export const CSS = `
 
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html,body,#root{background:var(--bg);height:100%;min-height:100dvh;overflow:hidden;
+  overscroll-behavior:none;
   font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','SF Pro Text','Helvetica Neue','Segoe UI',Roboto,sans-serif;
   -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
   text-rendering:optimizeLegibility;letter-spacing:-0.011em;color:var(--t1);}
 /* Branded Text-Selektion statt Browser-Default-Blau. */
 ::selection{background:var(--oSoft);color:var(--t1);}
+/* Placeholder einheitlich gedimmt — statt Browser-Default-Grau. */
+::placeholder{color:var(--t3);opacity:.9;}
 button,input,textarea,select{font-family:inherit;color:inherit;}
 input{outline:none;border:none;background:none;}
 ::-webkit-scrollbar{display:none;}
@@ -608,6 +611,9 @@ button{
   -webkit-tap-highlight-color:transparent;
   touch-action:manipulation;
   will-change:transform;
+  /* Kein Text-Select bei schnellen Doppel-Taps (Score-Buttons etc.) */
+  user-select:none;
+  -webkit-user-select:none;
 }
 button:active:not(:disabled){transform:scale(.96);}
 button:disabled{cursor:not-allowed;opacity:.55;}

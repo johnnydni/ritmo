@@ -13110,34 +13110,35 @@ function CupAlertIcon({icon,size=18,color='#000'}){
 
 /* Toast-Optik der Warnmeldung — Admin-Vorschau; Center/Court zeigen
    exakt dieselbe Komponente, wenn sie gebaut werden. */
-/* Warn-Banner (Referenz-Design): dunkler, gelb getönter Balken —
-   Warn-Icon links, Titel + Untertitel, optional gelber CTA-Pill
-   rechts ("Jetzt eintragen"). big = Center-Screen-Größe. */
+/* Warn-Banner (Referenz-Design, FLACH für 16:9): einzeiliger, gelb
+   getönter Pill-Balken — Warn-Icon, Titel und Untertitel INLINE,
+   optional gelber CTA-Pill rechts. Bewusst niedrige Bauhöhe, damit
+   auf dem Monitor maximal Platz für die Slides bleibt. */
 function CupAlertToast({alert,big=false}){
   if(!alert) return null;
   return(
-    <div className="si" style={{display:'flex',alignItems:'center',gap:big?18:12,minWidth:0,
+    <div className="si" style={{display:'flex',alignItems:'center',gap:big?12:10,minWidth:0,
+      alignSelf:'center',
       background:`color-mix(in srgb, ${CUP_WARN} 10%, ${T.card})`,
       border:`1px solid color-mix(in srgb, ${CUP_WARN} 40%, transparent)`,
-      borderRadius:big?17:13,padding:big?'14px 22px':'11px 14px',
-      boxShadow:'0 10px 28px rgba(0,0,0,.4)'}}>
+      borderRadius:999,padding:big?'8px 18px':'7px 13px',
+      boxShadow:'0 6px 18px rgba(0,0,0,.35)'}}>
       <span style={{color:CUP_WARN,display:'inline-flex',flexShrink:0}}>
-        <CupAlertIcon icon={alert.icon} size={big?30:20} color={CUP_WARN}/>
+        <CupAlertIcon icon={alert.icon} size={big?22:17} color={CUP_WARN}/>
       </span>
-      <span style={{minWidth:0,flex:'0 1 auto'}}>
-        <span style={{display:'block',color:T.t1,fontWeight:900,letterSpacing:-.2,
-          fontSize:big?'clamp(16px, 1.9vw, 26px)':15,
-          overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{alert.label}</span>
-        {alert.sub&&(
-          <span style={{display:'block',color:T.t2,fontWeight:500,marginTop:2,
-            fontSize:big?'clamp(11px, 1.2vw, 16px)':11.5,
-            overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{alert.sub}</span>
-        )}
+      <span style={{flexShrink:0,color:T.t1,fontWeight:900,letterSpacing:-.2,
+        fontSize:big?'clamp(14px, 1.6vw, 22px)':14,whiteSpace:'nowrap'}}>
+        {alert.label}
       </span>
+      {alert.sub&&(
+        <span style={{minWidth:0,flex:'0 1 auto',color:T.t2,fontWeight:500,
+          fontSize:big?'clamp(11px, 1.2vw, 16px)':11.5,
+          overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{alert.sub}</span>
+      )}
       {alert.cta&&(
-        <span style={{flexShrink:0,marginLeft:big?10:6,background:CUP_WARN,color:'#000',
-          fontWeight:800,borderRadius:999,padding:big?'10px 18px':'7px 12px',
-          fontSize:big?'clamp(11px, 1.25vw, 17px)':11.5,whiteSpace:'nowrap'}}>{alert.cta}</span>
+        <span style={{flexShrink:0,marginLeft:big?8:5,background:CUP_WARN,color:'#000',
+          fontWeight:800,borderRadius:999,padding:big?'6px 14px':'5px 10px',
+          fontSize:big?'clamp(11px, 1.2vw, 16px)':11,whiteSpace:'nowrap'}}>{alert.cta}</span>
       )}
     </div>
   );
@@ -14008,7 +14009,7 @@ function CupCenterScreen({cup,lb,onBack}){
           verdeckt. Timer erscheint neben dem Toast. */}
       {(cup.alert||cup.timer?.startedAt||cup.timer?.left!=null)&&(
         <div style={{flexShrink:0,display:'flex',justifyContent:'center',
-          alignItems:'stretch',gap:14,flexWrap:'wrap',marginBottom:12,minWidth:0}}>
+          alignItems:'center',gap:16,flexWrap:'wrap',marginBottom:10,minWidth:0}}>
           {cup.alert&&<CupAlertToast alert={cup.alert} big/>}
           <CupTimer timer={cup.timer} big/>
         </div>

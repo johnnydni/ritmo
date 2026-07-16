@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   PADEL SPIELSTILE — Data tables for the six RITMO playstyle
+   PADEL SPIELSTILE — Data tables for the seven RITMO playstyle
    archetypes plus the matchmaking quiz that maps answers to a
    style key.
 
@@ -140,6 +140,28 @@ export const PADEL_STYLES={
     counter:'Lauf Motor nicht hinterher — lass IHN laufen, aber klug: kurze Winkel statt langer Diagonalen leeren seinen Akku schneller als deinen. Und beende Punkte am Netz konsequent beim ersten Versuch: Gegen Motor ist der zweite Matchball immer schwerer als der erste.',
     accent:'#27AE60', card:'#071A10', text:'#C8FFE0', symbol:'▶▶',
   },
+  hysterica:{
+    name:'Hysterica', subtitle:'Pure Emotion',
+    tagline:'Erst der Puls, dann der Punkt.',
+    desc:'Hysterica spielt mit offenem Herzen und maximaler Energie: jeder Punkt ein Statement, jedes Momentum eine Welle, die ein ganzes Match tragen kann. Läuft es, spielt Hysterica wie entfesselt und reißt Partner und Publikum mit — kippt die Stimmung, wackelt kurz alles. Padel als Achterbahn, und alle fahren mit.',
+    kernwerte:['Emotion','Momentum','Energie'],
+    strengths:[
+      'Reitet Momentum-Wellen wie kein anderer Typ',
+      'Steckt Partner mit Energie und Kampfgeist an',
+      'Spielt Big Points mit vollem Herzen statt Angst',
+      'Macht enge Matches zum Heimspiel — die Stimmung gehört ihr',
+    ],
+    shots:['Momentum-Smash','Blitz-Netzangriff','Power-Víbora','Risiko-Return','Konter aus dem Chaos'],
+    weaknesses:['Stimmungsabhängig','Frust-Spiralen','Fokusverlust'],
+    partners:[
+      {id:'muro',why:'Muro bleibt ruhig, wenn deine Welle bricht — und hält das Match.'},
+      {id:'individuoso',why:'Individuoso gibt deiner Energie Struktur und klare Ziele.'},
+    ],
+    persona:'Hystericas sind der Herzschlag der Anlage: laut, ehrlich, mitreißend. Sie spielen Padel, weil es sich anfühlen soll — jeder Winner wird gefeiert, jeder Fehler tut kurz richtig weh. Diese Spieler:innen können ein totes Match mit purer Energie zurück ins Leben schreien und sind der Grund, warum Zuschauer stehen bleiben. Mit Hysterica ist Padel nie nur Sport — es ist ein Ereignis.',
+    watchout:'Deine Emotion ist Waffe UND Risiko: Dieselbe Welle, die dich trägt, kann dich begraben. Zwei Fehler in Folge sind kein Drama — sie sind zwei Punkte. Bau dir ein Reset-Ritual (Atemzug, Schlägerblick, kurzer Spruch), damit aus einem schlechten Moment keine schlechte Viertelstunde wird.',
+    counter:'Nimm Hysterica die Bühne: keine Reaktion auf Winner, keine Diskussionen, keine Emotion. Spiel unspektakulär und konstant — lange, ereignislose Punkte sind Gift für diesen Typ. Und wenn die Frust-Spirale beginnt: genau dann seriell auf sie spielen, nicht weg von ihr.',
+    accent:'#D81E5B', card:'#2A0614', text:'#FFDCEA', symbol:'♥',
+  },
 };
 
 export const PADEL_QUIZ=[
@@ -153,6 +175,7 @@ export const PADEL_QUIZ=[
       {id:'d',label:'Alles verteidigen, bis der Fehler kommt'},
       {id:'e',label:'Mit etwas Unerwartetem überraschen'},
       {id:'f',label:'Jeden Ball noch erreichen'},
+      {id:'g',label:'Auf der Emotionswelle surfen'},
     ],
   },
   {
@@ -165,6 +188,7 @@ export const PADEL_QUIZ=[
       {id:'d',label:'Geduld'},
       {id:'e',label:'Kreativität'},
       {id:'f',label:'Ausdauer'},
+      {id:'g',label:'Leidenschaft'},
     ],
   },
   {
@@ -177,6 +201,7 @@ export const PADEL_QUIZ=[
       {id:'d',label:'Fehler des Gegners'},
       {id:'e',label:'Überraschung'},
       {id:'f',label:'Längere Rallyes'},
+      {id:'g',label:'Momentum'},
     ],
   },
   {
@@ -189,18 +214,19 @@ export const PADEL_QUIZ=[
       {id:'d',label:'Zu passiv'},
       {id:'e',label:'Zu verspielt'},
       {id:'f',label:'Zu laufintensiv'},
+      {id:'g',label:'Zu emotional'},
     ],
   },
 ];
 
 export function computeStyle(qa){
   if(!qa) return null;
-  const counts={a:0,b:0,c:0,d:0,e:0,f:0};
+  const counts={a:0,b:0,c:0,d:0,e:0,f:0,g:0};
   Object.values(qa).forEach(v=>{if(v&&counts[v]!==undefined) counts[v]++;});
   const max=Math.max(...Object.values(counts));
   if(max===0) return null;
   const winner=Object.entries(counts).sort((a,b)=>b[1]-a[1])[0][0];
-  return {a:'chico',b:'toro',c:'individuoso',d:'muro',e:'fantasma',f:'motor'}[winner]||null;
+  return {a:'chico',b:'toro',c:'individuoso',d:'muro',e:'fantasma',f:'motor',g:'hysterica'}[winner]||null;
 }
 
 /* Primär- UND Sekundär-Stil aus denselben Antworten: nach Häufigkeit
@@ -209,9 +235,9 @@ export function computeStyle(qa){
    mindestens einer Stimme; gibt es nur einen, bleibt secondary null. */
 export function computeStyles(qa){
   if(!qa) return {primary:null,secondary:null};
-  const counts={a:0,b:0,c:0,d:0,e:0,f:0};
+  const counts={a:0,b:0,c:0,d:0,e:0,f:0,g:0};
   Object.values(qa).forEach(v=>{if(v&&counts[v]!==undefined) counts[v]++;});
-  const MAP={a:'chico',b:'toro',c:'individuoso',d:'muro',e:'fantasma',f:'motor'};
+  const MAP={a:'chico',b:'toro',c:'individuoso',d:'muro',e:'fantasma',f:'motor',g:'hysterica'};
   const ranked=Object.entries(counts).filter(([,c])=>c>0).sort((a,b)=>b[1]-a[1]);
   return {
     primary:ranked[0]?MAP[ranked[0][0]]:null,

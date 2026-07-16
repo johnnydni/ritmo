@@ -633,7 +633,7 @@ export function RitmoPostIcon({size=24,color='currentColor'}){
    theme.js). Die Animation läuft NUR solange `active` true ist;
    ruhende Glyphen bleiben statisch & gedämpft (var(--t3)).
 
-   `type`  : Archetyp-Schlüssel (chico|toro|individuoso|muro|fantasma|motor)
+   `type`  : Archetyp-Schlüssel (chico|toro|individuoso|muro|fantasma|motor|hysterica)
    `active`: ausgewählt → Akzentfarbe + Loop
    `color` : Akzentfarbe des Archetyps (vom Aufrufer, z. B. PADEL_STYLES[t].accent)
 ═══════════════════════════════════════════════════════════════ */
@@ -673,6 +673,14 @@ export function ArchetypeGlyph({type,active=false,color,size=22}){
     body=(<g fill="none" stroke={c} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
       <polyline className="ag-drive-1" points="5 6.5 11 12 5 17.5"/>
       <polyline className="ag-drive-2" points="12 6.5 18 12 12 17.5"/>
+    </g>);
+  }else if(type==='hysterica'){
+    /* Pure Emotion — EKG-Herzschlag in drei Segmenten; die Wall-Pulse-
+       Klassen lassen ihn sequenziell schlagen (Puls-Effekt). */
+    body=(<g fill="none" stroke={c} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+      <polyline className="ag-wall-1" points="2.5 13 6.5 13 8 10"/>
+      <polyline className="ag-wall-2" points="8 10 10.5 18 13.5 5 15.5 13"/>
+      <polyline className="ag-wall-3" points="15.5 13 17.5 13 19 11 20.5 13 21.5 13"/>
     </g>);
   }else{
     /* chico (Default) — Allrounder: rotierender Balance-Ring + ruhender Kern. */

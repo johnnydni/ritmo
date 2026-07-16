@@ -13894,6 +13894,9 @@ function CupCenterScreen({cup,lb,onBack}){
                   color:zc||T.t2,fontSize:'clamp(13px, 1.5vw, 22px)',fontWeight:900}}>
                   #{row.rank}
                 </span>
+                {/* Trennstrich zwischen Platzierung und Spielernummer */}
+                <span aria-hidden="true" style={{width:2,alignSelf:'stretch',margin:'3px 0',
+                  borderRadius:1,background:T.o,opacity:.5,flexShrink:0}}/>
                 <span style={{color:T.o,fontSize:'clamp(11px, 1.2vw, 17px)',fontWeight:900,
                   flexShrink:0,width:'clamp(26px, 2.6vw, 40px)'}}>P{row.num}</span>
                 <span style={{flex:1,minWidth:0,color:T.t1,fontSize:'clamp(13px, 1.5vw, 22px)',

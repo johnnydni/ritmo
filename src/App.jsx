@@ -14185,6 +14185,214 @@ function CupCenterScreen({cup,lb,onBack}){
   );
 }
 
+/* ── COURT SCREEN — Tablet am Court ───────────────────────────────
+   Zeigt die Paarung(en) des gewählten Courts in der aktiven Phase
+   und nimmt die Punkte entgegen (±1-Schritte, wie die Zählweise des
+   Cups) + "Match abschließen". Oben rechts der COURT-KREIS: ein Tap
+   schaltet 1 → 2 → 3 durch; die Wahl wird pro Gerät gemerkt, damit
+   jedes Tablet nach einem Reload auf seinem Court bleibt.
+   Respektiert die Admin-Sperre (cup.locks) und zeigt Warnmeldung
+   (Toast) + Runden-Timer. */
+function CupCourtScreen({cup,setCup,onBack}){
+  const[court,setCourt]=useState(()=>{
+    const c=lsGet('ritmo_dnacup_court',1);
+    return c===2||c===3?c:1;
+  });
+  useEffect(()=>{lsSet('ritmo_dnacup_court',court);},[court]);
+  const locked=!!cup.locks[court];
+  const phase=CUP_PHASES.find(p=>p.id===cup.phase);
+  const nm=n=>cupPlayerLabel(cup,n,true);
+  const cur=(cup.phase==='gruppe'
+    ?cup.matches.filter(m=>m.phase==='gruppe'&&m.round===cup.activeRound)
+    :cup.phase==='ko'?cup.matches.filter(m=>m.phase==='ko')
+    :cup.phase==='hf'?cup.matches.filter(m=>m.phase==='hf'||m.phase==='courage-hf')
+    :cup.matches.filter(m=>m.phase==='finals')).filter(m=>m.court===court);
+  const patchMatch=(id,partial)=>setCup(c=>({...c,
+    matches:c.matches.map(m=>m.id===id?{...m,...partial}:m)}));
+  const bump=(m,f,d)=>{
+    if(locked||m.done) return;
+    buzz(10);
+    patchMatch(m.id,{[f]:Math.max(0,(m[f]??0)+d)});
+  };
+
+  // Punkte-Panel einer Seite: Namen + große Zahl + ±1.
+  const side=(m,f,team)=>(
+    <div style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',
+      alignItems:'center',gap:8}}>
+      <div style={{textAlign:'center',minWidth:0,width:'100%'}}>
+        {team.map(n=>(
+          <div key={n} style={{color:T.t1,fontSize:'clamp(13px, 2.4vw, 20px)',fontWeight:700,
+            overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+            {nm(n)}
+          </div>
+        ))}
+      </div>
+      <div style={{color:m.done?T.o:T.t1,fontWeight:900,lineHeight:1,
+        fontSize:'clamp(54px, 11vw, 96px)',
+        fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',
+        fontVariantNumeric:'tabular-nums'}}>
+        {m[f]??0}
+      </div>
+      <button onClick={()=>bump(m,f,1)} disabled={locked||m.done}
+        aria-label="Punkt hinzufügen"
+        style={{width:'100%',maxWidth:170,height:60,borderRadius:17,cursor:'pointer',
+          background:locked||m.done?T.card2:T.o,border:'none',
+          color:locked||m.done?T.t3:'#000',fontSize:26,fontWeight:900}}>
+        +1
+      </button>
+      <button onClick={()=>bump(m,f,-1)} disabled={locked||m.done}
+        aria-label="Punkt abziehen"
+        style={{width:'100%',maxWidth:170,height:38,borderRadius:12,cursor:'pointer',
+          background:'none',border:`1.5px solid ${T.border}`,
+          color:locked||m.done?T.t4:T.t2,fontSize:16,fontWeight:800}}>
+        −1
+      </button>
+    </div>
+  );
+
+  return(
+    <div className="fi" style={{flex:1,display:'flex',flexDirection:'column',minHeight:0,
+      padding:'0 22px'}}>
+
+      {/* Kopf: Court-Titel + Phase links · COURT-KREIS oben rechts */}
+      <div style={{display:'flex',alignItems:'flex-start',gap:12,marginBottom:10,flexShrink:0}}>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{color:T.o,fontSize:12,fontWeight:800,letterSpacing:1.6,
+            textTransform:'uppercase'}}>RITMO DNA CUP</div>
+          <div style={{display:'flex',alignItems:'center',gap:10,margin:'2px 0 4px'}}>
+            <span style={{color:T.t1,fontSize:'clamp(26px, 5vw, 40px)',fontWeight:900,
+              letterSpacing:-.6}}>COURT {court}</span>
+            {locked&&<LockIcon size={20} color={T.r}/>}
+          </div>
+          <div style={{display:'inline-flex',alignItems:'center',gap:7,padding:'4px 11px',
+            borderRadius:999,background:T.oSoft,border:`1px solid ${T.o}`}}>
+            <span className="court-live-dot" style={{width:7,height:7,borderRadius:'50%',background:T.o}}/>
+            <span style={{color:T.o,fontSize:11.5,fontWeight:800}}>
+              {phase?.name}{cup.phase==='gruppe'?` · Runde ${cup.activeRound}/6`:''}
+            </span>
+          </div>
+        </div>
+        <button onClick={()=>{buzz(8);setCourt(c=>c%3+1);}}
+          aria-label="Court wechseln" title="Court wechseln (1 → 2 → 3)"
+          style={{width:60,height:60,borderRadius:'50%',flexShrink:0,cursor:'pointer',
+            background:T.oSoft,border:`2.5px solid ${T.o}`,color:T.o,
+            display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',
+            lineHeight:1,boxShadow:`0 0 14px color-mix(in srgb, ${T.o} 35%, transparent)`}}>
+          <span style={{fontSize:24,fontWeight:900}}>{court}</span>
+          <span style={{fontSize:7.5,fontWeight:800,letterSpacing:1,marginTop:2}}>COURT</span>
+        </button>
+      </div>
+
+      {/* Warnmeldung vom Admin */}
+      {cup.alert&&(
+        <div style={{flexShrink:0,display:'flex',justifyContent:'center',marginBottom:10}}>
+          <CupAlertToast alert={cup.alert}/>
+        </div>
+      )}
+
+      {/* Sperr-Hinweis */}
+      {locked&&(
+        <div style={{flexShrink:0,display:'flex',alignItems:'center',gap:10,marginBottom:10,
+          padding:'11px 16px',borderRadius:13,background:'rgba(232,69,69,0.08)',
+          border:'1px solid rgba(232,69,69,0.4)'}}>
+          <LockIcon size={16} color={T.r}/>
+          <span style={{color:T.r,fontSize:13,fontWeight:700}}>
+            Court gesperrt — Punkteeingabe ist gerade deaktiviert.
+          </span>
+        </div>
+      )}
+
+      <div style={{flex:1,minHeight:0,overflowY:'auto',WebkitOverflowScrolling:'touch',
+        paddingBottom:10}}>
+        {cur.length===0?(
+          <div style={{border:`1.5px dashed ${T.border}`,borderRadius:19,padding:'34px 20px',
+            color:T.t4,fontSize:15,fontWeight:600,textAlign:'center',marginTop:10}}>
+            Kein Match auf diesem Court in der aktuellen Phase.
+          </div>
+        ):cur.map(m=>(
+          <div key={m.id} style={{position:'relative',overflow:'hidden',background:T.card,
+            border:`2px solid ${T.o}`,borderRadius:21,padding:'16px 18px',marginBottom:14,
+            boxShadow:m.done?`0 0 14px ${T.oGlow}`:'0 4px 14px rgba(0,0,0,.2)'}}>
+            <div aria-hidden="true" style={{position:'absolute',right:-16,top:-16,
+              opacity:.08,pointerEvents:'none'}}>
+              <TennisBallIcon size={80}/>
+            </div>
+            <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
+              <span style={{color:T.o,fontSize:12,fontWeight:800,letterSpacing:1,
+                textTransform:'uppercase'}}>
+                {m.title||(m.phase==='gruppe'?`Runde ${m.round}`
+                  :m.phase==='ko'?'KO-Phase'
+                  :m.phase==='courage-hf'?'Courage-Halbfinale':'DNA-Halbfinale')}
+              </span>
+              {m.bo3&&(
+                <span style={{padding:'2px 8px',borderRadius:999,background:T.card2,
+                  border:`1px solid ${T.border}`,color:T.t2,fontSize:10,fontWeight:800,
+                  letterSpacing:.5}}>BEST OF 3</span>
+              )}
+              <span style={{flex:1}}/>
+              {m.done&&(
+                <span style={{color:T.o,fontSize:12,fontWeight:900,letterSpacing:.5}}>
+                  GESPEICHERT ✓
+                </span>
+              )}
+            </div>
+            <div style={{display:'flex',alignItems:'stretch',gap:'clamp(10px, 3vw, 26px)'}}>
+              {side(m,'s1',m.t1)}
+              <div style={{alignSelf:'center',flexShrink:0}}>
+                <span className="court-vs" style={{width:38,height:38,borderRadius:'50%',
+                  background:T.oSoft,border:`1.5px solid ${T.o}`,color:T.o,
+                  display:'flex',alignItems:'center',justifyContent:'center',
+                  fontSize:12,fontWeight:900}}>VS</span>
+              </div>
+              {side(m,'s2',m.t2)}
+            </div>
+            <button
+              onClick={()=>{if(locked)return;buzz(m.done?8:18);patchMatch(m.id,{done:!m.done});}}
+              disabled={locked}
+              style={{width:'100%',marginTop:16,padding:'15px',borderRadius:15,cursor:locked?'not-allowed':'pointer',
+                background:m.done?T.card2:T.g,border:m.done?`1.5px solid ${T.border}`:'none',
+                color:m.done?T.t2:T.t1,fontSize:16,fontWeight:800}}>
+              {m.done?'Korrigieren (erneut öffnen)':'Match abschließen ✓'}
+            </button>
+          </div>
+        ))}
+
+        {/* Upcoming auf diesem Court (nur Gruppenphase) */}
+        {cup.phase==='gruppe'&&(()=>{
+          const nxt=cup.matches.find(x=>x.phase==='gruppe'
+            &&x.round===cup.activeRound+1&&x.court===court);
+          if(!nxt) return null;
+          return(<>
+            <div style={{color:T.t3,fontSize:11,fontWeight:800,letterSpacing:1.2,
+              textTransform:'uppercase',margin:'4px 2px 7px'}}>
+              Upcoming · Runde {cup.activeRound+1}
+            </div>
+            <div style={{border:`1.5px dashed ${T.border}`,borderRadius:15,
+              padding:'11px 14px',opacity:.9}}>
+              <div style={{color:T.t2,fontSize:14,fontWeight:600,overflow:'hidden',
+                textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{nxt.t1.map(nm).join('  &  ')}</div>
+              <div style={{color:T.t4,fontSize:11,fontWeight:800,margin:'3px 0'}}>vs</div>
+              <div style={{color:T.t2,fontSize:14,fontWeight:600,overflow:'hidden',
+                textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{nxt.t2.map(nm).join('  &  ')}</div>
+            </div>
+          </>);
+        })()}
+      </div>
+
+      {/* Fußleiste: Zurück + Runden-Timer */}
+      <div style={{flexShrink:0,display:'flex',alignItems:'center',gap:12,
+        padding:'10px 0 calc(env(safe-area-inset-bottom,0px) + 14px)'}}>
+        <button onClick={onBack} style={{padding:'8px 14px',borderRadius:11,background:T.card,
+          border:`1px solid ${T.border}`,color:T.t3,fontSize:12,fontWeight:700,cursor:'pointer'}}>
+          ‹ Auswahl
+        </button>
+        <span style={{flex:1}}/>
+        <CupTimer timer={cup.timer}/>
+      </div>
+    </div>
+  );
+}
+
 /* Kachel-Auswahl (Home des Cup-Bereichs) + Platzhalter für die noch
    nicht spezifizierten Modi. */
 function CupHome({cup,onView,onAskExit}){
@@ -14249,7 +14457,6 @@ function CupHome({cup,onView,onAskExit}){
 function CupStub({kind,onBack}){
   const meta={
     tickets:['Tickets','Check-in & Einlass — wird als Nächstes gebaut.'],
-    court:['Court Screen','Court wählen, Punkte eintragen, Zeit — wird als Nächstes gebaut.'],
   }[kind];
   return(
     <div className="fi" style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',
@@ -14302,7 +14509,8 @@ function DnaCupScreen({onExit}){
       {view==='home'&&<CupHome cup={cup} onView={setView} onAskExit={()=>setExitAsk(true)}/>}
       {view==='admin'&&<CupAdmin cup={cup} setCup={setCup} lb={lb} onBack={()=>setView('home')}/>}
       {view==='center'&&<CupCenterScreen cup={cup} lb={lb} onBack={()=>setView('home')}/>}
-      {(view==='tickets'||view==='court')&&(
+      {view==='court'&&<CupCourtScreen cup={cup} setCup={setCup} onBack={()=>setView('home')}/>}
+      {view==='tickets'&&(
         <CupStub kind={view} onBack={()=>setView('home')}/>
       )}
       {exitAsk&&(

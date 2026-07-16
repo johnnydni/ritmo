@@ -79,7 +79,8 @@ export function initialCupState(){
     players,
     matches,                 // gruppe sofort, ko/hf/finals via Generator
     alert:null,              // {id,label,icon,ts} — Toast für Screens
-    locks:{1:false,2:false,3:false}, // Court-Screens gesperrt
+    locks:{1:false,2:false,3:false}, // Court-Screens: Punkteeingabe gesperrt
+    navLock:false,           // Kiosk: Court-Ansicht fixiert (Exit nur per PIN)
     // Runden-Timer (Center Screen): sec = eingestellte Dauer;
     // laufend = startedAt gesetzt (Restzeit wird aus dem Timestamp
     // berechnet — synct ohne Tick-Traffic); pausiert = left gesetzt.

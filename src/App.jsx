@@ -13305,13 +13305,21 @@ function CupAdmin({cup,setCup,lb,onBack}){
   const setAllLocks=v=>{buzz(8);setCup(c=>({...c,locks:{1:v,2:v,3:v}}));};
 
   const grpDone=cup.matches.filter(m=>m.phase==='gruppe'&&m.done).length;
+  const grpAll=cup.matches.filter(m=>m.phase==='gruppe').length;
   const koAll=cup.matches.filter(m=>m.phase==='ko');
   const koDone=koAll.filter(m=>m.done).length;
   const hfAll=cup.matches.filter(m=>m.phase==='hf'||m.phase==='courage-hf');
   const hfDone=hfAll.filter(m=>m.done).length;
 
   // Generatoren — bauen die jeweils nächste Phase aus dem Leaderboard.
+  // Platzierungen werden erst gezogen, wenn die Gruppenphase KOMPLETT
+  // ist (18/18) — vorher wären die Paarungen aus einer halben Tabelle.
   const genKO=()=>{
+    if(grpDone<grpAll){
+      setGenMsg(`Platzierungen werden erst nach der Gruppenphase gezogen — ${grpDone}/${grpAll} Matches fertig.`);
+      buzz([20,40,20]);
+      return;
+    }
     setCup(c=>({...c,
       matches:[...c.matches.filter(m=>m.phase==='gruppe'),...genCupKO(lb),...genCupCourageHF(lb)],
       phase:'ko'}));
@@ -13775,9 +13783,15 @@ function CupCenterScreen({cup,lb,onBack}){
     );
   };
 
+  // Turnierbaum erst „ziehen", wenn die Gruppenphase KOMPLETT ist —
+  // vorher zeigt Slide 3 ausschließlich Platzhalter, auch wenn im
+  // Admin schon (Test-)Paarungen existieren sollten.
+  const gruppeMs=cup.matches.filter(m=>m.phase==='gruppe');
+  const gruppeFertig=gruppeMs.length>0&&gruppeMs.every(m=>m.done);
+
   // Slide 3: Turnierbaum-Knoten — echtes Match oder Platzhalter.
   const Node=({id,title,hint})=>{
-    const m=findM(id);
+    const m=gruppeFertig?findM(id):null;
     if(!m) return(
       <div style={{border:`1.5px dashed ${T.border}`,borderRadius:15,padding:'10px 14px',
         marginBottom:10}}>
@@ -13920,6 +13934,17 @@ function CupCenterScreen({cup,lb,onBack}){
         })()}
 
         {slide===2&&(<>
+          {!gruppeFertig&&(
+            <div style={{marginBottom:14,padding:'12px 18px',borderRadius:13,
+              background:T.oSoft,border:`1px solid ${T.o}`,display:'flex',
+              alignItems:'center',gap:10}}>
+              <StopwatchIcon size={18} color={T.o}/>
+              <span style={{color:T.t1,fontSize:'clamp(12px, 1.3vw, 18px)',fontWeight:700}}>
+                Der Turnierbaum wird nach der Gruppenphase gezogen —{' '}
+                {gruppeMs.filter(m=>m.done).length}/{gruppeMs.length} Matches gespielt.
+              </span>
+            </div>
+          )}
           <div style={{display:'grid',gridTemplateColumns:'1.15fr 1fr 1fr',gap:18,
             alignItems:'start',marginBottom:6}}>
             <div style={{minWidth:0}}>

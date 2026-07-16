@@ -43,7 +43,7 @@ import {
   MenuIcon,
 } from "./icons.jsx";
 import { PADEL_STYLES, PADEL_QUIZ, computeStyle, computeStyles, computeMatchTier, STYLE_IMAGES } from "./padelStyles.js";
-import { CUP_PIN, CUP_PHASES, CUP_ALERTS, initialCupState, cupLeaderboard, cupMatchTier,
+import { CUP_PIN, CUP_PHASES, CUP_ALERTS, CUP_WARN, initialCupState, cupLeaderboard, cupMatchTier,
   genCupKO, genCupCourageHF, genCupHF, genCupFinals, cupPlayerLabel, cupDuplicateNums } from "./dnaCup.js";
 import GlassSurface from "./GlassSurface.jsx";
 
@@ -13100,35 +13100,54 @@ function CupTicketIcon({size=24,color='currentColor'}){
   );
 }
 
-/* Icon-Map für Warnmeldungen (Toast auf Center-/Court-Screens). */
+/* Icon-Map für Warnmeldungen (Banner auf Center-/Court-Screens). */
 function CupAlertIcon({icon,size=18,color='#000'}){
   if(icon==='ball') return <TennisBallIcon size={size}/>;
   if(icon==='pause') return <PauseIcon size={size} color={color}/>;
-  return <EditIcon size={size} color={color}/>;
+  if(icon==='edit') return <EditIcon size={size} color={color}/>;
+  return <WarnIcon size={size} color={color}/>;
 }
 
 /* Toast-Optik der Warnmeldung — Admin-Vorschau; Center/Court zeigen
    exakt dieselbe Komponente, wenn sie gebaut werden. */
+/* Warn-Banner (Referenz-Design): dunkler, gelb getönter Balken —
+   Warn-Icon links, Titel + Untertitel, optional gelber CTA-Pill
+   rechts ("Jetzt eintragen"). big = Center-Screen-Größe. */
 function CupAlertToast({alert,big=false}){
   if(!alert) return null;
   return(
-    <div className="si" style={{display:'flex',alignItems:'center',gap:big?16:12,background:T.o,
-      borderRadius:big?19:15,padding:big?'18px 28px':'13px 18px',
-      boxShadow:'0 12px 34px rgba(0,0,0,.45)'}}>
-      <span style={{width:big?52:36,height:big?52:36,borderRadius:'50%',background:'rgba(0,0,0,.18)',
-        display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-        <CupAlertIcon icon={alert.icon} size={big?26:18} color="#000"/>
+    <div className="si" style={{display:'flex',alignItems:'center',gap:big?18:12,minWidth:0,
+      background:`color-mix(in srgb, ${CUP_WARN} 10%, ${T.card})`,
+      border:`1px solid color-mix(in srgb, ${CUP_WARN} 40%, transparent)`,
+      borderRadius:big?17:13,padding:big?'14px 22px':'11px 14px',
+      boxShadow:'0 10px 28px rgba(0,0,0,.4)'}}>
+      <span style={{color:CUP_WARN,display:'inline-flex',flexShrink:0}}>
+        <CupAlertIcon icon={alert.icon} size={big?30:20} color={CUP_WARN}/>
       </span>
-      <span style={{color:'#000',fontSize:big?'clamp(20px, 2.6vw, 34px)':17,fontWeight:900,
-        letterSpacing:-.2,minWidth:0,overflow:'hidden',textOverflow:'ellipsis',
-        whiteSpace:'nowrap'}}>{alert.label}</span>
+      <span style={{minWidth:0,flex:'0 1 auto'}}>
+        <span style={{display:'block',color:T.t1,fontWeight:900,letterSpacing:-.2,
+          fontSize:big?'clamp(16px, 1.9vw, 26px)':15,
+          overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{alert.label}</span>
+        {alert.sub&&(
+          <span style={{display:'block',color:T.t2,fontWeight:500,marginTop:2,
+            fontSize:big?'clamp(11px, 1.2vw, 16px)':11.5,
+            overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{alert.sub}</span>
+        )}
+      </span>
+      {alert.cta&&(
+        <span style={{flexShrink:0,marginLeft:big?10:6,background:CUP_WARN,color:'#000',
+          fontWeight:800,borderRadius:999,padding:big?'10px 18px':'7px 12px',
+          fontSize:big?'clamp(11px, 1.25vw, 17px)':11.5,whiteSpace:'nowrap'}}>{alert.cta}</span>
+      )}
     </div>
   );
 }
 
-/* Runden-Timer im Sport-Anzeigetafel-Look: grüne Mono-Ziffern mit
-   Glow, pulsierender Live-Dot, PAUSE-Zustand gedimmt. Restzeit wird
-   aus startedAt berechnet (kein Tick-Sync nötig); der 500ms-Repaint
+/* Runden-Timer im Uhr-Look (Referenz: Apple-Timer): dunkles Ziffern-
+   blatt mit Minuten-Ticks, grüner Fortschrittsring (Restzeit-Anteil,
+   abgerundete Enden, Glow), mittig "Zeit" + -HH:MM:SS- in Grün und
+   die Einheiten Std./Min./Sek. darunter. Restzeit kommt aus dem
+   startedAt-Timestamp (kein Tick-Sync nötig); der 500ms-Repaint
    läuft nur lokal. Rendert nichts, solange der Timer inaktiv ist. */
 function CupTimer({timer,big=false}){
   const[,force]=useState(0);
@@ -13141,30 +13160,51 @@ function CupTimer({timer,big=false}){
   const left=timer.startedAt
     ?Math.max(0,timer.sec-Math.floor((Date.now()-timer.startedAt)/1000))
     :Math.max(0,timer.left||0);
-  const mm=String(Math.floor(left/60)).padStart(2,'0');
-  const ss=String(left%60).padStart(2,'0');
   const paused=!timer.startedAt;
+  const frac=timer.sec>0?left/timer.sec:0;
+  const hh=String(Math.floor(left/3600)).padStart(2,'0');
+  const mm=String(Math.floor((left%3600)/60)).padStart(2,'0');
+  const ss=String(left%60).padStart(2,'0');
+  const R=100,C=2*Math.PI*R;
   return(
-    <div className="si" style={{display:'inline-flex',alignItems:'center',
-      gap:big?14:10,background:T.card,opacity:paused?.75:1,
-      border:`2px solid ${T.g}`,borderRadius:big?19:13,
-      padding:big?'12px 22px':'8px 14px',
-      boxShadow:`0 0 ${big?22:12}px color-mix(in srgb, ${T.g} 45%, transparent), 0 8px 24px rgba(0,0,0,.35)`}}>
-      <span className={paused?'':'court-live-dot'} style={{width:big?11:8,height:big?11:8,
-        borderRadius:'50%',background:T.g,flexShrink:0}}/>
-      <span style={{display:'flex',flexDirection:'column',lineHeight:1}}>
-        <span style={{color:T.t3,fontSize:big?'clamp(9px, 1vw, 13px)':9,fontWeight:800,
-          letterSpacing:1.6,textTransform:'uppercase',marginBottom:3}}>
-          {paused?'Pause':'Rundenzeit'}
-        </span>
-        <span style={{color:T.g,fontWeight:900,letterSpacing:1,
-          fontSize:big?'clamp(24px, 3.2vw, 46px)':22,
+    <div className="si" style={{width:big?'clamp(200px, 24vw, 330px)':'160px',
+      aspectRatio:'1 / 1',position:'relative',flexShrink:0,opacity:paused?.8:1}}>
+      <svg viewBox="0 0 240 240" style={{width:'100%',height:'100%',display:'block'}}>
+        {/* Ziffernblatt + Minuten-Ticks (Viertel-Ticks kräftiger) */}
+        <circle cx="120" cy="120" r="114" fill={T.card}/>
+        {Array.from({length:60}).map((_,i)=>{
+          const a=i*6*Math.PI/180,major=i%15===0;
+          const r1=108,r2=major?96:102;
+          return <line key={i}
+            x1={120+Math.sin(a)*r1} y1={120-Math.cos(a)*r1}
+            x2={120+Math.sin(a)*r2} y2={120-Math.cos(a)*r2}
+            stroke={major?T.t1:T.t4} strokeWidth={major?4:2} strokeLinecap="round"/>;
+        })}
+        {/* Fortschrittsring: Rest-Anteil in Grün, ab 12 Uhr im UZS */}
+        <circle cx="120" cy="120" r={R} fill="none" strokeWidth="10"
+          stroke={`color-mix(in srgb, ${T.g} 18%, transparent)`}/>
+        <circle cx="120" cy="120" r={R} fill="none" stroke={T.g} strokeWidth="10"
+          strokeLinecap="round" strokeDasharray={C} strokeDashoffset={C*(1-frac)}
+          transform="rotate(-90 120 120)"
+          style={{filter:`drop-shadow(0 0 6px ${T.g})`,transition:'stroke-dashoffset .5s linear'}}/>
+      </svg>
+      <div style={{position:'absolute',inset:0,display:'flex',flexDirection:'column',
+        alignItems:'center',justifyContent:'center'}}>
+        <div style={{color:T.g,fontWeight:700,marginBottom:big?4:2,
+          fontSize:big?'clamp(14px, 1.7vw, 24px)':14}}>
+          {paused?'Pause':'Zeit'}
+        </div>
+        <div style={{color:T.g,fontWeight:800,letterSpacing:.5,lineHeight:1,
+          fontSize:big?'clamp(22px, 2.7vw, 40px)':21,
           fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',
-          textShadow:`0 0 14px color-mix(in srgb, ${T.g} 65%, transparent)`,
           fontVariantNumeric:'tabular-nums'}}>
-          {mm}:{ss}
-        </span>
-      </span>
+          -{hh}:{mm}:{ss}-
+        </div>
+        <div style={{display:'flex',gap:big?'clamp(12px, 1.5vw, 24px)':11,marginTop:big?5:3,
+          color:T.t2,fontWeight:600,fontSize:big?'clamp(9px, 1vw, 14px)':9}}>
+          <span>Std.</span><span>Min.</span><span>Sek.</span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -13998,6 +14038,33 @@ function CupCenterScreen({cup,lb,onBack}){
                       Kein Match
                     </div>
                   ):ms.map(matchBlock)}
+                  {/* Upcoming: nächstes Match auf DIESEM Court — Spieler
+                      können sich vorbereiten (nur Gruppenphase, fester
+                      Spielplan). */}
+                  {cup.phase==='gruppe'&&(()=>{
+                    const nxt=cup.matches.find(x=>x.phase==='gruppe'
+                      &&x.round===cup.activeRound+1&&x.court===c);
+                    if(!nxt) return null;
+                    return(<>
+                      <div style={{color:T.t3,fontSize:'clamp(10px, 1vw, 14px)',fontWeight:800,
+                        letterSpacing:1.2,textTransform:'uppercase',margin:'6px 2px 7px'}}>
+                        Upcoming · Runde {cup.activeRound+1}
+                      </div>
+                      <div style={{border:`1.5px dashed ${T.border}`,borderRadius:15,
+                        padding:'10px 14px',opacity:.9}}>
+                        <div style={{color:T.t2,fontSize:'clamp(12px, 1.4vw, 19px)',fontWeight:600,
+                          overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                          {nxt.t1.map(nm).join(' & ')}
+                        </div>
+                        <div style={{color:T.t4,fontSize:'clamp(10px, 1vw, 13px)',fontWeight:800,
+                          margin:'3px 0'}}>vs</div>
+                        <div style={{color:T.t2,fontSize:'clamp(12px, 1.4vw, 19px)',fontWeight:600,
+                          overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                          {nxt.t2.map(nm).join(' & ')}
+                        </div>
+                      </div>
+                    </>);
+                  })()}
                 </div>
               );
             })}

@@ -28,12 +28,17 @@ export const CUP_PHASES=[
   {id:'finals', name:'Finals',       sub:'Grande · Platz 3 · Courage'},
 ];
 
-/* Warnmeldungs-Presets für Center-/Court-Screens (Toast mit Icon).
-   icon ist ein Schlüssel — die Icon-Komponente mappt der Screen. */
+/* Warnmeldungs-Presets für Center-/Court-Screens (Banner-Toast im
+   Warn-Look: Titel + Untertitel + optionaler CTA-Pill). icon ist
+   ein Schlüssel — die Icon-Komponente mappt der Screen. */
+export const CUP_WARN='#FFC93D'; // Warn-Gelb (Event-Branding, wie PCOLS Daten)
 export const CUP_ALERTS=[
-  {id:'points', label:'Punkte eintragen!', icon:'edit'},
-  {id:'warmup', label:'Warm-Up!',          icon:'ball'},
-  {id:'pause',  label:'Pause!',            icon:'pause'},
+  {id:'points', label:'Punkte eintragen!', icon:'warn',
+    sub:'Bitte trage die Ergebnisse deiner Spiele ein.', cta:'Jetzt eintragen'},
+  {id:'warmup', label:'Warm-Up!',          icon:'ball',
+    sub:'Macht euch bereit — gleich geht es los.'},
+  {id:'pause',  label:'Pause!',            icon:'pause',
+    sub:'Kurze Pause — gleich geht es weiter.'},
 ];
 
 /* ── Fester Gruppen-Spielplan (vom Plakat) ────────────────────────

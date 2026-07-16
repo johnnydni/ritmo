@@ -13109,17 +13109,19 @@ function CupAlertIcon({icon,size=18,color='#000'}){
 
 /* Toast-Optik der Warnmeldung — Admin-Vorschau; Center/Court zeigen
    exakt dieselbe Komponente, wenn sie gebaut werden. */
-function CupAlertToast({alert}){
+function CupAlertToast({alert,big=false}){
   if(!alert) return null;
   return(
-    <div className="si" style={{display:'flex',alignItems:'center',gap:12,background:T.o,
-      borderRadius:15,padding:'13px 18px',boxShadow:'0 8px 24px rgba(0,0,0,.35)'}}>
-      <span style={{width:36,height:36,borderRadius:'50%',background:'rgba(0,0,0,.18)',
+    <div className="si" style={{display:'flex',alignItems:'center',gap:big?16:12,background:T.o,
+      borderRadius:big?19:15,padding:big?'18px 28px':'13px 18px',
+      boxShadow:'0 12px 34px rgba(0,0,0,.45)'}}>
+      <span style={{width:big?52:36,height:big?52:36,borderRadius:'50%',background:'rgba(0,0,0,.18)',
         display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-        <CupAlertIcon icon={alert.icon} size={18} color="#000"/>
+        <CupAlertIcon icon={alert.icon} size={big?26:18} color="#000"/>
       </span>
-      <span style={{color:'#000',fontSize:17,fontWeight:900,letterSpacing:-.2,minWidth:0,
-        overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{alert.label}</span>
+      <span style={{color:'#000',fontSize:big?'clamp(20px, 2.6vw, 34px)':17,fontWeight:900,
+        letterSpacing:-.2,minWidth:0,overflow:'hidden',textOverflow:'ellipsis',
+        whiteSpace:'nowrap'}}>{alert.label}</span>
     </div>
   );
 }
@@ -13641,6 +13643,267 @@ function CupAdmin({cup,setCup,lb,onBack}){
   );
 }
 
+/* ── CENTER SCREEN — Diashow für den großen Screen/Beamer ─────────
+   Drei Slides im automatischen Wechsel (12 s):
+     1. Aktuelle Paarungen je Court + Phase (Gruppe: aktive Runde)
+     2. Leaderboard (Zonen wie auf dem Plakat)
+     3. Turnierbaum mit aktuellem Stand (DNA-Lane + Courage-Lane)
+   Read-only. Admin-Warnmeldungen liegen als großes Toast-Overlay
+   über jedem Slide. Schriftgrößen skalieren per clamp() mit der
+   Viewport-Breite (Beamer/TV im Querformat). Läuft der Admin in
+   einem anderen Tab desselben Geräts, synct der storage-Listener
+   in DnaCupScreen jede Änderung live hierher. */
+function CupCenterScreen({cup,lb,onBack}){
+  const[slide,setSlide]=useState(0);
+  const[paused,setPaused]=useState(false);
+  // Ein Timeout PRO Slide (statt Dauer-Interval): jeder Wechsel — auch
+  // ein manueller Tap — startet das 12-Sekunden-Fenster neu. Hinweis:
+  // In versteckten Tabs drosselt Chrome Timer (~1 Tick/Min); auf dem
+  // sichtbaren Beamer-Tab läuft die Rotation normal.
+  useEffect(()=>{
+    if(paused) return;
+    const id=setTimeout(()=>setSlide(s=>(s+1)%3),12000);
+    return()=>clearTimeout(id);
+  },[paused,slide]);
+  const phase=CUP_PHASES.find(p=>p.id===cup.phase);
+  const nm=n=>cupPlayerLabel(cup,n,true);
+  const findM=id=>cup.matches.find(m=>m.id===id);
+
+  // Slide 1: Matches der aktiven Phase (Gruppe → nur aktive Runde).
+  const cur=cup.phase==='gruppe'
+    ?cup.matches.filter(m=>m.phase==='gruppe'&&m.round===cup.activeRound)
+    :cup.phase==='ko'?cup.matches.filter(m=>m.phase==='ko')
+    :cup.phase==='hf'?cup.matches.filter(m=>m.phase==='hf'||m.phase==='courage-hf')
+    :cup.matches.filter(m=>m.phase==='finals');
+
+  const teamRow=(team,score,win,done)=>(
+    <div style={{display:'flex',alignItems:'center',gap:10,padding:'7px 0',minWidth:0}}>
+      <span style={{flex:1,minWidth:0,color:done&&!win?T.t3:T.t1,
+        fontSize:'clamp(15px, 1.8vw, 26px)',fontWeight:win?900:600,letterSpacing:-.2,
+        overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+        {team.map(nm).join('  &  ')}
+      </span>
+      <span style={{color:win?T.o:T.t2,fontSize:'clamp(18px, 2.2vw, 32px)',fontWeight:900,
+        fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',flexShrink:0}}>
+        {score??'–'}
+      </span>
+    </div>
+  );
+  const matchBlock=m=>{
+    const w1=m.done&&(m.s1??0)>=(m.s2??0), w2=m.done&&(m.s2??0)>(m.s1??0);
+    return(
+      <div key={m.id} style={{background:T.card,border:`1.5px solid ${m.done?T.o:T.border}`,
+        borderRadius:17,padding:'12px 16px',marginBottom:10}}>
+        {m.title&&(
+          <div style={{color:T.o,fontSize:'clamp(11px, 1.1vw, 15px)',fontWeight:800,
+            letterSpacing:1,textTransform:'uppercase',marginBottom:4}}>{m.title}</div>
+        )}
+        {teamRow(m.t1,m.s1,w1,m.done)}
+        <div style={{height:1,background:T.sep}}/>
+        {teamRow(m.t2,m.s2,w2,m.done)}
+      </div>
+    );
+  };
+
+  // Slide 3: Turnierbaum-Knoten — echtes Match oder Platzhalter.
+  const Node=({id,title,hint})=>{
+    const m=findM(id);
+    if(!m) return(
+      <div style={{border:`1.5px dashed ${T.border}`,borderRadius:15,padding:'10px 14px',
+        marginBottom:10}}>
+        <div style={{color:T.t3,fontSize:'clamp(10px, 1vw, 14px)',fontWeight:800,
+          letterSpacing:.8,textTransform:'uppercase'}}>{title}</div>
+        <div style={{color:T.t4,fontSize:'clamp(11px, 1.1vw, 15px)',marginTop:4}}>{hint}</div>
+      </div>
+    );
+    const w1=m.done&&(m.s1??0)>=(m.s2??0), w2=m.done&&(m.s2??0)>(m.s1??0);
+    const row=(team,score,win)=>(
+      <div style={{display:'flex',alignItems:'center',gap:8,padding:'3px 0',minWidth:0}}>
+        <span style={{flex:1,minWidth:0,color:m.done&&!win?T.t3:T.t1,
+          fontSize:'clamp(11px, 1.25vw, 17px)',fontWeight:win?900:600,
+          overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+          {team.map(nm).join(' & ')}
+        </span>
+        <span style={{color:win?T.o:T.t3,fontSize:'clamp(11px, 1.25vw, 17px)',fontWeight:900,
+          fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',flexShrink:0}}>{score??'–'}</span>
+      </div>
+    );
+    return(
+      <div style={{background:T.card,border:`1.5px solid ${m.done?T.o:T.border}`,
+        borderRadius:15,padding:'9px 14px',marginBottom:10}}>
+        <div style={{color:T.t3,fontSize:'clamp(9.5px, .95vw, 13px)',fontWeight:800,
+          letterSpacing:.8,textTransform:'uppercase',marginBottom:3}}>{title}</div>
+        {row(m.t1,m.s1,w1)}
+        {row(m.t2,m.s2,w2)}
+      </div>
+    );
+  };
+  const colHead=t=>(
+    <div style={{color:T.t3,fontSize:'clamp(10px, 1.05vw, 14px)',fontWeight:800,
+      letterSpacing:1.2,textTransform:'uppercase',marginBottom:8}}>{t}</div>
+  );
+
+  const SLIDE_TITLES=['Aktuelle Paarungen','Leaderboard','Turnierbaum'];
+
+  return(
+    <div className="fi" style={{flex:1,display:'flex',flexDirection:'column',minHeight:0,
+      padding:'0 28px',position:'relative'}}>
+
+      {/* Kopf: Wordmark + Phase + Slide-Titel */}
+      <div style={{display:'flex',alignItems:'center',gap:16,marginBottom:12,flexWrap:'wrap'}}>
+        <div style={{color:T.t1,fontSize:'clamp(20px, 2.6vw, 40px)',fontWeight:900,
+          letterSpacing:-.6,flexShrink:0}}>
+          RITMO <span style={{color:T.o}}>DNA CUP</span>
+        </div>
+        <div style={{display:'inline-flex',alignItems:'center',gap:8,padding:'6px 14px',
+          borderRadius:999,background:T.oSoft,border:`1px solid ${T.o}`,flexShrink:0}}>
+          <span className="court-live-dot" style={{width:8,height:8,borderRadius:'50%',background:T.o}}/>
+          <span style={{color:T.o,fontSize:'clamp(12px, 1.3vw, 18px)',fontWeight:800}}>
+            {phase?.name}{cup.phase==='gruppe'?` · Runde ${cup.activeRound}/6`:''}
+          </span>
+        </div>
+        <span style={{flex:1}}/>
+        <div style={{color:T.t2,fontSize:'clamp(14px, 1.7vw, 24px)',fontWeight:800,flexShrink:0}}>
+          {SLIDE_TITLES[slide]}
+        </div>
+      </div>
+
+      {/* Warnmeldung — liegt über jedem Slide */}
+      {cup.alert&&(
+        <div style={{position:'absolute',top:'clamp(52px, 7vw, 96px)',left:'50%',
+          transform:'translateX(-50%)',zIndex:6,maxWidth:'86%'}}>
+          <CupAlertToast alert={cup.alert} big/>
+        </div>
+      )}
+
+      {/* Slides — key remountet → Fade pro Wechsel */}
+      <div key={slide} className="fi" style={{flex:1,minHeight:0,overflowY:'auto',
+        WebkitOverflowScrolling:'touch',paddingBottom:8}}>
+
+        {slide===0&&(
+          <div style={{display:'grid',gridTemplateColumns:'repeat(3, 1fr)',gap:16,
+            alignItems:'start'}}>
+            {[1,2,3].map(c=>{
+              const ms=cur.filter(m=>m.court===c);
+              return(
+                <div key={c} style={{minWidth:0}}>
+                  <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}>
+                    <span style={{color:T.o,fontSize:'clamp(15px, 1.8vw, 26px)',fontWeight:900,
+                      letterSpacing:.5}}>COURT {c}</span>
+                    {cup.locks[c]&&<LockIcon size={16} color={T.t3}/>}
+                  </div>
+                  {ms.length===0?(
+                    <div style={{border:`1.5px dashed ${T.border}`,borderRadius:17,
+                      padding:'18px 16px',color:T.t4,fontSize:'clamp(12px, 1.3vw, 18px)',
+                      fontWeight:600,textAlign:'center'}}>
+                      Kein Match
+                    </div>
+                  ):ms.map(matchBlock)}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {slide===1&&(
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0 26px',
+            alignContent:'start'}}>
+            {lb.map(row=>{
+              const zone=row.rank<=2?'top':row.rank<=14?'mid':'courage';
+              const zc=zone==='top'?T.gold:zone==='courage'?T.blue:null;
+              return(
+                <div key={row.num} style={{display:'flex',alignItems:'center',gap:10,
+                  padding:'5px 12px',borderRadius:11,marginBottom:5,minWidth:0,
+                  background:zone==='top'?`${T.gold}14`:zone==='courage'?T.blueSoft:'transparent',
+                  border:`1px solid ${zc||T.sep}`}}>
+                  <span style={{width:'clamp(22px, 2.2vw, 34px)',textAlign:'center',flexShrink:0,
+                    color:zc||T.t2,fontSize:'clamp(13px, 1.5vw, 22px)',fontWeight:900}}>{row.rank}</span>
+                  <span style={{color:T.o,fontSize:'clamp(11px, 1.2vw, 17px)',fontWeight:900,
+                    flexShrink:0,width:'clamp(26px, 2.6vw, 40px)'}}>P{row.num}</span>
+                  <span style={{flex:1,minWidth:0,color:T.t1,fontSize:'clamp(13px, 1.5vw, 22px)',
+                    fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                    {(row.name||'').trim()||'—'}
+                  </span>
+                  <span style={{color:T.t1,fontSize:'clamp(14px, 1.6vw, 24px)',fontWeight:900,
+                    fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',flexShrink:0}}>
+                    {row.total}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {slide===2&&(<>
+          <div style={{display:'grid',gridTemplateColumns:'1.15fr 1fr 1fr',gap:18,
+            alignItems:'start',marginBottom:6}}>
+            <div style={{minWidth:0}}>
+              {colHead('KO-Phase · Rang 3–14')}
+              <Node id="ko1" title="KO 1 · Court 1" hint="3+14 vs 4+13 — aus Leaderboard"/>
+              <Node id="ko2" title="KO 2 · Court 2" hint="5+12 vs 6+11 — aus Leaderboard"/>
+              <Node id="ko3" title="KO 3 · Court 3" hint="7+10 vs 8+9 — aus Leaderboard"/>
+            </div>
+            <div style={{minWidth:0}}>
+              {colHead('Halbfinals · Best of 3')}
+              <Node id="hf1" title="DNA-HF 1" hint="#1 + Sieger-Split A"/>
+              <Node id="hf2" title="DNA-HF 2" hint="#2 + Sieger-Split B"/>
+            </div>
+            <div style={{minWidth:0}}>
+              {colHead('Finals · Best of 3')}
+              <Node id="final" title="Grande Finale" hint="Sieger HF1 vs Sieger HF2"/>
+              <Node id="platz3" title="Spiel um Platz 3" hint="Verlierer der Halbfinals"/>
+            </div>
+          </div>
+          <div style={{borderTop:`1px solid ${T.sep}`,paddingTop:12,
+            display:'grid',gridTemplateColumns:'1.15fr 1fr 1fr',gap:18,alignItems:'start'}}>
+            <div style={{minWidth:0}}>
+              {colHead('Courage 8 · Rang 15–22')}
+              <Node id="chf1" title="Courage-HF 1" hint="15+22 vs 16+21"/>
+              <Node id="chf2" title="Courage-HF 2" hint="17+20 vs 18+19"/>
+            </div>
+            <div style={{minWidth:0}}>
+              {colHead('Courage-Finale · Best of 3')}
+              <Node id="cfinal" title="Das Ehren-Finale" hint="Sieger der Courage-HF"/>
+            </div>
+            <div/>
+          </div>
+        </>)}
+      </div>
+
+      {/* Fußleiste: Dots + Steuerung (dezent, für den Kiosk-Betrieb) */}
+      <div style={{flexShrink:0,display:'flex',alignItems:'center',gap:12,
+        padding:'10px 0 calc(env(safe-area-inset-bottom,0px) + 14px)'}}>
+        <button onClick={onBack} style={{padding:'8px 14px',borderRadius:11,background:T.card,
+          border:`1px solid ${T.border}`,color:T.t3,fontSize:12,fontWeight:700,cursor:'pointer'}}>
+          ‹ Auswahl
+        </button>
+        <span style={{flex:1}}/>
+        <div style={{display:'flex',gap:8,alignItems:'center'}}>
+          {[0,1,2].map(i=>(
+            <button key={i} onClick={()=>{buzz(6);setSlide(i);}} aria-label={`Slide ${i+1}`}
+              style={{width:i===slide?26:10,height:10,borderRadius:999,border:'none',
+                cursor:'pointer',background:i===slide?T.o:T.t4,transition:'width .25s, background .25s',
+                padding:0}}/>
+          ))}
+        </div>
+        <span style={{flex:1}}/>
+        <button onClick={()=>setSlide(s=>(s+2)%3)} aria-label="Vorheriger Slide"
+          style={{width:36,height:36,borderRadius:11,background:T.card,border:`1px solid ${T.border}`,
+            color:T.t2,fontSize:15,fontWeight:800,cursor:'pointer'}}>‹</button>
+        <button onClick={()=>setPaused(p=>!p)} aria-label={paused?'Diashow fortsetzen':'Diashow pausieren'}
+          style={{width:36,height:36,borderRadius:11,background:paused?T.oSoft:T.card,
+            border:`1px solid ${paused?T.o:T.border}`,color:paused?T.o:T.t2,
+            fontSize:13,fontWeight:900,cursor:'pointer'}}>
+          {paused?'▶':'⏸'}
+        </button>
+        <button onClick={()=>setSlide(s=>(s+1)%3)} aria-label="Nächster Slide"
+          style={{width:36,height:36,borderRadius:11,background:T.card,border:`1px solid ${T.border}`,
+            color:T.t2,fontSize:15,fontWeight:800,cursor:'pointer'}}>›</button>
+      </div>
+    </div>
+  );
+}
+
 /* Kachel-Auswahl (Home des Cup-Bereichs) + Platzhalter für die noch
    nicht spezifizierten Modi. */
 function CupHome({cup,onView,onAskExit}){
@@ -13705,7 +13968,6 @@ function CupHome({cup,onView,onAskExit}){
 function CupStub({kind,onBack}){
   const meta={
     tickets:['Tickets','Check-in & Einlass — wird als Nächstes gebaut.'],
-    center:['Center Screen','Diashow mit Leaderboard, Paarungen & Phase — wird als Nächstes gebaut.'],
     court:['Court Screen','Court wählen, Punkte eintragen, Zeit — wird als Nächstes gebaut.'],
   }[kind];
   return(
@@ -13735,6 +13997,17 @@ function DnaCupScreen({onExit}){
   useEffect(()=>{
     lsSet('ritmo_dnacup_state',cup.createdAt?cup:{...cup,createdAt:new Date().toISOString()});
   },[cup]);
+  // Cross-Tab-Sync: Admin in einem Tab, Center-/Court-Screen in einem
+  // anderen (gleiches Gerät) — storage-Events feuern nur in FREMDEN
+  // Tabs, daher keine Schleife mit den eigenen Writes oben.
+  useEffect(()=>{
+    const onStorage=e=>{
+      if(e.key!=='ritmo_dnacup_state'||!e.newValue) return;
+      try{const s=JSON.parse(e.newValue);if(s&&s.v===1)setCup(s);}catch(err){}
+    };
+    window.addEventListener('storage',onStorage);
+    return()=>window.removeEventListener('storage',onStorage);
+  },[]);
   const lb=useMemo(()=>cupLeaderboard(cup),[cup]);
 
   if(!unlocked){
@@ -13747,7 +14020,8 @@ function DnaCupScreen({onExit}){
       paddingTop:'calc(env(safe-area-inset-top,0px) + 26px)'}}>
       {view==='home'&&<CupHome cup={cup} onView={setView} onAskExit={()=>setExitAsk(true)}/>}
       {view==='admin'&&<CupAdmin cup={cup} setCup={setCup} lb={lb} onBack={()=>setView('home')}/>}
-      {(view==='tickets'||view==='center'||view==='court')&&(
+      {view==='center'&&<CupCenterScreen cup={cup} lb={lb} onBack={()=>setView('home')}/>}
+      {(view==='tickets'||view==='court')&&(
         <CupStub kind={view} onBack={()=>setView('home')}/>
       )}
       {exitAsk&&(

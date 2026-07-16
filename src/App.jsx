@@ -13593,7 +13593,8 @@ function CupAdmin({cup,setCup,lb,onBack}){
             return(
               <div key={row.num} style={{display:'flex',alignItems:'center',gap:9,
                 padding:'10px 12px',borderRadius:13,marginBottom:7,
-                background:zone==='top'?`${T.gold}14`:zone==='courage'?T.blueSoft:T.card,
+                background:zone==='top'?`color-mix(in srgb, ${T.gold} 12%, transparent)`
+                  :zone==='courage'?T.blueSoft:T.card,
                 border:`1.5px solid ${zone==='top'?T.gold:zone==='courage'?T.blue:T.border}`}}>
                 <span style={{width:26,color:zone==='top'?T.gold:zone==='courage'?T.blue:T.t2,
                   fontSize:14,fontWeight:900,flexShrink:0,textAlign:'center'}}>{row.rank}</span>
@@ -13876,34 +13877,44 @@ function CupCenterScreen({cup,lb,onBack}){
           </div>
         )}
 
-        {slide===1&&(
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0 26px',
-            alignContent:'start'}}>
-            {lb.map(row=>{
-              const zone=row.rank<=2?'top':row.rank<=14?'mid':'courage';
-              const zc=zone==='top'?T.gold:zone==='courage'?T.blue:null;
-              return(
-                <div key={row.num} style={{display:'flex',alignItems:'center',gap:10,
-                  padding:'5px 12px',borderRadius:11,marginBottom:5,minWidth:0,
-                  background:zone==='top'?`${T.gold}14`:zone==='courage'?T.blueSoft:'transparent',
-                  border:`1px solid ${zc||T.sep}`}}>
-                  <span style={{width:'clamp(22px, 2.2vw, 34px)',textAlign:'center',flexShrink:0,
-                    color:zc||T.t2,fontSize:'clamp(13px, 1.5vw, 22px)',fontWeight:900}}>{row.rank}</span>
-                  <span style={{color:T.o,fontSize:'clamp(11px, 1.2vw, 17px)',fontWeight:900,
-                    flexShrink:0,width:'clamp(26px, 2.6vw, 40px)'}}>P{row.num}</span>
-                  <span style={{flex:1,minWidth:0,color:T.t1,fontSize:'clamp(13px, 1.5vw, 22px)',
-                    fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                    {(row.name||'').trim()||'—'}
-                  </span>
-                  <span style={{color:T.t1,fontSize:'clamp(14px, 1.6vw, 24px)',fontWeight:900,
-                    fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',flexShrink:0}}>
-                    {row.total}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        )}
+        {slide===1&&(()=>{
+          // Spaltenweise statt zeilenweise: links #1–11 von oben nach
+          // unten, rechts #12–22 — intuitive Lesereihenfolge.
+          const half=Math.ceil(lb.length/2);
+          const lbRow=row=>{
+            const zone=row.rank<=2?'top':row.rank<=14?'mid':'courage';
+            const zc=zone==='top'?T.gold:zone==='courage'?T.blue:null;
+            return(
+              <div key={row.num} style={{display:'flex',alignItems:'center',gap:10,
+                padding:'5px 12px',borderRadius:11,marginBottom:5,minWidth:0,
+                background:zone==='top'?`color-mix(in srgb, ${T.gold} 12%, transparent)`
+                  :zone==='courage'?T.blueSoft:'transparent',
+                border:`1px solid ${zc||T.sep}`}}>
+                <span style={{width:'clamp(32px, 3vw, 50px)',textAlign:'right',flexShrink:0,
+                  color:zc||T.t2,fontSize:'clamp(13px, 1.5vw, 22px)',fontWeight:900}}>
+                  #{row.rank}
+                </span>
+                <span style={{color:T.o,fontSize:'clamp(11px, 1.2vw, 17px)',fontWeight:900,
+                  flexShrink:0,width:'clamp(26px, 2.6vw, 40px)'}}>P{row.num}</span>
+                <span style={{flex:1,minWidth:0,color:T.t1,fontSize:'clamp(13px, 1.5vw, 22px)',
+                  fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                  {(row.name||'').trim()||'—'}
+                </span>
+                <span style={{color:T.t1,fontSize:'clamp(14px, 1.6vw, 24px)',fontWeight:900,
+                  fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',flexShrink:0}}>
+                  {row.total}
+                </span>
+              </div>
+            );
+          };
+          return(
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0 26px',
+              alignItems:'start'}}>
+              <div style={{minWidth:0}}>{lb.slice(0,half).map(lbRow)}</div>
+              <div style={{minWidth:0}}>{lb.slice(half).map(lbRow)}</div>
+            </div>
+          );
+        })()}
 
         {slide===2&&(<>
           <div style={{display:'grid',gridTemplateColumns:'1.15fr 1fr 1fr',gap:18,

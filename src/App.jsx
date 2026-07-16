@@ -13600,16 +13600,10 @@ function CupAdmin({cup,setCup,lb,onBack}){
               <button onClick={()=>setAllLocks(true)} style={{...chip(false),flex:1,textAlign:'center'}}>Alle sperren</button>
               <button onClick={()=>setAllLocks(false)} style={{...chip(false),flex:1,textAlign:'center'}}>Alle freigeben</button>
             </div>
-            <div style={{height:1,background:T.sep,margin:'14px 0 12px'}}/>
-            <div style={{color:T.t3,fontSize:12,lineHeight:1.55,marginBottom:10}}>
-              Kiosk-Modus: fixiert die <span style={{color:T.t1,fontWeight:700}}>Court-Ansicht</span> —
-              Spieler können den Court Screen nicht verlassen, zurück zur Auswahl
-              geht am Gerät nur per PIN.
+            <div style={{color:T.t3,fontSize:11.5,lineHeight:1.55,marginTop:12}}>
+              Kiosk: Die Court-Ansicht ist auf den Tablets immer fixiert —
+              verlassen geht am Gerät nur per PIN.
             </div>
-            <button onClick={()=>{buzz(8);setCup(c=>({...c,navLock:!c.navLock}));}}
-              style={{...chip(!!cup.navLock,T.r),width:'100%',textAlign:'center'}}>
-              {cup.navLock?'Court-Ansicht fixiert 🔒 — tippen zum Lösen':'Court-Ansicht fixieren'}
-            </button>
           </div>
 
           <div style={card}>
@@ -14394,19 +14388,20 @@ function CupCourtScreen({cup,setCup,onBack}){
       <div style={{flexShrink:0,display:'flex',alignItems:'center',gap:12,
         padding:'10px 0 calc(env(safe-area-inset-bottom,0px) + 14px)'}}>
         <button
-          onClick={()=>{if(cup.navLock){buzz(8);setExitAsk(true);}else onBack();}}
+          onClick={()=>{buzz(8);setExitAsk(true);}}
           style={{padding:'8px 14px',borderRadius:11,background:T.card,
             border:`1px solid ${T.border}`,color:T.t3,fontSize:12,fontWeight:700,cursor:'pointer'}}>
-          ‹ Auswahl{cup.navLock?' 🔒':''}
+          ‹ Auswahl 🔒
         </button>
         <span style={{flex:1}}/>
         <CupTimer timer={cup.timer}/>
       </div>
 
-      {/* Kiosk-Fixierung: Ansicht verlassen nur per PIN */}
+      {/* Kiosk: die Court-Ansicht verlässt man IMMER nur per PIN —
+          Tablets bleiben bei den Spielern in der Ansicht. */}
       {exitAsk&&(
         <CupPinPad title="Court verlassen"
-          sub="Die Ansicht ist fixiert — PIN eingeben, um zur Auswahl zurückzukehren."
+          sub="PIN eingeben, um zur Auswahl zurückzukehren."
           onOk={()=>{setExitAsk(false);onBack();}} onCancel={()=>setExitAsk(false)}/>
       )}
     </div>

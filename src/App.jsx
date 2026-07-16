@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useReducer, useCallback, useRef, Fragment } from "react";
+import { useState, useEffect, useLayoutEffect, useReducer, useCallback, useMemo, useRef, Fragment } from "react";
 import { SKILL_DESCRIPTIONS } from "./skillDescriptions.js";
 import { loadProfile as dbLoadProfile, saveProfile as dbSaveProfile, logMatch as dbLogMatch, loadMatchStats as dbLoadMatchStats,
   createOnlineTournament, joinOnlineTournament, fetchOnlineTournament, updateOnlineTournament, subscribeToTournament,
@@ -43,6 +43,8 @@ import {
   MenuIcon,
 } from "./icons.jsx";
 import { PADEL_STYLES, PADEL_QUIZ, computeStyle, computeStyles, computeMatchTier, STYLE_IMAGES } from "./padelStyles.js";
+import { CUP_PIN, CUP_PHASES, CUP_ALERTS, initialCupState, cupLeaderboard,
+  genCupKO, genCupCourageHF, genCupHF, genCupFinals, cupPlayerLabel, cupDuplicateNums } from "./dnaCup.js";
 import GlassSurface from "./GlassSurface.jsx";
 
 /* ═══════════════════════════════════════════════════════════════
@@ -13076,6 +13078,687 @@ function FollowList({userId,initial='followers',onHome,onBack,onOpenPlayer}){
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   RITMO DNA CUP — Event-Modul (18.07.2026, RITMO × Padel Haus).
+
+   PIN-geschützter Bereich unter Turnier (rein UND raus nur mit PIN
+   1862 — Kiosk-Logik: Tablets/Screens sollen nicht versehentlich
+   verlassen werden). Vier Modi: Admin (steuert alles), Tickets,
+   Center Screen (Diashow), Court Screen (Punkte-Eingabe am Court).
+   Daten-Logik: src/dnaCup.js · Persistenz: localStorage
+   'ritmo_dnacup_state'. Admin ist voll ausgebaut; Tickets/Center/
+   Court folgen als Nächstes (Stubs mit Hinweis).
+═══════════════════════════════════════════════════════════════ */
+
+/* Ticket-Glyph — nur im Cup verwendet, daher lokal statt icons.jsx. */
+function CupTicketIcon({size=24,color='currentColor'}){
+  return(
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M4 8.5V6.8C4 6.36 4.36 6 4.8 6h14.4c.44 0 .8.36.8.8v1.7a2.5 2.5 0 0 0 0 5V17.2c0 .44-.36.8-.8.8H4.8a.8.8 0 0 1-.8-.8v-1.7a2.5 2.5 0 0 0 0-5Z"
+        stroke={color} strokeWidth="1.7" strokeLinejoin="round"/>
+      <line x1="14.5" y1="7" x2="14.5" y2="17" stroke={color} strokeWidth="1.5" strokeDasharray="2.4 2.6"/>
+    </svg>
+  );
+}
+
+/* Icon-Map für Warnmeldungen (Toast auf Center-/Court-Screens). */
+function CupAlertIcon({icon,size=18,color='#000'}){
+  if(icon==='ball') return <TennisBallIcon size={size}/>;
+  if(icon==='pause') return <PauseIcon size={size} color={color}/>;
+  return <EditIcon size={size} color={color}/>;
+}
+
+/* Toast-Optik der Warnmeldung — Admin-Vorschau; Center/Court zeigen
+   exakt dieselbe Komponente, wenn sie gebaut werden. */
+function CupAlertToast({alert}){
+  if(!alert) return null;
+  return(
+    <div className="si" style={{display:'flex',alignItems:'center',gap:12,background:T.o,
+      borderRadius:15,padding:'13px 18px',boxShadow:'0 8px 24px rgba(0,0,0,.35)'}}>
+      <span style={{width:36,height:36,borderRadius:'50%',background:'rgba(0,0,0,.18)',
+        display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+        <CupAlertIcon icon={alert.icon} size={18} color="#000"/>
+      </span>
+      <span style={{color:'#000',fontSize:17,fontWeight:900,letterSpacing:-.2,minWidth:0,
+        overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{alert.label}</span>
+    </div>
+  );
+}
+
+/* PIN-Pad — Zugang UND Ausgang. Kiosk-tauglich (eigenes Tastenfeld,
+   keine OS-Tastatur). 4 Punkte, Shake + Reset bei falschem PIN. */
+function CupPinPad({title,sub,onOk,onCancel}){
+  const[pin,setPin]=useState('');
+  const[err,setErr]=useState(false);
+  const push=d=>{
+    if(err) return;
+    const v=pin+d;
+    setPin(v);
+    if(v.length<4){buzz(6);return;}
+    if(v===CUP_PIN){buzz(14);onOk();}
+    else{setErr(true);buzz([30,40,30]);setTimeout(()=>{setErr(false);setPin('');},650);}
+  };
+  return(
+    <div className="fi" style={{position:'fixed',inset:0,zIndex:340,background:T.bg,
+      display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:24}}>
+      <div style={{color:T.o,fontSize:12,fontWeight:800,letterSpacing:1.6,
+        textTransform:'uppercase',marginBottom:8}}>RITMO DNA CUP</div>
+      <div style={{color:T.t1,fontSize:22,fontWeight:900,letterSpacing:-.4,marginBottom:6}}>{title}</div>
+      <div style={{color:T.t3,fontSize:13,marginBottom:26,textAlign:'center',lineHeight:1.5}}>{sub}</div>
+      <div className={err?'cup-shake':''} style={{display:'flex',gap:14,marginBottom:30}}>
+        {[0,1,2,3].map(i=>(
+          <div key={i} style={{width:16,height:16,borderRadius:'50%',
+            background:i<pin.length?(err?T.r:T.o):'transparent',
+            border:`2px solid ${err?T.r:(i<pin.length?T.o:T.border)}`,
+            transition:'background .15s, border-color .15s'}}/>
+        ))}
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(3, 76px)',gap:12}}>
+        {['1','2','3','4','5','6','7','8','9','','0','⌫'].map((k,i)=>k===''
+          ?<div key={i}/>
+          :<button key={i} onClick={()=>k==='⌫'?setPin(p=>p.slice(0,-1)):push(k)}
+            aria-label={k==='⌫'?'Ziffer löschen':`Ziffer ${k}`}
+            style={{height:64,borderRadius:18,background:T.card,border:`1px solid ${T.border}`,
+              color:T.t1,fontSize:k==='⌫'?20:24,fontWeight:700,cursor:'pointer'}}>
+            {k}
+          </button>
+        )}
+      </div>
+      {onCancel&&(
+        <button onClick={onCancel}
+          style={{marginTop:26,padding:'11px 24px',borderRadius:13,background:'none',
+            border:`1px solid ${T.border}`,color:T.t3,fontSize:14,fontWeight:600,cursor:'pointer'}}>
+          Abbrechen
+        </button>
+      )}
+    </div>
+  );
+}
+
+/* Spieler-Auswahl-Sheet für Match-Slots (Admin: Paarungen editieren). */
+function CupPickSheet({cup,current,onPick,onClose}){
+  return(
+    <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:360,background:'rgba(0,0,0,.7)',
+      backdropFilter:'blur(4px)',display:'flex',alignItems:'flex-end'}} className="fi">
+      <div onClick={e=>e.stopPropagation()} style={{width:'100%',maxHeight:'75dvh',overflowY:'auto',
+        background:T.card,borderTopLeftRadius:24,borderTopRightRadius:24,
+        padding:'18px 18px calc(env(safe-area-inset-bottom,0px) + 18px)'}}>
+        <div style={{width:36,height:4,borderRadius:2,background:T.border,margin:'0 auto 14px'}}/>
+        <div style={{color:T.t1,fontSize:17,fontWeight:800,marginBottom:12}}>Spieler wählen</div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+          {cup.players.map(p=>{
+            const sel=current===p.num;
+            return(
+              <button key={p.num} onClick={()=>{buzz(6);onPick(p.num);onClose();}}
+                style={{padding:'12px 12px',borderRadius:13,textAlign:'left',cursor:'pointer',
+                  background:sel?T.oSoft:T.card2,
+                  border:`1.5px solid ${sel?T.o:T.border}`,
+                  display:'flex',alignItems:'center',gap:8,minWidth:0}}>
+                <span style={{color:T.o,fontSize:13,fontWeight:900,flexShrink:0}}>P{p.num}</span>
+                <span style={{color:T.t1,fontSize:13,fontWeight:600,minWidth:0,overflow:'hidden',
+                  textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                  {(p.name||'').trim()||'—'}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* Match-Karte im Admin: Court-Zuordnung, Slots, Score, Fertig-Toggle.
+   Tier-Badge erscheint, sobald alle 4 Spielstile gesetzt sind. */
+function CupMatchCard({m,cup,label,onPatch,onPickSlot}){
+  const styleOf=num=>cup.players.find(p=>p.num===num)?.style;
+  const tier=computeMatchTier(m.t1.map(styleOf),m.t2.map(styleOf));
+  const slot=(side,idx)=>{
+    const num=m[side][idx];
+    return(
+      <button key={side+idx} onClick={()=>onPickSlot({matchId:m.id,side,idx,current:num})}
+        style={{flex:1,minWidth:0,padding:'9px 8px',borderRadius:11,cursor:'pointer',
+          background:T.card2,border:`1px solid ${T.border}`,textAlign:'center'}}>
+        <span style={{display:'block',color:T.o,fontSize:12,fontWeight:900}}>P{num}</span>
+        <span style={{display:'block',color:T.t2,fontSize:10.5,fontWeight:600,marginTop:1,
+          overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+          {(cup.players.find(p=>p.num===num)?.name||'').trim().split(/\s+/)[0]||'·'}
+        </span>
+      </button>
+    );
+  };
+  const scoreInp=(field)=>(
+    <input type="number" inputMode="numeric" min="0" value={m[field]??''}
+      onChange={e=>{const v=e.target.value;onPatch(m.id,{[field]:v===''?null:Math.max(0,parseInt(v)||0)});}}
+      style={{width:58,padding:'9px 4px',background:T.card2,border:`1px solid ${T.border}`,
+        borderRadius:10,color:T.t1,fontSize:17,fontWeight:800,textAlign:'center',outline:'none',
+        fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace'}}/>
+  );
+  return(
+    <div style={{background:T.card,border:`1.5px solid ${m.done?T.o:T.border}`,borderRadius:17,
+      padding:'13px 14px',marginBottom:10}}>
+      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10,flexWrap:'wrap'}}>
+        <span style={{color:T.t1,fontSize:13,fontWeight:800,flexShrink:0}}>{label}</span>
+        {m.bo3&&(
+          <span style={{padding:'2px 8px',borderRadius:999,background:T.card2,
+            border:`1px solid ${T.border}`,color:T.t2,fontSize:10,fontWeight:800,letterSpacing:.5}}>
+            BEST OF 3
+          </span>
+        )}
+        {tier&&(
+          <span style={{padding:'2px 8px',borderRadius:999,background:`${tier.color}14`,
+            border:`1px solid ${tier.color}55`,color:tier.color,fontSize:10,fontWeight:900,letterSpacing:.5}}>
+            {tier.label}
+          </span>
+        )}
+        <span style={{flex:1}}/>
+        {/* Court-Zuordnung — steuert, welcher Court-Screen das Match zeigt */}
+        {[1,2,3].map(c=>(
+          <button key={c} onClick={()=>{buzz(6);onPatch(m.id,{court:c});}}
+            aria-label={`Court ${c} zuweisen`}
+            style={{width:30,height:30,borderRadius:9,cursor:'pointer',fontSize:12,fontWeight:800,
+              background:m.court===c?T.oSoft:T.card2,
+              border:`1.5px solid ${m.court===c?T.o:T.border}`,
+              color:m.court===c?T.o:T.t3}}>
+            {c}
+          </button>
+        ))}
+      </div>
+      <div style={{display:'flex',alignItems:'center',gap:8}}>
+        <div style={{flex:1,minWidth:0,display:'flex',gap:6}}>{slot('t1',0)}{slot('t1',1)}</div>
+        <span style={{color:T.t3,fontSize:11,fontWeight:800,flexShrink:0}}>vs</span>
+        <div style={{flex:1,minWidth:0,display:'flex',gap:6}}>{slot('t2',0)}{slot('t2',1)}</div>
+      </div>
+      <div style={{display:'flex',alignItems:'center',gap:10,marginTop:10}}>
+        {scoreInp('s1')}
+        <span style={{color:T.t3,fontSize:15,fontWeight:800}}>:</span>
+        {scoreInp('s2')}
+        <span style={{flex:1}}/>
+        <button onClick={()=>{buzz(12);onPatch(m.id,{done:!m.done});}}
+          style={{padding:'9px 16px',borderRadius:11,cursor:'pointer',fontSize:13,fontWeight:800,
+            background:m.done?T.o:T.card2,color:m.done?'#000':T.t2,
+            border:`1.5px solid ${m.done?T.o:T.border}`}}>
+          {m.done?'Fertig ✓':'Offen'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ── ADMIN — Steuerung · Spieler · Matches · Leaderboard ────────── */
+function CupAdmin({cup,setCup,lb,onBack}){
+  const[tab,setTab]=useState('steuerung');
+  const[pick,setPick]=useState(null);        // {matchId,side,idx,current}
+  const[styleFor,setStyleFor]=useState(null); // Spieler-Index für StylePicker
+  const[customAlert,setCustomAlert]=useState('');
+  const[genMsg,setGenMsg]=useState('');
+  const[confirmReset,setConfirmReset]=useState(false);
+  const dups=cupDuplicateNums(cup.players);
+
+  const patchMatch=(id,partial)=>setCup(c=>({...c,matches:c.matches.map(m=>m.id===id?{...m,...partial}:m)}));
+  const setPlayerAt=(idx,partial)=>setCup(c=>{
+    const players=[...c.players];players[idx]={...players[idx],...partial};return {...c,players};});
+  const sendAlert=a=>{buzz(10);setCup(c=>({...c,alert:{...a,ts:Date.now()}}));};
+  const clearAlert=()=>setCup(c=>({...c,alert:null}));
+  const toggleLock=court=>{buzz(8);setCup(c=>({...c,locks:{...c.locks,[court]:!c.locks[court]}}));};
+  const setAllLocks=v=>{buzz(8);setCup(c=>({...c,locks:{1:v,2:v,3:v}}));};
+
+  const grpDone=cup.matches.filter(m=>m.phase==='gruppe'&&m.done).length;
+  const koAll=cup.matches.filter(m=>m.phase==='ko');
+  const koDone=koAll.filter(m=>m.done).length;
+  const hfAll=cup.matches.filter(m=>m.phase==='hf'||m.phase==='courage-hf');
+  const hfDone=hfAll.filter(m=>m.done).length;
+
+  // Generatoren — bauen die jeweils nächste Phase aus dem Leaderboard.
+  const genKO=()=>{
+    setCup(c=>({...c,
+      matches:[...c.matches.filter(m=>m.phase==='gruppe'),...genCupKO(lb),...genCupCourageHF(lb)],
+      phase:'ko'}));
+    setGenMsg('KO-Phase (Rang 3–14, gespiegelt) + Courage-HF (15–22) erzeugt.');
+    buzz(14);
+  };
+  const genHF=()=>{
+    const hf=genCupHF(cup,lb);
+    if(!hf){setGenMsg('Erst alle 3 KO-Matches auf „Fertig ✓" setzen.');return;}
+    setCup(c=>({...c,
+      matches:[...c.matches.filter(m=>m.phase!=='hf'&&m.phase!=='finals'),...hf],
+      phase:'hf'}));
+    setGenMsg('DNA-Halbfinals erzeugt — KO-Siegerteams gesplittet (A→HF1, B→HF2).');
+    buzz(14);
+  };
+  const genFin=()=>{
+    const f=genCupFinals(cup);
+    if(!f){setGenMsg('Erst beide DNA-HF und beide Courage-HF abschließen.');return;}
+    setCup(c=>({...c,matches:[...c.matches.filter(m=>m.phase!=='finals'),...f],phase:'finals'}));
+    setGenMsg('Finals erzeugt: Grande Finale · Platz 3 · Courage-Finale.');
+    buzz(14);
+  };
+
+  const card={background:T.card,border:`1px solid ${T.border}`,borderRadius:19,
+    padding:'16px 18px',marginBottom:14};
+  const h={color:T.o,fontSize:16,fontWeight:800,marginBottom:10};
+  const chip=(sel,color=T.o)=>({padding:'10px 12px',borderRadius:13,cursor:'pointer',
+    background:sel?T.oSoft:T.card2,border:`1.5px solid ${sel?color:T.border}`,
+    color:sel?color:T.t2,fontSize:13,fontWeight:700});
+  const matchLabel=m=>
+    m.phase==='gruppe'?`Runde ${m.round}`
+    :m.phase==='ko'?`KO · Match ${m.id.slice(2)}`
+    :m.phase==='hf'?(m.id==='hf1'?'DNA-Halbfinale 1':'DNA-Halbfinale 2')
+    :m.phase==='courage-hf'?(m.id==='chf1'?'Courage-HF 1':'Courage-HF 2')
+    :(m.title||'Finale');
+
+  return(
+    <div style={{flex:1,display:'flex',flexDirection:'column',minHeight:0}}>
+      {/* Kopf */}
+      <div style={{padding:'0 22px 12px',display:'flex',alignItems:'center',gap:12}}>
+        <button onClick={onBack} aria-label="Zurück zur Kachel-Auswahl"
+          style={{width:38,height:38,borderRadius:13,background:T.card,border:`1px solid ${T.border}`,
+            color:T.t1,fontSize:18,fontWeight:800,cursor:'pointer',flexShrink:0,
+            display:'flex',alignItems:'center',justifyContent:'center'}}>‹</button>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{color:T.t1,fontSize:22,fontWeight:900,letterSpacing:-.4}}>Admin</div>
+          <div style={{color:T.t3,fontSize:11.5}}>Änderungen wirken sofort auf Center- & Court-Screens.</div>
+        </div>
+      </div>
+      {/* Tabs */}
+      <div style={{display:'flex',gap:8,padding:'0 22px 14px',overflowX:'auto',flexShrink:0}}>
+        {[['steuerung','Steuerung'],['spieler','Spieler'],['matches','Matches'],['leaderboard','Leaderboard']].map(([id,l])=>(
+          <button key={id} onClick={()=>{buzz(6);setTab(id);}} style={{...chip(tab===id),flexShrink:0}}>{l}</button>
+        ))}
+      </div>
+
+      <div style={{flex:1,overflowY:'auto',WebkitOverflowScrolling:'touch',
+        padding:'2px 22px calc(env(safe-area-inset-bottom,0px) + 26px)'}}>
+
+        {/* ── STEUERUNG ── */}
+        {tab==='steuerung'&&(<div className="fi">
+          <div style={card}>
+            <div style={h}>Phase</div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+              {CUP_PHASES.map(p=>(
+                <button key={p.id} onClick={()=>{buzz(8);setCup(c=>({...c,phase:p.id}));}}
+                  style={{...chip(cup.phase===p.id),textAlign:'left'}}>
+                  <span style={{display:'block'}}>{p.name}</span>
+                  <span style={{display:'block',fontSize:10,fontWeight:600,opacity:.75,marginTop:2}}>{p.sub}</span>
+                </button>
+              ))}
+            </div>
+            {cup.phase==='gruppe'&&(
+              <div style={{display:'flex',alignItems:'center',gap:12,marginTop:12}}>
+                <span style={{color:T.t2,fontSize:13,fontWeight:600}}>Aktive Runde</span>
+                <button onClick={()=>setCup(c=>({...c,activeRound:Math.max(1,c.activeRound-1)}))}
+                  style={{...chip(false),width:38,textAlign:'center',padding:'8px 0'}}>−</button>
+                <span style={{color:T.t1,fontSize:18,fontWeight:900,minWidth:44,textAlign:'center'}}>
+                  {cup.activeRound}/6
+                </span>
+                <button onClick={()=>setCup(c=>({...c,activeRound:Math.min(6,c.activeRound+1)}))}
+                  style={{...chip(false),width:38,textAlign:'center',padding:'8px 0'}}>+</button>
+              </div>
+            )}
+          </div>
+
+          <div style={card}>
+            <div style={h}>Warnmeldung an alle Screens</div>
+            <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:10}}>
+              {CUP_ALERTS.map(a=>(
+                <button key={a.id} onClick={()=>sendAlert(a)}
+                  style={{...chip(cup.alert?.id===a.id),display:'flex',alignItems:'center',gap:7}}>
+                  <CupAlertIcon icon={a.icon} size={15} color={cup.alert?.id===a.id?T.o:T.t2}/>
+                  {a.label}
+                </button>
+              ))}
+            </div>
+            <div style={{display:'flex',gap:8}}>
+              <input value={customAlert} onChange={e=>setCustomAlert(e.target.value)} maxLength={40}
+                placeholder="Eigene Meldung …"
+                style={{flex:1,minWidth:0,height:44,borderRadius:12,background:T.card2,
+                  border:`1px solid ${T.border}`,color:T.t1,fontSize:16,fontWeight:600,
+                  padding:'0 12px',outline:'none',boxSizing:'border-box'}}/>
+              <button onClick={()=>{if(!customAlert.trim())return;
+                  sendAlert({id:'custom',label:customAlert.trim(),icon:'edit'});setCustomAlert('');}}
+                style={{...chip(true),flexShrink:0}}>Senden</button>
+            </div>
+            {cup.alert&&(
+              <div style={{marginTop:14}}>
+                <div style={{color:T.t3,fontSize:10.5,fontWeight:700,letterSpacing:1.2,
+                  textTransform:'uppercase',marginBottom:8}}>Aktive Meldung — Vorschau</div>
+                <CupAlertToast alert={cup.alert}/>
+                <button onClick={clearAlert}
+                  style={{marginTop:10,padding:'9px 16px',borderRadius:11,background:'none',
+                    border:`1px solid ${T.border}`,color:T.t3,fontSize:12.5,fontWeight:700,cursor:'pointer'}}>
+                  Meldung entfernen
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div style={card}>
+            <div style={h}>Court-Screens sperren</div>
+            <div style={{color:T.t3,fontSize:12,lineHeight:1.55,marginBottom:10}}>
+              Gesperrte Courts zeigen das Match, erlauben aber keine Punkteeingabe —
+              z. B. während das Match läuft.
+            </div>
+            <div style={{display:'flex',gap:8}}>
+              {[1,2,3].map(c=>(
+                <button key={c} onClick={()=>toggleLock(c)}
+                  style={{...chip(cup.locks[c],T.r),flex:1,textAlign:'center'}}>
+                  Court {c}{cup.locks[c]?' 🔒':''}
+                </button>
+              ))}
+            </div>
+            <div style={{display:'flex',gap:8,marginTop:8}}>
+              <button onClick={()=>setAllLocks(true)} style={{...chip(false),flex:1,textAlign:'center'}}>Alle sperren</button>
+              <button onClick={()=>setAllLocks(false)} style={{...chip(false),flex:1,textAlign:'center'}}>Alle freigeben</button>
+            </div>
+          </div>
+
+          <div style={card}>
+            <div style={h}>Phasen-Generator</div>
+            <div style={{color:T.t3,fontSize:12,lineHeight:1.55,marginBottom:10}}>
+              Baut die nächste Phase aus dem aktuellen Leaderboard. Paarungen bleiben
+              danach im Tab „Matches" frei editierbar.
+            </div>
+            <div style={{display:'flex',flexDirection:'column',gap:8}}>
+              <button onClick={genKO} style={{...chip(false),textAlign:'left'}}>
+                KO + Courage-HF erzeugen
+                <span style={{display:'block',fontSize:10.5,fontWeight:600,opacity:.7,marginTop:2}}>
+                  Gruppenphase: {grpDone}/18 Matches fertig
+                </span>
+              </button>
+              <button onClick={genHF} style={{...chip(false),textAlign:'left'}}>
+                DNA-Halbfinals erzeugen (Team-Split)
+                <span style={{display:'block',fontSize:10.5,fontWeight:600,opacity:.7,marginTop:2}}>
+                  KO: {koDone}/{koAll.length||3} fertig
+                </span>
+              </button>
+              <button onClick={genFin} style={{...chip(false),textAlign:'left'}}>
+                Finals erzeugen
+                <span style={{display:'block',fontSize:10.5,fontWeight:600,opacity:.7,marginTop:2}}>
+                  Halbfinals: {hfDone}/{hfAll.length||4} fertig
+                </span>
+              </button>
+            </div>
+            {genMsg&&(
+              <div style={{marginTop:10,padding:'10px 14px',borderRadius:12,background:T.oSoft,
+                border:`1px solid ${T.o}`,color:T.t1,fontSize:12.5,fontWeight:600,lineHeight:1.5}}>
+                {genMsg}
+              </div>
+            )}
+          </div>
+
+          <div style={{...card,border:`1px solid rgba(232,69,69,0.4)`}}>
+            <div style={{...h,color:T.r}}>Gefahrenzone</div>
+            {!confirmReset?(
+              <button onClick={()=>setConfirmReset(true)}
+                style={{...chip(false),width:'100%',textAlign:'center'}}>Cup zurücksetzen …</button>
+            ):(
+              <div style={{display:'flex',gap:8}}>
+                <button onClick={()=>{setCup(initialCupState());setConfirmReset(false);setGenMsg('');buzz([20,50,20]);}}
+                  style={{...chip(true,T.r),flex:1,textAlign:'center',background:'rgba(232,69,69,0.12)',
+                    border:`1.5px solid ${T.r}`,color:T.r}}>
+                  Wirklich alles löschen
+                </button>
+                <button onClick={()=>setConfirmReset(false)}
+                  style={{...chip(false),flex:1,textAlign:'center'}}>Abbrechen</button>
+              </div>
+            )}
+          </div>
+        </div>)}
+
+        {/* ── SPIELER ── */}
+        {tab==='spieler'&&(<div className="fi">
+          {dups.size>0&&(
+            <div style={{padding:'10px 14px',borderRadius:12,background:'rgba(232,69,69,0.08)',
+              border:'1px solid rgba(232,69,69,0.4)',color:'#FF6B6B',fontSize:12,fontWeight:600,
+              lineHeight:1.5,marginBottom:12}}>
+              Doppelte Spielernummer: {[...dups].map(n=>'P'+n).join(', ')} — bitte korrigieren.
+            </div>
+          )}
+          <div style={{color:T.t3,fontSize:12,lineHeight:1.55,marginBottom:12}}>
+            Die Spielernummer (P1–P22) ist die Identität im Spielplan — unabhängig von der
+            Leaderboard-Platzierung. Der Spielstil bestimmt die Extra-Punkte der Matches (Tier).
+          </div>
+          {cup.players.map((p,idx)=>(
+            <div key={idx} style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
+              <input type="number" inputMode="numeric" min="1" max="99" value={p.num}
+                onChange={e=>setPlayerAt(idx,{num:Math.max(1,parseInt(e.target.value)||1)})}
+                aria-label="Spielernummer"
+                style={{width:58,height:44,borderRadius:12,textAlign:'center',
+                  background:T.card2,border:`1.5px solid ${dups.has(p.num)?T.r:T.border}`,
+                  color:dups.has(p.num)?T.r:T.o,fontSize:15,fontWeight:900,outline:'none'}}/>
+              <input value={p.name} onChange={e=>setPlayerAt(idx,{name:e.target.value})}
+                placeholder={`Spieler P${p.num}`}
+                autoCapitalize="words" autoCorrect="off" spellCheck={false} enterKeyHint="next"
+                style={{flex:1,minWidth:0,height:44,borderRadius:12,background:T.card2,
+                  border:`1px solid ${T.border}`,color:T.t1,fontSize:16,fontWeight:600,
+                  padding:'0 12px',outline:'none',boxSizing:'border-box'}}/>
+              <button onClick={()=>setStyleFor(idx)} title="Spielstil wählen"
+                aria-label="Spielstil wählen"
+                style={{width:44,height:44,borderRadius:12,flexShrink:0,cursor:'pointer',
+                  background:p.style?`${PADEL_STYLES[p.style]?.accent||T.o}18`:T.card2,
+                  border:`1.5px solid ${p.style?(PADEL_STYLES[p.style]?.accent||T.o):T.border}`,
+                  display:'flex',alignItems:'center',justifyContent:'center'}}>
+                {p.style
+                  ?<ArchetypeGlyph type={p.style} active color={PADEL_STYLES[p.style]?.accent||T.o} size={20}/>
+                  :<DNAIcon size={16} color={T.t3}/>}
+              </button>
+            </div>
+          ))}
+        </div>)}
+
+        {/* ── MATCHES ── */}
+        {tab==='matches'&&(<div className="fi">
+          {[1,2,3,4,5,6].map(r=>(
+            <div key={r}>
+              <div style={{color:T.t3,fontSize:11,fontWeight:800,letterSpacing:1.3,
+                textTransform:'uppercase',margin:'6px 2px 8px'}}>
+                Gruppenphase · Runde {r}{cup.activeRound===r&&cup.phase==='gruppe'?' · AKTIV':''}
+              </div>
+              {cup.matches.filter(m=>m.phase==='gruppe'&&m.round===r).map(m=>(
+                <CupMatchCard key={m.id} m={m} cup={cup} label={`R${r} · Court ${m.court}`}
+                  onPatch={patchMatch} onPickSlot={setPick}/>
+              ))}
+            </div>
+          ))}
+          {['ko','hf','courage-hf','finals'].map(ph=>{
+            const ms=cup.matches.filter(m=>m.phase===ph);
+            const names={ko:'KO-Phase',hf:'DNA-Halbfinals','courage-hf':'Courage-Halbfinals',finals:'Finals'};
+            return(
+              <div key={ph}>
+                <div style={{color:T.t3,fontSize:11,fontWeight:800,letterSpacing:1.3,
+                  textTransform:'uppercase',margin:'14px 2px 8px'}}>{names[ph]}</div>
+                {ms.length===0?(
+                  <div style={{color:T.t3,fontSize:12,padding:'4px 2px 8px',lineHeight:1.5}}>
+                    Noch nicht erzeugt — im Tab „Steuerung" generieren.
+                  </div>
+                ):ms.map(m=>(
+                  <CupMatchCard key={m.id} m={m} cup={cup} label={matchLabel(m)}
+                    onPatch={patchMatch} onPickSlot={setPick}/>
+                ))}
+              </div>
+            );
+          })}
+        </div>)}
+
+        {/* ── LEADERBOARD ── */}
+        {tab==='leaderboard'&&(<div className="fi">
+          <div style={{color:T.t3,fontSize:12,lineHeight:1.55,marginBottom:12}}>
+            Punkte aus abgeschlossenen Gruppen-Matches + Korrektur. Die Platzierung steuert
+            KO (Rang 3–14) und Courage (15–22). <span style={{color:T.gold}}>Gold = Freilos HF</span> ·{' '}
+            <span style={{color:T.blue}}>Blau = Courage</span>.
+          </div>
+          {lb.map(row=>{
+            const zone=row.rank<=2?'top':row.rank<=14?'mid':'courage';
+            return(
+              <div key={row.num} style={{display:'flex',alignItems:'center',gap:9,
+                padding:'10px 12px',borderRadius:13,marginBottom:7,
+                background:zone==='top'?`${T.gold}14`:zone==='courage'?T.blueSoft:T.card,
+                border:`1.5px solid ${zone==='top'?T.gold:zone==='courage'?T.blue:T.border}`}}>
+                <span style={{width:26,color:zone==='top'?T.gold:zone==='courage'?T.blue:T.t2,
+                  fontSize:14,fontWeight:900,flexShrink:0,textAlign:'center'}}>{row.rank}</span>
+                <span style={{color:T.o,fontSize:12,fontWeight:900,flexShrink:0,width:32}}>P{row.num}</span>
+                <span style={{flex:1,minWidth:0,color:T.t1,fontSize:14,fontWeight:600,
+                  overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                  {(row.name||'').trim()||'—'}
+                  <span style={{color:T.t3,fontSize:10.5,fontWeight:500}}> · {row.played} Sp · {row.wins}S</span>
+                </span>
+                <button onClick={()=>{buzz(6);setPlayerAt(cup.players.findIndex(p=>p.num===row.num),{adj:(row.adj||0)-1});}}
+                  aria-label="Punkt abziehen"
+                  style={{width:30,height:30,borderRadius:9,background:T.card2,cursor:'pointer',
+                    border:`1px solid ${T.border}`,color:T.t2,fontSize:15,fontWeight:800,flexShrink:0}}>−</button>
+                <span style={{width:52,textAlign:'center',flexShrink:0}}>
+                  <span style={{display:'block',color:T.t1,fontSize:16,fontWeight:900,lineHeight:1}}>{row.total}</span>
+                  {row.adj!==0&&(
+                    <span style={{display:'block',color:row.adj>0?T.g:T.r,fontSize:9.5,fontWeight:800}}>
+                      {row.adj>0?`+${row.adj}`:row.adj} Korr.
+                    </span>
+                  )}
+                </span>
+                <button onClick={()=>{buzz(6);setPlayerAt(cup.players.findIndex(p=>p.num===row.num),{adj:(row.adj||0)+1});}}
+                  aria-label="Punkt hinzufügen"
+                  style={{width:30,height:30,borderRadius:9,background:T.card2,cursor:'pointer',
+                    border:`1px solid ${T.border}`,color:T.t2,fontSize:15,fontWeight:800,flexShrink:0}}>+</button>
+              </div>
+            );
+          })}
+        </div>)}
+      </div>
+
+      {/* Sheets */}
+      {pick&&(
+        <CupPickSheet cup={cup} current={pick.current}
+          onPick={num=>patchMatch(pick.matchId,{[pick.side]:pick.idx===0
+            ?[num,cup.matches.find(m=>m.id===pick.matchId)[pick.side][1]]
+            :[cup.matches.find(m=>m.id===pick.matchId)[pick.side][0],num]})}
+          onClose={()=>setPick(null)}/>
+      )}
+      {styleFor!=null&&(
+        <StylePickerSheet
+          current={cup.players[styleFor]?.style||null}
+          onSelect={style=>setPlayerAt(styleFor,{style:style||null})}
+          onClose={()=>setStyleFor(null)}/>
+      )}
+    </div>
+  );
+}
+
+/* Kachel-Auswahl (Home des Cup-Bereichs) + Platzhalter für die noch
+   nicht spezifizierten Modi. */
+function CupHome({cup,onView,onAskExit}){
+  const phase=CUP_PHASES.find(p=>p.id===cup.phase);
+  const tiles=[
+    {id:'admin', title:'Admin',        desc:'Turnier steuern & verwalten', icon:<GearIcon size={30}/>,        accent:T.o},
+    {id:'tickets',title:'Tickets',     desc:'Check-in & Einlass',          icon:<CupTicketIcon size={30}/>,   accent:T.gold},
+    {id:'center',title:'Center Screen',desc:'Diashow · Leaderboard · Phase',icon:<MonitorIcon size={30}/>,    accent:T.blue},
+    {id:'court', title:'Court Screen', desc:'Court wählen · Punkte · Zeit', icon:<TennisBallIcon size={30}/>, accent:T.g},
+  ];
+  return(
+    <div className="fi" style={{flex:1,display:'flex',flexDirection:'column',minHeight:0,padding:'0 22px'}}>
+      <div style={{display:'flex',alignItems:'flex-start',gap:12,marginBottom:6}}>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{color:T.o,fontSize:12,fontWeight:800,letterSpacing:1.6,textTransform:'uppercase'}}>
+            RITMO × Padel Haus · 18.07.2026
+          </div>
+          <div style={{color:T.t1,fontSize:30,fontWeight:900,letterSpacing:-.6,margin:'4px 0 6px'}}>
+            RITMO <span style={{color:T.o}}>DNA CUP</span>
+          </div>
+          <div style={{display:'inline-flex',alignItems:'center',gap:7,padding:'5px 12px',
+            borderRadius:999,background:T.oSoft,border:`1px solid ${T.o}`}}>
+            <span style={{width:7,height:7,borderRadius:'50%',background:T.o}} className="court-live-dot"/>
+            <span style={{color:T.o,fontSize:11.5,fontWeight:800}}>{phase?.name||'—'}</span>
+          </div>
+        </div>
+        <button onClick={onAskExit} title="Cup verlassen (PIN)" aria-label="Cup verlassen (PIN nötig)"
+          style={{width:42,height:42,borderRadius:14,background:T.card,border:`1px solid ${T.border}`,
+            display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',flexShrink:0}}>
+          <LockIcon size={18} color={T.t2}/>
+        </button>
+      </div>
+      <div style={{flex:1,display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,
+        alignContent:'start',paddingTop:14,overflowY:'auto',
+        paddingBottom:'calc(env(safe-area-inset-bottom,0px) + 22px)'}}>
+        {tiles.map((t,i)=>(
+          <button key={t.id} onClick={()=>{buzz(8);onView(t.id);}} data-lift className="fu"
+            style={{animationDelay:`${i*0.05}s`,aspectRatio:'1/0.92',borderRadius:23,cursor:'pointer',
+              background:T.card,border:`1.5px solid ${T.border}`,padding:'18px 16px',
+              display:'flex',flexDirection:'column',alignItems:'flex-start',justifyContent:'space-between',
+              textAlign:'left'}}>
+            <span style={{width:52,height:52,borderRadius:17,background:`${t.accent}1c`,
+              border:`1px solid ${t.accent}`,color:t.accent,
+              display:'flex',alignItems:'center',justifyContent:'center'}}>
+              {t.icon}
+            </span>
+            <span style={{minWidth:0}}>
+              <span style={{display:'block',color:T.t1,fontSize:17,fontWeight:800,letterSpacing:-.2}}>
+                {t.title}
+              </span>
+              <span style={{display:'block',color:T.t3,fontSize:11.5,lineHeight:1.45,marginTop:3}}>
+                {t.desc}
+              </span>
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CupStub({kind,onBack}){
+  const meta={
+    tickets:['Tickets','Check-in & Einlass — wird als Nächstes gebaut.'],
+    center:['Center Screen','Diashow mit Leaderboard, Paarungen & Phase — wird als Nächstes gebaut.'],
+    court:['Court Screen','Court wählen, Punkte eintragen, Zeit — wird als Nächstes gebaut.'],
+  }[kind];
+  return(
+    <div className="fi" style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',
+      justifyContent:'center',padding:'0 32px',gap:12}}>
+      <div style={{color:T.t1,fontSize:24,fontWeight:900,letterSpacing:-.4}}>{meta[0]}</div>
+      <div style={{color:T.t3,fontSize:13.5,textAlign:'center',lineHeight:1.6,maxWidth:300}}>{meta[1]}</div>
+      <button onClick={onBack}
+        style={{marginTop:14,padding:'13px 26px',borderRadius:15,background:T.o,border:'none',
+          color:'#000',fontSize:15,fontWeight:800,cursor:'pointer'}}>
+        Zurück zur Auswahl
+      </button>
+    </div>
+  );
+}
+
+/* Root des Cup-Bereichs: PIN-Gate → Kacheln → Modus. Ausgang ebenfalls
+   nur per PIN (Kiosk-Schutz für Tablets & Beamer-Gerät). */
+function DnaCupScreen({onExit}){
+  const[unlocked,setUnlocked]=useState(false);
+  const[exitAsk,setExitAsk]=useState(false);
+  const[view,setView]=useState('home');
+  const[cup,setCup]=useState(()=>{
+    const s=lsGet('ritmo_dnacup_state',null);
+    return (s&&s.v===1)?s:initialCupState();
+  });
+  useEffect(()=>{
+    lsSet('ritmo_dnacup_state',cup.createdAt?cup:{...cup,createdAt:new Date().toISOString()});
+  },[cup]);
+  const lb=useMemo(()=>cupLeaderboard(cup),[cup]);
+
+  if(!unlocked){
+    return <CupPinPad title="Zugang" sub="PIN eingeben, um den DNA Cup zu öffnen."
+      onOk={()=>setUnlocked(true)} onCancel={onExit}/>;
+  }
+  return(
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
+      overflow:'hidden',position:'relative',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 26px)'}}>
+      {view==='home'&&<CupHome cup={cup} onView={setView} onAskExit={()=>setExitAsk(true)}/>}
+      {view==='admin'&&<CupAdmin cup={cup} setCup={setCup} lb={lb} onBack={()=>setView('home')}/>}
+      {(view==='tickets'||view==='center'||view==='court')&&(
+        <CupStub kind={view} onBack={()=>setView('home')}/>
+      )}
+      {exitAsk&&(
+        <CupPinPad title="Cup verlassen" sub="PIN eingeben, um den DNA Cup zu schließen."
+          onOk={()=>{setExitAsk(false);onExit();}} onCancel={()=>setExitAsk(false)}/>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
    HUB SCREENS — Tournament + RITMO Bibel
 
    TournamentHub bündelt "Turnier starten" + "Turnier beitreten" als
@@ -13116,7 +13799,7 @@ function HubBigCard({icon,title,desc,onClick,accent,delay='0s'}){
   );
 }
 
-function TournamentHub({onHome,onStart,onJoin}){
+function TournamentHub({onHome,onStart,onJoin,onCup}){
   return(
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden',
@@ -13136,6 +13819,11 @@ function TournamentHub({onHome,onStart,onJoin}){
           title="Turnier beitreten"
           desc="PIN eingeben oder QR scannen, Ergebnisse übertragen."
           onClick={onJoin} delay=".06s"/>
+        <HubBigCard
+          icon={<DNAIcon size={26} color={T.blue}/>}
+          title="RITMO DNA CUP"
+          desc="Event-Modus 18.07. — Zugang nur mit PIN."
+          onClick={onCup} accent={T.blue} delay=".1s"/>
       </div>
 
       <MatchBar onHome={onHome}/>
@@ -15949,7 +16637,10 @@ export default function App(){
     {scr==='tournament-hub'&&<TournamentHub
       onHome={goHome}
       onStart={newTourney}
-      onJoin={()=>setScr('remote')}/>}
+      onJoin={()=>setScr('remote')}
+      onCup={()=>setScr('dnacup')}/>}
+    {/* RITMO DNA CUP — PIN-geschützter Event-Bereich (rein & raus nur mit PIN). */}
+    {scr==='dnacup'&&<DnaCupScreen onExit={()=>setScr('tournament-hub')}/>}
     {scr==='ritmo-bibel'&&<RitmoBibel
       onHome={goHome}
       onRules={()=>nav('rules')}

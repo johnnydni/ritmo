@@ -521,6 +521,9 @@ input[type="time"]::-webkit-date-and-time-value{text-align:center;margin:0;}
 input[type="time"]::-webkit-datetime-edit{padding:0;text-align:center;}
 
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+/* DNA Cup: PIN-Punkte schütteln bei falscher Eingabe. */
+@keyframes cupShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+.cup-shake{animation:cupShake .3s ease;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 @keyframes scaleIn{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}

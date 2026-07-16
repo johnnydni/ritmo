@@ -13840,8 +13840,9 @@ function CupCenterScreen({cup,lb,onBack}){
         {team.map((n,i)=>(
           <Fragment key={i}>
             {i>0&&(
-              <span aria-hidden="true" style={{width:2,alignSelf:'stretch',margin:'2px 0',
-                borderRadius:1,background:T.o,opacity:.55,flexShrink:0}}/>
+              <span aria-hidden="true" style={{color:T.o,fontWeight:900,flexShrink:0,
+                alignSelf:'center',lineHeight:1,
+                fontSize:'clamp(15px, 1.8vw, 26px)'}}>-</span>
             )}
             <span style={{flex:'1 1 50%',minWidth:0,alignSelf:'center',
               color:done&&!win?T.t3:T.t1,
@@ -14045,13 +14046,13 @@ function CupCenterScreen({cup,lb,onBack}){
                         padding:'10px 14px',opacity:.9}}>
                         <div style={{color:T.t2,fontSize:'clamp(12px, 1.4vw, 19px)',fontWeight:600,
                           overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                          {nxt.t1.map(nm).join(' & ')}
+                          {nxt.t1.map(nm).join(' - ')}
                         </div>
                         <div style={{color:T.t4,fontSize:'clamp(10px, 1vw, 13px)',fontWeight:800,
                           margin:'3px 0'}}>vs</div>
                         <div style={{color:T.t2,fontSize:'clamp(12px, 1.4vw, 19px)',fontWeight:600,
                           overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                          {nxt.t2.map(nm).join(' & ')}
+                          {nxt.t2.map(nm).join(' - ')}
                         </div>
                       </div>
                     </>);

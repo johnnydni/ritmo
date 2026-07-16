@@ -185,13 +185,14 @@ export function genCupFinals(state){
   ];
 }
 
-/* Anzeige-Helfer: "P7 · Max" bzw. "P7" ohne Namen. */
+/* Anzeige-Helfer: "P7 - Max" (P-Nummer per Bindestrich vom Namen
+   getrennt) bzw. "P7" ohne Namen. short = nur Vorname. */
 export function cupPlayerLabel(state,num,short=false){
   const p=state.players.find(x=>x.num===num);
   if(!p) return `P${num}`;
   const nm=(p.name||'').trim();
   if(!nm) return `P${num}`;
-  return short?`P${num} ${nm.split(/\s+/)[0]}`:`P${num} · ${nm}`;
+  return short?`P${num} - ${nm.split(/\s+/)[0]}`:`P${num} - ${nm}`;
 }
 
 /* Duplikat-Check der Spielernummern (Admin-Warnung). */

@@ -1830,7 +1830,7 @@ function ProfileRitmoDNA({profile,onBack,onHome}){
   const lvl=profile.playtomicLevel??profile.estimatedLevel;
   const accent=style?.accent||T.o;
   // Swoosh-Charakter je Spielstil (siehe theme.js Keyframes).
-  const SWOOSH={toro:'aggro',motor:'aggro',muro:'calm',chico:'calm',
+  const SWOOSH={toro:'aggro',motor:'aggro',hysterica:'aggro',muro:'calm',chico:'calm',
     fantasma:'creative',individuoso:'creative'};
 
   return(
@@ -2000,7 +2000,7 @@ function ProfileRitmoDNA({profile,onBack,onHome}){
 
 /* Option-ID → Archetyp-Schlüssel (deckungsgleich mit computeStyle in
    padelStyles.js). Treibt das animierte Kategorie-Sigil je Antwort. */
-const QUIZ_GLYPHS={a:'chico',b:'toro',c:'individuoso',d:'muro',e:'fantasma',f:'motor'};
+const QUIZ_GLYPHS={a:'chico',b:'toro',c:'individuoso',d:'muro',e:'fantasma',f:'motor',g:'hysterica'};
 
 /* ── Updated ChapterPlaystyle with full personality quiz ────── */
 function ChapterPlaystyle({profile,setProfile}){
@@ -2887,6 +2887,7 @@ const STYLE_GRAD={
   individuoso:'#1F4E8C',
   fantasma:'#6E5A8E',
   chico:'#C9B18C',
+  hysterica:'#D81E5B',
 };
 /* Subtiler Stil-Gradient: Farbton oben links, läuft ins Transparente. */
 const styleGrad=id=>{
@@ -14216,7 +14217,7 @@ const J_BACK={backIcon:<JourneyIcon size={18}/>};
 
 /* ── JourneySpielstileList — Overview of 6 styles ──────────────── */
 function JourneySpielstileList({onBack,onHome,onSelect}){
-  const order=['chico','toro','individuoso','muro','fantasma','motor'];
+  const order=['chico','toro','individuoso','muro','fantasma','motor','hysterica'];
   const[imgErr,setImgErr]=useState({});
 
   return(
@@ -15811,7 +15812,7 @@ export default function App(){
       onSelect={(id)=>setScr(`journey-spielstil-${id}`)}/>}
     {scr.startsWith('journey-spielstil-')&&(()=>{
       const id=scr.slice('journey-spielstil-'.length);
-      const order=['chico','toro','individuoso','muro','fantasma','motor'];
+      const order=['chico','toro','individuoso','muro','fantasma','motor','hysterica'];
       const idx=order.indexOf(id);
       if(idx<0) return null;
       return <JourneySpielstile

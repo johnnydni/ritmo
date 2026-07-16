@@ -13166,46 +13166,36 @@ function CupTimer({timer,big=false}){
   const hh=String(Math.floor(left/3600)).padStart(2,'0');
   const mm=String(Math.floor((left%3600)/60)).padStart(2,'0');
   const ss=String(left%60).padStart(2,'0');
-  const R=100,C=2*Math.PI*R;
+  // FLACHER Pill (16:9-Monitor): Mini-Fortschrittsring als Uhr-Element
+  // + Zeit-Label + -HH:MM:SS- inline — gleiche Bauhöhe wie der Toast.
+  const R=13,C=2*Math.PI*R;
   return(
-    <div className="si" style={{width:big?'clamp(200px, 24vw, 330px)':'160px',
-      aspectRatio:'1 / 1',position:'relative',flexShrink:0,opacity:paused?.8:1}}>
-      <svg viewBox="0 0 240 240" style={{width:'100%',height:'100%',display:'block'}}>
-        {/* Ziffernblatt + Minuten-Ticks (Viertel-Ticks kräftiger) */}
-        <circle cx="120" cy="120" r="114" fill={T.card}/>
-        {Array.from({length:60}).map((_,i)=>{
-          const a=i*6*Math.PI/180,major=i%15===0;
-          const r1=108,r2=major?96:102;
-          return <line key={i}
-            x1={120+Math.sin(a)*r1} y1={120-Math.cos(a)*r1}
-            x2={120+Math.sin(a)*r2} y2={120-Math.cos(a)*r2}
-            stroke={major?T.t1:T.t4} strokeWidth={major?4:2} strokeLinecap="round"/>;
-        })}
-        {/* Fortschrittsring: Rest-Anteil in Grün, ab 12 Uhr im UZS */}
-        <circle cx="120" cy="120" r={R} fill="none" strokeWidth="10"
-          stroke={`color-mix(in srgb, ${T.g} 18%, transparent)`}/>
-        <circle cx="120" cy="120" r={R} fill="none" stroke={T.g} strokeWidth="10"
+    <div className="si" style={{display:'inline-flex',alignItems:'center',gap:big?12:9,
+      alignSelf:'center',background:T.card,opacity:paused?.8:1,
+      border:`1.5px solid ${T.g}`,borderRadius:999,
+      padding:big?'7px 16px':'6px 12px',
+      boxShadow:`0 0 14px color-mix(in srgb, ${T.g} 30%, transparent), 0 6px 18px rgba(0,0,0,.3)`}}>
+      <svg viewBox="0 0 32 32" aria-hidden="true"
+        style={{width:big?'clamp(26px, 2.6vw, 38px)':24,height:'auto',flexShrink:0,display:'block'}}>
+        <circle cx="16" cy="16" r={R} fill="none" strokeWidth="3.5"
+          stroke={`color-mix(in srgb, ${T.g} 20%, transparent)`}/>
+        <circle cx="16" cy="16" r={R} fill="none" stroke={T.g} strokeWidth="3.5"
           strokeLinecap="round" strokeDasharray={C} strokeDashoffset={C*(1-frac)}
-          transform="rotate(-90 120 120)"
-          style={{filter:`drop-shadow(0 0 6px ${T.g})`,transition:'stroke-dashoffset .5s linear'}}/>
+          transform="rotate(-90 16 16)"
+          style={{transition:'stroke-dashoffset .5s linear'}}/>
       </svg>
-      <div style={{position:'absolute',inset:0,display:'flex',flexDirection:'column',
-        alignItems:'center',justifyContent:'center'}}>
-        <div style={{color:T.g,fontWeight:700,marginBottom:big?4:2,
-          fontSize:big?'clamp(14px, 1.7vw, 24px)':14}}>
+      <span style={{display:'flex',flexDirection:'column',lineHeight:1}}>
+        <span style={{color:T.g,fontWeight:700,letterSpacing:1.4,textTransform:'uppercase',
+          marginBottom:2,fontSize:big?'clamp(9px, .95vw, 13px)':9}}>
           {paused?'Pause':'Zeit'}
-        </div>
-        <div style={{color:T.g,fontWeight:800,letterSpacing:.5,lineHeight:1,
-          fontSize:big?'clamp(22px, 2.7vw, 40px)':21,
+        </span>
+        <span style={{color:T.g,fontWeight:800,letterSpacing:.5,
+          fontSize:big?'clamp(18px, 2vw, 30px)':18,
           fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',
           fontVariantNumeric:'tabular-nums'}}>
           -{hh}:{mm}:{ss}-
-        </div>
-        <div style={{display:'flex',gap:big?'clamp(12px, 1.5vw, 24px)':11,marginTop:big?5:3,
-          color:T.t2,fontWeight:600,fontSize:big?'clamp(9px, 1vw, 14px)':9}}>
-          <span>Std.</span><span>Min.</span><span>Sek.</span>
-        </div>
-      </div>
+        </span>
+      </span>
     </div>
   );
 }

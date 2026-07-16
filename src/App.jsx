@@ -43,7 +43,7 @@ import {
   MenuIcon,
 } from "./icons.jsx";
 import { PADEL_STYLES, PADEL_QUIZ, computeStyle, computeStyles, computeMatchTier, STYLE_IMAGES } from "./padelStyles.js";
-import { CUP_PIN, CUP_PHASES, CUP_ALERTS, initialCupState, cupLeaderboard,
+import { CUP_PIN, CUP_PHASES, CUP_ALERTS, CUP_WARN, initialCupState, cupLeaderboard, cupMatchTier,
   genCupKO, genCupCourageHF, genCupHF, genCupFinals, cupPlayerLabel, cupDuplicateNums } from "./dnaCup.js";
 import GlassSurface from "./GlassSurface.jsx";
 
@@ -13100,26 +13100,101 @@ function CupTicketIcon({size=24,color='currentColor'}){
   );
 }
 
-/* Icon-Map für Warnmeldungen (Toast auf Center-/Court-Screens). */
+/* Icon-Map für Warnmeldungen (Banner auf Center-/Court-Screens). */
 function CupAlertIcon({icon,size=18,color='#000'}){
   if(icon==='ball') return <TennisBallIcon size={size}/>;
   if(icon==='pause') return <PauseIcon size={size} color={color}/>;
-  return <EditIcon size={size} color={color}/>;
+  if(icon==='edit') return <EditIcon size={size} color={color}/>;
+  return <WarnIcon size={size} color={color}/>;
 }
 
 /* Toast-Optik der Warnmeldung — Admin-Vorschau; Center/Court zeigen
    exakt dieselbe Komponente, wenn sie gebaut werden. */
-function CupAlertToast({alert}){
+/* Warn-Banner (Referenz-Design): dunkler, gelb getönter Balken —
+   Warn-Icon links, Titel + Untertitel gestapelt, optional gelber
+   CTA-Pill rechts ("Jetzt eintragen"). big = Center-Screen-Größe. */
+function CupAlertToast({alert,big=false}){
   if(!alert) return null;
   return(
-    <div className="si" style={{display:'flex',alignItems:'center',gap:12,background:T.o,
-      borderRadius:15,padding:'13px 18px',boxShadow:'0 8px 24px rgba(0,0,0,.35)'}}>
-      <span style={{width:36,height:36,borderRadius:'50%',background:'rgba(0,0,0,.18)',
-        display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-        <CupAlertIcon icon={alert.icon} size={18} color="#000"/>
+    <div className="si" style={{display:'flex',alignItems:'center',gap:big?18:12,minWidth:0,
+      background:`color-mix(in srgb, ${CUP_WARN} 10%, ${T.card})`,
+      border:`1px solid color-mix(in srgb, ${CUP_WARN} 40%, transparent)`,
+      borderRadius:big?17:13,padding:big?'14px 22px':'11px 14px',
+      boxShadow:'0 10px 28px rgba(0,0,0,.4)'}}>
+      <span style={{color:CUP_WARN,display:'inline-flex',flexShrink:0}}>
+        <CupAlertIcon icon={alert.icon} size={big?30:20} color={CUP_WARN}/>
       </span>
-      <span style={{color:'#000',fontSize:17,fontWeight:900,letterSpacing:-.2,minWidth:0,
-        overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{alert.label}</span>
+      <span style={{minWidth:0,flex:'0 1 auto'}}>
+        <span style={{display:'block',color:T.t1,fontWeight:900,letterSpacing:-.2,
+          fontSize:big?'clamp(16px, 1.9vw, 26px)':15,
+          overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{alert.label}</span>
+        {alert.sub&&(
+          <span style={{display:'block',color:T.t2,fontWeight:500,marginTop:2,
+            fontSize:big?'clamp(11px, 1.2vw, 16px)':11.5,
+            overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{alert.sub}</span>
+        )}
+      </span>
+      {alert.cta&&(
+        <span style={{flexShrink:0,marginLeft:big?10:6,background:CUP_WARN,color:'#000',
+          fontWeight:800,borderRadius:999,padding:big?'10px 18px':'7px 12px',
+          fontSize:big?'clamp(11px, 1.25vw, 17px)':11.5,whiteSpace:'nowrap'}}>{alert.cta}</span>
+      )}
+    </div>
+  );
+}
+
+/* Runden-Timer im Uhr-Look (Referenz: Apple-Timer): dunkles Ziffern-
+   blatt mit Minuten-Ticks, grüner Fortschrittsring (Restzeit-Anteil,
+   abgerundete Enden, Glow), mittig "Zeit" + -HH:MM:SS- in Grün und
+   die Einheiten Std./Min./Sek. darunter. Restzeit kommt aus dem
+   startedAt-Timestamp (kein Tick-Sync nötig); der 500ms-Repaint
+   läuft nur lokal. Rendert nichts, solange der Timer inaktiv ist. */
+function CupTimer({timer,big=false}){
+  const[,force]=useState(0);
+  useEffect(()=>{
+    if(!timer?.startedAt) return;
+    const id=setInterval(()=>force(x=>x+1),500);
+    return()=>clearInterval(id);
+  },[timer?.startedAt]);
+  if(!timer||(!timer.startedAt&&timer.left==null)) return null;
+  const left=timer.startedAt
+    ?Math.max(0,timer.sec-Math.floor((Date.now()-timer.startedAt)/1000))
+    :Math.max(0,timer.left||0);
+  const paused=!timer.startedAt;
+  const frac=timer.sec>0?left/timer.sec:0;
+  const hh=String(Math.floor(left/3600)).padStart(2,'0');
+  const mm=String(Math.floor((left%3600)/60)).padStart(2,'0');
+  const ss=String(left%60).padStart(2,'0');
+  // FLACHER Pill (16:9-Monitor): Mini-Fortschrittsring als Uhr-Element
+  // + Zeit-Label + -HH:MM:SS- inline — gleiche Bauhöhe wie der Toast.
+  const R=13,C=2*Math.PI*R;
+  return(
+    <div className="si" style={{display:'inline-flex',alignItems:'center',gap:big?12:9,
+      alignSelf:'center',background:T.card,opacity:paused?.8:1,
+      border:`1.5px solid ${T.g}`,borderRadius:999,
+      padding:big?'7px 16px':'6px 12px',
+      boxShadow:`0 0 14px color-mix(in srgb, ${T.g} 30%, transparent), 0 6px 18px rgba(0,0,0,.3)`}}>
+      <svg viewBox="0 0 32 32" aria-hidden="true"
+        style={{width:big?'clamp(26px, 2.6vw, 38px)':24,height:'auto',flexShrink:0,display:'block'}}>
+        <circle cx="16" cy="16" r={R} fill="none" strokeWidth="3.5"
+          stroke={`color-mix(in srgb, ${T.g} 20%, transparent)`}/>
+        <circle cx="16" cy="16" r={R} fill="none" stroke={T.g} strokeWidth="3.5"
+          strokeLinecap="round" strokeDasharray={C} strokeDashoffset={C*(1-frac)}
+          transform="rotate(-90 16 16)"
+          style={{transition:'stroke-dashoffset .5s linear'}}/>
+      </svg>
+      <span style={{display:'flex',flexDirection:'column',lineHeight:1}}>
+        <span style={{color:T.g,fontWeight:700,letterSpacing:1.4,textTransform:'uppercase',
+          marginBottom:2,fontSize:big?'clamp(9px, .95vw, 13px)':9}}>
+          {paused?'Pause':'Zeit'}
+        </span>
+        <span style={{color:T.g,fontWeight:800,letterSpacing:.5,
+          fontSize:big?'clamp(18px, 2vw, 30px)':18,
+          fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',
+          fontVariantNumeric:'tabular-nums'}}>
+          -{hh}:{mm}:{ss}-
+        </span>
+      </span>
     </div>
   );
 }
@@ -13299,17 +13374,38 @@ function CupAdmin({cup,setCup,lb,onBack}){
     const players=[...c.players];players[idx]={...players[idx],...partial};return {...c,players};});
   const sendAlert=a=>{buzz(10);setCup(c=>({...c,alert:{...a,ts:Date.now()}}));};
   const clearAlert=()=>setCup(c=>({...c,alert:null}));
+  // Runden-Timer (Center Screen) — laufend über startedAt-Timestamp,
+  // pausiert über left; Resume rechnet startedAt zurück, damit die
+  // Restzeit-Formel sec-(now-startedAt) überall gleich bleibt.
+  const tm=cup.timer||{sec:600,startedAt:null,left:null};
+  const setTimer=p=>setCup(c=>({...c,timer:{...(c.timer||{sec:600,startedAt:null,left:null}),...p}}));
+  const timerLeftNow=()=>tm.startedAt
+    ?Math.max(0,tm.sec-Math.floor((Date.now()-tm.startedAt)/1000))
+    :(tm.left??tm.sec);
+  const timerStart=()=>{buzz(12);setTimer({startedAt:Date.now(),left:null});};
+  const timerPause=()=>{buzz(8);setTimer({startedAt:null,left:timerLeftNow()});};
+  const timerResume=()=>{buzz(8);setTimer({startedAt:Date.now()-(tm.sec-(tm.left??tm.sec))*1000,left:null});};
+  const timerReset=()=>{buzz(8);setTimer({startedAt:null,left:null});};
+  const timerAdjust=d=>setTimer({sec:Math.min(3600,Math.max(60,tm.sec+d)),startedAt:null,left:null});
   const toggleLock=court=>{buzz(8);setCup(c=>({...c,locks:{...c.locks,[court]:!c.locks[court]}}));};
   const setAllLocks=v=>{buzz(8);setCup(c=>({...c,locks:{1:v,2:v,3:v}}));};
 
   const grpDone=cup.matches.filter(m=>m.phase==='gruppe'&&m.done).length;
+  const grpAll=cup.matches.filter(m=>m.phase==='gruppe').length;
   const koAll=cup.matches.filter(m=>m.phase==='ko');
   const koDone=koAll.filter(m=>m.done).length;
   const hfAll=cup.matches.filter(m=>m.phase==='hf'||m.phase==='courage-hf');
   const hfDone=hfAll.filter(m=>m.done).length;
 
   // Generatoren — bauen die jeweils nächste Phase aus dem Leaderboard.
+  // Platzierungen werden erst gezogen, wenn die Gruppenphase KOMPLETT
+  // ist (18/18) — vorher wären die Paarungen aus einer halben Tabelle.
   const genKO=()=>{
+    if(grpDone<grpAll){
+      setGenMsg(`Platzierungen werden erst nach der Gruppenphase gezogen — ${grpDone}/${grpAll} Matches fertig.`);
+      buzz([20,40,20]);
+      return;
+    }
     setCup(c=>({...c,
       matches:[...c.matches.filter(m=>m.phase==='gruppe'),...genCupKO(lb),...genCupCourageHF(lb)],
       phase:'ko'}));
@@ -13432,6 +13528,61 @@ function CupAdmin({cup,setCup,lb,onBack}){
           </div>
 
           <div style={card}>
+            <div style={h}>Runden-Timer (Center Screen)</div>
+            <div style={{color:T.t3,fontSize:12,lineHeight:1.55,marginBottom:12}}>
+              Grüner Sport-Timer neben der Warnmeldung auf dem Center Screen.
+              Dauer einstellen, dann starten — pausieren und zurücksetzen jederzeit.
+            </div>
+            <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:12}}>
+              <button onClick={()=>timerAdjust(-60)} disabled={!!tm.startedAt}
+                aria-label="Eine Minute weniger"
+                style={{...chip(false),width:44,textAlign:'center',padding:'10px 0',
+                  opacity:tm.startedAt?.45:1}}>−</button>
+              <div style={{flex:1,textAlign:'center'}}>
+                <div style={{color:T.g,fontSize:26,fontWeight:900,letterSpacing:1,
+                  fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',
+                  fontVariantNumeric:'tabular-nums'}}>
+                  {String(Math.floor(tm.sec/60)).padStart(2,'0')}:{String(tm.sec%60).padStart(2,'0')}
+                </div>
+                <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.2,
+                  textTransform:'uppercase',marginTop:2}}>Dauer</div>
+              </div>
+              <button onClick={()=>timerAdjust(60)} disabled={!!tm.startedAt}
+                aria-label="Eine Minute mehr"
+                style={{...chip(false),width:44,textAlign:'center',padding:'10px 0',
+                  opacity:tm.startedAt?.45:1}}>+</button>
+            </div>
+            <div style={{display:'flex',gap:8}}>
+              {tm.startedAt?(
+                <button onClick={timerPause} style={{...chip(true,T.g),flex:1,textAlign:'center',
+                  background:`color-mix(in srgb, ${T.g} 14%, transparent)`,
+                  border:`1.5px solid ${T.g}`,color:T.g}}>Pause</button>
+              ):tm.left!=null?(
+                <button onClick={timerResume} style={{...chip(true,T.g),flex:1,textAlign:'center',
+                  background:`color-mix(in srgb, ${T.g} 14%, transparent)`,
+                  border:`1.5px solid ${T.g}`,color:T.g}}>Weiter</button>
+              ):(
+                <button onClick={timerStart} style={{...chip(true,T.g),flex:1,textAlign:'center',
+                  background:`color-mix(in srgb, ${T.g} 14%, transparent)`,
+                  border:`1.5px solid ${T.g}`,color:T.g}}>Start</button>
+              )}
+              {(tm.startedAt||tm.left!=null)&&(<>
+                <button onClick={timerStart} style={{...chip(false),flex:1,textAlign:'center'}}>
+                  Neu starten
+                </button>
+                <button onClick={timerReset} style={{...chip(false),flex:1,textAlign:'center'}}>
+                  Stopp
+                </button>
+              </>)}
+            </div>
+            {(tm.startedAt||tm.left!=null)&&(
+              <div style={{marginTop:12,display:'flex',justifyContent:'center'}}>
+                <CupTimer timer={tm}/>
+              </div>
+            )}
+          </div>
+
+          <div style={card}>
             <div style={h}>Court-Screens sperren</div>
             <div style={{color:T.t3,fontSize:12,lineHeight:1.55,marginBottom:10}}>
               Gesperrte Courts zeigen das Match, erlauben aber keine Punkteeingabe —
@@ -13448,6 +13599,10 @@ function CupAdmin({cup,setCup,lb,onBack}){
             <div style={{display:'flex',gap:8,marginTop:8}}>
               <button onClick={()=>setAllLocks(true)} style={{...chip(false),flex:1,textAlign:'center'}}>Alle sperren</button>
               <button onClick={()=>setAllLocks(false)} style={{...chip(false),flex:1,textAlign:'center'}}>Alle freigeben</button>
+            </div>
+            <div style={{color:T.t3,fontSize:11.5,lineHeight:1.55,marginTop:12}}>
+              Kiosk: Die Court-Ansicht ist auf den Tablets immer fixiert —
+              verlassen geht am Gerät nur per PIN.
             </div>
           </div>
 
@@ -13591,7 +13746,8 @@ function CupAdmin({cup,setCup,lb,onBack}){
             return(
               <div key={row.num} style={{display:'flex',alignItems:'center',gap:9,
                 padding:'10px 12px',borderRadius:13,marginBottom:7,
-                background:zone==='top'?`${T.gold}14`:zone==='courage'?T.blueSoft:T.card,
+                background:zone==='top'?`color-mix(in srgb, ${T.gold} 12%, transparent)`
+                  :zone==='courage'?T.blueSoft:T.card,
                 border:`1.5px solid ${zone==='top'?T.gold:zone==='courage'?T.blue:T.border}`}}>
                 <span style={{width:26,color:zone==='top'?T.gold:zone==='courage'?T.blue:T.t2,
                   fontSize:14,fontWeight:900,flexShrink:0,textAlign:'center'}}>{row.rank}</span>
@@ -13599,7 +13755,10 @@ function CupAdmin({cup,setCup,lb,onBack}){
                 <span style={{flex:1,minWidth:0,color:T.t1,fontSize:14,fontWeight:600,
                   overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
                   {(row.name||'').trim()||'—'}
-                  <span style={{color:T.t3,fontSize:10.5,fontWeight:500}}> · {row.played} Sp · {row.wins}S</span>
+                  <span style={{color:T.t3,fontSize:10.5,fontWeight:500}}>
+                    {' '}· {row.played} Sp · {row.wins}S
+                    {row.tierBonus>0&&<span style={{color:T.o,fontWeight:800}}> · +{row.tierBonus}★</span>}
+                  </span>
                 </span>
                 <button onClick={()=>{buzz(6);setPlayerAt(cup.players.findIndex(p=>p.num===row.num),{adj:(row.adj||0)-1});}}
                   aria-label="Punkt abziehen"
@@ -13636,6 +13795,614 @@ function CupAdmin({cup,setCup,lb,onBack}){
           current={cup.players[styleFor]?.style||null}
           onSelect={style=>setPlayerAt(styleFor,{style:style||null})}
           onClose={()=>setStyleFor(null)}/>
+      )}
+    </div>
+  );
+}
+
+/* ── CENTER SCREEN — Diashow für den großen Screen/Beamer ─────────
+   Drei Slides im automatischen Wechsel (12 s):
+     1. Aktuelle Paarungen je Court + Phase (Gruppe: aktive Runde)
+     2. Leaderboard (Zonen wie auf dem Plakat)
+     3. Turnierbaum mit aktuellem Stand (DNA-Lane + Courage-Lane)
+   Read-only. Admin-Warnmeldungen liegen als großes Toast-Overlay
+   über jedem Slide. Schriftgrößen skalieren per clamp() mit der
+   Viewport-Breite (Beamer/TV im Querformat). Läuft der Admin in
+   einem anderen Tab desselben Geräts, synct der storage-Listener
+   in DnaCupScreen jede Änderung live hierher. */
+function CupCenterScreen({cup,lb,onBack}){
+  const[slide,setSlide]=useState(0);
+  const[paused,setPaused]=useState(false);
+  // Ein Timeout PRO Slide (statt Dauer-Interval): jeder Wechsel — auch
+  // ein manueller Tap — startet das 12-Sekunden-Fenster neu. Hinweis:
+  // In versteckten Tabs drosselt Chrome Timer (~1 Tick/Min); auf dem
+  // sichtbaren Beamer-Tab läuft die Rotation normal.
+  useEffect(()=>{
+    if(paused) return;
+    const id=setTimeout(()=>setSlide(s=>(s+1)%3),12000);
+    return()=>clearTimeout(id);
+  },[paused,slide]);
+  const phase=CUP_PHASES.find(p=>p.id===cup.phase);
+  const nm=n=>cupPlayerLabel(cup,n,true);
+  const findM=id=>cup.matches.find(m=>m.id===id);
+
+  // Slide 1: Matches der aktiven Phase (Gruppe → nur aktive Runde).
+  const cur=cup.phase==='gruppe'
+    ?cup.matches.filter(m=>m.phase==='gruppe'&&m.round===cup.activeRound)
+    :cup.phase==='ko'?cup.matches.filter(m=>m.phase==='ko')
+    :cup.phase==='hf'?cup.matches.filter(m=>m.phase==='hf'||m.phase==='courage-hf')
+    :cup.matches.filter(m=>m.phase==='finals');
+
+  // Team-Zeile: beide Spieler als eigene Spalten mit vertikalem
+  // Trennstrich dazwischen — stabile Mittelachse wie auf einer
+  // Anzeigetafel, jeder Name kürzt unabhängig mit Ellipsis.
+  const teamRow=(team,score,win,done)=>(
+    <div style={{display:'flex',alignItems:'center',gap:10,padding:'7px 0',minWidth:0}}>
+      <div style={{flex:1,minWidth:0,display:'flex',alignItems:'stretch',
+        gap:'clamp(8px, .9vw, 14px)'}}>
+        {team.map((n,i)=>(
+          <Fragment key={i}>
+            {i>0&&(
+              <span aria-hidden="true" style={{width:2,alignSelf:'stretch',margin:'2px 0',
+                borderRadius:1,background:T.o,opacity:.55,flexShrink:0}}/>
+            )}
+            <span style={{flex:'1 1 50%',minWidth:0,alignSelf:'center',
+              color:done&&!win?T.t3:T.t1,
+              fontSize:'clamp(15px, 1.8vw, 26px)',fontWeight:win?900:600,letterSpacing:-.2,
+              overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+              {nm(n)}
+            </span>
+          </Fragment>
+        ))}
+      </div>
+      <span style={{color:win?T.o:T.t2,fontSize:'clamp(18px, 2.2vw, 32px)',fontWeight:900,
+        fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',flexShrink:0}}>
+        {score??'–'}
+      </span>
+    </div>
+  );
+  const matchBlock=m=>{
+    const w1=m.done&&(m.s1??0)>=(m.s2??0), w2=m.done&&(m.s2??0)>(m.s1??0);
+    const styleOf=n=>cup.players.find(p=>p.num===n)?.style;
+    const tier=cupMatchTier(cup.players,m);
+    return(
+      <div key={m.id} style={{marginBottom:14,minWidth:0}}>
+        {/* Match-Box: orangene Outline + dezente Ball-Grafik als Deko */}
+        <div style={{position:'relative',overflow:'hidden',background:T.card,
+          border:`2px solid ${T.o}`,borderRadius:17,padding:'12px 16px',
+          boxShadow:m.done?`0 0 14px ${T.oGlow}, 0 6px 18px rgba(0,0,0,.3)`:'0 4px 14px rgba(0,0,0,.2)'}}>
+          <div aria-hidden="true" style={{position:'absolute',right:-16,top:-16,
+            opacity:.09,pointerEvents:'none'}}>
+            <TennisBallIcon size={78}/>
+          </div>
+          {m.title&&(
+            <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:4}}>
+              <TrophyIcon size={15}/>
+              <span style={{color:T.o,fontSize:'clamp(11px, 1.1vw, 15px)',fontWeight:800,
+                letterSpacing:1,textTransform:'uppercase'}}>{m.title}</span>
+            </div>
+          )}
+          {teamRow(m.t1,m.s1,w1,m.done)}
+          {/* VS-Trenner mit pulsierendem Badge statt nackter Linie */}
+          <div style={{display:'flex',alignItems:'center',gap:10,margin:'2px 0'}}>
+            <div style={{flex:1,height:1,background:T.sep}}/>
+            <span className="court-vs" style={{width:'clamp(22px, 2.2vw, 32px)',
+              height:'clamp(22px, 2.2vw, 32px)',borderRadius:'50%',flexShrink:0,
+              background:T.oSoft,border:`1.5px solid ${T.o}`,color:T.o,
+              display:'flex',alignItems:'center',justifyContent:'center',
+              fontSize:'clamp(9px, .9vw, 12px)',fontWeight:900}}>VS</span>
+            <div style={{flex:1,height:1,background:T.sep}}/>
+          </div>
+          {teamRow(m.t2,m.s2,w2,m.done)}
+        </div>
+        {/* Tier-Toast: Spielstile der 4 + Extra-Punkte bei Sieg —
+            gut sichtbar in der Tier-Farbe unter der Box. */}
+        {tier?(
+          <div className="si" style={{display:'flex',alignItems:'center',gap:10,marginTop:8,
+            background:tier.color,borderRadius:13,padding:'9px 14px',minWidth:0,
+            boxShadow:'0 6px 16px rgba(0,0,0,.3)'}}>
+            <span style={{display:'inline-flex',gap:5,alignItems:'center',flexShrink:0}}>
+              {[...m.t1,...m.t2].map((n,i)=>(
+                <span key={i} style={{display:'inline-flex'}}>
+                  <ArchetypeGlyph type={styleOf(n)} active color="#FFFFFF"
+                    size={Math.round(15)}/>
+                </span>
+              ))}
+            </span>
+            <span style={{color:'#FFF',fontSize:'clamp(11px, 1.2vw, 17px)',fontWeight:900,
+              letterSpacing:.4,flexShrink:0}}>{tier.label}</span>
+            <span style={{flex:1,minWidth:0,textAlign:'right',color:'#FFF',
+              fontSize:'clamp(11px, 1.25vw, 17px)',fontWeight:800,overflow:'hidden',
+              textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+              Sieg = +{tier.stars} Extra-Punkte
+            </span>
+          </div>
+        ):(
+          <div style={{marginTop:8,padding:'7px 12px',borderRadius:11,
+            border:`1.5px dashed ${T.border}`,color:T.t4,textAlign:'center',
+            fontSize:'clamp(10px, 1vw, 14px)',fontWeight:600}}>
+            Spielstile im Admin setzen → Tier & Extra-Punkte
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Turnierbaum erst „ziehen", wenn die Gruppenphase KOMPLETT ist —
+  // vorher zeigt Slide 3 ausschließlich Platzhalter, auch wenn im
+  // Admin schon (Test-)Paarungen existieren sollten.
+  const gruppeMs=cup.matches.filter(m=>m.phase==='gruppe');
+  const gruppeFertig=gruppeMs.length>0&&gruppeMs.every(m=>m.done);
+
+  // Slide 3: Turnierbaum-Knoten — echtes Match oder Platzhalter.
+  const Node=({id,title,hint})=>{
+    const m=gruppeFertig?findM(id):null;
+    if(!m) return(
+      <div style={{border:`1.5px dashed ${T.border}`,borderRadius:15,padding:'10px 14px',
+        marginBottom:10}}>
+        <div style={{color:T.t3,fontSize:'clamp(10px, 1vw, 14px)',fontWeight:800,
+          letterSpacing:.8,textTransform:'uppercase'}}>{title}</div>
+        <div style={{color:T.t4,fontSize:'clamp(11px, 1.1vw, 15px)',marginTop:4}}>{hint}</div>
+      </div>
+    );
+    const w1=m.done&&(m.s1??0)>=(m.s2??0), w2=m.done&&(m.s2??0)>(m.s1??0);
+    const row=(team,score,win)=>(
+      <div style={{display:'flex',alignItems:'center',gap:8,padding:'3px 0',minWidth:0}}>
+        <span style={{flex:1,minWidth:0,color:m.done&&!win?T.t3:T.t1,
+          fontSize:'clamp(11px, 1.25vw, 17px)',fontWeight:win?900:600,
+          overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+          {team.map(nm).join(' & ')}
+        </span>
+        <span style={{color:win?T.o:T.t3,fontSize:'clamp(11px, 1.25vw, 17px)',fontWeight:900,
+          fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',flexShrink:0}}>{score??'–'}</span>
+      </div>
+    );
+    return(
+      <div style={{background:T.card,border:`1.5px solid ${m.done?T.o:T.border}`,
+        borderRadius:15,padding:'9px 14px',marginBottom:10}}>
+        <div style={{color:T.t3,fontSize:'clamp(9.5px, .95vw, 13px)',fontWeight:800,
+          letterSpacing:.8,textTransform:'uppercase',marginBottom:3}}>{title}</div>
+        {row(m.t1,m.s1,w1)}
+        {row(m.t2,m.s2,w2)}
+      </div>
+    );
+  };
+  const colHead=t=>(
+    <div style={{color:T.t3,fontSize:'clamp(10px, 1.05vw, 14px)',fontWeight:800,
+      letterSpacing:1.2,textTransform:'uppercase',marginBottom:8}}>{t}</div>
+  );
+
+  const SLIDE_TITLES=['Aktuelle Paarungen','Leaderboard','Turnierbaum'];
+
+  return(
+    <div className="fi" style={{flex:1,display:'flex',flexDirection:'column',minHeight:0,
+      padding:'0 28px',position:'relative'}}>
+
+      {/* Kopf: Wordmark + Phase + Slide-Titel */}
+      <div style={{display:'flex',alignItems:'center',gap:16,marginBottom:12,flexWrap:'wrap'}}>
+        <div style={{color:T.t1,fontSize:'clamp(20px, 2.6vw, 40px)',fontWeight:900,
+          letterSpacing:-.6,flexShrink:0}}>
+          RITMO <span style={{color:T.o}}>DNA CUP</span>
+        </div>
+        <div style={{display:'inline-flex',alignItems:'center',gap:8,padding:'6px 14px',
+          borderRadius:999,background:T.oSoft,border:`1px solid ${T.o}`,flexShrink:0}}>
+          <span className="court-live-dot" style={{width:8,height:8,borderRadius:'50%',background:T.o}}/>
+          <span style={{color:T.o,fontSize:'clamp(12px, 1.3vw, 18px)',fontWeight:800}}>
+            {phase?.name}{cup.phase==='gruppe'?` · Runde ${cup.activeRound}/6`:''}
+          </span>
+        </div>
+        <span style={{flex:1}}/>
+        <div style={{color:T.t2,fontSize:'clamp(14px, 1.7vw, 24px)',fontWeight:800,flexShrink:0}}>
+          {SLIDE_TITLES[slide]}
+        </div>
+      </div>
+
+      {/* Warnmeldung — eigene Zeile im Layout-Fluss (kein Overlay):
+          die Slides rücken zusammen, nichts wird verdeckt. Der
+          Runden-Timer sitzt unten in der Fußleiste. */}
+      {cup.alert&&(
+        <div style={{flexShrink:0,display:'flex',justifyContent:'center',
+          alignItems:'center',marginBottom:10,minWidth:0}}>
+          <CupAlertToast alert={cup.alert} big/>
+        </div>
+      )}
+
+      {/* Slides — key remountet → Fade pro Wechsel */}
+      <div key={slide} className="fi" style={{flex:1,minHeight:0,overflowY:'auto',
+        WebkitOverflowScrolling:'touch',paddingBottom:8}}>
+
+        {slide===0&&(
+          <div style={{display:'grid',gridTemplateColumns:'repeat(3, 1fr)',gap:16,
+            alignItems:'start'}}>
+            {[1,2,3].map(c=>{
+              const ms=cur.filter(m=>m.court===c);
+              return(
+                <div key={c} style={{minWidth:0}}>
+                  <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}>
+                    <TennisBallIcon size={18}/>
+                    <span style={{color:T.o,fontSize:'clamp(15px, 1.8vw, 26px)',fontWeight:900,
+                      letterSpacing:.5}}>COURT {c}</span>
+                    {cup.locks[c]&&<LockIcon size={16} color={T.t3}/>}
+                  </div>
+                  {ms.length===0?(
+                    <div style={{border:`1.5px dashed ${T.border}`,borderRadius:17,
+                      padding:'18px 16px',color:T.t4,fontSize:'clamp(12px, 1.3vw, 18px)',
+                      fontWeight:600,textAlign:'center'}}>
+                      Kein Match
+                    </div>
+                  ):ms.map(matchBlock)}
+                  {/* Upcoming: nächstes Match auf DIESEM Court — Spieler
+                      können sich vorbereiten (nur Gruppenphase, fester
+                      Spielplan). */}
+                  {cup.phase==='gruppe'&&(()=>{
+                    const nxt=cup.matches.find(x=>x.phase==='gruppe'
+                      &&x.round===cup.activeRound+1&&x.court===c);
+                    if(!nxt) return null;
+                    return(<>
+                      <div style={{color:T.t3,fontSize:'clamp(10px, 1vw, 14px)',fontWeight:800,
+                        letterSpacing:1.2,textTransform:'uppercase',margin:'6px 2px 7px'}}>
+                        Upcoming · Runde {cup.activeRound+1}
+                      </div>
+                      <div style={{border:`1.5px dashed ${T.border}`,borderRadius:15,
+                        padding:'10px 14px',opacity:.9}}>
+                        <div style={{color:T.t2,fontSize:'clamp(12px, 1.4vw, 19px)',fontWeight:600,
+                          overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                          {nxt.t1.map(nm).join('  &  ')}
+                        </div>
+                        <div style={{color:T.t4,fontSize:'clamp(10px, 1vw, 13px)',fontWeight:800,
+                          margin:'3px 0'}}>vs</div>
+                        <div style={{color:T.t2,fontSize:'clamp(12px, 1.4vw, 19px)',fontWeight:600,
+                          overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                          {nxt.t2.map(nm).join('  &  ')}
+                        </div>
+                      </div>
+                    </>);
+                  })()}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {slide===1&&(()=>{
+          // Spaltenweise statt zeilenweise: links #1–11 von oben nach
+          // unten, rechts #12–22 — intuitive Lesereihenfolge.
+          const half=Math.ceil(lb.length/2);
+          const lbRow=row=>{
+            const zone=row.rank<=2?'top':row.rank<=14?'mid':'courage';
+            const zc=zone==='top'?T.gold:zone==='courage'?T.blue:null;
+            return(
+              <div key={row.num} style={{display:'flex',alignItems:'center',gap:10,
+                padding:'5px 12px',borderRadius:11,marginBottom:5,minWidth:0,
+                background:zone==='top'?`color-mix(in srgb, ${T.gold} 12%, transparent)`
+                  :zone==='courage'?T.blueSoft:'transparent',
+                border:`1px solid ${zc||T.sep}`}}>
+                <span style={{width:'clamp(32px, 3vw, 50px)',textAlign:'right',flexShrink:0,
+                  color:zc||T.t2,fontSize:'clamp(13px, 1.5vw, 22px)',fontWeight:900}}>
+                  #{row.rank}
+                </span>
+                {/* Trennstrich zwischen Platzierung und Spielernummer */}
+                <span aria-hidden="true" style={{width:2,alignSelf:'stretch',margin:'3px 0',
+                  borderRadius:1,background:T.o,opacity:.5,flexShrink:0}}/>
+                <span style={{color:T.o,fontSize:'clamp(11px, 1.2vw, 17px)',fontWeight:900,
+                  flexShrink:0,width:'clamp(26px, 2.6vw, 40px)'}}>P{row.num}</span>
+                <span style={{flex:1,minWidth:0,color:T.t1,fontSize:'clamp(13px, 1.5vw, 22px)',
+                  fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                  {(row.name||'').trim()||'—'}
+                </span>
+                <span style={{color:T.t1,fontSize:'clamp(14px, 1.6vw, 24px)',fontWeight:900,
+                  fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',flexShrink:0}}>
+                  {row.total}
+                </span>
+              </div>
+            );
+          };
+          return(
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0 26px',
+              alignItems:'start'}}>
+              <div style={{minWidth:0}}>{lb.slice(0,half).map(lbRow)}</div>
+              <div style={{minWidth:0}}>{lb.slice(half).map(lbRow)}</div>
+            </div>
+          );
+        })()}
+
+        {slide===2&&(<>
+          {!gruppeFertig&&(
+            <div style={{marginBottom:14,padding:'12px 18px',borderRadius:13,
+              background:T.oSoft,border:`1px solid ${T.o}`,display:'flex',
+              alignItems:'center',gap:10}}>
+              <StopwatchIcon size={18} color={T.o}/>
+              <span style={{color:T.t1,fontSize:'clamp(12px, 1.3vw, 18px)',fontWeight:700}}>
+                Der Turnierbaum wird nach der Gruppenphase gezogen —{' '}
+                {gruppeMs.filter(m=>m.done).length}/{gruppeMs.length} Matches gespielt.
+              </span>
+            </div>
+          )}
+          <div style={{display:'grid',gridTemplateColumns:'1.15fr 1fr 1fr',gap:18,
+            alignItems:'start',marginBottom:6}}>
+            <div style={{minWidth:0}}>
+              {colHead('KO-Phase · Rang 3–14')}
+              <Node id="ko1" title="KO 1 · Court 1" hint="3+14 vs 4+13 — aus Leaderboard"/>
+              <Node id="ko2" title="KO 2 · Court 2" hint="5+12 vs 6+11 — aus Leaderboard"/>
+              <Node id="ko3" title="KO 3 · Court 3" hint="7+10 vs 8+9 — aus Leaderboard"/>
+            </div>
+            <div style={{minWidth:0}}>
+              {colHead('Halbfinals · Best of 3')}
+              <Node id="hf1" title="DNA-HF 1" hint="#1 + Sieger-Split A"/>
+              <Node id="hf2" title="DNA-HF 2" hint="#2 + Sieger-Split B"/>
+            </div>
+            <div style={{minWidth:0}}>
+              {colHead('Finals · Best of 3')}
+              <Node id="final" title="Grande Finale" hint="Sieger HF1 vs Sieger HF2"/>
+              <Node id="platz3" title="Spiel um Platz 3" hint="Verlierer der Halbfinals"/>
+            </div>
+          </div>
+          <div style={{borderTop:`1px solid ${T.sep}`,paddingTop:12,
+            display:'grid',gridTemplateColumns:'1.15fr 1fr 1fr',gap:18,alignItems:'start'}}>
+            <div style={{minWidth:0}}>
+              {colHead('Courage 8 · Rang 15–22')}
+              <Node id="chf1" title="Courage-HF 1" hint="15+22 vs 16+21"/>
+              <Node id="chf2" title="Courage-HF 2" hint="17+20 vs 18+19"/>
+            </div>
+            <div style={{minWidth:0}}>
+              {colHead('Courage-Finale · Best of 3')}
+              <Node id="cfinal" title="Das Ehren-Finale" hint="Sieger der Courage-HF"/>
+            </div>
+            <div/>
+          </div>
+        </>)}
+      </div>
+
+      {/* Fußleiste: Dots + Steuerung (dezent, für den Kiosk-Betrieb) */}
+      <div style={{flexShrink:0,display:'flex',alignItems:'center',gap:12,
+        padding:'10px 0 calc(env(safe-area-inset-bottom,0px) + 14px)'}}>
+        <button onClick={onBack} style={{padding:'8px 14px',borderRadius:11,background:T.card,
+          border:`1px solid ${T.border}`,color:T.t3,fontSize:12,fontWeight:700,cursor:'pointer'}}>
+          ‹ Auswahl
+        </button>
+        <span style={{flex:1}}/>
+        <div style={{display:'flex',gap:8,alignItems:'center'}}>
+          {[0,1,2].map(i=>(
+            <button key={i} onClick={()=>{buzz(6);setSlide(i);}} aria-label={`Slide ${i+1}`}
+              style={{width:i===slide?26:10,height:10,borderRadius:999,border:'none',
+                cursor:'pointer',background:i===slide?T.o:T.t4,transition:'width .25s, background .25s',
+                padding:0}}/>
+          ))}
+        </div>
+        <span style={{flex:1}}/>
+        {/* Runden-Timer — unten in der Fußleiste */}
+        <CupTimer timer={cup.timer} big/>
+        <button onClick={()=>setSlide(s=>(s+2)%3)} aria-label="Vorheriger Slide"
+          style={{width:36,height:36,borderRadius:11,background:T.card,border:`1px solid ${T.border}`,
+            color:T.t2,fontSize:15,fontWeight:800,cursor:'pointer'}}>‹</button>
+        <button onClick={()=>setPaused(p=>!p)} aria-label={paused?'Diashow fortsetzen':'Diashow pausieren'}
+          style={{width:36,height:36,borderRadius:11,background:paused?T.oSoft:T.card,
+            border:`1px solid ${paused?T.o:T.border}`,color:paused?T.o:T.t2,
+            fontSize:13,fontWeight:900,cursor:'pointer'}}>
+          {paused?'▶':'⏸'}
+        </button>
+        <button onClick={()=>setSlide(s=>(s+1)%3)} aria-label="Nächster Slide"
+          style={{width:36,height:36,borderRadius:11,background:T.card,border:`1px solid ${T.border}`,
+            color:T.t2,fontSize:15,fontWeight:800,cursor:'pointer'}}>›</button>
+      </div>
+    </div>
+  );
+}
+
+/* ── COURT SCREEN — Tablet am Court ───────────────────────────────
+   Zeigt die Paarung(en) des gewählten Courts in der aktiven Phase
+   und nimmt die Punkte entgegen (±1-Schritte, wie die Zählweise des
+   Cups) + "Match abschließen". Oben rechts der COURT-KREIS: ein Tap
+   schaltet 1 → 2 → 3 durch; die Wahl wird pro Gerät gemerkt, damit
+   jedes Tablet nach einem Reload auf seinem Court bleibt.
+   Respektiert die Admin-Sperre (cup.locks) und zeigt Warnmeldung
+   (Toast) + Runden-Timer. */
+function CupCourtScreen({cup,setCup,onBack}){
+  const[court,setCourt]=useState(()=>{
+    const c=lsGet('ritmo_dnacup_court',1);
+    return c===2||c===3?c:1;
+  });
+  useEffect(()=>{lsSet('ritmo_dnacup_court',court);},[court]);
+  const[exitAsk,setExitAsk]=useState(false); // Kiosk: Exit nur per PIN
+  const locked=!!cup.locks[court];
+  const phase=CUP_PHASES.find(p=>p.id===cup.phase);
+  const nm=n=>cupPlayerLabel(cup,n,true);
+  const cur=(cup.phase==='gruppe'
+    ?cup.matches.filter(m=>m.phase==='gruppe'&&m.round===cup.activeRound)
+    :cup.phase==='ko'?cup.matches.filter(m=>m.phase==='ko')
+    :cup.phase==='hf'?cup.matches.filter(m=>m.phase==='hf'||m.phase==='courage-hf')
+    :cup.matches.filter(m=>m.phase==='finals')).filter(m=>m.court===court);
+  const patchMatch=(id,partial)=>setCup(c=>({...c,
+    matches:c.matches.map(m=>m.id===id?{...m,...partial}:m)}));
+  const bump=(m,f,d)=>{
+    if(locked||m.done) return;
+    buzz(10);
+    patchMatch(m.id,{[f]:Math.max(0,(m[f]??0)+d)});
+  };
+
+  // Punkte-Panel einer Seite: Namen + große Zahl + ±1.
+  const side=(m,f,team)=>(
+    <div style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',
+      alignItems:'center',gap:8}}>
+      <div style={{textAlign:'center',minWidth:0,width:'100%'}}>
+        {team.map(n=>(
+          <div key={n} style={{color:T.t1,fontSize:'clamp(13px, 2.4vw, 20px)',fontWeight:700,
+            overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+            {nm(n)}
+          </div>
+        ))}
+      </div>
+      <div style={{color:m.done?T.o:T.t1,fontWeight:900,lineHeight:1,
+        fontSize:'clamp(54px, 11vw, 96px)',
+        fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',
+        fontVariantNumeric:'tabular-nums'}}>
+        {m[f]??0}
+      </div>
+      <button onClick={()=>bump(m,f,1)} disabled={locked||m.done}
+        aria-label="Punkt hinzufügen"
+        style={{width:'100%',maxWidth:170,height:60,borderRadius:17,cursor:'pointer',
+          background:locked||m.done?T.card2:T.o,border:'none',
+          color:locked||m.done?T.t3:'#000',fontSize:26,fontWeight:900}}>
+        +1
+      </button>
+      <button onClick={()=>bump(m,f,-1)} disabled={locked||m.done}
+        aria-label="Punkt abziehen"
+        style={{width:'100%',maxWidth:170,height:38,borderRadius:12,cursor:'pointer',
+          background:'none',border:`1.5px solid ${T.border}`,
+          color:locked||m.done?T.t4:T.t2,fontSize:16,fontWeight:800}}>
+        −1
+      </button>
+    </div>
+  );
+
+  return(
+    <div className="fi" style={{flex:1,display:'flex',flexDirection:'column',minHeight:0,
+      padding:'0 22px'}}>
+
+      {/* Kopf: Court-Titel + Phase links · COURT-KREIS oben rechts */}
+      <div style={{display:'flex',alignItems:'flex-start',gap:12,marginBottom:10,flexShrink:0}}>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{color:T.o,fontSize:12,fontWeight:800,letterSpacing:1.6,
+            textTransform:'uppercase'}}>RITMO DNA CUP</div>
+          <div style={{display:'flex',alignItems:'center',gap:10,margin:'2px 0 4px'}}>
+            <span style={{color:T.t1,fontSize:'clamp(26px, 5vw, 40px)',fontWeight:900,
+              letterSpacing:-.6}}>COURT {court}</span>
+            {locked&&<LockIcon size={20} color={T.r}/>}
+          </div>
+          <div style={{display:'inline-flex',alignItems:'center',gap:7,padding:'4px 11px',
+            borderRadius:999,background:T.oSoft,border:`1px solid ${T.o}`}}>
+            <span className="court-live-dot" style={{width:7,height:7,borderRadius:'50%',background:T.o}}/>
+            <span style={{color:T.o,fontSize:11.5,fontWeight:800}}>
+              {phase?.name}{cup.phase==='gruppe'?` · Runde ${cup.activeRound}/6`:''}
+            </span>
+          </div>
+        </div>
+        <button onClick={()=>{buzz(8);setCourt(c=>c%3+1);}}
+          aria-label="Court wechseln" title="Court wechseln (1 → 2 → 3)"
+          style={{width:60,height:60,borderRadius:'50%',flexShrink:0,cursor:'pointer',
+            background:T.oSoft,border:`2.5px solid ${T.o}`,color:T.o,
+            display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',
+            lineHeight:1,boxShadow:`0 0 14px color-mix(in srgb, ${T.o} 35%, transparent)`}}>
+          <span style={{fontSize:24,fontWeight:900}}>{court}</span>
+          <span style={{fontSize:7.5,fontWeight:800,letterSpacing:1,marginTop:2}}>COURT</span>
+        </button>
+      </div>
+
+      {/* Warnmeldung vom Admin */}
+      {cup.alert&&(
+        <div style={{flexShrink:0,display:'flex',justifyContent:'center',marginBottom:10}}>
+          <CupAlertToast alert={cup.alert}/>
+        </div>
+      )}
+
+      {/* Sperr-Hinweis */}
+      {locked&&(
+        <div style={{flexShrink:0,display:'flex',alignItems:'center',gap:10,marginBottom:10,
+          padding:'11px 16px',borderRadius:13,background:'rgba(232,69,69,0.08)',
+          border:'1px solid rgba(232,69,69,0.4)'}}>
+          <LockIcon size={16} color={T.r}/>
+          <span style={{color:T.r,fontSize:13,fontWeight:700}}>
+            Court gesperrt — Punkteeingabe ist gerade deaktiviert.
+          </span>
+        </div>
+      )}
+
+      <div style={{flex:1,minHeight:0,overflowY:'auto',WebkitOverflowScrolling:'touch',
+        paddingBottom:10}}>
+        {cur.length===0?(
+          <div style={{border:`1.5px dashed ${T.border}`,borderRadius:19,padding:'34px 20px',
+            color:T.t4,fontSize:15,fontWeight:600,textAlign:'center',marginTop:10}}>
+            Kein Match auf diesem Court in der aktuellen Phase.
+          </div>
+        ):cur.map(m=>(
+          <div key={m.id} style={{position:'relative',overflow:'hidden',background:T.card,
+            border:`2px solid ${T.o}`,borderRadius:21,padding:'16px 18px',marginBottom:14,
+            boxShadow:m.done?`0 0 14px ${T.oGlow}`:'0 4px 14px rgba(0,0,0,.2)'}}>
+            <div aria-hidden="true" style={{position:'absolute',right:-16,top:-16,
+              opacity:.08,pointerEvents:'none'}}>
+              <TennisBallIcon size={80}/>
+            </div>
+            <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
+              <span style={{color:T.o,fontSize:12,fontWeight:800,letterSpacing:1,
+                textTransform:'uppercase'}}>
+                {m.title||(m.phase==='gruppe'?`Runde ${m.round}`
+                  :m.phase==='ko'?'KO-Phase'
+                  :m.phase==='courage-hf'?'Courage-Halbfinale':'DNA-Halbfinale')}
+              </span>
+              {m.bo3&&(
+                <span style={{padding:'2px 8px',borderRadius:999,background:T.card2,
+                  border:`1px solid ${T.border}`,color:T.t2,fontSize:10,fontWeight:800,
+                  letterSpacing:.5}}>BEST OF 3</span>
+              )}
+              <span style={{flex:1}}/>
+              {m.done&&(
+                <span style={{color:T.o,fontSize:12,fontWeight:900,letterSpacing:.5}}>
+                  GESPEICHERT ✓
+                </span>
+              )}
+            </div>
+            <div style={{display:'flex',alignItems:'stretch',gap:'clamp(10px, 3vw, 26px)'}}>
+              {side(m,'s1',m.t1)}
+              <div style={{alignSelf:'center',flexShrink:0}}>
+                <span className="court-vs" style={{width:38,height:38,borderRadius:'50%',
+                  background:T.oSoft,border:`1.5px solid ${T.o}`,color:T.o,
+                  display:'flex',alignItems:'center',justifyContent:'center',
+                  fontSize:12,fontWeight:900}}>VS</span>
+              </div>
+              {side(m,'s2',m.t2)}
+            </div>
+            <button
+              onClick={()=>{if(locked)return;buzz(m.done?8:18);patchMatch(m.id,{done:!m.done});}}
+              disabled={locked}
+              style={{width:'100%',marginTop:16,padding:'15px',borderRadius:15,cursor:locked?'not-allowed':'pointer',
+                background:m.done?T.card2:T.g,border:m.done?`1.5px solid ${T.border}`:'none',
+                color:m.done?T.t2:T.t1,fontSize:16,fontWeight:800}}>
+              {m.done?'Korrigieren (erneut öffnen)':'Match abschließen ✓'}
+            </button>
+          </div>
+        ))}
+
+        {/* Upcoming auf diesem Court (nur Gruppenphase) */}
+        {cup.phase==='gruppe'&&(()=>{
+          const nxt=cup.matches.find(x=>x.phase==='gruppe'
+            &&x.round===cup.activeRound+1&&x.court===court);
+          if(!nxt) return null;
+          return(<>
+            <div style={{color:T.t3,fontSize:11,fontWeight:800,letterSpacing:1.2,
+              textTransform:'uppercase',margin:'4px 2px 7px'}}>
+              Upcoming · Runde {cup.activeRound+1}
+            </div>
+            <div style={{border:`1.5px dashed ${T.border}`,borderRadius:15,
+              padding:'11px 14px',opacity:.9}}>
+              <div style={{color:T.t2,fontSize:14,fontWeight:600,overflow:'hidden',
+                textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{nxt.t1.map(nm).join('  &  ')}</div>
+              <div style={{color:T.t4,fontSize:11,fontWeight:800,margin:'3px 0'}}>vs</div>
+              <div style={{color:T.t2,fontSize:14,fontWeight:600,overflow:'hidden',
+                textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{nxt.t2.map(nm).join('  &  ')}</div>
+            </div>
+          </>);
+        })()}
+      </div>
+
+      {/* Fußleiste: Zurück + Runden-Timer */}
+      <div style={{flexShrink:0,display:'flex',alignItems:'center',gap:12,
+        padding:'10px 0 calc(env(safe-area-inset-bottom,0px) + 14px)'}}>
+        <button
+          onClick={()=>{buzz(8);setExitAsk(true);}}
+          style={{padding:'8px 14px',borderRadius:11,background:T.card,
+            border:`1px solid ${T.border}`,color:T.t3,fontSize:12,fontWeight:700,cursor:'pointer'}}>
+          ‹ Auswahl 🔒
+        </button>
+        <span style={{flex:1}}/>
+        <CupTimer timer={cup.timer}/>
+      </div>
+
+      {/* Kiosk: die Court-Ansicht verlässt man IMMER nur per PIN —
+          Tablets bleiben bei den Spielern in der Ansicht. */}
+      {exitAsk&&(
+        <CupPinPad title="Court verlassen"
+          sub="PIN eingeben, um zur Auswahl zurückzukehren."
+          onOk={()=>{setExitAsk(false);onBack();}} onCancel={()=>setExitAsk(false)}/>
       )}
     </div>
   );
@@ -13705,8 +14472,6 @@ function CupHome({cup,onView,onAskExit}){
 function CupStub({kind,onBack}){
   const meta={
     tickets:['Tickets','Check-in & Einlass — wird als Nächstes gebaut.'],
-    center:['Center Screen','Diashow mit Leaderboard, Paarungen & Phase — wird als Nächstes gebaut.'],
-    court:['Court Screen','Court wählen, Punkte eintragen, Zeit — wird als Nächstes gebaut.'],
   }[kind];
   return(
     <div className="fi" style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',
@@ -13727,6 +14492,7 @@ function CupStub({kind,onBack}){
 function DnaCupScreen({onExit}){
   const[unlocked,setUnlocked]=useState(false);
   const[exitAsk,setExitAsk]=useState(false);
+  const[adminAsk,setAdminAsk]=useState(false); // Admin-Kachel: eigener PIN-Schritt
   const[view,setView]=useState('home');
   const[cup,setCup]=useState(()=>{
     const s=lsGet('ritmo_dnacup_state',null);
@@ -13735,6 +14501,17 @@ function DnaCupScreen({onExit}){
   useEffect(()=>{
     lsSet('ritmo_dnacup_state',cup.createdAt?cup:{...cup,createdAt:new Date().toISOString()});
   },[cup]);
+  // Cross-Tab-Sync: Admin in einem Tab, Center-/Court-Screen in einem
+  // anderen (gleiches Gerät) — storage-Events feuern nur in FREMDEN
+  // Tabs, daher keine Schleife mit den eigenen Writes oben.
+  useEffect(()=>{
+    const onStorage=e=>{
+      if(e.key!=='ritmo_dnacup_state'||!e.newValue) return;
+      try{const s=JSON.parse(e.newValue);if(s&&s.v===1)setCup(s);}catch(err){}
+    };
+    window.addEventListener('storage',onStorage);
+    return()=>window.removeEventListener('storage',onStorage);
+  },[]);
   const lb=useMemo(()=>cupLeaderboard(cup),[cup]);
 
   if(!unlocked){
@@ -13745,14 +14522,23 @@ function DnaCupScreen({onExit}){
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       overflow:'hidden',position:'relative',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 26px)'}}>
-      {view==='home'&&<CupHome cup={cup} onView={setView} onAskExit={()=>setExitAsk(true)}/>}
+      {/* Admin nur per PIN — Spieler an den Tablets kommen nicht rein. */}
+      {view==='home'&&<CupHome cup={cup}
+        onView={id=>id==='admin'?setAdminAsk(true):setView(id)}
+        onAskExit={()=>setExitAsk(true)}/>}
       {view==='admin'&&<CupAdmin cup={cup} setCup={setCup} lb={lb} onBack={()=>setView('home')}/>}
-      {(view==='tickets'||view==='center'||view==='court')&&(
+      {view==='center'&&<CupCenterScreen cup={cup} lb={lb} onBack={()=>setView('home')}/>}
+      {view==='court'&&<CupCourtScreen cup={cup} setCup={setCup} onBack={()=>setView('home')}/>}
+      {view==='tickets'&&(
         <CupStub kind={view} onBack={()=>setView('home')}/>
       )}
       {exitAsk&&(
         <CupPinPad title="Cup verlassen" sub="PIN eingeben, um den DNA Cup zu schließen."
           onOk={()=>{setExitAsk(false);onExit();}} onCancel={()=>setExitAsk(false)}/>
+      )}
+      {adminAsk&&(
+        <CupPinPad title="Admin" sub="PIN eingeben, um den Admin-Bereich zu öffnen."
+          onOk={()=>{setAdminAsk(false);setView('admin');}} onCancel={()=>setAdminAsk(false)}/>
       )}
     </div>
   );

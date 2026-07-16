@@ -17,6 +17,8 @@
               (alle Best of Three, parallel).
 ═══════════════════════════════════════════════════════════════ */
 
+import { computeMatchTier } from './padelStyles.js';
+
 export const CUP_PIN='1862';
 
 export const CUP_PHASES=[
@@ -26,12 +28,17 @@ export const CUP_PHASES=[
   {id:'finals', name:'Finals',       sub:'Grande · Platz 3 · Courage'},
 ];
 
-/* Warnmeldungs-Presets für Center-/Court-Screens (Toast mit Icon).
-   icon ist ein Schlüssel — die Icon-Komponente mappt der Screen. */
+/* Warnmeldungs-Presets für Center-/Court-Screens (Banner-Toast im
+   Warn-Look: Titel + Untertitel + optionaler CTA-Pill). icon ist
+   ein Schlüssel — die Icon-Komponente mappt der Screen. */
+export const CUP_WARN='#FFC93D'; // Warn-Gelb (Event-Branding, wie PCOLS Daten)
 export const CUP_ALERTS=[
-  {id:'points', label:'Punkte eintragen!', icon:'edit'},
-  {id:'warmup', label:'Warm-Up!',          icon:'ball'},
-  {id:'pause',  label:'Pause!',            icon:'pause'},
+  {id:'points', label:'Punkte eintragen!', icon:'warn',
+    sub:'Bitte trage die Ergebnisse deiner Spiele ein.', cta:'Jetzt eintragen'},
+  {id:'warmup', label:'Warm-Up!',          icon:'ball',
+    sub:'Macht euch bereit — gleich geht es los.'},
+  {id:'pause',  label:'Pause!',            icon:'pause',
+    sub:'Kurze Pause — gleich geht es weiter.'},
 ];
 
 /* ── Fester Gruppen-Spielplan (vom Plakat) ────────────────────────
@@ -72,25 +79,46 @@ export function initialCupState(){
     players,
     matches,                 // gruppe sofort, ko/hf/finals via Generator
     alert:null,              // {id,label,icon,ts} — Toast für Screens
-    locks:{1:false,2:false,3:false}, // Court-Screens gesperrt
+    locks:{1:false,2:false,3:false}, // Court-Screens: Punkteeingabe gesperrt
+    // Kiosk-Hinweis: die Court-Ansicht ist IMMER fixiert — der Exit
+    // am Tablet verlangt grundsätzlich den PIN (kein Schalter nötig).
+    // Runden-Timer (Center Screen): sec = eingestellte Dauer;
+    // laufend = startedAt gesetzt (Restzeit wird aus dem Timestamp
+    // berechnet — synct ohne Tick-Traffic); pausiert = left gesetzt.
+    timer:{sec:600,startedAt:null,left:null},
   };
+}
+
+/* Match-Tier eines Cup-Matches aus den Spielstilen der 4 Spieler.
+   null, solange nicht alle vier einen Stil haben. */
+export function cupMatchTier(players,m){
+  const styleOf=n=>players.find(p=>p.num===n)?.style;
+  return computeMatchTier(m.t1.map(styleOf),m.t2.map(styleOf));
 }
 
 /* ── Leaderboard ─────────────────────────────────────────────────
    Punkte: Team-Score jedes abgeschlossenen GRUPPEN-Matches wird
    beiden Partnern gutgeschrieben; adj = manuelle Admin-Korrektur.
+   EXTRA-PUNKTE (Spielstil-Mechanik): das SIEGER-Team eines fertigen
+   Gruppen-Matches bekommt pro Spieler einen Tier-Bonus — Bonus =
+   Sterne des Match-Tiers (S=+5 · A=+4 · B=+3 · C=+2 · X=+1).
+   Ohne vollständige Stile gibt es kein Tier und keinen Bonus;
+   Unentschieden ⇒ kein Sieger ⇒ kein Bonus.
    Sortierung: Gesamt → Siege → Spielernummer (deterministisch).
    rank (1..22) steuert KO-/Courage-Aussteuerung. */
 export function cupLeaderboard(state){
   const rows={};
   state.players.forEach(p=>{rows[p.num]={num:p.num,name:p.name,style:p.style,
-    pts:0,wins:0,played:0,adj:p.adj||0};});
+    pts:0,wins:0,played:0,tierBonus:0,adj:p.adj||0};});
   state.matches.filter(m=>m.phase==='gruppe'&&m.done).forEach(m=>{
     const s1=m.s1??0,s2=m.s2??0;
     m.t1.forEach(n=>{if(!rows[n])return;rows[n].pts+=s1;rows[n].played++;if(s1>s2)rows[n].wins++;});
     m.t2.forEach(n=>{if(!rows[n])return;rows[n].pts+=s2;rows[n].played++;if(s2>s1)rows[n].wins++;});
+    const tier=cupMatchTier(state.players,m);
+    const winners=s1>s2?m.t1:s2>s1?m.t2:null;
+    if(tier&&winners) winners.forEach(n=>{if(rows[n])rows[n].tierBonus+=tier.stars;});
   });
-  const list=Object.values(rows).map(r=>({...r,total:r.pts+r.adj}));
+  const list=Object.values(rows).map(r=>({...r,total:r.pts+r.tierBonus+r.adj}));
   list.sort((a,b)=>b.total-a.total||b.wins-a.wins||a.num-b.num);
   list.forEach((r,i)=>{r.rank=i+1;});
   return list;
@@ -159,13 +187,14 @@ export function genCupFinals(state){
   ];
 }
 
-/* Anzeige-Helfer: "P7 · Max" bzw. "P7" ohne Namen. */
+/* Anzeige-Helfer: "P7 - Max" (P-Nummer per Bindestrich vom Namen
+   getrennt) bzw. "P7" ohne Namen. short = nur Vorname. */
 export function cupPlayerLabel(state,num,short=false){
   const p=state.players.find(x=>x.num===num);
   if(!p) return `P${num}`;
   const nm=(p.name||'').trim();
   if(!nm) return `P${num}`;
-  return short?`P${num} ${nm.split(/\s+/)[0]}`:`P${num} · ${nm}`;
+  return short?`P${num} - ${nm.split(/\s+/)[0]}`:`P${num} - ${nm}`;
 }
 
 /* Duplikat-Check der Spielernummern (Admin-Warnung). */

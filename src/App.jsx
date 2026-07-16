@@ -13679,13 +13679,28 @@ function CupCenterScreen({cup,lb,onBack}){
     :cup.phase==='hf'?cup.matches.filter(m=>m.phase==='hf'||m.phase==='courage-hf')
     :cup.matches.filter(m=>m.phase==='finals');
 
+  // Team-Zeile: beide Spieler als eigene Spalten mit vertikalem
+  // Trennstrich dazwischen — stabile Mittelachse wie auf einer
+  // Anzeigetafel, jeder Name kürzt unabhängig mit Ellipsis.
   const teamRow=(team,score,win,done)=>(
     <div style={{display:'flex',alignItems:'center',gap:10,padding:'7px 0',minWidth:0}}>
-      <span style={{flex:1,minWidth:0,color:done&&!win?T.t3:T.t1,
-        fontSize:'clamp(15px, 1.8vw, 26px)',fontWeight:win?900:600,letterSpacing:-.2,
-        overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-        {team.map(nm).join('  &  ')}
-      </span>
+      <div style={{flex:1,minWidth:0,display:'flex',alignItems:'stretch',
+        gap:'clamp(8px, .9vw, 14px)'}}>
+        {team.map((n,i)=>(
+          <Fragment key={i}>
+            {i>0&&(
+              <span aria-hidden="true" style={{width:2,alignSelf:'stretch',margin:'2px 0',
+                borderRadius:1,background:T.o,opacity:.55,flexShrink:0}}/>
+            )}
+            <span style={{flex:'1 1 50%',minWidth:0,alignSelf:'center',
+              color:done&&!win?T.t3:T.t1,
+              fontSize:'clamp(15px, 1.8vw, 26px)',fontWeight:win?900:600,letterSpacing:-.2,
+              overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+              {nm(n)}
+            </span>
+          </Fragment>
+        ))}
+      </div>
       <span style={{color:win?T.o:T.t2,fontSize:'clamp(18px, 2.2vw, 32px)',fontWeight:900,
         fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',flexShrink:0}}>
         {score??'–'}

@@ -17,6 +17,8 @@
               (alle Best of Three, parallel).
 ═══════════════════════════════════════════════════════════════ */
 
+import { computeMatchTier } from './padelStyles.js';
+
 export const CUP_PIN='1862';
 
 export const CUP_PHASES=[
@@ -76,21 +78,36 @@ export function initialCupState(){
   };
 }
 
+/* Match-Tier eines Cup-Matches aus den Spielstilen der 4 Spieler.
+   null, solange nicht alle vier einen Stil haben. */
+export function cupMatchTier(players,m){
+  const styleOf=n=>players.find(p=>p.num===n)?.style;
+  return computeMatchTier(m.t1.map(styleOf),m.t2.map(styleOf));
+}
+
 /* ── Leaderboard ─────────────────────────────────────────────────
    Punkte: Team-Score jedes abgeschlossenen GRUPPEN-Matches wird
    beiden Partnern gutgeschrieben; adj = manuelle Admin-Korrektur.
+   EXTRA-PUNKTE (Spielstil-Mechanik): das SIEGER-Team eines fertigen
+   Gruppen-Matches bekommt pro Spieler einen Tier-Bonus — Bonus =
+   Sterne des Match-Tiers (S=+5 · A=+4 · B=+3 · C=+2 · X=+1).
+   Ohne vollständige Stile gibt es kein Tier und keinen Bonus;
+   Unentschieden ⇒ kein Sieger ⇒ kein Bonus.
    Sortierung: Gesamt → Siege → Spielernummer (deterministisch).
    rank (1..22) steuert KO-/Courage-Aussteuerung. */
 export function cupLeaderboard(state){
   const rows={};
   state.players.forEach(p=>{rows[p.num]={num:p.num,name:p.name,style:p.style,
-    pts:0,wins:0,played:0,adj:p.adj||0};});
+    pts:0,wins:0,played:0,tierBonus:0,adj:p.adj||0};});
   state.matches.filter(m=>m.phase==='gruppe'&&m.done).forEach(m=>{
     const s1=m.s1??0,s2=m.s2??0;
     m.t1.forEach(n=>{if(!rows[n])return;rows[n].pts+=s1;rows[n].played++;if(s1>s2)rows[n].wins++;});
     m.t2.forEach(n=>{if(!rows[n])return;rows[n].pts+=s2;rows[n].played++;if(s2>s1)rows[n].wins++;});
+    const tier=cupMatchTier(state.players,m);
+    const winners=s1>s2?m.t1:s2>s1?m.t2:null;
+    if(tier&&winners) winners.forEach(n=>{if(rows[n])rows[n].tierBonus+=tier.stars;});
   });
-  const list=Object.values(rows).map(r=>({...r,total:r.pts+r.adj}));
+  const list=Object.values(rows).map(r=>({...r,total:r.pts+r.tierBonus+r.adj}));
   list.sort((a,b)=>b.total-a.total||b.wins-a.wins||a.num-b.num);
   list.forEach((r,i)=>{r.rank=i+1;});
   return list;

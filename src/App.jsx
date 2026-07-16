@@ -43,7 +43,7 @@ import {
   MenuIcon,
 } from "./icons.jsx";
 import { PADEL_STYLES, PADEL_QUIZ, computeStyle, computeStyles, computeMatchTier, STYLE_IMAGES } from "./padelStyles.js";
-import { CUP_PIN, CUP_PHASES, CUP_ALERTS, initialCupState, cupLeaderboard,
+import { CUP_PIN, CUP_PHASES, CUP_ALERTS, initialCupState, cupLeaderboard, cupMatchTier,
   genCupKO, genCupCourageHF, genCupHF, genCupFinals, cupPlayerLabel, cupDuplicateNums } from "./dnaCup.js";
 import GlassSurface from "./GlassSurface.jsx";
 
@@ -13601,7 +13601,10 @@ function CupAdmin({cup,setCup,lb,onBack}){
                 <span style={{flex:1,minWidth:0,color:T.t1,fontSize:14,fontWeight:600,
                   overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
                   {(row.name||'').trim()||'—'}
-                  <span style={{color:T.t3,fontSize:10.5,fontWeight:500}}> · {row.played} Sp · {row.wins}S</span>
+                  <span style={{color:T.t3,fontSize:10.5,fontWeight:500}}>
+                    {' '}· {row.played} Sp · {row.wins}S
+                    {row.tierBonus>0&&<span style={{color:T.o,fontWeight:800}}> · +{row.tierBonus}★</span>}
+                  </span>
                 </span>
                 <button onClick={()=>{buzz(6);setPlayerAt(cup.players.findIndex(p=>p.num===row.num),{adj:(row.adj||0)-1});}}
                   aria-label="Punkt abziehen"
@@ -13691,16 +13694,67 @@ function CupCenterScreen({cup,lb,onBack}){
   );
   const matchBlock=m=>{
     const w1=m.done&&(m.s1??0)>=(m.s2??0), w2=m.done&&(m.s2??0)>(m.s1??0);
+    const styleOf=n=>cup.players.find(p=>p.num===n)?.style;
+    const tier=cupMatchTier(cup.players,m);
     return(
-      <div key={m.id} style={{background:T.card,border:`1.5px solid ${m.done?T.o:T.border}`,
-        borderRadius:17,padding:'12px 16px',marginBottom:10}}>
-        {m.title&&(
-          <div style={{color:T.o,fontSize:'clamp(11px, 1.1vw, 15px)',fontWeight:800,
-            letterSpacing:1,textTransform:'uppercase',marginBottom:4}}>{m.title}</div>
+      <div key={m.id} style={{marginBottom:14,minWidth:0}}>
+        {/* Match-Box: orangene Outline + dezente Ball-Grafik als Deko */}
+        <div style={{position:'relative',overflow:'hidden',background:T.card,
+          border:`2px solid ${T.o}`,borderRadius:17,padding:'12px 16px',
+          boxShadow:m.done?`0 0 14px ${T.oGlow}, 0 6px 18px rgba(0,0,0,.3)`:'0 4px 14px rgba(0,0,0,.2)'}}>
+          <div aria-hidden="true" style={{position:'absolute',right:-16,top:-16,
+            opacity:.09,pointerEvents:'none'}}>
+            <TennisBallIcon size={78}/>
+          </div>
+          {m.title&&(
+            <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:4}}>
+              <TrophyIcon size={15}/>
+              <span style={{color:T.o,fontSize:'clamp(11px, 1.1vw, 15px)',fontWeight:800,
+                letterSpacing:1,textTransform:'uppercase'}}>{m.title}</span>
+            </div>
+          )}
+          {teamRow(m.t1,m.s1,w1,m.done)}
+          {/* VS-Trenner mit pulsierendem Badge statt nackter Linie */}
+          <div style={{display:'flex',alignItems:'center',gap:10,margin:'2px 0'}}>
+            <div style={{flex:1,height:1,background:T.sep}}/>
+            <span className="court-vs" style={{width:'clamp(22px, 2.2vw, 32px)',
+              height:'clamp(22px, 2.2vw, 32px)',borderRadius:'50%',flexShrink:0,
+              background:T.oSoft,border:`1.5px solid ${T.o}`,color:T.o,
+              display:'flex',alignItems:'center',justifyContent:'center',
+              fontSize:'clamp(9px, .9vw, 12px)',fontWeight:900}}>VS</span>
+            <div style={{flex:1,height:1,background:T.sep}}/>
+          </div>
+          {teamRow(m.t2,m.s2,w2,m.done)}
+        </div>
+        {/* Tier-Toast: Spielstile der 4 + Extra-Punkte bei Sieg —
+            gut sichtbar in der Tier-Farbe unter der Box. */}
+        {tier?(
+          <div className="si" style={{display:'flex',alignItems:'center',gap:10,marginTop:8,
+            background:tier.color,borderRadius:13,padding:'9px 14px',minWidth:0,
+            boxShadow:'0 6px 16px rgba(0,0,0,.3)'}}>
+            <span style={{display:'inline-flex',gap:5,alignItems:'center',flexShrink:0}}>
+              {[...m.t1,...m.t2].map((n,i)=>(
+                <span key={i} style={{display:'inline-flex'}}>
+                  <ArchetypeGlyph type={styleOf(n)} active color="#FFFFFF"
+                    size={Math.round(15)}/>
+                </span>
+              ))}
+            </span>
+            <span style={{color:'#FFF',fontSize:'clamp(11px, 1.2vw, 17px)',fontWeight:900,
+              letterSpacing:.4,flexShrink:0}}>{tier.label}</span>
+            <span style={{flex:1,minWidth:0,textAlign:'right',color:'#FFF',
+              fontSize:'clamp(11px, 1.25vw, 17px)',fontWeight:800,overflow:'hidden',
+              textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+              Sieg = +{tier.stars} Extra-Punkte
+            </span>
+          </div>
+        ):(
+          <div style={{marginTop:8,padding:'7px 12px',borderRadius:11,
+            border:`1.5px dashed ${T.border}`,color:T.t4,textAlign:'center',
+            fontSize:'clamp(10px, 1vw, 14px)',fontWeight:600}}>
+            Spielstile im Admin setzen → Tier & Extra-Punkte
+          </div>
         )}
-        {teamRow(m.t1,m.s1,w1,m.done)}
-        <div style={{height:1,background:T.sep}}/>
-        {teamRow(m.t2,m.s2,w2,m.done)}
       </div>
     );
   };
@@ -13789,6 +13843,7 @@ function CupCenterScreen({cup,lb,onBack}){
               return(
                 <div key={c} style={{minWidth:0}}>
                   <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}>
+                    <TennisBallIcon size={18}/>
                     <span style={{color:T.o,fontSize:'clamp(15px, 1.8vw, 26px)',fontWeight:900,
                       letterSpacing:.5}}>COURT {c}</span>
                     {cup.locks[c]&&<LockIcon size={16} color={T.t3}/>}

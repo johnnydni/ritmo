@@ -13126,6 +13126,49 @@ function CupAlertToast({alert,big=false}){
   );
 }
 
+/* Runden-Timer im Sport-Anzeigetafel-Look: grüne Mono-Ziffern mit
+   Glow, pulsierender Live-Dot, PAUSE-Zustand gedimmt. Restzeit wird
+   aus startedAt berechnet (kein Tick-Sync nötig); der 500ms-Repaint
+   läuft nur lokal. Rendert nichts, solange der Timer inaktiv ist. */
+function CupTimer({timer,big=false}){
+  const[,force]=useState(0);
+  useEffect(()=>{
+    if(!timer?.startedAt) return;
+    const id=setInterval(()=>force(x=>x+1),500);
+    return()=>clearInterval(id);
+  },[timer?.startedAt]);
+  if(!timer||(!timer.startedAt&&timer.left==null)) return null;
+  const left=timer.startedAt
+    ?Math.max(0,timer.sec-Math.floor((Date.now()-timer.startedAt)/1000))
+    :Math.max(0,timer.left||0);
+  const mm=String(Math.floor(left/60)).padStart(2,'0');
+  const ss=String(left%60).padStart(2,'0');
+  const paused=!timer.startedAt;
+  return(
+    <div className="si" style={{display:'inline-flex',alignItems:'center',
+      gap:big?14:10,background:T.card,opacity:paused?.75:1,
+      border:`2px solid ${T.g}`,borderRadius:big?19:13,
+      padding:big?'12px 22px':'8px 14px',
+      boxShadow:`0 0 ${big?22:12}px color-mix(in srgb, ${T.g} 45%, transparent), 0 8px 24px rgba(0,0,0,.35)`}}>
+      <span className={paused?'':'court-live-dot'} style={{width:big?11:8,height:big?11:8,
+        borderRadius:'50%',background:T.g,flexShrink:0}}/>
+      <span style={{display:'flex',flexDirection:'column',lineHeight:1}}>
+        <span style={{color:T.t3,fontSize:big?'clamp(9px, 1vw, 13px)':9,fontWeight:800,
+          letterSpacing:1.6,textTransform:'uppercase',marginBottom:3}}>
+          {paused?'Pause':'Rundenzeit'}
+        </span>
+        <span style={{color:T.g,fontWeight:900,letterSpacing:1,
+          fontSize:big?'clamp(24px, 3.2vw, 46px)':22,
+          fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',
+          textShadow:`0 0 14px color-mix(in srgb, ${T.g} 65%, transparent)`,
+          fontVariantNumeric:'tabular-nums'}}>
+          {mm}:{ss}
+        </span>
+      </span>
+    </div>
+  );
+}
+
 /* PIN-Pad — Zugang UND Ausgang. Kiosk-tauglich (eigenes Tastenfeld,
    keine OS-Tastatur). 4 Punkte, Shake + Reset bei falschem PIN. */
 function CupPinPad({title,sub,onOk,onCancel}){
@@ -13301,6 +13344,19 @@ function CupAdmin({cup,setCup,lb,onBack}){
     const players=[...c.players];players[idx]={...players[idx],...partial};return {...c,players};});
   const sendAlert=a=>{buzz(10);setCup(c=>({...c,alert:{...a,ts:Date.now()}}));};
   const clearAlert=()=>setCup(c=>({...c,alert:null}));
+  // Runden-Timer (Center Screen) — laufend über startedAt-Timestamp,
+  // pausiert über left; Resume rechnet startedAt zurück, damit die
+  // Restzeit-Formel sec-(now-startedAt) überall gleich bleibt.
+  const tm=cup.timer||{sec:600,startedAt:null,left:null};
+  const setTimer=p=>setCup(c=>({...c,timer:{...(c.timer||{sec:600,startedAt:null,left:null}),...p}}));
+  const timerLeftNow=()=>tm.startedAt
+    ?Math.max(0,tm.sec-Math.floor((Date.now()-tm.startedAt)/1000))
+    :(tm.left??tm.sec);
+  const timerStart=()=>{buzz(12);setTimer({startedAt:Date.now(),left:null});};
+  const timerPause=()=>{buzz(8);setTimer({startedAt:null,left:timerLeftNow()});};
+  const timerResume=()=>{buzz(8);setTimer({startedAt:Date.now()-(tm.sec-(tm.left??tm.sec))*1000,left:null});};
+  const timerReset=()=>{buzz(8);setTimer({startedAt:null,left:null});};
+  const timerAdjust=d=>setTimer({sec:Math.min(3600,Math.max(60,tm.sec+d)),startedAt:null,left:null});
   const toggleLock=court=>{buzz(8);setCup(c=>({...c,locks:{...c.locks,[court]:!c.locks[court]}}));};
   const setAllLocks=v=>{buzz(8);setCup(c=>({...c,locks:{1:v,2:v,3:v}}));};
 
@@ -13437,6 +13493,61 @@ function CupAdmin({cup,setCup,lb,onBack}){
                     border:`1px solid ${T.border}`,color:T.t3,fontSize:12.5,fontWeight:700,cursor:'pointer'}}>
                   Meldung entfernen
                 </button>
+              </div>
+            )}
+          </div>
+
+          <div style={card}>
+            <div style={h}>Runden-Timer (Center Screen)</div>
+            <div style={{color:T.t3,fontSize:12,lineHeight:1.55,marginBottom:12}}>
+              Grüner Sport-Timer neben der Warnmeldung auf dem Center Screen.
+              Dauer einstellen, dann starten — pausieren und zurücksetzen jederzeit.
+            </div>
+            <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:12}}>
+              <button onClick={()=>timerAdjust(-60)} disabled={!!tm.startedAt}
+                aria-label="Eine Minute weniger"
+                style={{...chip(false),width:44,textAlign:'center',padding:'10px 0',
+                  opacity:tm.startedAt?.45:1}}>−</button>
+              <div style={{flex:1,textAlign:'center'}}>
+                <div style={{color:T.g,fontSize:26,fontWeight:900,letterSpacing:1,
+                  fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',
+                  fontVariantNumeric:'tabular-nums'}}>
+                  {String(Math.floor(tm.sec/60)).padStart(2,'0')}:{String(tm.sec%60).padStart(2,'0')}
+                </div>
+                <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.2,
+                  textTransform:'uppercase',marginTop:2}}>Dauer</div>
+              </div>
+              <button onClick={()=>timerAdjust(60)} disabled={!!tm.startedAt}
+                aria-label="Eine Minute mehr"
+                style={{...chip(false),width:44,textAlign:'center',padding:'10px 0',
+                  opacity:tm.startedAt?.45:1}}>+</button>
+            </div>
+            <div style={{display:'flex',gap:8}}>
+              {tm.startedAt?(
+                <button onClick={timerPause} style={{...chip(true,T.g),flex:1,textAlign:'center',
+                  background:`color-mix(in srgb, ${T.g} 14%, transparent)`,
+                  border:`1.5px solid ${T.g}`,color:T.g}}>Pause</button>
+              ):tm.left!=null?(
+                <button onClick={timerResume} style={{...chip(true,T.g),flex:1,textAlign:'center',
+                  background:`color-mix(in srgb, ${T.g} 14%, transparent)`,
+                  border:`1.5px solid ${T.g}`,color:T.g}}>Weiter</button>
+              ):(
+                <button onClick={timerStart} style={{...chip(true,T.g),flex:1,textAlign:'center',
+                  background:`color-mix(in srgb, ${T.g} 14%, transparent)`,
+                  border:`1.5px solid ${T.g}`,color:T.g}}>Start</button>
+              )}
+              {(tm.startedAt||tm.left!=null)&&(<>
+                <button onClick={timerStart} style={{...chip(false),flex:1,textAlign:'center'}}>
+                  Neu starten
+                </button>
+                <button onClick={timerReset} style={{...chip(false),flex:1,textAlign:'center'}}>
+                  Stopp
+                </button>
+              </>)}
+            </div>
+            {(tm.startedAt||tm.left!=null)&&(
+              <div style={{marginTop:12,display:'flex',justifyContent:'center'}}>
+                <CupTimer timer={tm}/>
               </div>
             )}
           </div>
@@ -13852,12 +13963,14 @@ function CupCenterScreen({cup,lb,onBack}){
         </div>
       </div>
 
-      {/* Warnmeldung — eigene Zeile im Layout-Fluss (kein Overlay):
-          die Slides rücken zusammen, nichts wird verdeckt. */}
-      {cup.alert&&(
+      {/* Warnmeldung + Runden-Timer — eigene Zeile im Layout-Fluss
+          (kein Overlay): die Slides rücken zusammen, nichts wird
+          verdeckt. Timer erscheint neben dem Toast. */}
+      {(cup.alert||cup.timer?.startedAt||cup.timer?.left!=null)&&(
         <div style={{flexShrink:0,display:'flex',justifyContent:'center',
-          marginBottom:12,minWidth:0}}>
-          <CupAlertToast alert={cup.alert} big/>
+          alignItems:'stretch',gap:14,flexWrap:'wrap',marginBottom:12,minWidth:0}}>
+          {cup.alert&&<CupAlertToast alert={cup.alert} big/>}
+          <CupTimer timer={cup.timer} big/>
         </div>
       )}
 

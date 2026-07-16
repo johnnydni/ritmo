@@ -13768,10 +13768,11 @@ function CupCenterScreen({cup,lb,onBack}){
         </div>
       </div>
 
-      {/* Warnmeldung — liegt über jedem Slide */}
+      {/* Warnmeldung — eigene Zeile im Layout-Fluss (kein Overlay):
+          die Slides rücken zusammen, nichts wird verdeckt. */}
       {cup.alert&&(
-        <div style={{position:'absolute',top:'clamp(52px, 7vw, 96px)',left:'50%',
-          transform:'translateX(-50%)',zIndex:6,maxWidth:'86%'}}>
+        <div style={{flexShrink:0,display:'flex',justifyContent:'center',
+          marginBottom:12,minWidth:0}}>
           <CupAlertToast alert={cup.alert} big/>
         </div>
       )}

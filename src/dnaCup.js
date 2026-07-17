@@ -60,10 +60,12 @@ export const CUP_SPIELPLAN=[
    die KO-Phase aussteuert. style = RITMO-Spielstil (Extra-Punkte).
    inAt = Check-in-Zeitstempel (Tickets-Screen am Einlass); ältere
    gespeicherte States haben das Feld nicht — undefined gilt als
-   nicht eingecheckt. */
+   nicht eingecheckt. photo = kleines JPEG-DataURL (Admin macht das
+   Foto, Center-/Court-Screens zeigen es an den Matches; klein
+   halten — der State läuft durch localStorage UND den Cloud-Sync). */
 export function initialCupState(){
   const players=Array.from({length:22},(_,i)=>({
-    num:i+1, name:'', style:null, adj:0, inAt:null,
+    num:i+1, name:'', style:null, adj:0, inAt:null, photo:null,
   }));
   const matches=[];
   CUP_SPIELPLAN.forEach((runde,r)=>{

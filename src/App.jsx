@@ -13865,6 +13865,10 @@ function CupCenterScreen({cup,lb,onBack}){
           </Fragment>
         ))}
       </div>
+      {/* Trennbalken Namen ↔ Punkte — gleiche Optik wie der
+          Spieler-Trenner, damit die Punktespalte klar absetzt. */}
+      <span aria-hidden="true" style={{width:2,alignSelf:'stretch',margin:'2px 0',
+        borderRadius:1,background:T.o,opacity:.55,flexShrink:0}}/>
       <span style={{color:win?T.o:T.t2,fontSize:'clamp(18px, 2.2vw, 32px)',fontWeight:900,
         fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',flexShrink:0}}>
         {score??'–'}
@@ -14214,6 +14218,10 @@ function CupCourtScreen({cup,setCup,onBack}){
   });
   useEffect(()=>{lsSet('ritmo_dnacup_court',court);},[court]);
   const[exitAsk,setExitAsk]=useState(false); // Kiosk: Exit nur per PIN
+  const[courtAsk,setCourtAsk]=useState(false);  // Court-Wechsel: erst PIN …
+  const[courtPick,setCourtPick]=useState(false);// … dann Court-Auswahl
+  const[lbShow,setLbShow]=useState(false);      // Leaderboard-Overlay (nur ansehen)
+  const lbRows=useMemo(()=>cupLeaderboard(cup),[cup]);
   const locked=!!cup.locks[court];
   const phase=CUP_PHASES.find(p=>p.id===cup.phase);
   const nm=n=>cupPlayerLabel(cup,n,true);
@@ -14287,8 +14295,10 @@ function CupCourtScreen({cup,setCup,onBack}){
             </span>
           </div>
         </div>
-        <button onClick={()=>{buzz(8);setCourt(c=>c%3+1);}}
-          aria-label="Court wechseln" title="Court wechseln (1 → 2 → 3)"
+        {/* Kiosk: Court-Wechsel nur per PIN — Spieler sollen das
+            Tablet nicht versehentlich auf einen anderen Court stellen. */}
+        <button onClick={()=>{buzz(8);setCourtAsk(true);}}
+          aria-label="Court wechseln (PIN nötig)" title="Court wechseln (PIN nötig)"
           style={{width:60,height:60,borderRadius:'50%',flexShrink:0,cursor:'pointer',
             background:T.oSoft,border:`2.5px solid ${T.o}`,color:T.o,
             display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',
@@ -14378,17 +14388,21 @@ function CupCourtScreen({cup,setCup,onBack}){
             &&x.round===cup.activeRound+1&&x.court===court);
           if(!nxt) return null;
           return(<>
-            <div style={{color:T.t3,fontSize:11,fontWeight:800,letterSpacing:1.2,
-              textTransform:'uppercase',margin:'4px 2px 7px'}}>
+            <div style={{color:T.t2,fontSize:14,fontWeight:800,letterSpacing:1.2,
+              textTransform:'uppercase',margin:'8px 2px 8px'}}>
               Upcoming · Runde {cup.activeRound+1}
             </div>
-            <div style={{border:`1.5px dashed ${T.border}`,borderRadius:15,
-              padding:'11px 14px',opacity:.9}}>
-              <div style={{color:T.t2,fontSize:14,fontWeight:600,overflow:'hidden',
-                textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{nxt.t1.map(nm).join('  &  ')}</div>
-              <div style={{color:T.t4,fontSize:11,fontWeight:800,margin:'3px 0'}}>vs</div>
-              <div style={{color:T.t2,fontSize:14,fontWeight:600,overflow:'hidden',
-                textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{nxt.t2.map(nm).join('  &  ')}</div>
+            <div style={{border:`1.5px dashed ${T.border}`,borderRadius:17,
+              padding:'16px 18px'}}>
+              <div style={{color:T.t1,fontSize:'clamp(17px, 3.2vw, 26px)',fontWeight:700,
+                overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                {nxt.t1.map(nm).join('  &  ')}
+              </div>
+              <div style={{color:T.o,fontSize:13,fontWeight:900,margin:'5px 0'}}>vs</div>
+              <div style={{color:T.t1,fontSize:'clamp(17px, 3.2vw, 26px)',fontWeight:700,
+                overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                {nxt.t2.map(nm).join('  &  ')}
+              </div>
             </div>
           </>);
         })()}
@@ -14403,6 +14417,12 @@ function CupCourtScreen({cup,setCup,onBack}){
             border:`1px solid ${T.border}`,color:T.t3,fontSize:12,fontWeight:700,cursor:'pointer'}}>
           ‹ Auswahl 🔒
         </button>
+        <button
+          onClick={()=>{buzz(8);setLbShow(true);}}
+          style={{padding:'8px 14px',borderRadius:11,background:T.card,
+            border:`1px solid ${T.border}`,color:T.t2,fontSize:12,fontWeight:700,cursor:'pointer'}}>
+          Leaderboard
+        </button>
         <span style={{flex:1}}/>
         <CupTimer timer={cup.timer}/>
       </div>
@@ -14413,6 +14433,92 @@ function CupCourtScreen({cup,setCup,onBack}){
         <CupPinPad title="Court verlassen"
           sub="PIN eingeben, um zur Auswahl zurückzukehren."
           onOk={()=>{setExitAsk(false);onBack();}} onCancel={()=>setExitAsk(false)}/>
+      )}
+      {/* Court-Wechsel: erst PIN, dann Auswahl 1/2/3. */}
+      {courtAsk&&(
+        <CupPinPad title="Court wechseln"
+          sub="PIN eingeben, um diesem Tablet einen anderen Court zuzuweisen."
+          onOk={()=>{setCourtAsk(false);setCourtPick(true);}} onCancel={()=>setCourtAsk(false)}/>
+      )}
+      {courtPick&&(
+        <div onClick={()=>setCourtPick(false)} className="fi"
+          style={{position:'fixed',inset:0,zIndex:350,background:'rgba(0,0,0,.7)',
+            backdropFilter:'blur(4px)',display:'flex',alignItems:'center',
+            justifyContent:'center',padding:24}}>
+          <div onClick={e=>e.stopPropagation()} style={{width:'100%',maxWidth:380,
+            background:T.card,border:`1px solid ${T.border}`,borderRadius:23,padding:'20px 20px'}}>
+            <div style={{color:T.t1,fontSize:18,fontWeight:900,letterSpacing:-.3,
+              marginBottom:14}}>Court wählen</div>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(3, 1fr)',gap:10}}>
+              {[1,2,3].map(c=>(
+                <button key={c} onClick={()=>{buzz(10);setCourt(c);setCourtPick(false);}}
+                  style={{aspectRatio:'1/1',borderRadius:19,cursor:'pointer',
+                    background:c===court?T.oSoft:T.card2,
+                    border:`2px solid ${c===court?T.o:T.border}`,
+                    color:c===court?T.o:T.t1,display:'flex',flexDirection:'column',
+                    alignItems:'center',justifyContent:'center',lineHeight:1}}>
+                  <span style={{fontSize:30,fontWeight:900}}>{c}</span>
+                  <span style={{fontSize:9,fontWeight:800,letterSpacing:1,marginTop:4}}>COURT</span>
+                </button>
+              ))}
+            </div>
+            <button onClick={()=>setCourtPick(false)}
+              style={{width:'100%',marginTop:12,padding:'11px 16px',borderRadius:13,
+                background:'none',border:`1px solid ${T.border}`,color:T.t3,
+                fontSize:13,fontWeight:700,cursor:'pointer'}}>
+              Abbrechen
+            </button>
+          </div>
+        </div>
+      )}
+      {/* Leaderboard — reines Anzeige-Overlay (kein PIN nötig). */}
+      {lbShow&&(
+        <div className="fi" style={{position:'fixed',inset:0,zIndex:345,background:T.bg,
+          display:'flex',flexDirection:'column',
+          padding:'calc(env(safe-area-inset-top,0px) + 22px) 22px calc(env(safe-area-inset-bottom,0px) + 18px)'}}>
+          <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:14,flexShrink:0}}>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:1.6,
+                textTransform:'uppercase'}}>RITMO DNA CUP</div>
+              <div style={{color:T.t1,fontSize:24,fontWeight:900,letterSpacing:-.4}}>Leaderboard</div>
+            </div>
+            <button onClick={()=>{buzz(6);setLbShow(false);}} aria-label="Leaderboard schließen"
+              style={{padding:'11px 20px',borderRadius:13,background:T.o,border:'none',
+                color:'#000',fontSize:14,fontWeight:800,cursor:'pointer',flexShrink:0}}>
+              Schließen
+            </button>
+          </div>
+          <div style={{flex:1,minHeight:0,overflowY:'auto',WebkitOverflowScrolling:'touch',
+            paddingBottom:8}}>
+            {lbRows.map(row=>{
+              const zone=row.rank<=2?'top':row.rank<=14?'mid':'courage';
+              const zc=zone==='top'?T.gold:zone==='courage'?T.blue:null;
+              return(
+                <div key={row.num} style={{display:'flex',alignItems:'center',gap:10,
+                  padding:'9px 14px',borderRadius:12,marginBottom:6,minWidth:0,
+                  background:zone==='top'?`color-mix(in srgb, ${T.gold} 12%, transparent)`
+                    :zone==='courage'?T.blueSoft:T.card,
+                  border:`1px solid ${zc||T.border}`}}>
+                  <span style={{width:40,textAlign:'right',flexShrink:0,
+                    color:zc||T.t2,fontSize:17,fontWeight:900}}>#{row.rank}</span>
+                  <span aria-hidden="true" style={{width:2,alignSelf:'stretch',margin:'3px 0',
+                    borderRadius:1,background:T.o,opacity:.5,flexShrink:0}}/>
+                  <span style={{color:T.o,fontSize:14,fontWeight:900,flexShrink:0,width:34}}>
+                    P{row.num}
+                  </span>
+                  <span style={{flex:1,minWidth:0,color:T.t1,fontSize:16,fontWeight:600,
+                    overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                    {(row.name||'').trim()||'—'}
+                  </span>
+                  <span style={{color:T.t1,fontSize:18,fontWeight:900,flexShrink:0,
+                    fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace'}}>
+                    {row.total}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       )}
     </div>
   );

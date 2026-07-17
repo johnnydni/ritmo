@@ -369,6 +369,70 @@ export function subscribeToTournament(pin, onChange) {
   }
 }
 
+/* ───── DNA CUP — Cloud-Sync (gleiche ritmo_sessions-Tabelle) ─────
+   Eine Cup-Session ist eine ritmo_sessions-Row mit data.kind='dnacup'
+   und dem kompletten Cup-State in data.cup. Schreibmuster ist IMMER
+   fetch-fresh → Mutatoren anwenden → zurückschreiben: die Geräte
+   (Admin/Tickets/Courts) schreiben disjunkte Felder, dürfen aber nie
+   ihren womöglich veralteten lokalen State blind überschreiben —
+   sonst verliert z. B. ein frischer Court-Score gegen einen
+   gleichzeitigen Check-in (Lost Update). */
+
+/** Erstellt eine Cup-Sync-Session mit dem aktuellen State. @returns Code (PIN). */
+export async function createCupSync(cupState) {
+  const c = sb();
+  if (!c) throw new Error('Cloud-Sync nicht verfügbar — keine Verbindung.');
+  for (let i = 0; i < 5; i++) {
+    const pin = genPin();
+    const { error } = await c.from('ritmo_sessions').insert({
+      pin,
+      data: { kind: 'dnacup', cup: cupState, createdAt: new Date().toISOString() },
+    });
+    if (!error) return pin;
+    if (error.code !== '23505') {
+      console.warn('[db] createCupSync:', error.message);
+      throw new Error('Cloud-Sync konnte nicht erstellt werden.');
+    }
+  }
+  throw new Error('Kein freier Code gefunden — bitte erneut versuchen.');
+}
+
+/** Liest den Cup-State zum Code. Null wenn kein Cup-Sync unter dem Code liegt. */
+export async function fetchCupSync(pin) {
+  const d = await fetchOnlineTournament(pin);
+  return (d && d.kind === 'dnacup' && d.cup) ? d.cup : null;
+}
+
+/**
+ * Merge-Write: holt den FRISCHEN Remote-State, wendet die Mutatoren
+ * (fn(cup)=>cup, in Reihenfolge) darauf an und schreibt zurück.
+ * @returns der neue Remote-State. Wirft bei Netz-/Session-Fehlern.
+ */
+export async function pushCupSync(pin, mutators) {
+  const c = sb();
+  if (!c || !pin) throw new Error('SYNC_OFFLINE');
+  const p = pin.toLowerCase();
+  const { data, error } = await c
+    .from('ritmo_sessions').select('data').eq('pin', p).maybeSingle();
+  if (error) throw error;
+  if (!data || data.data?.kind !== 'dnacup') throw new Error('SYNC_GONE');
+  let cup = data.data.cup;
+  mutators.forEach(fn => { cup = fn(cup); });
+  const { error: e2 } = await c
+    .from('ritmo_sessions')
+    .update({ data: { ...data.data, cup }, updated_at: new Date().toISOString() })
+    .eq('pin', p);
+  if (e2) throw e2;
+  return cup;
+}
+
+/** Realtime-Subscription auf eine Cup-Session. Returns cleanup function. */
+export function subscribeCupSync(pin, onChange) {
+  return subscribeToTournament(pin, d => {
+    if (d && d.kind === 'dnacup' && d.cup) onChange(d.cup);
+  });
+}
+
 /* ───── PHASE 2: Live-Sync + Score-Submission + Ready-Check ───── */
 
 /**

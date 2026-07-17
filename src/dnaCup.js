@@ -57,10 +57,13 @@ export const CUP_SPIELPLAN=[
 /* ── Initialer Cup-State ──────────────────────────────────────────
    players: Spielernummer (num) ist die IDENTITÄT auf dem Plakat —
    unabhängig von der späteren Leaderboard-Platzierung (rank), die
-   die KO-Phase aussteuert. style = RITMO-Spielstil (Extra-Punkte). */
+   die KO-Phase aussteuert. style = RITMO-Spielstil (Extra-Punkte).
+   inAt = Check-in-Zeitstempel (Tickets-Screen am Einlass); ältere
+   gespeicherte States haben das Feld nicht — undefined gilt als
+   nicht eingecheckt. */
 export function initialCupState(){
   const players=Array.from({length:22},(_,i)=>({
-    num:i+1, name:'', style:null, adj:0,
+    num:i+1, name:'', style:null, adj:0, inAt:null,
   }));
   const matches=[];
   CUP_SPIELPLAN.forEach((runde,r)=>{

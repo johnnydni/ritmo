@@ -13117,8 +13117,35 @@ function CupAlertIcon({icon,size=18,color='#000'}){
 /* Warn-Banner (Referenz-Design): dunkler, gelb getönter Balken —
    Warn-Icon links, Titel + Untertitel gestapelt, optional gelber
    CTA-Pill rechts ("Jetzt eintragen"). big = Center-Screen-Größe. */
-function CupAlertToast({alert,big=false}){
+function CupAlertToast({alert,big=false,solid=false}){
   if(!alert) return null;
+  /* solid: knalliges Vollflächen-Gelb (Event-Branding) mit schwarzem
+     Icon-Kreis — Court-Screen-Kopf, muss vom Court aus lesbar sein. */
+  if(solid) return(
+    <div className="si" style={{display:'flex',alignItems:'center',gap:big?16:12,minWidth:0,
+      background:CUP_WARN,borderRadius:big?22:16,padding:big?'12px 24px':'10px 16px',
+      boxShadow:`0 10px 30px color-mix(in srgb, ${CUP_WARN} 30%, transparent)`}}>
+      <span style={{width:big?46:34,height:big?46:34,borderRadius:'50%',background:'#000',
+        display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+        <CupAlertIcon icon={alert.icon} size={big?22:16} color={CUP_WARN}/>
+      </span>
+      <span style={{minWidth:0}}>
+        <span style={{display:'block',color:'#000',fontWeight:900,letterSpacing:-.3,
+          fontSize:big?'clamp(20px, 2.4vw, 32px)':16,lineHeight:1.15,
+          overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{alert.label}</span>
+        {alert.sub&&(
+          <span style={{display:'block',color:'#000',opacity:.75,fontWeight:700,marginTop:1,
+            fontSize:big?'clamp(12px, 1.4vw, 17px)':12,
+            overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{alert.sub}</span>
+        )}
+      </span>
+      {alert.cta&&(
+        <span style={{flexShrink:0,marginLeft:big?8:4,background:'#000',color:CUP_WARN,
+          fontWeight:800,borderRadius:999,padding:big?'10px 18px':'7px 12px',
+          fontSize:big?'clamp(11px, 1.25vw, 17px)':11.5,whiteSpace:'nowrap'}}>{alert.cta}</span>
+      )}
+    </div>
+  );
   return(
     <div className="si" style={{display:'flex',alignItems:'center',gap:big?18:12,minWidth:0,
       background:`color-mix(in srgb, ${CUP_WARN} 10%, ${T.card})`,
@@ -14068,21 +14095,15 @@ function CupCenterScreen({cup,lb,onBack}){
             {phase?.name}{cup.phase==='gruppe'?` · Runde ${cup.activeRound}/6`:''}
           </span>
         </div>
-        <span style={{flex:1}}/>
+        {/* Warnmeldung — mittig zwischen Phase-Pill und Slide-Titel,
+            gleicher Gelb-Look wie am Court-Screen. */}
+        <div style={{flex:1,minWidth:0,display:'flex',justifyContent:'center'}}>
+          {cup.alert&&<CupAlertToast alert={cup.alert} big solid/>}
+        </div>
         <div style={{color:T.t2,fontSize:'clamp(14px, 1.7vw, 24px)',fontWeight:800,flexShrink:0}}>
           {SLIDE_TITLES[slide]}
         </div>
       </div>
-
-      {/* Warnmeldung — eigene Zeile im Layout-Fluss (kein Overlay):
-          die Slides rücken zusammen, nichts wird verdeckt. Der
-          Runden-Timer sitzt unten in der Fußleiste. */}
-      {cup.alert&&(
-        <div style={{flexShrink:0,display:'flex',justifyContent:'center',
-          alignItems:'center',marginBottom:10,minWidth:0}}>
-          <CupAlertToast alert={cup.alert} big/>
-        </div>
-      )}
 
       {/* Slides — key remountet → Fade pro Wechsel */}
       <div key={slide} className="fi" style={{flex:1,minHeight:0,overflowY:'auto',
@@ -14403,23 +14424,33 @@ function CupCourtScreen({cup,setCup,onBack}){
     <div className="fi" style={{flex:1,display:'flex',flexDirection:'column',minHeight:0,
       padding:'0 22px'}}>
 
-      {/* Kopf: Court-Titel + Phase links · COURT-KREIS oben rechts */}
-      <div style={{display:'flex',alignItems:'flex-start',gap:12,marginBottom:10,flexShrink:0}}>
-        <div style={{flex:1,minWidth:0}}>
+      {/* Kopf: Court-Titel + Phase-Pill in EINER Zeile links · großes
+          Warn-Toast mittig · COURT-KREIS oben rechts */}
+      <div style={{display:'flex',alignItems:'flex-start',gap:14,marginBottom:10,flexShrink:0}}>
+        {/* Titelblock schrumpft NICHT — die Pill bleibt neben der
+            Court-Zahl; das Toast rechts nimmt den Restplatz und kürzt
+            notfalls intern mit Ellipsis. */}
+        <div style={{flex:'0 0 auto',maxWidth:'82%',minWidth:0}}>
           <div style={{color:T.o,fontSize:12,fontWeight:800,letterSpacing:1.6,
             textTransform:'uppercase'}}>RITMO DNA CUP</div>
-          <div style={{display:'flex',alignItems:'center',gap:12,margin:'2px 0 6px'}}>
-            <span style={{color:T.t1,fontSize:'clamp(38px, 7.5vw, 64px)',fontWeight:900,
+          <div style={{display:'flex',alignItems:'center',gap:14,flexWrap:'wrap',
+            margin:'4px 0 2px'}}>
+            <span style={{color:T.t1,fontSize:'clamp(38px, 6vw, 60px)',fontWeight:900,
               letterSpacing:-1,lineHeight:1}}>COURT {court}</span>
             {locked&&<LockIcon size={26} color={T.r}/>}
-          </div>
-          <div style={{display:'inline-flex',alignItems:'center',gap:10,padding:'7px 16px',
-            borderRadius:999,background:T.oSoft,border:`1px solid ${T.o}`}}>
-            <span className="court-live-dot" style={{width:10,height:10,borderRadius:'50%',background:T.o}}/>
-            <span style={{color:T.o,fontSize:'clamp(17px, 3.2vw, 26px)',fontWeight:800}}>
-              {phase?.name}{cup.phase==='gruppe'?` · Runde ${cup.activeRound}/6`:''}
+            <span style={{display:'inline-flex',alignItems:'center',gap:10,padding:'6px 15px',
+              borderRadius:999,background:T.oSoft,border:`1px solid ${T.o}`}}>
+              <span className="court-live-dot" style={{width:10,height:10,borderRadius:'50%',background:T.o}}/>
+              <span style={{color:T.o,fontSize:'clamp(17px, 3.2vw, 26px)',fontWeight:800,
+                whiteSpace:'nowrap'}}>
+                {phase?.name}{cup.phase==='gruppe'?` · Runde ${cup.activeRound}/6`:''}
+              </span>
             </span>
           </div>
+        </div>
+        {/* Warnmeldung vom Admin — groß & gelb im Kopf, vom Court lesbar. */}
+        <div style={{flex:1,minWidth:0,display:'flex',justifyContent:'center'}}>
+          {cup.alert&&<CupAlertToast alert={cup.alert} big solid/>}
         </div>
         {/* Kiosk: Court-Wechsel nur per PIN — Spieler sollen das
             Tablet nicht versehentlich auf einen anderen Court stellen. */}
@@ -14433,13 +14464,6 @@ function CupCourtScreen({cup,setCup,onBack}){
           <span style={{fontSize:7.5,fontWeight:800,letterSpacing:1,marginTop:2}}>COURT</span>
         </button>
       </div>
-
-      {/* Warnmeldung vom Admin */}
-      {cup.alert&&(
-        <div style={{flexShrink:0,display:'flex',justifyContent:'center',marginBottom:10}}>
-          <CupAlertToast alert={cup.alert}/>
-        </div>
-      )}
 
       {/* Sperr-Hinweis */}
       {locked&&(

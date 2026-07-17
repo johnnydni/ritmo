@@ -13082,11 +13082,10 @@ function FollowList({userId,initial='followers',onHome,onBack,onOpenPlayer}){
 
    PIN-geschützter Bereich unter Turnier (rein UND raus nur mit PIN
    1862 — Kiosk-Logik: Tablets/Screens sollen nicht versehentlich
-   verlassen werden). Vier Modi: Admin (steuert alles), Tickets,
-   Center Screen (Diashow), Court Screen (Punkte-Eingabe am Court).
-   Daten-Logik: src/dnaCup.js · Persistenz: localStorage
-   'ritmo_dnacup_state'. Admin ist voll ausgebaut; Tickets/Center/
-   Court folgen als Nächstes (Stubs mit Hinweis).
+   verlassen werden). Vier Modi: Admin (steuert alles), Tickets
+   (Check-in am Einlass), Center Screen (Diashow), Court Screen
+   (Punkte-Eingabe am Court). Daten-Logik: src/dnaCup.js ·
+   Persistenz: localStorage 'ritmo_dnacup_state'.
 ═══════════════════════════════════════════════════════════════ */
 
 /* Ticket-Glyph — nur im Cup verwendet, daher lokal statt icons.jsx. */
@@ -13671,9 +13670,15 @@ function CupAdmin({cup,setCup,lb,onBack}){
           <div style={{color:T.t3,fontSize:12,lineHeight:1.55,marginBottom:12}}>
             Die Spielernummer (P1–P22) ist die Identität im Spielplan — unabhängig von der
             Leaderboard-Platzierung. Der Spielstil bestimmt die Extra-Punkte der Matches (Tier).
+            Der grüne Punkt zeigt den Check-in (Tickets) —
+            aktuell {cup.players.filter(p=>p.inAt).length}/{cup.players.length}.
           </div>
           {cup.players.map((p,idx)=>(
             <div key={idx} style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
+              <span title={p.inAt?'Eingecheckt':'Noch nicht eingecheckt'}
+                style={{width:8,height:8,borderRadius:'50%',flexShrink:0,
+                  background:p.inAt?T.g:'transparent',
+                  border:`1.5px solid ${p.inAt?T.g:T.border}`}}/>
               <input type="number" inputMode="numeric" min="1" max="99" value={p.num}
                 onChange={e=>setPlayerAt(idx,{num:Math.max(1,parseInt(e.target.value)||1)})}
                 aria-label="Spielernummer"
@@ -14408,8 +14413,115 @@ function CupCourtScreen({cup,setCup,onBack}){
   );
 }
 
-/* Kachel-Auswahl (Home des Cup-Bereichs) + Platzhalter für die noch
-   nicht spezifizierten Modi. */
+/* ── TICKETS — Check-in & Einlass ─────────────────────────────────
+   Tablet am Eingang: alle 22 Spieler als Liste, ein Tap checkt ein
+   (Zeitstempel inAt am Spieler), nochmaliger Tap macht den Check-in
+   rückgängig. Fortschrittsbalken + Filter Alle/Offen/Da. Der Status
+   lebt im Cup-State — Admin & Screens lesen ihn live mit. */
+function CupTicketsScreen({cup,setCup,onBack}){
+  const[filter,setFilter]=useState('alle');
+  const total=cup.players.length;
+  const done=cup.players.filter(p=>p.inAt).length;
+  const all=done===total;
+  const toggle=num=>{
+    buzz(10);
+    setCup(c=>({...c,players:c.players.map(p=>
+      p.num===num?{...p,inAt:p.inAt?null:new Date().toISOString()}:p)}));
+  };
+  const list=cup.players.filter(p=>
+    filter==='offen'?!p.inAt:filter==='da'?!!p.inAt:true);
+  const chip=sel=>({flex:1,padding:'10px 12px',borderRadius:13,cursor:'pointer',
+    background:sel?T.oSoft:T.card2,border:`1.5px solid ${sel?T.o:T.border}`,
+    color:sel?T.o:T.t2,fontSize:13,fontWeight:700});
+  const hhmm=iso=>{try{
+    return new Date(iso).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
+  }catch(e){return '';}};
+  return(
+    <div className="fi" style={{flex:1,display:'flex',flexDirection:'column',minHeight:0,
+      padding:'0 22px'}}>
+      {/* Kopf */}
+      <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:12,flexShrink:0}}>
+        <button onClick={onBack} aria-label="Zurück zur Kachel-Auswahl"
+          style={{width:38,height:38,borderRadius:13,background:T.card,border:`1px solid ${T.border}`,
+            color:T.t1,fontSize:18,fontWeight:800,cursor:'pointer',flexShrink:0,
+            display:'flex',alignItems:'center',justifyContent:'center'}}>‹</button>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{color:T.t1,fontSize:22,fontWeight:900,letterSpacing:-.4}}>Tickets</div>
+          <div style={{color:T.t3,fontSize:11.5}}>Check-in & Einlass — ein Tap checkt ein.</div>
+        </div>
+      </div>
+      {/* Fortschritt */}
+      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:19,
+        padding:'16px 18px',marginBottom:12,flexShrink:0}}>
+        <div style={{display:'flex',alignItems:'baseline',gap:8}}>
+          <span style={{color:all?T.g:T.t1,fontSize:34,fontWeight:900,lineHeight:1,
+            fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',
+            fontVariantNumeric:'tabular-nums'}}>{done}</span>
+          <span style={{color:T.t3,fontSize:15,fontWeight:700}}>/ {total} eingecheckt</span>
+          <span style={{marginLeft:'auto',color:all?T.g:T.t3,fontSize:12.5,fontWeight:800}}>
+            {all?'Alle da!':`${total-done} offen`}
+          </span>
+        </div>
+        <div style={{height:8,borderRadius:999,background:T.card2,marginTop:12,overflow:'hidden'}}>
+          <div style={{height:'100%',width:`${total?(done/total)*100:0}%`,borderRadius:999,
+            background:all?T.g:T.o,transition:'width .3s ease'}}/>
+        </div>
+      </div>
+      {/* Filter */}
+      <div style={{display:'flex',gap:8,marginBottom:12,flexShrink:0}}>
+        {[['alle','Alle'],['offen','Offen'],['da','Eingecheckt']].map(([id,l])=>(
+          <button key={id} onClick={()=>{buzz(6);setFilter(id);}} style={chip(filter===id)}>{l}</button>
+        ))}
+      </div>
+      {/* Liste */}
+      <div style={{flex:1,overflowY:'auto',WebkitOverflowScrolling:'touch',
+        display:'flex',flexDirection:'column',gap:8,
+        paddingBottom:'calc(env(safe-area-inset-bottom,0px) + 26px)'}}>
+        {list.map(p=>{
+          const da=!!p.inAt;
+          const nm=(p.name||'').trim();
+          return(
+            <button key={p.num} onClick={()=>toggle(p.num)}
+              aria-label={`P${p.num}${nm?` ${nm}`:''} ${da?'auschecken':'einchecken'}`}
+              style={{display:'flex',alignItems:'center',gap:12,padding:'12px 14px',
+                borderRadius:16,cursor:'pointer',textAlign:'left',flexShrink:0,
+                background:da?`color-mix(in srgb, ${T.g} 9%, ${T.card})`:T.card,
+                border:`1.5px solid ${da?T.g:T.border}`}}>
+              <span style={{width:44,height:38,borderRadius:12,flexShrink:0,
+                background:da?T.g:T.card2,color:da?'#000':T.t2,
+                border:`1px solid ${da?T.g:T.border}`,
+                display:'flex',alignItems:'center',justifyContent:'center',
+                fontSize:14,fontWeight:900,fontVariantNumeric:'tabular-nums'}}>
+                P{p.num}
+              </span>
+              <span style={{flex:1,minWidth:0,color:nm?T.t1:T.t4,fontSize:15.5,fontWeight:700,
+                overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                {nm||'Noch ohne Name'}
+              </span>
+              {da?(
+                <span style={{display:'flex',alignItems:'center',gap:8,flexShrink:0}}>
+                  <span style={{color:T.t3,fontSize:12,fontWeight:700,
+                    fontVariantNumeric:'tabular-nums'}}>{hhmm(p.inAt)}</span>
+                  <span style={{color:T.g,fontSize:17,fontWeight:900}}>✓</span>
+                </span>
+              ):(
+                <span style={{width:22,height:22,borderRadius:'50%',flexShrink:0,
+                  border:`1.5px solid ${T.border}`}}/>
+              )}
+            </button>
+          );
+        })}
+        {list.length===0&&(
+          <div style={{color:T.t3,fontSize:13,textAlign:'center',padding:'26px 0'}}>
+            {filter==='offen'?'Alle Spieler sind eingecheckt.':'Noch niemand eingecheckt.'}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* Kachel-Auswahl (Home des Cup-Bereichs). */
 function CupHome({cup,onView,onAskExit}){
   const phase=CUP_PHASES.find(p=>p.id===cup.phase);
   const tiles=[
@@ -14469,24 +14581,6 @@ function CupHome({cup,onView,onAskExit}){
   );
 }
 
-function CupStub({kind,onBack}){
-  const meta={
-    tickets:['Tickets','Check-in & Einlass — wird als Nächstes gebaut.'],
-  }[kind];
-  return(
-    <div className="fi" style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',
-      justifyContent:'center',padding:'0 32px',gap:12}}>
-      <div style={{color:T.t1,fontSize:24,fontWeight:900,letterSpacing:-.4}}>{meta[0]}</div>
-      <div style={{color:T.t3,fontSize:13.5,textAlign:'center',lineHeight:1.6,maxWidth:300}}>{meta[1]}</div>
-      <button onClick={onBack}
-        style={{marginTop:14,padding:'13px 26px',borderRadius:15,background:T.o,border:'none',
-          color:'#000',fontSize:15,fontWeight:800,cursor:'pointer'}}>
-        Zurück zur Auswahl
-      </button>
-    </div>
-  );
-}
-
 /* Root des Cup-Bereichs: PIN-Gate → Kacheln → Modus. Ausgang ebenfalls
    nur per PIN (Kiosk-Schutz für Tablets & Beamer-Gerät). */
 function DnaCupScreen({onExit}){
@@ -14529,9 +14623,7 @@ function DnaCupScreen({onExit}){
       {view==='admin'&&<CupAdmin cup={cup} setCup={setCup} lb={lb} onBack={()=>setView('home')}/>}
       {view==='center'&&<CupCenterScreen cup={cup} lb={lb} onBack={()=>setView('home')}/>}
       {view==='court'&&<CupCourtScreen cup={cup} setCup={setCup} onBack={()=>setView('home')}/>}
-      {view==='tickets'&&(
-        <CupStub kind={view} onBack={()=>setView('home')}/>
-      )}
+      {view==='tickets'&&<CupTicketsScreen cup={cup} setCup={setCup} onBack={()=>setView('home')}/>}
       {exitAsk&&(
         <CupPinPad title="Cup verlassen" sub="PIN eingeben, um den DNA Cup zu schließen."
           onOk={()=>{setExitAsk(false);onExit();}} onCancel={()=>setExitAsk(false)}/>

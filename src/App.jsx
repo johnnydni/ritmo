@@ -11,7 +11,9 @@ import { loadProfile as dbLoadProfile, saveProfile as dbSaveProfile, logMatch as
   listClubs, fetchClub, createClub, joinClub, leaveClub, clubMembers, isClubMember,
   clubMemberCount, updateClub, myOwnedClubId,
   listClubMessages, sendClubMessage, markChatRead, listMyChats, totalUnreadCount,
-  subscribeClubMessages
+  subscribeClubMessages,
+  // DNA Cup Cloud-Sync
+  createCupSync, fetchCupSync, pushCupSync, subscribeCupSync
   } from "./db.js";
 
 /* ── Refactor (Phase 1): pure modules extracted from App.jsx.
@@ -13085,7 +13087,10 @@ function FollowList({userId,initial='followers',onHome,onBack,onOpenPlayer}){
    verlassen werden). Vier Modi: Admin (steuert alles), Tickets
    (Check-in am Einlass), Center Screen (Diashow), Court Screen
    (Punkte-Eingabe am Court). Daten-Logik: src/dnaCup.js ·
-   Persistenz: localStorage 'ritmo_dnacup_state'.
+   Persistenz: localStorage 'ritmo_dnacup_state'. Mehrgeräte-Betrieb:
+   optionaler Cloud-Sync über die ritmo_sessions-Tabelle (Code am
+   Hauptgerät erzeugen, an den anderen Geräten eingeben) — Details
+   am DnaCupScreen unten.
 ═══════════════════════════════════════════════════════════════ */
 
 /* Ticket-Glyph — nur im Cup verwendet, daher lokal statt icons.jsx. */
@@ -14521,8 +14526,103 @@ function CupTicketsScreen({cup,setCup,onBack}){
   );
 }
 
+/* ── CLOUD-SYNC — Sheet zum Starten/Beitreten ─────────────────────
+   Ein Gerät (Admin-Tablet) startet den Sync und lädt seinen Stand
+   hoch; jedes weitere Gerät (Tickets · Center · Courts) gibt den
+   6er-Code einmal ein und übernimmt den Cloud-Stand. Der Code liegt
+   danach in localStorage — nach Reload verbindet sich das Gerät
+   automatisch wieder (Kiosk-tauglich). */
+function CupSyncModal({sync,status,onStart,onJoin,onDisconnect,onClose}){
+  const[code,setCode]=useState('');
+  const[busy,setBusy]=useState(false);
+  const[err,setErr]=useState('');
+  const run=fn=>async()=>{
+    setBusy(true);setErr('');
+    try{await fn();}catch(e){setErr(e?.message||'Fehler — bitte erneut versuchen.');}
+    setBusy(false);
+  };
+  const btn=(bg,fg,line)=>({width:'100%',padding:'13px 16px',borderRadius:14,
+    background:bg,border:line?`1.5px solid ${line}`:'none',color:fg,
+    fontSize:14.5,fontWeight:800,cursor:'pointer',opacity:busy?.55:1});
+  return(
+    <div onClick={onClose} className="fi" style={{position:'fixed',inset:0,zIndex:360,
+      background:'rgba(0,0,0,.7)',backdropFilter:'blur(4px)',display:'flex',alignItems:'flex-end'}}>
+      <div onClick={e=>e.stopPropagation()} style={{width:'100%',maxHeight:'85dvh',overflowY:'auto',
+        background:T.card,borderTopLeftRadius:24,borderTopRightRadius:24,
+        padding:'18px 20px calc(env(safe-area-inset-bottom,0px) + 20px)'}}>
+        <div style={{width:36,height:4,borderRadius:2,background:T.border,margin:'0 auto 14px'}}/>
+        <div style={{color:T.t1,fontSize:18,fontWeight:900,letterSpacing:-.3,marginBottom:4}}>Cloud-Sync</div>
+        {sync?(
+          <>
+            <div style={{color:T.t3,fontSize:12.5,lineHeight:1.55,marginBottom:14}}>
+              Dieses Gerät ist verbunden. Gib den Code an jedem weiteren Gerät
+              (Tickets · Center · Courts) unter Cloud-Sync ein — alle zeigen
+              denselben Live-Stand.
+            </div>
+            <div style={{background:T.card2,border:`1.5px solid ${status==='err'?T.r:T.g}`,
+              borderRadius:16,padding:'16px 18px',textAlign:'center',marginBottom:10}}>
+              <div style={{color:T.t3,fontSize:11,fontWeight:800,letterSpacing:1.2,
+                textTransform:'uppercase'}}>Code</div>
+              <div style={{color:T.t1,fontSize:34,fontWeight:900,letterSpacing:8,
+                fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace'}}>
+                {sync.pin.toUpperCase()}
+              </div>
+              <div style={{color:status==='err'?T.r:T.g,fontSize:12,fontWeight:700,marginTop:4}}>
+                {status==='err'?'Verbindung gestört — Änderungen werden nachgereicht.':'Live verbunden'}
+              </div>
+            </div>
+            <button disabled={busy} onClick={run(async()=>{await onDisconnect();onClose();})}
+              style={btn(T.card2,T.r,T.border)}>
+              Sync trennen — Gerät arbeitet lokal weiter
+            </button>
+          </>
+        ):(
+          <>
+            <div style={{color:T.t3,fontSize:12.5,lineHeight:1.55,marginBottom:14}}>
+              Verbindet Admin, Tickets, Center- und Court-Screens live über die
+              Cloud. Am Hauptgerät (Admin) einmal starten — jedes weitere Gerät
+              tritt nur mit dem Code bei.
+            </div>
+            <button disabled={busy} onClick={run(onStart)} style={btn(T.o,'#000')}>
+              Sync starten — dieser Stand wird hochgeladen
+            </button>
+            <div style={{display:'flex',alignItems:'center',gap:10,margin:'14px 0'}}>
+              <span style={{flex:1,height:1,background:T.border}}/>
+              <span style={{color:T.t4,fontSize:11,fontWeight:800,letterSpacing:1}}>ODER</span>
+              <span style={{flex:1,height:1,background:T.border}}/>
+            </div>
+            <input value={code} maxLength={6} autoCapitalize="off" autoCorrect="off"
+              spellCheck={false} placeholder="CODE"
+              onChange={e=>setCode(e.target.value.toLowerCase().replace(/[^a-z0-9]/g,''))}
+              aria-label="Sync-Code eingeben"
+              style={{width:'100%',padding:'13px 14px',borderRadius:13,background:T.card2,
+                border:`1.5px solid ${T.border}`,color:T.t1,fontSize:18,fontWeight:900,
+                letterSpacing:6,textAlign:'center',textTransform:'uppercase',outline:'none',
+                boxSizing:'border-box',marginBottom:10,
+                fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace'}}/>
+            <button disabled={busy||code.length<6}
+              onClick={run(async()=>{await onJoin(code);onClose();})}
+              style={{...btn(T.g,'#000'),opacity:busy||code.length<6?.45:1}}>
+              Verbinden — Stand wird vom Sync übernommen
+            </button>
+          </>
+        )}
+        {err&&(
+          <div style={{color:T.r,fontSize:12.5,fontWeight:700,lineHeight:1.5,marginTop:12,
+            textAlign:'center'}}>{err}</div>
+        )}
+        <button onClick={onClose}
+          style={{width:'100%',marginTop:12,padding:'12px 16px',borderRadius:13,background:'none',
+            border:`1px solid ${T.border}`,color:T.t3,fontSize:13.5,fontWeight:700,cursor:'pointer'}}>
+          Schließen
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /* Kachel-Auswahl (Home des Cup-Bereichs). */
-function CupHome({cup,onView,onAskExit}){
+function CupHome({cup,onView,onAskExit,sync,syncStatus,onSync}){
   const phase=CUP_PHASES.find(p=>p.id===cup.phase);
   const tiles=[
     {id:'admin', title:'Admin',        desc:'Turnier steuern & verwalten', icon:<GearIcon size={30}/>,        accent:T.o},
@@ -14552,6 +14652,24 @@ function CupHome({cup,onView,onAskExit}){
           <LockIcon size={18} color={T.t2}/>
         </button>
       </div>
+      {/* Cloud-Sync-Status: ein Tap öffnet das Sync-Sheet. */}
+      <button onClick={()=>{buzz(6);onSync();}} aria-label="Cloud-Sync verwalten"
+        style={{display:'flex',alignItems:'center',gap:9,padding:'11px 14px',marginTop:10,
+          borderRadius:14,cursor:'pointer',background:T.card,
+          border:`1px solid ${sync?(syncStatus==='err'?T.r:T.g):T.border}`,flexShrink:0}}>
+        <span className={sync&&syncStatus!=='err'?'court-live-dot':''}
+          style={{width:8,height:8,borderRadius:'50%',flexShrink:0,
+            background:sync?(syncStatus==='err'?T.r:T.g):T.t4}}/>
+        <span style={{flex:1,minWidth:0,textAlign:'left',color:T.t2,fontSize:12.5,fontWeight:700,
+          overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+          {sync
+            ?(syncStatus==='err'
+              ?'Cloud-Sync gestört — Änderungen werden nachgereicht'
+              :`Cloud-Sync aktiv · Code ${sync.pin.toUpperCase()}`)
+            :'Cloud-Sync aus — nur dieses Gerät'}
+        </span>
+        <ChevronRightIcon size={14} color={T.t3}/>
+      </button>
       <div style={{flex:1,display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,
         alignContent:'start',paddingTop:14,overflowY:'auto',
         paddingBottom:'calc(env(safe-area-inset-bottom,0px) + 22px)'}}>
@@ -14582,7 +14700,17 @@ function CupHome({cup,onView,onAskExit}){
 }
 
 /* Root des Cup-Bereichs: PIN-Gate → Kacheln → Modus. Ausgang ebenfalls
-   nur per PIN (Kiosk-Schutz für Tablets & Beamer-Gerät). */
+   nur per PIN (Kiosk-Schutz für Tablets & Beamer-Gerät).
+
+   CLOUD-SYNC (Mehrgeräte-Betrieb): Ist ein Sync verbunden
+   (localStorage 'ritmo_dnacup_sync' = {pin}), laufen alle Writes der
+   Unter-Screens durch setCupSync: sofort lokal anwenden, den Mutator
+   in eine Queue legen und debounced per Merge-Write pushen —
+   pushCupSync wendet die Mutatoren auf den FRISCHEN Remote-State an,
+   nie auf den lokalen (Lost-Update-Schutz: Tickets/Courts/Admin
+   schreiben parallel disjunkte Felder). Eingehende Remote-Stände
+   (Realtime + 5s-Poll als Fallback) ersetzen den lokalen State,
+   noch ungepushte Mutatoren werden oben drauf re-appliziert. */
 function DnaCupScreen({onExit}){
   const[unlocked,setUnlocked]=useState(false);
   const[exitAsk,setExitAsk]=useState(false);
@@ -14608,6 +14736,95 @@ function DnaCupScreen({onExit}){
   },[]);
   const lb=useMemo(()=>cupLeaderboard(cup),[cup]);
 
+  /* ── Cloud-Sync ── */
+  const[sync,setSync]=useState(()=>lsGet('ritmo_dnacup_sync',null)); // {pin}|null
+  const[syncAsk,setSyncAsk]=useState(false);
+  const[syncStatus,setSyncStatus]=useState('ok'); // ok|err
+  const syncRef=useRef(sync);syncRef.current=sync;
+  const pendingRef=useRef([]);   // lokal applizierte, noch ungepushte Mutatoren
+  const flushingRef=useRef(false);
+  const flushTimerRef=useRef(null);
+  useEffect(()=>{lsSet('ritmo_dnacup_sync',sync);},[sync]);
+  useEffect(()=>()=>clearTimeout(flushTimerRef.current),[]);
+  const withPending=s=>pendingRef.current.reduce((acc,fn)=>fn(acc),s);
+  const applyRemote=remote=>{
+    if(!remote||remote.v!==1) return;
+    setCup(prev=>{
+      const next=withPending(remote);
+      return JSON.stringify(next)===JSON.stringify(prev)?prev:next;
+    });
+  };
+  const flush=useCallback(async()=>{
+    if(flushingRef.current||!syncRef.current?.pin) return;
+    flushingRef.current=true;
+    try{
+      while(pendingRef.current.length){
+        const batch=pendingRef.current.splice(0,pendingRef.current.length);
+        try{
+          const fresh=await pushCupSync(syncRef.current.pin,batch);
+          setSyncStatus('ok');
+          setCup(prev=>{
+            const next=withPending(fresh);
+            return JSON.stringify(next)===JSON.stringify(prev)?prev:next;
+          });
+        }catch(e){
+          // Netz weg o. ä.: Batch zurück in die Queue, Poll-Intervall
+          // versucht es weiter — es geht nichts verloren.
+          pendingRef.current=batch.concat(pendingRef.current);
+          setSyncStatus('err');
+          break;
+        }
+      }
+    }finally{flushingRef.current=false;}
+  },[]);
+  // setCup-Ersatz für die Unter-Screens: lokal sofort, Cloud debounced
+  // (Tipp-Bursts im Admin erzeugen sonst einen Write pro Tastendruck).
+  const setCupSync=useCallback(f=>{
+    const fn=typeof f==='function'?f:()=>f;
+    setCup(fn);
+    if(!syncRef.current?.pin) return;
+    pendingRef.current.push(fn);
+    clearTimeout(flushTimerRef.current);
+    flushTimerRef.current=setTimeout(flush,700);
+  },[flush]);
+  // Eingehende Änderungen: Realtime-Subscription + 5s-Poll (Fallback,
+  // falls Realtime für ritmo_sessions nicht aktiviert ist). Bei
+  // wartenden eigenen Änderungen wird stattdessen geflusht.
+  useEffect(()=>{
+    if(!sync?.pin) return;
+    const off=subscribeCupSync(sync.pin,applyRemote);
+    // Sofort-Fetch: nach Reload/Reconnect nicht auf den ersten Poll warten.
+    fetchCupSync(sync.pin).then(r=>{if(r)applyRemote(r);}).catch(()=>{});
+    const iv=setInterval(()=>{
+      if(pendingRef.current.length){flush();return;}
+      fetchCupSync(sync.pin)
+        .then(r=>{if(syncRef.current?.pin===sync.pin&&r){applyRemote(r);setSyncStatus('ok');}})
+        .catch(()=>{});
+    },5000);
+    return()=>{off();clearInterval(iv);};
+  },[sync?.pin,flush]);
+  const startSync=async()=>{
+    const pin=await createCupSync(cup);
+    pendingRef.current=[];
+    setSyncStatus('ok');
+    setSync({pin});
+  };
+  const joinSync=async code=>{
+    const pin=code.trim().toLowerCase();
+    const remote=await fetchCupSync(pin);
+    if(!remote||remote.v!==1) throw new Error('Kein Cup-Sync unter diesem Code gefunden.');
+    pendingRef.current=[];
+    setCup(remote);
+    setSyncStatus('ok');
+    setSync({pin});
+  };
+  const stopSync=()=>{
+    pendingRef.current=[];
+    clearTimeout(flushTimerRef.current);
+    setSync(null);
+    setSyncStatus('ok');
+  };
+
   if(!unlocked){
     return <CupPinPad title="Zugang" sub="PIN eingeben, um den DNA Cup zu öffnen."
       onOk={()=>setUnlocked(true)} onCancel={onExit}/>;
@@ -14619,11 +14836,17 @@ function DnaCupScreen({onExit}){
       {/* Admin nur per PIN — Spieler an den Tablets kommen nicht rein. */}
       {view==='home'&&<CupHome cup={cup}
         onView={id=>id==='admin'?setAdminAsk(true):setView(id)}
-        onAskExit={()=>setExitAsk(true)}/>}
-      {view==='admin'&&<CupAdmin cup={cup} setCup={setCup} lb={lb} onBack={()=>setView('home')}/>}
+        onAskExit={()=>setExitAsk(true)}
+        sync={sync} syncStatus={syncStatus} onSync={()=>setSyncAsk(true)}/>}
+      {view==='admin'&&<CupAdmin cup={cup} setCup={setCupSync} lb={lb} onBack={()=>setView('home')}/>}
       {view==='center'&&<CupCenterScreen cup={cup} lb={lb} onBack={()=>setView('home')}/>}
-      {view==='court'&&<CupCourtScreen cup={cup} setCup={setCup} onBack={()=>setView('home')}/>}
-      {view==='tickets'&&<CupTicketsScreen cup={cup} setCup={setCup} onBack={()=>setView('home')}/>}
+      {view==='court'&&<CupCourtScreen cup={cup} setCup={setCupSync} onBack={()=>setView('home')}/>}
+      {view==='tickets'&&<CupTicketsScreen cup={cup} setCup={setCupSync} onBack={()=>setView('home')}/>}
+      {syncAsk&&(
+        <CupSyncModal sync={sync} status={syncStatus}
+          onStart={startSync} onJoin={joinSync} onDisconnect={stopSync}
+          onClose={()=>setSyncAsk(false)}/>
+      )}
       {exitAsk&&(
         <CupPinPad title="Cup verlassen" sub="PIN eingeben, um den DNA Cup zu schließen."
           onOk={()=>{setExitAsk(false);onExit();}} onCancel={()=>setExitAsk(false)}/>

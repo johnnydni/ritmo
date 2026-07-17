@@ -14408,15 +14408,15 @@ function CupCourtScreen({cup,setCup,onBack}){
         <div style={{flex:1,minWidth:0}}>
           <div style={{color:T.o,fontSize:12,fontWeight:800,letterSpacing:1.6,
             textTransform:'uppercase'}}>RITMO DNA CUP</div>
-          <div style={{display:'flex',alignItems:'center',gap:10,margin:'2px 0 4px'}}>
-            <span style={{color:T.t1,fontSize:'clamp(26px, 5vw, 40px)',fontWeight:900,
-              letterSpacing:-.6}}>COURT {court}</span>
-            {locked&&<LockIcon size={20} color={T.r}/>}
+          <div style={{display:'flex',alignItems:'center',gap:12,margin:'2px 0 6px'}}>
+            <span style={{color:T.t1,fontSize:'clamp(38px, 7.5vw, 64px)',fontWeight:900,
+              letterSpacing:-1,lineHeight:1}}>COURT {court}</span>
+            {locked&&<LockIcon size={26} color={T.r}/>}
           </div>
-          <div style={{display:'inline-flex',alignItems:'center',gap:7,padding:'4px 11px',
+          <div style={{display:'inline-flex',alignItems:'center',gap:10,padding:'7px 16px',
             borderRadius:999,background:T.oSoft,border:`1px solid ${T.o}`}}>
-            <span className="court-live-dot" style={{width:7,height:7,borderRadius:'50%',background:T.o}}/>
-            <span style={{color:T.o,fontSize:11.5,fontWeight:800}}>
+            <span className="court-live-dot" style={{width:10,height:10,borderRadius:'50%',background:T.o}}/>
+            <span style={{color:T.o,fontSize:'clamp(17px, 3.2vw, 26px)',fontWeight:800}}>
               {phase?.name}{cup.phase==='gruppe'?` · Runde ${cup.activeRound}/6`:''}
             </span>
           </div>
@@ -14443,11 +14443,11 @@ function CupCourtScreen({cup,setCup,onBack}){
 
       {/* Sperr-Hinweis */}
       {locked&&(
-        <div style={{flexShrink:0,display:'flex',alignItems:'center',gap:10,marginBottom:10,
-          padding:'11px 16px',borderRadius:13,background:'rgba(232,69,69,0.08)',
+        <div style={{flexShrink:0,display:'flex',alignItems:'center',gap:12,marginBottom:10,
+          padding:'14px 18px',borderRadius:15,background:'rgba(232,69,69,0.08)',
           border:'1px solid rgba(232,69,69,0.4)'}}>
-          <LockIcon size={16} color={T.r}/>
-          <span style={{color:T.r,fontSize:13,fontWeight:700}}>
+          <LockIcon size={24} color={T.r}/>
+          <span style={{color:T.r,fontSize:'clamp(17px, 3.2vw, 26px)',fontWeight:700}}>
             Court gesperrt — Punkteeingabe ist gerade deaktiviert.
           </span>
         </div>
@@ -14513,22 +14513,40 @@ function CupCourtScreen({cup,setCup,onBack}){
           const nxt=cup.matches.find(x=>x.phase==='gruppe'
             &&x.round===cup.activeRound+1&&x.court===court);
           if(!nxt) return null;
+          // Quer-Layout: Team links · VS-Badge mittig · Team rechts;
+          // pro Spieler steht die P-Nummer klein ÜBER dem Vornamen.
+          const upPlayer=n=>{
+            const p=cup.players.find(x=>x.num===n);
+            const first=(p?.name||'').trim().split(/\s+/)[0]||'—';
+            return(
+              <div key={n} style={{flex:1,minWidth:0,textAlign:'center'}}>
+                <div style={{color:T.o,fontSize:'clamp(12px, 2vw, 16px)',fontWeight:900,
+                  letterSpacing:.5}}>P{n}</div>
+                <div style={{color:T.t1,fontSize:'clamp(17px, 3.2vw, 26px)',fontWeight:700,
+                  overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{first}</div>
+              </div>
+            );
+          };
+          const upTeam=team=>(
+            <div style={{flex:1,minWidth:0,display:'flex',alignItems:'center',gap:10}}>
+              {team.map(upPlayer)}
+            </div>
+          );
           return(<>
             <div style={{color:T.t2,fontSize:14,fontWeight:800,letterSpacing:1.2,
               textTransform:'uppercase',margin:'8px 2px 8px'}}>
               Upcoming · Runde {cup.activeRound+1}
             </div>
             <div style={{border:`1.5px dashed ${T.border}`,borderRadius:17,
-              padding:'16px 18px'}}>
-              <div style={{color:T.t1,fontSize:'clamp(17px, 3.2vw, 26px)',fontWeight:700,
-                overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                {nxt.t1.map(nm).join('  &  ')}
-              </div>
-              <div style={{color:T.o,fontSize:13,fontWeight:900,margin:'5px 0'}}>vs</div>
-              <div style={{color:T.t1,fontSize:'clamp(17px, 3.2vw, 26px)',fontWeight:700,
-                overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                {nxt.t2.map(nm).join('  &  ')}
-              </div>
+              padding:'16px 18px',display:'flex',alignItems:'center',
+              gap:'clamp(10px, 2.5vw, 22px)'}}>
+              {upTeam(nxt.t1)}
+              <span className="court-vs" style={{width:'clamp(34px, 5vw, 44px)',
+                height:'clamp(34px, 5vw, 44px)',borderRadius:'50%',flexShrink:0,
+                background:T.oSoft,border:`1.5px solid ${T.o}`,color:T.o,
+                display:'flex',alignItems:'center',justifyContent:'center',
+                fontSize:'clamp(11px, 1.6vw, 14px)',fontWeight:900}}>VS</span>
+              {upTeam(nxt.t2)}
             </div>
           </>);
         })()}

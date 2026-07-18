@@ -14448,21 +14448,12 @@ function CupCourtScreen({cup,setCup,onBack}){
             </span>
           </div>
         </div>
-        {/* Warnmeldung vom Admin — groß & gelb im Kopf, vom Court lesbar. */}
-        <div style={{flex:1,minWidth:0,display:'flex',justifyContent:'center'}}>
+        {/* Warnmeldung vom Admin — groß & gelb im Kopf, vom Court
+            lesbar; der COURT-KREIS sitzt unten rechts in der
+            Fußleiste, damit das Toast die volle Breite bekommt. */}
+        <div style={{flex:1,minWidth:0,display:'flex',justifyContent:'flex-end'}}>
           {cup.alert&&<CupAlertToast alert={cup.alert} big solid/>}
         </div>
-        {/* Kiosk: Court-Wechsel nur per PIN — Spieler sollen das
-            Tablet nicht versehentlich auf einen anderen Court stellen. */}
-        <button onClick={()=>{buzz(8);setCourtAsk(true);}}
-          aria-label="Court wechseln (PIN nötig)" title="Court wechseln (PIN nötig)"
-          style={{width:60,height:60,borderRadius:'50%',flexShrink:0,cursor:'pointer',
-            background:T.oSoft,border:`2.5px solid ${T.o}`,color:T.o,
-            display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',
-            lineHeight:1,boxShadow:`0 0 14px color-mix(in srgb, ${T.o} 35%, transparent)`}}>
-          <span style={{fontSize:24,fontWeight:900}}>{court}</span>
-          <span style={{fontSize:7.5,fontWeight:800,letterSpacing:1,marginTop:2}}>COURT</span>
-        </button>
       </div>
 
       {/* Sperr-Hinweis */}
@@ -14593,6 +14584,17 @@ function CupCourtScreen({cup,setCup,onBack}){
         </button>
         <span style={{flex:1}}/>
         <CupTimer timer={cup.timer}/>
+        {/* Kiosk: Court-Wechsel nur per PIN — unten rechts im Eck,
+            damit das Warn-Toast im Kopf die volle Breite bekommt. */}
+        <button onClick={()=>{buzz(8);setCourtAsk(true);}}
+          aria-label="Court wechseln (PIN nötig)" title="Court wechseln (PIN nötig)"
+          style={{width:60,height:60,borderRadius:'50%',flexShrink:0,cursor:'pointer',
+            background:T.oSoft,border:`2.5px solid ${T.o}`,color:T.o,
+            display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',
+            lineHeight:1,boxShadow:`0 0 14px color-mix(in srgb, ${T.o} 35%, transparent)`}}>
+          <span style={{fontSize:24,fontWeight:900}}>{court}</span>
+          <span style={{fontSize:7.5,fontWeight:800,letterSpacing:1,marginTop:2}}>COURT</span>
+        </button>
       </div>
 
       {/* Kiosk: die Court-Ansicht verlässt man IMMER nur per PIN —

@@ -13958,7 +13958,8 @@ function CupCenterScreen({cup,lb,onBack}){
       <div key={m.id} style={{marginBottom:14,minWidth:0}}>
         {/* Match-Box: orangene Outline + dezente Ball-Grafik als Deko */}
         <div style={{position:'relative',overflow:'hidden',background:T.card,
-          border:`2px solid ${T.o}`,borderRadius:17,padding:'12px 16px',
+          border:`2px solid ${T.o}`,borderRadius:18,
+          padding:'clamp(12px, 1.4vw, 20px) clamp(16px, 1.8vw, 26px)',
           boxShadow:m.done?`0 0 14px ${T.oGlow}, 0 6px 18px rgba(0,0,0,.3)`:'0 4px 14px rgba(0,0,0,.2)'}}>
           <div aria-hidden="true" style={{position:'absolute',right:-16,top:-16,
             opacity:.09,pointerEvents:'none'}}>
@@ -14007,7 +14008,7 @@ function CupCenterScreen({cup,lb,onBack}){
             </span>
           </div>
         ):(
-          <div style={{marginTop:8,padding:'7px 12px',borderRadius:11,
+          <div style={{marginTop:8,padding:'7px 12px',borderRadius:11,opacity:.75,
             border:`1.5px dashed ${T.border}`,color:T.t4,textAlign:'center',
             fontSize:'clamp(10px, 1vw, 14px)',fontWeight:600}}>
             Spielstile im Admin setzen → Tier & Extra-Punkte
@@ -14100,7 +14101,7 @@ function CupCenterScreen({cup,lb,onBack}){
         <div style={{flex:1,minWidth:0,display:'flex',justifyContent:'center'}}>
           {cup.alert&&<CupAlertToast alert={cup.alert} big solid/>}
         </div>
-        <div style={{color:T.t2,fontSize:'clamp(14px, 1.7vw, 24px)',fontWeight:800,flexShrink:0}}>
+        <div style={{color:T.t2,fontSize:'clamp(16px, 1.9vw, 28px)',fontWeight:800,flexShrink:0}}>
           {SLIDE_TITLES[slide]}
         </div>
       </div>
@@ -14143,13 +14144,13 @@ function CupCenterScreen({cup,lb,onBack}){
                       </div>
                       <div style={{border:`1.5px dashed ${T.border}`,borderRadius:15,
                         padding:'10px 14px',opacity:.9}}>
-                        <div style={{color:T.t2,fontSize:'clamp(12px, 1.4vw, 19px)',fontWeight:600,
+                        <div style={{color:T.t2,fontSize:'clamp(13px, 1.5vw, 20px)',fontWeight:600,
                           overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
                           {nxt.t1.map(nm).join('  &  ')}
                         </div>
                         <div style={{color:T.t4,fontSize:'clamp(10px, 1vw, 13px)',fontWeight:800,
                           margin:'3px 0'}}>vs</div>
-                        <div style={{color:T.t2,fontSize:'clamp(12px, 1.4vw, 19px)',fontWeight:600,
+                        <div style={{color:T.t2,fontSize:'clamp(13px, 1.5vw, 20px)',fontWeight:600,
                           overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
                           {nxt.t2.map(nm).join('  &  ')}
                         </div>
@@ -14171,7 +14172,7 @@ function CupCenterScreen({cup,lb,onBack}){
             const zc=zone==='top'?T.gold:zone==='courage'?T.blue:null;
             return(
               <div key={row.num} style={{display:'flex',alignItems:'center',gap:10,
-                padding:'5px 12px',borderRadius:11,marginBottom:5,minWidth:0,
+                padding:'7px 14px',borderRadius:12,marginBottom:6,minWidth:0,
                 background:zone==='top'?`color-mix(in srgb, ${T.gold} 12%, transparent)`
                   :zone==='courage'?T.blueSoft:'transparent',
                 border:`1px solid ${zc||T.sep}`}}>
@@ -14309,15 +14310,17 @@ function CupCenterScreen({cup,lb,onBack}){
       {/* Fußleiste: Dots + Steuerung (dezent, für den Kiosk-Betrieb) */}
       <div style={{flexShrink:0,display:'flex',alignItems:'center',gap:12,
         padding:'10px 0 calc(env(safe-area-inset-bottom,0px) + 14px)'}}>
-        <button onClick={onBack} style={{padding:'8px 14px',borderRadius:11,background:T.card,
-          border:`1px solid ${T.border}`,color:T.t3,fontSize:12,fontWeight:700,cursor:'pointer'}}>
+        {/* Operator-Steuerung: 44px-Touch-Ziele (HIG), bewusst dunkel
+            gehalten — auf dem Beamer soll nur der Inhalt leuchten. */}
+        <button onClick={onBack} style={{padding:'12px 18px',borderRadius:13,background:T.card,
+          border:`1px solid ${T.border}`,color:T.t3,fontSize:13.5,fontWeight:700,cursor:'pointer'}}>
           ‹ Auswahl
         </button>
         <span style={{flex:1}}/>
-        <div style={{display:'flex',gap:8,alignItems:'center'}}>
+        <div style={{display:'flex',gap:10,alignItems:'center'}}>
           {[0,1,2].map(i=>(
             <button key={i} onClick={()=>{buzz(6);setSlide(i);}} aria-label={`Slide ${i+1}`}
-              style={{width:i===slide?26:10,height:10,borderRadius:999,border:'none',
+              style={{width:i===slide?30:12,height:12,borderRadius:999,border:'none',
                 cursor:'pointer',background:i===slide?T.o:T.t4,transition:'width .25s, background .25s',
                 padding:0}}/>
           ))}
@@ -14326,17 +14329,17 @@ function CupCenterScreen({cup,lb,onBack}){
         {/* Runden-Timer — unten in der Fußleiste */}
         <CupTimer timer={cup.timer} big/>
         <button onClick={()=>setSlide(s=>(s+2)%3)} aria-label="Vorheriger Slide"
-          style={{width:36,height:36,borderRadius:11,background:T.card,border:`1px solid ${T.border}`,
-            color:T.t2,fontSize:15,fontWeight:800,cursor:'pointer'}}>‹</button>
+          style={{width:44,height:44,borderRadius:13,background:T.card,border:`1px solid ${T.border}`,
+            color:T.t2,fontSize:17,fontWeight:800,cursor:'pointer'}}>‹</button>
         <button onClick={()=>setPaused(p=>!p)} aria-label={paused?'Diashow fortsetzen':'Diashow pausieren'}
-          style={{width:36,height:36,borderRadius:11,background:paused?T.oSoft:T.card,
+          style={{width:44,height:44,borderRadius:13,background:paused?T.oSoft:T.card,
             border:`1px solid ${paused?T.o:T.border}`,color:paused?T.o:T.t2,
-            fontSize:13,fontWeight:900,cursor:'pointer'}}>
+            fontSize:15,fontWeight:900,cursor:'pointer'}}>
           {paused?'▶':'⏸'}
         </button>
         <button onClick={()=>setSlide(s=>(s+1)%3)} aria-label="Nächster Slide"
-          style={{width:36,height:36,borderRadius:11,background:T.card,border:`1px solid ${T.border}`,
-            color:T.t2,fontSize:15,fontWeight:800,cursor:'pointer'}}>›</button>
+          style={{width:44,height:44,borderRadius:13,background:T.card,border:`1px solid ${T.border}`,
+            color:T.t2,fontSize:17,fontWeight:800,cursor:'pointer'}}>›</button>
       </div>
     </div>
   );
@@ -14379,18 +14382,21 @@ function CupCourtScreen({cup,setCup,onBack}){
   };
 
   // Punkte-Panel einer Seite: Namen + große Zahl + ±1.
+  // Touch-Ziele nach HIG: +1 ist die Primäraktion (größte Fläche),
+  // −1 sekundär aber ≥44px hoch — Fehltipps am Court sind teuer.
   const side=(m,f,team)=>(
     <div style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',
-      alignItems:'center',gap:8}}>
+      alignItems:'center',gap:'clamp(8px, 1.4vw, 14px)'}}>
       <div style={{minWidth:0,width:'100%'}}>
         {team.map(n=>(
           <div key={n} style={{display:'flex',alignItems:'center',justifyContent:'center',
-            gap:8,minWidth:0,padding:'1px 0'}}>
+            gap:10,minWidth:0,padding:'2px 0'}}>
             {photoOf(n)&&(
-              <img src={photoOf(n)} alt="" style={{width:30,height:30,borderRadius:'50%',
+              <img src={photoOf(n)} alt="" style={{width:'clamp(30px, 4vw, 42px)',
+                height:'clamp(30px, 4vw, 42px)',borderRadius:'50%',
                 objectFit:'cover',border:`1.5px solid ${T.o}`,flexShrink:0}}/>
             )}
-            <span style={{minWidth:0,color:T.t1,fontSize:'clamp(13px, 2.4vw, 20px)',fontWeight:700,
+            <span style={{minWidth:0,color:T.t1,fontSize:'clamp(15px, 2.6vw, 24px)',fontWeight:700,
               overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
               {nm(n)}
             </span>
@@ -14398,23 +14404,23 @@ function CupCourtScreen({cup,setCup,onBack}){
         ))}
       </div>
       <div style={{color:m.done?T.o:T.t1,fontWeight:900,lineHeight:1,
-        fontSize:'clamp(54px, 11vw, 96px)',
+        fontSize:'clamp(54px, 11vw, 110px)',
         fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',
         fontVariantNumeric:'tabular-nums'}}>
         {m[f]??0}
       </div>
       <button onClick={()=>bump(m,f,1)} disabled={locked||m.done}
         aria-label="Punkt hinzufügen"
-        style={{width:'100%',maxWidth:170,height:60,borderRadius:17,cursor:'pointer',
-          background:locked||m.done?T.card2:T.o,border:'none',
-          color:locked||m.done?T.t3:'#000',fontSize:26,fontWeight:900}}>
+        style={{width:'100%',maxWidth:210,height:'clamp(58px, 9vw, 76px)',borderRadius:18,
+          cursor:'pointer',background:locked||m.done?T.card2:T.o,border:'none',
+          color:locked||m.done?T.t3:'#000',fontSize:'clamp(24px, 3.4vw, 32px)',fontWeight:900}}>
         +1
       </button>
       <button onClick={()=>bump(m,f,-1)} disabled={locked||m.done}
         aria-label="Punkt abziehen"
-        style={{width:'100%',maxWidth:170,height:38,borderRadius:12,cursor:'pointer',
+        style={{width:'100%',maxWidth:210,height:46,borderRadius:13,cursor:'pointer',
           background:'none',border:`1.5px solid ${T.border}`,
-          color:locked||m.done?T.t4:T.t2,fontSize:16,fontWeight:800}}>
+          color:locked||m.done?T.t4:T.t2,fontSize:'clamp(15px, 2vw, 18px)',fontWeight:800}}>
         −1
       </button>
     </div>
@@ -14431,8 +14437,8 @@ function CupCourtScreen({cup,setCup,onBack}){
             Court-Zahl; das Toast rechts nimmt den Restplatz und kürzt
             notfalls intern mit Ellipsis. */}
         <div style={{flex:'0 0 auto',maxWidth:'82%',minWidth:0}}>
-          <div style={{color:T.o,fontSize:12,fontWeight:800,letterSpacing:1.6,
-            textTransform:'uppercase'}}>RITMO DNA CUP</div>
+          <div style={{color:T.o,fontSize:'clamp(12px, 1.4vw, 16px)',fontWeight:800,
+            letterSpacing:2,textTransform:'uppercase'}}>RITMO DNA CUP</div>
           <div style={{display:'flex',alignItems:'center',gap:14,flexWrap:'wrap',
             margin:'4px 0 2px'}}>
             <span style={{color:T.t1,fontSize:'clamp(38px, 6vw, 60px)',fontWeight:900,
@@ -14477,27 +14483,30 @@ function CupCourtScreen({cup,setCup,onBack}){
           </div>
         ):cur.map(m=>(
           <div key={m.id} style={{position:'relative',overflow:'hidden',background:T.card,
-            border:`2px solid ${T.o}`,borderRadius:21,padding:'16px 18px',marginBottom:14,
+            border:`2px solid ${T.o}`,borderRadius:22,
+            padding:'clamp(16px, 2.4vw, 26px) clamp(18px, 3vw, 32px)',marginBottom:16,
             boxShadow:m.done?`0 0 14px ${T.oGlow}`:'0 4px 14px rgba(0,0,0,.2)'}}>
             <div aria-hidden="true" style={{position:'absolute',right:-16,top:-16,
               opacity:.08,pointerEvents:'none'}}>
               <TennisBallIcon size={80}/>
             </div>
-            <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
-              <span style={{color:T.o,fontSize:12,fontWeight:800,letterSpacing:1,
-                textTransform:'uppercase'}}>
+            <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:14}}>
+              <span style={{color:T.o,fontSize:'clamp(12px, 1.5vw, 16px)',fontWeight:800,
+                letterSpacing:1,textTransform:'uppercase'}}>
                 {m.title||(m.phase==='gruppe'?`Runde ${m.round}`
                   :m.phase==='ko'?'KO-Phase'
                   :m.phase==='courage-hf'?'Courage-Halbfinale':'DNA-Halbfinale')}
               </span>
               {m.bo3&&(
-                <span style={{padding:'2px 8px',borderRadius:999,background:T.card2,
-                  border:`1px solid ${T.border}`,color:T.t2,fontSize:10,fontWeight:800,
+                <span style={{padding:'3px 10px',borderRadius:999,background:T.card2,
+                  border:`1px solid ${T.border}`,color:T.t2,
+                  fontSize:'clamp(10px, 1.2vw, 13px)',fontWeight:800,
                   letterSpacing:.5}}>BEST OF 3</span>
               )}
               <span style={{flex:1}}/>
               {m.done&&(
-                <span style={{color:T.o,fontSize:12,fontWeight:900,letterSpacing:.5}}>
+                <span style={{color:T.o,fontSize:'clamp(12px, 1.4vw, 15px)',fontWeight:900,
+                  letterSpacing:.5}}>
                   GESPEICHERT ✓
                 </span>
               )}
@@ -14505,19 +14514,21 @@ function CupCourtScreen({cup,setCup,onBack}){
             <div style={{display:'flex',alignItems:'stretch',gap:'clamp(10px, 3vw, 26px)'}}>
               {side(m,'s1',m.t1)}
               <div style={{alignSelf:'center',flexShrink:0}}>
-                <span className="court-vs" style={{width:38,height:38,borderRadius:'50%',
+                <span className="court-vs" style={{width:'clamp(38px, 5.5vw, 50px)',
+                  height:'clamp(38px, 5.5vw, 50px)',borderRadius:'50%',
                   background:T.oSoft,border:`1.5px solid ${T.o}`,color:T.o,
                   display:'flex',alignItems:'center',justifyContent:'center',
-                  fontSize:12,fontWeight:900}}>VS</span>
+                  fontSize:'clamp(12px, 1.6vw, 15px)',fontWeight:900}}>VS</span>
               </div>
               {side(m,'s2',m.t2)}
             </div>
             <button
               onClick={()=>{if(locked)return;buzz(m.done?8:18);patchMatch(m.id,{done:!m.done});}}
               disabled={locked}
-              style={{width:'100%',marginTop:16,padding:'15px',borderRadius:15,cursor:locked?'not-allowed':'pointer',
+              style={{width:'100%',marginTop:18,padding:'16px',borderRadius:16,
+                cursor:locked?'not-allowed':'pointer',
                 background:m.done?T.card2:T.g,border:m.done?`1.5px solid ${T.border}`:'none',
-                color:m.done?T.t2:T.t1,fontSize:16,fontWeight:800}}>
+                color:m.done?T.t2:T.t1,fontSize:'clamp(15px, 2.2vw, 19px)',fontWeight:800}}>
               {m.done?'Korrigieren (erneut öffnen)':'Match abschließen ✓'}
             </button>
           </div>
@@ -14570,16 +14581,18 @@ function CupCourtScreen({cup,setCup,onBack}){
       {/* Fußleiste: Zurück + Runden-Timer */}
       <div style={{flexShrink:0,display:'flex',alignItems:'center',gap:12,
         padding:'10px 0 calc(env(safe-area-inset-bottom,0px) + 14px)'}}>
+        {/* Utility-Buttons: ≥44px Touch-Ziel (HIG), gedeckt — die
+            Bühne gehört dem Match, nicht der Navigation. */}
         <button
           onClick={()=>{buzz(8);setExitAsk(true);}}
-          style={{padding:'8px 14px',borderRadius:11,background:T.card,
-            border:`1px solid ${T.border}`,color:T.t3,fontSize:12,fontWeight:700,cursor:'pointer'}}>
+          style={{padding:'12px 18px',borderRadius:13,background:T.card,
+            border:`1px solid ${T.border}`,color:T.t3,fontSize:13.5,fontWeight:700,cursor:'pointer'}}>
           ‹ Auswahl 🔒
         </button>
         <button
           onClick={()=>{buzz(8);setLbShow(true);}}
-          style={{padding:'8px 14px',borderRadius:11,background:T.card,
-            border:`1px solid ${T.border}`,color:T.t2,fontSize:12,fontWeight:700,cursor:'pointer'}}>
+          style={{padding:'12px 18px',borderRadius:13,background:T.card,
+            border:`1px solid ${T.border}`,color:T.t2,fontSize:13.5,fontWeight:700,cursor:'pointer'}}>
           Leaderboard
         </button>
         <span style={{flex:1}}/>

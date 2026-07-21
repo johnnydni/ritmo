@@ -70,6 +70,72 @@ export const CSS = `
     radial-gradient(125% 80% at 50% 0%,
       color-mix(in srgb, var(--t1) 7%, var(--bg)) 0%, var(--bg) 74%);
 }
+:root[data-theme="glass"] {
+  /* LIQUID GLASS (Dark) — iOS-26-Look: tiefdunkler, farbig durch-
+     leuchteter Grund; Karten sind halbtransparente Milchglas-Flächen
+     (rgba statt Solid), sodass der Ambient-Gradient durchscheint.
+     Hairlines mit leichtem Weiß-Schimmer oben = Glaskante. */
+  --bg: #060709;
+  --card: rgba(255,255,255,0.055);
+  --card2: rgba(255,255,255,0.10);
+  --border: rgba(255,255,255,0.13);
+  --sep: rgba(255,255,255,0.07);
+  --t1: #FFFFFF;
+  --t2: rgba(255,255,255,0.66);
+  --t3: rgba(255,255,255,0.42);
+  --t4: rgba(255,255,255,0.18);
+  --o: #FF7A1A;
+  --oSoft: rgba(255,122,26,0.16);
+  --oGlow: rgba(255,122,26,0.5);
+  --oFlash: rgba(255,122,26,0.16);
+  --g: #30D158;
+  --r: #FF453A;
+  --blue: #0A84FF;
+  --blueSoft: rgba(10,132,255,0.20);
+  --blueGlow: rgba(10,132,255,0.5);
+  --gold: #D4B483;
+  --headerGrad: linear-gradient(160deg,
+    #FF7A1A 0%, #8A3D0B 34%, #131018 70%, var(--bg) 100%);
+  /* Ambient: zwei farbige Lichtquellen (Brand-Orange + iOS-Blau),
+     die durch alle Glasflächen schimmern. */
+  --bgGrad:
+    radial-gradient(120% 60% at 85% -12%,
+      rgba(255,122,26,0.16) 0%, transparent 60%),
+    radial-gradient(110% 70% at -10% 26%,
+      rgba(10,132,255,0.12) 0%, transparent 58%),
+    radial-gradient(125% 85% at 50% 0%,
+      color-mix(in srgb, var(--t1) 6%, var(--bg)) 0%, var(--bg) 76%);
+}
+:root[data-theme="glass-light"] {
+  /* LIQUID GLASS (Light) — kühles Off-White mit farbigen Licht-
+     inseln; Karten als helles Milchglas mit dunkler Hairline. */
+  --bg: #EEF1F6;
+  --card: rgba(255,255,255,0.62);
+  --card2: rgba(255,255,255,0.85);
+  --border: rgba(10,20,40,0.10);
+  --sep: rgba(10,20,40,0.06);
+  --t1: #0A0C12;
+  --t2: rgba(10,12,18,0.64);
+  --t3: rgba(10,12,18,0.42);
+  --t4: rgba(10,12,18,0.20);
+  --o: #F26A00;
+  --oSoft: rgba(242,106,0,0.13);
+  --oGlow: rgba(242,106,0,0.45);
+  --oFlash: rgba(242,106,0,0.13);
+  --g: #34C759;
+  --r: #FF3B30;
+  --blue: #007AFF;
+  --blueSoft: rgba(0,122,255,0.14);
+  --blueGlow: rgba(0,122,255,0.45);
+  --gold: #A98548;
+  --headerGrad: linear-gradient(135deg, #FFE7D2 0%, #D9E6F8 100%);
+  --bgGrad:
+    radial-gradient(120% 60% at 85% -12%,
+      rgba(242,106,0,0.10) 0%, transparent 60%),
+    radial-gradient(110% 70% at -10% 26%,
+      rgba(0,122,255,0.09) 0%, transparent 58%),
+    linear-gradient(180deg, #F7F9FC 0%, var(--bg) 60%);
+}
 :root[data-theme="light"] {
   /* Clean-Modern: hellgrau abgestufte Flächen, weicheres Schwarz für
      Text, feinere Borders — luftig und kontrastsicher (WCAG). */
@@ -185,6 +251,7 @@ export const CSS = `
    headerGrad. (Reihenfolge: erst die anderen, dann Dark — der
    :root-Teil unten greift nur fuers Default/Dark-Theme.) */
 :root[data-theme="light"],
+:root[data-theme="glass-light"],
 :root[data-theme="padel"],
 :root[data-theme="wimbledon"],
 :root[data-theme="funky"]{
@@ -500,7 +567,7 @@ export const CSS = `
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html,body,#root{background:var(--bg);height:100%;min-height:100dvh;overflow:hidden;
   overscroll-behavior:none;
-  font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','SF Pro Text','Helvetica Neue','Segoe UI',Roboto,sans-serif;
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','SF Pro Text','Helvetica Neue','Segoe UI',Roboto,sans-serif;
   -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
   text-rendering:optimizeLegibility;letter-spacing:-0.011em;color:var(--t1);}
 /* Branded Text-Selektion statt Browser-Default-Blau. */

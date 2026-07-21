@@ -2110,6 +2110,8 @@ function ChapterPlaystyle({profile,setProfile}){
 
 function ChapterTheme({theme,setTheme}){
   const themes=[
+    {id:'glass',      label:'Liquid Glass',       swatch:['#060709','#FF7A1A','#0A84FF']},
+    {id:'glass-light',label:'Liquid Glass Hell',  swatch:['#EEF1F6','#F26A00','#007AFF']},
     {id:'dark',     label:'RITMO BAUHAUS Dark',  swatch:['#000000','#FF7A1A','#FFFFFF']},
     {id:'light',    label:'Federleicht',         swatch:['#FFFFFF','#FF9500','#000000']},
     {id:'padel',    label:'Padelhaus Blue',      swatch:['#0018F9','#FFD60A','#FFFFFF']},
@@ -2410,6 +2412,74 @@ function ScreenHeader({title,subtitle,icon,right,pad=22,ellipsis=false}){
    zu Initializer-/Effect-Seiteneffekten). Drag-Commits armen nicht —
    nach dem Snap sitzt die Pill bereits unterm Finger. */
 let __navBlendArm=false;
+
+/* ── FEEDBACK-BUS — leichtes Toast-System (Liquid-Glass-Look) ─────
+   notify('Text') von überall aufrufbar (modul-scope, kein Context
+   nötig); <Toasts/> hängt einmal im App-Root. Auto-Dismiss nach
+   2.6s, gestapelt über der TabBar, pointer-events:none — Toasts
+   informieren, sie blockieren nie. */
+let __toastPush=null;
+function notify(msg,kind='ok'){
+  buzz(kind==='err'?[24,40,24]:8);
+  if(__toastPush) __toastPush({msg,kind});
+}
+function Toasts(){
+  const[items,setItems]=useState([]);
+  useEffect(()=>{
+    __toastPush=t=>{
+      const id=Math.random().toString(36).slice(2);
+      setItems(x=>[...x.slice(-2),{...t,id}]);
+      setTimeout(()=>setItems(x=>x.filter(i=>i.id!==id)),2600);
+    };
+    return()=>{__toastPush=null;};
+  },[]);
+  if(!items.length) return null;
+  return(
+    <div style={{position:'fixed',left:0,right:0,zIndex:400,pointerEvents:'none',
+      bottom:'calc(env(safe-area-inset-bottom,0px) + 104px)',
+      display:'flex',flexDirection:'column',alignItems:'center',gap:8}}>
+      {items.map(t=>(
+        <div key={t.id} className="si" style={{display:'flex',alignItems:'center',gap:9,
+          maxWidth:'min(86vw, 420px)',padding:'11px 18px',borderRadius:999,
+          background:'color-mix(in srgb, var(--bg) 62%, var(--card2))',
+          backdropFilter:'blur(18px) saturate(1.5)',WebkitBackdropFilter:'blur(18px) saturate(1.5)',
+          border:`1px solid ${T.border}`,boxShadow:'0 12px 34px rgba(0,0,0,.38)',
+          color:T.t1,fontSize:13.5,fontWeight:700}}>
+          <span style={{color:t.kind==='err'?T.r:T.g,fontWeight:900,flexShrink:0}}>
+            {t.kind==='err'?'✕':'✓'}
+          </span>
+          <span style={{minWidth:0,overflow:'hidden',textOverflow:'ellipsis',
+            whiteSpace:'nowrap'}}>{t.msg}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ── KONTEXTUELLE ACTION-BAR — Primäraktionen eines Screens als
+   schwebende Glass-Pills über der Navigation (iOS-26-Muster:
+   Navigation unten, situative Aktionen direkt darüber im
+   Daumenradius). primary bekommt Brand-Orange, Rest Milchglas. */
+function GlassActionBar({actions=[],bottom='calc(env(safe-area-inset-bottom,0px) + 96px)'}){
+  if(!actions.length) return null;
+  return(
+    <div style={{position:'fixed',left:0,right:0,bottom,zIndex:6,pointerEvents:'none',
+      display:'flex',justifyContent:'center',gap:10,padding:'0 22px'}}>
+      {actions.map((a,i)=>(
+        <button key={i} onClick={()=>{buzz(8);a.onClick&&a.onClick();}}
+          className="fu" style={{animationDelay:`${i*0.04}s`,pointerEvents:'auto',
+            padding:'14px 22px',borderRadius:999,cursor:'pointer',
+            border:a.primary?'none':`1px solid ${T.border}`,
+            background:a.primary?T.o:'color-mix(in srgb, var(--bg) 55%, var(--card2))',
+            backdropFilter:'blur(18px) saturate(1.5)',WebkitBackdropFilter:'blur(18px) saturate(1.5)',
+            color:a.primary?'#000':T.t1,fontSize:14.5,fontWeight:800,
+            boxShadow:a.primary?`0 12px 30px ${T.oGlow}`:'0 12px 30px rgba(0,0,0,.35)'}}>
+          {a.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 function TabBar({active,onTab}){
   // Such-FAB + Navbar-Suchmodus sind entfernt (Einstellungen haben ein
@@ -5079,6 +5149,7 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
       // Counter im Profil hochzählen (matchesPlayed + ggf. winsCount),
       // damit App-Matches in den Spielniveau-Estimate einfließen.
       onMatchLogged?.({userWon});
+      notify(userWon?"Match gespeichert — Sieg!":"Match gespeichert");
     } else if(!win){
       loggedWinRef.current=null;
     }
@@ -9865,6 +9936,8 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
         if(userTeam){
           logMatchLocal({format:'tournament-'+(tourney.format||'americano'),user_won:userWon,sets:null});
           onMatchLogged?.({userWon});
+          notify(userWon?"Match gespeichert — Sieg!":"Match gespeichert");
+      notify(userWon?"Match gespeichert — Sieg!":"Match gespeichert");
         }
         return {...c,logged:true};
       }),
@@ -11062,6 +11135,8 @@ function SettingsSteuerung({onBack,onHome,inputMode,setInputMode,voiceOn,setVoic
 ═══════════════════════════════════════════════════════════════ */
 function SettingsAnpassung({onBack,onHome,theme,setTheme,tabletMode,setTabletMode}){
   const themes=[
+    {id:'glass',label:'Liquid Glass',icon:<MoonIcon size={20} color={T.t1}/>,desc:'iOS-Look — dunkles Milchglas, farbiges Licht'},
+    {id:'glass-light',label:'Liquid Glass Hell',icon:<SunIcon size={20} color={T.t1}/>,desc:'iOS-Look — helles Milchglas'},
     {id:'dark',label:'RITMO BAUHAUS Dark',icon:<MoonIcon size={20} color={T.t1}/>,desc:'Schwarz, weiß, orange'},
     {id:'light',label:'Federleicht',icon:<SunIcon size={20} color={T.t1}/>,desc:'Weiß, schwarz, blau'},
     {id:'padel',label:'Padelhaus Blue',icon:<TennisBallIcon size={20}/>,desc:'Elektroblau, weiß, gelb'},
@@ -15216,6 +15291,10 @@ function TournamentHub({onHome,onStart,onJoin,onCup}){
           onClick={onCup} accent={T.blue} delay=".1s"/>
       </div>
 
+      <GlassActionBar actions={[
+        {label:'Turnier starten',primary:true,onClick:onStart},
+        {label:'Beitreten',onClick:onJoin},
+      ]}/>
       <MatchBar onHome={onHome}/>
     </div>
   );
@@ -17420,7 +17499,7 @@ export default function App(){
   const[inputMode,setInputMode]=useState(()=>lsGet('ritmo_input','smartphone'));
   const[voiceOn,setVoiceOn]=useState(()=>lsGet('ritmo_voice',false));
   const[voiceBaseUrl,setVoiceBaseUrl]=useState(()=>lsGet('ritmo_voice_url',''));
-  const[theme,setTheme]=useState(()=>lsGet('ritmo_theme','dark'));
+  const[theme,setTheme]=useState(()=>lsGet('ritmo_theme','glass'));
   // Tablet-Modus skaliert das Scoreboard (Match-Screen) auf größere
   // Bildschirme. Eigene Persistenz, weil der Mode bewusst manuell vom
   // User aktiviert wird — nicht automatisch via Viewport-Erkennung,
@@ -17758,6 +17837,7 @@ export default function App(){
 
   return(<>
     <style>{CSS}</style>
+    <Toasts/>
 
     {/* Funky-Theme-Ambient-Layer — Stock-Video + Marquee + Fruits +
         Click-Ripples. Wird NUR gemountet wenn das Bauhaus-Funky-

@@ -13,8 +13,15 @@ import { loadProfile as dbLoadProfile, saveProfile as dbSaveProfile, logMatch as
   listClubMessages, sendClubMessage, markChatRead, listMyChats, totalUnreadCount,
   subscribeClubMessages,
   // DNA Cup Cloud-Sync
-  createCupSync, fetchCupSync, pushCupSync, subscribeCupSync
+  createCupSync, fetchCupSync, pushCupSync, subscribeCupSync,
+  // DNA Liga
+  createLigaSync, fetchLigaSync, pushLigaSync, subscribeLigaSync
   } from "./db.js";
+import { LIGA_PHASES, LIGA_GROUPS, initialLigaState, ligaAddParticipant,
+  ligaFormTeams, ligaAssignGroups, genGroupMatches, ligaGroupTable, ligaDnaBoard,
+  genViertelfinale, genNextKoRound, ligaReportResult, ligaConfirmResult,
+  ligaDisputeResult, ligaTeamLabel, ligaTeamOfUser, ligaMyOpenAction,
+  ligaMatchTier } from "./liga.js";
 
 /* ── Refactor (Phase 1): pure modules extracted from App.jsx.
    Components, screens and routing remain colocated here for now;
@@ -15224,6 +15231,541 @@ function DnaCupScreen({onExit}){
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   RITMO DNA LIGA — Club-Liga-Zyklus (3 Monate).
+   Logik: src/liga.js · Sync: ritmo_sessions kind='liga' (Merge-
+   Writes wie beim Cup) · Persistenz: localStorage ritmo_liga_*.
+   Rollen: Ersteller = Admin (steuert Phasen), Spieler melden sich
+   individuell an; Ergebnis eintragen + Gegner bestätigt (9a),
+   Streitfall entscheidet der Admin.
+═══════════════════════════════════════════════════════════════ */
+function LigaScreen({profile,onHome}){
+  const[sync,setSync]=useState(()=>lsGet('ritmo_liga_sync',null)); // {pin,admin}
+  const[liga,setLiga]=useState(()=>lsGet('ritmo_liga_state',null));
+  const[tab,setTab]=useState('start');
+  const[busy,setBusy]=useState(false);
+  const[err,setErr]=useState('');
+  const[code,setCode]=useState('');
+  const[report,setReport]=useState(null); // Match fürs Ergebnis-Sheet
+  const[rs1,setRs1]=useState('');const[rs2,setRs2]=useState('');
+  const[me,setMe]=useState({userId:null,name:(profile?.name||'Spieler')});
+  const syncRef=useRef(sync);syncRef.current=sync;
+  const pendingRef=useRef([]);const flushingRef=useRef(false);const timerRef=useRef(null);
+  useEffect(()=>{lsSet('ritmo_liga_sync',sync);},[sync]);
+  useEffect(()=>{lsSet('ritmo_liga_state',liga);},[liga]);
+  useEffect(()=>()=>clearTimeout(timerRef.current),[]);
+  useEffect(()=>{(async()=>{
+    try{
+      const u=await window.supabase?.auth?.getUser?.();
+      setMe(m=>({...m,userId:u?.data?.user?.id||('local-'+(profile?.name||'gast'))}));
+    }catch(e){setMe(m=>({...m,userId:'local-'+(profile?.name||'gast')}));}
+  })();},[]);
+  const withPending=s=>pendingRef.current.reduce((a,f)=>f(a),s);
+  const applyRemote=r=>{if(r&&r.v===1)setLiga(prev=>{
+    const n=withPending(r);
+    return JSON.stringify(n)===JSON.stringify(prev)?prev:n;});};
+  const flush=useCallback(async()=>{
+    if(flushingRef.current||!syncRef.current?.pin) return;
+    flushingRef.current=true;
+    try{
+      while(pendingRef.current.length){
+        const batch=pendingRef.current.splice(0,pendingRef.current.length);
+        try{
+          const fresh=await pushLigaSync(syncRef.current.pin,batch);
+          setLiga(prev=>{const n=withPending(fresh);
+            return JSON.stringify(n)===JSON.stringify(prev)?prev:n;});
+        }catch(e){pendingRef.current=batch.concat(pendingRef.current);break;}
+      }
+    }finally{flushingRef.current=false;}
+  },[]);
+  const mutate=useCallback(f=>{
+    setLiga(f);
+    if(!syncRef.current?.pin) return;
+    pendingRef.current.push(f);
+    clearTimeout(timerRef.current);
+    timerRef.current=setTimeout(flush,700);
+  },[flush]);
+  useEffect(()=>{
+    if(!sync?.pin) return;
+    const off=subscribeLigaSync(sync.pin,applyRemote);
+    fetchLigaSync(sync.pin).then(r=>{if(r)applyRemote(r);}).catch(()=>{});
+    const iv=setInterval(()=>{
+      if(pendingRef.current.length){flush();return;}
+      fetchLigaSync(sync.pin).then(r=>{if(r)applyRemote(r);}).catch(()=>{});
+    },6000);
+    return()=>{off();clearInterval(iv);};
+  },[sync?.pin,flush]);
+
+  const run=fn=>async()=>{
+    setBusy(true);setErr('');
+    try{await fn();}catch(e){setErr(e?.message||'Fehler — bitte erneut versuchen.');}
+    setBusy(false);
+  };
+  const createLiga=run(async()=>{
+    const s={...initialLigaState('RITMO DNA Liga'),createdAt:new Date().toISOString()};
+    const pin=await createLigaSync(s);
+    setLiga(s);setSync({pin,admin:true});
+    notify('Liga erstellt — Code '+pin.toUpperCase());
+  });
+  const joinLiga=run(async()=>{
+    const pin=code.trim().toLowerCase();
+    const r=await fetchLigaSync(pin);
+    if(!r||r.v!==1) throw new Error('Keine Liga unter diesem Code gefunden.');
+    pendingRef.current=[];
+    setLiga(r);setSync({pin,admin:false});
+    notify('Liga beigetreten');
+  });
+  const leaveLiga=()=>{
+    pendingRef.current=[];clearTimeout(timerRef.current);
+    setSync(null);setLiga(null);setTab('start');
+  };
+
+  const phase=liga?LIGA_PHASES.find(p=>p.id===liga.phase):null;
+  const iAmIn=liga&&liga.participants.some(p=>p.userId===me.userId);
+  const myTeam=liga?ligaTeamOfUser(liga,me.userId):null;
+  const action=liga&&me.userId?ligaMyOpenAction(liga,me.userId):null;
+  const isAdmin=!!sync?.admin;
+
+  /* ── kleine Bausteine ── */
+  const card={background:T.card,border:`1px solid ${T.border}`,borderRadius:19,
+    padding:'16px 18px',marginBottom:12};
+  const cap=t=>(
+    <div style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:1.4,
+      textTransform:'uppercase',marginBottom:10}}>{t}</div>);
+  const btn=(bg,fg,line)=>({width:'100%',padding:'13px 16px',borderRadius:14,
+    background:bg,border:line?`1.5px solid ${line}`:'none',color:fg,
+    fontSize:14.5,fontWeight:800,cursor:'pointer',opacity:busy?.55:1});
+  const chip=sel=>({flex:'0 0 auto',padding:'10px 15px',borderRadius:999,cursor:'pointer',
+    background:sel?T.oSoft:T.card,border:`1.5px solid ${sel?T.o:T.border}`,
+    color:sel?T.o:T.t2,fontSize:13,fontWeight:700});
+  const statusChip=m=>{
+    const map={offen:['Offen',T.t3],eingetragen:['Wartet auf Bestätigung',T.gold],
+      bestaetigt:['Bestätigt ✓',T.g],streit:['Streitfall',T.r]};
+    const[l,c]=map[m.status]||['—',T.t3];
+    return <span style={{color:c,fontSize:11,fontWeight:800}}>{l}</span>;
+  };
+  const matchRow=m=>{
+    const mine=myTeam&&(m.t1===myTeam.id||m.t2===myTeam.id);
+    const tier=ligaMatchTier(liga,m);
+    return(
+      <div key={m.id} style={{padding:'11px 14px',borderRadius:14,marginBottom:8,minWidth:0,
+        background:mine?T.oSoft:T.card2,
+        border:`1.5px solid ${mine?T.o:T.border}`}}>
+        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
+          <span style={{color:T.t3,fontSize:11,fontWeight:800}}>
+            {m.title||`Court ${m.court} · ${m.time}`}{m.phase==='gruppe'?` · Woche ${m.week}`:''}
+          </span>
+          {tier&&<span style={{color:tier.color,fontSize:11,fontWeight:900}}>{tier.label}</span>}
+          <span style={{flex:1}}/>
+          {statusChip(m)}
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:10,minWidth:0}}>
+          <span style={{flex:1,minWidth:0,color:T.t1,fontSize:14.5,fontWeight:700,
+            overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+            {ligaTeamLabel(liga,m.t1)}
+          </span>
+          <span style={{color:T.o,fontSize:13,fontWeight:900,flexShrink:0,
+            fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace'}}>
+            {m.s1==null?'– : –':`${m.s1} : ${m.s2}`}
+          </span>
+          <span style={{flex:1,minWidth:0,color:T.t1,fontSize:14.5,fontWeight:700,textAlign:'right',
+            overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+            {ligaTeamLabel(liga,m.t2)}
+          </span>
+        </div>
+        {/* Aktionen: eintragen / bestätigen / widersprechen */}
+        {mine&&m.status==='offen'&&(
+          <button onClick={()=>{buzz(6);setReport(m);setRs1('');setRs2('');}}
+            style={{...btn(T.o,'#000'),marginTop:9,padding:'10px 14px'}}>Ergebnis eintragen</button>
+        )}
+        {mine&&m.status==='eingetragen'&&m.reportedBy!==me.userId&&(
+          <div style={{display:'flex',gap:8,marginTop:9}}>
+            <button onClick={()=>{mutate(s=>ligaConfirmResult(s,m.id));notify('Ergebnis bestätigt');}}
+              style={{...btn(T.g,'#000'),padding:'10px 14px'}}>Bestätigen ✓</button>
+            <button onClick={()=>{mutate(s=>ligaDisputeResult(s,m.id));notify('Einspruch — der Admin entscheidet','err');}}
+              style={{...btn(T.card2,T.r,T.border),padding:'10px 14px'}}>Einspruch</button>
+          </div>
+        )}
+        {isAdmin&&m.status==='streit'&&(
+          <button onClick={()=>{mutate(s=>ligaConfirmResult(s,m.id));notify('Streitfall entschieden');}}
+            style={{...btn(T.card2,T.t1,T.border),marginTop:9,padding:'10px 14px'}}>
+            Als Admin bestätigen (Score ggf. vorher neu eintragen)
+          </button>
+        )}
+      </div>
+    );
+  };
+
+  return(
+    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
+      overflow:'hidden',position:'relative',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 26px)'}}>
+      <div style={{padding:'0 22px',flexShrink:0}}>
+        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:10}}>
+          <button onClick={onHome} aria-label="Zurück zu Home"
+            style={{width:40,height:40,borderRadius:13,background:T.card,
+              border:`1px solid ${T.border}`,color:T.t1,fontSize:18,fontWeight:800,
+              cursor:'pointer',flexShrink:0}}>‹</button>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:1.6,
+              textTransform:'uppercase'}}>RITMO Club</div>
+            <div style={{color:T.t1,fontSize:24,fontWeight:900,letterSpacing:-.4}}>
+              RITMO <span style={{color:T.o}}>DNA Liga</span>
+            </div>
+          </div>
+          {liga&&phase&&(
+            <span style={{display:'inline-flex',alignItems:'center',gap:7,padding:'6px 13px',
+              borderRadius:999,background:T.oSoft,border:`1px solid ${T.o}`,flexShrink:0}}>
+              <span className="court-live-dot" style={{width:7,height:7,borderRadius:'50%',background:T.o}}/>
+              <span style={{color:T.o,fontSize:11.5,fontWeight:800}}>{phase.name}</span>
+            </span>
+          )}
+        </div>
+        {liga&&(
+          <div style={{display:'flex',gap:8,overflowX:'auto',paddingBottom:12}}>
+            {[['start','Start'],['gruppen','Gruppen'],['ko','KO'],['dna','DNA'],
+              ...(isAdmin?[['admin','Admin']]:[])].map(([id,l])=>(
+              <button key={id} onClick={()=>{buzz(6);setTab(id);}} style={chip(tab===id)}>{l}</button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div style={{flex:1,minHeight:0,overflowY:'auto',WebkitOverflowScrolling:'touch',
+        padding:'0 22px calc(env(safe-area-inset-bottom,0px) + 120px)'}}>
+
+        {/* ── Nicht verbunden: erstellen oder beitreten ── */}
+        {!liga&&(<>
+          <div style={card}>
+            {cap('Der Zyklus')}
+            {LIGA_PHASES.filter(p=>p.id!=='planung').map((p,i)=>(
+              <div key={p.id} style={{display:'flex',gap:10,alignItems:'baseline',
+                padding:'5px 0',borderBottom:i<4?`1px solid ${T.sep}`:'none'}}>
+                <span style={{color:T.o,fontSize:12,fontWeight:900,width:18}}>{i+1}</span>
+                <span style={{color:T.t1,fontSize:14,fontWeight:700}}>{p.name}</span>
+                <span style={{flex:1}}/>
+                <span style={{color:T.t3,fontSize:11.5}}>{p.sub}</span>
+              </div>
+            ))}
+            <div style={{color:T.t3,fontSize:12,lineHeight:1.55,marginTop:10}}>
+              32 Spieler · 16 Teams · 4 Gruppen · 4 Courts. Monat 1: ein Liga-Abend
+              pro Woche (19:00–21:30). Monat 2: jede Woche eine KO-Runde. Monat 3:
+              Planung & Anmeldung des nächsten Zyklus.
+            </div>
+          </div>
+          <div style={card}>
+            {cap('Liga beitreten')}
+            <input value={code} maxLength={6} placeholder="CODE"
+              onChange={e=>setCode(e.target.value.toLowerCase().replace(/[^a-z0-9]/g,''))}
+              autoCapitalize="off" autoCorrect="off" spellCheck={false}
+              style={{width:'100%',padding:'13px 14px',borderRadius:13,background:T.card2,
+                border:`1.5px solid ${T.border}`,color:T.t1,fontSize:18,fontWeight:900,
+                letterSpacing:6,textAlign:'center',textTransform:'uppercase',outline:'none',
+                boxSizing:'border-box',marginBottom:10,
+                fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace'}}/>
+            <button disabled={busy||code.length<6} onClick={joinLiga}
+              style={{...btn(T.g,'#000'),opacity:busy||code.length<6?.45:1}}>
+              Beitreten
+            </button>
+          </div>
+          <div style={card}>
+            {cap('Neue Liga (Club-Admin)')}
+            <div style={{color:T.t3,fontSize:12,lineHeight:1.55,marginBottom:10}}>
+              Du bekommst einen 6er-Code für deine Club-Mitglieder. Wer den Code hat,
+              kann sich anmelden — du steuerst Teams, Gruppen und Phasen.
+            </div>
+            <button disabled={busy} onClick={createLiga} style={btn(T.o,'#000')}>
+              Liga erstellen
+            </button>
+          </div>
+          {err&&<div style={{color:T.r,fontSize:12.5,fontWeight:700,textAlign:'center'}}>{err}</div>}
+        </>)}
+
+        {/* ── START ── */}
+        {liga&&tab==='start'&&(<>
+          <div style={card}>
+            <div style={{display:'flex',alignItems:'baseline',gap:8}}>
+              {cap(`Code ${sync.pin.toUpperCase()}`)}
+              <span style={{flex:1}}/>
+              <span style={{color:T.t3,fontSize:11.5}}>{liga.participants.length}/32 angemeldet</span>
+            </div>
+            {liga.phase==='anmeldung'&&!iAmIn&&(
+              <button disabled={busy||!me.userId} onClick={()=>{
+                mutate(s=>ligaAddParticipant(s,{userId:me.userId,name:me.name,style:profile?.style||null}));
+                notify('Angemeldet — bis bald am Liga-Abend!');
+              }} style={btn(T.o,'#000')}>Jetzt anmelden</button>
+            )}
+            {iAmIn&&(
+              <div style={{color:T.g,fontSize:13.5,fontWeight:800}}>
+                Du bist angemeldet ✓{myTeam?` — Team: ${ligaTeamLabel(liga,myTeam.id)}`:''}
+              </div>
+            )}
+            {liga.phase==='planung'&&(
+              <div style={{color:T.t2,fontSize:13,lineHeight:1.6,marginTop:8}}>
+                Der Zyklus ist beendet — aktuell läuft die Planung. Die Anmeldung für
+                die nächste Saison öffnet der Admin.
+              </div>
+            )}
+          </div>
+          {action&&(
+            <div style={{...card,border:`1.5px solid ${T.o}`}}>
+              {cap(action.kind==='confirm'?'Bitte bestätigen':'Dein nächstes Spiel')}
+              {matchRow(action.match)}
+            </div>
+          )}
+          {myTeam&&(
+            <div style={card}>
+              {cap('Meine Spiele')}
+              {liga.matches.filter(m=>m.t1===myTeam.id||m.t2===myTeam.id).map(matchRow)}
+              {liga.matches.filter(m=>m.t1===myTeam.id||m.t2===myTeam.id).length===0&&(
+                <div style={{color:T.t3,fontSize:12.5}}>Noch keine Ansetzungen.</div>
+              )}
+            </div>
+          )}
+          {liga.phase==='anmeldung'&&(
+            <div style={card}>
+              {cap('Angemeldete Spieler')}
+              <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+                {liga.participants.map(p=>(
+                  <span key={p.id} style={{padding:'6px 12px',borderRadius:999,background:T.card2,
+                    border:`1px solid ${T.border}`,color:T.t2,fontSize:12,fontWeight:700}}>
+                    {p.name}
+                  </span>
+                ))}
+                {liga.participants.length===0&&(
+                  <span style={{color:T.t3,fontSize:12.5}}>Noch niemand — sei die/der Erste!</span>
+                )}
+              </div>
+            </div>
+          )}
+        </>)}
+
+        {/* ── GRUPPEN ── */}
+        {liga&&tab==='gruppen'&&LIGA_GROUPS.map(g=>{
+          const table=ligaGroupTable(liga,g);
+          if(table.length===0) return null;
+          return(
+            <div key={g} style={card}>
+              {cap(`Gruppe ${g} · Court ${LIGA_GROUPS.indexOf(g)+1}`)}
+              {table.map(r=>(
+                <div key={r.team.id} style={{display:'flex',alignItems:'center',gap:9,
+                  padding:'7px 0',borderBottom:`1px solid ${T.sep}`,minWidth:0}}>
+                  <span style={{color:r.rank===1?T.gold:T.t3,fontSize:13,fontWeight:900,width:20}}>
+                    {r.rank}.
+                  </span>
+                  <span style={{flex:1,minWidth:0,color:T.t1,fontSize:14,fontWeight:700,
+                    overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                    {ligaTeamLabel(liga,r.team.id)}
+                  </span>
+                  <span style={{color:T.t3,fontSize:12,flexShrink:0}}>{r.played} Sp.</span>
+                  <span style={{color:T.t2,fontSize:12.5,fontWeight:700,flexShrink:0}}>
+                    {r.gf}:{r.ga}
+                  </span>
+                  <span style={{color:T.o,fontSize:14,fontWeight:900,width:26,textAlign:'right'}}>
+                    {r.w}S
+                  </span>
+                </div>
+              ))}
+              <div style={{marginTop:10}}>
+                {[1,2,3].map(w=>{
+                  const ms=liga.matches.filter(m=>m.phase==='gruppe'&&m.group===g&&m.week===w);
+                  if(!ms.length) return null;
+                  return(
+                    <div key={w}>
+                      <div style={{color:T.t3,fontSize:10.5,fontWeight:800,letterSpacing:1.1,
+                        textTransform:'uppercase',margin:'8px 0 6px'}}>Woche {w}</div>
+                      {ms.map(matchRow)}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+        {liga&&tab==='gruppen'&&liga.teams.length===0&&(
+          <div style={{...card,color:T.t3,fontSize:13,textAlign:'center'}}>
+            Gruppen entstehen, sobald der Admin die Anmeldung schließt.
+          </div>
+        )}
+
+        {/* ── KO ── */}
+        {liga&&tab==='ko'&&(<>
+          {['viertel','halb','finale'].map(ph=>{
+            const ms=liga.matches.filter(m=>m.phase===ph);
+            if(!ms.length) return null;
+            return(
+              <div key={ph} style={card}>
+                {cap(LIGA_PHASES.find(p=>p.id===ph)?.name||ph)}
+                {ms.map(matchRow)}
+              </div>
+            );
+          })}
+          {!liga.matches.some(m=>m.phase!=='gruppe')&&(
+            <div style={{...card,color:T.t3,fontSize:13,textAlign:'center'}}>
+              Die KO-Phase wird nach der Gruppenphase gesetzt — nur die Top 2
+              jeder Gruppe sind dabei (8 Teams, Erste gegen Zweite über Kreuz).
+            </div>
+          )}
+        </>)}
+
+        {/* ── DNA ── */}
+        {liga&&tab==='dna'&&(
+          <div style={card}>
+            {cap('DNA-Leaderboard · individuell')}
+            <div style={{color:T.t3,fontSize:11.5,lineHeight:1.5,marginBottom:10}}>
+              Team-Spiele zählen als Punkte, Siege bringen den Spielstil-Tier-Bonus —
+              wie beim DNA Cup, über die ganze Saison.
+            </div>
+            {ligaDnaBoard(liga).map(r=>(
+              <div key={r.p.id} style={{display:'flex',alignItems:'center',gap:9,
+                padding:'7px 0',borderBottom:`1px solid ${T.sep}`,minWidth:0}}>
+                <span style={{color:r.rank<=3?T.gold:T.t3,fontSize:13,fontWeight:900,width:26}}>
+                  #{r.rank}
+                </span>
+                <span style={{flex:1,minWidth:0,color:T.t1,fontSize:14,fontWeight:700,
+                  overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r.p.name}</span>
+                {r.tierBonus>0&&(
+                  <span style={{color:T.o,fontSize:11,fontWeight:800}}>+{r.tierBonus}</span>
+                )}
+                <span style={{color:T.t1,fontSize:14,fontWeight:900,width:34,textAlign:'right',
+                  fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace'}}>{r.total}</span>
+              </div>
+            ))}
+            {liga.participants.length===0&&(
+              <div style={{color:T.t3,fontSize:12.5}}>Noch keine Spieler angemeldet.</div>
+            )}
+          </div>
+        )}
+
+        {/* ── ADMIN ── */}
+        {liga&&tab==='admin'&&isAdmin&&(<>
+          <div style={card}>
+            {cap('Phasen-Steuerung')}
+            {liga.phase==='anmeldung'&&(
+              <button disabled={busy||liga.participants.length<4} onClick={()=>{
+                mutate(s=>genGroupMatches(ligaAssignGroups(ligaFormTeams(s))));
+                notify('Teams gebildet — die Gruppenphase läuft!');
+              }} style={btn(T.o,'#000')}>
+                Anmeldung schließen → Teams, Gruppen & Spielplan
+              </button>
+            )}
+            {liga.phase==='gruppe'&&(
+              <button disabled={busy} onClick={()=>{
+                const gm=liga.matches.filter(m=>m.phase==='gruppe');
+                if(gm.some(m=>m.status!=='bestaetigt')){
+                  setErr('Es sind noch Gruppenspiele offen oder unbestätigt.');return;
+                }
+                mutate(s=>genViertelfinale(s));
+                notify('Viertelfinale gesetzt — Top 2 jeder Gruppe!');
+              }} style={btn(T.o,'#000')}>
+                Gruppenphase beenden → Viertelfinale setzen
+              </button>
+            )}
+            {['viertel','halb'].includes(liga.phase)&&(
+              <button disabled={busy} onClick={()=>{
+                const nxt=genNextKoRound(liga);
+                if(!nxt){setErr('Die aktuelle Runde ist noch nicht komplett bestätigt.');return;}
+                mutate(s=>genNextKoRound(s)||s);
+                notify('Nächste KO-Runde steht!');
+              }} style={btn(T.o,'#000')}>
+                Nächste KO-Runde generieren
+              </button>
+            )}
+            {liga.phase==='finale'&&(
+              <button disabled={busy} onClick={()=>{
+                mutate(s=>({...s,phase:'planung'}));
+                notify('Saison abgeschlossen — Glückwunsch an die Sieger!');
+              }} style={btn(T.gold,'#000')}>
+                Saison abschließen → Planung
+              </button>
+            )}
+            {liga.phase==='planung'&&(
+              <button disabled={busy} onClick={()=>{
+                mutate(s=>({...initialLigaState(s.name,s.clubId),
+                  createdAt:new Date().toISOString()}));
+                notify('Neue Anmeldung geöffnet!');
+              }} style={btn(T.o,'#000')}>
+                Neue Saison — Anmeldung öffnen
+              </button>
+            )}
+            {err&&<div style={{color:T.r,fontSize:12.5,fontWeight:700,marginTop:10}}>{err}</div>}
+          </div>
+          <div style={card}>
+            {cap('Streitfälle & Korrekturen')}
+            {liga.matches.filter(m=>m.status==='streit').map(m=>(
+              <div key={m.id}>
+                {matchRow(m)}
+                <button onClick={()=>{buzz(6);setReport(m);setRs1(String(m.s1??''));setRs2(String(m.s2??''));}}
+                  style={{...btn(T.card2,T.t1,T.border),marginTop:-2,marginBottom:10,padding:'10px 14px'}}>
+                  Score korrigieren
+                </button>
+              </div>
+            ))}
+            {liga.matches.filter(m=>m.status==='streit').length===0&&(
+              <div style={{color:T.t3,fontSize:12.5}}>Keine offenen Streitfälle.</div>
+            )}
+          </div>
+          <button onClick={leaveLiga} style={{...btn('none',T.r,T.border),marginBottom:12}}>
+            Liga auf diesem Gerät trennen
+          </button>
+        </>)}
+        {liga&&!isAdmin&&(
+          <button onClick={leaveLiga} style={{...btn('none',T.t3,T.border),margin:'4px 0 12px'}}>
+            Liga auf diesem Gerät trennen
+          </button>
+        )}
+      </div>
+
+      {/* Kontextuelle Primäraktion (Glass) — In-App-Reminder. */}
+      {liga&&action&&tab!=='start'&&(
+        <GlassActionBar bottom="calc(env(safe-area-inset-bottom,0px) + 24px)" actions={[
+          {label:action.kind==='confirm'?'Ergebnis bestätigen':'Ergebnis eintragen',
+            primary:true,onClick:()=>{setTab('start');}},
+        ]}/>
+      )}
+
+      {/* Ergebnis-Sheet */}
+      {report&&(
+        <div onClick={()=>setReport(null)} className="fi" style={{position:'fixed',inset:0,
+          zIndex:360,background:'rgba(0,0,0,.7)',backdropFilter:'blur(4px)',
+          display:'flex',alignItems:'flex-end'}}>
+          <div onClick={e=>e.stopPropagation()} style={{width:'100%',background:T.card,
+            borderTopLeftRadius:24,borderTopRightRadius:24,
+            padding:'18px 20px calc(env(safe-area-inset-bottom,0px) + 20px)'}}>
+            <div style={{width:36,height:4,borderRadius:2,background:T.border,margin:'0 auto 14px'}}/>
+            <div style={{color:T.t1,fontSize:17,fontWeight:900,marginBottom:2}}>Ergebnis eintragen</div>
+            <div style={{color:T.t3,fontSize:12,marginBottom:14}}>
+              {ligaTeamLabel(liga,report.t1)} vs {ligaTeamLabel(liga,report.t2)} — Spiele
+              (z. B. 6:4). Das Gegner-Team bestätigt danach.
+            </div>
+            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:14}}>
+              {[[rs1,setRs1],[rs2,setRs2]].map(([v,set],i)=>(
+                <input key={i} type="number" inputMode="numeric" min="0" value={v}
+                  onChange={e=>set(e.target.value)} placeholder="0"
+                  style={{flex:1,padding:'14px',borderRadius:13,background:T.card2,
+                    border:`1.5px solid ${T.border}`,color:T.t1,fontSize:24,fontWeight:900,
+                    textAlign:'center',outline:'none',boxSizing:'border-box',
+                    fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace'}}/>
+              )).flatMap((el,i)=>i===0?[el,
+                <span key="vs" style={{color:T.t3,fontSize:14,fontWeight:900}}>:</span>]:[el])}
+            </div>
+            <button disabled={rs1===''||rs2===''} onClick={()=>{
+              const a=Math.max(0,parseInt(rs1)||0),b=Math.max(0,parseInt(rs2)||0);
+              mutate(s=>ligaReportResult(s,report.id,a,b,me.userId));
+              setReport(null);
+              notify('Eingetragen — wartet auf Bestätigung des Gegners');
+            }} style={{...btn(T.o,'#000'),opacity:rs1===''||rs2===''?.45:1}}>
+              Eintragen
+            </button>
+            <button onClick={()=>setReport(null)}
+              style={{...btn('none',T.t3,T.border),marginTop:8}}>Abbrechen</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
    HUB SCREENS — Tournament + RITMO Bibel
 
    TournamentHub bündelt "Turnier starten" + "Turnier beitreten" als
@@ -18121,17 +18663,7 @@ export default function App(){
 
     {/* Suche-Tab-Hub + Coming-Soon-Teaser (Liga, Buchungsassistent) */}
     {scr==='search-hub'&&<SearchHub nav={nav} onTab={handleTab}/>}
-    {scr==='liga'&&<ComingSoon
-      icon={<MedalIcon size={56} rank={1}/>}
-      title="RITMO DNA Liga"
-      desc="Die Liga, mit der du wöchentlich wächst: feste Spieltage, Auf- und Abstieg, eine Tabelle über Wochen — nicht nur einen Abend."
-      bullets={[
-        'Saisons mit Hin- und Rückrunde',
-        'Spieltage mit automatischer Ansetzung',
-        'Live-Tabelle mit Form-Kurve',
-        'Auf-/Abstieg zwischen Divisionen',
-      ]}
-      onHome={goHome}/>}
+    {scr==='liga'&&<LigaScreen profile={profile} onHome={goHome}/>}
     {scr==='booking-assist'&&<ComingSoon
       icon={<AirPlayIcon size={52} color={T.o}/>}
       title="Buchungsassistent"

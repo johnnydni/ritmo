@@ -2533,6 +2533,13 @@ function TabBar({active,onTab}){
   // erst im Mount-Effect → konsistenter Wert.
   const[blendIn]=useState(()=>__navBlendArm);
   useEffect(()=>{__navBlendArm=false;},[]);
+  // ── Eingeklappte Navbar ──
+  // Außerhalb von Home startet die Bar screenübergreifend eingeklappt
+  // (jeder Screen mountet seine eigene TabBar → active entscheidet).
+  // Die kompakte Glass-Kugel trägt das Home-Icon; ein Tap fährt die
+  // Bar aus, danach navigiert man normal. Nach dem Tab-Wechsel mountet
+  // der Ziel-Screen frisch → auf Nicht-Home wieder eingeklappt.
+  const[collapsed,setCollapsed]=useState(active!=='home');
 
   // Tab-Geometrien relativ zur Padding-Box des Navbars (gleicher
   // Bezugsrahmen wie die absolute Pill).
@@ -2649,8 +2656,10 @@ function TabBar({active,onTab}){
     };
     tick();
     return()=>cancelAnimationFrame(raf);
+  // collapsed in den Deps: beim Ausklappen existiert der Nav-DOM erst
+  // jetzt — die Pill muss frisch gemessen werden.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[targetTab,searchMode]);
+  },[targetTab,searchMode,collapsed]);
 
   // Resize: TabBar-Layout kann sich z. B. bei Theme-Wechsel oder
   // Rotation ändern — Pill nachjustieren. ResizeObserver wäre sauberer,
@@ -2710,6 +2719,30 @@ function TabBar({active,onTab}){
     ?(searchValue?'Suchen':'Suche schließen')
     :(searchable?'Suchen':action.title);
   const rightHighlight=isSearching?!!searchValue:!!action.highlight;
+
+  // Eingeklappt: kompakte Glass-Kugel (Home-Icon) an gleicher Position.
+  if(collapsed) return(
+    <div style={{position:'absolute',
+      bottom:'calc(env(safe-area-inset-bottom, 0px) * 0.3 - 3px)',
+      left:0,right:0,display:'flex',alignItems:'center',justifyContent:'center',
+      pointerEvents:'none',zIndex:5}}>
+      <div className="fi" style={{position:'relative',width:57,height:57,pointerEvents:'auto'}}>
+        <GlassSurface width="100%" height="100%" borderRadius={28}
+          className="nav-glass"
+          brightness={58} opacity={0.92} blur={11}
+          displace={0.6} distortionScale={-130}
+          redOffset={0} greenOffset={8} blueOffset={16}
+          style={{position:'absolute',inset:0,pointerEvents:'none'}}/>
+        <button onClick={()=>{buzz(6);setCollapsed(false);}}
+          aria-label="Navigation ausklappen" title="Navigation ausklappen"
+          style={{position:'relative',zIndex:1,width:'100%',height:'100%',
+            borderRadius:'50%',border:'none',background:'transparent',cursor:'pointer',
+            color:T.t1,display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <HomeIcon size={24}/>
+        </button>
+      </div>
+    </div>
+  );
 
   return(
     <div style={{position:'absolute',

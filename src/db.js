@@ -433,6 +433,57 @@ export function subscribeCupSync(pin, onChange) {
   });
 }
 
+/* ───── DNA LIGA — Cloud-Sync (identische Mechanik, kind='liga').
+   Eine Liga-Saison ist eine ritmo_sessions-Row mit data.kind='liga'
+   und dem Saison-State in data.liga. Merge-Write wie beim Cup. */
+
+export async function createLigaSync(ligaState) {
+  const c = sb();
+  if (!c) throw new Error('Cloud-Sync nicht verfügbar — keine Verbindung.');
+  for (let i = 0; i < 5; i++) {
+    const pin = genPin();
+    const { error } = await c.from('ritmo_sessions').insert({
+      pin,
+      data: { kind: 'liga', liga: ligaState, createdAt: new Date().toISOString() },
+    });
+    if (!error) return pin;
+    if (error.code !== '23505') {
+      console.warn('[db] createLigaSync:', error.message);
+      throw new Error('Liga konnte nicht erstellt werden.');
+    }
+  }
+  throw new Error('Kein freier Code gefunden — bitte erneut versuchen.');
+}
+
+export async function fetchLigaSync(pin) {
+  const d = await fetchOnlineTournament(pin);
+  return (d && d.kind === 'liga' && d.liga) ? d.liga : null;
+}
+
+export async function pushLigaSync(pin, mutators) {
+  const c = sb();
+  if (!c || !pin) throw new Error('SYNC_OFFLINE');
+  const p = pin.toLowerCase();
+  const { data, error } = await c
+    .from('ritmo_sessions').select('data').eq('pin', p).maybeSingle();
+  if (error) throw error;
+  if (!data || data.data?.kind !== 'liga') throw new Error('SYNC_GONE');
+  let liga = data.data.liga;
+  mutators.forEach(fn => { liga = fn(liga); });
+  const { error: e2 } = await c
+    .from('ritmo_sessions')
+    .update({ data: { ...data.data, liga }, updated_at: new Date().toISOString() })
+    .eq('pin', p);
+  if (e2) throw e2;
+  return liga;
+}
+
+export function subscribeLigaSync(pin, onChange) {
+  return subscribeToTournament(pin, d => {
+    if (d && d.kind === 'liga' && d.liga) onChange(d.liga);
+  });
+}
+
 /* ───── PHASE 2: Live-Sync + Score-Submission + Ready-Check ───── */
 
 /**

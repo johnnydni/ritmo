@@ -586,12 +586,22 @@ input{outline:none;border:none;background:none;}
   62%{transform:scale(1.07);opacity:1;}
   100%{transform:scale(1);opacity:1;}
 }
-.nav-pop{animation:navPopIn .38s cubic-bezier(.34,1.56,.64,1) both;
+.nav-pop{animation:navPopIn .55s cubic-bezier(.34,1.56,.64,1) both;
   transform-origin:26px 90%;}
-.nav-pop-bar{animation:navPopIn .46s cubic-bezier(.34,1.56,.64,1) both;
+.nav-pop-bar{animation:navPopIn .62s cubic-bezier(.34,1.56,.64,1) both;
+  transform-origin:26px 90%;}
+/* Einploppen: die Bar holt kurz Schwung (Anticipation auf 105%) und
+   saugt sich dann in die Kugel-Position unten links ein — erst nach
+   dieser Exit-Animation mountet die Kugel mit ihrem Pop-in. */
+@keyframes navPopOut{
+  0%{transform:scale(1);opacity:1;}
+  30%{transform:scale(1.05);opacity:1;}
+  100%{transform:scale(.45);opacity:0;}
+}
+.nav-pop-out{animation:navPopOut .5s cubic-bezier(.55,-.28,.68,1) both;
   transform-origin:26px 90%;}
 @media (prefers-reduced-motion: reduce){
-  .nav-pop,.nav-pop-bar{animation:none;}
+  .nav-pop,.nav-pop-bar,.nav-pop-out{animation:none;}
 }
 input[type=number]::-webkit-inner-spin-button,
 input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}

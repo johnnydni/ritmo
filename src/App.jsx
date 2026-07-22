@@ -7092,7 +7092,7 @@ function TournamentWizard({onClose,onFinish,canStart,
                 style={{...stepBtn,width:52,height:52,borderRadius:16,fontSize:24}}>+</button>
             </div>
             <div style={{color:T.t3,fontSize:12,textAlign:'center',marginBottom:18}}>
-              Maximal {maxCourts} bei {players.length} Spielern.
+              Frei wählbar — pro Court spielen 4, überzählige Courts bleiben frei.
             </div>
             <div style={label}>Court-Namen (optional)</div>
             {Array.from({length:numCourts}).map((_,i)=>(
@@ -7295,13 +7295,12 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
   const grpB=players.length-grpA;
   const teamOk=!fmtMeta.team||players.length%2===0;
   const groupsOk=!fmtMeta.groups||(grpA>=2&&grpB>=2);
-  // Im Online-Modus joinen Spieler erst nach Erstellung — daher hier
-  // keine Cap durch lokale Spielerzahl. Trotzdem ein sinnvolles UI-
-  // Maximum (20 Courts), damit der +/-/Picker nicht ins Endlose läuft.
-  // Lokal: floor(players/4); Mixicano: pro Court 2×A + 2×B.
-  const maxCourts=mode==='online'?20:Math.max(1,fmtMeta.groups
-    ?Math.floor(Math.min(grpA,grpB)/2)
-    :Math.floor(players.length/4));
+  // Courts sind FREI wählbar, unabhängig von der Spielerzahl — der
+  // Host kennt seine Halle. Die Runden-Generatoren kappen intern
+  // sicher (Americano floor(P/4), Mixicano min(A,B)/2, …): über-
+  // zählige Courts bleiben schlicht leer. 20 als UI-Maximum, damit
+  // der +/-/Picker nicht ins Endlose läuft.
+  const maxCourts=20;
   // Online unterstützt Mixicano nicht (Teilnehmer haben keine Gruppen).
   useEffect(()=>{if(mode==='online'&&fmtMeta.online===false)setFormat('americano');},[mode,format]); // eslint-disable-line react-hooks/exhaustive-deps
   // Auto-clamp courts when players reduced (gilt nur im Lokal-Modus)
@@ -7652,7 +7651,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
           <div>
             <div style={{color:T.t1,fontSize:15,fontWeight:600}}>Anzahl Courts</div>
             <div style={{color:T.t3,fontSize:11,fontWeight:500,marginTop:1}}>
-              max. {maxCourts} bei {players.length} Spielern
+              frei wählbar · 4 Spieler pro Court
             </div>
           </div>
           <div style={{display:'flex',alignItems:'center',gap:14}}>

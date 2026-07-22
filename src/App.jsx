@@ -2420,74 +2420,6 @@ function ScreenHeader({title,subtitle,icon,right,pad=22,ellipsis=false}){
    nach dem Snap sitzt die Pill bereits unterm Finger. */
 let __navBlendArm=false;
 
-/* ── FEEDBACK-BUS — leichtes Toast-System (Liquid-Glass-Look) ─────
-   notify('Text') von überall aufrufbar (modul-scope, kein Context
-   nötig); <Toasts/> hängt einmal im App-Root. Auto-Dismiss nach
-   2.6s, gestapelt über der TabBar, pointer-events:none — Toasts
-   informieren, sie blockieren nie. */
-let __toastPush=null;
-function notify(msg,kind='ok'){
-  buzz(kind==='err'?[24,40,24]:8);
-  if(__toastPush) __toastPush({msg,kind});
-}
-function Toasts(){
-  const[items,setItems]=useState([]);
-  useEffect(()=>{
-    __toastPush=t=>{
-      const id=Math.random().toString(36).slice(2);
-      setItems(x=>[...x.slice(-2),{...t,id}]);
-      setTimeout(()=>setItems(x=>x.filter(i=>i.id!==id)),2600);
-    };
-    return()=>{__toastPush=null;};
-  },[]);
-  if(!items.length) return null;
-  return(
-    <div style={{position:'fixed',left:0,right:0,zIndex:400,pointerEvents:'none',
-      bottom:'calc(env(safe-area-inset-bottom,0px) + 104px)',
-      display:'flex',flexDirection:'column',alignItems:'center',gap:8}}>
-      {items.map(t=>(
-        <div key={t.id} className="si" style={{display:'flex',alignItems:'center',gap:9,
-          maxWidth:'min(86vw, 420px)',padding:'11px 18px',borderRadius:999,
-          background:'color-mix(in srgb, var(--bg) 62%, var(--card2))',
-          backdropFilter:'blur(18px) saturate(1.5)',WebkitBackdropFilter:'blur(18px) saturate(1.5)',
-          border:`1px solid ${T.border}`,boxShadow:'0 12px 34px rgba(0,0,0,.38)',
-          color:T.t1,fontSize:13.5,fontWeight:700}}>
-          <span style={{color:t.kind==='err'?T.r:T.g,fontWeight:900,flexShrink:0}}>
-            {t.kind==='err'?'✕':'✓'}
-          </span>
-          <span style={{minWidth:0,overflow:'hidden',textOverflow:'ellipsis',
-            whiteSpace:'nowrap'}}>{t.msg}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/* ── KONTEXTUELLE ACTION-BAR — Primäraktionen eines Screens als
-   schwebende Glass-Pills über der Navigation (iOS-26-Muster:
-   Navigation unten, situative Aktionen direkt darüber im
-   Daumenradius). primary bekommt Brand-Orange, Rest Milchglas. */
-function GlassActionBar({actions=[],bottom='calc(env(safe-area-inset-bottom,0px) + 96px)'}){
-  if(!actions.length) return null;
-  return(
-    <div style={{position:'fixed',left:0,right:0,bottom,zIndex:6,pointerEvents:'none',
-      display:'flex',justifyContent:'center',gap:10,padding:'0 22px'}}>
-      {actions.map((a,i)=>(
-        <button key={i} onClick={()=>{buzz(8);a.onClick&&a.onClick();}}
-          className="fu" style={{animationDelay:`${i*0.04}s`,pointerEvents:'auto',
-            padding:'14px 22px',borderRadius:999,cursor:'pointer',
-            border:a.primary?'none':`1px solid ${T.border}`,
-            background:a.primary?T.o:'color-mix(in srgb, var(--bg) 55%, var(--card2))',
-            backdropFilter:'blur(18px) saturate(1.5)',WebkitBackdropFilter:'blur(18px) saturate(1.5)',
-            color:a.primary?'#000':T.t1,fontSize:14.5,fontWeight:800,
-            boxShadow:a.primary?`0 12px 30px ${T.oGlow}`:'0 12px 30px rgba(0,0,0,.35)'}}>
-          {a.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 function TabBar({active,onTab}){
   // Such-FAB + Navbar-Suchmodus sind entfernt (Einstellungen haben ein
   // eigenes Suchfeld im Screen). Die früheren searchable/rightAction-
@@ -2554,7 +2486,7 @@ function TabBar({active,onTab}){
       setClosing(true);
       collapseTimer.current=setTimeout(()=>{
         setClosing(false);setCollapsed(true);
-      },300);
+      },480);
     },2600);
   },[active]);
   useEffect(()=>{armCollapse();return()=>clearTimeout(collapseTimer.current);},[armCollapse]);
@@ -5210,7 +5142,6 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
       // Counter im Profil hochzählen (matchesPlayed + ggf. winsCount),
       // damit App-Matches in den Spielniveau-Estimate einfließen.
       onMatchLogged?.({userWon});
-      notify(userWon?"Match gespeichert — Sieg!":"Match gespeichert");
     } else if(!win){
       loggedWinRef.current=null;
     }
@@ -9997,8 +9928,6 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
         if(userTeam){
           logMatchLocal({format:'tournament-'+(tourney.format||'americano'),user_won:userWon,sets:null});
           onMatchLogged?.({userWon});
-          notify(userWon?"Match gespeichert — Sieg!":"Match gespeichert");
-      notify(userWon?"Match gespeichert — Sieg!":"Match gespeichert");
         }
         return {...c,logged:true};
       }),
@@ -15358,7 +15287,6 @@ function LigaScreen({profile,onHome}){
     const s={...initialLigaState('RITMO DNA Liga'),createdAt:new Date().toISOString()};
     const pin=await createLigaSync(s);
     setLiga(s);setSync({pin,admin:true});
-    notify('Liga erstellt — Code '+pin.toUpperCase());
   });
   const joinLiga=run(async()=>{
     const pin=code.trim().toLowerCase();
@@ -15366,7 +15294,6 @@ function LigaScreen({profile,onHome}){
     if(!r||r.v!==1) throw new Error('Keine Liga unter diesem Code gefunden.');
     pendingRef.current=[];
     setLiga(r);setSync({pin,admin:false});
-    notify('Liga beigetreten');
   });
   const leaveLiga=()=>{
     pendingRef.current=[];clearTimeout(timerRef.current);
@@ -15433,14 +15360,14 @@ function LigaScreen({profile,onHome}){
         )}
         {mine&&m.status==='eingetragen'&&m.reportedBy!==me.userId&&(
           <div style={{display:'flex',gap:8,marginTop:9}}>
-            <button onClick={()=>{mutate(s=>ligaConfirmResult(s,m.id));notify('Ergebnis bestätigt');}}
+            <button onClick={()=>{mutate(s=>ligaConfirmResult(s,m.id));}}
               style={{...btn(T.g,'#000'),padding:'10px 14px'}}>Bestätigen ✓</button>
-            <button onClick={()=>{mutate(s=>ligaDisputeResult(s,m.id));notify('Einspruch — der Admin entscheidet','err');}}
+            <button onClick={()=>{mutate(s=>ligaDisputeResult(s,m.id));}}
               style={{...btn(T.card2,T.r,T.border),padding:'10px 14px'}}>Einspruch</button>
           </div>
         )}
         {isAdmin&&m.status==='streit'&&(
-          <button onClick={()=>{mutate(s=>ligaConfirmResult(s,m.id));notify('Streitfall entschieden');}}
+          <button onClick={()=>{mutate(s=>ligaConfirmResult(s,m.id));}}
             style={{...btn(T.card2,T.t1,T.border),marginTop:9,padding:'10px 14px'}}>
             Als Admin bestätigen (Score ggf. vorher neu eintragen)
           </button>
@@ -15545,7 +15472,6 @@ function LigaScreen({profile,onHome}){
             {liga.phase==='anmeldung'&&!iAmIn&&(
               <button disabled={busy||!me.userId} onClick={()=>{
                 mutate(s=>ligaAddParticipant(s,{userId:me.userId,name:me.name,style:profile?.style||null}));
-                notify('Angemeldet — bis bald am Liga-Abend!');
               }} style={btn(T.o,'#000')}>Jetzt anmelden</button>
             )}
             {iAmIn&&(
@@ -15697,7 +15623,6 @@ function LigaScreen({profile,onHome}){
             {liga.phase==='anmeldung'&&(
               <button disabled={busy||liga.participants.length<4} onClick={()=>{
                 mutate(s=>genGroupMatches(ligaAssignGroups(ligaFormTeams(s))));
-                notify('Teams gebildet — die Gruppenphase läuft!');
               }} style={btn(T.o,'#000')}>
                 Anmeldung schließen → Teams, Gruppen & Spielplan
               </button>
@@ -15709,7 +15634,6 @@ function LigaScreen({profile,onHome}){
                   setErr('Es sind noch Gruppenspiele offen oder unbestätigt.');return;
                 }
                 mutate(s=>genViertelfinale(s));
-                notify('Viertelfinale gesetzt — Top 2 jeder Gruppe!');
               }} style={btn(T.o,'#000')}>
                 Gruppenphase beenden → Viertelfinale setzen
               </button>
@@ -15719,7 +15643,6 @@ function LigaScreen({profile,onHome}){
                 const nxt=genNextKoRound(liga);
                 if(!nxt){setErr('Die aktuelle Runde ist noch nicht komplett bestätigt.');return;}
                 mutate(s=>genNextKoRound(s)||s);
-                notify('Nächste KO-Runde steht!');
               }} style={btn(T.o,'#000')}>
                 Nächste KO-Runde generieren
               </button>
@@ -15727,7 +15650,6 @@ function LigaScreen({profile,onHome}){
             {liga.phase==='finale'&&(
               <button disabled={busy} onClick={()=>{
                 mutate(s=>({...s,phase:'planung'}));
-                notify('Saison abgeschlossen — Glückwunsch an die Sieger!');
               }} style={btn(T.gold,'#000')}>
                 Saison abschließen → Planung
               </button>
@@ -15736,7 +15658,6 @@ function LigaScreen({profile,onHome}){
               <button disabled={busy} onClick={()=>{
                 mutate(s=>({...initialLigaState(s.name,s.clubId),
                   createdAt:new Date().toISOString()}));
-                notify('Neue Anmeldung geöffnet!');
               }} style={btn(T.o,'#000')}>
                 Neue Saison — Anmeldung öffnen
               </button>
@@ -15769,14 +15690,6 @@ function LigaScreen({profile,onHome}){
         )}
       </div>
 
-      {/* Kontextuelle Primäraktion (Glass) — In-App-Reminder. */}
-      {liga&&action&&tab!=='start'&&(
-        <GlassActionBar bottom="calc(env(safe-area-inset-bottom,0px) + 24px)" actions={[
-          {label:action.kind==='confirm'?'Ergebnis bestätigen':'Ergebnis eintragen',
-            primary:true,onClick:()=>{setTab('start');}},
-        ]}/>
-      )}
-
       {/* Ergebnis-Sheet */}
       {report&&(
         <div onClick={()=>setReport(null)} className="fi" style={{position:'fixed',inset:0,
@@ -15806,7 +15719,6 @@ function LigaScreen({profile,onHome}){
               const a=Math.max(0,parseInt(rs1)||0),b=Math.max(0,parseInt(rs2)||0);
               mutate(s=>ligaReportResult(s,report.id,a,b,me.userId));
               setReport(null);
-              notify('Eingetragen — wartet auf Bestätigung des Gegners');
             }} style={{...btn(T.o,'#000'),opacity:rs1===''||rs2===''?.45:1}}>
               Eintragen
             </button>
@@ -15887,10 +15799,6 @@ function TournamentHub({onHome,onStart,onJoin,onCup}){
           onClick={onCup} accent={T.blue} delay=".1s"/>
       </div>
 
-      <GlassActionBar actions={[
-        {label:'Turnier starten',primary:true,onClick:onStart},
-        {label:'Beitreten',onClick:onJoin},
-      ]}/>
       <MatchBar onHome={onHome}/>
     </div>
   );
@@ -18433,7 +18341,6 @@ export default function App(){
 
   return(<>
     <style>{CSS}</style>
-    <Toasts/>
 
     {/* Funky-Theme-Ambient-Layer — Stock-Video + Marquee + Fruits +
         Click-Ripples. Wird NUR gemountet wenn das Bauhaus-Funky-

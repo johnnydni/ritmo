@@ -2541,11 +2541,21 @@ function TabBar({active,onTab}){
   // den Timer neu; auf Home bleibt sie dauerhaft ausgefahren.
   const[collapsed,setCollapsed]=useState(false);
   const[popped,setPopped]=useState(false); // Bar kam per Tap aus der Kugel
+  const[closing,setClosing]=useState(false); // Exit-Animation der Bar läuft
   const collapseTimer=useRef(null);
   const armCollapse=useCallback(()=>{
     clearTimeout(collapseTimer.current);
+    setClosing(false);
     if(active==='home') return;
-    collapseTimer.current=setTimeout(()=>setCollapsed(true),2600);
+    // Zweistufig: erst die Pop-out-Animation der Bar (nav-pop-out),
+    // nach deren Ende mountet die Kugel mit ihrem Pop-in — das
+    // Einklappen liest sich als eine durchgehende Bewegung.
+    collapseTimer.current=setTimeout(()=>{
+      setClosing(true);
+      collapseTimer.current=setTimeout(()=>{
+        setClosing(false);setCollapsed(true);
+      },300);
+    },2600);
   },[active]);
   useEffect(()=>{armCollapse();return()=>clearTimeout(collapseTimer.current);},[armCollapse]);
 
@@ -2768,7 +2778,7 @@ function TabBar({active,onTab}){
           Geschwister DARUEBER: so bleibt die Pill-Messung unveraendert
           und sie steckt nicht im gefilterten/geklippten Glas-Subtree
           (das sonst die Transitions der Pill einfriert). */}
-      <div className={popped?'nav-pop-bar':''}
+      <div className={closing?'nav-pop-out':(popped?'nav-pop-bar':'')}
         style={{position:'relative',flex:1,maxWidth:440,height:57,pointerEvents:'auto'}}>
       <GlassSurface width="100%" height="100%" borderRadius={28}
         className="nav-glass"

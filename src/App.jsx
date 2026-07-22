@@ -2534,13 +2534,20 @@ function TabBar({active,onTab}){
   const[blendIn]=useState(()=>__navBlendArm);
   useEffect(()=>{__navBlendArm=false;},[]);
   // ── Eingeklappte Navbar ──
-  // Außerhalb von Home startet die Bar screenübergreifend eingeklappt
-  // (jeder Screen mountet seine eigene TabBar → active entscheidet).
-  // Die kompakte Glass-Kugel trägt das Home-Icon; ein Tap fährt die
-  // Bar aus, danach navigiert man normal. Nach dem Tab-Wechsel mountet
-  // der Ziel-Screen frisch → auf Nicht-Home wieder eingeklappt.
-  const[collapsed,setCollapsed]=useState(active!=='home');
+  // Außerhalb von Home klappt die Bar VERZÖGERT ein: beim Screen-
+  // Wechsel bleibt sie erst ausgefahren (Orientierung + Weiter-
+  // navigieren ohne Extra-Tap) und zieht sich nach ~2.6s zur Glass-
+  // Kugel unten links zusammen. Jede Interaktion mit der Bar armiert
+  // den Timer neu; auf Home bleibt sie dauerhaft ausgefahren.
+  const[collapsed,setCollapsed]=useState(false);
   const[popped,setPopped]=useState(false); // Bar kam per Tap aus der Kugel
+  const collapseTimer=useRef(null);
+  const armCollapse=useCallback(()=>{
+    clearTimeout(collapseTimer.current);
+    if(active==='home') return;
+    collapseTimer.current=setTimeout(()=>setCollapsed(true),2600);
+  },[active]);
+  useEffect(()=>{armCollapse();return()=>clearTimeout(collapseTimer.current);},[armCollapse]);
 
   // Tab-Geometrien relativ zur Padding-Box des Navbars (gleicher
   // Bezugsrahmen wie die absolute Pill).
@@ -2573,6 +2580,7 @@ function TabBar({active,onTab}){
   // der nächstgelegene Tab bekommt eine Preview-Tönung. Loslassen
   // snappt auf den nächsten Tab und committet ihn.
   const onBarPointerDown=(e)=>{
+    armCollapse();                              // Interaktion → Einklappen verschieben
     if(searchable&&searchMode) return;          // im Such-Modus kein Drag
     if(e.pointerType==='mouse'&&e.button!==0) return;
     const startX=e.clientX; let moved=false;
@@ -2735,7 +2743,7 @@ function TabBar({active,onTab}){
           displace={0.6} distortionScale={-130}
           redOffset={0} greenOffset={8} blueOffset={16}
           style={{position:'absolute',inset:0,pointerEvents:'none'}}/>
-        <button onClick={()=>{buzz(6);setPopped(true);setCollapsed(false);}}
+        <button onClick={()=>{buzz(6);setPopped(true);setCollapsed(false);armCollapse();}}
           aria-label="Navigation ausklappen" title="Navigation ausklappen"
           style={{position:'relative',zIndex:1,width:'100%',height:'100%',
             borderRadius:'50%',border:'none',background:'transparent',cursor:'pointer',

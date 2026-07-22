@@ -2474,6 +2474,7 @@ function TabBar({active,onTab}){
   const[collapsed,setCollapsed]=useState(false);
   const[popped,setPopped]=useState(false); // Bar kam per Tap aus der Kugel
   const[closing,setClosing]=useState(false); // Exit-Animation der Bar läuft
+  const[opening,setOpening]=useState(false); // Exit-Animation der Kugel läuft
   const collapseTimer=useRef(null);
   const armCollapse=useCallback(()=>{
     clearTimeout(collapseTimer.current);
@@ -2678,14 +2679,23 @@ function TabBar({active,onTab}){
       bottom:'calc(env(safe-area-inset-bottom, 0px) * 0.3 - 3px)',
       left:0,right:0,display:'flex',alignItems:'center',justifyContent:'flex-start',
       padding:'0 14px',pointerEvents:'none',zIndex:5}}>
-      <div className="nav-pop" style={{position:'relative',width:57,height:57,pointerEvents:'auto'}}>
+      <div className={opening?'nav-pop-out':'nav-pop'}
+        style={{position:'relative',width:57,height:57,pointerEvents:'auto'}}>
         <GlassSurface width="100%" height="100%" borderRadius={28}
           className="nav-glass"
           brightness={58} opacity={0.92} blur={11}
           displace={0.6} distortionScale={-130}
           redOffset={0} greenOffset={8} blueOffset={16}
           style={{position:'absolute',inset:0,pointerEvents:'none'}}/>
-        <button onClick={()=>{buzz(6);setPopped(true);setCollapsed(false);armCollapse();}}
+        {/* Zweistufig wie das Einklappen: erst saugt sich die Kugel
+            weg (nav-pop-out), dann federt die Bar aus ihr heraus. */}
+        <button disabled={opening} onClick={()=>{
+            buzz(6);setOpening(true);
+            clearTimeout(collapseTimer.current);
+            collapseTimer.current=setTimeout(()=>{
+              setOpening(false);setPopped(true);setCollapsed(false);armCollapse();
+            },480);
+          }}
           aria-label="Navigation ausklappen" title="Navigation ausklappen"
           style={{position:'relative',zIndex:1,width:'100%',height:'100%',
             borderRadius:'50%',border:'none',background:'transparent',cursor:'pointer',

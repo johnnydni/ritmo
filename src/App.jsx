@@ -2540,6 +2540,7 @@ function TabBar({active,onTab}){
   // Bar aus, danach navigiert man normal. Nach dem Tab-Wechsel mountet
   // der Ziel-Screen frisch → auf Nicht-Home wieder eingeklappt.
   const[collapsed,setCollapsed]=useState(active!=='home');
+  const[popped,setPopped]=useState(false); // Bar kam per Tap aus der Kugel
 
   // Tab-Geometrien relativ zur Padding-Box des Navbars (gleicher
   // Bezugsrahmen wie die absolute Pill).
@@ -2720,20 +2721,21 @@ function TabBar({active,onTab}){
     :(searchable?'Suchen':action.title);
   const rightHighlight=isSearching?!!searchValue:!!action.highlight;
 
-  // Eingeklappt: kompakte Glass-Kugel (Home-Icon) an gleicher Position.
+  // Eingeklappt: kompakte Glass-Kugel (Home-Icon) unten LINKS —
+  // ploppt per Spring-Kurve auf (nav-pop) und gibt die Bühne frei.
   if(collapsed) return(
     <div style={{position:'absolute',
       bottom:'calc(env(safe-area-inset-bottom, 0px) * 0.3 - 3px)',
-      left:0,right:0,display:'flex',alignItems:'center',justifyContent:'center',
-      pointerEvents:'none',zIndex:5}}>
-      <div className="fi" style={{position:'relative',width:57,height:57,pointerEvents:'auto'}}>
+      left:0,right:0,display:'flex',alignItems:'center',justifyContent:'flex-start',
+      padding:'0 14px',pointerEvents:'none',zIndex:5}}>
+      <div className="nav-pop" style={{position:'relative',width:57,height:57,pointerEvents:'auto'}}>
         <GlassSurface width="100%" height="100%" borderRadius={28}
           className="nav-glass"
           brightness={58} opacity={0.92} blur={11}
           displace={0.6} distortionScale={-130}
           redOffset={0} greenOffset={8} blueOffset={16}
           style={{position:'absolute',inset:0,pointerEvents:'none'}}/>
-        <button onClick={()=>{buzz(6);setCollapsed(false);}}
+        <button onClick={()=>{buzz(6);setPopped(true);setCollapsed(false);}}
           aria-label="Navigation ausklappen" title="Navigation ausklappen"
           style={{position:'relative',zIndex:1,width:'100%',height:'100%',
             borderRadius:'50%',border:'none',background:'transparent',cursor:'pointer',
@@ -2758,7 +2760,8 @@ function TabBar({active,onTab}){
           Geschwister DARUEBER: so bleibt die Pill-Messung unveraendert
           und sie steckt nicht im gefilterten/geklippten Glas-Subtree
           (das sonst die Transitions der Pill einfriert). */}
-      <div style={{position:'relative',flex:1,maxWidth:440,height:57,pointerEvents:'auto'}}>
+      <div className={popped?'nav-pop-bar':''}
+        style={{position:'relative',flex:1,maxWidth:440,height:57,pointerEvents:'auto'}}>
       <GlassSurface width="100%" height="100%" borderRadius={28}
         className="nav-glass"
         brightness={58} opacity={0.92} blur={11}

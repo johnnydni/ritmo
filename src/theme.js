@@ -577,6 +577,22 @@ html,body,#root{background:var(--bg);height:100%;min-height:100dvh;overflow:hidd
 button,input,textarea,select{font-family:inherit;color:inherit;}
 input{outline:none;border:none;background:none;}
 ::-webkit-scrollbar{display:none;}
+/* ── Navbar Collapse/Expand — iOS-Spring-Pop ─────────────────────
+   Overshoot-Kurve (cubic-bezier .34/1.56) wie UIKit-Spring: die
+   eingeklappte Kugel und die ausfahrende Bar "ploppen" von unten
+   links auf (transform-origin an der Kugel-Position). */
+@keyframes navPopIn{
+  0%{transform:scale(.45);opacity:0;}
+  62%{transform:scale(1.07);opacity:1;}
+  100%{transform:scale(1);opacity:1;}
+}
+.nav-pop{animation:navPopIn .38s cubic-bezier(.34,1.56,.64,1) both;
+  transform-origin:26px 90%;}
+.nav-pop-bar{animation:navPopIn .46s cubic-bezier(.34,1.56,.64,1) both;
+  transform-origin:26px 90%;}
+@media (prefers-reduced-motion: reduce){
+  .nav-pop,.nav-pop-bar{animation:none;}
+}
 input[type=number]::-webkit-inner-spin-button,
 input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
 /* type=time: native UA-Mindestbreite + Clock-Indicator entfernen, damit

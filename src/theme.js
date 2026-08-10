@@ -603,6 +603,18 @@ input{outline:none;border:none;background:none;}
 @media (prefers-reduced-motion: reduce){
   .nav-pop,.nav-pop-bar,.nav-pop-out{animation:none;}
 }
+/* ── Liga-Landing (Apple-Homepage-Look) ──────────────────────────
+   Grosse Typo, farbige Ambient-Orbs, Gradient-Headline, Scroll-
+   Reveals (JS setzt opacity/transform, hier nur die Keyframes). */
+@keyframes ligaFloat{0%,100%{transform:translate(0,0) scale(1)}
+  50%{transform:translate(18px,-22px) scale(1.07)}}
+@keyframes ligaFloat2{0%,100%{transform:translate(0,0) scale(1)}
+  50%{transform:translate(-20px,16px) scale(.93)}}
+.liga-grad{background:linear-gradient(100deg,var(--o) 5%,#FFC93D 45%,var(--blue) 95%);
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;color:transparent;}
+.liga-orb{position:absolute;border-radius:50%;filter:blur(64px);pointer-events:none;}
+@media (prefers-reduced-motion: reduce){.liga-orb{animation:none!important;}}
 input[type=number]::-webkit-inner-spin-button,
 input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
 /* type=time: native UA-Mindestbreite + Clock-Indicator entfernen, damit

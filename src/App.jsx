@@ -15230,6 +15230,238 @@ function DnaCupScreen({onExit}){
    individuell an; Ergebnis eintragen + Gegner bestätigt (9a),
    Streitfall entscheidet der Admin.
 ═══════════════════════════════════════════════════════════════ */
+/* Scroll-Reveal: blendet Kinder beim Erreichen des Viewports weich
+   ein (IntersectionObserver, einmalig) — das Apple-Homepage-Gefühl. */
+function Reveal({children,delay=0,style={}}){
+  const ref=useRef(null);
+  const[on,setOn]=useState(false);
+  useEffect(()=>{
+    const el=ref.current;if(!el) return;
+    const io=new IntersectionObserver(([e])=>{
+      if(e.isIntersecting){setOn(true);io.disconnect();}
+    },{threshold:.15});
+    io.observe(el);
+    return()=>io.disconnect();
+  },[]);
+  return(
+    <div ref={ref} style={{opacity:on?1:0,
+      transform:on?'none':'translateY(30px)',
+      transition:`opacity .8s ease ${delay}s, transform .8s cubic-bezier(.22,1,.36,1) ${delay}s`,
+      ...style}}>{children}</div>
+  );
+}
+
+/* ── LIGA-LANDING — erklärende Pages vor dem Beitritt ─────────────
+   Apple-Homepage-Layout: Hero mit Gradient-Headline + Ambient-Orbs,
+   Bento-Grid für den Zyklus, Bild-Sections (Gruppenphase/KO), die
+   DNA-Spielstil-Galerie und die Anmelde-Steps — alles mit Scroll-
+   Reveals. Ganz unten der eigentliche Beitritt (Code / Erstellen). */
+function LigaLanding({code,setCode,onJoin,onCreate,busy,err}){
+  const joinRef=useRef(null);
+  const asset=f=>`${getAssetBase()}assets/${f}`;
+  const H2={fontSize:'clamp(30px, 8vw, 44px)',fontWeight:900,letterSpacing:-1.2,
+    lineHeight:1.05,color:T.t1,margin:'0 0 10px'};
+  const SUB={color:T.t2,fontSize:'clamp(14px, 3.6vw, 17px)',lineHeight:1.6,fontWeight:500};
+  const CARD={background:T.card,border:`1px solid ${T.border}`,borderRadius:24,
+    padding:'22px 20px',minWidth:0};
+  const section={margin:'0 0 64px'};
+  const scrollToJoin=()=>{buzz(8);joinRef.current?.scrollIntoView({behavior:'smooth',block:'start'});};
+  const styles=[['toro','El Toro'],['muro','La Muro'],['motor','El Motor'],
+    ['chico','Chico Chica'],['fantasma','El Fantasma'],['individuoso','Individuoso']];
+  return(<>
+    {/* ── HERO ── */}
+    <div style={{position:'relative',overflow:'visible',textAlign:'center',
+      padding:'34px 0 58px'}}>
+      <div className="liga-orb" style={{width:220,height:220,top:-40,left:-70,
+        background:T.o,opacity:.32,animation:'ligaFloat 9s ease-in-out infinite'}}/>
+      <div className="liga-orb" style={{width:190,height:190,top:120,right:-60,
+        background:T.blue,opacity:.3,animation:'ligaFloat2 11s ease-in-out infinite'}}/>
+      <Reveal>
+        <div style={{color:T.o,fontSize:12.5,fontWeight:800,letterSpacing:2.2,
+          textTransform:'uppercase',marginBottom:14}}>Dein Club. Deine Saison.</div>
+        <div className="liga-grad" style={{fontSize:'clamp(44px, 13vw, 72px)',fontWeight:900,
+          letterSpacing:-2.5,lineHeight:.98,marginBottom:16}}>
+          RITMO<br/>DNA Liga
+        </div>
+        <div style={{...SUB,maxWidth:340,margin:'0 auto 26px'}}>
+          Drei Monate. 32 Spieler. Eine Liga, die deinen Spielstil kennt —
+          und dich Woche für Woche wachsen lässt.
+        </div>
+        <button onClick={scrollToJoin}
+          style={{padding:'15px 30px',borderRadius:999,background:T.o,border:'none',
+            color:'#000',fontSize:15.5,fontWeight:800,cursor:'pointer',
+            boxShadow:`0 14px 34px ${T.oGlow}`}}>
+          Jetzt dabei sein
+        </button>
+      </Reveal>
+    </div>
+
+    {/* ── BENTO: DER ZYKLUS ── */}
+    <div style={section}>
+      <Reveal><div style={{...H2,textAlign:'center'}}>Ein Zyklus.<br/>
+        <span className="liga-grad">Drei Monate.</span></div></Reveal>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginTop:22}}>
+        <Reveal style={{gridColumn:'1 / -1'}}>
+          <div style={{...CARD,background:`linear-gradient(135deg, ${T.card} 30%, color-mix(in srgb, var(--o) 14%, ${T.card}))`}}>
+            <div style={{color:T.o,fontSize:44,fontWeight:900,lineHeight:1}}>1</div>
+            <div style={{color:T.t1,fontSize:20,fontWeight:800,margin:'8px 0 4px'}}>Gruppenphase</div>
+            <div style={SUB}>Ein Liga-Abend pro Woche, 19:00–21:30. Vier Gruppen,
+              vier Courts, jedes Team gegen jedes — dein Rhythmus für einen Monat.</div>
+          </div>
+        </Reveal>
+        <Reveal delay={.08}>
+          <div style={{...CARD,height:'100%',background:`linear-gradient(135deg, ${T.card} 30%, color-mix(in srgb, var(--blue) 14%, ${T.card}))`}}>
+            <div style={{color:T.blue,fontSize:44,fontWeight:900,lineHeight:1}}>2</div>
+            <div style={{color:T.t1,fontSize:18,fontWeight:800,margin:'8px 0 4px'}}>K.-o.-Wochen</div>
+            <div style={SUB}>Viertel-, Halb- und Finalwoche — wer die Gruppe übersteht,
+              spielt um alles.</div>
+          </div>
+        </Reveal>
+        <Reveal delay={.16}>
+          <div style={{...CARD,height:'100%'}}>
+            <div style={{color:T.gold,fontSize:44,fontWeight:900,lineHeight:1}}>3</div>
+            <div style={{color:T.t1,fontSize:18,fontWeight:800,margin:'8px 0 4px'}}>Planung</div>
+            <div style={SUB}>Durchatmen, feiern, anmelden — der nächste Zyklus wartet
+              schon.</div>
+          </div>
+        </Reveal>
+      </div>
+    </div>
+
+    {/* ── GRUPPENPHASE (Bild) ── */}
+    <div style={section}>
+      <Reveal>
+        <div style={{position:'relative',borderRadius:28,overflow:'hidden',
+          border:`1px solid ${T.border}`,aspectRatio:'4/3'}}>
+          <img src={asset('journeyhero.jpeg')} alt=""
+            style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover'}}/>
+          <div style={{position:'absolute',inset:0,
+            background:'linear-gradient(180deg, transparent 30%, rgba(0,0,0,.86) 100%)'}}/>
+          <div style={{position:'absolute',left:20,right:20,bottom:20}}>
+            <div style={{color:'#FFF',fontSize:'clamp(24px, 6.5vw, 34px)',fontWeight:900,
+              letterSpacing:-.8,lineHeight:1.1}}>16 Teams.<br/>4 Gruppen. 4 Courts.</div>
+            <div style={{color:'rgba(255,255,255,.75)',fontSize:14,lineHeight:1.55,marginTop:8}}>
+              Du meldest dich solo an — die Liga formt die Teams. Jede Gruppe hat
+              ihren festen Court, jede Woche ihren Spieltag. Ergebnis eintragen,
+              Gegner bestätigt, Tabelle lebt.
+            </div>
+          </div>
+        </div>
+      </Reveal>
+    </div>
+
+    {/* ── KO-WEG ── */}
+    <div style={section}>
+      <Reveal><div style={{...H2,textAlign:'center'}}>Der Weg<br/>
+        <span className="liga-grad">ins Finale.</span></div></Reveal>
+      <Reveal delay={.1}>
+        <div style={{...CARD,marginTop:20}}>
+          {[['Top 2 der Gruppe','Nur die besten 8 Teams gehen weiter',T.o],
+            ['Viertel- & Halbfinale','Über Kreuz gesetzt — Gruppengegner sehen sich erst im Finale wieder',T.blue],
+            ['Finale + Platz 3','Ein Abend, alles auf dem Court',T.gold]].map(([t,s,c],i)=>(
+            <div key={i} style={{display:'flex',gap:14,alignItems:'flex-start',
+              padding:'13px 0',borderBottom:i<2?`1px solid ${T.sep}`:'none'}}>
+              <span style={{width:34,height:34,borderRadius:'50%',flexShrink:0,
+                background:`color-mix(in srgb, ${c} 18%, transparent)`,
+                border:`1.5px solid ${c}`,color:c,display:'flex',alignItems:'center',
+                justifyContent:'center',fontSize:14,fontWeight:900}}>{i+1}</span>
+              <span style={{minWidth:0}}>
+                <span style={{display:'block',color:T.t1,fontSize:16,fontWeight:800}}>{t}</span>
+                <span style={{display:'block',color:T.t3,fontSize:13,lineHeight:1.5,marginTop:2}}>{s}</span>
+              </span>
+            </div>
+          ))}
+        </div>
+      </Reveal>
+    </div>
+
+    {/* ── DNA-GALERIE ── */}
+    <div style={section}>
+      <Reveal><div style={{...H2,textAlign:'center'}}>Dein Stil<br/>
+        <span className="liga-grad">zählt doppelt.</span></div></Reveal>
+      <Reveal delay={.08}>
+        <div style={{...SUB,textAlign:'center',maxWidth:330,margin:'0 auto 20px'}}>
+          Jedes Match hat ein DNA-Tier aus den Spielstilen der vier Spieler —
+          Siege bringen Extra-Punkte fürs individuelle Leaderboard. Wie beim DNA Cup,
+          nur über eine ganze Saison.
+        </div>
+      </Reveal>
+      <div style={{display:'flex',gap:12,overflowX:'auto',WebkitOverflowScrolling:'touch',
+        padding:'4px 2px 12px',margin:'0 -22px',paddingLeft:22,paddingRight:22}}>
+        {styles.map(([id,name],i)=>(
+          <Reveal key={id} delay={i*.06} style={{flex:'0 0 auto'}}>
+            <div style={{width:150,borderRadius:22,overflow:'hidden',position:'relative',
+              border:`1px solid ${T.border}`,aspectRatio:'3/4'}}>
+              <img src={asset(STYLE_IMAGES[id])} alt={name}
+                style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover'}}/>
+              <div style={{position:'absolute',inset:0,
+                background:'linear-gradient(180deg, transparent 55%, rgba(0,0,0,.85) 100%)'}}/>
+              <div style={{position:'absolute',left:12,right:12,bottom:10,color:'#FFF',
+                fontSize:14.5,fontWeight:900,letterSpacing:-.2}}>{name}</div>
+            </div>
+          </Reveal>
+        ))}
+      </div>
+    </div>
+
+    {/* ── SO LÄUFT'S ── */}
+    <div style={section}>
+      <Reveal><div style={{...H2,textAlign:'center'}}>In drei Schritten<br/>
+        <span className="liga-grad">auf den Court.</span></div></Reveal>
+      <div style={{display:'flex',flexDirection:'column',gap:12,marginTop:20}}>
+        {[['Code eingeben','Deinen Liga-Code bekommst du von deinem Club.'],
+          ['Anmelden','Ein Tap — du bist auf der Teilnehmerliste. Die Liga formt die Teams.'],
+          ['Spielen & eintragen','Jede Woche dein Match. Ergebnis eintragen, Gegner bestätigt — fertig.']]
+          .map(([t,s],i)=>(
+          <Reveal key={i} delay={i*.08}>
+            <div style={{...CARD,display:'flex',gap:16,alignItems:'center'}}>
+              <span className="liga-grad" style={{fontSize:38,fontWeight:900,flexShrink:0,
+                width:34,textAlign:'center'}}>{i+1}</span>
+              <span style={{minWidth:0}}>
+                <span style={{display:'block',color:T.t1,fontSize:17,fontWeight:800}}>{t}</span>
+                <span style={{display:'block',color:T.t3,fontSize:13,lineHeight:1.55,marginTop:2}}>{s}</span>
+              </span>
+            </div>
+          </Reveal>
+        ))}
+      </div>
+    </div>
+
+    {/* ── BEITRITT ── */}
+    <div ref={joinRef} style={{margin:'0 0 30px',scrollMarginTop:20}}>
+      <Reveal>
+        <div style={{...CARD,textAlign:'center',padding:'28px 22px',
+          background:`linear-gradient(160deg, ${T.card} 40%, color-mix(in srgb, var(--o) 10%, ${T.card}))`}}>
+          <div style={{...H2,fontSize:'clamp(26px, 7vw, 34px)'}}>Bereit?</div>
+          <div style={{...SUB,marginBottom:18}}>Gib den Liga-Code deines Clubs ein.</div>
+          <input value={code} maxLength={6} placeholder="CODE"
+            onChange={e=>setCode(e.target.value.toLowerCase().replace(/[^a-z0-9]/g,''))}
+            autoCapitalize="off" autoCorrect="off" spellCheck={false}
+            style={{width:'100%',padding:'15px 14px',borderRadius:15,background:T.card2,
+              border:`1.5px solid ${T.border}`,color:T.t1,fontSize:20,fontWeight:900,
+              letterSpacing:7,textAlign:'center',textTransform:'uppercase',outline:'none',
+              boxSizing:'border-box',marginBottom:10,
+              fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace'}}/>
+          <button disabled={busy||code.length<6} onClick={onJoin}
+            style={{width:'100%',padding:'15px 16px',borderRadius:15,background:T.o,
+              border:'none',color:'#000',fontSize:15.5,fontWeight:800,cursor:'pointer',
+              opacity:busy||code.length<6?.45:1,marginBottom:16}}>
+            Liga beitreten
+          </button>
+          <div style={{color:T.t3,fontSize:12,lineHeight:1.6,borderTop:`1px solid ${T.sep}`,
+            paddingTop:14}}>
+            Club-Admin? <button disabled={busy} onClick={onCreate}
+              style={{background:'none',border:'none',color:T.o,fontSize:12,fontWeight:800,
+                cursor:'pointer',padding:0}}>Neue Liga erstellen</button> — du bekommst
+            einen Code für deine Mitglieder.
+          </div>
+          {err&&<div style={{color:T.r,fontSize:12.5,fontWeight:700,marginTop:12}}>{err}</div>}
+        </div>
+      </Reveal>
+    </div>
+  </>);
+}
+
 function LigaScreen({profile,onHome}){
   const[sync,setSync]=useState(()=>lsGet('ritmo_liga_sync',null)); // {pin,admin}
   const[liga,setLiga]=useState(()=>lsGet('ritmo_liga_state',null));
@@ -15423,52 +15655,11 @@ function LigaScreen({profile,onHome}){
       <div style={{flex:1,minHeight:0,overflowY:'auto',WebkitOverflowScrolling:'touch',
         padding:'0 22px calc(env(safe-area-inset-bottom,0px) + 120px)'}}>
 
-        {/* ── Nicht verbunden: erstellen oder beitreten ── */}
-        {!liga&&(<>
-          <div style={card}>
-            {cap('Der Zyklus')}
-            {LIGA_PHASES.filter(p=>p.id!=='planung').map((p,i)=>(
-              <div key={p.id} style={{display:'flex',gap:10,alignItems:'baseline',
-                padding:'5px 0',borderBottom:i<4?`1px solid ${T.sep}`:'none'}}>
-                <span style={{color:T.o,fontSize:12,fontWeight:900,width:18}}>{i+1}</span>
-                <span style={{color:T.t1,fontSize:14,fontWeight:700}}>{p.name}</span>
-                <span style={{flex:1}}/>
-                <span style={{color:T.t3,fontSize:11.5}}>{p.sub}</span>
-              </div>
-            ))}
-            <div style={{color:T.t3,fontSize:12,lineHeight:1.55,marginTop:10}}>
-              32 Spieler · 16 Teams · 4 Gruppen · 4 Courts. Monat 1: ein Liga-Abend
-              pro Woche (19:00–21:30). Monat 2: jede Woche eine KO-Runde. Monat 3:
-              Planung & Anmeldung des nächsten Zyklus.
-            </div>
-          </div>
-          <div style={card}>
-            {cap('Liga beitreten')}
-            <input value={code} maxLength={6} placeholder="CODE"
-              onChange={e=>setCode(e.target.value.toLowerCase().replace(/[^a-z0-9]/g,''))}
-              autoCapitalize="off" autoCorrect="off" spellCheck={false}
-              style={{width:'100%',padding:'13px 14px',borderRadius:13,background:T.card2,
-                border:`1.5px solid ${T.border}`,color:T.t1,fontSize:18,fontWeight:900,
-                letterSpacing:6,textAlign:'center',textTransform:'uppercase',outline:'none',
-                boxSizing:'border-box',marginBottom:10,
-                fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace'}}/>
-            <button disabled={busy||code.length<6} onClick={joinLiga}
-              style={{...btn(T.g,'#000'),opacity:busy||code.length<6?.45:1}}>
-              Beitreten
-            </button>
-          </div>
-          <div style={card}>
-            {cap('Neue Liga (Club-Admin)')}
-            <div style={{color:T.t3,fontSize:12,lineHeight:1.55,marginBottom:10}}>
-              Du bekommst einen 6er-Code für deine Club-Mitglieder. Wer den Code hat,
-              kann sich anmelden — du steuerst Teams, Gruppen und Phasen.
-            </div>
-            <button disabled={busy} onClick={createLiga} style={btn(T.o,'#000')}>
-              Liga erstellen
-            </button>
-          </div>
-          {err&&<div style={{color:T.r,fontSize:12.5,fontWeight:700,textAlign:'center'}}>{err}</div>}
-        </>)}
+        {/* ── Nicht verbunden: Landing-Pages im Apple-Look ── */}
+        {!liga&&(
+          <LigaLanding code={code} setCode={setCode}
+            onJoin={joinLiga} onCreate={createLiga} busy={busy} err={err}/>
+        )}
 
         {/* ── START ── */}
         {liga&&tab==='start'&&(<>

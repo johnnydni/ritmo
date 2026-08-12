@@ -33,12 +33,13 @@
                worker-src 'self' blob:;
                object-src 'none';
                base-uri 'self';
-               frame-ancestors 'none';
                form-action 'self'" />
+    <!-- frame-ancestors ist per <meta> wirkungslos (nur als HTTP-Header
+         möglich) und erzeugte nur einen Konsolen-Fehler — entfernt. -->
+
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <link rel="apple-touch-icon" href="./favicon.svg" />
-    <!-- __BASE_INJECTION__ -->
     <title>RITMO Padel</title>
     <style>
       html, body {

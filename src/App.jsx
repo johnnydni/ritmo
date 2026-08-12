@@ -3641,7 +3641,7 @@ const NEARBY_CLUBS=[
 const DISCOVER_CARDS=[
   {id:'events',        eyebrow:'Community', title:'Events',            tint:'#0A84FF'},
   {id:'booking-assist',eyebrow:'Courts',    title:'Buchungsassistent', tint:'#30D158'},
-  {id:'rules',         eyebrow:'Regelwerk', title:'Neue Regularien',   tint:'#BF5AF2'},
+  {id:'rules',         eyebrow:'Wissen',    title:'Regeln & Taktik',   tint:'#BF5AF2'},
   {id:'weltrangliste', eyebrow:'Ranking',   title:'Weltrangliste',     tint:'#FFD60A'},
 ];
 /* Bauhaus-Grafiken für die Discover-Karten — gleiche Formsprache wie
@@ -3710,9 +3710,9 @@ function DiscoverArt({id,tint}){
 function DiscoverSection({nav}){
   return(
     <div className="fu" style={{animationDelay:'.14s'}}>
-      <div style={{color:T.t1,fontSize:20,fontWeight:800,letterSpacing:-.4,
+      <div style={{color:T.t1,fontSize:22,fontWeight:700,letterSpacing:-.5,
         margin:'22px 0 2px'}}>
-        Discover the RITMO
+        Entdecken
       </div>
       {/* Galerie blutet bis an die Screen-Kante (negiert das Corpus-
           Padding), Cards snappen am linken Rand. */}
@@ -3786,7 +3786,7 @@ function MatchPrefs({profile,setProfile,currentUid,onHome}){
   const togglePlayer=n=>toggleIn('players',n);
   const toggleDay=d=>toggleIn('days',d);
   const DAYS=['Mo','Di','Mi','Do','Fr','Sa','So'];
-  const lbl={color:T.o,fontSize:18,fontWeight:800,marginBottom:4};
+  const lbl={color:T.t1,fontSize:17,fontWeight:700,marginBottom:4};
   const sub={color:T.t3,fontSize:11,fontWeight:500,lineHeight:1.5,marginBottom:12};
   return(
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
@@ -4148,7 +4148,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
                 Beantworte ein paar Fragen und entdecke deinen RITMO-Spielstil.
               </div>
             </div>
-            <div style={{color:T.o,fontSize:18,fontWeight:800,flexShrink:0}}>›</div>
+            <div style={{color:T.t1,fontSize:17,fontWeight:700,flexShrink:0}}>›</div>
           </button>
         )}
 
@@ -4530,7 +4530,7 @@ function ComingSoon({icon,title,desc,bullets=[],onHome}){
         {bullets.length>0&&(
           <div className="fu" style={{background:T.card,border:`1px solid ${T.border}`,
             borderRadius:16,padding:'18px',marginTop:14,animationDelay:'.08s'}}>
-            <div style={{color:T.o,fontSize:11,fontWeight:700,letterSpacing:1.3,
+            <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.3,
               textTransform:'uppercase',marginBottom:10}}>Was kommt</div>
             {bullets.map((b,i)=>(
               <div key={i} style={{display:'flex',gap:10,alignItems:'flex-start',
@@ -4636,10 +4636,10 @@ function SetupHero({icon,title,desc,accent}){
         {icon}
       </div>
       <div style={{flex:1,minWidth:0}}>
-        <div style={{color:T.t1,fontSize:18,fontWeight:900,letterSpacing:-.3,marginBottom:4}}>
+        <div style={{color:T.t1,fontSize:17,fontWeight:700,letterSpacing:-.3,marginBottom:4}}>
           {title}
         </div>
-        <div style={{color:T.t2,fontSize:12,lineHeight:1.5}}>
+        <div style={{color:T.t3,fontSize:13,lineHeight:1.5}}>
           {desc}
         </div>
       </div>
@@ -7474,7 +7474,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
         {/* Turniername — damit Turniere unter „Live" einzeln gespeichert
             werden (laufende werden nicht mehr überschrieben). */}
         <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,padding:'16px 18px'}}>
-          <div style={{color:T.o,fontSize:18,fontWeight:800,marginBottom:10}}>Turniername</div>
+          <div style={{color:T.t1,fontSize:17,fontWeight:700,marginBottom:10}}>Turniername</div>
           <input value={name} onChange={e=>setName(e.target.value)} maxLength={40}
             placeholder="z. B. Sunset Americano · Fr"
             style={{width:'100%',height:46,borderRadius:13,background:T.card2,border:`1px solid ${T.border}`,
@@ -7487,7 +7487,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
         {/* Modus: Lokal vs Online */}
         {!isEdit&&(
           <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,padding:'18px'}}>
-            <div style={{color:T.o,fontSize:18,fontWeight:800,marginBottom:12}}>Modus</div>
+            <div style={{color:T.t1,fontSize:17,fontWeight:700,marginBottom:12}}>Modus</div>
             <div style={{display:'flex',background:T.card2,borderRadius:30,padding:4,gap:4,
               border:`1px solid ${T.border}`}}>
               {[{v:'lokal',l:'Lokal'},{v:'online',l:'Online'}].map(o=>(
@@ -7509,7 +7509,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
 
         {/* Format — 7 klassische Modi als 2-Spalten-Grid */}
         <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,padding:'18px'}}>
-          <div style={{color:T.o,fontSize:18,fontWeight:800,marginBottom:12}}>Format</div>
+          <div style={{color:T.t1,fontSize:17,fontWeight:700,marginBottom:12}}>Format</div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
             {Object.entries(FORMATS)
               .filter(([,f])=>mode!=='online'||f.online!==false)
@@ -7533,7 +7533,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
 
         {/* Sieger-Modus */}
         <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,padding:'18px'}}>
-          <div style={{color:T.o,fontSize:18,fontWeight:800,marginBottom:12}}>Sieger-Modus</div>
+          <div style={{color:T.t1,fontSize:17,fontWeight:700,marginBottom:12}}>Sieger-Modus</div>
           <div style={{display:'flex',background:T.card2,borderRadius:30,padding:4,gap:4,
             border:`1px solid ${T.border}`}}>
             {[{v:'points',l:'Höchste Punkte'},{v:'wins',l:'Meiste Siege'}].map(o=>(
@@ -7675,7 +7675,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
         <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
           padding:'18px 18px 8px'}}>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
-            <div style={{color:T.o,fontSize:18,fontWeight:800}}>Court-Namen</div>
+            <div style={{color:T.t1,fontSize:17,fontWeight:700}}>Court-Namen</div>
             <div style={{display:'flex',alignItems:'center',gap:10}}>
               <span style={{color:T.t3,fontSize:12,fontWeight:600}}>{numCourts} Court{numCourts>1?'s':''}</span>
               {numCourts>1&&(
@@ -7723,7 +7723,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
         <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
           padding:'18px 18px 8px'}}>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
-            <div style={{color:T.o,fontSize:18,fontWeight:800}}>Spieler</div>
+            <div style={{color:T.t1,fontSize:17,fontWeight:700}}>Spieler</div>
             <div style={{display:'flex',alignItems:'center',gap:10}}>
               <span style={{color:T.t3,fontSize:12,fontWeight:600}}>{players.length} Spieler</span>
               {/* Minus = nur den ZULETZT hinzugefügten Spieler entfernen
@@ -7848,7 +7848,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
         ):(
         <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
           padding:'18px'}}>
-          <div style={{color:T.o,fontSize:18,fontWeight:800,marginBottom:8}}>Spieler joinen via QR</div>
+          <div style={{color:T.t1,fontSize:17,fontWeight:700,marginBottom:8}}>Spieler joinen via QR</div>
           <div style={{color:T.t2,fontSize:13,lineHeight:1.55,marginBottom:6}}>
             Nach dem Start öffnest du die Lobby. Dort siehst du PIN + QR-Code.
           </div>
@@ -8167,7 +8167,7 @@ function OnlineTournamentLobby({pin,onHome,onStart,onCancel}){
         <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
           padding:'18px 18px 8px'}}>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
-            <div style={{color:T.o,fontSize:18,fontWeight:800}}>Teilnehmer</div>
+            <div style={{color:T.t1,fontSize:17,fontWeight:700}}>Teilnehmer</div>
             <span style={{color:T.t3,fontSize:12,fontWeight:600}}>
               {approved.length} bestätigt · {pending.length} wartend
             </span>
@@ -10294,7 +10294,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
                       alignItems:'flex-end',gap:1,flexShrink:0}}>
                     <div style={{display:'flex',alignItems:'center',gap:5}}>
                       <EditIcon size={12} color={T.t4}/>
-                      <span style={{color:T.o,fontSize:18,fontWeight:800}}>
+                      <span style={{color:T.t1,fontSize:17,fontWeight:700}}>
                         {tourney.winMode==='wins'?p.totalWins:p.totalPts}
                       </span>
                     </div>
@@ -11002,7 +11002,7 @@ function SettingsSteuerung({onBack,onHome,inputMode,setInputMode,voiceOn,setVoic
       {/* Score-Gerät */}
       <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
         padding:'18px 18px 6px',marginBottom:12}}>
-        <div style={{color:T.o,fontSize:11,fontWeight:700,letterSpacing:1.3,
+        <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.3,
           textTransform:'uppercase',marginBottom:8}}>Score-Gerät</div>
         {inputs.map((opt,i)=>{
           const isSel=inputMode===opt.id;
@@ -11099,7 +11099,7 @@ function SettingsSteuerung({onBack,onHome,inputMode,setInputMode,voiceOn,setVoic
           hier wechselt, hört sie überall. */}
       <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
         padding:'18px 18px 8px'}}>
-        <div style={{color:T.o,fontSize:11,fontWeight:700,letterSpacing:1.3,
+        <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.3,
           textTransform:'uppercase',marginBottom:4}}>Timer-Klingelton</div>
         <div style={{color:T.t3,fontSize:12,fontWeight:500,marginBottom:14,lineHeight:1.5}}>
           Globaler Ton — spielt beim Ablaufen aller Timer (Americano + Turnier-Runden).
@@ -11152,7 +11152,7 @@ function SettingsAnpassung({onBack,onHome,theme,setTheme,tabletMode,setTabletMod
       onBack={onBack} onHome={onHome}>
       <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
         padding:'18px 18px 8px',marginBottom:12}}>
-        <div style={{color:T.o,fontSize:11,fontWeight:700,letterSpacing:1.3,
+        <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.3,
           textTransform:'uppercase',marginBottom:8}}>Theme</div>
         {themes.map((th,i)=>(
           <div key={th.id} onClick={()=>setTheme(th.id)}
@@ -11174,7 +11174,7 @@ function SettingsAnpassung({onBack,onHome,theme,setTheme,tabletMode,setTabletMod
       {/* Tablet-Modus */}
       <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
         padding:'18px 18px',marginBottom:12}}>
-        <div style={{color:T.o,fontSize:11,fontWeight:700,letterSpacing:1.3,
+        <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.3,
           textTransform:'uppercase',marginBottom:12}}>Anzeige</div>
         <div style={{display:'flex',alignItems:'center',gap:14}}>
           <div style={{width:32,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,color:T.t1}}><PhoneIcon size={22}/></div>
@@ -11234,7 +11234,7 @@ function SettingsSection({eyebrow,children,style}){
     <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
       padding:'18px 18px 6px',marginBottom:12,...(style||{})}}>
       {eyebrow&&(
-        <div style={{color:T.o,fontSize:11,fontWeight:700,letterSpacing:1.3,
+        <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.3,
           textTransform:'uppercase',marginBottom:8}}>{eyebrow}</div>
       )}
       {children}
@@ -13556,7 +13556,7 @@ function CupAdmin({cup,setCup,lb,onBack}){
 
   const card={background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
     padding:'16px 18px',marginBottom:14};
-  const h={color:T.o,fontSize:16,fontWeight:800,marginBottom:10};
+  const h={color:T.t1,fontSize:17,fontWeight:700,marginBottom:10};
   const chip=(sel,color=T.o)=>({padding:'10px 12px',borderRadius:13,cursor:'pointer',
     background:sel?T.oSoft:T.card2,border:`1.5px solid ${sel?color:T.border}`,
     color:sel?color:T.t2,fontSize:13,fontWeight:700});
@@ -15981,8 +15981,8 @@ function TournamentHub({onHome,onStart,onJoin,onCup}){
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
-      <ScreenHeader title="Turnier" subtitle="Spiele austragen oder einsteigen."
-        icon={<TrophyIcon size={40}/>}/>
+      <ScreenHeader title="Turnier" subtitle="Starten oder beitreten."
+        icon={<TrophyIcon size={32}/>}/>
 
       <div style={{flex:1,padding:'0 22px 120px',overflowY:'auto',
         WebkitOverflowScrolling:'touch',display:'flex',flexDirection:'column',gap:14}}>
@@ -15994,7 +15994,7 @@ function TournamentHub({onHome,onStart,onJoin,onCup}){
         <HubBigCard
           icon={<JoinIcon size={28}/>}
           title="Turnier beitreten"
-          desc="PIN eingeben oder QR scannen, Ergebnisse übertragen."
+          desc="Mit PIN oder QR-Code."
           onClick={onJoin} delay=".06s"/>
         <HubBigCard
           icon={<DNAIcon size={26} color={T.blue}/>}
@@ -16790,7 +16790,7 @@ function RulesGlossar({onBackToRules,onHome,onNext,onPrev,currentIdx,totalSectio
               <s.Fig/>
             </div>
             <div style={{flex:1,minWidth:0}}>
-              <div style={{color:T.o,fontSize:16,fontWeight:800,marginBottom:4,letterSpacing:.2}}>{s.title}</div>
+              <div style={{color:T.t1,fontSize:16,fontWeight:700,marginBottom:4,letterSpacing:.2}}>{s.title}</div>
               <div style={{color:T.t2,fontSize:12,lineHeight:1.5,marginBottom:6}}>{s.desc}</div>
               <div style={{color:T.t3,fontSize:11,lineHeight:1.5,
                 padding:'6px 8px',background:T.card2,borderRadius:6,

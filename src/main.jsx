@@ -1,5 +1,9 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+// Basis-Pfad fürs Sub-Path-Deployment (GH Pages): früher als Inline-
+// Script in index.html injiziert — das blockiert die CSP (script-src
+// 'self'). Im gebündelten Modul ist es CSP-konform und identisch.
+window.__BASE__ = import.meta.env.BASE_URL;
 // Inter — der freie SF-Pro-Zwilling; selbst gehostet (kein CDN, CSP-fest).
 // Gewichte passend zur App-Typo: 400/600/700 Text, 800/900 Display.
 import "@fontsource/inter/400.css";

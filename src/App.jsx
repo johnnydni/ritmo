@@ -4188,8 +4188,10 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
           </button>
         </div>
 
-        {/* RITMO DNA Liga — große Karte mit Luft (Mock) */}
-        <button onClick={()=>nav('liga')} className="fu" data-lift
+        {/* RITMO DNA Liga — große Karte. AUSGEBLENDET bis zum Launch
+            (false&& entfernen, um sie wieder zu zeigen); der Screen
+            selbst bleibt über scr='liga' erreichbar/intakt. */}
+        {false&&<button onClick={()=>nav('liga')} className="fu" data-lift
           style={{position:'relative',overflow:'hidden',background:'transparent',
             border:`1px solid ${T.border}`,borderRadius:22,padding:0,width:'100%',
             minHeight:168,cursor:'pointer',color:T.t1,textAlign:'left',
@@ -4217,7 +4219,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
               </div>
             </div>
           </div>
-        </button>
+        </button>}
 
         {/* ── Events — Datums-Leiste, scrollbar bis Monatsende.
             Tage MIT Event sind orange markiert; der 18. zeigt auf das
@@ -15652,7 +15654,10 @@ function LigaScreen({profile,onHome}){
         )}
       </div>
 
-      <div style={{flex:1,minHeight:0,overflowY:'auto',WebkitOverflowScrolling:'touch',
+      {/* overflowX hidden: die Ambient-Orbs der Landing ragen bewusst
+          über den Rand — ohne Clip wäre die Seite horizontal pannbar. */}
+      <div style={{flex:1,minHeight:0,overflowY:'auto',overflowX:'hidden',
+        WebkitOverflowScrolling:'touch',
         padding:'0 22px calc(env(safe-area-inset-bottom,0px) + 120px)'}}>
 
         {/* ── Nicht verbunden: Landing-Pages im Apple-Look ── */}
@@ -15992,11 +15997,14 @@ function TournamentHub({onHome,onStart,onJoin,onCup}){
           title="Turnier beitreten"
           desc="PIN eingeben oder QR scannen, Ergebnisse übertragen."
           onClick={onJoin} delay=".06s"/>
-        <HubBigCard
+        {/* RITMO DNA CUP — AUSGEBLENDET bis zum Event-Launch
+            (false&& entfernen zum Reaktivieren); der Cup-Bereich
+            bleibt über scr='dnacup' intakt. */}
+        {false&&<HubBigCard
           icon={<DNAIcon size={26} color={T.blue}/>}
           title="RITMO DNA CUP"
           desc="Event-Modus 18.07. — Zugang nur mit PIN."
-          onClick={onCup} accent={T.blue} delay=".1s"/>
+          onClick={onCup} accent={T.blue} delay=".1s"/>}
       </div>
 
       <MatchBar onHome={onHome}/>

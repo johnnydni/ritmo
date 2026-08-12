@@ -4065,10 +4065,9 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
           overflowY:'auto',WebkitOverflowScrolling:'touch',
           overscrollBehavior:'contain'}}>
 
-        {/* Large-Title-Begrüßung — tippt sich zur RITMO DNA. */}
-        <div onClick={()=>nav('profile-ritmodna')} className="fi"
-          style={{padding:'calc(env(safe-area-inset-top,0px) + 84px) 22px 0',
-            cursor:'pointer'}}>
+        {/* Large-Title-Begrüßung — reine Anzeige, nicht klickbar. */}
+        <div className="fi"
+          style={{padding:'calc(env(safe-area-inset-top,0px) + 84px) 22px 0'}}>
           <div style={{color:T.t3,fontSize:13,fontWeight:600,letterSpacing:1.4,
             textTransform:'uppercase'}}>
             {greeting}
@@ -4357,10 +4356,8 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
           WebkitBackdropFilter:'blur(18px) saturate(160%)',
           backdropFilter:'blur(18px) saturate(160%)',
           borderBottom:'1px solid color-mix(in srgb, var(--t1) 10%, transparent)'}}/>
-        <div onClick={()=>nav('profile-ritmodna')}
-          style={{position:'absolute',left:9,
-            top:'calc(env(safe-area-inset-top,0px) + 14px)',
-            pointerEvents:'auto',cursor:'pointer'}}>
+        <div style={{position:'absolute',left:9,
+            top:'calc(env(safe-area-inset-top,0px) + 14px)'}}>
           <RitmoWordmark size={40} style={{marginLeft:-18,display:'block'}}/>
         </div>
         <div style={{position:'absolute',right:13,

@@ -4142,33 +4142,38 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
           </button>
         </div>
 
-        {/* RITMO DNA Liga — volle Breite als ruhige iOS-Zelle. */}
-        <button onClick={()=>nav('liga')} className="fu" data-lift
-          style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:20,
-            padding:'16px 18px',width:'100%',cursor:'pointer',color:T.t1,
-            textAlign:'left',display:'flex',alignItems:'center',gap:16,
-            marginTop:12,animationDelay:'.08s'}}>
-          <span style={{flexShrink:0,width:44,height:44,borderRadius:14,
-            background:T.oSoft,border:`1px solid ${T.o}`,color:T.o,
-            display:'flex',alignItems:'center',justifyContent:'center'}}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"
-              strokeLinejoin="round" aria-hidden="true">
-              <path d="M20 12a8 8 0 1 1-3.1-6.3"/>
-              <path d="M20 3.5V7h-3.5"/>
-              <circle cx="12" cy="12" r="2.4" fill={T.o} stroke="none"/>
-            </svg>
-          </span>
-          <span style={{flex:1,minWidth:0}}>
-            <span style={{display:'block',color:T.t1,fontSize:17,fontWeight:700,letterSpacing:-.3}}>
-              RITMO DNA Liga
+        {/* RITMO DNA Liga — große Karte. AUSGEBLENDET bis zum Launch
+            (false&& entfernen, um sie wieder zu zeigen); der Screen
+            selbst bleibt über scr='liga' erreichbar/intakt. */}
+        {false&&<button onClick={()=>nav('liga')} className="fu" data-lift
+          style={{position:'relative',overflow:'hidden',background:'transparent',
+            border:`1px solid ${T.border}`,borderRadius:20,padding:0,width:'100%',
+            minHeight:168,cursor:'pointer',color:T.t1,textAlign:'left',
+            animationDelay:'.1s',transition:'filter .15s'}}
+          onPointerDown={e=>e.currentTarget.style.filter='brightness(1.15)'}
+          onPointerUp={e=>e.currentTarget.style.filter=''}
+          onPointerLeave={e=>e.currentTarget.style.filter=''}>
+          <GlassSurface {...HOME_CARD_GLASS}/>
+          <div style={{position:'relative',zIndex:1,display:'flex',flexDirection:'column',
+            alignItems:'flex-start',padding:'18px 20px 16px'}}>
+            <span style={{display:'inline-flex',flexShrink:0,color:T.t1}}>
+              <svg width="44" height="44" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"
+                strokeLinejoin="round" aria-hidden="true">
+                <path d="M20 12a8 8 0 1 1-3.1-6.3"/>
+                <path d="M20 3.5V7h-3.5"/>
+                <circle cx="12" cy="12" r="2.4" fill={T.o} stroke="none"/>
+              </svg>
             </span>
-            <span style={{display:'block',color:T.t3,fontSize:12,fontWeight:500,marginTop:3,lineHeight:1.45}}>
-              Deine Saison. Jede Woche ein Match.
-            </span>
-          </span>
-          <ChevronRightIcon size={18} color={T.t3}/>
-        </button>
+            <div style={{marginTop:14}}>
+              <div style={{color:T.o,fontSize:25,fontWeight:800,letterSpacing:-.4}}>RITMO DNA Liga</div>
+              <div style={{color:T.t1,fontSize:16,fontWeight:600,marginTop:5,
+                maxWidth:170,lineHeight:1.4}}>
+                Die Liga mit der du wöchentlich wächst.
+              </div>
+            </div>
+          </div>
+        </button>}
 
         {/* ── EVENTS — Datums-Chips ab heute bis Monatsende; Tage mit
             Event tragen den Akzent, der Rest bleibt neutral. */}
@@ -15575,7 +15580,10 @@ function LigaScreen({profile,onHome}){
         )}
       </div>
 
-      <div style={{flex:1,minHeight:0,overflowY:'auto',WebkitOverflowScrolling:'touch',
+      {/* overflowX hidden: die Ambient-Orbs der Landing ragen bewusst
+          über den Rand — ohne Clip wäre die Seite horizontal pannbar. */}
+      <div style={{flex:1,minHeight:0,overflowY:'auto',overflowX:'hidden',
+        WebkitOverflowScrolling:'touch',
         padding:'0 22px calc(env(safe-area-inset-bottom,0px) + 120px)'}}>
 
         {/* ── Nicht verbunden: Landing-Pages im Apple-Look ── */}
@@ -15915,11 +15923,14 @@ function TournamentHub({onHome,onStart,onJoin,onCup}){
           title="Turnier beitreten"
           desc="Mit PIN oder QR-Code."
           onClick={onJoin} delay=".06s"/>
-        <HubBigCard
+        {/* RITMO DNA CUP — AUSGEBLENDET bis zum Event-Launch
+            (false&& entfernen zum Reaktivieren); der Cup-Bereich
+            bleibt über scr='dnacup' intakt. */}
+        {false&&<HubBigCard
           icon={<DNAIcon size={26} color={T.blue}/>}
           title="RITMO DNA CUP"
           desc="Event-Modus 18.07. — Zugang nur mit PIN."
-          onClick={onCup} accent={T.blue} delay=".1s"/>
+          onClick={onCup} accent={T.blue} delay=".1s"/>}
       </div>
 
       <MatchBar onHome={onHome}/>

@@ -3154,8 +3154,8 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
         <div ref={el=>{secRefs.current.dna=el;}} className="zi"
           style={{animationDelay:'.1s',display:'flex',flexDirection:'column',
           alignItems:'center',marginTop:30}}>
-          <div className="float-y" style={{borderRadius:'50%',
-            boxShadow:`0 0 70px ${tint(26)}, 0 0 22px ${tint(20)}`}}>
+          <div style={{borderRadius:'50%',
+            boxShadow:`0 0 44px ${tint(16)}, 0 0 14px ${tint(12)}`}}>
             <AvatarWithUpload profile={profile} setProfile={setProfile} size={150}/>
           </div>
           <div className="fu" style={{animationDelay:'.18s',marginTop:26,color:T.t1,

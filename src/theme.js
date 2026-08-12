@@ -48,7 +48,7 @@ export const CSS = `
   --t4: rgba(255,255,255,0.17);
   --o: #FF7A1A;
   --oSoft: rgba(255,122,26,0.12);
-  --oGlow: rgba(255,122,26,0.5);
+  --oGlow: rgba(255,122,26,0.30);
   --oFlash: rgba(255,122,26,0.14);
   --g: #1A8754;
   --r: #E84545;
@@ -86,7 +86,7 @@ export const CSS = `
   --t4: rgba(255,255,255,0.18);
   --o: #FF7A1A;
   --oSoft: rgba(255,122,26,0.16);
-  --oGlow: rgba(255,122,26,0.5);
+  --oGlow: rgba(255,122,26,0.30);
   --oFlash: rgba(255,122,26,0.16);
   --g: #30D158;
   --r: #FF453A;
@@ -120,7 +120,7 @@ export const CSS = `
   --t4: rgba(10,12,18,0.20);
   --o: #F26A00;
   --oSoft: rgba(242,106,0,0.13);
-  --oGlow: rgba(242,106,0,0.45);
+  --oGlow: rgba(242,106,0,0.26);
   --oFlash: rgba(242,106,0,0.13);
   --g: #34C759;
   --r: #FF3B30;
@@ -150,7 +150,7 @@ export const CSS = `
   --t4: rgba(0,0,0,0.20);
   --o: #007AFF;
   --oSoft: rgba(0,122,255,0.12);
-  --oGlow: rgba(0,122,255,0.5);
+  --oGlow: rgba(0,122,255,0.30);
   --oFlash: rgba(0,122,255,0.14);
   --g: #34C759;
   --r: #FF3B30;
@@ -172,7 +172,7 @@ export const CSS = `
   --t4: rgba(255,255,255,0.25);
   --o: #FFD60A;
   --oSoft: rgba(255,214,10,0.15);
-  --oGlow: rgba(255,214,10,0.55);
+  --oGlow: rgba(255,214,10,0.35);
   --oFlash: rgba(255,214,10,0.18);
   --g: #34C759;
   --r: #FF6B6B;
@@ -194,7 +194,7 @@ export const CSS = `
   --t4: rgba(244,239,227,0.25);
   --o: #D4B98F;
   --oSoft: rgba(212,185,143,0.16);
-  --oGlow: rgba(212,185,143,0.55);
+  --oGlow: rgba(212,185,143,0.35);
   --oFlash: rgba(212,185,143,0.18);
   --g: #5BC48E;
   --r: #C46B5E;
@@ -688,15 +688,18 @@ input[type="time"]::-webkit-datetime-edit{padding:0;text-align:center;}
   --anim-spring:320ms var(--ease-out-back);
   --anim-pill:420ms var(--ease-out-back);
   /* Radius-Skala (Clean-Modern-Redesign) — abgerundete, weiche Ecken */
+  /* iOS-Continuous-Feel: 10 · 12 · 16 · 22 (ruhiger, systemnaher) */
   --r-sm:10px;
-  --r-md:14px;
-  --r-lg:19px;
-  --r-xl:24px;
+  --r-md:12px;
+  --r-lg:16px;
+  --r-xl:22px;
   --r-pill:999px;
   /* Weiche Elevations-Schatten für Karten/Sheets/Modals */
-  --shadow-sm:0 1px 2px rgba(0,0,0,.18);
-  --shadow-md:0 8px 22px rgba(0,0,0,.28);
-  --shadow-lg:0 18px 44px rgba(0,0,0,.42);
+  /* Apple-ruhig: Trennung über Material/Hairline, Schatten nur als
+     weiche Ambient-Andeutung — nie als Effekt. */
+  --shadow-sm:0 1px 2px rgba(0,0,0,.12);
+  --shadow-md:0 6px 16px rgba(0,0,0,.16);
+  --shadow-lg:0 12px 32px rgba(0,0,0,.26);
 }
 
 /* Jeder Button bekommt smooth transitions auf seinen visuellen
@@ -723,7 +726,7 @@ button{
   user-select:none;
   -webkit-user-select:none;
 }
-button:active:not(:disabled){transform:scale(.96);}
+button:active:not(:disabled){transform:scale(.97);}
 button:disabled{cursor:not-allowed;opacity:.55;}
 
 /* Liquid-Glass-Pill für die TabBar:

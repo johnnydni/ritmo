@@ -15652,7 +15652,10 @@ function LigaScreen({profile,onHome}){
         )}
       </div>
 
-      <div style={{flex:1,minHeight:0,overflowY:'auto',WebkitOverflowScrolling:'touch',
+      {/* overflowX hidden: die Ambient-Orbs der Landing ragen bewusst
+          über den Rand — ohne Clip wäre die Seite horizontal pannbar. */}
+      <div style={{flex:1,minHeight:0,overflowY:'auto',overflowX:'hidden',
+        WebkitOverflowScrolling:'touch',
         padding:'0 22px calc(env(safe-area-inset-bottom,0px) + 120px)'}}>
 
         {/* ── Nicht verbunden: Landing-Pages im Apple-Look ── */}

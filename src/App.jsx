@@ -381,7 +381,7 @@ function Splash({onDone}){
         </div>
       </div>
 
-      {/* "hallo" — Apple-Boot-Gruß, nur hier im Ladescreen. Weiß
+      {/* "Hello there!" — Apple-Boot-Gruß, nur hier im Ladescreen. Weiß
           hartkodiert wie der schwarze Grund; blendet sanft ein. */}
       <div style={{position:'absolute',left:0,right:0,top:'57%',
         display:'flex',justifyContent:'center',pointerEvents:'none',zIndex:2}}>
@@ -416,8 +416,9 @@ function WelcomeNotice({onConfirm}){
         </div>
         <div style={{color:T.t1,fontSize:13,lineHeight:1.6,textAlign:'center',
           marginBottom:22,letterSpacing:.1}}>
-          Die App ist aktuell in Entwicklung und wird sich noch viel ändern.
-          Sei nicht zu böse, wenn etwas nicht funktioniert. It's all about Padel.
+          Die App ist aktuell in Entwicklung und entwickelt sich stets weiter.
+          Gib uns gerne Feedback, falls etwas nicht wie erwartet funktioniert. 
+          It's all about Padel!
           <div style={{marginTop:10,color:T.o,fontWeight:700}}>
             Dein RITMO-Team {'<3'}
           </div>

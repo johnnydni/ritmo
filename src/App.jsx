@@ -380,6 +380,16 @@ function Splash({onDone}){
           ))}
         </div>
       </div>
+
+      {/* "hallo" — Apple-Boot-Gruß, nur hier im Ladescreen. Weiß
+          hartkodiert wie der schwarze Grund; blendet sanft ein. */}
+      <div style={{position:'absolute',left:0,right:0,top:'57%',
+        display:'flex',justifyContent:'center',pointerEvents:'none',zIndex:2}}>
+        <span style={{color:'#fff',fontSize:30,fontWeight:700,fontStyle:'italic',
+          letterSpacing:-.5,lineHeight:1,animation:'fadeIn 1.4s ease .5s both'}}>
+          hallo
+        </span>
+      </div>
     </div>
   );
 }
@@ -3000,16 +3010,22 @@ function CountUp({value,dur=750,suffix=''}){
   return <>{n}{suffix}</>;
 }
 
+/* ═══ PROFIL — von Grund auf im Apple-Health-Muster ═══
+   Aufbau wie die Health-App: Large Title mit Avatar rechts,
+   „Angepinnt"-Grid aus Kennzahl-Karten, Highlight-Karte mit Chart,
+   gruppierte Listen für Details + Verwaltung. Jede Metrik trägt
+   ihre Kategorie-Farbe im Karten-Eyebrow (Level=Orange, Form=Rot,
+   Aktivität=Grün, Community=Blau) — Content auf soliden Karten,
+   Glas nur in der Top-Bar beim Scrollen. */
 function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRitmoDNA,
   currentUid,onOpenFollowers,onOpenFollowing,onTab,onOpenSettings,onOpenEdit,onResetStats}){
-  // Kurzlabels für die Stats-Spalten (Mock: nur „Rechts"/„Links").
   const handLabels={right:'Rechts',left:'Links'};
-  const sideLabels={left:'Ad-Seite (links)',right:'Deuce-Seite (rechts)',any:'Beides geht'};
+  const sideLabels={left:'Links (Ad)',right:'Rechts (Deuce)',any:'Beide Seiten'};
 
   const[editingLevel,setEditingLevel]=useState(false);
   const[confirmReset,setConfirmReset]=useState(false);
-  // Follower-Counts werden bei jedem Mount frisch geladen, damit nach
-  // Follow/Unfollow im anderen Screen die Anzeige aktualisiert.
+  // Follower-Counts bei jedem Mount frisch — nach Follow/Unfollow im
+  // anderen Screen stimmt die Anzeige so wieder.
   const[counts,setCounts]=useState({followers:0,following:0});
   useEffect(()=>{
     if(!currentUid) return;
@@ -3018,15 +3034,12 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
     return()=>{cancelled=true;};
   },[currentUid]);
 
-  // Statistiken (ritmo_matches) — aus dem DNA-Screen hierher umgezogen.
+  // Statistiken (ritmo_matches): Supabase zuerst, sonst lokales Log.
   const STATS_EMPTY={matches:0,wins:0,losses:0,winRate:0,formTrend:[],
     weeklyMatches:[0,0,0,0,0,0,0],weekDays:['M','D','M','D','F','S','S'],avgSets:'0'};
   const[stats,setStats]=useState(null);
   useEffect(()=>{
     let alive=true;
-    // Supabase hat Vorrang; ohne Backend/Session greift das lokale
-    // Match-Log → gespielte Single Matches (Best of 3) und Turniere
-    // fliessen so auch offline in die Auswertung ein.
     dbLoadMatchStats().then(s=>{if(alive)setStats(s||dbLoadMatchStatsLocal()||STATS_EMPTY);})
       .catch(()=>{if(alive)setStats(dbLoadMatchStatsLocal()||STATS_EMPTY);});
     return()=>{alive=false;};
@@ -3035,458 +3048,447 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
   },[profile.matchesPlayed]);
   const safeStats=stats||STATS_EMPTY;
 
-  // Scroll-Navigation: die rechte Dot-Leiste bildet die Sektionen ab
-  // (kopf · dna · stats · mehr) und füllt die Linie mit dem Fortschritt.
-  const SECTIONS=['kopf','dna','stats','mehr'];
-  const scrollRef=useRef(null);
-  const secRefs=useRef({});
-  const[navSec,setNavSec]=useState(0);
-  const[scrollProg,setScrollProg]=useState(0);
-  const onProfileScroll=()=>{
-    const el=scrollRef.current;if(!el)return;
-    const p=el.scrollTop/Math.max(1,el.scrollHeight-el.clientHeight);
-    setScrollProg(p);
-    const marker=el.scrollTop+el.clientHeight*0.35;
-    let act=0;
-    SECTIONS.forEach((k,i)=>{const r=secRefs.current[k];if(r&&r.offsetTop<=marker)act=i;});
-    // Am Scroll-Ende zählt immer die letzte Sektion — sonst wäre sie
-    // bei hohen Viewports nie erreichbar (Marker kommt nicht so tief).
-    if(p>=0.98) act=SECTIONS.length-1;
-    setNavSec(act);
-  };
+  // Bio — Inline-Editing in der „Über dich"-Karte.
+  const[bioEdit,setBioEdit]=useState(false);
+  const[bioVal,setBioVal]=useState(profile.bio||'');
+  const bio=(profile.bio||'').trim();
+  const saveBio=()=>{ setProfile(p=>({...p,bio:bioVal.trim().slice(0,200)})); setBioEdit(false); };
 
   const lvl=profile.playtomicLevel??profile.estimatedLevel??estimateLevel(profile);
   const isEstimated=profile.playtomicLevel==null&&lvl!=null;
   const isPublic=!profile.private;
   const togglePublic=()=>setProfile(p=>({...p,private:!p.private?true:false}));
 
-  // Editorial-Look (per Design-Mock): pures Orange als einziger Accent,
-  // keine Cards — Sektionen trennen sich über Hairlines (T.sep).
-  const tint=p=>`color-mix(in srgb, var(--o) ${p}%, transparent)`;
   const hasStyle=!!(profile.styleType&&PADEL_STYLES[profile.styleType]);
   // Zweiter Spielstil: gespeichert (styleType2) oder lazy aus den
   // Quiz-Antworten abgeleitet (ältere Profile ohne Feld).
   const style2=(profile.styleType2&&PADEL_STYLES[profile.styleType2])
     ?profile.styleType2
     :(profile.quizAnswers?computeStyles(profile.quizAnswers).secondary:null);
-  const eyeb={color:T.t3,fontSize:9.5,fontWeight:700,letterSpacing:1.9,textTransform:'uppercase'};
-  const statVal={color:T.t1,fontSize:11,fontWeight:800,letterSpacing:.4,textTransform:'uppercase',
-    marginTop:9,lineHeight:1.3,minHeight:29,display:'flex',alignItems:'center',justifyContent:'center'};
-  const rowSty=top=>({width:'100%',display:'flex',alignItems:'center',gap:14,padding:'17px 2px',
-    background:'none',border:'none',borderTop:top?`1px solid ${T.sep}`:'none',
-    cursor:'pointer',textAlign:'left'});
-  const rowLbl={display:'block',color:T.t1,fontSize:12,fontWeight:800,letterSpacing:1.7,
-    textTransform:'uppercase'};
+
+  // Form-Trend für die Herz-Karte (letzte 4 vs. Gesamtschnitt).
+  const trend=(()=>{
+    const f=safeStats.formTrend;
+    if(f.length<3) return {sym:'→',txt:'Neu',c:T.t2};
+    const n=Math.min(4,f.length);
+    const last=f.slice(-n).reduce((a,b)=>a+b,0)/n;
+    const all=f.reduce((a,b)=>a+b,0)/f.length;
+    if(last>all+.3) return {sym:'↑',txt:'Steigend',c:T.g};
+    if(last<all-.3) return {sym:'↓',txt:'Fallend',c:T.r};
+    return {sym:'→',txt:'Stabil',c:T.t2};
+  })();
+  const weekSum=safeStats.weeklyMatches.reduce((a,b)=>a+b,0);
+
+  // Scroll → Glas-Top-Bar + Inline-Titel (iOS-Large-Title-Kollaps).
+  const scrollRef=useRef(null);
+  const[scrollY,setScrollY]=useState(0);
+  const barGlass=Math.min(1,Math.max(0,(scrollY-8)/56));
+  const titleIn=Math.min(1,Math.max(0,(scrollY-52)/34));
+
+  // Health-Bausteine.
+  const tint=(c,p)=>`color-mix(in srgb, ${c} ${p}%, transparent)`;
+  const card={background:T.card,border:`1px solid ${T.border}`,borderRadius:16};
+  const capSty={color:T.t3,fontSize:11.5,fontWeight:500,lineHeight:1.4};
+  const SecTitle=({children,top=26})=>(
+    <div style={{color:T.t1,fontSize:22,fontWeight:700,letterSpacing:-.5,
+      margin:`${top}px 2px 12px`}}>{children}</div>
+  );
+  // Karten-Eyebrow: Kategorie-Farbe + Icon, wie die Health-Karten.
+  const Eyebrow=({color,icon,children,chev})=>(
+    <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:10}}>
+      <span style={{color,display:'inline-flex',flexShrink:0}}>{icon}</span>
+      <span style={{color,fontSize:12.5,fontWeight:700,letterSpacing:.2,flex:1,minWidth:0,
+        whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{children}</span>
+      {chev&&<ChevronRightIcon size={13} color={T.t3}/>}
+    </div>
+  );
+  // Aktivitäts-Ring (Fitness-Zitat) für die Win-Rate.
+  const Ring=({value=0,size=46,stroke=5.5,color})=>{
+    const r=(size-stroke)/2,C=2*Math.PI*r,p=Math.min(1,Math.max(0,value));
+    return(
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true"
+        style={{transform:'rotate(-90deg)',flexShrink:0}}>
+        <circle cx={size/2} cy={size/2} r={r} fill="none" strokeWidth={stroke}
+          stroke={tint(color,16)}/>
+        <circle cx={size/2} cy={size/2} r={r} fill="none" strokeWidth={stroke}
+          stroke={color} strokeLinecap="round" strokeDasharray={C}
+          strokeDashoffset={C*(1-p)}
+          style={{transition:'stroke-dashoffset .9s var(--ease-out-expo)'}}/>
+      </svg>
+    );
+  };
+  // Gruppierte Liste — iOS-Settings-Zelle mit Farb-Chip.
+  const Row=({chip,chipColor,label,value,trailing,onClick,top=false,danger=false})=>{
+    const sty={width:'100%',display:'flex',alignItems:'center',gap:12,padding:'12px 0',
+      background:'none',border:'none',textAlign:'left',color:T.t1,
+      borderTop:top?'none':`1px solid ${T.sep}`};
+    const inner=(<>
+      <span style={{width:29,height:29,borderRadius:8,flexShrink:0,
+        background:tint(chipColor,13),color:chipColor,
+        display:'inline-flex',alignItems:'center',justifyContent:'center'}}>{chip}</span>
+      <span style={{flex:1,minWidth:0,color:danger?T.r:T.t1,fontSize:15,fontWeight:600,
+        whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{label}</span>
+      {value!=null&&<span style={{color:T.t2,fontSize:14.5,fontWeight:500,flexShrink:0}}>{value}</span>}
+      {trailing!==undefined?trailing:(onClick?<ChevronRightIcon size={15} color={T.t3}/>:null)}
+    </>);
+    return onClick
+      ?<button onClick={onClick} style={{...sty,cursor:'pointer'}}>{inner}</button>
+      :<div style={sty}>{inner}</div>;
+  };
 
   return(
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden'}}>
 
-      <div ref={scrollRef} onScroll={onProfileScroll}
-        style={{flex:1,overflowY:'auto',WebkitOverflowScrolling:'touch',position:'relative',
-        padding:'calc(env(safe-area-inset-top,0px) + 56px) 22px 0'}}>
+      <div ref={scrollRef} onScroll={()=>setScrollY(scrollRef.current?.scrollTop||0)}
+        style={{position:'absolute',inset:0,zIndex:2,overflowY:'auto',
+          WebkitOverflowScrolling:'touch',overscrollBehavior:'contain'}}>
 
-        {/* Deko — linke Dot-Kolonne (artistischer Marker aus dem Mock) */}
-        <div aria-hidden="true" className="fi" style={{position:'absolute',left:8,
-          top:'calc(env(safe-area-inset-top,0px) + 78px)',
-          display:'flex',flexDirection:'column',alignItems:'center',gap:5}}>
-          {[0,1,2].map(i=>(
-            <span key={i} style={{display:'flex',gap:3.5}}>
-              <span style={{width:3.5,height:3.5,borderRadius:'50%',
-                border:`1px solid ${T.t4}`,display:'block'}}/>
-              <span style={{width:3.5,height:3.5,borderRadius:'50%',
-                border:`1px solid ${T.t4}`,display:'block'}}/>
-            </span>
-          ))}
-        </div>
-
-        {/* Kopf: links Eyebrow + Name + Tagline, rechts das große Level
-            (Dezimalpunkt in Orange) + kompakter Sichtbarkeits-Switch */}
-        <div ref={el=>{secRefs.current.kopf=el;}} className="fi"
-          style={{display:'flex',justifyContent:'space-between',
-          alignItems:'flex-start',gap:12}}>
+        {/* Kopf: Large Title + Avatar rechts (Health-Muster). Blendet
+            beim Scrollen aus, während der Inline-Titel in der Bar
+            einblendet (iOS-Title-Crossfade). Tap auf den Avatar =
+            Foto ändern (AvatarWithUpload). */}
+        <div className="fi" style={{padding:'calc(env(safe-area-inset-top,0px) + 84px) 22px 0',
+          display:'flex',alignItems:'center',justifyContent:'space-between',gap:14,
+          opacity:1-titleIn}}>
           <div style={{minWidth:0,flex:1}}>
-            {/* Bauhaus-Streifen wie in den Screen-Headern — links,
-                über dem Eyebrow */}
-            <BauhausStripes delay={.05} style={{marginLeft:0,marginTop:0,marginBottom:9}}/>
-            <div style={{display:'flex',alignItems:'center',gap:7}}>
-              <span style={{width:5,height:5,borderRadius:'50%',background:T.o,flexShrink:0}}/>
-              <span style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:2.4,
-                textTransform:'uppercase'}}>Profil</span>
-            </div>
-            <div className="fu" style={{color:T.t1,fontSize:38,fontWeight:900,letterSpacing:-1.4,
-              lineHeight:1.02,marginTop:8,overflowWrap:'anywhere'}}>
+            <div style={{color:T.t3,fontSize:13,fontWeight:600,letterSpacing:1.4,
+              textTransform:'uppercase'}}>Profil</div>
+            <div style={{color:T.t1,fontSize:34,fontWeight:700,letterSpacing:-.6,
+              lineHeight:1.1,marginTop:4,overflowWrap:'anywhere'}}>
               {displayName(profile)}
             </div>
-            <div className="fu" style={{animationDelay:'.05s',...eyeb,marginTop:11}}>
-              Dein Stil · Dein Rhythmus · Deine Stats
-            </div>
           </div>
-          <div className="fu" style={{animationDelay:'.07s',textAlign:'right',flexShrink:0}}>
-            {lvl!=null&&(<>
-              <div style={{...eyeb,marginBottom:5}}>RITMO Level</div>
-              <div style={{color:T.t1,fontSize:48,fontWeight:900,letterSpacing:-2,lineHeight:.95}}>
-                {lvl.toFixed(2).split('.')[0]}
-                <span style={{color:T.o}}>.</span>
-                {lvl.toFixed(2).split('.')[1]}
-              </div>
-            </>)}
-            {/* Sichtbarkeit: Auge + Switch — die ehemalige
-                „Profil öffentlich"-Zeile, kompakt unterm Level */}
-            <div style={{display:'flex',alignItems:'center',gap:8,
-              justifyContent:'flex-end',marginTop:lvl!=null?10:2}}>
-              <span style={{color:isPublic?T.o:T.t3,display:'inline-flex',
-                transition:'color .25s'}}><EyeIcon size={16}/></span>
-              <span onClick={togglePublic} role="switch" aria-checked={isPublic}
-                aria-label={isPublic?'Profil öffentlich':'Profil privat'}
-                style={{width:38,height:22,borderRadius:14,flexShrink:0,
-                  background:isPublic?T.o:'rgba(120,120,128,.32)',position:'relative',
-                  cursor:'pointer',transition:'background .25s',display:'inline-block'}}>
-                <span style={{width:18,height:18,borderRadius:'50%',background:T.bg,
-                  position:'absolute',top:2,left:isPublic?18:2,transition:'left .25s',
-                  boxShadow:'0 1px 3px rgba(0,0,0,.3)',display:'block'}}/>
-              </span>
-            </div>
-          </div>
+          <AvatarWithUpload profile={profile} setProfile={setProfile} size={56}/>
         </div>
 
-        {/* Avatar mit Orange-Glow → RITMO DNA → Stil-Pill */}
-        <div ref={el=>{secRefs.current.dna=el;}} className="zi"
-          style={{animationDelay:'.1s',display:'flex',flexDirection:'column',
-          alignItems:'center',marginTop:30}}>
-          <div style={{borderRadius:'50%',
-            boxShadow:`0 0 44px ${tint(16)}, 0 0 14px ${tint(12)}`}}>
-            <AvatarWithUpload profile={profile} setProfile={setProfile} size={150}/>
-          </div>
-          <div className="fu" style={{animationDelay:'.18s',marginTop:26,color:T.t1,
-            fontSize:16,fontWeight:800,letterSpacing:4.5,textTransform:'uppercase'}}>
-            RITMO <span style={{color:T.o}}>DNA</span>
-          </div>
-          <button className="fu" onClick={hasStyle?()=>onOpenRitmoDNA&&onOpenRitmoDNA():onResetOnboarding}
-            style={{animationDelay:'.22s',marginTop:15,display:'inline-flex',alignItems:'center',
-              gap:11,padding:'12px 24px',borderRadius:999,
-              background:hasStyle?styleGrad(profile.styleType):'transparent',
-              border:`1px solid ${hasStyle?`${STYLE_GRAD[profile.styleType]}66`:T.t4}`,
-              color:T.t1,fontSize:11.5,fontWeight:800,
-              letterSpacing:2,textTransform:'uppercase',cursor:'pointer'}}>
-            {hasStyle
-              ?`${PADEL_STYLES[profile.styleType].name} · ${PADEL_STYLES[profile.styleType].subtitle}`
-              :'Spielstil bestimmen'}
-            <ChevronRightIcon size={13} color={T.t2}/>
-          </button>
-        </div>
+        <div style={{padding:'0 22px',display:'flex',flexDirection:'column'}}>
 
-        {/* Bio — Spruch fürs Profil (max. 200), den andere sehen */}
-        <ProfileBio profile={profile} setProfile={setProfile}/>
-
-        {/* Stats-Zeile: 4 Spalten mit Hairline-Trennern.
-            Level (tap = geschätztes Level editieren) · Hand · Seite · Stil */}
-        <div className="fu" style={{animationDelay:'.26s',display:'flex',
-          alignItems:'stretch',marginTop:36}}>
-          <button onClick={()=>{if(isEstimated)setEditingLevel(e=>!e);}}
-            style={{flex:1,minWidth:0,background:'none',border:'none',
-              borderRight:`1px solid ${T.sep}`,padding:'2px 4px',textAlign:'center',
-              cursor:isEstimated?'pointer':'default',color:T.t1}}>
-            <div style={eyeb}>Level</div>
-            <div style={{color:T.o,fontSize:23,fontWeight:900,letterSpacing:-.8,
-              lineHeight:1,marginTop:10}}>
-              {lvl!=null?lvl.toFixed(2):'—'}
-            </div>
-            {lvl!=null&&(
-              <div style={{display:'flex',flexDirection:'column',alignItems:'center',
-                gap:4,marginTop:8}}>
-                <span style={{color:T.o,fontSize:9,fontWeight:800,letterSpacing:1,
-                  textTransform:'uppercase'}}>{getLevelLabel(lvl)}</span>
-                <span style={{color:T.o,fontSize:8,fontWeight:900,letterSpacing:.5,
-                  padding:'1.5px 4px',border:`1px solid ${T.o}`,borderRadius:4}}>
-                  {getLevelTier(lvl)}
+          {/* ── ANGEPINNT — 2×2-Grid der Kern-Metriken. */}
+          <SecTitle top={20}>Angepinnt</SecTitle>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+            {/* Level — Tap öffnet den Editor (nur geschätzte Level). */}
+            <button onClick={()=>{if(isEstimated)setEditingLevel(e=>!e);}}
+              className="fu" data-lift={isEstimated||undefined}
+              style={{...card,padding:'13px 14px 12px',textAlign:'left',color:T.t1,
+                cursor:isEstimated?'pointer':'default'}}>
+              <Eyebrow color={T.o} icon={<DNAIcon size={14} color="currentColor"/>}
+                chev={isEstimated}>RITMO Level</Eyebrow>
+              <div style={{display:'flex',alignItems:'baseline',gap:7,flexWrap:'wrap'}}>
+                <span style={{fontSize:30,fontWeight:800,letterSpacing:-1.2,lineHeight:1,
+                  fontVariantNumeric:'tabular-nums'}}>
+                  {lvl!=null?lvl.toFixed(2):'—'}
                 </span>
+                {lvl!=null&&(
+                  <span style={{color:T.o,fontSize:10.5,fontWeight:800,letterSpacing:.5,
+                    padding:'2px 6px',border:`1px solid ${tint(T.o,45)}`,borderRadius:6,
+                    background:tint(T.o,10)}}>{getLevelTier(lvl)}</span>
+                )}
+              </div>
+              <div style={{...capSty,marginTop:8}}>
+                {lvl!=null?`${getLevelLabel(lvl)}${isEstimated?' · geschätzt':''}`:'Noch nicht bestimmt'}
+              </div>
+            </button>
+            {/* Form — Herz-rot mit Mini-Sparkline (Health-Zitat). */}
+            <div className="fu" style={{...card,padding:'13px 14px 12px',animationDelay:'.05s'}}>
+              <Eyebrow color={T.r} icon={<HeartIcon size={14}/>}>Form</Eyebrow>
+              {safeStats.formTrend.length>=2?(<>
+                <div style={{display:'flex',alignItems:'baseline',gap:6}}>
+                  <span style={{color:trend.c,fontSize:21,fontWeight:800,lineHeight:1}}>{trend.sym}</span>
+                  <span style={{color:T.t1,fontSize:19,fontWeight:800,letterSpacing:-.4}}>{trend.txt}</span>
+                </div>
+                <div style={{marginTop:7}}>
+                  <Sparkline data={safeStats.formTrend} color={T.r} height={30}/>
+                </div>
+              </>):(<>
+                <div style={{color:T.t1,fontSize:21,fontWeight:800,lineHeight:1}}>—</div>
+                <div style={{...capSty,marginTop:8}}>Ab 2 Matches sichtbar</div>
+              </>)}
+            </div>
+            {/* Win-Rate — Aktivitäts-Ring in Grün. */}
+            <div className="fu" style={{...card,padding:'13px 14px 12px',animationDelay:'.1s'}}>
+              <Eyebrow color={T.g} icon={<TrophyIcon size={15} color="currentColor"/>}>Win-Rate</Eyebrow>
+              <div style={{display:'flex',alignItems:'center',gap:12}}>
+                <Ring value={(safeStats.winRate||0)/100} color={T.g}/>
+                <div style={{minWidth:0}}>
+                  <div style={{color:T.t1,fontSize:25,fontWeight:800,letterSpacing:-1,
+                    lineHeight:1,fontVariantNumeric:'tabular-nums'}}>
+                    <CountUp value={safeStats.winRate} suffix="%"/>
+                  </div>
+                  <div style={{...capSty,marginTop:5,whiteSpace:'nowrap',overflow:'hidden',
+                    textOverflow:'ellipsis'}}>
+                    {safeStats.wins} Siege · {safeStats.losses} Niederl.
+                  </div>
+                </div>
+              </div>
+            </div>
+            {/* Matches gesamt — Blau. */}
+            <div className="fu" style={{...card,padding:'13px 14px 12px',animationDelay:'.15s'}}>
+              <Eyebrow color={T.blue} icon={<RacketMini size={15} color="currentColor"/>}>Matches</Eyebrow>
+              <div style={{color:T.t1,fontSize:30,fontWeight:800,letterSpacing:-1.2,
+                lineHeight:1,fontVariantNumeric:'tabular-nums'}}>
+                <CountUp value={safeStats.matches}/>
+              </div>
+              <div style={{...capSty,marginTop:8}}>insgesamt geloggt</div>
+            </div>
+          </div>
+
+          {/* Inline-Editor fürs geschätzte Level (Tap auf die Karte). */}
+          {isEstimated&&editingLevel&&lvl!=null&&(
+            <div className="fi" style={{...card,marginTop:12,padding:'14px 16px',
+              display:'flex',flexDirection:'column',gap:10}}>
+              <div style={capSty}>RITMO-Level anpassen — Schätzwert, bis genug Matches geloggt sind.</div>
+              <div style={{display:'flex',alignItems:'center',gap:6,minWidth:0}}>
+                <button onClick={()=>setProfile(p=>({...p,estimatedLevel:Math.max(0.30,Math.round((lvl-0.03)*100)/100)}))}
+                  style={{width:30,height:30,borderRadius:'50%',background:T.card2,
+                    border:`1px solid ${T.border}`,color:T.o,fontSize:15,fontWeight:700,
+                    cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>−</button>
+                <input key={lvl.toFixed(2)} type="text" inputMode="decimal" defaultValue={lvl.toFixed(2)}
+                  onBlur={e=>{
+                    const v=parseFloat(e.target.value.replace(',','.'));
+                    if(!isNaN(v)) setProfile(p=>({...p,estimatedLevel:Math.min(7.0,Math.max(0.3,Math.round(v*100)/100))}));
+                    else e.target.value=lvl.toFixed(2);
+                  }}
+                  onKeyDown={e=>{if(e.key==='Enter') e.target.blur();}}
+                  style={{flex:1,minWidth:0,width:0,textAlign:'center',background:T.card2,
+                    border:`1px solid ${T.o}`,borderRadius:8,padding:'5px 4px',
+                    color:T.o,fontSize:22,fontWeight:900,outline:'none',boxSizing:'border-box'}}/>
+                <button onClick={()=>setProfile(p=>({...p,estimatedLevel:Math.min(7.00,Math.round((lvl+0.03)*100)/100)}))}
+                  style={{width:30,height:30,borderRadius:'50%',background:T.card2,
+                    border:`1px solid ${T.border}`,color:T.o,fontSize:15,fontWeight:700,
+                    cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>+</button>
+              </div>
+              <button onClick={()=>setEditingLevel(false)}
+                style={{padding:'9px',background:T.o,border:'none',borderRadius:10,
+                  color:'#000',fontSize:12,fontWeight:800,cursor:'pointer'}}>Fertig</button>
+            </div>
+          )}
+
+          {/* ── RITMO DNA — Highlight-Karte mit Stil-Verlauf. */}
+          <SecTitle>RITMO DNA</SecTitle>
+          <button onClick={hasStyle?()=>onOpenRitmoDNA&&onOpenRitmoDNA():onResetOnboarding}
+            className="fu" data-lift
+            style={{...card,background:hasStyle?`${styleGrad(profile.styleType)}, ${T.card}`:T.card,
+              padding:'14px 16px',textAlign:'left',cursor:'pointer',color:T.t1,
+              animationDelay:'.12s',width:'100%'}}>
+            <Eyebrow color={T.o} icon={<DNAIcon size={14} color="currentColor"/>} chev>
+              Spielstil
+            </Eyebrow>
+            {hasStyle?(
+              <div style={{display:'flex',alignItems:'center',gap:14}}>
+                <span style={{width:52,height:52,borderRadius:14,flexShrink:0,
+                  background:tint(STYLE_GRAD[profile.styleType],16),
+                  border:`1px solid ${tint(STYLE_GRAD[profile.styleType],35)}`,
+                  display:'inline-flex',alignItems:'center',justifyContent:'center'}}>
+                  <ArchetypeGlyph type={profile.styleType} size={30} active
+                    color={STYLE_GRAD[profile.styleType]}/>
+                </span>
+                <div style={{minWidth:0,flex:1}}>
+                  <div style={{color:T.t1,fontSize:20,fontWeight:800,letterSpacing:-.4,lineHeight:1.15}}>
+                    {PADEL_STYLES[profile.styleType].name}
+                  </div>
+                  <div style={{...capSty,marginTop:3}}>{PADEL_STYLES[profile.styleType].subtitle}</div>
+                  {style2&&(
+                    <div style={{marginTop:8,display:'inline-flex',alignItems:'center',gap:6,
+                      padding:'3px 9px',borderRadius:999,background:tint(STYLE_GRAD[style2],14),
+                      border:`1px solid ${tint(STYLE_GRAD[style2],32)}`}}>
+                      <span style={{color:T.t2,fontSize:10,fontWeight:700,letterSpacing:.4}}>2. STIL</span>
+                      <span style={{color:T.t1,fontSize:11,fontWeight:700}}>{PADEL_STYLES[style2].name}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ):(
+              <div>
+                <div style={{color:T.t1,fontSize:20,fontWeight:800,letterSpacing:-.4}}>
+                  Spielstil bestimmen
+                </div>
+                <div style={{...capSty,marginTop:4}}>
+                  Vier Fragen — dann kennt RITMO dein Spiel.
+                </div>
               </div>
             )}
           </button>
-          <div style={{flex:1,minWidth:0,borderRight:`1px solid ${T.sep}`,
-            padding:'2px 4px',textAlign:'center'}}>
-            <div style={eyeb}>Hand</div>
-            <div style={statVal}>{handLabels[profile.handPreference]||'—'}</div>
-            <div style={{marginTop:6,color:T.t2,display:'flex',justifyContent:'center'}}>
-              <HandIcon size={17}/>
-            </div>
-          </div>
-          <div style={{flex:1,minWidth:0,borderRight:`1px solid ${T.sep}`,
-            padding:'2px 4px',textAlign:'center'}}>
-            <div style={eyeb}>Seite</div>
-            <div style={statVal}>{sideLabels[profile.courtSide]||'—'}</div>
-            <div style={{marginTop:6,color:T.t2,display:'flex',justifyContent:'center'}}>
-              <TargetIcon size={17}/>
-            </div>
-          </div>
-          <div style={{flex:1,minWidth:0,padding:'2px 4px',textAlign:'center'}}>
-            <div style={eyeb}>2. Stil</div>
-            <div style={statVal}>
-              {style2?(
-                <span style={{padding:'3px 9px',borderRadius:999,fontSize:10,
-                  whiteSpace:'nowrap',color:T.t1,
-                  background:styleGrad(style2),
-                  border:`1px solid ${STYLE_GRAD[style2]}59`}}>
-                  {PADEL_STYLES[style2].name}
-                </span>
-              ):'—'}
-            </div>
-            <div style={{marginTop:6,opacity:.7,display:'flex',justifyContent:'center'}}>
-              <LiveTabIcon size={17}/>
-            </div>
-          </div>
-        </div>
 
-        {/* Inline-Editor fürs geschätzte RITMO-Level (tap auf Level) */}
-        {isEstimated&&editingLevel&&lvl!=null&&(
-          <div className="fi" style={{maxWidth:300,margin:'20px auto 0',
-            display:'flex',flexDirection:'column',gap:8}}>
-            <div style={{display:'flex',alignItems:'center',gap:6,minWidth:0}}>
-              <button onClick={()=>setProfile(p=>({...p,estimatedLevel:Math.max(0.30,Math.round((lvl-0.03)*100)/100)}))}
-                style={{width:30,height:30,borderRadius:'50%',background:T.card2,
-                  border:`1px solid ${T.border}`,color:T.o,fontSize:15,fontWeight:700,
-                  cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>−</button>
-              <input key={lvl.toFixed(2)} type="text" inputMode="decimal" defaultValue={lvl.toFixed(2)}
-                onBlur={e=>{
-                  const v=parseFloat(e.target.value.replace(',','.'));
-                  if(!isNaN(v)) setProfile(p=>({...p,estimatedLevel:Math.min(7.0,Math.max(0.3,Math.round(v*100)/100))}));
-                  else e.target.value=lvl.toFixed(2);
-                }}
-                onKeyDown={e=>{if(e.key==='Enter') e.target.blur();}}
-                style={{flex:1,minWidth:0,width:0,
-                  textAlign:'center',background:T.card2,
-                  border:`1px solid ${T.o}`,borderRadius:8,padding:'5px 4px',
-                  color:T.o,fontSize:22,fontWeight:900,outline:'none',
-                  boxSizing:'border-box'}}/>
-              <button onClick={()=>setProfile(p=>({...p,estimatedLevel:Math.min(7.00,Math.round((lvl+0.03)*100)/100)}))}
-                style={{width:30,height:30,borderRadius:'50%',background:T.card2,
-                  border:`1px solid ${T.border}`,color:T.o,fontSize:15,fontWeight:700,
-                  cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>+</button>
-            </div>
-            <button onClick={()=>setEditingLevel(false)}
-              style={{padding:'8px',background:T.o,border:'none',borderRadius:8,
-                color:'#000',fontSize:12,fontWeight:800,cursor:'pointer'}}>Fertig</button>
-          </div>
-        )}
-
-        {/* Follower / Folgt — Hairline-Sektion, tap öffnet die Listen */}
-        <div className="fu" style={{animationDelay:'.32s',display:'flex',marginTop:30,
-          borderTop:`1px solid ${T.sep}`,borderBottom:`1px solid ${T.sep}`,padding:'15px 0'}}>
-          <button onClick={()=>onOpenFollowers&&onOpenFollowers()}
-            style={{flex:1,background:'none',border:'none',cursor:'pointer',
-              textAlign:'center',borderRight:`1px solid ${T.sep}`}}>
-            <div style={eyeb}>Follower</div>
-            <div style={{display:'inline-flex',alignItems:'center',gap:8,marginTop:5}}>
-              <span style={{color:T.t1,fontSize:27,fontWeight:900,letterSpacing:-.5}}>{counts.followers}</span>
-              <span style={{color:T.t2,display:'inline-flex'}}><PeopleIcon size={16}/></span>
-            </div>
-          </button>
-          <button onClick={()=>onOpenFollowing&&onOpenFollowing()}
-            style={{flex:1,background:'none',border:'none',cursor:'pointer',textAlign:'center'}}>
-            <div style={eyeb}>Folgt</div>
-            <div style={{display:'inline-flex',alignItems:'center',gap:8,marginTop:5}}>
-              <span style={{color:T.t1,fontSize:27,fontWeight:900,letterSpacing:-.5}}>{counts.following}</span>
-              <span style={{color:T.t2,display:'inline-flex'}}><PeopleIcon size={16}/></span>
-            </div>
-          </button>
-        </div>
-
-        {/* ── STATISTIKEN — aus dem DNA-Screen umgezogen, im
-            Editorial-Stil: Hairlines, Eyebrows, große Ziffern. */}
-        <div ref={el=>{secRefs.current.stats=el;}} className="fu"
-          style={{animationDelay:'.4s',marginTop:34}}>
-          <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:18}}>
-            <span style={{width:5,height:5,borderRadius:'50%',background:T.o,flexShrink:0}}/>
-            <span style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:2.4,
-              textTransform:'uppercase'}}>Statistiken</span>
-            <span style={{flex:1,height:1,background:T.sep,display:'block'}}/>
-          </div>
-          {/* Kennzahlen-Zeile mit Hairline-Trennern */}
-          <div style={{display:'flex',alignItems:'stretch'}}>
-            {[
-              {l:'Matches',v:safeStats.matches,suf:'',c:T.t1},
-              {l:'Siege',v:safeStats.wins,suf:'',c:T.t1},
-              {l:'Niederl.',v:safeStats.losses,suf:'',c:T.t1},
-              {l:'Win-Rate',v:safeStats.winRate,suf:'%',c:T.o},
-            ].map((s,i)=>(
-              <div key={s.l} className="zi" style={{animationDelay:`${.46+i*.07}s`,
-                flex:1,minWidth:0,textAlign:'center',padding:'2px 4px',
-                borderRight:i<3?`1px solid ${T.sep}`:'none'}}>
-                <div style={eyeb}>{s.l}</div>
-                <div style={{color:s.c,fontSize:24,fontWeight:900,letterSpacing:-.8,
-                  lineHeight:1,marginTop:9}}>
-                  <CountUp value={s.v} suffix={s.suf}/>
-                </div>
+          {/* ── HIGHLIGHTS — Aktivität mit Wochen-Chart. */}
+          <SecTitle>Highlights</SecTitle>
+          {safeStats.matches>0?(
+            <div className="fu" style={{...card,padding:'14px 16px',animationDelay:'.16s'}}>
+              <Eyebrow color={T.g} icon={<StopwatchIcon size={14}/>}>Aktivität</Eyebrow>
+              <div style={{color:T.t1,fontSize:15,fontWeight:600,lineHeight:1.45,marginBottom:10}}>
+                {weekSum>0
+                  ?`Diese Woche ${weekSum} ${weekSum===1?'Match':'Matches'} — weiter so!`
+                  :'Diese Woche noch kein Match — Zeit für den Court!'}
               </div>
-            ))}
-          </div>
-          {safeStats.matches>0?(<>
-            {/* Form-Verlauf */}
-            <div className="fu" style={{animationDelay:'.58s',marginTop:28}}>
-              <div style={{display:'flex',justifyContent:'space-between',
-                alignItems:'baseline',marginBottom:10}}>
-                <span style={eyeb}>
-                  Form-Verlauf · letzte {Math.min(safeStats.formTrend.length,12)} Matches
-                </span>
-                <span style={{color:T.o,fontSize:12,fontWeight:800,flexShrink:0}}>
-                  {(()=>{
-                    const f=safeStats.formTrend;
-                    if(f.length<3) return '→ Neu';
-                    const last=f.slice(-Math.min(4,f.length)).reduce((a,b)=>a+b,0)/Math.min(4,f.length);
-                    const all=f.reduce((a,b)=>a+b,0)/f.length;
-                    if(last>all+.3) return '↑ Steigend';
-                    if(last<all-.3) return '↓ Fallend';
-                    return '→ Stabil';
-                  })()}
-                </span>
-              </div>
-              <Sparkline data={safeStats.formTrend} color={T.o} height={64}/>
-            </div>
-            {/* Aktivität */}
-            <div className="fu" style={{animationDelay:'.66s',marginTop:26,
-              paddingBottom:26,borderBottom:`1px solid ${T.sep}`}}>
-              <div style={{...eyeb,marginBottom:12}}>Aktivität · Matches pro Woche</div>
               <BarChart values={safeStats.weeklyMatches} labels={safeStats.weekDays}
-                color={T.o} height={86}/>
+                color={T.g} height={74}/>
+              <div style={{...capSty,marginTop:10,display:'flex',justifyContent:'space-between'}}>
+                <span>Matches pro Wochentag</span>
+                <span>{safeStats.matches} gesamt</span>
+              </div>
             </div>
-          </>):(
-            <div className="fu" style={{animationDelay:'.58s',marginTop:26,paddingBottom:26,
-              borderBottom:`1px solid ${T.sep}`,textAlign:'center'}}>
-              <div style={{color:T.t2,fontSize:13,fontWeight:700,marginBottom:4}}>
+          ):(
+            <div className="fu" style={{...card,padding:'18px 16px',textAlign:'center',
+              animationDelay:'.16s'}}>
+              <div style={{color:T.t2,fontSize:14,fontWeight:700,marginBottom:4}}>
                 Noch keine Matches geloggt
               </div>
-              <div style={{color:T.t3,fontSize:11.5,lineHeight:1.5}}>
-                Spiel ein Single Match oder ein Turnier — die Stats landen automatisch hier.
+              <div style={capSty}>
+                Spiel ein Single Match oder ein Turnier — deine Auswertungen
+                erscheinen automatisch hier.
               </div>
             </div>
           )}
-        </div>
 
-        {/* ── MEHR: Profil bearbeiten (Name, Spitzname, Vorlieben,
-            Stats-Reset) + Onboarding. Einstellungen + Abmelden wohnen
-            im Burger des Home-Headers. */}
-        <button ref={el=>{secRefs.current.mehr=el;}} onClick={onOpenEdit}
-          className="fu" style={{...rowSty(true),animationDelay:'.70s'}}>
-          <span style={{width:26,display:'inline-flex',justifyContent:'center',
-            flexShrink:0,color:T.t2}}><EditIcon size={17}/></span>
-          <span style={{flex:1,minWidth:0}}><span style={rowLbl}>Profil bearbeiten</span></span>
-          <ChevronRightIcon size={15} color={T.t3}/>
-        </button>
-        <button onClick={onResetOnboarding}
-          className="fu" style={{...rowSty(true),animationDelay:'.74s'}}>
-          <span style={{width:26,display:'inline-flex',justifyContent:'center',
-            flexShrink:0,color:T.t2}}><RefreshGlyph/></span>
-          <span style={{flex:1,minWidth:0}}><span style={rowLbl}>Onboarding wiederholen</span></span>
-          <ChevronRightIcon size={15} color={T.t3}/>
-        </button>
-        {/* Statistik zurücksetzen — alle Auswertungen auf 0 (geloggte
-            Matches + laufendes Scoreboard). */}
-        <button onClick={()=>setConfirmReset(true)}
-          className="fu" style={{...rowSty(true),animationDelay:'.78s',
-          borderBottom:`1px solid ${T.sep}`}}>
-          <span style={{width:26,display:'inline-flex',justifyContent:'center',
-            flexShrink:0,color:T.r}}><RefreshGlyph/></span>
-          <span style={{flex:1,minWidth:0}}><span style={{...rowLbl,color:T.r}}>Statistik zurücksetzen</span></span>
-          <ChevronRightIcon size={15} color={T.t3}/>
-        </button>
-        {confirmReset&&(
-          <div className="fi" style={{marginTop:12,background:'rgba(232,69,69,0.08)',
-            border:'1px solid rgba(232,69,69,0.35)',borderRadius:14,padding:'14px 16px'}}>
-            <div style={{color:T.t1,fontSize:13,fontWeight:600,lineHeight:1.5,marginBottom:12}}>
-              Alle Statistiken auf 0 setzen? Geloggte Matches und das laufende
-              Scoreboard werden gelöscht — das lässt sich nicht rückgängig machen.
-            </div>
-            <div style={{display:'flex',gap:8}}>
-              <button onClick={()=>setConfirmReset(false)}
-                style={{flex:1,padding:'11px',background:'none',border:`1px solid ${T.border}`,
-                  borderRadius:11,color:T.t2,fontSize:13,fontWeight:700,cursor:'pointer'}}>Abbrechen</button>
-              <button onClick={()=>{onResetStats&&onResetStats();setConfirmReset(false);}}
-                style={{flex:1,padding:'11px',background:'#E84545',border:'none',
-                  borderRadius:11,color:'#fff',fontSize:13,fontWeight:800,cursor:'pointer'}}>Auf 0 setzen</button>
-            </div>
+          {/* ── COMMUNITY — Follower / Folgt. */}
+          <SecTitle>Community</SecTitle>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+            <button onClick={()=>onOpenFollowers&&onOpenFollowers()} className="fu" data-lift
+              style={{...card,padding:'13px 14px 12px',textAlign:'left',cursor:'pointer',
+                color:T.t1,animationDelay:'.2s'}}>
+              <Eyebrow color={T.blue} icon={<PeopleIcon size={14}/>} chev>Follower</Eyebrow>
+              <div style={{fontSize:26,fontWeight:800,letterSpacing:-1,lineHeight:1,
+                fontVariantNumeric:'tabular-nums'}}>
+                <CountUp value={counts.followers}/>
+              </div>
+              <div style={{...capSty,marginTop:6}}>folgen dir</div>
+            </button>
+            <button onClick={()=>onOpenFollowing&&onOpenFollowing()} className="fu" data-lift
+              style={{...card,padding:'13px 14px 12px',textAlign:'left',cursor:'pointer',
+                color:T.t1,animationDelay:'.24s'}}>
+              <Eyebrow color={T.blue} icon={<PeopleIcon size={14}/>} chev>Folgt</Eyebrow>
+              <div style={{fontSize:26,fontWeight:800,letterSpacing:-1,lineHeight:1,
+                fontVariantNumeric:'tabular-nums'}}>
+                <CountUp value={counts.following}/>
+              </div>
+              <div style={{...capSty,marginTop:6}}>folgst du</div>
+            </button>
           </div>
-        )}
 
-        <div style={{height:120,flexShrink:0}}/>
+          {/* ── ÜBER DICH — Bio-Karte mit Inline-Editor. */}
+          <SecTitle>Über dich</SecTitle>
+          {bioEdit?(
+            <div className="fi" style={{...card,padding:'14px 16px'}}>
+              <textarea value={bioVal} onChange={e=>setBioVal(e.target.value.slice(0,200))}
+                maxLength={200} rows={3} autoFocus
+                placeholder="Dein Spruch fürs Profil … (max. 200 Zeichen)"
+                style={{width:'100%',background:T.card2,border:`1px solid ${T.o}`,borderRadius:12,
+                  padding:'12px 14px',color:T.t1,fontSize:15,lineHeight:1.5,fontWeight:500,
+                  outline:'none',boxSizing:'border-box',resize:'none',fontFamily:'inherit'}}/>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',
+                marginTop:10}}>
+                <span style={{color:bioVal.length>=200?T.r:T.t3,fontSize:11,fontWeight:700,
+                  fontVariantNumeric:'tabular-nums'}}>{bioVal.length}/200</span>
+                <div style={{display:'flex',gap:8}}>
+                  <button onClick={()=>{setBioVal(profile.bio||'');setBioEdit(false);}}
+                    style={{padding:'7px 14px',background:'none',border:`1px solid ${T.border}`,
+                      borderRadius:10,color:T.t2,fontSize:12,fontWeight:700,cursor:'pointer'}}>
+                    Abbrechen
+                  </button>
+                  <button onClick={saveBio}
+                    style={{padding:'7px 16px',background:T.o,border:'none',borderRadius:10,
+                      color:'#000',fontSize:12,fontWeight:800,cursor:'pointer'}}>
+                    Speichern
+                  </button>
+                </div>
+              </div>
+            </div>
+          ):(
+            <button onClick={()=>{setBioVal(profile.bio||'');setBioEdit(true);}}
+              className="fu" data-lift
+              style={{...card,padding:'14px 16px',width:'100%',textAlign:'left',cursor:'pointer',
+                display:'flex',alignItems:'center',gap:12,animationDelay:'.28s'}}>
+              <span style={{flex:1,minWidth:0,color:bio?T.t1:T.t3,fontSize:15,
+                fontWeight:bio?600:500,fontStyle:bio?'italic':'normal',lineHeight:1.5}}>
+                {bio?`„${bio}"`:'Bio hinzufügen — dein Spruch fürs Profil'}
+              </span>
+              <span style={{color:T.o,display:'inline-flex',flexShrink:0}}><EditIcon size={15}/></span>
+            </button>
+          )}
+
+          {/* ── DETAILS — gruppierte Liste (Hand, Seite, Sichtbarkeit). */}
+          <SecTitle>Details</SecTitle>
+          <div className="fu" style={{...card,padding:'2px 16px',animationDelay:'.32s'}}>
+            <Row top chip={<HandIcon size={16}/>} chipColor={T.gold} label="Schlaghand"
+              value={handLabels[profile.handPreference]||'—'}/>
+            <Row chip={<TargetIcon size={16}/>} chipColor={T.blue} label="Court-Seite"
+              value={sideLabels[profile.courtSide]||'—'}/>
+            <Row chip={<EyeIcon size={16}/>} chipColor={T.g} label="Öffentliches Profil"
+              trailing={
+                <span onClick={togglePublic} role="switch" aria-checked={isPublic}
+                  aria-label={isPublic?'Profil öffentlich':'Profil privat'}
+                  style={{width:40,height:24,borderRadius:14,flexShrink:0,
+                    background:isPublic?T.g:'rgba(120,120,128,.32)',position:'relative',
+                    cursor:'pointer',transition:'background .25s',display:'inline-block'}}>
+                  <span style={{width:20,height:20,borderRadius:'50%',background:'#fff',
+                    position:'absolute',top:2,left:isPublic?18:2,transition:'left .25s',
+                    boxShadow:'0 1px 3px rgba(0,0,0,.35)',display:'block'}}/>
+                </span>
+              }/>
+          </div>
+
+          {/* ── VERWALTEN — Profil bearbeiten, Onboarding, Stats-Reset. */}
+          <SecTitle>Verwalten</SecTitle>
+          <div className="fu" style={{...card,padding:'2px 16px',animationDelay:'.36s'}}>
+            <Row top chip={<EditIcon size={15}/>} chipColor={T.blue}
+              label="Profil bearbeiten" onClick={onOpenEdit}/>
+            <Row chip={<RefreshGlyph size={15}/>} chipColor={T.o}
+              label="Onboarding wiederholen" onClick={onResetOnboarding}/>
+            <Row chip={<RefreshGlyph size={15}/>} chipColor={T.r} danger
+              label="Statistik zurücksetzen" onClick={()=>setConfirmReset(true)}/>
+          </div>
+          {confirmReset&&(
+            <div className="fi" style={{marginTop:12,background:tint(T.r,8),
+              border:`1px solid ${tint(T.r,35)}`,borderRadius:16,padding:'14px 16px'}}>
+              <div style={{color:T.t1,fontSize:13,fontWeight:600,lineHeight:1.5,marginBottom:12}}>
+                Alle Statistiken auf 0 setzen? Geloggte Matches und das laufende
+                Scoreboard werden gelöscht — das lässt sich nicht rückgängig machen.
+              </div>
+              <div style={{display:'flex',gap:8}}>
+                <button onClick={()=>setConfirmReset(false)}
+                  style={{flex:1,padding:'11px',background:'none',border:`1px solid ${T.border}`,
+                    borderRadius:11,color:T.t2,fontSize:13,fontWeight:700,cursor:'pointer'}}>
+                  Abbrechen
+                </button>
+                <button onClick={()=>{onResetStats&&onResetStats();setConfirmReset(false);}}
+                  style={{flex:1,padding:'11px',background:T.r,border:'none',
+                    borderRadius:11,color:'#fff',fontSize:13,fontWeight:800,cursor:'pointer'}}>
+                  Auf 0 setzen
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div style={{height:120,flexShrink:0}}/>
+        </div>
       </div>
 
-      {/* Scroll-Navigation: rechte Dot-Leiste — Linie füllt sich mit
-          dem Scroll-Fortschritt, der aktive Abschnitt leuchtet orange;
-          Tap springt smooth zur Sektion. */}
-      <div style={{position:'absolute',right:6,top:'50%',transform:'translateY(-50%)',
-        display:'flex',flexDirection:'column',alignItems:'center',gap:5,zIndex:3}}>
-        <span aria-hidden="true" style={{width:1.5,height:42,background:T.t4,borderRadius:1,
-          position:'relative',overflow:'hidden',display:'block',marginBottom:3}}>
-          <span style={{position:'absolute',left:0,top:0,width:'100%',height:'100%',
-            background:T.o,transform:`scaleY(${scrollProg})`,transformOrigin:'top',
-            transition:'transform .12s linear',display:'block'}}/>
-        </span>
-        {SECTIONS.map((k,i)=>(
-          <button key={k} aria-label={`Zu Abschnitt ${i+1}`}
-            onClick={()=>{secRefs.current[k]?.scrollIntoView({behavior:'smooth',block:'start'});}}
-            style={{width:16,height:16,padding:0,background:'none',border:'none',
-              display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>
-            <span style={{width:i===navSec?6.5:4,height:i===navSec?6.5:4,
-              borderRadius:'50%',background:i===navSec?T.o:T.t4,
-              boxShadow:i===navSec?`0 0 9px ${tint(60)}`:'none',
-              transition:'all .3s var(--ease-out-expo)',display:'block'}}/>
-          </button>
-        ))}
+      {/* Fixe Top-Bar: transparent auf Ruhelage, Milchglas beim
+          Scrollen; der Name blendet als Inline-Titel ein (iOS-
+          Large-Title-Kollaps). */}
+      <div style={{position:'absolute',top:0,left:0,right:0,zIndex:5,
+        height:'calc(env(safe-area-inset-top,0px) + 56px)',pointerEvents:'none'}}>
+        <div aria-hidden="true" style={{position:'absolute',inset:0,opacity:barGlass,
+          background:'color-mix(in srgb, var(--card) 55%, transparent)',
+          WebkitBackdropFilter:'blur(18px) saturate(160%)',
+          backdropFilter:'blur(18px) saturate(160%)',
+          borderBottom:'1px solid color-mix(in srgb, var(--t1) 10%, transparent)'}}/>
+        <div style={{position:'absolute',left:56,right:56,
+          top:'calc(env(safe-area-inset-top,0px) + 18px)',textAlign:'center',
+          opacity:titleIn,transform:`translateY(${(1-titleIn)*6}px)`}}>
+          <span style={{color:T.t1,fontSize:17,fontWeight:600,letterSpacing:-.2,
+            display:'inline-block',maxWidth:'100%',whiteSpace:'nowrap',
+            overflow:'hidden',textOverflow:'ellipsis',verticalAlign:'top'}}>
+            {displayName(profile)}
+          </span>
+        </div>
       </div>
 
       <BottomFade/>
-      {/* Profil ist jetzt ein Haupt-Tab → Navbar statt Home-FAB.
-          Fallback MatchBar, falls (alte Aufrufer) kein onTab geben. */}
+      {/* Profil ist ein Haupt-Tab → Navbar; Fallback MatchBar für
+          alte Aufrufer ohne onTab. */}
       {onTab?<TabBar active="profil" onTab={onTab}/>:<MatchBar onHome={onHome}/>}
     </div>
-  );
-}
-
-/* ─── Profil-Bio — Spruch (max. 200 Zeichen) mit Inline-Editor.
-   Wird auf dem eigenen Profil mit Edit-Stift gezeigt; andere Spieler
-   sehen ihn read-only im PublicProfile. ─────────────────────────── */
-function ProfileBio({profile,setProfile}){
-  const[editing,setEditing]=useState(false);
-  const[val,setVal]=useState(profile.bio||'');
-  const bio=(profile.bio||'').trim();
-  const save=()=>{ setProfile(p=>({...p,bio:val.trim().slice(0,200)})); setEditing(false); };
-  if(editing){
-    return(
-      <div className="fi" style={{marginTop:22,width:'100%',maxWidth:520,
-        marginLeft:'auto',marginRight:'auto'}}>
-        <textarea value={val} onChange={e=>setVal(e.target.value.slice(0,200))}
-          maxLength={200} rows={3} autoFocus
-          placeholder="Dein Spruch fürs Profil … (max. 200 Zeichen)"
-          style={{width:'100%',background:T.card2,border:`1px solid ${T.o}`,borderRadius:14,
-            padding:'14px 16px',color:T.t1,fontSize:16,lineHeight:1.5,fontWeight:500,
-            outline:'none',boxSizing:'border-box',resize:'none',fontFamily:'inherit'}}/>
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginTop:8}}>
-          <span style={{color:val.length>=200?T.r:T.t3,fontSize:11,fontWeight:700,
-            fontVariantNumeric:'tabular-nums'}}>{val.length}/200</span>
-          <div style={{display:'flex',gap:8}}>
-            <button onClick={()=>{setVal(profile.bio||'');setEditing(false);}}
-              style={{padding:'7px 14px',background:'none',border:`1px solid ${T.border}`,
-                borderRadius:10,color:T.t2,fontSize:12,fontWeight:700,cursor:'pointer'}}>Abbrechen</button>
-            <button onClick={save}
-              style={{padding:'7px 16px',background:T.o,border:'none',borderRadius:10,
-                color:'#000',fontSize:12,fontWeight:800,cursor:'pointer'}}>Speichern</button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-  return(
-    <button onClick={()=>{setVal(profile.bio||'');setEditing(true);}} className="fu"
-      style={{animationDelay:'.24s',marginTop:22,width:'100%',background:'none',
-        border:'none',cursor:'pointer',display:'flex',alignItems:'center',
-        justifyContent:'center',gap:9,padding:0}}>
-      <span style={{color:bio?T.t2:T.t3,fontSize:16,fontWeight:bio?600:500,
-        fontStyle:bio?'italic':'normal',lineHeight:1.5,maxWidth:430,textAlign:'center'}}>
-        {bio?`„${bio}"`:'Bio hinzufügen — dein Spruch fürs Profil'}
-      </span>
-      <span style={{color:T.o,display:'inline-flex',flexShrink:0}}><EditIcon size={15}/></span>
-    </button>
   );
 }
 
@@ -4020,10 +4022,6 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
   const needsOnboarding=!onboarded;
   const hasUnread=(unread||0)>0;
 
-  // Zeitbasierte Begrüßung (Apple-Muster: Fitness/Heute).
-  const hour=new Date().getHours();
-  const greeting=hour<5?'Gute Nacht':hour<11?'Guten Morgen':hour<18?'Guten Tag':'Guten Abend';
-
   // Events-Leiste: startet IMMER am heutigen Tag, läuft bis Monatsende.
   // Event-Tage kommen aus HOME_EVENTS ('Monat-Tag', 1-basiert).
   const today=new Date();
@@ -4065,28 +4063,18 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
           overflowY:'auto',WebkitOverflowScrolling:'touch',
           overscrollBehavior:'contain'}}>
 
-        {/* Large-Title-Begrüßung — reine Anzeige, nicht klickbar. */}
-        <div className="fi"
-          style={{padding:'calc(env(safe-area-inset-top,0px) + 84px) 22px 0'}}>
-          <div style={{color:T.t3,fontSize:13,fontWeight:600,letterSpacing:1.4,
-            textTransform:'uppercase'}}>
-            {greeting}
-          </div>
-          <div style={{color:T.t1,fontSize:34,fontWeight:700,letterSpacing:-.6,
-            lineHeight:1.1,marginTop:4}}>
-            {displayName(profile).split(' ')[0]}
-          </div>
-          {document.documentElement.getAttribute('data-theme')==='funky'&&(
-            <div style={{marginTop:12}}><FunkyFruitsRow size={20} gap={10}/></div>
-          )}
-        </div>
-
-        {/* CORPUS — solide Flächen, einheitlicher Rhythmus. */}
-        <div style={{
-        padding:'6px 22px 0',
+        {/* CORPUS — solide Flächen, einheitlicher Rhythmus. Startet
+            direkt unter der Top-Bar (Begrüßung + Name sind entfernt,
+            das Logo in der Bar trägt jetzt die Identität). */}
+        <div className="fi" style={{
+        padding:'calc(env(safe-area-inset-top,0px) + 92px) 22px 0',
         display:'flex',flexDirection:'column',
-        minHeight:'calc(100dvh - env(safe-area-inset-top,0px) - 198px)',
+        minHeight:'calc(100dvh - env(safe-area-inset-top,0px) - 92px)',
       }}>
+
+        {document.documentElement.getAttribute('data-theme')==='funky'&&(
+          <div style={{margin:'0 0 14px'}}><FunkyFruitsRow size={20} gap={10}/></div>
+        )}
 
         {/* Onboarding-Hinweis — schlanke Akzent-Zelle. */}
         {needsOnboarding&&(
@@ -4337,8 +4325,10 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
           </div>
         </div>
 
-        {/* Discover the RITMO — horizontale Bild-Cards */}
-        <DiscoverSection nav={nav}/>
+        {/* Discover the RITMO — horizontale Bild-Cards.
+            Vorerst ausgeblendet (User-Wunsch); zum Reaktivieren
+            false&& entfernen. */}
+        {false&&<DiscoverSection nav={nav}/>}
 
         {/* Internal scroll-bottom spacer so last card isn't hidden behind floating TabBar */}
         <div style={{height:120,flexShrink:0}}/>
@@ -4357,8 +4347,10 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
           backdropFilter:'blur(18px) saturate(160%)',
           borderBottom:'1px solid color-mix(in srgb, var(--t1) 10%, transparent)'}}/>
         <div style={{position:'absolute',left:9,
-            top:'calc(env(safe-area-inset-top,0px) + 14px)'}}>
-          <RitmoWordmark size={40} style={{marginLeft:-18,display:'block'}}/>
+            top:'calc(env(safe-area-inset-top,0px) + 4px)'}}>
+          {/* Größer als die 40er-Standardmarke: ohne Begrüßung trägt
+              das Logo allein den Home-Header. */}
+          <RitmoWordmark size={54} style={{marginLeft:-24,display:'block'}}/>
         </div>
         <div style={{position:'absolute',right:13,
           top:'calc(env(safe-area-inset-top,0px) + 16px)',

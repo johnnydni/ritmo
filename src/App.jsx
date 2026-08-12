@@ -3154,8 +3154,8 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
         <div ref={el=>{secRefs.current.dna=el;}} className="zi"
           style={{animationDelay:'.1s',display:'flex',flexDirection:'column',
           alignItems:'center',marginTop:30}}>
-          <div className="float-y" style={{borderRadius:'50%',
-            boxShadow:`0 0 70px ${tint(26)}, 0 0 22px ${tint(20)}`}}>
+          <div style={{borderRadius:'50%',
+            boxShadow:`0 0 44px ${tint(16)}, 0 0 14px ${tint(12)}`}}>
             <AvatarWithUpload profile={profile} setProfile={setProfile} size={150}/>
           </div>
           <div className="fu" style={{animationDelay:'.18s',marginTop:26,color:T.t1,
@@ -3641,7 +3641,7 @@ const NEARBY_CLUBS=[
 const DISCOVER_CARDS=[
   {id:'events',        eyebrow:'Community', title:'Events',            tint:'#0A84FF'},
   {id:'booking-assist',eyebrow:'Courts',    title:'Buchungsassistent', tint:'#30D158'},
-  {id:'rules',         eyebrow:'Regelwerk', title:'Neue Regularien',   tint:'#BF5AF2'},
+  {id:'rules',         eyebrow:'Wissen',    title:'Regeln & Taktik',   tint:'#BF5AF2'},
   {id:'weltrangliste', eyebrow:'Ranking',   title:'Weltrangliste',     tint:'#FFD60A'},
 ];
 /* Bauhaus-Grafiken für die Discover-Karten — gleiche Formsprache wie
@@ -3710,9 +3710,9 @@ function DiscoverArt({id,tint}){
 function DiscoverSection({nav}){
   return(
     <div className="fu" style={{animationDelay:'.14s'}}>
-      <div style={{color:T.t1,fontSize:20,fontWeight:800,letterSpacing:-.4,
+      <div style={{color:T.t1,fontSize:22,fontWeight:700,letterSpacing:-.5,
         margin:'22px 0 2px'}}>
-        Discover the RITMO
+        Entdecken
       </div>
       {/* Galerie blutet bis an die Screen-Kante (negiert das Corpus-
           Padding), Cards snappen am linken Rand. */}
@@ -3786,7 +3786,7 @@ function MatchPrefs({profile,setProfile,currentUid,onHome}){
   const togglePlayer=n=>toggleIn('players',n);
   const toggleDay=d=>toggleIn('days',d);
   const DAYS=['Mo','Di','Mi','Do','Fr','Sa','So'];
-  const lbl={color:T.o,fontSize:18,fontWeight:800,marginBottom:4};
+  const lbl={color:T.t1,fontSize:17,fontWeight:700,marginBottom:4};
   const sub={color:T.t3,fontSize:11,fontWeight:500,lineHeight:1.5,marginBottom:12};
   return(
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
@@ -4011,11 +4011,18 @@ const HOME_CARD_GLASS={
   style:{position:'absolute',inset:0,pointerEvents:'none'},
 };
 
+/* HOME — von Grund auf im iOS-Muster: ruhiger Theme-Grund (kein
+   Deko-Gradient), zeitbasierte Begrüßung als Large Title im Fluss,
+   klare Sektionen mit einheitlichem Rhythmus. Glas gibt es nur noch
+   dort, wo iOS es einsetzt: in der Top-Bar beim Scrollen und in der
+   Tab-Pill — der Content liegt auf soliden Material-Flächen. */
 function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
-  // Hinweis-Banner falls Onboarding nicht abgeschlossen ist UND der
-  // User nicht den Test-Bypass benutzt (Test-User hat onboarded=true).
   const needsOnboarding=!onboarded;
   const hasUnread=(unread||0)>0;
+
+  // Zeitbasierte Begrüßung (Apple-Muster: Fitness/Heute).
+  const hour=new Date().getHours();
+  const greeting=hour<5?'Gute Nacht':hour<11?'Guten Morgen':hour<18?'Guten Tag':'Guten Abend';
 
   // Events-Leiste: startet IMMER am heutigen Tag, läuft bis Monatsende.
   // Event-Tage kommen aus HOME_EVENTS ('Monat-Tag', 1-basiert).
@@ -4027,166 +4034,108 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
   const eventDays=Array.from({length:lastDay-today.getDate()+1},(_,i)=>today.getDate()+i);
   const eventFor=d=>HOME_EVENTS[`${today.getMonth()+1}-${d}`];
 
-  // Pull-to-Stretch: Ist der Corpus ganz oben gescrollt und zieht der
-  // Finger weiter nach unten, wächst der Header-Gradient elastisch mit;
-  // Loslassen federt zurück (Spring-Transition nur beim Snap-Back).
+  // Scroll → Top-Bar-Glas (iOS: translucent bar sobald Content
+  // darunter scrollt). Kein Logo-Schwenk, kein Pull-Gimmick mehr.
   const corpusRef=useRef(null);
-  const pullRef=useRef({startY:0,pulling:false});
-  const[stretch,setStretch]=useState(0);
-  const[snapBack,setSnapBack]=useState(false);
-  const pullStart=e=>{
-    if((corpusRef.current?.scrollTop||0)<=0){
-      pullRef.current={startY:e.clientY,pulling:true};
-      setSnapBack(false);
-    }
-  };
-  const pullMove=e=>{
-    if(!pullRef.current.pulling) return;
-    if((corpusRef.current?.scrollTop||0)>0){pullRef.current.pulling=false;setStretch(0);return;}
-    const dy=e.clientY-pullRef.current.startY;
-    setStretch(dy>0?Math.min(96,dy*0.45):0);
-  };
-  const pullEnd=()=>{
-    if(!pullRef.current.pulling) return;
-    pullRef.current.pulling=false;
-    setSnapBack(true);
-    setStretch(0);
-  };
-
-  // Collapse-Fortschritt (Health-App-Style): 0 = ganz oben, 1 = ein-
-  // geklappt. Treibt Logo-Schwenk, Glas-Bar und das Ausblenden von
-  // Begrüßung + Streifen.
   const[scrollY,setScrollY]=useState(0);
   const onHomeScroll=()=>setScrollY(corpusRef.current?.scrollTop||0);
-  const tCol=Math.min(1,Math.max(0,scrollY/90));
   const barGlass=Math.min(1,Math.max(0,(scrollY-8)/56));
   // Home-Tab erneut antippen → smooth zurück nach oben.
   const onTabLocal=id=>{
     if(id==='home') corpusRef.current?.scrollTo({top:0,behavior:'smooth'});
     setActiveTab(id);
   };
+
+  // Einheitlicher Sektions-Titel (iOS-Rhythmus).
+  const SectionTitle=({children,trailing,top=26})=>(
+    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',
+      margin:`${top}px 2px 12px 0`}}>
+      <div style={{color:T.t1,fontSize:22,fontWeight:700,letterSpacing:-.5}}>{children}</div>
+      {trailing}
+    </div>
+  );
+
   return(
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden'}}>
 
-      {/* 1) Gradient-Backdrop — liegt HINTER dem Content; der Content
-          scrollt darüber hinweg (Health-App-Look). Höhe wächst beim
-          Pull-to-Stretch elastisch. Tap → RITMO DNA. */}
-      <div aria-hidden="true" onClick={()=>nav('profile-ritmodna')}
-        style={{position:'absolute',top:0,left:0,right:0,
-          height:`calc(env(safe-area-inset-top,0px) + ${238+stretch}px)`,
-          transition:snapBack?'height .5s var(--ease-out-back)':'none',
-          background:'var(--homeHeaderGrad)',cursor:'pointer'}}/>
-
-      {/* 2) Scroller — voll-hoch; Inhalte ziehen beim Hochscrollen
-          über den Gradient. Pointer-Handler treiben Pull-to-Stretch. */}
+      {/* Scroller — Content im normalen Fluss unter der Top-Bar. */}
       <div ref={corpusRef} onScroll={onHomeScroll}
-        onPointerDown={pullStart} onPointerMove={pullMove}
-        onPointerUp={pullEnd} onPointerCancel={pullEnd} onPointerLeave={pullEnd}
         style={{position:'absolute',inset:0,zIndex:2,
           overflowY:'auto',WebkitOverflowScrolling:'touch',
           overscrollBehavior:'contain'}}>
 
-        {/* Scroll-Header: Streifen + Name am Ende des oberen Strichs —
-            die Begrüßung blendet beim Hochscrollen aus. */}
-        <div onClick={()=>nav('profile-ritmodna')}
-          style={{padding:'calc(env(safe-area-inset-top,0px) + 150px) 19px 0',
-            height:'calc(env(safe-area-inset-top,0px) + 218px)',
-            boxSizing:'border-box',cursor:'pointer',
-            opacity:1-tCol,pointerEvents:tCol>.6?'none':'auto'}}>
-          <div style={{display:'flex',flexDirection:'column',gap:6,
-            transform:'scale(.9)',transformOrigin:'left top'}}>
-            <div style={{display:'flex',alignItems:'center',gap:12}}>
-              <span className="stripe-in" aria-hidden="true" style={{width:84,height:7,
-                borderRadius:4,background:'#FFFFFF','--so':1,
-                animationDelay:'.12s',display:'block'}}/>
-              <span style={{color:'#FFF',fontSize:18,fontWeight:700,letterSpacing:-.3,
-                whiteSpace:'nowrap',lineHeight:1}}>
-                Hi, {displayName(profile).split(' ')[0]}!
-              </span>
-            </div>
-            <span className="stripe-in" aria-hidden="true" style={{width:52,height:7,
-              borderRadius:4,background:'#FFFFFF','--so':.7,
-              animationDelay:'.22s',display:'block'}}/>
-            <span className="stripe-in" aria-hidden="true" style={{width:30,height:7,
-              borderRadius:4,background:'#FFFFFF','--so':.45,
-              animationDelay:'.32s',display:'block'}}/>
+        {/* Large-Title-Begrüßung — reine Anzeige, nicht klickbar. */}
+        <div className="fi"
+          style={{padding:'calc(env(safe-area-inset-top,0px) + 84px) 22px 0'}}>
+          <div style={{color:T.t3,fontSize:13,fontWeight:600,letterSpacing:1.4,
+            textTransform:'uppercase'}}>
+            {greeting}
+          </div>
+          <div style={{color:T.t1,fontSize:34,fontWeight:700,letterSpacing:-.6,
+            lineHeight:1.1,marginTop:4}}>
+            {displayName(profile).split(' ')[0]}
           </div>
           {document.documentElement.getAttribute('data-theme')==='funky'&&(
             <div style={{marginTop:12}}><FunkyFruitsRow size={20} gap={10}/></div>
           )}
         </div>
 
-        {/* CORPUS — drawer-style panel, scrollt über den Gradient */}
+        {/* CORPUS — solide Flächen, einheitlicher Rhythmus. */}
         <div style={{
-        background:T.bgGrad,
-        borderTopLeftRadius:20,
-        borderTopRightRadius:20,
-        boxShadow:'0 -10px 28px rgba(0,0,0,0.55), 0 -1px 0 rgba(255,255,255,0.04) inset',
-        padding:'26px 22px 0',
-        display:'flex',flexDirection:'column',gap:14,
+        padding:'6px 22px 0',
+        display:'flex',flexDirection:'column',
         minHeight:'calc(100dvh - env(safe-area-inset-top,0px) - 198px)',
       }}>
 
-        {/* Onboarding-Prompt — sichtbar wenn das Profil noch nicht
-            durch das Onboarding gelaufen ist. */}
+        {/* Onboarding-Hinweis — schlanke Akzent-Zelle. */}
         {needsOnboarding&&(
           <button onClick={()=>nav('welcome')} className="fu"
-            style={{background:T.oSoft,border:`1px solid ${T.o}`,borderRadius:20,
-              padding:'16px 18px',display:'flex',alignItems:'center',gap:14,
-              cursor:'pointer',color:T.t1,textAlign:'left',transition:'background .15s',
-              animationDelay:'.02s'}}
-            onPointerDown={e=>e.currentTarget.style.background=T.card2}
-            onPointerUp={e=>e.currentTarget.style.background=T.oSoft}
-            onPointerLeave={e=>e.currentTarget.style.background=T.oSoft}>
-            <div style={{flexShrink:0,display:'flex',alignItems:'center'}}><WandIcon size={26}/></div>
+            style={{background:T.oSoft,border:`1px solid ${T.o}`,borderRadius:16,
+              padding:'14px 16px',display:'flex',alignItems:'center',gap:14,
+              cursor:'pointer',color:T.t1,textAlign:'left',marginBottom:4,
+              animationDelay:'.02s'}}>
+            <div style={{flexShrink:0,display:'flex',alignItems:'center'}}><WandIcon size={24}/></div>
             <div style={{flex:1,minWidth:0}}>
-              <div style={{color:T.o,fontSize:16,fontWeight:800,marginBottom:2,letterSpacing:.2}}>
+              <div style={{color:T.t1,fontSize:16,fontWeight:700,marginBottom:2}}>
                 Profil vervollständigen
               </div>
-              <div style={{color:T.t2,fontSize:11,fontWeight:500,lineHeight:1.55}}>
-                Beantworte ein paar Fragen und entdecke deinen RITMO-Spielstil.
+              <div style={{color:T.t3,fontSize:12,fontWeight:500,lineHeight:1.5}}>
+                Vier Fragen — dann kennt RITMO deinen Spielstil.
               </div>
             </div>
-            <div style={{color:T.o,fontSize:18,fontWeight:800,flexShrink:0}}>›</div>
+            <ChevronRightIcon size={18} color={T.t3}/>
           </button>
         )}
 
-        {/* Single Match + Turnier — nebeneinander (Mock) */}
+        {/* ── SPIELEN — die drei Kern-Aktionen auf soliden Material-
+            Karten (Glas bleibt der Navigation vorbehalten). */}
+        <SectionTitle top={10}>Spielen</SectionTitle>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
           <button onClick={()=>nav('single-setup')} className="fu" data-lift
-            style={{position:'relative',overflow:'hidden',background:'transparent',
-              border:`1px solid ${T.border}`,borderRadius:20,padding:0,width:'100%',
-              minHeight:172,cursor:'pointer',color:T.t1,textAlign:'left',
-              transition:'filter .15s'}}
-            onPointerDown={e=>e.currentTarget.style.filter='brightness(1.15)'}
-            onPointerUp={e=>e.currentTarget.style.filter=''}
-            onPointerLeave={e=>e.currentTarget.style.filter=''}>
-            <GlassSurface {...HOME_CARD_GLASS}/>
-            <div style={{position:'relative',zIndex:1,display:'flex',flexDirection:'column',
-              alignItems:'flex-start',padding:'18px 18px 16px'}}>
-              <SingleMatchIcon size={52}/>
-              <div style={{marginTop:14}}>
-                <div style={{color:T.o,fontSize:23,fontWeight:800,marginBottom:4,letterSpacing:-.4}}>Single Match</div>
-                <div style={{color:T.t1,fontSize:13.5,fontWeight:600,lineHeight:1.45}}>Best of 3 | Americano</div>
+            style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:20,
+              padding:'18px 16px 16px',width:'100%',minHeight:148,cursor:'pointer',
+              color:T.t1,textAlign:'left',display:'flex',flexDirection:'column',
+              alignItems:'flex-start',justifyContent:'space-between'}}>
+            <SingleMatchIcon size={44}/>
+            <div>
+              <div style={{color:T.t1,fontSize:17,fontWeight:700,letterSpacing:-.3}}>Single Match</div>
+              <div style={{color:T.t3,fontSize:12,fontWeight:500,marginTop:3,lineHeight:1.45}}>
+                Best of 3 · Americano
               </div>
             </div>
           </button>
           <button onClick={()=>nav('tournament-hub')} className="fu" data-lift
-            style={{position:'relative',overflow:'hidden',background:'transparent',
-              border:`1px solid ${T.border}`,borderRadius:20,padding:0,width:'100%',
-              minHeight:172,cursor:'pointer',color:T.t1,textAlign:'left',
-              animationDelay:'.06s',transition:'filter .15s'}}
-            onPointerDown={e=>e.currentTarget.style.filter='brightness(1.15)'}
-            onPointerUp={e=>e.currentTarget.style.filter=''}
-            onPointerLeave={e=>e.currentTarget.style.filter=''}>
-            <GlassSurface {...HOME_CARD_GLASS}/>
-            <div style={{position:'relative',zIndex:1,display:'flex',flexDirection:'column',
-              alignItems:'flex-start',padding:'18px 18px 16px'}}>
-              <TrophyIcon size={52}/>
-              <div style={{marginTop:14}}>
-                <div style={{color:T.o,fontSize:23,fontWeight:800,marginBottom:4,letterSpacing:-.4}}>Turnier</div>
-                <div style={{color:T.t1,fontSize:13.5,fontWeight:600,lineHeight:1.45}}>Americano | Mexicano &amp; mehr</div>
+            style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:20,
+              padding:'18px 16px 16px',width:'100%',minHeight:148,cursor:'pointer',
+              color:T.t1,textAlign:'left',display:'flex',flexDirection:'column',
+              alignItems:'flex-start',justifyContent:'space-between',
+              animationDelay:'.05s'}}>
+            <TrophyIcon size={44}/>
+            <div>
+              <div style={{color:T.t1,fontSize:17,fontWeight:700,letterSpacing:-.3}}>Turnier</div>
+              <div style={{color:T.t3,fontSize:12,fontWeight:500,marginTop:3,lineHeight:1.45}}>
+                Americano · Mexicano &amp; mehr
               </div>
             </div>
           </button>
@@ -4225,33 +4174,14 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
           </div>
         </button>}
 
-        {/* ── Events — Datums-Leiste, scrollbar bis Monatsende.
-            Tage MIT Event sind orange markiert; der 18. zeigt auf das
-            RITMO X Padel Haus Event. */}
-        <div className="fu" style={{animationDelay:'.14s',marginTop:17}}>
-          <div style={{display:'flex',justifyContent:'flex-end',alignItems:'center',
-            gap:9,paddingRight:14}}>
-            <div style={{color:T.t1,fontSize:21,fontWeight:800,letterSpacing:-.4}}>Events</div>
-            <span style={{width:27,height:27,borderRadius:7,border:`1.8px solid ${T.t1}`,
-              display:'inline-flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={T.t1}
-                strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-                <rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/>
-                <line x1="3.5" y1="10" x2="20.5" y2="10"/>
-                <line x1="8" y1="2.8" x2="8" y2="6.6"/>
-                <line x1="16" y1="2.8" x2="16" y2="6.6"/>
-              </svg>
-            </span>
-          </div>
-          <div style={{display:'flex',justifyContent:'flex-end',paddingRight:84}}>
-            <span style={{display:'block',width:1.5,height:13,background:T.t2,
-              marginTop:5,borderRadius:1}}/>
-          </div>
-          <div className="hscroll" style={{display:'flex',gap:11,overflowX:'auto',
-            margin:'9px -22px 0',padding:'2px 22px 4px',
-            /* scrollPaddingLeft: sonst snappt 'mandatory' das erste
-               Tile an die Container-Kante (x=0) statt bündig zu den
-               Karten bei 22px. */
+        {/* ── EVENTS — Datums-Chips ab heute bis Monatsende; Tage mit
+            Event tragen den Akzent, der Rest bleibt neutral. */}
+        <div className="fu" style={{animationDelay:'.12s'}}>
+          <SectionTitle trailing={
+            <span style={{color:T.t3,fontSize:13,fontWeight:600}}>{monthName}</span>
+          }>Events</SectionTitle>
+          <div className="hscroll" style={{display:'flex',gap:10,overflowX:'auto',
+            margin:'0 -22px',padding:'2px 22px 4px',
             scrollSnapType:'x mandatory',scrollPaddingLeft:22,
             WebkitOverflowScrolling:'touch'}}>
             {eventDays.map(d=>{
@@ -4260,32 +4190,31 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
                 <button key={d} onClick={()=>nav('events')}
                   aria-label={ev?`${d}. ${monthName} — ${ev}`:`Events am ${d}. ${monthName}`}
                   title={ev||undefined}
-                  style={{flexShrink:0,width:72,height:72,borderRadius:18,
-                    background:'transparent',scrollSnapAlign:'start',cursor:'pointer',
-                    border:`2.5px solid ${ev?T.o:T.t1}`,
-                    color:ev?T.o:T.t1,fontSize:32,fontWeight:800,letterSpacing:-1,
-                    display:'flex',alignItems:'center',justifyContent:'center'}}>
-                  {d}
+                  style={{flexShrink:0,width:56,height:64,borderRadius:14,
+                    scrollSnapAlign:'start',cursor:'pointer',
+                    background:ev?T.oSoft:T.card,
+                    border:`1px solid ${ev?T.o:T.border}`,
+                    color:ev?T.o:T.t1,
+                    display:'flex',flexDirection:'column',alignItems:'center',
+                    justifyContent:'center',gap:2}}>
+                  <span style={{fontSize:22,fontWeight:700,letterSpacing:-.5,lineHeight:1}}>{d}</span>
+                  {ev&&<span style={{width:5,height:5,borderRadius:'50%',background:T.o}}/>}
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* ── Matches für dich — zwei Vorschläge; das Herz öffnet die
-            Match-Präferenzen (neuer Screen). */}
-        <div className="fu" style={{animationDelay:'.18s'}}>
-          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',
-            margin:'18px 2px 12px 0'}}>
-            <div style={{color:T.t1,fontSize:21,fontWeight:800,letterSpacing:-.4}}>
-              Matches für dich
-            </div>
+        {/* ── Matches für dich — Vorschläge; das Herz öffnet die
+            Match-Präferenzen. */}
+        <div className="fu" style={{animationDelay:'.16s'}}>
+          <SectionTitle trailing={
             <button onClick={()=>nav('match-prefs')} aria-label="Match-Präferenzen"
               style={{background:'none',border:'none',padding:4,cursor:'pointer',
                 color:T.t1,display:'inline-flex'}}>
-              <HeartIcon size={24} filled/>
+              <HeartIcon size={22} filled/>
             </button>
-          </div>
+          }>Matches für dich</SectionTitle>
           {/* Horizontal swipebar — EINE Karte pro Match (bis zu 5),
               großzügiger skaliert; nächste Karte peekt rechts an. */}
           <div className="hscroll" style={{display:'flex',gap:12,overflowX:'auto',
@@ -4416,52 +4345,42 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
         </div>{/* /CORPUS */}
       </div>{/* /Scroller */}
 
-      {/* 3) Fixe Top-Bar — Glas blendet beim Scrollen ein, das Logo
-          schwenkt von links in die Mitte und bleibt oben fixiert;
-          Glocke + Burger sind dauerhaft fixiert. */}
+      {/* Fixe Top-Bar — iOS-Muster: transparent auf Ruhelage, wird
+          zur Milchglas-Bar sobald Content darunter scrollt. Logo fix
+          links, Glocke + Einstellungen fix rechts. */}
       <div style={{position:'absolute',top:0,left:0,right:0,zIndex:5,
-        height:'calc(env(safe-area-inset-top,0px) + 72px)',pointerEvents:'none'}}>
+        height:'calc(env(safe-area-inset-top,0px) + 64px)',pointerEvents:'none'}}>
         <div aria-hidden="true" style={{position:'absolute',inset:0,
           opacity:barGlass,
           background:'color-mix(in srgb, var(--card) 55%, transparent)',
           WebkitBackdropFilter:'blur(18px) saturate(160%)',
           backdropFilter:'blur(18px) saturate(160%)',
           borderBottom:'1px solid color-mix(in srgb, var(--t1) 10%, transparent)'}}/>
-        {/* Logo: links groß → mittig kompakt (per Scroll interpoliert).
-            Die calc-Formel zentriert die SICHTBARE Wortmarke. */}
-        <div onClick={()=>nav('profile-ritmodna')}
-          style={{position:'absolute',left:9,
-            top:`calc(env(safe-area-inset-top,0px) + ${Math.round(60-54*tCol)}px)`,
-            transform:`translateX(calc((50vw - 51.5px) * ${tCol.toFixed(3)})) scale(${(1-0.38*tCol).toFixed(3)})`,
-            transformOrigin:'left top',pointerEvents:'auto',cursor:'pointer'}}>
-          <RitmoWordmark size={66} style={{marginLeft:-35,display:'block'}}/>
+        <div style={{position:'absolute',left:9,
+            top:'calc(env(safe-area-inset-top,0px) + 14px)'}}>
+          <RitmoWordmark size={40} style={{marginLeft:-18,display:'block'}}/>
         </div>
-        {/* Glocke + Burger — fixiert, unabhängig vom Scroll */}
         <div style={{position:'absolute',right:13,
-          top:'calc(env(safe-area-inset-top,0px) + 20px)',
-          display:'flex',alignItems:'center',gap:22,pointerEvents:'auto'}}>
+          top:'calc(env(safe-area-inset-top,0px) + 16px)',
+          display:'flex',alignItems:'center',gap:20,pointerEvents:'auto'}}>
           <button onClick={()=>nav('ritmopost')}
             aria-label="Benachrichtigungen"
             style={{background:'none',border:'none',padding:4,position:'relative',
-              color:'#FFFFFF',cursor:'pointer',display:'inline-flex',
-              filter:'drop-shadow(0 1px 4px rgba(0,0,0,.3))'}}>
-            <BellIcon size={24}/>
+              color:T.t1,cursor:'pointer',display:'inline-flex'}}>
+            <BellIcon size={23}/>
             {hasUnread&&(
               <span aria-label="Ungelesene Nachrichten"
                 style={{position:'absolute',top:1,right:1,
-                  width:10,height:10,borderRadius:'50%',
-                  background:'#E84545',
-                  boxShadow:'0 0 0 2px rgba(0,0,0,.35)'}}/>
+                  width:9,height:9,borderRadius:'50%',
+                  background:T.r,
+                  boxShadow:`0 0 0 2px ${T.bg}`}}/>
             )}
           </button>
-          {/* Burger fuehrt direkt in die Einstellungen (Abmelden wohnt
-              jetzt ganz unten in den Einstellungen). */}
           <button onClick={()=>nav('settings')}
             aria-label="Einstellungen"
             style={{background:'none',border:'none',padding:4,
-              color:'#FFFFFF',cursor:'pointer',display:'inline-flex',
-              filter:'drop-shadow(0 1px 4px rgba(0,0,0,.3))'}}>
-            <MenuIcon size={25}/>
+              color:T.t1,cursor:'pointer',display:'inline-flex'}}>
+            <MenuIcon size={24}/>
           </button>
         </div>
       </div>
@@ -4532,7 +4451,7 @@ function ComingSoon({icon,title,desc,bullets=[],onHome}){
         {bullets.length>0&&(
           <div className="fu" style={{background:T.card,border:`1px solid ${T.border}`,
             borderRadius:16,padding:'18px',marginTop:14,animationDelay:'.08s'}}>
-            <div style={{color:T.o,fontSize:11,fontWeight:700,letterSpacing:1.3,
+            <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.3,
               textTransform:'uppercase',marginBottom:10}}>Was kommt</div>
             {bullets.map((b,i)=>(
               <div key={i} style={{display:'flex',gap:10,alignItems:'flex-start',
@@ -4638,10 +4557,10 @@ function SetupHero({icon,title,desc,accent}){
         {icon}
       </div>
       <div style={{flex:1,minWidth:0}}>
-        <div style={{color:T.t1,fontSize:18,fontWeight:900,letterSpacing:-.3,marginBottom:4}}>
+        <div style={{color:T.t1,fontSize:17,fontWeight:700,letterSpacing:-.3,marginBottom:4}}>
           {title}
         </div>
-        <div style={{color:T.t2,fontSize:12,lineHeight:1.5}}>
+        <div style={{color:T.t3,fontSize:13,lineHeight:1.5}}>
           {desc}
         </div>
       </div>
@@ -7476,7 +7395,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
         {/* Turniername — damit Turniere unter „Live" einzeln gespeichert
             werden (laufende werden nicht mehr überschrieben). */}
         <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,padding:'16px 18px'}}>
-          <div style={{color:T.o,fontSize:18,fontWeight:800,marginBottom:10}}>Turniername</div>
+          <div style={{color:T.t1,fontSize:17,fontWeight:700,marginBottom:10}}>Turniername</div>
           <input value={name} onChange={e=>setName(e.target.value)} maxLength={40}
             placeholder="z. B. Sunset Americano · Fr"
             style={{width:'100%',height:46,borderRadius:13,background:T.card2,border:`1px solid ${T.border}`,
@@ -7489,7 +7408,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
         {/* Modus: Lokal vs Online */}
         {!isEdit&&(
           <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,padding:'18px'}}>
-            <div style={{color:T.o,fontSize:18,fontWeight:800,marginBottom:12}}>Modus</div>
+            <div style={{color:T.t1,fontSize:17,fontWeight:700,marginBottom:12}}>Modus</div>
             <div style={{display:'flex',background:T.card2,borderRadius:30,padding:4,gap:4,
               border:`1px solid ${T.border}`}}>
               {[{v:'lokal',l:'Lokal'},{v:'online',l:'Online'}].map(o=>(
@@ -7511,7 +7430,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
 
         {/* Format — 7 klassische Modi als 2-Spalten-Grid */}
         <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,padding:'18px'}}>
-          <div style={{color:T.o,fontSize:18,fontWeight:800,marginBottom:12}}>Format</div>
+          <div style={{color:T.t1,fontSize:17,fontWeight:700,marginBottom:12}}>Format</div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
             {Object.entries(FORMATS)
               .filter(([,f])=>mode!=='online'||f.online!==false)
@@ -7535,7 +7454,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
 
         {/* Sieger-Modus */}
         <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,padding:'18px'}}>
-          <div style={{color:T.o,fontSize:18,fontWeight:800,marginBottom:12}}>Sieger-Modus</div>
+          <div style={{color:T.t1,fontSize:17,fontWeight:700,marginBottom:12}}>Sieger-Modus</div>
           <div style={{display:'flex',background:T.card2,borderRadius:30,padding:4,gap:4,
             border:`1px solid ${T.border}`}}>
             {[{v:'points',l:'Höchste Punkte'},{v:'wins',l:'Meiste Siege'}].map(o=>(
@@ -7677,7 +7596,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
         <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
           padding:'18px 18px 8px'}}>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
-            <div style={{color:T.o,fontSize:18,fontWeight:800}}>Court-Namen</div>
+            <div style={{color:T.t1,fontSize:17,fontWeight:700}}>Court-Namen</div>
             <div style={{display:'flex',alignItems:'center',gap:10}}>
               <span style={{color:T.t3,fontSize:12,fontWeight:600}}>{numCourts} Court{numCourts>1?'s':''}</span>
               {numCourts>1&&(
@@ -7725,7 +7644,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
         <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
           padding:'18px 18px 8px'}}>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
-            <div style={{color:T.o,fontSize:18,fontWeight:800}}>Spieler</div>
+            <div style={{color:T.t1,fontSize:17,fontWeight:700}}>Spieler</div>
             <div style={{display:'flex',alignItems:'center',gap:10}}>
               <span style={{color:T.t3,fontSize:12,fontWeight:600}}>{players.length} Spieler</span>
               {/* Minus = nur den ZULETZT hinzugefügten Spieler entfernen
@@ -7850,7 +7769,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
         ):(
         <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
           padding:'18px'}}>
-          <div style={{color:T.o,fontSize:18,fontWeight:800,marginBottom:8}}>Spieler joinen via QR</div>
+          <div style={{color:T.t1,fontSize:17,fontWeight:700,marginBottom:8}}>Spieler joinen via QR</div>
           <div style={{color:T.t2,fontSize:13,lineHeight:1.55,marginBottom:6}}>
             Nach dem Start öffnest du die Lobby. Dort siehst du PIN + QR-Code.
           </div>
@@ -8169,7 +8088,7 @@ function OnlineTournamentLobby({pin,onHome,onStart,onCancel}){
         <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
           padding:'18px 18px 8px'}}>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
-            <div style={{color:T.o,fontSize:18,fontWeight:800}}>Teilnehmer</div>
+            <div style={{color:T.t1,fontSize:17,fontWeight:700}}>Teilnehmer</div>
             <span style={{color:T.t3,fontSize:12,fontWeight:600}}>
               {approved.length} bestätigt · {pending.length} wartend
             </span>
@@ -10296,7 +10215,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
                       alignItems:'flex-end',gap:1,flexShrink:0}}>
                     <div style={{display:'flex',alignItems:'center',gap:5}}>
                       <EditIcon size={12} color={T.t4}/>
-                      <span style={{color:T.o,fontSize:18,fontWeight:800}}>
+                      <span style={{color:T.t1,fontSize:17,fontWeight:700}}>
                         {tourney.winMode==='wins'?p.totalWins:p.totalPts}
                       </span>
                     </div>
@@ -11004,7 +10923,7 @@ function SettingsSteuerung({onBack,onHome,inputMode,setInputMode,voiceOn,setVoic
       {/* Score-Gerät */}
       <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
         padding:'18px 18px 6px',marginBottom:12}}>
-        <div style={{color:T.o,fontSize:11,fontWeight:700,letterSpacing:1.3,
+        <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.3,
           textTransform:'uppercase',marginBottom:8}}>Score-Gerät</div>
         {inputs.map((opt,i)=>{
           const isSel=inputMode===opt.id;
@@ -11101,7 +11020,7 @@ function SettingsSteuerung({onBack,onHome,inputMode,setInputMode,voiceOn,setVoic
           hier wechselt, hört sie überall. */}
       <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
         padding:'18px 18px 8px'}}>
-        <div style={{color:T.o,fontSize:11,fontWeight:700,letterSpacing:1.3,
+        <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.3,
           textTransform:'uppercase',marginBottom:4}}>Timer-Klingelton</div>
         <div style={{color:T.t3,fontSize:12,fontWeight:500,marginBottom:14,lineHeight:1.5}}>
           Globaler Ton — spielt beim Ablaufen aller Timer (Americano + Turnier-Runden).
@@ -11154,7 +11073,7 @@ function SettingsAnpassung({onBack,onHome,theme,setTheme,tabletMode,setTabletMod
       onBack={onBack} onHome={onHome}>
       <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
         padding:'18px 18px 8px',marginBottom:12}}>
-        <div style={{color:T.o,fontSize:11,fontWeight:700,letterSpacing:1.3,
+        <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.3,
           textTransform:'uppercase',marginBottom:8}}>Theme</div>
         {themes.map((th,i)=>(
           <div key={th.id} onClick={()=>setTheme(th.id)}
@@ -11176,7 +11095,7 @@ function SettingsAnpassung({onBack,onHome,theme,setTheme,tabletMode,setTabletMod
       {/* Tablet-Modus */}
       <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
         padding:'18px 18px',marginBottom:12}}>
-        <div style={{color:T.o,fontSize:11,fontWeight:700,letterSpacing:1.3,
+        <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.3,
           textTransform:'uppercase',marginBottom:12}}>Anzeige</div>
         <div style={{display:'flex',alignItems:'center',gap:14}}>
           <div style={{width:32,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,color:T.t1}}><PhoneIcon size={22}/></div>
@@ -11236,7 +11155,7 @@ function SettingsSection({eyebrow,children,style}){
     <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
       padding:'18px 18px 6px',marginBottom:12,...(style||{})}}>
       {eyebrow&&(
-        <div style={{color:T.o,fontSize:11,fontWeight:700,letterSpacing:1.3,
+        <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.3,
           textTransform:'uppercase',marginBottom:8}}>{eyebrow}</div>
       )}
       {children}
@@ -13558,7 +13477,7 @@ function CupAdmin({cup,setCup,lb,onBack}){
 
   const card={background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
     padding:'16px 18px',marginBottom:14};
-  const h={color:T.o,fontSize:16,fontWeight:800,marginBottom:10};
+  const h={color:T.t1,fontSize:17,fontWeight:700,marginBottom:10};
   const chip=(sel,color=T.o)=>({padding:'10px 12px',borderRadius:13,cursor:'pointer',
     background:sel?T.oSoft:T.card2,border:`1.5px solid ${sel?color:T.border}`,
     color:sel?color:T.t2,fontSize:13,fontWeight:700});
@@ -15986,8 +15905,8 @@ function TournamentHub({onHome,onStart,onJoin,onCup}){
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
-      <ScreenHeader title="Turnier" subtitle="Spiele austragen oder einsteigen."
-        icon={<TrophyIcon size={40}/>}/>
+      <ScreenHeader title="Turnier" subtitle="Starten oder beitreten."
+        icon={<TrophyIcon size={32}/>}/>
 
       <div style={{flex:1,padding:'0 22px 120px',overflowY:'auto',
         WebkitOverflowScrolling:'touch',display:'flex',flexDirection:'column',gap:14}}>
@@ -15999,7 +15918,7 @@ function TournamentHub({onHome,onStart,onJoin,onCup}){
         <HubBigCard
           icon={<JoinIcon size={28}/>}
           title="Turnier beitreten"
-          desc="PIN eingeben oder QR scannen, Ergebnisse übertragen."
+          desc="Mit PIN oder QR-Code."
           onClick={onJoin} delay=".06s"/>
         {/* RITMO DNA CUP — AUSGEBLENDET bis zum Event-Launch
             (false&& entfernen zum Reaktivieren); der Cup-Bereich
@@ -16798,7 +16717,7 @@ function RulesGlossar({onBackToRules,onHome,onNext,onPrev,currentIdx,totalSectio
               <s.Fig/>
             </div>
             <div style={{flex:1,minWidth:0}}>
-              <div style={{color:T.o,fontSize:16,fontWeight:800,marginBottom:4,letterSpacing:.2}}>{s.title}</div>
+              <div style={{color:T.t1,fontSize:16,fontWeight:700,marginBottom:4,letterSpacing:.2}}>{s.title}</div>
               <div style={{color:T.t2,fontSize:12,lineHeight:1.5,marginBottom:6}}>{s.desc}</div>
               <div style={{color:T.t3,fontSize:11,lineHeight:1.5,
                 padding:'6px 8px',background:T.card2,borderRadius:6,

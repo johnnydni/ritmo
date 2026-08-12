@@ -18,17 +18,9 @@ export default defineConfig({
   // sofort, dass wirklich ein Konflikt vorliegt.
   server: { port: 5180, strictPort: true },
   preview: { port: 5181, strictPort: true },
-  plugins: [
-    react(),
-    {
-      name: "inject-base",
-      transformIndexHtml(html) {
-        return html.replace(
-          "<!-- __BASE_INJECTION__ -->",
-          `<script>window.__BASE__="${base}";</script>`
-        );
-      },
-    },
-  ],
+  // window.__BASE__ wird nicht mehr als Inline-Script injiziert (die
+  // CSP blockt script-src inline) — main.jsx setzt es CSP-konform aus
+  // import.meta.env.BASE_URL, das Vite aus `base` ableitet.
+  plugins: [react()],
   build: { outDir: "dist", assetsDir: "assets" },
 });

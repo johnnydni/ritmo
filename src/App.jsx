@@ -10303,6 +10303,36 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
   const lb=calcLeaderboard(tourney.players,tourney.rounds,tourney.winMode);
   const sortedLb=lb.sort((a,b)=>tourney.winMode==='points'?b.totalPts-a.totalPts||b.totalWins-a.totalWins:b.totalWins-a.totalWins||b.totalPts-a.totalPts);
   const winner=sortedLb[0];
+  // ── Teilen: Endstand + komplette Rundenhistorie als Text über die
+  // native Share-API (WhatsApp & Co.); Desktop-Fallback Zwischenablage.
+  const shareResults=async()=>{
+    buzz(8);
+    const nameOf=id=>tourney.players.find(p=>p.id===id)?.name||'?';
+    const team=t=>t.map(nameOf).join(' & ');
+    const L=[];
+    L.push(`🏆 ${tourney.name||'RITMO Turnier'} — Endstand`);
+    L.push(`${new Date().toLocaleDateString('de-DE')} · ${tourney.players.length} Spieler · ${tourney.rounds.length} Runden`);
+    L.push('');
+    sortedLb.forEach((p,i)=>{
+      L.push(`${i+1}. ${p.name} — ${tourney.winMode==='wins'
+        ?`${p.totalWins} Siege`:`${p.totalPts} Punkte`} (${p.wins}S/${p.losses}N)`);
+    });
+    L.push('','— Rundenhistorie —');
+    tourney.rounds.forEach((r,ri)=>{
+      L.push(`Runde ${ri+1}:`);
+      r.courts.forEach((m,ci)=>{
+        const cn=(tourney.courtNames?.[ci]||'').trim()||`Court ${ci+1}`;
+        L.push(`  ${cn}${m.single?' (1v1)':''}: ${team(m.t1)}  ${m.s1??'–'}:${m.s2??'–'}  ${team(m.t2)}`);
+      });
+      if(r.sitOut?.length) L.push(`  Pause: ${r.sitOut.map(nameOf).join(', ')}`);
+    });
+    L.push('','Erstellt mit RITMO 🎾');
+    const text=L.join('\n');
+    try{
+      if(navigator.share) await navigator.share({title:tourney.name||'RITMO Turnier',text});
+      else{await navigator.clipboard.writeText(text);alert('Endstand & Rundenhistorie in die Zwischenablage kopiert!');}
+    }catch(e){/* Nutzer hat den Share-Dialog geschlossen — kein Fehler */}
+  };
 
   return(
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
@@ -10320,6 +10350,12 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
           <div style={{fontSize:16,color:T.o,fontWeight:700,marginTop:4}}>
             {tourney.winMode==='wins'?`${winner?.totalWins} Siege`:`${winner?.totalPts} Punkte`}
           </div>
+          <button onClick={shareResults}
+            style={{marginTop:14,padding:'12px 24px',borderRadius:999,cursor:'pointer',
+              background:T.oSoft,border:`1.5px solid ${T.o}`,color:T.o,
+              fontSize:13.5,fontWeight:800}}>
+            Ergebnis teilen ↗
+          </button>
         </div>
 
         {/* Full Leaderboard */}

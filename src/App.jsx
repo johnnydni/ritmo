@@ -15229,7 +15229,7 @@ function LigaLanding({code,setCode,onJoin,onCreate,busy,err}){
       <div className="liga-orb" style={{width:220,height:220,top:-40,left:-70,
         background:T.o,opacity:.32,animation:'ligaFloat 9s ease-in-out infinite'}}/>
       <div className="liga-orb" style={{width:190,height:190,top:120,right:-60,
-        background:T.blue,opacity:.3,animation:'ligaFloat2 11s ease-in-out infinite'}}/>
+        background:'#B3320B',opacity:.34,animation:'ligaFloat2 11s ease-in-out infinite'}}/>
       <Reveal>
         <div style={{color:T.o,fontSize:12.5,fontWeight:800,letterSpacing:2.2,
           textTransform:'uppercase',marginBottom:14}}>Dein Club. Deine Saison.</div>

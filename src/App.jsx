@@ -9322,17 +9322,19 @@ function ScoreWheel({value,onChange,max=40,color=T.o,w=52}){
   const onScroll=e=>{ const el=e.target; if(toRef.current)clearTimeout(toRef.current);
     toRef.current=setTimeout(()=>{ const idx=Math.max(0,Math.min(max,Math.round(el.scrollTop/ITEM_H)));
       if(idx!==value) onChange(idx); },90); };
+  // Nachbarwerte per CSS-Maske auf dem Scroll-Container ausblenden —
+  // NICHT per Overlay in Card-Farbe: --card ist in manchen Themes
+  // halbtransparentes Weiß, das Overlay malte dann sichtbare graue
+  // Kästen über das Wheel statt sanft in die Karte auszublenden.
+  const fade=`linear-gradient(to bottom,transparent 0,#000 ${PAD}px,#000 ${HEIGHT-PAD}px,transparent 100%)`;
   return(
     <div style={{position:'relative',width:w,height:HEIGHT,flexShrink:0}}>
       <div style={{position:'absolute',top:PAD,left:0,right:0,height:ITEM_H,
         background:`${color}1A`,border:`1.5px solid ${color}`,borderRadius:11,pointerEvents:'none'}}/>
-      <div style={{position:'absolute',top:0,left:0,right:0,height:PAD,
-        background:`linear-gradient(${T.card},transparent)`,pointerEvents:'none',zIndex:2}}/>
-      <div style={{position:'absolute',bottom:0,left:0,right:0,height:PAD,
-        background:`linear-gradient(transparent,${T.card})`,pointerEvents:'none',zIndex:2}}/>
       <div ref={ref} onScroll={onScroll}
         style={{height:HEIGHT,overflowY:'scroll',scrollSnapType:'y mandatory',
-          scrollPaddingTop:`${PAD}px`,WebkitOverflowScrolling:'touch',scrollbarWidth:'none'}}>
+          scrollPaddingTop:`${PAD}px`,WebkitOverflowScrolling:'touch',scrollbarWidth:'none',
+          maskImage:fade,WebkitMaskImage:fade}}>
         <div style={{height:PAD}}/>
         {opts.map(o=>{ const active=o===v;
           return <div key={o} style={{height:ITEM_H,display:'flex',alignItems:'center',justifyContent:'center',

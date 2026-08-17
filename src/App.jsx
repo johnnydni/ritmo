@@ -13149,9 +13149,13 @@ function ClubChat({clubId,currentUid,onHome,onBack}){
               <div className="fi" style={{display:'flex',gap:8,alignItems:'flex-end',
                 marginTop:showHeader?5:0,
                 flexDirection:mine?'row-reverse':'row'}}>
-                {!mine&&showHeader?(
+                {/* Avatar-Spalte nur bei FREMDEN Nachrichten (Platzhalter
+                    richtet Folge-Bubbles unterm Avatar aus). Bei eigenen
+                    schob der Platzhalter die Bubble durch row-reverse 36px
+                    von der rechten Kante weg Richtung Mitte. */}
+                {!mine&&(showHeader?(
                   <ProfileAvatar name={name} avatar={m.profile?.data?.avatar} size={28}/>
-                ):(<div style={{width:28,flexShrink:0}}/>)}
+                ):(<div style={{width:28,flexShrink:0}}/>))}
                 <div style={{maxWidth:'76%',display:'flex',flexDirection:'column',
                   alignItems:mine?'flex-end':'flex-start',gap:3}}>
                   {!mine&&showHeader&&(

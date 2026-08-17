@@ -387,7 +387,7 @@ function Splash({onDone}){
         display:'flex',justifyContent:'center',pointerEvents:'none',zIndex:2}}>
         <span style={{color:'#fff',fontSize:30,fontWeight:700,fontStyle:'italic',
           letterSpacing:-.5,lineHeight:1,animation:'fadeIn 1.4s ease .5s both'}}>
-          hallo
+          Hello there!
         </span>
       </div>
     </div>
@@ -6633,14 +6633,31 @@ function TimerCard({minutes,setMinutes,running,secsLeft,finished,onStart,onPause
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   SWIPEABLE CARD (Swipe-to-Delete)
+   SWIPEABLE CARD (Swipe-Actions: … mehr | Teilen | Löschen)
+
+   Links-Swipe fächert bis zu drei Aktionen hinter der Card auf
+   (iOS-Mail-Stil): sie starten gestapelt an der rechten Kante und
+   gleiten proportional zur Swipe-Distanz auseinander, mit gestaffelter
+   Opacity (Löschen zuerst, dann Teilen, dann mehr). Löschen liegt an
+   der Kante — voll durchswipen löscht direkt. onShare/onMore sind
+   optional; ohne sie bleibt es reines Swipe-to-Delete.
 ═══════════════════════════════════════════════════════════════ */
-function SwipeableCard({children,onDelete}){
+function SwipeableCard({children,onDelete,onShare,onMore}){
   const[tx,setTx]=useState(0);
   const[swiping,setSwiping]=useState(false);
   const startX=useRef(0);
   const startTx=useRef(0);
   const moved=useRef(false);
+
+  // Reihenfolge links → rechts in der aufgeklappten Leiste.
+  const acts=[
+    onMore &&{key:'more', label:'mehr',   glyph:'…', bg:T.card2,fg:T.t1, run:onMore},
+    onShare&&{key:'share',label:'Teilen', glyph:'↗', bg:T.o,   fg:'#fff',run:onShare},
+    onDelete&&{key:'del', label:'Löschen',glyph:null,bg:T.r,   fg:'#fff',run:null},
+  ].filter(Boolean);
+  const BTN=74, W=acts.length*BTN, MAX=W+120;
+
+  const doDelete=()=>{setTx(-460);setTimeout(()=>onDelete(),200);};
 
   const onStart=(e)=>{
     const x=e.touches?e.touches[0].clientX:e.clientX;
@@ -6654,27 +6671,14 @@ function SwipeableCard({children,onDelete}){
     const x=e.touches?e.touches[0].clientX:e.clientX;
     const dx=x-startX.current;
     if(Math.abs(dx)>4) moved.current=true;
-    const newTx=Math.min(0,Math.max(-100,startTx.current+dx));
+    const newTx=Math.min(0,Math.max(-MAX,startTx.current+dx));
     setTx(newTx);
   };
   const onEnd=()=>{
     setSwiping(false);
-    if(tx<-90){
-      // Threshold passed → delete
-      setTx(-400);
-      setTimeout(()=>onDelete(),200);
-    } else if(tx<-50){
-      setTx(-80); // Snap to reveal
-    } else {
-      setTx(0);
-    }
-  };
-
-  // Click on revealed delete background should trigger delete too
-  const handleDeleteClick=(e)=>{
-    e.stopPropagation();
-    setTx(-400);
-    setTimeout(()=>onDelete(),200);
+    if(onDelete&&tx<-(W+80)) doDelete();       // voll durchgezogen → löschen
+    else if(tx<-W*0.45) setTx(-W);             // Snap: Leiste offen
+    else setTx(0);
   };
 
   // Block click on card when swiped
@@ -6686,22 +6690,41 @@ function SwipeableCard({children,onDelete}){
     }
   };
 
+  // Fächer-Geometrie: reveal = sichtbare Breite; jeder Button sitzt bei
+  // j·reveal/n von rechts (j = Abstand zur Kante) → bei reveal=W exakt
+  // gekachelt, beim Overdrag dehnen sich die Spalten proportional mit.
+  const n=acts.length, reveal=-tx, bw=Math.max(BTN,reveal/n||0);
+
   return(
     <div style={{position:'relative',overflow:'hidden',borderRadius:20}}>
-      {/* Delete-Hintergrund — füllt die komplette Card-Fläche (inset:0)
-          mit gleichem Radius, sodass das Rot die Card beim Swipen sauber
-          umhüllt statt als kantiger Streifen abzustehen. Label rechts,
-          wird beim Wegswipen der Card sichtbar. */}
-      <div onClick={handleDeleteClick}
-        style={{position:'absolute',inset:0,background:T.r,borderRadius:20,
-          display:'flex',alignItems:'center',justifyContent:'flex-end',
-          paddingRight:26,gap:8,cursor:'pointer',color:'#fff',
-          fontSize:13,fontWeight:800,letterSpacing:.3}}>
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13" stroke="#fff"
-            strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
-        Löschen
+      {/* Action-Leiste — füllt die komplette Card-Fläche (inset:0) mit
+          gleichem Radius, sodass die Buttons die Card beim Swipen sauber
+          umhüllen statt als kantiger Streifen abzustehen. */}
+      <div style={{position:'absolute',inset:0,borderRadius:20,background:T.card2}}>
+        {acts.map((a,i)=>{
+          const j=n-1-i; // Abstand von der rechten Kante (Löschen: 0)
+          const isDel=a.key==='del';
+          return(
+            <div key={a.key}
+              onClick={(e)=>{e.stopPropagation();if(isDel)doDelete();else{setTx(0);a.run();}}}
+              style={{position:'absolute',top:0,bottom:0,right:0,width:bw,
+                transform:`translateX(${-j*reveal/n}px)`,
+                transition:swiping?'none':'transform .25s cubic-bezier(.3,0,.2,1), width .25s cubic-bezier(.3,0,.2,1)',
+                opacity:Math.min(1,Math.max(0,(reveal/W)*n-j)),
+                zIndex:n-j,background:a.bg,cursor:'pointer',color:a.fg,
+                display:'flex',flexDirection:'column',alignItems:'center',
+                justifyContent:'center',gap:4,fontSize:11.5,fontWeight:800,
+                letterSpacing:.3,userSelect:'none'}}>
+              {isDel
+                ?<svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13" stroke="#fff"
+                      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                :<span style={{fontSize:a.key==='more'?20:15,lineHeight:'15px',fontWeight:800}}>{a.glyph}</span>}
+              {a.label}
+            </div>
+          );
+        })}
       </div>
       {/* Card content — eigener Radius, damit die führende Kante beim
           Swipen rund bleibt und nicht eckig über dem Rot absteht. */}
@@ -10415,6 +10438,31 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
 ═══════════════════════════════════════════════════════════════ */
 function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
   onDeleteMatch,onDeleteTourney,onOpenTourney,joinedSession,onLeaveJoined}){
+  const[moreItem,setMoreItem]=useState(null); // Item fürs "… mehr"-Sheet
+
+  // ── Teilen über die native Share-API (WhatsApp & Co.);
+  // Desktop-Fallback Zwischenablage. Abbruch des Dialogs ist kein Fehler.
+  const shareText=async(title,text)=>{
+    buzz(8);
+    try{
+      if(navigator.share) await navigator.share({title,text});
+      else{await navigator.clipboard.writeText(text);alert('In die Zwischenablage kopiert!');}
+    }catch(e){/* Nutzer hat den Share-Dialog geschlossen — kein Fehler */}
+  };
+  const shareTourney=(t)=>{
+    const fmt=(FORMATS[t.format]||FORMATS.americano).name;
+    const L=[];
+    L.push(`🏆 ${t.name||'RITMO Turnier'} — ${t.finished?'Endstand':t.draft?'Entwurf':`Zwischenstand (Runde ${(t.current||0)+1})`}`);
+    L.push(`${fmt} · ${(t.players||[]).length} Spieler`,'');
+    if((t.rounds||[]).length){
+      calcLeaderboard(t.players,t.rounds,t.winMode)
+        .sort((a,b)=>t.winMode==='points'?b.totalPts-a.totalPts||b.totalWins-a.totalWins:b.totalWins-a.totalWins||b.totalPts-a.totalPts)
+        .forEach((p,i)=>L.push(`${i+1}. ${p.name} — ${t.winMode==='wins'?`${p.totalWins} Siege`:`${p.totalPts} Punkte`}`));
+    } else L.push((t.players||[]).map(p=>p.name).join(', '));
+    L.push('','Erstellt mit RITMO 🎾');
+    shareText(t.name||'RITMO Turnier',L.join('\n'));
+  };
+
   const items=[];
   if(hasMatch){
     items.push({
@@ -10423,6 +10471,8 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
       sub:matchCfg.format==='bo3'?'Best of Three':'Americano',
       navTo:'match',group:'active',
       onDelete:onDeleteMatch,
+      onShare:()=>shareText('RITMO Match',
+        `🎾 ${matchCfg.nameA} vs ${matchCfg.nameB}\n${matchCfg.format==='bo3'?'Best of Three':'Americano'} — live auf RITMO 🎾`),
     });
   }
   // Alle benannten Turniere — laufende/Entwürfe oben, beendete darunter.
@@ -10438,8 +10488,10 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
         sub:isDraft
           ?`Entwurf · ${fmt} · ${(t.players||[]).length} Spieler`
           :`${fmt} · ${t.finished?'beendet':'Runde '+((t.current||0)+1)} · ${(t.players||[]).length} Spieler`,
+        tourney:t,
         onClick:()=>onOpenTourney(t.id),
         onDelete:()=>onDeleteTourney(t.id),
+        onShare:()=>shareTourney(t),
       });
     });
   if(joinedSession){
@@ -10449,6 +10501,8 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
       sub:`PIN ${joinedSession.pin?.toUpperCase()} · Tippen zum Wiedereintreten`,
       navTo:'remote',group:'active',
       onDelete:onLeaveJoined,
+      onShare:()=>shareText('RITMO Online-Turnier',
+        `🎾 Online-Turnier auf RITMO — tritt bei mit PIN ${joinedSession.pin?.toUpperCase()||'?'}`),
     });
   }
 
@@ -10469,7 +10523,7 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
 
       <ScreenHeader pad={24}
         title={items.length===0?'Keine laufenden Spiele.':'Laufende Spiele und Turniere.'}
-        subtitle={items.length>0?'← Wische nach links zum Löschen':null}
+        subtitle={items.length>0?'← Wische nach links für Optionen':null}
         icon={<LiveTabIcon size={34}/>}/>
 
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
@@ -10487,7 +10541,8 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
           </div>
         ):(
           <div key={item.id} className="fu" style={{animationDelay:`${Math.min(i*0.06,0.4)}s`}}>
-            <SwipeableCard onDelete={item.onDelete}>
+            <SwipeableCard onDelete={item.onDelete} onShare={item.onShare}
+              onMore={()=>setMoreItem(item)}>
               <button onClick={()=>item.onClick?item.onClick():nav(item.navTo)}
                 style={{width:'100%',background:T.card,border:`1px solid ${item.finished?T.border:T.border}`,
                   borderRadius:20,padding:'18px 20px',display:'flex',alignItems:'center',gap:18,
@@ -10518,6 +10573,53 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
       <div style={{height:120}}/>
       <BottomFade/>
       <TabBar active={activeTab} onTab={setActiveTab}/>
+
+      {/* "… mehr"-Sheet — Details + alle Aktionen des Items gesammelt. */}
+      {moreItem&&(
+        <div onClick={()=>setMoreItem(null)} style={{position:'fixed',inset:0,zIndex:300,
+          background:'rgba(0,0,0,.7)',backdropFilter:'blur(4px)',display:'flex',
+          alignItems:'flex-end',justifyContent:'center',animation:'fadeIn .15s ease'}}>
+          <div onClick={e=>e.stopPropagation()} className="slide-up"
+            style={{background:T.card,borderTopLeftRadius:20,borderTopRightRadius:20,
+              borderTop:`1px solid ${T.border}`,width:'100%',maxWidth:480,
+              padding:'16px 18px calc(env(safe-area-inset-bottom,0px) + 18px)'}}>
+            <div style={{width:36,height:4,borderRadius:2,background:T.border,margin:'0 auto 14px'}}/>
+            <div style={{color:T.t1,fontSize:17,fontWeight:800,marginBottom:3}}>{moreItem.title}</div>
+            <div style={{color:T.t3,fontSize:12,marginBottom:14}}>{moreItem.sub}</div>
+            {(moreItem.tourney?.players||[]).length>0&&(
+              <div style={{display:'flex',flexWrap:'wrap',gap:6,marginBottom:16}}>
+                {moreItem.tourney.players.map(p=>(
+                  <span key={p.id} style={{background:T.card2,border:`1px solid ${T.border}`,
+                    color:T.t2,fontSize:11.5,fontWeight:700,borderRadius:999,padding:'5px 11px'}}>
+                    {p.name}
+                  </span>
+                ))}
+              </div>
+            )}
+            <div style={{display:'flex',flexDirection:'column',gap:8}}>
+              <button onClick={()=>{setMoreItem(null);moreItem.onClick?moreItem.onClick():nav(moreItem.navTo);}}
+                style={{padding:'13px',borderRadius:14,border:'none',cursor:'pointer',
+                  background:T.o,color:T.bg,fontSize:14,fontWeight:800}}>
+                {moreItem.finished?'Ansehen':'Öffnen'}
+              </button>
+              {moreItem.onShare&&(
+                <button onClick={()=>{setMoreItem(null);moreItem.onShare();}}
+                  style={{padding:'13px',borderRadius:14,cursor:'pointer',
+                    background:T.oSoft,border:`1.5px solid ${T.o}`,color:T.o,
+                    fontSize:14,fontWeight:800}}>
+                  Teilen ↗
+                </button>
+              )}
+              <button onClick={()=>{setMoreItem(null);moreItem.onDelete();}}
+                style={{padding:'13px',borderRadius:14,cursor:'pointer',
+                  background:'transparent',border:`1.5px solid ${T.r}`,color:T.r,
+                  fontSize:14,fontWeight:800}}>
+                {moreItem.type==='joined'?'Verlassen':'Löschen'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

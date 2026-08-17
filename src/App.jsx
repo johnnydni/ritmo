@@ -27,7 +27,7 @@ import { LIGA_PHASES, LIGA_GROUPS, initialLigaState, ligaAddParticipant,
    Components, screens and routing remain colocated here for now;
    only side-effect-free units are split out. See CLAUDE.md. */
 import { T, CSS, rgba } from "./theme.js";
-import { lsGet, lsSet, getAssetBase, getInitials, readImageAsDataUrl, resizeImage, safeImageSrc, buzz } from "./utils.js";
+import { lsGet, lsSet, getAssetBase, getInitials, processImageUpload, safeImageSrc, buzz } from "./utils.js";
 import { getLevelLabel, getLevelTier, getLevelColor, estimateLevel } from "./levels.js";
 import { B0, A0, PL, ptD, wG, bo3R, amR, DEFCFG } from "./game.js";
 import { PCOLS, shuffle, genAmericanoRound, genMexicanoRound, calcLeaderboard, FORMATS, genRound } from "./tournament.js";
@@ -2935,11 +2935,12 @@ function AvatarWithUpload({profile,setProfile,size=72}){
     e.target.value='';
     if(!file) return;
     try{
-      const dataUrl=await readImageAsDataUrl(file);
-      const resized=await resizeImage(dataUrl,256);
+      // Gehärteter Upload-Pfad: Magic-Byte-Check + Limits + JPEG-Re-Encode.
+      const resized=await processImageUpload(file,256);
       setProfile(p=>({...p,avatar:resized}));
     }catch(err){
       console.warn('[avatar] upload failed:',err);
+      alert(err?.message||'Bild konnte nicht geladen werden.');
     }
   };
   return(
@@ -12708,11 +12709,11 @@ function ClubCreate({onHome,onDone,onCancel,initial}){
     e.target.value='';
     if(!f) return;
     try{
-      // Re-encoded JPEG ≤ 1200 px Kante hält die Cover unter ~200 KB
-      const url=await readImageAsDataUrl(f);
-      const resized=await resizeImage(url,1200);
+      // Re-encoded JPEG ≤ 1200 px Kante hält die Cover unter ~200 KB;
+      // processImageUpload prüft davor Magic Bytes + Limits.
+      const resized=await processImageUpload(f,1200);
       setCover(resized);
-    }catch(err){ console.warn('[club cover]',err); }
+    }catch(e){ console.warn('[club cover]',e); setErr(e?.message||'Bild konnte nicht geladen werden.'); }
   };
   const save=async()=>{
     setErr(''); setBusy(true);
@@ -13616,8 +13617,7 @@ function CupAdmin({cup,setCup,lb,onBack}){
     e.target.value='';
     if(!f||photoIdx<0) return;
     try{
-      const raw=await readImageAsDataUrl(f);
-      const photo=await resizeImage(raw,160);
+      const photo=await processImageUpload(f,160);
       setPlayerAt(photoIdx,{photo});
       buzz(10);
     }catch(err){}
@@ -13930,7 +13930,7 @@ function CupAdmin({cup,setCup,lb,onBack}){
             Über das Foto-Feld nimmst du ein Spielerbild auf — es erscheint an
             den Matches auf Center- & Court-Screen.
           </div>
-          <input ref={photoInRef} type="file" accept="image/*"
+          <input ref={photoInRef} type="file" accept="image/png,image/jpeg,image/webp"
             style={{display:'none'}} onChange={onPhotoFile}/>
           {cup.players.map((p,idx)=>(
             <div key={idx} style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>

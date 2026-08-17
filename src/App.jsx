@@ -6796,6 +6796,36 @@ function StylePickerSheet({current,onSelect,onClose}){
 /* Court-Label: eigener Name (aus dem Setup) oder Default "Court N". */
 const courtLabel=(names,i)=>((names&&names[i]&&String(names[i]).trim())||`Court ${i+1}`);
 
+/* Court-Typ-Flip (Setup): kleine 3D-Flip-Karte neben dem Court-Namen —
+   Tippen dreht den Court von Doppel (2v2, 4 Spieler) auf Einzel
+   (1v1, 2 Spieler) und zurück. Beide Seiten liegen als eigene Faces
+   mit backface-visibility:hidden übereinander. */
+function CourtFlip({single,onFlip}){
+  return(
+    <button onClick={()=>{buzz(6);onFlip();}}
+      title={single?'Einzel-Court — tippen für Doppel (4 Spieler)':'Doppel-Court — tippen für Einzel (2 Spieler)'}
+      aria-label={single?'Einzel-Court (1v1)':'Doppel-Court (2v2)'}
+      style={{width:58,height:38,flexShrink:0,cursor:'pointer',
+        background:'none',border:'none',padding:0,perspective:220}}>
+      <div style={{position:'relative',width:'100%',height:'100%',
+        transformStyle:'preserve-3d',transition:'transform .45s cubic-bezier(.4,0,.2,1)',
+        transform:single?'rotateY(180deg)':'none'}}>
+        {[{lab:'2v2',back:false},{lab:'1v1',back:true}].map(f=>(
+          <div key={f.lab} style={{position:'absolute',inset:0,borderRadius:11,
+            display:'flex',alignItems:'center',justifyContent:'center',
+            backfaceVisibility:'hidden',WebkitBackfaceVisibility:'hidden',
+            transform:f.back?'rotateY(180deg)':'none',
+            background:f.back?T.oSoft:T.card2,
+            border:`1.5px solid ${f.back?T.o:T.border}`,
+            color:f.back?T.o:T.t2,fontSize:12,fontWeight:800,letterSpacing:.4}}>
+            {f.lab}
+          </div>
+        ))}
+      </div>
+    </button>
+  );
+}
+
 /* ═══════════════════════════════════════════════════════════════
    TURNIER-ASSISTENT — geführter Setup-Wizard (6 Schritte).
 
@@ -6809,6 +6839,7 @@ function TournamentWizard({onClose,onFinish,canStart,
   format,setFormat,winMode,setWinMode,name,setName,
   players,addPlayer,addPlayerNamed,removePlayer,renamePlayer,setPlayerGroup,
   numCourts,setNumCourts,maxCourts,courtNames,setCourtName,
+  courtSingles,toggleCourtSingle,
   startTime,setStartTime,endTime,setEndTime,roundPrio,setRoundPrio,
   roundDur,setRoundDur,suggest,pauseStats,nameHistory}){
   const[step,setStep]=useState(0);
@@ -6820,6 +6851,8 @@ function TournamentWizard({onClose,onFinish,canStart,
   const wGrpB=players.length-wGrpA;
   const wTeamOk=!meta.team||players.length%2===0;
   const wGroupsOk=!meta.groups||(wGrpA>=2&&wGrpB>=2);
+  // Einzel-Court-Flip nur für Americano/Mexicano (wie im Formular).
+  const wCanSingles=format==='americano'||format==='mexicano';
   const GRPB=PCOLS[1]; // Gruppe-B-Farbe (aus der Spieler-Palette)
   const valid=[true,players.length>=4&&namesOk&&wTeamOk&&wGroupsOk,true,true,true,canStart][step];
   const next=()=>{if(!valid)return;buzz(6);setStep(s=>Math.min(s+1,5));};
@@ -7020,7 +7053,8 @@ function TournamentWizard({onClose,onFinish,canStart,
 
           {step===2&&(<>
             <div style={stepTitle}>Wie viele Courts habt ihr?</div>
-            <div style={stepSub}>4 Spieler pro Court — mehr Courts bedeuten weniger Pausen.</div>
+            <div style={stepSub}>4 Spieler pro Court — mehr Courts bedeuten weniger Pausen.
+              {wCanSingles&&' Per Flip wird ein Court zum Einzel-Court (1v1, 2 Spieler).'}</div>
             <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:20,margin:'6px 0 14px'}}>
               <button onClick={()=>setNumCourts(Math.max(1,numCourts-1))}
                 style={{...stepBtn,width:52,height:52,borderRadius:16,fontSize:24}}>−</button>
@@ -7037,9 +7071,14 @@ function TournamentWizard({onClose,onFinish,canStart,
             </div>
             <div style={label}>Court-Namen (optional)</div>
             {Array.from({length:numCourts}).map((_,i)=>(
-              <input key={i} value={courtNames[i]??''} onChange={e=>setCourtName(i,e.target.value)}
-                placeholder={`Court ${i+1}`} autoCapitalize="words" autoCorrect="off" spellCheck={false}
-                style={{...inp,height:44,borderRadius:12,marginBottom:8}}/>
+              <div key={i} style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
+                <input value={courtNames[i]??''} onChange={e=>setCourtName(i,e.target.value)}
+                  placeholder={`Court ${i+1}`} autoCapitalize="words" autoCorrect="off" spellCheck={false}
+                  style={{...inp,height:44,borderRadius:12,flex:1,width:'auto',minWidth:0}}/>
+                {wCanSingles&&(
+                  <CourtFlip single={!!courtSingles?.[i]} onFlip={()=>toggleCourtSingle(i)}/>
+                )}
+              </div>
             ))}
           </>)}
 
@@ -7207,6 +7246,13 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
   // Index i = eigener Name fuer Court i, sonst Default "Court i+1".
   const[courtNames,setCourtNames]=useState(saved?.courtNames||[]);
   const setCourtName=(i,val)=>setCourtNames(a=>{const n=[...a];n[i]=val;return n;});
+  // Einzel-Courts (1v1): Index i = true ⇒ auf Court i spielen nur 2
+  // Spieler. Nur Americano/Mexicano — Team-/Gruppen-/Leiter-Formate
+  // brauchen 4er-Courts, dort ist der Flip ausgeblendet + wirkungslos.
+  const[courtSingles,setCourtSingles]=useState(saved?.courtSingles||[]);
+  const toggleCourtSingle=i=>setCourtSingles(a=>{const n=[...a];n[i]=!n[i];return n;});
+  const canSingles=format==='americano'||format==='mexicano';
+  const singles=canSingles?courtSingles:[];
   const courtInputRefs=useRef({});
   // Edit-Scope-Popup: haelt die zu speichernden Updates, bis der Host
   // waehlt, ob sie fuer die aktuelle oder die naechste Runde gelten.
@@ -7348,7 +7394,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
     const cur=players.map(p=>(p.name||'').trim()).filter(n=>n&&!/^Spieler \d+$/i.test(n));
     lsSet('ritmo_player_history',[...new Set([...cur,...hist])].slice(0,24));
     const lb=calcLeaderboard(players,[],winMode);
-    const r0=genRound(format,players,{leaderboard:lb,maxCourts:numCourts});
+    const r0=genRound(format,players,{leaderboard:lb,maxCourts:numCourts,singles});
     if(!r0) return; // defensiv — kann bei gültigem canStart nicht passieren
     onStart({
       // id/createdAt durchreichen, falls aus einem Entwurf gestartet —
@@ -7358,7 +7404,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
       name:name.trim()||('Turnier '+new Date().toLocaleDateString('de-DE')),
       startTime,endTime,roundPrio,
       players,format,winMode,
-      numCourts,courtNames,
+      numCourts,courtNames,courtSingles:singles,
       roundDurationMin:roundDur,
       rounds:[r0],
       current:0,
@@ -7648,9 +7694,17 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
                 }}
                 autoCapitalize="words" autoCorrect="off" spellCheck={false} enterKeyHint="next"
                 placeholder={`Court ${i+1}`}
-                style={{flex:1,fontSize:16,color:T.t1,fontWeight:500}}/>
+                style={{flex:1,fontSize:16,color:T.t1,fontWeight:500,minWidth:0}}/>
+              {canSingles&&(
+                <CourtFlip single={!!courtSingles[i]} onFlip={()=>toggleCourtSingle(i)}/>
+              )}
             </div>
           ))}
+          {canSingles&&(
+            <div style={{color:T.t3,fontSize:11,lineHeight:1.5,padding:'8px 0 10px'}}>
+              Tippe auf 2v2, um einen Court auf Einzel (1v1) zu flippen — dort spielen nur 2 Spieler.
+            </div>
+          )}
         </div>
 
         {/* Spieler — nur im Lokal-Modus editierbar.
@@ -7813,7 +7867,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
           onClick:()=>onSaveDraft?.({
             id:saved?.id,createdAt:saved?.createdAt,
             name:name.trim(),startTime,endTime,roundPrio,
-            players,format,winMode,numCourts,roundDurationMin:roundDur,courtNames,
+            players,format,winMode,numCourts,roundDurationMin:roundDur,courtNames,courtSingles,
           }),
           style:{width:56,height:56,background:T.card2,border:`1px solid ${T.border}`,color:T.t1},
         }]:[]),
@@ -7826,7 +7880,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
             // Änderungen am laufenden Turnier → erst fragen, ob sie für
             // die aktuelle oder die nächste Runde wirksam werden.
             setEditScopePrompt({players,format,winMode,numCourts,roundDurationMin:roundDur,
-              name:name.trim(),startTime,endTime,roundPrio,courtNames});
+              name:name.trim(),startTime,endTime,roundPrio,courtNames,courtSingles:singles});
             return;
           }
           if(mode==='online'){
@@ -7873,6 +7927,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
           removePlayer={removePlayer} renamePlayer={renamePlayer} setPlayerGroup={setPlayerGroup}
           numCourts={numCourts} setNumCourts={setNumCourts} maxCourts={maxCourts}
           courtNames={courtNames} setCourtName={setCourtName}
+          courtSingles={courtSingles} toggleCourtSingle={toggleCourtSingle}
           startTime={startTime} setStartTime={setStartTime}
           endTime={endTime} setEndTime={setEndTime}
           roundPrio={roundPrio} setRoundPrio={setRoundPrio}
@@ -9152,15 +9207,17 @@ function LineupEditSheet({court,courtIndex,players,round,onAssign,onClose}){
           <div style={{color:T.t3,fontSize:12,lineHeight:1.5,marginBottom:16}}>
             Tippe einen Slot, um den Spieler zu tauschen — auch gegen pausierte Spieler.
           </div>
+          {/* 1v1-Court: nur 1 Slot pro Seite — ein 2. Slot würde dem
+              Einzel-Team einen dritten Spieler unterschieben. */}
           <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.2,
-            textTransform:'uppercase',marginBottom:8}}>Team 1</div>
+            textTransform:'uppercase',marginBottom:8}}>{court.single?'Spieler 1':'Team 1'}</div>
           <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:16}}>
-            {slotRow('t1',0)}{slotRow('t1',1)}
+            {slotRow('t1',0)}{!court.single&&slotRow('t1',1)}
           </div>
           <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.2,
-            textTransform:'uppercase',marginBottom:8}}>Team 2</div>
+            textTransform:'uppercase',marginBottom:8}}>{court.single?'Spieler 2':'Team 2'}</div>
           <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:18}}>
-            {slotRow('t2',0)}{slotRow('t2',1)}
+            {slotRow('t2',0)}{!court.single&&slotRow('t2',1)}
           </div>
           <button onClick={onClose}
             style={{width:'100%',padding:'12px',background:T.o,border:'none',borderRadius:13,
@@ -9172,7 +9229,8 @@ function LineupEditSheet({court,courtIndex,players,round,onAssign,onClose}){
                 border:`1px solid ${T.border}`,color:T.t1,fontSize:18,cursor:'pointer',
                 display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>‹</button>
             <div style={{color:T.t1,fontSize:16,fontWeight:800}}>
-              Spieler wählen · {pick.teamKey==='t1'?'Team 1':'Team 2'}
+              Spieler wählen · {court.single?(pick.teamKey==='t1'?'Spieler 1':'Spieler 2')
+                :(pick.teamKey==='t1'?'Team 1':'Team 2')}
             </div>
           </div>
           <div style={{display:'flex',flexDirection:'column',gap:6}}>
@@ -9398,6 +9456,13 @@ function TournamentCourtCard({court,courtIndex,courtName,playerById,onScoreChang
             textTransform:'uppercase'}}>
             {courtName||`Court ${courtIndex+1}`}
           </div>
+          {court.single&&(
+            <div style={{padding:'4px 8px',borderRadius:8,background:T.card2,
+              border:`1px solid ${T.border}`,color:T.t2,fontSize:10,
+              fontWeight:900,letterSpacing:1.2}}>
+              1V1
+            </div>
+          )}
         </div>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
           {done?(
@@ -9998,7 +10063,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
     const lb=calcLeaderboard(t.players,t.rounds,t.winMode);
     const sortedLb=lb.sort((a,b)=>t.winMode==='points'?b.totalPts-a.totalPts:b.totalWins-a.totalWins);
     const newR=genRound(t.format,t.players,
-      {history:t.rounds,leaderboard:sortedLb,maxCourts:t.numCourts});
+      {history:t.rounds,leaderboard:sortedLb,maxCourts:t.numCourts,singles:t.courtSingles});
     if(!newR){ endTournament(); return; }
     setTourney(tt=>({...tt,
       rounds:[...tt.rounds,newR],
@@ -18521,6 +18586,7 @@ export default function App(){
         numCourts:updates.numCourts,
         roundDurationMin:updates.roundDurationMin,
         courtNames:updates.courtNames,
+        courtSingles:updates.courtSingles,
         name:updates.name||prev.name,
         startTime:updates.startTime,
         endTime:updates.endTime,
@@ -18531,7 +18597,7 @@ export default function App(){
         const lb=calcLeaderboard(next.players,prevRounds,next.winMode);
         const sortedLb=lb.sort((a,b)=>next.winMode==='points'?b.totalPts-a.totalPts:b.totalWins-a.totalWins);
         const newR=genRound(next.format,next.players,
-          {history:prevRounds,leaderboard:sortedLb,maxCourts:next.numCourts});
+          {history:prevRounds,leaderboard:sortedLb,maxCourts:next.numCourts,singles:next.courtSingles});
         // K.-o. fertig (null) → keine neue Runde, Turnier gilt als beendet.
         next=newR
           ?{...next,rounds:[...prevRounds,newR],

@@ -32,13 +32,34 @@ export const shuffle=arr=>{
   return a;
 };
 
-export function genAmericanoRound(playerIds,history=[],maxCourts=null){
-  const used=new Set(history.flatMap(r=>r.courts.flatMap(m=>[
-    `${Math.min(...m.t1)}_${Math.max(...m.t1)}`,
-    `${Math.min(...m.t2)}_${Math.max(...m.t2)}`])));
-  const maxByPlayers=Math.floor(playerIds.length/4);
-  const numCourts=maxCourts?Math.min(maxCourts,maxByPlayers):maxByPlayers;
-  const playingCount=numCourts*4;
+/* ── Einzel-Courts (1v1) ──────────────────────────────────────────
+   singles[i]=true ⇒ Court i ist ein Einzel-Court: 2 Spieler (1v1)
+   statt 4 (2v2). planCourts liefert die Kapazitäten der nutzbaren
+   Courts in Index-Reihenfolge; passt ein Court nicht mehr komplett
+   in die Restspieler, bleibt er (und alles dahinter) leer — die
+   Reihenfolge bleibt so vorhersehbar (Court-Namen!). Ein 1v1-Match
+   trägt single:true und 1er-Teams (t1:[a], t2:[b]) — calcLeaderboard
+   und die Court-Karten arbeiten team-agnostisch damit. */
+const planCourts=(numPlayers,maxCourts,singles)=>{
+  const caps=[];let used=0;
+  const lim=maxCourts||Math.ceil(numPlayers/2);
+  for(let i=0;i<lim;i++){
+    const cap=singles?.[i]?2:4;
+    if(used+cap>numPlayers)break;
+    caps.push(cap);used+=cap;
+  }
+  return caps;
+};
+
+export function genAmericanoRound(playerIds,history=[],maxCourts=null,singles=[]){
+  // Wiederholungs-Keys: Partner-Paare (Doppel) + "s"-präfixte
+  // Gegner-Paare (Einzel — gleiche 1v1-Begegnung vermeiden).
+  const used=new Set(history.flatMap(r=>r.courts.flatMap(m=>m.single
+    ?[`s${Math.min(m.t1[0],m.t2[0])}_${Math.max(m.t1[0],m.t2[0])}`]
+    :[`${Math.min(...m.t1)}_${Math.max(...m.t1)}`,
+      `${Math.min(...m.t2)}_${Math.max(...m.t2)}`])));
+  const caps=planCourts(playerIds.length,maxCourts,singles);
+  const playingCount=caps.reduce((a,b)=>a+b,0);
   const numSit=playerIds.length-playingCount;
 
   // Fair sit-out: players with FEWEST prior sit-outs sit out next
@@ -52,29 +73,35 @@ export function genAmericanoRound(playerIds,history=[],maxCourts=null){
     : [];
   const playing=playerIds.filter(id=>!sitOut.includes(id));
 
-  for(let attempt=0;attempt<60;attempt++){
-    const s=shuffle(playing);const courts=[];let ok=true;
-    for(let i=0;i<playingCount;i+=4){
-      const p1=[s[i],s[i+1]].sort((a,b)=>a-b),p2=[s[i+2],s[i+3]].sort((a,b)=>a-b);
-      const k1=`${p1[0]}_${p1[1]}`,k2=`${p2[0]}_${p2[1]}`;
-      if(used.has(k1)||used.has(k2)){ok=false;break;}
-      courts.push({id:`c${i/4}`,t1:[s[i],s[i+1]],t2:[s[i+2],s[i+3]],s1:null,s2:null,done:false});
+  // Courts in Index-Reihenfolge aus s füllen (cap 2 ⇒ 1v1, cap 4 ⇒ 2v2).
+  const build=(s,check)=>{
+    const courts=[];let p=0;
+    for(let ci=0;ci<caps.length;ci++){
+      if(caps[ci]===2){
+        const k=`s${Math.min(s[p],s[p+1])}_${Math.max(s[p],s[p+1])}`;
+        if(check&&used.has(k))return null;
+        courts.push({id:`c${ci}`,t1:[s[p]],t2:[s[p+1]],s1:null,s2:null,done:false,single:true});
+        p+=2;
+      }else{
+        const p1=[s[p],s[p+1]].sort((a,b)=>a-b),p2=[s[p+2],s[p+3]].sort((a,b)=>a-b);
+        if(check&&(used.has(`${p1[0]}_${p1[1]}`)||used.has(`${p2[0]}_${p2[1]}`)))return null;
+        courts.push({id:`c${ci}`,t1:[s[p],s[p+1]],t2:[s[p+2],s[p+3]],s1:null,s2:null,done:false});
+        p+=4;
+      }
     }
-    if(ok) return {courts,sitOut};
+    return courts;
+  };
+  for(let attempt=0;attempt<60;attempt++){
+    const courts=build(shuffle(playing),true);
+    if(courts) return {courts,sitOut};
   }
   // Fallback: accept partner repeats if no clean config found
-  const s=shuffle(playing);
-  const courts=[];
-  for(let i=0;i<playingCount;i+=4){
-    courts.push({id:`c${i/4}`,t1:[s[i],s[i+1]],t2:[s[i+2],s[i+3]],s1:null,s2:null,done:false});
-  }
-  return {courts,sitOut};
+  return {courts:build(shuffle(playing),false),sitOut};
 }
 
-export function genMexicanoRound(playerIds,leaderboard,maxCourts=null,history=[]){
-  const maxByPlayers=Math.floor(playerIds.length/4);
-  const numCourts=maxCourts?Math.min(maxCourts,maxByPlayers):maxByPlayers;
-  const playingCount=numCourts*4;
+export function genMexicanoRound(playerIds,leaderboard,maxCourts=null,history=[],singles=[]){
+  const caps=planCourts(playerIds.length,maxCourts,singles);
+  const playingCount=caps.reduce((a,b)=>a+b,0);
   const numSit=playerIds.length-playingCount;
 
   // Fair sit-out (same as americano)
@@ -92,11 +119,19 @@ export function genMexicanoRound(playerIds,leaderboard,maxCourts=null,history=[]
     const la=leaderboard.find(x=>x.id===a),lb=leaderboard.find(x=>x.id===b);
     return (lb?.pts??0)-(la?.pts??0);
   });
-  const courts=[];
-  for(let i=0;i<playingCount;i+=4){
-    const g=sorted.slice(i,i+4);
-    courts.push({id:`c${i/4}`,t1:[g[0],g[3]],t2:[g[1],g[2]],s1:null,s2:null,done:false});
-  }
+  // Courts in Index-Reihenfolge nach Tabellenstand füllen:
+  // 2v2 → nächste 4 als 1+4 vs 2+3, 1v1 → nächste 2 als 1 vs 2.
+  const courts=[];let p=0;
+  caps.forEach((cap,ci)=>{
+    if(cap===2){
+      courts.push({id:`c${ci}`,t1:[sorted[p]],t2:[sorted[p+1]],s1:null,s2:null,done:false,single:true});
+      p+=2;
+    }else{
+      const g=sorted.slice(p,p+4);
+      courts.push({id:`c${ci}`,t1:[g[0],g[3]],t2:[g[1],g[2]],s1:null,s2:null,done:false});
+      p+=4;
+    }
+  });
   return {courts,sitOut};
 }
 
@@ -348,18 +383,20 @@ export function genKnockoutRound(playerIds,history=[],maxCourts=null){
 
 /* ── Dispatcher — eine Signatur für alle Modi. ────────────────────
    players: Array von Spieler-Objekten ({id,group,…}) oder rohe ids.
-   Gibt null zurück, wenn der Modus fertig ist (nur K.-o.). */
-export function genRound(format,players,{history=[],leaderboard=[],maxCourts=null}={}){
+   Gibt null zurück, wenn der Modus fertig ist (nur K.-o.).
+   singles (Einzel-Courts) gilt nur für Americano/Mexicano — Team-,
+   Gruppen- und Leiter-Formate brauchen zwingend 4er-Courts. */
+export function genRound(format,players,{history=[],leaderboard=[],maxCourts=null,singles=[]}={}){
   const objs=players.map(p=>(typeof p==='object'&&p!==null)?p:{id:p});
   const ids=objs.map(p=>p.id);
   switch(format){
-    case 'mexicano':      return genMexicanoRound(ids,leaderboard,maxCourts,history);
+    case 'mexicano':      return genMexicanoRound(ids,leaderboard,maxCourts,history,singles);
     case 'teamamericano': return genTeamAmericanoRound(ids,history,maxCourts);
     case 'teammexicano':  return genTeamMexicanoRound(ids,leaderboard,maxCourts,history);
     case 'mixicano':      return genMixicanoRound(objs,history,maxCourts);
     case 'kingofcourt':   return genKingOfCourtRound(ids,history,maxCourts);
     case 'knockout':      return genKnockoutRound(ids,history,maxCourts);
-    default:              return genAmericanoRound(ids,history,maxCourts);
+    default:              return genAmericanoRound(ids,history,maxCourts,singles);
   }
 }
 

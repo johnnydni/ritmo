@@ -10376,8 +10376,14 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
           <button onClick={shareResults}
             style={{marginTop:14,padding:'12px 24px',borderRadius:999,cursor:'pointer',
               background:T.oSoft,border:`1.5px solid ${T.o}`,color:T.o,
-              fontSize:13.5,fontWeight:800}}>
-            Ergebnis teilen ↗
+              fontSize:13.5,fontWeight:800,display:'inline-flex',
+              alignItems:'center',gap:8}}>
+            {/* iOS-Share-Glyph: Kasten mit Pfeil nach oben */}
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M8 10H6a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1h-2M12 14V3m0 0L8.5 6.5M12 3l3.5 3.5"
+                stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Ergebnis teilen
           </button>
         </div>
 

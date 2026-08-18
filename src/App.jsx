@@ -380,16 +380,6 @@ function Splash({onDone}){
           ))}
         </div>
       </div>
-
-      {/* "Hello there!" — Apple-Boot-Gruß, nur hier im Ladescreen. Weiß
-          hartkodiert wie der schwarze Grund; blendet sanft ein. */}
-      <div style={{position:'absolute',left:0,right:0,top:'57%',
-        display:'flex',justifyContent:'center',pointerEvents:'none',zIndex:2}}>
-        <span style={{color:'#fff',fontSize:30,fontWeight:700,fontStyle:'italic',
-          letterSpacing:-.5,lineHeight:1,animation:'fadeIn 1.4s ease .5s both'}}>
-          Hello there!
-        </span>
-      </div>
     </div>
   );
 }

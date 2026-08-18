@@ -636,6 +636,11 @@ input[type="time"]::-webkit-datetime-edit{padding:0;text-align:center;}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 /* Splash: pulsierende RITMO-Streifen statt Ladebalken — schlichter
    Loop (Opacity + leichtes Längen-Atmen, links verankert). */
+/* Splash-Intro: atmender Glow auf Schwarz, bevor das Video startet. */
+@keyframes splashPulse{
+  0%,100%{transform:translate(-50%,-50%) scale(1);opacity:.45;}
+  50%{transform:translate(-50%,-50%) scale(1.28);opacity:1;}
+}
 @keyframes stripePulse{
   0%,100%{opacity:.22;transform:scaleX(.86);}
   50%{opacity:1;transform:scaleX(1);}

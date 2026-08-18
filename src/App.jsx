@@ -352,14 +352,28 @@ function Splash({onDone}){
   const finish=()=>{ if(doneRef.current) return; doneRef.current=true; onDone(); };
   const[videoFailed,setVideoFailed]=useState(false);
   const playingRef=useRef(false);
+  // ── Intro-Phase: ~2 s schwarzer Pulse-Gradient, BEVOR das Video
+  // startet. Das Video ist währenddessen unsichtbar gemountet
+  // (preload läuft) und wird erst nach dem Intro per play() gestartet
+  // (muted → auch ohne Nutzer-Geste erlaubt).
+  const INTRO_MS=2000;
+  const[intro,setIntro]=useState(true);
   useEffect(()=>{
-    const t=setTimeout(()=>{ if(!playingRef.current) setVideoFailed(true); },2500);
+    const t=setTimeout(()=>setIntro(false),INTRO_MS);
     return()=>clearTimeout(t);
   },[]);
-  // Backstop-Timer: Video-Pfad 10 s (Video beendet sich via onEnded
-  // ohnehin früher), Fallback-Pfad wie bisher 4 s ab Umschalten.
   useEffect(()=>{
-    const t=setTimeout(finish,videoFailed?4000:10000);
+    if(intro||videoFailed) return;
+    vidRef.current?.play?.().catch(()=>setVideoFailed(true));
+    // Startet das Video binnen 2,5 s nach dem Intro nicht → Fallback.
+    const t=setTimeout(()=>{ if(!playingRef.current) setVideoFailed(true); },2500);
+    return()=>clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[intro,videoFailed]);
+  // Backstop-Timer: Video-Pfad 13 s (Intro 2 s + ~9 s Video; onEnded
+  // beendet ohnehin früher), Fallback-Pfad wie bisher 4 s ab Umschalten.
+  useEffect(()=>{
+    const t=setTimeout(finish,videoFailed?4000:13000);
     return()=>clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[videoFailed]);
@@ -433,11 +447,12 @@ function Splash({onDone}){
          iOS einen Streifen frei ließ. */
       background:'#000',overflow:'hidden',
       cursor:'pointer',userSelect:'none'}}>
-      {!videoFailed?(
-        /* ── Logomotion-Intro — spielt einmal, Ende öffnet die App. */
+      {!videoFailed?(<>
+        {/* ── Logomotion-Intro — startet NACH der Pulse-Phase (play()
+            im Intro-Effekt), spielt einmal, Ende öffnet die App. */}
         <video ref={vidRef}
           src={`${getAssetBase()}assets/logomotion720p.mp4`}
-          autoPlay muted playsInline preload="auto" aria-hidden="true"
+          muted playsInline preload="auto" aria-hidden="true"
           onPlaying={()=>{playingRef.current=true;fitRef.current?.();}}
           onError={()=>setVideoFailed(true)}
           onEnded={finish}
@@ -448,8 +463,19 @@ function Splash({onDone}){
              iOS-Video-Bug. */
           style={{position:'absolute',left:'50%',top:'50%',
             transform:'translate(-50%,-50%)',
-            objectFit:'cover',background:'#000',pointerEvents:'none'}}/>
-      ):(
+            objectFit:'cover',background:'#000',pointerEvents:'none',
+            opacity:intro?0:1,transition:'opacity .7s ease'}}/>
+        {/* ── Intro-Overlay: Schwarz mit atmendem Glow — blendet nach
+            INTRO_MS über dem startenden Video aus. */}
+        <div aria-hidden="true" style={{position:'absolute',inset:0,zIndex:2,
+          background:'#000',pointerEvents:'none',
+          opacity:intro?1:0,transition:'opacity .7s ease'}}>
+          <div style={{position:'absolute',left:'50%',top:'50%',
+            width:'72vmin',height:'72vmin',borderRadius:'50%',
+            background:'radial-gradient(circle, rgba(255,122,26,.30) 0%, rgba(255,122,26,.10) 42%, transparent 68%)',
+            animation:'splashPulse 1.9s ease-in-out infinite'}}/>
+        </div>
+      </>):(
         /* ── BACKUP-Splash (bisherige Einstellungen, unverändert) —
               dient als Fallback, wenn das Logomotion-Video nicht lädt. */
         <>

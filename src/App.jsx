@@ -363,11 +363,21 @@ function Splash({onDone}){
     return()=>clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[videoFailed]);
+  // Body-Hintergrund solange auf Schwarz zwingen — sonst scheint die
+  // Theme-Farbe als grauer Balken unter dem Splash durch (Home-
+  // Indicator-Zone / dvh-Rundung auf iOS). Beim Unmount zurücksetzen.
+  useEffect(()=>{
+    const prev=document.body.style.background;
+    document.body.style.background='#000';
+    return()=>{ document.body.style.background=prev; };
+  },[]);
   return(
-    <div onClick={finish} style={{height:'100dvh',width:'100vw',
+    <div onClick={finish} style={{position:'fixed',inset:0,zIndex:1000,
       /* Ladebildschirm IMMER schwarz — bewusst hartkodiert (#000),
-         unabhängig vom gewählten Theme. */
-      background:'#000',position:'relative',overflow:'hidden',
+         unabhängig vom gewählten Theme. fixed+inset:0 deckt den
+         KOMPLETTEN Viewport ab (inkl. Safe-Areas), wo 100dvh auf
+         iOS einen Streifen frei ließ. */
+      background:'#000',overflow:'hidden',
       cursor:'pointer',userSelect:'none'}}>
       {!videoFailed?(
         /* ── Logomotion-Intro — spielt einmal, Ende öffnet die App. */

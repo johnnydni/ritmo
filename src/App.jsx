@@ -9589,16 +9589,25 @@ function TournamentCourtCard({court,courtIndex,courtName,playerById,onScoreChang
 ═══════════════════════════════════════════════════════════════ */
 /* ── Pausen-Ausgleich einer Runde: aufgerundeter Mittelwert aller
    Punkte aus BESTÄTIGTEN Matches (spiegelt calcLeaderboard). null,
-   wenn noch kein Match bestätigt ist. */
-function roundMeanBonus(round){
-  const scores=[];
+   wenn noch kein Match bestätigt ist. Die Breakdown-Variante liefert
+   zusätzlich die Zusammensetzung fürs Runden-Abschluss-Popup:
+   parts = eine Wertung je Team (score × Spielerzahl, Court-Reihen-
+   folge), sum/count/mean = Rechenweg bis zum aufgerundeten Bonus. */
+function roundMeanBreakdown(round){
+  const parts=[];
   (round?.courts||[]).forEach(m=>{
     if(!m.done) return;
-    (m.t1||[]).forEach(()=>scores.push(m.s1??0));
-    (m.t2||[]).forEach(()=>scores.push(m.s2??0));
+    if((m.t1||[]).length) parts.push({score:m.s1??0,n:m.t1.length});
+    if((m.t2||[]).length) parts.push({score:m.s2??0,n:m.t2.length});
   });
-  if(!scores.length) return null;
-  return Math.ceil(scores.reduce((a,b)=>a+b,0)/scores.length);
+  if(!parts.length) return null;
+  const sum=parts.reduce((a,p)=>a+p.score*p.n,0);
+  const count=parts.reduce((a,p)=>a+p.n,0);
+  const mean=sum/count;
+  return {parts,sum,count,mean,bonus:Math.ceil(mean)};
+}
+function roundMeanBonus(round){
+  return roundMeanBreakdown(round)?.bonus??null;
 }
 
 /* Kleiner blauer Chip „⏸ +X" — kennzeichnet im Leaderboard farblich,
@@ -9676,8 +9685,13 @@ function ViewSwitchIcon({mode='round',size=24,color=T.o}){
 
 /* ── Runden-Abschluss-Bestätigung — macht den Pausen-Ausgleich
    TRANSPARENT: zeigt vor dem Rundenwechsel den aufgerundeten
-   Mittelwert dieser Runde und wer ihn gutgeschrieben bekommt. */
-function RoundEndModal({roundNo,bonus,names,winMode,onConfirm,onCancel}){
+   Mittelwert dieser Runde, den kompletten Rechenweg (jede Team-
+   Wertung × Spieler → Summe ÷ Wertungen → Mittelwert → aufgerundet)
+   und wer ihn gutgeschrieben bekommt. */
+function RoundEndModal({roundNo,breakdown,names,winMode,onConfirm,onCancel}){
+  const bonus=breakdown?.bonus??null;
+  // Mittelwert deutsch formatiert (max. 2 Nachkommastellen).
+  const meanStr=breakdown?(Math.round(breakdown.mean*100)/100).toLocaleString('de-DE'):'';
   return(
     <div onClick={onCancel} style={{position:'fixed',inset:0,zIndex:300,
       background:'rgba(0,0,0,.72)',backdropFilter:'blur(4px)',
@@ -9712,8 +9726,31 @@ function RoundEndModal({roundNo,bonus,names,winMode,onConfirm,onCancel}){
                   </div>
                 </div>
               </div>
+              {/* Rechenweg: jede Team-Wertung zählt einmal pro Spieler
+                  (score×n), dann Summe ÷ Wertungen → Mittelwert → ceil. */}
+              <div style={{marginTop:10,padding:'9px 12px',borderRadius:11,
+                background:T.card,border:`1px solid ${T.border}`}}>
+                <div style={{color:T.t3,fontSize:9.5,fontWeight:800,letterSpacing:1.1,
+                  textTransform:'uppercase',marginBottom:5}}>
+                  So setzt er sich zusammen
+                </div>
+                <div style={{color:T.t2,fontSize:11.5,lineHeight:1.6,
+                  fontVariantNumeric:'tabular-nums',wordBreak:'break-word'}}>
+                  {breakdown.parts.map(p=>`${p.score}×${p.n}`).join(' + ')}
+                  <span style={{color:T.t3}}>{' '}(Team-Punkte × Spieler)</span>
+                </div>
+                <div style={{color:T.t1,fontSize:12,fontWeight:700,marginTop:4,
+                  fontVariantNumeric:'tabular-nums'}}>
+                  = {breakdown.sum} Punkte ÷ {breakdown.count} Wertungen
+                  {' '}= Ø {meanStr}
+                  {breakdown.bonus!==breakdown.mean&&(
+                    <span style={{color:T.blue}}>{' '}→ aufgerundet +{breakdown.bonus}</span>
+                  )}
+                </div>
+              </div>
               <div style={{color:T.t1,fontSize:13,fontWeight:600,marginTop:10}}>
                 geht an: <span style={{color:T.blue,fontWeight:800}}>{names.join(', ')}</span>
+                <span style={{color:T.t3,fontWeight:500}}> — je +{bonus} Punkte</span>
               </div>
             </div>
           ):(
@@ -10085,7 +10122,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
     if(so.length===0){ nextRound(); return; }
     setRoundEndInfo({
       roundNo:tourney.current+1,
-      bonus:tourney.winMode==='points'?roundMeanBonus(round):null,
+      breakdown:tourney.winMode==='points'?roundMeanBreakdown(round):null,
       names:so.map(id=>playerById(id)?.name||'?'),
     });
   };
@@ -10372,7 +10409,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
       {roundEndInfo&&(
         <RoundEndModal
           roundNo={roundEndInfo.roundNo}
-          bonus={roundEndInfo.bonus}
+          breakdown={roundEndInfo.breakdown}
           names={roundEndInfo.names}
           winMode={tourney.winMode}
           onCancel={()=>setRoundEndInfo(null)}

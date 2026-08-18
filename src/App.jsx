@@ -4338,34 +4338,40 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
           WebkitBackdropFilter:'blur(18px) saturate(160%)',
           backdropFilter:'blur(18px) saturate(160%)',
           borderBottom:'1px solid color-mix(in srgb, var(--t1) 10%, transparent)'}}/>
-        <div style={{position:'absolute',left:9,
-            top:'calc(env(safe-area-inset-top,0px) + 4px)'}}>
+        {/* Eine gemeinsame Flex-Zeile: Wordmark links, Glocke+Menü
+            rechts — beide über alignItems:center auf derselben
+            Mittellinie. Die Buttons sitzen in einer Liquid-Glass-
+            Pille (gleiches Material wie Home-Karten/Navbar). */}
+        <div style={{position:'absolute',left:9,right:13,
+          top:'env(safe-area-inset-top,0px)',height:64,
+          display:'flex',alignItems:'center',justifyContent:'space-between'}}>
           {/* Größer als die 40er-Standardmarke: ohne Begrüßung trägt
               das Logo allein den Home-Header. */}
           <RitmoWordmark size={54} style={{marginLeft:-24,display:'block'}}/>
-        </div>
-        <div style={{position:'absolute',right:13,
-          top:'calc(env(safe-area-inset-top,0px) + 16px)',
-          display:'flex',alignItems:'center',gap:20,pointerEvents:'auto'}}>
-          <button onClick={()=>nav('ritmopost')}
-            aria-label="Benachrichtigungen"
-            style={{background:'none',border:'none',padding:4,position:'relative',
-              color:T.t1,cursor:'pointer',display:'inline-flex'}}>
-            <BellIcon size={23}/>
-            {hasUnread&&(
-              <span aria-label="Ungelesene Nachrichten"
-                style={{position:'absolute',top:1,right:1,
-                  width:9,height:9,borderRadius:'50%',
-                  background:T.r,
-                  boxShadow:`0 0 0 2px ${T.bg}`}}/>
-            )}
-          </button>
-          <button onClick={()=>nav('settings')}
-            aria-label="Einstellungen"
-            style={{background:'none',border:'none',padding:4,
-              color:T.t1,cursor:'pointer',display:'inline-flex'}}>
-            <MenuIcon size={24}/>
-          </button>
+          <div style={{position:'relative',borderRadius:999,overflow:'hidden',
+            pointerEvents:'auto',display:'flex',alignItems:'center',gap:10,
+            padding:'6px 10px'}}>
+            <GlassSurface {...HOME_CARD_GLASS} borderRadius={999}/>
+            <button onClick={()=>nav('ritmopost')}
+              aria-label="Benachrichtigungen"
+              style={{background:'none',border:'none',padding:4,position:'relative',
+                zIndex:1,color:T.t1,cursor:'pointer',display:'inline-flex'}}>
+              <BellIcon size={23}/>
+              {hasUnread&&(
+                <span aria-label="Ungelesene Nachrichten"
+                  style={{position:'absolute',top:1,right:1,
+                    width:9,height:9,borderRadius:'50%',
+                    background:T.r,
+                    boxShadow:`0 0 0 2px ${T.bg}`}}/>
+              )}
+            </button>
+            <button onClick={()=>nav('settings')}
+              aria-label="Einstellungen"
+              style={{background:'none',border:'none',padding:4,position:'relative',
+                zIndex:1,color:T.t1,cursor:'pointer',display:'inline-flex'}}>
+              <MenuIcon size={24}/>
+            </button>
+          </div>
         </div>
       </div>
 

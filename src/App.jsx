@@ -411,6 +411,8 @@ function Splash({onDone}){
   // scaleX = currentTime/duration, füllt sich also erst ab Video-
   // Start und über die GESAMTE Videolänge.
   const barRef=useRef(null);
+  // Ab der Hälfte des Ladebalkens: subtiler "Tippe zum starten"-Hinweis.
+  const[hintOn,setHintOn]=useState(false);
   useEffect(()=>{
     if(videoFailed) return;
     let raf;
@@ -418,9 +420,11 @@ function Splash({onDone}){
       const v=vidRef.current,b=barRef.current;
       if(v&&v.duration>0){
         // Dramaturgie: erste Videohälfte in 0,5× (Zeitlupe), Rest 1×.
-        const rate=v.currentTime<v.duration/2?0.5:1;
+        const p=v.currentTime/v.duration;
+        const rate=p<0.5?0.5:1;
         if(v.playbackRate!==rate) v.playbackRate=rate;
-        if(b) b.style.transform=`scaleX(${Math.min(1,v.currentTime/v.duration)})`;
+        if(b) b.style.transform=`scaleX(${Math.min(1,p)})`;
+        if(p>=0.5) setHintOn(true); // idempotent — React ignoriert no-ops
       }
       raf=requestAnimationFrame(loop);
     };
@@ -508,6 +512,14 @@ function Splash({onDone}){
           <div ref={barRef} style={{width:'100%',height:'100%',borderRadius:2,
             background:'#fff',transformOrigin:'left center',
             transform:'scaleX(0)'}}/>
+        </div>
+        {/* Subtiler Skip-Hinweis — blendet ab der Hälfte des Balkens ein. */}
+        <div aria-hidden="true" style={{position:'absolute',left:'50%',zIndex:3,
+          top:'calc(58% + 16px)',transform:'translateX(-50%)',
+          color:'rgba(255,255,255,.7)',fontSize:11.5,fontWeight:600,
+          letterSpacing:1.1,whiteSpace:'nowrap',pointerEvents:'none',
+          opacity:hintOn?1:0,transition:'opacity 1s ease'}}>
+          Tippe zum starten
         </div>
       </>):(
         /* ── BACKUP-Splash (bisherige Einstellungen, unverändert) —

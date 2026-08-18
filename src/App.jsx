@@ -344,42 +344,68 @@ function BetaLanding({onLogin,onRegister}){
    SPLASH SCREEN
 ═══════════════════════════════════════════════════════════════ */
 function Splash({onDone}){
-  // Nach ~4 s öffnet die App automatisch (vorher hing das am
-  // animationend des Ladebalkens); ein Tap überspringt sofort.
+  // Primär läuft das Logomotion-Video (~9 s, einmal durch — Ende
+  // öffnet die App, Tap überspringt sofort). Startet es nicht binnen
+  // 2,5 s oder wirft es einen Fehler, greift der BACKUP-Splash unten
+  // (bisheriges Setup: Loading-Video im Loop + Puls-Streifen, 4 s).
   const doneRef=useRef(false);
   const finish=()=>{ if(doneRef.current) return; doneRef.current=true; onDone(); };
+  const[videoFailed,setVideoFailed]=useState(false);
+  const playingRef=useRef(false);
   useEffect(()=>{
-    const t=setTimeout(finish,4000);
+    const t=setTimeout(()=>{ if(!playingRef.current) setVideoFailed(true); },2500);
+    return()=>clearTimeout(t);
+  },[]);
+  // Backstop-Timer: Video-Pfad 10 s (Video beendet sich via onEnded
+  // ohnehin früher), Fallback-Pfad wie bisher 4 s ab Umschalten.
+  useEffect(()=>{
+    const t=setTimeout(finish,videoFailed?4000:10000);
     return()=>clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[]);
+  },[videoFailed]);
   return(
     <div onClick={finish} style={{height:'100dvh',width:'100vw',
       /* Ladebildschirm IMMER schwarz — bewusst hartkodiert (#000),
          unabhängig vom gewählten Theme. */
       background:'#000',position:'relative',overflow:'hidden',
       cursor:'pointer',userSelect:'none'}}>
-      {/* Loading-Video — füllt den Screen auf schwarzem Grund. */}
-      <video
-        src={`${getAssetBase()}assets/ritmo-loadingscreen.mp4`}
-        autoPlay muted playsInline loop preload="auto" aria-hidden="true"
-        style={{position:'absolute',inset:0,width:'100%',height:'100%',
-          objectFit:'contain',background:'#000',pointerEvents:'none'}}/>
+      {!videoFailed?(
+        /* ── Logomotion-Intro — spielt einmal, Ende öffnet die App. */
+        <video
+          src={`${getAssetBase()}assets/logomotion720p.mp4`}
+          autoPlay muted playsInline preload="auto" aria-hidden="true"
+          onPlaying={()=>{playingRef.current=true;}}
+          onError={()=>setVideoFailed(true)}
+          onEnded={finish}
+          style={{position:'absolute',inset:0,width:'100%',height:'100%',
+            objectFit:'contain',background:'#000',pointerEvents:'none'}}/>
+      ):(
+        /* ── BACKUP-Splash (bisherige Einstellungen, unverändert) —
+              dient als Fallback, wenn das Logomotion-Video nicht lädt. */
+        <>
+          {/* Loading-Video — füllt den Screen auf schwarzem Grund. */}
+          <video
+            src={`${getAssetBase()}assets/ritmo-loadingscreen.mp4`}
+            autoPlay muted playsInline loop preload="auto" aria-hidden="true"
+            style={{position:'absolute',inset:0,width:'100%',height:'100%',
+              objectFit:'contain',background:'#000',pointerEvents:'none'}}/>
 
-      {/* Pulsierende RITMO-Streifen statt Ladebalken — schlicht, im
-          Loop (Echo der Logo-Speed-Lines), knapp unter dem Splash-Logo.
-          Brand-Orange bewusst hartkodiert wie der schwarze Grund. */}
-      <div style={{position:'absolute',left:0,right:0,top:'47%',
-        display:'flex',justifyContent:'center',pointerEvents:'none',zIndex:2}}>
-        <div style={{display:'flex',flexDirection:'column',gap:7}}>
-          {[64,42,26].map((w,i)=>(
-            <span key={i} style={{width:w,height:5.5,borderRadius:3,
-              background:'#FF7A1A',transformOrigin:'left center',
-              animation:`stripePulse 1.5s ease-in-out ${i*0.18}s infinite`,
-              display:'block'}}/>
-          ))}
-        </div>
-      </div>
+          {/* Pulsierende RITMO-Streifen statt Ladebalken — schlicht, im
+              Loop (Echo der Logo-Speed-Lines), knapp unter dem Splash-Logo.
+              Brand-Orange bewusst hartkodiert wie der schwarze Grund. */}
+          <div style={{position:'absolute',left:0,right:0,top:'47%',
+            display:'flex',justifyContent:'center',pointerEvents:'none',zIndex:2}}>
+            <div style={{display:'flex',flexDirection:'column',gap:7}}>
+              {[64,42,26].map((w,i)=>(
+                <span key={i} style={{width:w,height:5.5,borderRadius:3,
+                  background:'#FF7A1A',transformOrigin:'left center',
+                  animation:`stripePulse 1.5s ease-in-out ${i*0.18}s infinite`,
+                  display:'block'}}/>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

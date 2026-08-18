@@ -401,8 +401,12 @@ function Splash({onDone}){
           onEnded={finish}
           /* cover statt contain: fuellt den ganzen Screen inkl.
              Statusbar-/Home-Indicator-Zone — Raender werden beschnitten
-             statt schwarz geletterboxt. */
-          style={{position:'absolute',inset:0,width:'100%',height:'100%',
+             statt schwarz geletterboxt. Bewusst 6% ueber die Container-
+             Kanten hinaus gezeichnet: falls iOS den Viewport im
+             Standalone-Modus intern um Safe-Areas kuerzt, deckt das
+             Video die Zonen trotzdem ab (cover beschneidet ohnehin). */
+          style={{position:'absolute',left:0,right:0,top:'-6%',bottom:'-6%',
+            width:'100%',height:'112%',
             objectFit:'cover',background:'#000',pointerEvents:'none'}}/>
       ):(
         /* ── BACKUP-Splash (bisherige Einstellungen, unverändert) —

@@ -387,8 +387,11 @@ function Splash({onDone}){
           onPlaying={()=>{playingRef.current=true;}}
           onError={()=>setVideoFailed(true)}
           onEnded={finish}
+          /* cover statt contain: fuellt den ganzen Screen inkl.
+             Statusbar-/Home-Indicator-Zone — Raender werden beschnitten
+             statt schwarz geletterboxt. */
           style={{position:'absolute',inset:0,width:'100%',height:'100%',
-            objectFit:'contain',background:'#000',pointerEvents:'none'}}/>
+            objectFit:'cover',background:'#000',pointerEvents:'none'}}/>
       ):(
         /* ── BACKUP-Splash (bisherige Einstellungen, unverändert) —
               dient als Fallback, wenn das Logomotion-Video nicht lädt. */

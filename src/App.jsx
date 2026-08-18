@@ -6664,10 +6664,11 @@ function SwipeableCard({children,onDelete,onShare,onMore}){
   },[tx,swiping]);
 
   // Reihenfolge links → rechts in der aufgeklappten Leiste.
+  // Pill-Farben nach iOS-Mail-Vorbild: grau / brand-orange / rot.
   const acts=[
-    onMore &&{key:'more', label:'mehr',   glyph:'…', bg:T.card2,fg:T.t1, run:onMore},
-    onShare&&{key:'share',label:'Teilen', glyph:'↗', bg:T.o,   fg:'#fff',run:onShare},
-    onDelete&&{key:'del', label:'Löschen',glyph:null,bg:T.r,   fg:'#fff',run:null},
+    onMore &&{key:'more', label:'mehr',   glyph:'…', bg:'#8E8E93',run:onMore},
+    onShare&&{key:'share',label:'Teilen', glyph:'↗', bg:T.o,      run:onShare},
+    onDelete&&{key:'del', label:'Löschen',glyph:null,bg:T.r,      run:null},
   ].filter(Boolean);
   const BTN=74, W=acts.length*BTN, MAX=W+120;
 
@@ -6711,10 +6712,11 @@ function SwipeableCard({children,onDelete,onShare,onMore}){
 
   return(
     <div style={{position:'relative',overflow:'hidden',borderRadius:20}}>
-      {/* Action-Leiste — füllt die komplette Card-Fläche (inset:0) mit
-          gleichem Radius, sodass die Buttons die Card beim Swipen sauber
-          umhüllen statt als kantiger Streifen abzustehen. */}
-      <div style={{position:'absolute',inset:0,borderRadius:20,background:T.card2}}>
+      {/* Action-Leiste — freistehende Pills nach iOS-Mail-Vorbild:
+          farbige Kapsel mit Glyph, Label darunter, KEIN durchgehender
+          Farbblock an der Kartenkante — hinter den Pills schimmert der
+          Screen-Hintergrund durch. */}
+      <div style={{position:'absolute',inset:0}}>
         {acts.map((a,i)=>{
           const j=n-1-i; // Abstand von der rechten Kante (Löschen: 0)
           const isDel=a.key==='del';
@@ -6725,17 +6727,22 @@ function SwipeableCard({children,onDelete,onShare,onMore}){
                 transform:`translateX(${-j*reveal/n}px)`,
                 transition:swiping?'none':'transform .25s cubic-bezier(.3,0,.2,1), width .25s cubic-bezier(.3,0,.2,1)',
                 opacity:Math.min(1,Math.max(0,(reveal/W)*n-j)),
-                zIndex:n-j,background:a.bg,cursor:'pointer',color:a.fg,
+                zIndex:n-j,cursor:'pointer',userSelect:'none',
                 display:'flex',flexDirection:'column',alignItems:'center',
-                justifyContent:'center',gap:4,fontSize:11.5,fontWeight:800,
-                letterSpacing:.3,userSelect:'none'}}>
-              {isDel
-                ?<svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <path d="M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13" stroke="#fff"
-                      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                :<span style={{fontSize:a.key==='more'?20:15,lineHeight:'15px',fontWeight:800}}>{a.glyph}</span>}
-              {a.label}
+                justifyContent:'center',gap:6}}>
+              <div style={{width:54,height:40,borderRadius:999,background:a.bg,
+                display:'flex',alignItems:'center',justifyContent:'center',color:'#fff'}}>
+                {isDel
+                  ?<svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13" stroke="#fff"
+                        strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  :<span style={{fontSize:a.key==='more'?21:16,lineHeight:'16px',
+                      fontWeight:800}}>{a.glyph}</span>}
+              </div>
+              <span style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:.2}}>
+                {a.label}
+              </span>
             </div>
           );
         })}

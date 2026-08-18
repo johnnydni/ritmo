@@ -500,13 +500,15 @@ function Splash({onDone}){
             background:'radial-gradient(circle, rgba(255,122,26,.30) 0%, rgba(255,122,26,.10) 42%, transparent 68%)',
             animation:'splashPulse 1.9s ease-in-out infinite'}}/>
           {/* RITMO-Schriftzug (weiß, transparentes PNG) über dem Glow —
-              nach rechts versetzt, sodass die MITTE DES R auf der
-              Bildschirmmitte sitzt (R-Zentrum = 12,2% der Bildbreite,
-              vermessen aus dem PNG) — deckungsgleich mit dem R-Logo
-              im anschließenden Video. */}
+              startet ZENTRIERT und slidet dann smooth nach rechts, bis
+              die R-Mitte auf der Bildschirmmitte sitzt (12,2% der
+              Bildbreite, aus dem PNG vermessen) — deckungsgleich mit
+              dem R-Logo im anschließenden Video. Timing: 0,7 s ruhig
+              mittig, 1 s Slide, endet kurz vor dem Video-Crossfade. */}
           <img src={`${getAssetBase()}assets/ritmo-lettering.png`} alt="RITMO"
             style={{position:'absolute',left:'50%',top:'50%',
-              transform:'translate(-12.2%,-50%)',width:'min(56vw, 260px)',
+              transform:'translate(-50%,-50%)',width:'min(56vw, 260px)',
+              animation:'splashSlideR 1s cubic-bezier(.65,0,.35,1) .7s both',
               height:'auto',pointerEvents:'none'}}/>
         </div>
         {/* Simpler weißer Ladebalken — leicht unter dem Zentrum:

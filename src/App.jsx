@@ -363,13 +363,25 @@ function Splash({onDone}){
     return()=>clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[videoFailed]);
-  // Body-Hintergrund solange auf Schwarz zwingen — sonst scheint die
-  // Theme-Farbe als grauer Balken unter dem Splash durch (Home-
-  // Indicator-Zone / dvh-Rundung auf iOS). Beim Unmount zurücksetzen.
+  // html/body/theme-color solange auf Schwarz zwingen: die Zonen
+  // außerhalb des Web-Viewports (Safari-Bottom-Bar, Safe-Areas)
+  // werden von iOS mit html-Hintergrund bzw. theme-color getönt —
+  // sonst stehen sie als grauer Balken unter dem Video. Der App-
+  // Theme-Sync pausiert währenddessen (scr==='splash'-Guard) und
+  // stellt die Theme-Farben nach dem Splash wieder her.
   useEffect(()=>{
-    const prev=document.body.style.background;
+    const prevBody=document.body.style.background;
+    const prevHtml=document.documentElement.style.background;
+    const meta=document.getElementById('theme-color-meta');
+    const prevMeta=meta?.getAttribute('content');
     document.body.style.background='#000';
-    return()=>{ document.body.style.background=prev; };
+    document.documentElement.style.background='#000';
+    meta?.setAttribute('content','#000000');
+    return()=>{
+      document.body.style.background=prevBody;
+      document.documentElement.style.background=prevHtml;
+      if(meta&&prevMeta) meta.setAttribute('content',prevMeta);
+    };
   },[]);
   return(
     <div onClick={finish} style={{position:'fixed',inset:0,zIndex:1000,
@@ -18521,6 +18533,13 @@ export default function App(){
   // Also sync the theme-color meta tag so iOS/Android system UI matches
   useEffect(()=>{
     document.documentElement.setAttribute('data-theme',theme);
+    // Während des Splash NICHT syncen: der Splash zwingt html/body/
+    // theme-color auf Schwarz (Safari tönt damit seine Bottom-Bar) —
+    // dieser Effekt lief sonst danach und überschrieb das sofort
+    // wieder mit der Theme-Farbe (→ grauer Balken unter dem Video).
+    // scr in den Deps: nach dem Splash läuft er erneut und stellt
+    // die Theme-Farben normal her.
+    if(scr==='splash') return;
     // Read computed --bg value and reflect it to body inline bg + theme-color meta.
     // Done in a microtask so the data-theme attribute is fully applied first.
     Promise.resolve().then(()=>{
@@ -18532,7 +18551,7 @@ export default function App(){
         if(meta) meta.setAttribute('content',bg);
       }catch(e){}
     });
-  },[theme]);
+  },[theme,scr]);
 
   // App-level KeyCapture: lives outside Match's render tree so bigScreen
   // toggles in Match never unmount/remount the hidden input. Match registers

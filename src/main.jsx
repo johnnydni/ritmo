@@ -45,3 +45,14 @@ async function bootstrap() {
 }
 
 bootstrap();
+
+// Service Worker → vollwertige PWA (offline-fähig, schnellere Starts).
+// Nach dem load-Event registriert, damit er den Erst-Start nicht bremst.
+// Scope folgt automatisch dem Deploy-Pfad (Root oder /repo/ auf GH Pages).
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register(`${import.meta.env.BASE_URL}sw.js`)
+      .catch((e) => console.warn("[RITMO] SW-Registrierung fehlgeschlagen:", e));
+  });
+}

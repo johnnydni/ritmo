@@ -6640,6 +6640,15 @@ function SwipeableCard({children,onDelete,onShare,onMore}){
   const startTx=useRef(0);
   const moved=useRef(false);
 
+  // Offene/halb offene Action-Leiste nach 3 s automatisch wieder
+  // einfahren — außer während des Wischens und beim Lösch-Flyout
+  // (tx<=-400), das von doDelete() selbst abgeräumt wird.
+  useEffect(()=>{
+    if(swiping||tx===0||tx<=-400) return;
+    const t=setTimeout(()=>setTx(0),3000);
+    return()=>clearTimeout(t);
+  },[tx,swiping]);
+
   // Reihenfolge links → rechts in der aufgeklappten Leiste.
   const acts=[
     onMore &&{key:'more', label:'mehr',   glyph:'…', bg:T.card2,fg:T.t1, run:onMore},
@@ -10538,8 +10547,9 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
    LIVE SCREEN
 ═══════════════════════════════════════════════════════════════ */
 function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
-  onDeleteMatch,onDeleteTourney,onOpenTourney,joinedSession,onLeaveJoined}){
+  onDeleteMatch,onDeleteTourney,onOpenTourney,joinedSession,onLeaveJoined,onDeleteAll}){
   const[moreItem,setMoreItem]=useState(null); // Item fürs "… mehr"-Sheet
+  const[confirmAll,setConfirmAll]=useState(false); // "Alle löschen"-Popup
 
   // ── Teilen über die native Share-API (WhatsApp & Co.);
   // Desktop-Fallback Zwischenablage. Abbruch des Dialogs ist kein Fehler.
@@ -10627,6 +10637,24 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
         subtitle={items.length>0?'← Wische nach links für Optionen':null}
         icon={<LiveTabIcon size={34}/>}/>
 
+      {/* "Alle löschen" — Icon-Button im Stil der Turnier-Screen-Buttons
+          (orange umrandet, Trash-Glyph). Löscht nach Bestätigung Match
+          + alle Turniere/Entwürfe; die Online-Session bleibt bestehen. */}
+      {(hasMatch||tourneys.length>0)&&(
+        <button onClick={()=>{buzz(8);setConfirmAll(true);}}
+          title="Alle Spiele & Turniere löschen" aria-label="Alle Spiele & Turniere löschen"
+          style={{position:'absolute',right:22,
+            top:'calc(env(safe-area-inset-top,0px) + 64px)',zIndex:5,
+            width:46,height:46,background:T.bg,border:`2px solid ${T.o}`,
+            borderRadius:16,cursor:'pointer',
+            display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13" stroke={T.o}
+              strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+      )}
+
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
 
         {items.length===0&&(
@@ -10674,6 +10702,17 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
       <div style={{height:120}}/>
       <BottomFade/>
       <TabBar active={activeTab} onTab={setActiveTab}/>
+
+      {/* "Alle löschen" bestätigen */}
+      {confirmAll&&(
+        <ResetModal
+          title="Alles löschen"
+          description="Laufendes Match und alle Turniere samt Entwürfen werden aus dem Live-Screen entfernt."
+          question="Wirklich alle Spiele & Turniere löschen?"
+          confirmLabel="Alle löschen"
+          onCancel={()=>setConfirmAll(false)}
+          onConfirm={()=>{setConfirmAll(false);buzz(18);onDeleteAll?.();}}/>
+      )}
 
       {/* "… mehr"-Sheet — Details + alle Aktionen des Items gesammelt. */}
       {moreItem&&(
@@ -18692,6 +18731,23 @@ export default function App(){
     });
   };
 
+  // „Alle löschen" (Live-Screen): Match-Scoreboards + sämtliche
+  // Turniere/Entwürfe in einem Schritt, mit gemeinsamem Undo-Toast.
+  // Die Online-Session bleibt bewusst unangetastet (verlassen ≠ löschen).
+  const deleteAllLive=()=>{
+    const snap={bo3,am,tourneys,currentTourneyId};
+    dBo3({type:'RESET'});
+    dAm({type:'RESET',limit:cfg.amLimit??21});
+    setTourneys([]);
+    setCurrentTourneyId(null);
+    offerUndo('Alle Spiele & Turniere gelöscht',()=>{
+      dBo3({type:'_R',s:snap.bo3});
+      dAm({type:'_R',s:snap.am});
+      setTourneys(snap.tourneys);
+      setCurrentTourneyId(snap.currentTourneyId);
+    });
+  };
+
   // Wird von Match + TournamentPlay aufgerufen, sobald ein Match
   // tatsächlich geloggt wird (winner-Transition / done=true→logged).
   // Inkrementiert profile.matchesPlayed (+ winsCount wenn user_won).
@@ -18876,6 +18932,7 @@ export default function App(){
       matchCfg={cfg}
       activeTab={activeTab} setActiveTab={handleTab}
       onDeleteMatch={deleteMatch} onDeleteTourney={deleteTourney} onOpenTourney={openTourney}
+      onDeleteAll={deleteAllLive}
       joinedSession={joinedSession}
       onLeaveJoined={()=>setJoinedSession(null)}/>}
     {scr==='settings'&&<Settings onHome={goHome} nav={nav}

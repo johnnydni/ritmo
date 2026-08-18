@@ -406,6 +406,23 @@ function Splash({onDone}){
   // Video nicht letterboxen.
   const vidRef=useRef(null);
   const fitRef=useRef(null);
+  // Ladebalken-Fortschritt: läuft per rAF mit dem Video mit —
+  // scaleX = currentTime/duration, füllt sich also erst ab Video-
+  // Start und über die GESAMTE Videolänge.
+  const barRef=useRef(null);
+  useEffect(()=>{
+    if(videoFailed) return;
+    let raf;
+    const loop=()=>{
+      const v=vidRef.current,b=barRef.current;
+      if(v&&b&&v.duration>0){
+        b.style.transform=`scaleX(${Math.min(1,v.currentTime/v.duration)})`;
+      }
+      raf=requestAnimationFrame(loop);
+    };
+    raf=requestAnimationFrame(loop);
+    return()=>cancelAnimationFrame(raf);
+  },[videoFailed]);
   useEffect(()=>{
     if(videoFailed) return;
     const AR=720/1280; // logomotion720p ist 720×1280 (9:16)
@@ -474,15 +491,18 @@ function Splash({onDone}){
             width:'72vmin',height:'72vmin',borderRadius:'50%',
             background:'radial-gradient(circle, rgba(255,122,26,.30) 0%, rgba(255,122,26,.10) 42%, transparent 68%)',
             animation:'splashPulse 1.9s ease-in-out infinite'}}/>
-          {/* Simpler weißer Ladebalken — leicht unter dem Zentrum,
-              füllt sich über die Intro-Dauer. */}
-          <div style={{position:'absolute',left:'50%',top:'58%',
-            transform:'translateX(-50%)',width:148,height:3,borderRadius:2,
-            background:'rgba(255,255,255,.16)',overflow:'hidden'}}>
-            <div style={{width:'100%',height:'100%',borderRadius:2,background:'#fff',
-              transformOrigin:'left center',
-              animation:`splashBarFill ${INTRO_MS}ms ease-out forwards`}}/>
-          </div>
+        </div>
+        {/* Simpler weißer Ladebalken — leicht unter dem Zentrum, ÜBER
+            Intro und Video: bleibt beim Intro leere Schiene und füllt
+            sich erst mit dem Video-Fortschritt (rAF aus currentTime/
+            duration) über die gesamte Videolänge. */}
+        <div style={{position:'absolute',left:'50%',top:'58%',zIndex:3,
+          transform:'translateX(-50%)',width:148,height:3,borderRadius:2,
+          background:'rgba(255,255,255,.16)',overflow:'hidden',
+          pointerEvents:'none'}}>
+          <div ref={barRef} style={{width:'100%',height:'100%',borderRadius:2,
+            background:'#fff',transformOrigin:'left center',
+            transform:'scaleX(0)'}}/>
         </div>
       </>):(
         /* ── BACKUP-Splash (bisherige Einstellungen, unverändert) —

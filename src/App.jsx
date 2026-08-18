@@ -492,13 +492,14 @@ function Splash({onDone}){
             background:'radial-gradient(circle, rgba(255,122,26,.30) 0%, rgba(255,122,26,.10) 42%, transparent 68%)',
             animation:'splashPulse 1.9s ease-in-out infinite'}}/>
         </div>
-        {/* Simpler weißer Ladebalken — leicht unter dem Zentrum, ÜBER
-            Intro und Video: bleibt beim Intro leere Schiene und füllt
-            sich erst mit dem Video-Fortschritt (rAF aus currentTime/
-            duration) über die gesamte Videolänge. */}
+        {/* Simpler weißer Ladebalken — leicht unter dem Zentrum:
+            erscheint erst NACH dem Pulse-Intro (blendet mit dem Video
+            ein) und füllt sich mit dem Video-Fortschritt (rAF aus
+            currentTime/duration) über die gesamte Videolänge. */}
         <div style={{position:'absolute',left:'50%',top:'58%',zIndex:3,
           transform:'translateX(-50%)',width:148,height:3,borderRadius:2,
           background:'rgba(255,255,255,.16)',overflow:'hidden',
+          opacity:intro?0:1,transition:'opacity .7s ease',
           pointerEvents:'none'}}>
           <div ref={barRef} style={{width:'100%',height:'100%',borderRadius:2,
             background:'#fff',transformOrigin:'left center',

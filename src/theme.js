@@ -636,6 +636,13 @@ input[type="time"]::-webkit-datetime-edit{padding:0;text-align:center;}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 /* Splash: pulsierende RITMO-Streifen statt Ladebalken — schlichter
    Loop (Opacity + leichtes Längen-Atmen, links verankert). */
+/* Splash-Intro: RITMO startet zentriert und slidet nach rechts, bis
+   die R-Mitte auf der Bildschirmmitte liegt (12,2% der Bildbreite —
+   deckungsgleich mit dem R-Logo im anschließenden Video). */
+@keyframes splashSlideR{
+  from{transform:translate(-50%,-50%);}
+  to{transform:translate(-12.2%,-50%);}
+}
 /* Splash-Intro: atmender Glow auf Schwarz, bevor das Video startet. */
 @keyframes splashPulse{
   0%,100%{transform:translate(-50%,-50%) scale(1);opacity:.45;}

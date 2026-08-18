@@ -424,7 +424,10 @@ function Splash({onDone}){
         const rate=p<0.5?0.5:1;
         if(v.playbackRate!==rate) v.playbackRate=rate;
         if(b) b.style.transform=`scaleX(${Math.min(1,p)})`;
-        if(p>=0.5) setHintOn(true); // idempotent — React ignoriert no-ops
+        // Hinweis 2 s (Echtzeit) vor der Video-Mitte: die erste Hälfte
+        // läuft 0,5× → Mitte = 8,96 s Echtzeit; 2 s früher = 6,96 s
+        // ≙ 3,48 s Contentzeit ≙ Fortschritt 0,39.
+        if(p>=0.39) setHintOn(true); // idempotent — React ignoriert no-ops
       }
       raf=requestAnimationFrame(loop);
     };
@@ -524,13 +527,17 @@ function Splash({onDone}){
             background:'#fff',transformOrigin:'left center',
             transform:'scaleX(0)'}}/>
         </div>
-        {/* Subtiler Skip-Hinweis — blendet ab der Hälfte des Balkens ein. */}
+        {/* Subtiler Skip-Hinweis — Versalien, exakt auf Ladebalken-
+            Breite gespreizt (Buchstaben per Flex gleich verteilt). */}
         <div aria-hidden="true" style={{position:'absolute',left:'50%',zIndex:3,
           top:'calc(58% + 16px)',transform:'translateX(-50%)',
-          color:'rgba(255,255,255,.7)',fontSize:11.5,fontWeight:600,
-          letterSpacing:1.1,whiteSpace:'nowrap',pointerEvents:'none',
+          width:148,display:'flex',justifyContent:'space-between',
+          color:'rgba(255,255,255,.7)',fontSize:9.5,fontWeight:600,
+          whiteSpace:'nowrap',pointerEvents:'none',
           opacity:hintOn?1:0,transition:'opacity 1s ease'}}>
-          Tippe zum starten
+          {'TIPPE ZUM STARTEN'.split('').map((c,i)=>(
+            <span key={i}>{c===' '?' ':c}</span>
+          ))}
         </div>
       </>):(
         /* ── BACKUP-Splash (bisherige Einstellungen, unverändert) —

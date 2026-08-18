@@ -10638,28 +10638,32 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
-      <ScreenHeader pad={24}
-        title={items.length===0?'Keine laufenden Spiele.':'Laufende Spiele und Turniere.'}
-        subtitle={items.length>0?'← Wische nach links für Optionen':null}
-        icon={<LiveTabIcon size={34}/>}/>
+      {/* Header als relativer Anker: der "Alle löschen"-Button hängt
+          rechts an dessen UNTERKANTE (Subline-Höhe) — folgt damit dem
+          Titel-Umbruch statt an einem festen Top-Offset zu kleben. */}
+      <div style={{position:'relative',flexShrink:0}}>
+        <ScreenHeader pad={24}
+          title={items.length===0?'Keine laufenden Spiele.':'Laufende Spiele und Turniere.'}
+          subtitle={items.length>0?'← Wische nach links für Optionen':null}
+          icon={<LiveTabIcon size={34}/>}/>
 
-      {/* "Alle löschen" — Icon-Button im Stil der Turnier-Screen-Buttons
-          (orange umrandet, Trash-Glyph). Löscht nach Bestätigung Match
-          + alle Turniere/Entwürfe; die Online-Session bleibt bestehen. */}
-      {(hasMatch||tourneys.length>0)&&(
-        <button onClick={()=>{buzz(8);setConfirmAll(true);}}
-          title="Alle Spiele & Turniere löschen" aria-label="Alle Spiele & Turniere löschen"
-          style={{position:'absolute',right:22,
-            top:'calc(env(safe-area-inset-top,0px) + 64px)',zIndex:5,
-            width:46,height:46,background:T.bg,border:`2px solid ${T.o}`,
-            borderRadius:16,cursor:'pointer',
-            display:'flex',alignItems:'center',justifyContent:'center'}}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13" stroke={T.o}
-              strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </button>
-      )}
+        {/* "Alle löschen" — Icon-Button im Stil der Turnier-Screen-Buttons
+            (orange umrandet, Trash-Glyph). Löscht nach Bestätigung Match
+            + alle Turniere/Entwürfe; die Online-Session bleibt bestehen. */}
+        {(hasMatch||tourneys.length>0)&&(
+          <button onClick={()=>{buzz(8);setConfirmAll(true);}}
+            title="Alle Spiele & Turniere löschen" aria-label="Alle Spiele & Turniere löschen"
+            style={{position:'absolute',right:22,bottom:14,zIndex:5,
+              width:46,height:46,background:T.bg,border:`2px solid ${T.o}`,
+              borderRadius:16,cursor:'pointer',
+              display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13" stroke={T.o}
+                strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+        )}
+      </div>
 
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
 

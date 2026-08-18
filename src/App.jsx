@@ -499,10 +499,14 @@ function Splash({onDone}){
             width:'72vmin',height:'72vmin',borderRadius:'50%',
             background:'radial-gradient(circle, rgba(255,122,26,.30) 0%, rgba(255,122,26,.10) 42%, transparent 68%)',
             animation:'splashPulse 1.9s ease-in-out infinite'}}/>
-          {/* RITMO-Schriftzug (weiß, transparentes PNG) mittig über dem Glow. */}
+          {/* RITMO-Schriftzug (weiß, transparentes PNG) über dem Glow —
+              nach rechts versetzt, sodass die MITTE DES R auf der
+              Bildschirmmitte sitzt (R-Zentrum = 12,2% der Bildbreite,
+              vermessen aus dem PNG) — deckungsgleich mit dem R-Logo
+              im anschließenden Video. */}
           <img src={`${getAssetBase()}assets/ritmo-lettering.png`} alt="RITMO"
             style={{position:'absolute',left:'50%',top:'50%',
-              transform:'translate(-50%,-50%)',width:'min(56vw, 260px)',
+              transform:'translate(-12.2%,-50%)',width:'min(56vw, 260px)',
               height:'auto',pointerEvents:'none'}}/>
         </div>
         {/* Simpler weißer Ladebalken — leicht unter dem Zentrum:

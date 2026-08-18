@@ -716,6 +716,7 @@ input[type="time"]::-webkit-datetime-edit{padding:0;text-align:center;}
 button{
   transition:
     transform 180ms var(--ease-out-back),
+    filter 180ms var(--ease-out-expo),
     background-color 220ms var(--ease-out-expo),
     color 220ms var(--ease-out-expo),
     border-color 220ms var(--ease-out-expo),
@@ -728,8 +729,15 @@ button{
   user-select:none;
   -webkit-user-select:none;
 }
-button:active:not(:disabled){transform:scale(.97);}
+/* Klick-Feedback: sichtbarer Scale-Dip + kurzer Helligkeits-Pop.
+   Gilt automatisch für JEDEN <button>; Elemente mit eigenem inline-
+   transform (z. B. Swipe-Layer) sind unberührt — inline gewinnt. */
+button:active:not(:disabled){transform:scale(.95);filter:brightness(1.18);}
 button:disabled{cursor:not-allowed;opacity:.55;}
+/* Gleicher Effekt als Utility-Klasse für klickbare Nicht-Buttons
+   (z. B. die Swipe-Action-Pills, die als div gerendert werden). */
+.pressable{transition:transform 180ms var(--ease-out-back),filter 180ms var(--ease-out-expo);}
+.pressable:active{transform:scale(.88);filter:brightness(1.18);}
 
 /* Liquid-Glass-Pill für die TabBar:
    - backdrop-filter: glas-getönt mit erhöhter Sättigung

@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════
    RITMO DNA CUP — pure Daten-Logik für das Live-Event am 18.07.2026.
-   (RITMO × Padel Haus · 22 Spieler · 3 Courts · 18–23 Uhr)
+   (RITMO × Padel Haus, 22 Spieler, 3 Courts, 18–23 Uhr)
 
    Kein React, keine Side-Effects — die Screens (Admin / Tickets /
    Center / Court) in App.jsx konsumieren ausschließlich diese
@@ -23,9 +23,9 @@ export const CUP_PIN='1862';
 
 export const CUP_PHASES=[
   {id:'gruppe', name:'Gruppenphase', sub:'6 Runden à 10 Min'},
-  {id:'ko',     name:'KO-Phase',     sub:'Rang 3–14 · 30 Min'},
-  {id:'hf',     name:'Halbfinals',   sub:'DNA Bo3 · Courage Punkte'},
-  {id:'finals', name:'Finals',       sub:'Grande · Platz 3 · Courage'},
+  {id:'ko',     name:'KO-Phase',     sub:'Rang 3–14, 30 Min'},
+  {id:'hf',     name:'Halbfinals',   sub:'DNA Bo3, Courage Punkte'},
+  {id:'finals', name:'Finals',       sub:'Grande, Platz 3, Courage'},
 ];
 
 /* Warnmeldungs-Presets für Center-/Court-Screens (Banner-Toast im
@@ -106,7 +106,7 @@ export function cupMatchTier(players,m){
    beiden Partnern gutgeschrieben; adj = manuelle Admin-Korrektur.
    EXTRA-PUNKTE (Spielstil-Mechanik): das SIEGER-Team eines fertigen
    Gruppen-Matches bekommt pro Spieler einen Tier-Bonus — Bonus =
-   Sterne des Match-Tiers (S=+5 · A=+4 · B=+3 · C=+2 · X=+1).
+   Sterne des Match-Tiers (S=+5, A=+4, B=+3, C=+2, X=+1).
    Ohne vollständige Stile gibt es kein Tier und keinen Bonus;
    Unentschieden ⇒ kein Sieger ⇒ kein Bonus.
    Sortierung: Gesamt → Siege → Spielernummer (deterministisch).
@@ -135,7 +135,7 @@ const winnerOf=m=>(m.s2??0)>(m.s1??0)?m.t2:m.t1;
 const loserOf =m=>(m.s2??0)>(m.s1??0)?m.t1:m.t2;
 
 /* ── KO-Phase erzeugen (Rang 3–14, gespiegelt) ────────────────────
-   Court 1: 3+14 vs 4+13 · Court 2: 5+12 vs 6+11 · Court 3: 7+10 vs 8+9
+   Court 1: 3+14 vs 4+13, Court 2: 5+12 vs 6+11, Court 3: 7+10 vs 8+9
    — jede Vierergruppe hat Rangsumme 17 (maximal ausgeglichen). */
 export function genCupKO(lb){
   const R=byRank(lb);

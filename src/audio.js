@@ -24,7 +24,7 @@ import { getAssetBase } from "./utils.js";
 
 export const RINGS=[
   // Datei-Töne (src gesetzt). ritmo = Standard ab jetzt.
-  {id:'ritmo',    label:'RITMO',    desc:'Original RITMO Timer-Ton · Standard', src:'assets/sounds/ritmo-timer.mp3'},
+  {id:'ritmo',    label:'RITMO',    desc:'Original RITMO Timer-Ton, Standard', src:'assets/sounds/ritmo-timer.mp3'},
   {id:'dramatic', label:'Dramatisch',desc:'Dramatischer Countdown',             src:'assets/sounds/dramatic-timer.mp3'},
   // Synthese-Töne (live erzeugt).
   {id:'chime',    label:'Glocke',   desc:'Warmes Glockenspiel, aufsteigend'},

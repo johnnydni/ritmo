@@ -391,23 +391,38 @@ function Splash({onDone}){
   // und steht zentriert über — im eigenen Seitenverhältnis kann das
   // Video nicht letterboxen.
   const vidRef=useRef(null);
+  const fitRef=useRef(null);
   useEffect(()=>{
     if(videoFailed) return;
     const AR=720/1280; // logomotion720p ist 720×1280 (9:16)
     const fit=()=>{
       const el=vidRef.current; if(!el) return;
-      const vw=window.innerWidth,vh=window.innerHeight;
+      // innerHeight ist beim Standalone-Start kurzzeitig um die untere
+      // Safe-Area zu klein (und iOS feuert danach kein resize) →
+      // screen.height als Mindesthöhe: echte Geraetehoehe, Ueberstand
+      // wird vom Container ohnehin beschnitten (zentriert = symmetrisch).
+      const vw=window.innerWidth;
+      const vh=Math.max(window.innerHeight,
+        document.documentElement.clientHeight||0,
+        window.visualViewport?.height||0,
+        window.screen?.height||0);
       let h=vh,w=vh*AR;
       if(w<vw){ w=vw; h=vw/AR; }
       el.style.width=`${Math.ceil(w)}px`;
       el.style.height=`${Math.ceil(h)}px`;
     };
+    fitRef.current=fit;
     fit();
+    // Nachmessen: iOS settelt den Viewport erst nach dem ersten Paint.
+    const t1=setTimeout(fit,400),t2=setTimeout(fit,1500);
     window.addEventListener('resize',fit);
     window.addEventListener('orientationchange',fit);
+    window.visualViewport?.addEventListener('resize',fit);
     return()=>{
+      clearTimeout(t1);clearTimeout(t2);
       window.removeEventListener('resize',fit);
       window.removeEventListener('orientationchange',fit);
+      window.visualViewport?.removeEventListener('resize',fit);
     };
   },[videoFailed]);
   return(
@@ -423,7 +438,7 @@ function Splash({onDone}){
         <video ref={vidRef}
           src={`${getAssetBase()}assets/logomotion720p.mp4`}
           autoPlay muted playsInline preload="auto" aria-hidden="true"
-          onPlaying={()=>{playingRef.current=true;}}
+          onPlaying={()=>{playingRef.current=true;fitRef.current?.();}}
           onError={()=>setVideoFailed(true)}
           onEnded={finish}
           /* Größe setzt der fit()-Effekt (JS-Cover, s. o.) — das

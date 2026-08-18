@@ -39,7 +39,13 @@
 
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
-    <link rel="apple-touch-icon" href="./favicon.svg" />
+    <!-- iOS unterstützt KEIN SVG als Touch-Icon — PNG nötig, sonst
+         fällt die Home-Screen-Installation auf Defaults zurück. -->
+    <link rel="apple-touch-icon" href="./assets/ritmohigh.png" />
+    <!-- Web App Manifest: neuere iOS-Versionen richten die installierte
+         Home-Screen-App hieran aus (display/theme/background) — ohne
+         Manifest boxt iOS die App teils mit schwarzen Balken ein. -->
+    <link rel="manifest" href="./manifest.webmanifest" />
     <title>RITMO Padel</title>
     <style>
       html, body {

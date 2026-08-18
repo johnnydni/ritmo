@@ -4348,28 +4348,36 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
           {/* Größer als die 40er-Standardmarke: ohne Begrüßung trägt
               das Logo allein den Home-Header. */}
           <RitmoWordmark size={54} style={{marginLeft:-24,display:'block'}}/>
-          <div style={{position:'relative',borderRadius:999,overflow:'hidden',
-            pointerEvents:'auto',display:'flex',alignItems:'center',gap:10,
-            padding:'6px 10px'}}>
-            <GlassSurface {...HOME_CARD_GLASS} borderRadius={999}/>
+          {/* Jeder Button in seinem EIGENEN runden Glass-Container. */}
+          <div style={{display:'flex',alignItems:'center',gap:10,pointerEvents:'auto'}}>
             <button onClick={()=>nav('ritmopost')}
               aria-label="Benachrichtigungen"
-              style={{background:'none',border:'none',padding:4,position:'relative',
-                zIndex:1,color:T.t1,cursor:'pointer',display:'inline-flex'}}>
-              <BellIcon size={23}/>
-              {hasUnread&&(
-                <span aria-label="Ungelesene Nachrichten"
-                  style={{position:'absolute',top:1,right:1,
-                    width:9,height:9,borderRadius:'50%',
-                    background:T.r,
-                    boxShadow:`0 0 0 2px ${T.bg}`}}/>
-              )}
+              style={{position:'relative',width:42,height:42,borderRadius:'50%',
+                overflow:'hidden',background:'none',border:'none',padding:0,
+                color:T.t1,cursor:'pointer',display:'inline-flex',
+                alignItems:'center',justifyContent:'center'}}>
+              <GlassSurface {...HOME_CARD_GLASS} borderRadius={999}/>
+              <span style={{position:'relative',zIndex:1,display:'inline-flex'}}>
+                <BellIcon size={23}/>
+                {hasUnread&&(
+                  <span aria-label="Ungelesene Nachrichten"
+                    style={{position:'absolute',top:-2,right:-2,
+                      width:9,height:9,borderRadius:'50%',
+                      background:T.r,
+                      boxShadow:`0 0 0 2px ${T.bg}`}}/>
+                )}
+              </span>
             </button>
             <button onClick={()=>nav('settings')}
               aria-label="Einstellungen"
-              style={{background:'none',border:'none',padding:4,position:'relative',
-                zIndex:1,color:T.t1,cursor:'pointer',display:'inline-flex'}}>
-              <MenuIcon size={24}/>
+              style={{position:'relative',width:42,height:42,borderRadius:'50%',
+                overflow:'hidden',background:'none',border:'none',padding:0,
+                color:T.t1,cursor:'pointer',display:'inline-flex',
+                alignItems:'center',justifyContent:'center'}}>
+              <GlassSurface {...HOME_CARD_GLASS} borderRadius={999}/>
+              <span style={{position:'relative',zIndex:1,display:'inline-flex'}}>
+                <MenuIcon size={24}/>
+              </span>
             </button>
           </div>
         </div>

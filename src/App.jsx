@@ -383,6 +383,33 @@ function Splash({onDone}){
       if(meta&&prevMeta) meta.setAttribute('content',prevMeta);
     };
   },[]);
+  // Cover-Geometrie in JS statt object-fit:cover — iOS Safari
+  // ignoriert object-fit auf <video> teils (Hardware-Decoder rendert
+  // intern contain) und letterboxt das 9:16-Video auf dem ~9:19.5-
+  // Screen mit schwarzen Balken oben/unten. Workaround: das Element
+  // bekommt EXAKT das Video-Seitenverhältnis (9:16) in Cover-Größe
+  // und steht zentriert über — im eigenen Seitenverhältnis kann das
+  // Video nicht letterboxen.
+  const vidRef=useRef(null);
+  useEffect(()=>{
+    if(videoFailed) return;
+    const AR=720/1280; // logomotion720p ist 720×1280 (9:16)
+    const fit=()=>{
+      const el=vidRef.current; if(!el) return;
+      const vw=window.innerWidth,vh=window.innerHeight;
+      let h=vh,w=vh*AR;
+      if(w<vw){ w=vw; h=vw/AR; }
+      el.style.width=`${Math.ceil(w)}px`;
+      el.style.height=`${Math.ceil(h)}px`;
+    };
+    fit();
+    window.addEventListener('resize',fit);
+    window.addEventListener('orientationchange',fit);
+    return()=>{
+      window.removeEventListener('resize',fit);
+      window.removeEventListener('orientationchange',fit);
+    };
+  },[videoFailed]);
   return(
     <div onClick={finish} style={{position:'fixed',inset:0,zIndex:1000,
       /* Ladebildschirm IMMER schwarz — bewusst hartkodiert (#000),
@@ -393,20 +420,19 @@ function Splash({onDone}){
       cursor:'pointer',userSelect:'none'}}>
       {!videoFailed?(
         /* ── Logomotion-Intro — spielt einmal, Ende öffnet die App. */
-        <video
+        <video ref={vidRef}
           src={`${getAssetBase()}assets/logomotion720p.mp4`}
           autoPlay muted playsInline preload="auto" aria-hidden="true"
           onPlaying={()=>{playingRef.current=true;}}
           onError={()=>setVideoFailed(true)}
           onEnded={finish}
-          /* cover statt contain: fuellt den ganzen Screen inkl.
-             Statusbar-/Home-Indicator-Zone — Raender werden beschnitten
-             statt schwarz geletterboxt. Bewusst 6% ueber die Container-
-             Kanten hinaus gezeichnet: falls iOS den Viewport im
-             Standalone-Modus intern um Safe-Areas kuerzt, deckt das
-             Video die Zonen trotzdem ab (cover beschneidet ohnehin). */
-          style={{position:'absolute',left:0,right:0,top:'-6%',bottom:'-6%',
-            width:'100%',height:'112%',
+          /* Größe setzt der fit()-Effekt (JS-Cover, s. o.) — das
+             Element hat exakt das Video-Seitenverhältnis, steht
+             zentriert über und wird vom Container beschnitten.
+             object-fit bleibt als Hinweis für Browser ohne den
+             iOS-Video-Bug. */
+          style={{position:'absolute',left:'50%',top:'50%',
+            transform:'translate(-50%,-50%)',
             objectFit:'cover',background:'#000',pointerEvents:'none'}}/>
       ):(
         /* ── BACKUP-Splash (bisherige Einstellungen, unverändert) —

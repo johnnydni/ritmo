@@ -258,7 +258,7 @@ export function computeStyles(qa){
        1 = MIXED   — verschieden, aber keine ausgewiesene Synergie
        0 = MIRROR  — gleicher Stil (Schwächen-Dopplung)
 
-     Summe → Tier:  4→S · 3→A · 2→B · 1→C · 0→X
+     Summe → Tier:  4→S, 3→A, 2→B, 1→C, 0→X
 ═══════════════════════════════════════════════════════════════ */
 
 // Empfohlene-Partner-Beziehung (ungerichtet) aus den .partners-Listen.
@@ -269,7 +269,7 @@ function arePartners(a,b){
   return !!(inA||inB);
 }
 
-// Chemie zweier Teammate-Stile: 2 Duo · 1 Mixed · 0 Mirror.
+// Chemie zweier Teammate-Stile: 2 Duo, 1 Mixed, 0 Mirror.
 function teamChem(a,b){
   if(a===b) return 0;          // Mirror
   if(arePartners(a,b)) return 2; // Duo-Synergie

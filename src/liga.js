@@ -28,8 +28,8 @@ import { computeMatchTier } from './padelStyles.js';
 
 export const LIGA_PHASES=[
   {id:'anmeldung', name:'Anmeldung',    sub:'Spieler melden sich an'},
-  {id:'gruppe',    name:'Gruppenphase', sub:'4 Gruppen · 1 Abend/Woche'},
-  {id:'viertel',   name:'Viertelfinale',sub:'Top 2 jeder Gruppe · 8 Teams'},
+  {id:'gruppe',    name:'Gruppenphase', sub:'4 Gruppen, 1 Abend/Woche'},
+  {id:'viertel',   name:'Viertelfinale',sub:'Top 2 jeder Gruppe, 8 Teams'},
   {id:'halb',      name:'Halbfinale',   sub:'4 Teams'},
   {id:'finale',    name:'Finale',       sub:'Finale + Spiel um Platz 3'},
   {id:'planung',   name:'Planung',      sub:'Nächster Zyklus'},

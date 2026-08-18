@@ -118,7 +118,7 @@ export async function loadMatchStats() {
   try {
     const { data, error } = await c
       .from('ritmo_matches')
-      .select('format,score_a,score_b,user_team,user_won,sets,finished_at')
+      .select('format,score_a,score_b,user_team,user_won,sets,finished_at,tournament_id')
       .eq('user_id', uid)
       .order('finished_at', { ascending: false })
       .limit(200);
@@ -180,6 +180,16 @@ function computeStats(rows) {
     ? (bo3Rows.reduce((s, r) => s + r.sets.length, 0) / bo3Rows.length).toFixed(1)
     : '0';
 
+  // Split Einzel vs. Turnier: Turnier-Matches tragen tournament_id
+  // (Supabase) bzw. das 'tournament-'-Format-Präfix (beide Pfade).
+  // tournaments = verschiedene Turniere (distinct tournament_id) —
+  // ältere lokale Einträge ohne id zählen nur als Turnier-Matches.
+  const isTourney = r => r.tournament_id != null || String(r.format || '').startsWith('tournament-');
+  const tRows = rows.filter(isTourney);
+  const singleMatches = total - tRows.length;
+  const tournamentMatches = tRows.length;
+  const tournaments = new Set(tRows.filter(r => r.tournament_id != null).map(r => r.tournament_id)).size;
+
   return {
     matches: total,
     wins,
@@ -189,6 +199,9 @@ function computeStats(rows) {
     weeklyMatches: weeks,
     weekDays,
     avgSets,
+    singleMatches,
+    tournamentMatches,
+    tournaments,
   };
 }
 
@@ -211,6 +224,7 @@ export function logMatchLocal(match) {
       format: match.format,
       user_won: match.user_won ?? null,
       sets: match.sets ?? null,
+      tournament_id: match.tournament_id ?? null,
       finished_at: new Date().toISOString(),
     });
     localStorage.setItem(MATCHLOG_KEY, JSON.stringify(log.slice(-200)));

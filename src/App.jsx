@@ -3083,7 +3083,8 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
 
   // Statistiken (ritmo_matches): Supabase zuerst, sonst lokales Log.
   const STATS_EMPTY={matches:0,wins:0,losses:0,winRate:0,formTrend:[],
-    weeklyMatches:[0,0,0,0,0,0,0],weekDays:['M','D','M','D','F','S','S'],avgSets:'0'};
+    weeklyMatches:[0,0,0,0,0,0,0],weekDays:['M','D','M','D','F','S','S'],avgSets:'0',
+    singleMatches:0,tournamentMatches:0,tournaments:0};
   const[stats,setStats]=useState(null);
   useEffect(()=>{
     let alive=true;
@@ -3277,6 +3278,34 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
                 <CountUp value={safeStats.matches}/>
               </div>
               <div style={{...capSty,marginTop:8}}>insgesamt geloggt</div>
+            </div>
+            {/* Einzel vs. Turnier — volle Breite, beide Zähler getrennt:
+                Single Matches links, verschiedene Turniere rechts. */}
+            <div className="fu" style={{...card,gridColumn:'1 / -1',
+              padding:'13px 14px 12px',animationDelay:'.2s'}}>
+              <Eyebrow color={T.o} icon={<TrophyIcon size={15} color="currentColor"/>}>
+                Single Matches, Turniere
+              </Eyebrow>
+              <div style={{display:'flex',alignItems:'stretch'}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{color:T.t1,fontSize:30,fontWeight:800,letterSpacing:-1.2,
+                    lineHeight:1,fontVariantNumeric:'tabular-nums'}}>
+                    <CountUp value={safeStats.singleMatches??0}/>
+                  </div>
+                  <div style={{...capSty,marginTop:8}}>Single Matches</div>
+                </div>
+                <div style={{width:1,background:T.sep,margin:'2px 14px'}}/>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{color:T.t1,fontSize:30,fontWeight:800,letterSpacing:-1.2,
+                    lineHeight:1,fontVariantNumeric:'tabular-nums'}}>
+                    <CountUp value={safeStats.tournaments??0}/>
+                  </div>
+                  <div style={{...capSty,marginTop:8,whiteSpace:'nowrap',overflow:'hidden',
+                    textOverflow:'ellipsis'}}>
+                    Turniere, {safeStats.tournamentMatches??0} Match{(safeStats.tournamentMatches??0)===1?'':'es'}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -10056,7 +10085,8 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
         // Lokales Match-Log (Fallback ohne Supabase) + Profil-Counter —
         // nur wenn der User identifizierbar ist (sonst kein userWon).
         if(userTeam){
-          logMatchLocal({format:'tournament-'+(tourney.format||'americano'),user_won:userWon,sets:null});
+          logMatchLocal({format:'tournament-'+(tourney.format||'americano'),user_won:userWon,sets:null,
+            tournament_id:tourney.id||tourney.createdAt||null});
           onMatchLogged?.({userWon});
         }
         return {...c,logged:true};

@@ -370,10 +370,11 @@ function Splash({onDone}){
     return()=>clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[intro,videoFailed]);
-  // Backstop-Timer: Video-Pfad 13 s (Intro 2 s + ~9 s Video; onEnded
-  // beendet ohnehin früher), Fallback-Pfad wie bisher 4 s ab Umschalten.
+  // Backstop-Timer: Video-Pfad 18 s (Intro 2 s + ~13,5 s Video wegen
+  // 0,5×-erster-Hälfte; onEnded beendet ohnehin früher), Fallback-Pfad
+  // wie bisher 4 s ab Umschalten.
   useEffect(()=>{
-    const t=setTimeout(finish,videoFailed?4000:13000);
+    const t=setTimeout(finish,videoFailed?4000:18000);
     return()=>clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[videoFailed]);
@@ -415,8 +416,11 @@ function Splash({onDone}){
     let raf;
     const loop=()=>{
       const v=vidRef.current,b=barRef.current;
-      if(v&&b&&v.duration>0){
-        b.style.transform=`scaleX(${Math.min(1,v.currentTime/v.duration)})`;
+      if(v&&v.duration>0){
+        // Dramaturgie: erste Videohälfte in 0,5× (Zeitlupe), Rest 1×.
+        const rate=v.currentTime<v.duration/2?0.5:1;
+        if(v.playbackRate!==rate) v.playbackRate=rate;
+        if(b) b.style.transform=`scaleX(${Math.min(1,v.currentTime/v.duration)})`;
       }
       raf=requestAnimationFrame(loop);
     };

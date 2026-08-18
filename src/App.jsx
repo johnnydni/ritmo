@@ -356,25 +356,6 @@ function Splash({onDone}){
     const t=setTimeout(()=>{ if(!playingRef.current) setVideoFailed(true); },2500);
     return()=>clearTimeout(t);
   },[]);
-  // ── Frame-Ruler am unteren Rand: Filmstreifen-Lineal, das frame-
-  // genau mit dem Video mitläuft. Der Playhead-Punkt steht fest,
-  // das Tick-Raster (1 Tick = 1 Frame, jeder 5. höher) schiebt sich
-  // per rAF aus video.currentTime darunter durch.
-  const vidRef=useRef(null);
-  const tickRef=useRef(null);
-  const FPS=26, TICK=14; // Frame-Rate des Logomotion-Videos, px pro Frame
-  useEffect(()=>{
-    if(videoFailed) return;
-    let raf;
-    const loop=()=>{
-      const v=vidRef.current,t=tickRef.current;
-      if(v&&t) t.style.transform=`translateX(${-(v.currentTime||0)*FPS*TICK}px)`;
-      raf=requestAnimationFrame(loop);
-    };
-    raf=requestAnimationFrame(loop);
-    return()=>cancelAnimationFrame(raf);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[videoFailed]);
   // Backstop-Timer: Video-Pfad 10 s (Video beendet sich via onEnded
   // ohnehin früher), Fallback-Pfad wie bisher 4 s ab Umschalten.
   useEffect(()=>{
@@ -410,9 +391,9 @@ function Splash({onDone}){
          iOS einen Streifen frei ließ. */
       background:'#000',overflow:'hidden',
       cursor:'pointer',userSelect:'none'}}>
-      {!videoFailed?(<>
-        {/* ── Logomotion-Intro — spielt einmal, Ende öffnet die App. */}
-        <video ref={vidRef}
+      {!videoFailed?(
+        /* ── Logomotion-Intro — spielt einmal, Ende öffnet die App. */
+        <video
           src={`${getAssetBase()}assets/logomotion720p.mp4`}
           autoPlay muted playsInline preload="auto" aria-hidden="true"
           onPlaying={()=>{playingRef.current=true;}}
@@ -427,30 +408,7 @@ function Splash({onDone}){
           style={{position:'absolute',left:0,right:0,top:'-6%',bottom:'-6%',
             width:'100%',height:'112%',
             objectFit:'cover',background:'#000',pointerEvents:'none'}}/>
-        {/* ── Frame-Ruler (unten): helle Leiste im Filmstreifen-Look,
-            Ticks laufen framegenau mit dem Video mit — macht aus der
-            Safe-Area-Zone ein bewusstes Gestaltungselement. */}
-        <div aria-hidden="true" style={{position:'absolute',left:0,right:0,bottom:0,zIndex:3,
-          background:'#F6F5F2',borderTop:'1px solid #E3E1DC',
-          paddingBottom:'env(safe-area-inset-bottom,0px)',pointerEvents:'none'}}>
-          <div style={{position:'relative',height:42,overflow:'hidden'}}>
-            <div ref={tickRef} style={{position:'absolute',left:26,top:0,bottom:0,
-              display:'flex',alignItems:'center',willChange:'transform'}}>
-              {Array.from({length:Math.ceil(9.5*FPS)},(_,i)=>(
-                <span key={i} style={{width:TICK,flexShrink:0,display:'flex',
-                  justifyContent:'center'}}>
-                  <span style={{width:1.5,height:i%5===0?18:8,borderRadius:1,
-                    background:i%5===0?'#4A4844':'#BDBAB4'}}/>
-                </span>
-              ))}
-            </div>
-            {/* Fester Playhead-Punkt — das Raster wandert darunter durch. */}
-            <div style={{position:'absolute',left:26,top:'50%',
-              transform:'translate(-50%,-50%)',width:9,height:9,
-              borderRadius:'50%',background:'#141414'}}/>
-          </div>
-        </div>
-      </>):(
+      ):(
         /* ── BACKUP-Splash (bisherige Einstellungen, unverändert) —
               dient als Fallback, wenn das Logomotion-Video nicht lädt. */
         <>

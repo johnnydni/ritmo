@@ -1,0 +1,19 @@
+{
+  "name": "RITMO Padel",
+  "short_name": "RITMO",
+  "description": "Padel-Matches, Turniere und Livescoring.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "icons": [
+    {
+      "src": "./assets/ritmohigh.png",
+      "sizes": "900x900",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

@@ -2354,39 +2354,7 @@ function ChapterPlaystyle({profile,setProfile}){
   );
 }
 
-function ChapterTheme({theme,setTheme}){
-  const themes=[
-    {id:'glass',label:'RITMO Liquid Glass',swatch:['#060709','#FF7A1A','#0A84FF']},
-  ];
-  return(
-    <div style={{display:'flex',flexDirection:'column',gap:10}}>
-      {themes.map(t=>{
-        const sel=theme===t.id;
-        return(
-          <div key={t.id} onClick={()=>setTheme(t.id)} style={{
-            display:'flex',alignItems:'center',gap:14,
-            background:sel?T.oSoft:T.card,
-            border:`1.5px solid ${sel?T.o:T.border}`,
-            borderRadius:15,padding:'14px 16px',
-            cursor:'pointer',transition:'all .15s'}}>
-            <div style={{display:'flex',flexShrink:0,borderRadius:5,overflow:'hidden',
-              boxShadow:'inset 0 0 0 1px rgba(255,255,255,0.06)'}}>
-              {t.swatch.map((c,i)=>(
-                <div key={i} style={{width:18,height:30,background:c}}/>
-              ))}
-            </div>
-            <div style={{flex:1,color:T.t1,fontSize:16,fontWeight:sel?700:500}}>
-              {t.label}
-            </div>
-            {sel&&<span style={{color:T.o,fontSize:18,width:16,textAlign:'center'}}>✓</span>}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function Welcome({profile,setProfile,theme,setTheme,onComplete}){
+function Welcome({profile,setProfile,onComplete}){
   const[step,setStep]=useState(0);
 
   /* CHAPTER DEFINITIONS — extend this array for future onboarding steps
@@ -2409,16 +2377,6 @@ function Welcome({profile,setProfile,theme,setTheme,onComplete}){
       Content:ChapterName,
       contentProps:{profile,setProfile},
       canContinue:()=>profile.name.trim().length>0,
-      cta:'Weiter',
-      skippable:true,
-    },
-    {
-      id:'theme',
-      title:'Wähle dein Theme',
-      subtitle:'Kann in den Einstellungen jederzeit geändert werden.',
-      Content:ChapterTheme,
-      contentProps:{theme,setTheme},
-      canContinue:()=>true,
       cta:'Weiter',
       skippable:true,
     },
@@ -19728,7 +19686,6 @@ export default function App(){
       onDone={()=>{setLoggedIn(true);nav(onboarded?'home':'welcome');}}/>}
     {scr==='welcome'&&<Welcome
       profile={profile} setProfile={setProfile}
-      theme={theme} setTheme={setTheme}
       onComplete={()=>{setOnboarded(true);nav('home');}}/>}
     {scr==='home'&&<Home nav={nav} activeTab={activeTab} setActiveTab={handleTab}
       profile={profile} onboarded={onboarded} unread={unreadTotal}/>}

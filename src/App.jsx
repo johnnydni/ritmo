@@ -3274,9 +3274,10 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
     dbLoadMatchStats().then(s=>{if(alive)setStats(s||dbLoadMatchStatsLocal()||STATS_EMPTY);})
       .catch(()=>{if(alive)setStats(dbLoadMatchStatsLocal()||STATS_EMPTY);});
     return()=>{alive=false;};
-  // Neu laden nach Reset (matchesPlayed→0) bzw. neu geloggten Matches.
+  // Neu laden nach Reset (statsResetAt wird pro Reset neu gestempelt —
+  // greift auch, wenn matchesPlayed schon 0 war) bzw. neuen Matches.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[profile.matchesPlayed]);
+  },[profile.matchesPlayed,profile.statsResetAt]);
   const safeStats=stats||STATS_EMPTY;
 
   // Bio — Inline-Editing in der „Über dich"-Karte.
@@ -19365,15 +19366,19 @@ export default function App(){
       dAm({type:'_R',s:snap.am});
     });
   };
-  // „Spiele & Statistik zurücksetzen" (aus Profil bearbeiten): aktive
-  // Scoreboards leeren + geloggte Matches (Supabase, RLS) löschen +
-  // Match-Zähler im Profil nullen (fließen ins Level-Estimate ein).
-  const resetStats=()=>{
+  // „Spiele & Statistik zurücksetzen" (Profil + Profil bearbeiten):
+  // aktive Scoreboards leeren + geloggte Matches (Supabase, RLS)
+  // löschen + Match-Zähler im Profil nullen (fließen ins Level-
+  // Estimate ein). Erst NACH dem Löschen wird das Profil angefasst —
+  // statsResetAt triggert den Stats-Reload im Profil-Screen, sonst
+  // lädt der noch während des Deletes (Race) bzw. gar nicht neu,
+  // wenn matchesPlayed schon 0 war.
+  const resetStats=async()=>{
     dBo3({type:'RESET'});
     dAm({type:'RESET',limit:cfg.amLimit??21});
-    setProfile(p=>({...p,matchesPlayed:0,winsCount:0}));
-    dbDeleteMyMatches();
     clearMatchLog();
+    try{await dbDeleteMyMatches();}catch(e){}
+    setProfile(p=>({...p,matchesPlayed:0,winsCount:0,statsResetAt:Date.now()}));
   };
   const deleteTourney=(id)=>{
     const target=id||currentTourneyId;

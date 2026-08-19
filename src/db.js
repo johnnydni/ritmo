@@ -268,7 +268,9 @@ export async function createOnlineTournament(data) {
   if (!c) throw new Error('Online-Modus nicht verfügbar.');
   const sessionData = {
     ...data,
-    status: 'lobby',           // lobby | playing | finished
+    // Mirror-Sessions (lokales Turnier live geteilt) starten direkt
+    // in 'playing' — normale Online-Sessions in der Lobby.
+    status: data.status || 'lobby', // lobby | playing | finished
     participants: data.hostName ? [{
       id: 'host',
       name: data.hostName,
@@ -340,7 +342,10 @@ export async function joinOnlineTournament(pin, username) {
   const p = (pin || '').trim().toLowerCase();
   const session = await fetchOnlineTournament(p);
   if (!session) throw new Error('Tournament nicht gefunden — PIN prüfen.');
-  if (session.status && session.status !== 'lobby') {
+  // Mirror-Sessions (allowLateJoin) erlauben Beitritt auch während
+  // 'playing' — Spieler vor Ort steigen jederzeit ein und sind sofort
+  // approved (der Host verwaltet das Turnier lokal weiter).
+  if (session.status && session.status !== 'lobby' && !session.allowLateJoin) {
     throw new Error('Dieses Tournament läuft bereits oder ist beendet.');
   }
   const participants = session.participants || [];
@@ -351,7 +356,7 @@ export async function joinOnlineTournament(pin, username) {
   participants.push({
     id: participantId,
     name,
-    approved: false,
+    approved: session.allowLateJoin ? true : false,
     isHost: false,
     joinedAt: new Date().toISOString(),
   });

@@ -7557,11 +7557,16 @@ function TournamentWizard({onClose,onFinish,canStart,
               <button onClick={()=>setRoundDur(Math.min(45,roundDur+1))} style={stepBtn}>+</button>
             </div>
             {suggest?(
-              <div style={infoBox}>
-                <span style={{color:T.o,fontWeight:800}}>Empfehlung:</span>{' '}
+              /* Empfehlung wird erst per Tap eingerechnet (setzt die Rundendauer). */
+              <button onClick={()=>{buzz(8);setRoundDur(suggest.roundTime);}}
+                style={{...infoBox,width:'100%',textAlign:'left',cursor:'pointer',display:'block'}}>
+                <span style={{color:T.o,fontWeight:800}}>
+                  Empfehlung{roundDur===suggest.roundTime?' übernommen':''}:
+                </span>{' '}
                 ≈ {suggest.rounds} Runden à {suggest.roundTime} Min — jede:r spielt ~{suggest.gamesEach} Matches
                 {pauseStats&&pauseStats.pauses!=null&&pauseStats.sitOut>0?` und pausiert ~${pauseStats.pauses}×`:''}.
-              </div>
+                {roundDur!==suggest.roundTime?' Tippen zum Übernehmen.':''}
+              </button>
             ):(
               <div style={{color:T.t3,fontSize:12,lineHeight:1.55}}>
                 Ohne Zeitfenster läuft das Turnier einfach Runde für Runde weiter — du beendest es manuell.
@@ -7739,14 +7744,14 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
 
   // ══ RUNDENZEIT-VORSCHLAG — Gesamtlogik ════════════════════════════
   //  Eingaben:  Spielerzahl P, Courts (4 Spieler/Court), Zeitfenster W
-  //             (Start→Ende), 2 Min Rotation zwischen den Runden.
+  //             (Start→Ende), 3 Min Rotation zwischen den Runden.
   //  Ziele:     möglichst viele Runden (jeder mit möglichst jedem),
   //             aber Runden nicht zu kurz (≥ MIN) und nicht zu lang (≤ MAX).
   //
   //  Schritte:
   //   1. Courts realistisch kappen: C = min(gewählt, ⌊P/4⌋).
   //      perRound = 4·C aktive Spieler, sitOut = P − perRound pausieren.
-  //   2. So viele Runden, wie bei ~13-Min-Runde + 2-Min-Rotation ins
+  //   2. So viele Runden, wie bei ~TARGET-Min-Runde + 3-Min-Rotation ins
   //      Fenster passen:  rounds ≈ W / (TARGET + ROT).
   //   3. Rundenzeit = ⌊W / rounds⌋ − ROT.
   //   4. Zu kurz? Runden reduzieren bis Rundenzeit ≥ MIN (nicht zu kurz).
@@ -7759,7 +7764,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
     const h=+m[1],mi=+m[2];if(h>23||mi>59)return null;return h*60+mi;};
   const windowMin=(()=>{const a=parseHM(startTime),b=parseHM(endTime);
     if(a==null||b==null)return null;let d=b-a;if(d<=0)d+=1440;return d;})();
-  const ROT=2; // 1–2 Min Rotation zwischen den Runden
+  const ROT=3; // 3 Min Rotationspause zwischen den Runden
   // Prioritäts-Bänder: 'length' → längere Runden (Ziel 18, 14–30 Min) =
   // weniger Runden / weniger Mix; 'variety' → jeder gegen jeden (Ziel 10,
   // 8–16 Min) = mehr Runden / mehr Partner, dafür kürzer.
@@ -7779,9 +7784,17 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
     const gamesEach=Math.round(rounds*perRound/P);
     return {rounds,roundTime,gamesEach,courts:C,sitOut,rotation:ROT};
   })();
-  // Vorschlag übernehmen, wenn sich Fenster/Spielerzahl/Courts/Prio ändern.
-  useEffect(()=>{ if(suggest){ setRoundDur(suggest.roundTime); setPickerKey(k=>k+1); }
-    /* eslint-disable-next-line */ },[startTime,endTime,players.length,numCourts,mode,roundPrio]);
+  // Vorschlag wird NICHT mehr automatisch übernommen — erst der
+  // „Empfehlung"-Button in der Zeit-Karte rechnet ihn ein.
+  const[suggestShown,setSuggestShown]=useState(false);
+  const applySuggest=()=>{
+    if(!suggest) return;
+    buzz(8);
+    setRoundDur(suggest.roundTime);
+    setPickerKey(k=>k+1);
+    setSuggestShown(true);
+  };
+  const appliedSuggest=suggestShown&&!!suggest&&roundDur===suggest.roundTime;
 
   // ── Pausen pro Spieler ("jeder gegen jeden") ──────────────────────
   //  Haengt an Rundendauer (→ wie viele Runden ins Zeitfenster passen),
@@ -7983,7 +7996,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
           <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,padding:'14px 18px'}}>
             <div style={{color:T.t1,fontSize:15,fontWeight:600,marginBottom:2}}>Zeitfenster</div>
             <div style={{color:T.t3,fontSize:11,fontWeight:500,marginBottom:12}}>
-              Zeiger ziehen: Orange = Start, Hell = Ende → schlägt die Rundenzeit vor (− 2 Min Rotation/Runde)
+              Zeiger ziehen: Orange = Start, Hell = Ende — „Empfehlung" berechnet die Rundenzeit (3 Min Rotationspause/Runde)
             </div>
             {/* Immer sichtbare Drag-Uhr — schreibt direkt in startTime/endTime. */}
             <TimeDial start={startTime} end={endTime}
@@ -8013,12 +8026,25 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
                   :'Mehr Runden, jeder gegen möglichst jeden — dafür kürzere Runden.'}
               </div>
             </div>
+            {/* „Empfehlung" — rechnet den Vorschlag erst auf Knopfdruck
+                ein (setzt die Rundendauer) und blendet die Details ein. */}
             {suggest&&(
-              <div style={{marginTop:12,padding:'10px 12px',borderRadius:12,background:T.oSoft,
+              <button onClick={applySuggest}
+                style={{marginTop:12,width:'100%',display:'flex',alignItems:'center',
+                  justifyContent:'center',gap:8,padding:'12px',borderRadius:12,
+                  cursor:'pointer',border:`1.5px solid ${T.o}`,
+                  background:appliedSuggest?T.oSoft:T.o,
+                  color:appliedSuggest?T.o:'#000',fontSize:13.5,fontWeight:800}}>
+                <StopwatchIcon size={15} color={appliedSuggest?T.o:'#000'}/>
+                {appliedSuggest?'Empfehlung übernommen':'Empfehlung'}
+              </button>
+            )}
+            {suggest&&suggestShown&&(
+              <div className="fi" style={{marginTop:10,padding:'10px 12px',borderRadius:12,background:T.oSoft,
                 border:`1px solid ${T.o}`,display:'flex',alignItems:'flex-start',gap:8}}>
                 <span style={{marginTop:1,display:'inline-flex'}}><StopwatchIcon size={15} color={T.o}/></span>
                 <div style={{color:T.t2,fontSize:12,fontWeight:600,lineHeight:1.5,minWidth:0}}>
-                  Vorschlag: <span style={{color:T.o,fontWeight:800}}>≈ {suggest.rounds} Runden × {suggest.roundTime} Min</span>
+                  Empfehlung: <span style={{color:T.o,fontWeight:800}}>≈ {suggest.rounds} Runden × {suggest.roundTime} Min</span>
                   {' '}+ {suggest.rotation} Min Rotation, füllt {Math.floor(windowMin/60)} h {windowMin%60} Min.
                   <br/>Bei {suggest.courts} Court{suggest.courts>1?'s':''}: ~{suggest.gamesEach} Spiele/Spieler
                   {suggest.sitOut>0?`, ${suggest.sitOut} pausieren/Runde`:', keine Pausen'} — alle ±1 gleich oft.
@@ -8027,7 +8053,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
             )}
             {windowMin&&!suggest&&(
               <div style={{color:T.t3,fontSize:11,fontWeight:500,marginTop:10}}>
-                Mind. 4 Spieler eintragen für einen Rundenzeit-Vorschlag.
+                Mind. 4 Spieler eintragen für eine Rundenzeit-Empfehlung.
               </div>
             )}
           </div>
@@ -8039,7 +8065,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
         <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
           padding:'14px 18px 16px'}}>
           <div style={{marginBottom:10}}>
-            <div style={{color:T.t1,fontSize:15,fontWeight:600}}>Rundendauer{suggest?', Vorschlag übernommen':''}</div>
+            <div style={{color:T.t1,fontSize:15,fontWeight:600}}>Rundendauer{appliedSuggest?', Empfehlung übernommen':''}</div>
             <div style={{color:T.t3,fontSize:11,fontWeight:500,marginTop:1}}>
               Timer pro Runde — wische zur gewünschten Minute
             </div>

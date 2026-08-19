@@ -370,11 +370,11 @@ function Splash({onDone}){
     return()=>clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[intro,videoFailed]);
-  // Backstop-Timer: Video-Pfad 18 s (Intro 2 s + ~13,5 s Video wegen
-  // 0,5×-erster-Hälfte; onEnded beendet ohnehin früher), Fallback-Pfad
+  // Backstop-Timer: Video-Pfad 15 s (Intro 2 s + ~10,5 s Video wegen
+  // 0,75×-erster-Hälfte; onEnded beendet ohnehin früher), Fallback-Pfad
   // wie bisher 4 s ab Umschalten.
   useEffect(()=>{
-    const t=setTimeout(finish,videoFailed?4000:18000);
+    const t=setTimeout(finish,videoFailed?4000:15000);
     return()=>clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[videoFailed]);
@@ -419,15 +419,15 @@ function Splash({onDone}){
     const loop=()=>{
       const v=vidRef.current,b=barRef.current;
       if(v&&v.duration>0){
-        // Dramaturgie: erste Videohälfte in 0,5× (Zeitlupe), Rest 1×.
+        // Dramaturgie: erste Videohälfte in 0,75× (leichte Zeitlupe), Rest 1×.
         const p=v.currentTime/v.duration;
-        const rate=p<0.5?0.5:1;
+        const rate=p<0.5?0.75:1;
         if(v.playbackRate!==rate) v.playbackRate=rate;
         if(b) b.style.transform=`scaleX(${Math.min(1,p)})`;
         // Hinweis 2 s (Echtzeit) vor der Video-Mitte: die erste Hälfte
-        // läuft 0,5× → Mitte = 8,96 s Echtzeit; 2 s früher = 6,96 s
-        // ≙ 3,48 s Contentzeit ≙ Fortschritt 0,39.
-        if(p>=0.39) setHintOn(true); // idempotent — React ignoriert no-ops
+        // läuft 0,75× → Mitte = 5,97 s Echtzeit; 2 s früher = 3,97 s
+        // ≙ 2,98 s Contentzeit ≙ Fortschritt 0,33.
+        if(p>=0.33) setHintOn(true); // idempotent — React ignoriert no-ops
       }
       raf=requestAnimationFrame(loop);
     };

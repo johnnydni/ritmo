@@ -10460,7 +10460,7 @@ function LiveShareSheet({pin,busy,err,onClose}){
   );
 }
 
-function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onMatchLogged}){
+function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onMatchLogged,onLive}){
   const[tab,setTab]=useState('round');
   const[confirmEnd,setConfirmEnd]=useState(false);
   const[showSitOutInfo,setShowSitOutInfo]=useState(false);
@@ -10771,7 +10771,15 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
       <ScreenHeader pad={14} ellipsis
         title={tourney.name||(FORMATS[tourney.format]||FORMATS.americano).name}
         subtitle={`${(FORMATS[tourney.format]||FORMATS.americano).name}, Runde ${tourney.current+1}${round.koPhase?`, ${round.koPhase}`:''}${tourney.endTime?`, bis ${tourney.endTime}`:''}`}
-        icon={<TrophyIcon size={40}/>}/>
+        icon={
+          // Pokal → Button: springt zum Live-Screen (Turnier-Übersicht).
+          <button onClick={()=>onLive&&onLive()} aria-label="Zum Live-Screen"
+            style={{background:'none',border:'none',padding:0,margin:0,
+              cursor:'pointer',display:'inline-flex',alignItems:'center',
+              color:'inherit'}}>
+            <TrophyIcon size={40}/>
+          </button>
+        }/>
 
       {/* Timer + Leaderboard Toggle */}
       <div style={{display:'flex',gap:10,padding:'0 22px 14px'}}>
@@ -19690,7 +19698,8 @@ export default function App(){
       }}/>}
     {scr==='tournament-play'&&tourney&&<TournamentPlay tourney={tourney} setTourney={setTourney}
       onHome={goHome} nav={nav} ringId={ringId} onEdit={editTourney}
-      onMatchLogged={onMatchLogged}/>}
+      onMatchLogged={onMatchLogged}
+      onLive={()=>{setActiveTab('live');setScr('live');}}/>}
     {scr==='tournament-leaderboard'&&tourney&&<TournamentLeaderboard tourney={tourney}
       onHome={goHome} onNew={newTourney}/>}
 

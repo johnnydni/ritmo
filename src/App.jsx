@@ -7199,7 +7199,7 @@ function TimeDial({start,end,onChange}){
   };
   const up=()=>setDrag(null);
   const dur=((b-a+1440)%1440)||1440;
-  const durTxt=`${Math.floor(dur/60)} Std${dur%60?` ${dur%60} Min`:''}`;
+  const durTxt=dur<60?`${dur} Min`:`${Math.floor(dur/60)} Std${dur%60?` ${dur%60} Min`:''}`;
   // Fenster-Bogen von Start nach Ende (im Uhrzeigersinn).
   const arcPath=(()=>{const[x1,y1]=pt(a,R),[x2,y2]=pt(b,R);
     return `M ${x1} ${y1} A ${R} ${R} 0 ${dur>720?1:0} 1 ${x2} ${y2}`;})();
@@ -7207,6 +7207,20 @@ function TimeDial({start,end,onChange}){
     border:'1px solid color-mix(in srgb, var(--t1) 16%, transparent)',
     WebkitBackdropFilter:'blur(14px) saturate(160%)',
     backdropFilter:'blur(14px) saturate(160%)'};
+  // Schnellwahl-Leiter: die zwei nächstkleineren Dauern stehen links,
+  // die zwei nächstgrößeren rechts von der aktuellen Spieldauer —
+  // die Leiter wandert also mit dem gezogenen Fenster mit.
+  const LADDER=[30,60,90,120,150,180,240];
+  const durLab=m=>m<60?`${m} Min`:`${String(m/60).replace('.',',')} Std`;
+  const shorter=LADDER.filter(m=>m<dur).slice(-2);
+  const longer=LADDER.filter(m=>m>dur).slice(0,2);
+  const quick=min=>(
+    <button key={min} onClick={()=>{buzz(5);set(a,(a+min)%1440);}}
+      style={{...glass,borderRadius:999,padding:'6px 10px',cursor:'pointer',
+        color:T.t2,fontSize:11,fontWeight:700,whiteSpace:'nowrap'}}>
+      {durLab(min)}
+    </button>
+  );
   const knob=(m,hand,accent)=>{const[x,y]=pt(m,R);
     return(<g style={{pointerEvents:'none'}}>
       <circle cx={x} cy={y} r={drag===hand?16:14} fill={T.card}
@@ -7244,44 +7258,41 @@ function TimeDial({start,end,onChange}){
             strokeLinecap="round" opacity="0.95"/>
           {/* Linienzeiger zum Zentrum */}
           <line x1={CX} y1={CY} x2={pt(a,R)[0]} y2={pt(a,R)[1]}
-            stroke={T.o} strokeWidth="3.5" strokeLinecap="round" opacity="0.95"/>
+            stroke={T.t1} strokeWidth="3.5" strokeLinecap="round" opacity="0.95"/>
           <line x1={CX} y1={CY} x2={pt(b,R)[0]} y2={pt(b,R)[1]}
-            stroke={T.t1} strokeWidth="3" strokeLinecap="round" opacity="0.85"/>
+            stroke={T.o} strokeWidth="3" strokeLinecap="round" opacity="0.85"/>
           {/* Kleine Nabe am Zeiger-Treffpunkt */}
           <circle cx={CX} cy={CY} r="7" fill={T.card2} stroke={T.border} strokeWidth="1.5"/>
-          {knob(a,'a',T.o)}
-          {knob(b,'b',T.t1)}
+          {knob(a,'a',T.t1)}
+          {knob(b,'b',T.o)}
         </svg>
       </div>
       {/* Ablesezeile unter dem Zifferblatt — groß gesetzt, damit Zeiten
           und Spieldauer auch aus Armlänge lesbar sind. Farben spiegeln
-          die Zeiger: Orange = Start, Hell = Ende. */}
-      <div style={{display:'flex',flexDirection:'column',alignItems:'center',
-        gap:7,marginTop:8}}>
-        <div style={{display:'flex',alignItems:'baseline',gap:9,
-          fontVariantNumeric:'tabular-nums',letterSpacing:-.5,lineHeight:1,
-          pointerEvents:'none'}}>
-          <span style={{color:T.o,fontSize:30,fontWeight:800}}>{fmt(a)}</span>
-          <span style={{color:T.t3,fontSize:20,fontWeight:600}}>–</span>
-          <span style={{color:T.t1,fontSize:30,fontWeight:800}}>{fmt(b)}</span>
+          die Zeiger: Hell = Start, Orange = Ende. */}
+      <div style={{display:'flex',alignItems:'baseline',justifyContent:'center',
+        gap:9,marginTop:8,fontVariantNumeric:'tabular-nums',letterSpacing:-.5,
+        lineHeight:1,pointerEvents:'none'}}>
+        <span style={{color:T.t1,fontSize:30,fontWeight:800}}>{fmt(a)}</span>
+        <span style={{color:T.t3,fontSize:20,fontWeight:600}}>–</span>
+        <span style={{color:T.o,fontSize:30,fontWeight:800}}>{fmt(b)}</span>
+      </div>
+      {/* Spieldauer mittig, die Schnellwahl-Dauern links (kürzer) und
+          rechts (länger) davon — Tap setzt das Ende relativ zum Start. */}
+      <div style={{display:'flex',alignItems:'center',justifyContent:'center',
+        gap:7,marginTop:10}}>
+        <div style={{flex:1,display:'flex',justifyContent:'flex-end',gap:5}}>
+          {shorter.map(quick)}
         </div>
-        <div style={{...glass,display:'inline-flex',alignItems:'center',gap:7,
-          borderRadius:999,padding:'6px 14px',pointerEvents:'none'}}>
+        <div style={{...glass,display:'inline-flex',alignItems:'center',gap:6,
+          flexShrink:0,borderRadius:999,padding:'7px 13px'}}>
           <StopwatchIcon size={14} color={T.o}/>
-          <span style={{color:T.t1,fontSize:16,fontWeight:800,
+          <span style={{color:T.t1,fontSize:16,fontWeight:800,whiteSpace:'nowrap',
             fontVariantNumeric:'tabular-nums'}}>{durTxt}</span>
         </div>
-      </div>
-      {/* Schnellwahl: Ende = Start + Dauer */}
-      <div style={{display:'flex',gap:6,justifyContent:'center',marginTop:12,flexWrap:'wrap'}}>
-        {[['1 Std',60],['1,5 Std',90],['2 Std',120],['3 Std',180]].map(([lab,min])=>(
-          <button key={lab} onClick={()=>{buzz(5);set(a,(a+min)%1440);}}
-            style={{...glass,borderRadius:999,padding:'7px 13px',cursor:'pointer',
-              color:dur===min?T.o:T.t2,fontSize:12,fontWeight:700,
-              ...(dur===min?{border:`1px solid ${T.o}`}:{})}}>
-            {lab}
-          </button>
-        ))}
+        <div style={{flex:1,display:'flex',justifyContent:'flex-start',gap:5}}>
+          {longer.map(quick)}
+        </div>
       </div>
     </div>
   );
@@ -8004,7 +8015,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
           <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,padding:'14px 18px 16px'}}>
             <div style={{color:T.t1,fontSize:15,fontWeight:600}}>Zeitfenster</div>
             <div style={{color:T.t3,fontSize:11,fontWeight:500,marginBottom:6}}>
-              Zeiger ziehen — Orange = Start, Hell = Ende
+              Zeiger ziehen — Hell = Start, Orange = Ende
             </div>
             {/* Immer sichtbare Drag-Uhr — schreibt direkt in startTime/endTime. */}
             <TimeDial start={startTime} end={endTime}

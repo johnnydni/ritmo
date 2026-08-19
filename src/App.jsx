@@ -7153,20 +7153,21 @@ function CourtFlip({single,onFlip}){
   );
 }
 
-/* ── Zeitfenster-Uhr (Bottom-Sheet) — runde 24-h-Uhr mit zwei
-   Linienzeigern zum Zentrum: Orange = Start, Hell = Ende. Zeiger per
-   Drag ums Zifferblatt ziehen (15-Min-Raster), der orangene Bogen
-   dazwischen ist das Spielfenster; Fenster über Mitternacht sind
-   erlaubt (gleiche Wrap-Semantik wie windowMin im Setup). */
-function TimeDialSheet({start,end,onApply,onClose}){
-  const sheet=useSheetDrag(onClose); // Nach-unten-Wischen schließt
+/* ── Zeitfenster-Uhr (inline) — runde 24-h-Uhr mit zwei Linienzeigern
+   zum Zentrum: Orange = Start, Hell = Ende. Zeiger per Drag ums
+   Zifferblatt ziehen (15-Min-Raster); Änderungen schreiben SOFORT in
+   startTime/endTime (kein Sheet, kein Übernehmen mehr). Fenster über
+   Mitternacht sind erlaubt (gleiche Wrap-Semantik wie windowMin). */
+function TimeDial({start,end,onChange}){
   const parse=s=>{const m=/^(\d{1,2}):(\d{2})$/.exec((s||'').trim());
     if(!m)return null;const h=+m[1],mi=+m[2];
     return h>23||mi>59?null:h*60+mi;};
   const fmt=m=>`${String(Math.floor(m/60)%24).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
-  const[a,setA]=useState(()=>parse(start)??18*60); // Start-Minuten
-  const[b,setB]=useState(()=>parse(end)??21*60);   // End-Minuten
-  const[drag,setDrag]=useState(null);              // 'a' | 'b' | null
+  // Voll kontrolliert: Minuten kommen aus den Props (Defaults 18–21 Uhr,
+  // bis der erste Drag beide Zeiten in die Setup-States schreibt).
+  const a=parse(start)??18*60,b=parse(end)??21*60;
+  const set=(na,nb)=>onChange(fmt(na),fmt(nb));
+  const[drag,setDrag]=useState(null); // 'a' | 'b' | null
   const svgRef=useRef(null);
   const CX=170,CY=170,R=126;
   const pt=(m,r)=>{const t=(m/1440)*2*Math.PI;
@@ -7187,13 +7188,14 @@ function TimeDialSheet({start,end,onApply,onClose}){
   const down=e=>{
     e.preventDefault();
     const m=minutesAt(e),h=nearest(m);
-    setDrag(h);(h==='a'?setA:setB)(m);buzz(6);
+    setDrag(h);buzz(6);
+    h==='a'?set(m,b):set(a,m);
     e.currentTarget.setPointerCapture?.(e.pointerId);
   };
   const move=e=>{
     if(!drag)return;
     const m=minutesAt(e);
-    (drag==='a'?setA:setB)(p=>{if(p!==m)buzz(3);return m;});
+    if(m!==(drag==='a'?a:b)){buzz(3);drag==='a'?set(m,b):set(a,m);}
   };
   const up=()=>setDrag(null);
   const dur=((b-a+1440)%1440)||1440;
@@ -7213,31 +7215,11 @@ function TimeDialSheet({start,end,onApply,onClose}){
       <circle cx={x} cy={y} r="4.5" fill={accent}/>
     </g>);};
   return(
-    <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:300,
-      background:'rgba(0,0,0,.7)',backdropFilter:'blur(4px)',display:'flex',
-      alignItems:'flex-end',justifyContent:'center',animation:'fadeIn .15s ease'}}>
-      <div onClick={e=>e.stopPropagation()} className="slide-up"
-        ref={sheet.ref} {...sheet.handlers}
-        style={{borderTopLeftRadius:22,borderTopRightRadius:22,
-          borderTop:`1px solid ${T.border}`,width:'100%',maxWidth:480,
-          padding:'16px 20px calc(env(safe-area-inset-bottom,0px) + 18px)',
-          maxHeight:'90vh',overflowY:'auto',
-          background:'color-mix(in srgb, var(--card) 90%, transparent)',
-          WebkitBackdropFilter:'blur(18px) saturate(160%)',
-          backdropFilter:'blur(18px) saturate(160%)',...sheet.style}}>
-        <div style={{width:36,height:4,borderRadius:2,background:T.border,margin:'0 auto 14px'}}/>
-        <div style={{color:T.t1,fontSize:17,fontWeight:800,marginBottom:3}}>Zeitfenster wählen</div>
-        <div style={{color:T.t3,fontSize:12,lineHeight:1.5,marginBottom:8}}>
-          Ziehe die Zeiger ums Zifferblatt — Orange = Start, Hell = Ende.
-        </div>
-        {/* Zifferblatt — eigene Touch-Handler stoppen den Sheet-Drag,
-            damit Ziehen den Zeiger dreht statt das Sheet zu schließen. */}
-        <div style={{position:'relative',width:'min(78vw, 320px)',margin:'0 auto'}}>
+    <div>
+      <div style={{position:'relative',width:'min(78vw, 300px)',margin:'0 auto'}}>
         <svg ref={svgRef} viewBox="0 0 340 340"
           onPointerDown={down} onPointerMove={move}
           onPointerUp={up} onPointerCancel={up}
-          onTouchStart={e=>e.stopPropagation()}
-          onTouchMove={e=>e.stopPropagation()}
           style={{width:'100%',display:'block',
             touchAction:'none',cursor:'grab'}}>
           {/* Doppelter Ring + Stunden-Ticks (24 h, Labels alle 6 h) */}
@@ -7270,48 +7252,28 @@ function TimeDialSheet({start,end,onApply,onClose}){
           {knob(a,'a',T.o)}
           {knob(b,'b',T.t1)}
         </svg>
-        {/* Spieldauer — nur unten rechts neben dem Zifferblatt */}
+        {/* Start–Ende unten links, Spieldauer unten rechts */}
+        <div style={{position:'absolute',left:0,bottom:2,color:T.t3,
+          fontSize:13,fontWeight:700,fontVariantNumeric:'tabular-nums',
+          pointerEvents:'none'}}>
+          {fmt(a)} – {fmt(b)}
+        </div>
         <div style={{position:'absolute',right:0,bottom:2,color:T.t1,
           fontSize:15,fontWeight:800,fontVariantNumeric:'tabular-nums',
           pointerEvents:'none'}}>
           {durTxt}
         </div>
-        </div>
-        {/* Start/Ende-Anzeige als Glass-Pills */}
-        <div style={{display:'flex',gap:8,justifyContent:'center',margin:'12px 0 4px'}}>
-          {[['Start',fmt(a),T.o],['Ende',fmt(b),T.t1]].map(([lab,val,c])=>(
-            <div key={lab} style={{...glass,display:'flex',alignItems:'center',gap:7,
-              borderRadius:999,padding:'8px 14px'}}>
-              <span style={{width:8,height:8,borderRadius:'50%',background:c,display:'block'}}/>
-              <span style={{color:T.t3,fontSize:11,fontWeight:700}}>{lab}</span>
-              <span style={{color:T.t1,fontSize:14,fontWeight:800,
-                fontVariantNumeric:'tabular-nums'}}>{val}</span>
-            </div>
-          ))}
-        </div>
-        {/* Schnellwahl: Ende = Start + Dauer */}
-        <div style={{display:'flex',gap:6,justifyContent:'center',marginBottom:14,flexWrap:'wrap'}}>
-          {[['1 Std',60],['1,5 Std',90],['2 Std',120],['3 Std',180]].map(([lab,min])=>(
-            <button key={lab} onClick={()=>{buzz(5);setB((a+min)%1440);}}
-              style={{...glass,borderRadius:999,padding:'7px 13px',cursor:'pointer',
-                color:dur===min?T.o:T.t2,fontSize:12,fontWeight:700,
-                ...(dur===min?{border:`1px solid ${T.o}`}:{})}}>
-              {lab}
-            </button>
-          ))}
-        </div>
-        <div style={{display:'flex',gap:8}}>
-          <button onClick={onClose}
-            style={{flex:1,padding:'13px',background:'none',border:`1px solid ${T.border}`,
-              borderRadius:13,color:T.t2,fontSize:14,fontWeight:700,cursor:'pointer'}}>
-            Abbrechen
+      </div>
+      {/* Schnellwahl: Ende = Start + Dauer */}
+      <div style={{display:'flex',gap:6,justifyContent:'center',marginTop:10,flexWrap:'wrap'}}>
+        {[['1 Std',60],['1,5 Std',90],['2 Std',120],['3 Std',180]].map(([lab,min])=>(
+          <button key={lab} onClick={()=>{buzz(5);set(a,(a+min)%1440);}}
+            style={{...glass,borderRadius:999,padding:'7px 13px',cursor:'pointer',
+              color:dur===min?T.o:T.t2,fontSize:12,fontWeight:700,
+              ...(dur===min?{border:`1px solid ${T.o}`}:{})}}>
+            {lab}
           </button>
-          <button onClick={()=>{buzz(8);onApply(fmt(a),fmt(b));onClose();}}
-            style={{flex:1.4,padding:'13px',background:T.o,border:'none',
-              borderRadius:13,color:'#000',fontSize:14,fontWeight:800,cursor:'pointer'}}>
-            Übernehmen
-          </button>
-        </div>
+        ))}
       </div>
     </div>
   );
@@ -7335,8 +7297,6 @@ function TournamentWizard({onClose,onFinish,canStart,
   roundDur,setRoundDur,suggest,pauseStats,nameHistory}){
   const[step,setStep]=useState(0);
   const inputRefs=useRef({});
-  // Zeitfenster-Uhr (Schritt „Zeit") offen?
-  const[showDial,setShowDial]=useState(false);
   // Validierung je Schritt — „Weiter" bleibt aus, bis der Schritt steht.
   const namesOk=players.every(p=>(p.name||'').trim().length>0);
   const meta=FORMATS[format]||FORMATS.americano;
@@ -7574,29 +7534,11 @@ function TournamentWizard({onClose,onFinish,canStart,
           {step===3&&(<>
             <div style={stepTitle}>Wie lange wollt ihr spielen?</div>
             <div style={stepSub}>Mit Start & Ende schlägt RITMO Rundenzahl und -dauer automatisch vor.</div>
-            {/* Start + Ende als tappbare Glass-Pills — öffnen die
-                Drag-Uhr (ersetzen die nativen Scroll-Zeitfelder). */}
-            <div style={{display:'flex',gap:10,marginBottom:16}}>
-              {[['Start',startTime,T.o],['Ende',endTime,T.t1]].map(([lab,val,c])=>(
-                <button key={lab} onClick={()=>{buzz(6);setShowDial(true);}}
-                  aria-label={`${lab}zeit per Uhr wählen`}
-                  style={{flex:1,minWidth:0,height:48,borderRadius:13,cursor:'pointer',
-                    display:'flex',alignItems:'center',justifyContent:'center',gap:8,
-                    background:'color-mix(in srgb, var(--card2) 72%, transparent)',
-                    border:`1px solid ${T.border}`,
-                    WebkitBackdropFilter:'blur(14px) saturate(160%)',
-                    backdropFilter:'blur(14px) saturate(160%)'}}>
-                  <span style={{width:8,height:8,borderRadius:'50%',background:c,
-                    flexShrink:0,display:'block'}}/>
-                  <span style={{color:T.t3,fontSize:11,fontWeight:700}}>{lab}</span>
-                  <span style={{color:val?T.t1:T.t3,fontSize:15,fontWeight:800,
-                    fontVariantNumeric:'tabular-nums'}}>{val||'–:–'}</span>
-                </button>
-              ))}
+            {/* Immer sichtbare Drag-Uhr — schreibt direkt in startTime/endTime. */}
+            <div style={{marginBottom:16}}>
+              <TimeDial start={startTime} end={endTime}
+                onChange={(s,e)=>{setStartTime(s);setEndTime(e);}}/>
             </div>
-            {showDial&&<TimeDialSheet start={startTime} end={endTime}
-              onApply={(s,e)=>{setStartTime(s);setEndTime(e);}}
-              onClose={()=>setShowDial(false)}/>}
             <div style={label}>Was ist euch wichtiger?</div>
             <div style={{display:'flex',gap:8,marginBottom:18}}>
               <button onClick={()=>setRoundPrio('variety')} style={chip(roundPrio==='variety')}>
@@ -7744,8 +7686,6 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
   // nur beim Mount, nicht bei externer value-Änderung).
   const[pickerKey,setPickerKey]=useState(0);
   const[creatingOnline,setCreatingOnline]=useState(false);
-  // Zeitfenster-Uhr (Bottom-Sheet mit Drag-Zeigern) offen?
-  const[showTimeDial,setShowTimeDial]=useState(false);
   // Court-Namen — werden auf die Matches angewendet. Sparse-Array:
   // Index i = eigener Name fuer Court i, sonst Default "Court i+1".
   const[courtNames,setCourtNames]=useState(saved?.courtNames||[]);
@@ -8041,52 +7981,13 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
         {/* Zeitfenster (nur lokal) — Start/End-Uhrzeit → Rundenzeit-Vorschlag. */}
         {mode==='lokal'&&(
           <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,padding:'14px 18px'}}>
-            <div style={{display:'flex',alignItems:'flex-start',gap:10,marginBottom:12}}>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{color:T.t1,fontSize:15,fontWeight:600,marginBottom:2}}>Zeitfenster</div>
-                <div style={{color:T.t3,fontSize:11,fontWeight:500}}>
-                  Start- & End-Uhrzeit → schlägt die Rundenzeit vor (− 2 Min Rotation/Runde)
-                </div>
-              </div>
-              {/* Uhr-Button (Liquid Glass) → öffnet die Drag-Uhr. */}
-              <button onClick={()=>{buzz(6);setShowTimeDial(true);}}
-                aria-label="Zeitfenster per Uhr wählen"
-                style={{width:40,height:40,borderRadius:14,flexShrink:0,cursor:'pointer',
-                  display:'flex',alignItems:'center',justifyContent:'center',
-                  background:'color-mix(in srgb, var(--card2) 72%, transparent)',
-                  border:'1px solid color-mix(in srgb, var(--t1) 18%, transparent)',
-                  WebkitBackdropFilter:'blur(14px) saturate(160%)',
-                  backdropFilter:'blur(14px) saturate(160%)'}}>
-                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <circle cx="12" cy="12" r="9" stroke={T.o} strokeWidth="1.8"/>
-                  <path d="M12 7v5l3.2 2" stroke={T.o} strokeWidth="1.8"
-                    strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
+            <div style={{color:T.t1,fontSize:15,fontWeight:600,marginBottom:2}}>Zeitfenster</div>
+            <div style={{color:T.t3,fontSize:11,fontWeight:500,marginBottom:12}}>
+              Zeiger ziehen: Orange = Start, Hell = Ende → schlägt die Rundenzeit vor (− 2 Min Rotation/Runde)
             </div>
-            {showTimeDial&&<TimeDialSheet start={startTime} end={endTime}
-              onApply={(s,e)=>{setStartTime(s);setEndTime(e);}}
-              onClose={()=>setShowTimeDial(false)}/>}
-            {/* START + ENDE als tappbare Glass-Pills — öffnen die
-                Drag-Uhr (ersetzen die nativen Scroll-Zeitfelder). */}
-            <div style={{display:'grid',gridTemplateColumns:'minmax(0,1fr) minmax(0,1fr)',gap:8}}>
-              {[['START',startTime,T.o],['ENDE',endTime,T.t1]].map(([lab,val,c])=>(
-                <button key={lab} onClick={()=>{buzz(6);setShowTimeDial(true);}}
-                  aria-label={`${lab==='START'?'Start':'End'}zeit per Uhr wählen`}
-                  style={{minWidth:0,height:44,borderRadius:12,cursor:'pointer',
-                    display:'flex',alignItems:'center',justifyContent:'center',gap:8,
-                    background:'color-mix(in srgb, var(--card2) 72%, transparent)',
-                    border:`1px solid ${T.border}`,
-                    WebkitBackdropFilter:'blur(14px) saturate(160%)',
-                    backdropFilter:'blur(14px) saturate(160%)'}}>
-                  <span style={{width:8,height:8,borderRadius:'50%',background:c,
-                    flexShrink:0,display:'block'}}/>
-                  <span style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:.4}}>{lab}</span>
-                  <span style={{color:val?T.t1:T.t3,fontSize:15,fontWeight:800,
-                    fontVariantNumeric:'tabular-nums'}}>{val||'–:–'}</span>
-                </button>
-              ))}
-            </div>
+            {/* Immer sichtbare Drag-Uhr — schreibt direkt in startTime/endTime. */}
+            <TimeDial start={startTime} end={endTime}
+              onChange={(s,e)=>{setStartTime(s);setEndTime(e);}}/>
 
             {/* Priorität: Längere Runden ⇄ Jeder gegen Jeden — steuert
                 Ziel-/Min-/Max-Rundenzeit des Vorschlags. */}

@@ -47,7 +47,7 @@ import {
   ArchetypeGlyph, PauseIcon,
   // Emoji-Ersatz-Glyphen
   HeartIcon, MedalIcon, PhoneIcon, KeyboardIcon, RingIcon, WatchIcon, FlicIcon,
-  MoonIcon, SunIcon, LeafIcon, TargetIcon, ScrollIcon, StopwatchIcon, MaskIcon,
+  MoonIcon, LeafIcon, TargetIcon, ScrollIcon, StopwatchIcon, MaskIcon,
   PeopleIcon, HandIcon, WarnIcon, SkipIcon, LaptopIcon, MonitorIcon,
   MenuIcon,
 } from "./icons.jsx";
@@ -2356,12 +2356,7 @@ function ChapterPlaystyle({profile,setProfile}){
 
 function ChapterTheme({theme,setTheme}){
   const themes=[
-    {id:'glass',      label:'Liquid Glass',       swatch:['#060709','#FF7A1A','#0A84FF']},
-    {id:'glass-light',label:'Liquid Glass Hell',  swatch:['#EEF1F6','#F26A00','#007AFF']},
-    {id:'dark',     label:'RITMO BAUHAUS Dark',  swatch:['#000000','#FF7A1A','#FFFFFF']},
-    {id:'light',    label:'Federleicht',         swatch:['#FFFFFF','#FF9500','#000000']},
-    {id:'padel',    label:'Padelhaus Blue',      swatch:['#0018F9','#FFD60A','#FFFFFF']},
-    // Wimbledon Green + RITMO BAUHAUS Funky vorerst ausgeblendet.
+    {id:'glass',label:'RITMO Liquid Glass',swatch:['#060709','#FF7A1A','#0A84FF']},
   ];
   return(
     <div style={{display:'flex',flexDirection:'column',gap:10}}>
@@ -12225,13 +12220,10 @@ function SettingsSteuerung({onBack,onHome,inputMode,setInputMode,voiceOn,setVoic
    Punkte-Verlauf bleiben in beiden Modi erhalten — siehe Match.jsx.
 ═══════════════════════════════════════════════════════════════ */
 function SettingsAnpassung({onBack,onHome,theme,setTheme,tabletMode,setTabletMode}){
+  // Nur noch ein Erscheinungsbild — die übrigen Themes sind aus der
+  // Auswahl genommen (CSS-Sets bleiben in theme.js erhalten).
   const themes=[
-    {id:'glass',label:'Liquid Glass',icon:<MoonIcon size={20} color={T.t1}/>,desc:'iOS-Look — dunkles Milchglas, farbiges Licht'},
-    {id:'glass-light',label:'Liquid Glass Hell',icon:<SunIcon size={20} color={T.t1}/>,desc:'iOS-Look — helles Milchglas'},
-    {id:'dark',label:'RITMO BAUHAUS Dark',icon:<MoonIcon size={20} color={T.t1}/>,desc:'Schwarz, weiß, orange'},
-    {id:'light',label:'Federleicht',icon:<SunIcon size={20} color={T.t1}/>,desc:'Weiß, schwarz, blau'},
-    {id:'padel',label:'Padelhaus Blue',icon:<TennisBallIcon size={20}/>,desc:'Elektroblau, weiß, gelb'},
-    // Wimbledon Green + RITMO BAUHAUS Funky vorerst ausgeblendet.
+    {id:'glass',label:'RITMO Liquid Glass',icon:<MoonIcon size={20} color={T.t1}/>,desc:'iOS-Look — dunkles Milchglas, farbiges Licht'},
   ];
   return(
     <SettingsSubLayout title="Anpassung"
@@ -19305,7 +19297,9 @@ export default function App(){
   const[inputMode,setInputMode]=useState(()=>lsGet('ritmo_input','smartphone'));
   const[voiceOn,setVoiceOn]=useState(()=>lsGet('ritmo_voice',false));
   const[voiceBaseUrl,setVoiceBaseUrl]=useState(()=>lsGet('ritmo_voice_url',''));
-  const[theme,setTheme]=useState(()=>lsGet('ritmo_theme','glass'));
+  // Nur noch ein Erscheinungsbild: 'glass'. Ältere gespeicherte Werte
+  // (dark/light/padel/wimbledon/funky) laufen still darauf zurück.
+  const[theme,setTheme]=useState('glass');
   // Tablet-Modus skaliert das Scoreboard (Match-Screen) auf größere
   // Bildschirme. Eigene Persistenz, weil der Mode bewusst manuell vom
   // User aktiviert wird — nicht automatisch via Viewport-Erkennung,

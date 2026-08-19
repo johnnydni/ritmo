@@ -365,6 +365,21 @@ export async function joinOnlineTournament(pin, username) {
 }
 
 /**
+ * Player verlässt die Session: entfernt sich aus participants und
+ * räumt eigene offene Score-Submissions mit ab. Idempotent — ein
+ * bereits entfernter Teilnehmer ist ein No-op.
+ */
+export async function leaveOnlineTournament(pin, participantId) {
+  const c = sb();
+  if (!c || !pin || !participantId) return;
+  const session = await fetchOnlineTournament(pin);
+  if (!session) return;
+  const participants = (session.participants || []).filter(p => p.id !== participantId);
+  const scoreSubmissions = (session.scoreSubmissions || []).filter(s => s.submittedBy !== participantId);
+  await updateOnlineTournament(pin, { ...session, participants, scoreSubmissions });
+}
+
+/**
  * Realtime-Subscription auf eine Session. Callback bekommt das
  * frische data-Objekt bei jeder Änderung. Returns cleanup function.
  */

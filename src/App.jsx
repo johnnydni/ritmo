@@ -1,7 +1,7 @@
 import { useState, useEffect, useLayoutEffect, useReducer, useCallback, useMemo, useRef, Fragment } from "react";
 import { SKILL_DESCRIPTIONS } from "./skillDescriptions.js";
 import { loadProfile as dbLoadProfile, saveProfile as dbSaveProfile, logMatch as dbLogMatch, loadMatchStats as dbLoadMatchStats,
-  createOnlineTournament, joinOnlineTournament, fetchOnlineTournament, updateOnlineTournament, subscribeToTournament,
+  createOnlineTournament, joinOnlineTournament, leaveOnlineTournament, fetchOnlineTournament, updateOnlineTournament, subscribeToTournament,
   publishTournamentState, submitScore, approveScore, rejectScore, sendReadyCheck, confirmReady, clearReadyCheck,
   checkBetaKey, redeemBetaKey, deleteMyMatches as dbDeleteMyMatches,
   logMatchLocal, loadMatchStatsLocal as dbLoadMatchStatsLocal, clearMatchLog,
@@ -9185,7 +9185,7 @@ function TournamentMonitorView({session,pin}){
   );
 }
 
-function JoinTournament({initialPin,profile,onHome,onJoin,restored}){
+function JoinTournament({initialPin,profile,onHome,onJoin,onLeave,restored}){
   const[pin,setPin]=useState((restored?.pin||initialPin||'').toLowerCase());
   const[name,setName]=useState(restored?.name||profile?.name||'');
   // Wenn wir mit gespeichertem participantId starten, springen wir
@@ -9242,6 +9242,21 @@ function JoinTournament({initialPin,profile,onHome,onJoin,restored}){
       setErr(e?.message||'Beitritt fehlgeschlagen.');
       setStatus('input');
     }
+  };
+
+  // ── Turnier verlassen: aus der Teilnehmerliste austragen (inkl.
+  // eigener offener Submissions), persistierten Beitritt löschen und
+  // zurück zur PIN-Eingabe — Wiederbeitritt jederzeit möglich.
+  const[confirmLeave,setConfirmLeave]=useState(false);
+  const doLeave=async()=>{
+    setConfirmLeave(false);
+    buzz(10);
+    try{ if(participantId) await leaveOnlineTournament(pin,participantId); }catch{}
+    onLeave?.();
+    setParticipantId(null);
+    setSession(null);
+    setErr('');
+    setStatus('input');
   };
 
   // ── Monitor-Modus: read-only Anzeige (Tablet/Beamer) — kein
@@ -9391,6 +9406,16 @@ function JoinTournament({initialPin,profile,onHome,onJoin,restored}){
             pin={pin}/>
         )}
 
+        {/* Turnier verlassen — im Warte-, Freigegeben- UND Spiel-Status. */}
+        {(status==='waiting'||status==='approved'||status==='playing')&&(
+          <button onClick={()=>{buzz(8);setConfirmLeave(true);}}
+            style={{padding:'12px',borderRadius:13,cursor:'pointer',flexShrink:0,
+              background:'transparent',border:`1.5px solid ${T.r}`,color:T.r,
+              fontSize:13,fontWeight:800}}>
+            Turnier verlassen
+          </button>
+        )}
+
         {status==='rejected'&&(
           <div style={{background:T.card,border:`1px solid ${T.r}`,borderRadius:16,
             padding:'24px 20px',textAlign:'center'}}>
@@ -9430,6 +9455,17 @@ function JoinTournament({initialPin,profile,onHome,onJoin,restored}){
         <QRScannerModal
           onResult={onScanResult}
           onClose={()=>setScannerOpen(false)}/>
+      )}
+
+      {/* Verlassen bestätigen */}
+      {confirmLeave&&(
+        <ResetModal
+          title="Turnier verlassen"
+          description="Du wirst aus der Teilnehmerliste entfernt; offene Score-Anfragen von dir werden verworfen. Mit dem PIN kannst du jederzeit wieder beitreten."
+          question="Turnier jetzt verlassen?"
+          confirmLabel="Verlassen"
+          onCancel={()=>setConfirmLeave(false)}
+          onConfirm={doLeave}/>
       )}
     </div>
   );
@@ -19501,7 +19537,14 @@ export default function App(){
       onDeleteMatch={deleteMatch} onDeleteTourney={deleteTourney} onOpenTourney={openTourney}
       onDeleteAll={deleteAllLive}
       joinedSession={joinedSession}
-      onLeaveJoined={()=>setJoinedSession(null)}/>}
+      onLeaveJoined={()=>{
+        // Auch serverseitig aus der Teilnehmerliste austragen — nicht
+        // nur den lokalen Beitritts-State löschen.
+        if(joinedSession?.pin&&joinedSession?.participantId){
+          leaveOnlineTournament(joinedSession.pin,joinedSession.participantId).catch(()=>{});
+        }
+        setJoinedSession(null);
+      }}/>}
     {scr==='settings'&&<Settings onHome={goHome} nav={nav}
       onBack={()=>setScr('profile')}
       onLogout={async()=>{
@@ -19595,6 +19638,7 @@ export default function App(){
       profile={profile}
       restored={joinedSession}
       onJoin={setJoinedSession}
+      onLeave={()=>setJoinedSession(null)}
       onHome={()=>{setJoinPinFromUrl(null);goHome();}}/>}
 
     {/* Hub-Screens: Turnier-Auswahl + RITMO Bibel */}

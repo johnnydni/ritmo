@@ -6450,30 +6450,40 @@ function HorizontalScrollPicker({value,onChange,options,bgColor=T.card,
   const ref=useRef(null);
   const TOTAL_W=itemW*visible;
   const PAD=(TOTAL_W-itemW)/2;
-  const initialized=useRef(false);
-  const scrollTimeoutRef=useRef(null);
+  const settle=useRef(null);   // Debounce, bis der Snap zur Ruhe kommt
+  const lastUser=useRef(0);    // Zeitstempel der letzten Nutzer-Scrollung
+  const mounted=useRef(false);
+  const idx=options.indexOf(value);
 
-  // Initial- und externe Wertänderungen: Scroll-Position auf das
-  // value setzen. Nur einmal beim Mount, danach lassen wir den User
-  // frei scrollen (sonst springen wir während des Snap-Vorgangs).
+  // Der Picker folgt dem Wert auch, wenn er von AUSSEN kommt (Empfehlung,
+  // Assistent, geladener Entwurf). Vorher blieb er auf der Mount-Position
+  // stehen und schrieb beim nächsten Wischen den alten Wert zurück —
+  // Rundendauer und Anzeige liefen auseinander. Während der User selbst
+  // scrollt (letzte 500 ms), fassen wir die Position nicht an, sonst
+  // kämpfen Snap und Korrektur gegeneinander.
   useEffect(()=>{
-    if(!ref.current) return;
-    const idx=options.indexOf(value);
-    if(idx<0) return;
+    const el=ref.current;
+    if(!el||idx<0) return;
     const target=idx*itemW;
-    if(!initialized.current){
-      ref.current.scrollLeft=target;
-      initialized.current=true;
-    }
-  },[value,options,itemW]);
+    if(Math.abs(el.scrollLeft-target)<1.5){ mounted.current=true; return; }
+    if(mounted.current&&Date.now()-lastUser.current<500) return;
+    if(settle.current){ clearTimeout(settle.current); settle.current=null; }
+    if(!mounted.current){ el.scrollLeft=target; mounted.current=true; }
+    else if(el.scrollTo) el.scrollTo({left:target,behavior:'smooth'});
+    else el.scrollLeft=target;
+  },[idx,itemW]);
+  // Debounce beim Unmount aufräumen — sonst feuert onChange ins Leere.
+  useEffect(()=>()=>{ if(settle.current) clearTimeout(settle.current); },[]);
 
-  const handleScroll=(e)=>{
-    if(scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
-    scrollTimeoutRef.current=setTimeout(()=>{
-      const idx=Math.round(e.target.scrollLeft/itemW);
-      const newVal=options[Math.max(0,Math.min(options.length-1,idx))];
-      if(newVal!==value) onChange(newVal);
-    },80);
+  const handleScroll=()=>{
+    lastUser.current=Date.now();
+    if(settle.current) clearTimeout(settle.current);
+    // Position erst aus dem Element lesen, wenn das Momentum steht.
+    settle.current=setTimeout(()=>{
+      const el=ref.current; if(!el) return;
+      const i=Math.max(0,Math.min(options.length-1,Math.round(el.scrollLeft/itemW)));
+      if(options[i]!==undefined&&options[i]!==value) onChange(options[i]);
+    },110);
   };
 
   const FADE_W=Math.round(itemW*0.9);
@@ -7721,10 +7731,6 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
   // (weniger Runden, dafür spielt nicht jeder gegen jeden), 'variety' =
   // jeder gegen jeden (mehr Runden, dafür kürzer).
   const[roundPrio,setRoundPrio]=useState(saved?.roundPrio||'variety');
-  // Bumpt nur beim Übernehmen eines Vorschlags → der Rundendauer-Picker
-  // remountet und springt auf den neuen Wert (er repositioniert sonst
-  // nur beim Mount, nicht bei externer value-Änderung).
-  const[pickerKey,setPickerKey]=useState(0);
   const[creatingOnline,setCreatingOnline]=useState(false);
   // Court-Namen — werden auf die Matches angewendet. Sparse-Array:
   // Index i = eigener Name fuer Court i, sonst Default "Court i+1".
@@ -7826,7 +7832,6 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
     if(!suggest) return;
     buzz(8);
     setRoundDur(suggest.roundTime);
-    setPickerKey(k=>k+1);
     setSuggestShown(true);
   };
   const appliedSuggest=suggestShown&&!!suggest&&roundDur===suggest.roundTime;
@@ -8067,11 +8072,28 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
               <button onClick={applySuggest}
                 style={{marginTop:12,width:'100%',display:'flex',alignItems:'center',
                   justifyContent:'center',gap:8,padding:'12px',borderRadius:12,
-                  cursor:'pointer',border:`1.5px solid ${T.o}`,
+                  cursor:'pointer',border:`1.5px solid ${T.o}`,position:'relative',
                   background:appliedSuggest?T.oSoft:T.o,
                   color:appliedSuggest?T.o:'#000',fontSize:13.5,fontWeight:800}}>
                 <StopwatchIcon size={15} color={appliedSuggest?T.o:'#000'}/>
                 {appliedSuggest?'Empfehlung übernommen':'Empfehlung'}
+                {/* X blendet die Empfehlung wieder aus — eigener Klick-
+                    bereich im Button (kein verschachteltes <button>). */}
+                {suggestShown&&(
+                  <span role="button" tabIndex={0}
+                    aria-label="Empfehlung ausblenden"
+                    onClick={e=>{e.stopPropagation();buzz(6);setSuggestShown(false);}}
+                    style={{position:'absolute',right:7,top:'50%',
+                      transform:'translateY(-50%)',width:30,height:30,
+                      borderRadius:'50%',display:'flex',alignItems:'center',
+                      justifyContent:'center',cursor:'pointer'}}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M6 6l12 12M18 6L6 18"
+                        stroke={appliedSuggest?T.o:'#000'} strokeWidth="2.6"
+                        strokeLinecap="round"/>
+                    </svg>
+                  </span>
+                )}
               </button>
             )}
             {suggest&&!suggestShown&&(
@@ -8113,7 +8135,6 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
           </div>
           <div style={{display:'flex',justifyContent:'center'}}>
             <HorizontalScrollPicker
-              key={pickerKey}
               value={roundDur}
               onChange={setRoundDur}
               options={Array.from({length:60},(_,i)=>i+1)}

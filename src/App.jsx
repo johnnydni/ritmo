@@ -6978,18 +6978,55 @@ function SwipeableCard({children,onDelete,onShare,onMore}){
 }
 
 
+/* ── Drag-to-Dismiss für Bottom-Sheets ────────────────────────────
+   Nach-unten-Wischen schließt das Sheet: Finger zieht es mit
+   (nur wenn intern ganz nach oben gescrollt — sonst scrollt der
+   Inhalt normal), ab 110 px Schwelle Slide-out + onClose, darunter
+   federt es zurück. animation:'none' ab dem ersten Touch, damit die
+   slide-up-Eintrittsanimation (fill:both) den Drag-Transform nicht
+   überschreibt. */
+function useSheetDrag(onClose){
+  const ref=useRef(null);
+  const[dy,setDy]=useState(0);
+  const[dragging,setDragging]=useState(false);
+  const[touched,setTouched]=useState(false);
+  const startY=useRef(0);
+  const closing=useRef(false);
+  const onTouchStart=e=>{startY.current=e.touches[0].clientY;setDragging(true);setTouched(true);};
+  const onTouchMove=e=>{
+    if(closing.current)return;
+    // Sheet-Inhalt nicht oben → normal scrollen lassen, Drag neu ankern.
+    if((ref.current?.scrollTop||0)>0){startY.current=e.touches[0].clientY;return;}
+    const d=e.touches[0].clientY-startY.current;
+    setDy(d>0?d:0);
+  };
+  const onTouchEnd=()=>{
+    setDragging(false);
+    if(closing.current)return;
+    if(dy>110){closing.current=true;setDy(Math.max(400,dy*3));setTimeout(onClose,200);}
+    else setDy(0);
+  };
+  return {ref,
+    style:{transform:`translateY(${dy}px)`,
+      transition:dragging?'none':'transform .25s cubic-bezier(.3,0,.2,1)',
+      ...(touched?{animation:'none'}:{})},
+    handlers:{onTouchStart,onTouchMove,onTouchEnd,onTouchCancel:onTouchEnd}};
+}
+
 /* ── Spielstil-Picker (Bottom-Sheet) — Auswahl eines der sechs RITMO-
    Archetypen pro Spieler. Treibt das Match-Tier-Rating der Paarungen. */
 function StylePickerSheet({current,onSelect,onClose}){
+  const sheet=useSheetDrag(onClose); // Nach-unten-Wischen schließt
   return(
     <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:300,
       background:'rgba(0,0,0,.7)',backdropFilter:'blur(4px)',display:'flex',
       alignItems:'flex-end',justifyContent:'center',animation:'fadeIn .15s ease'}}>
       <div onClick={e=>e.stopPropagation()} className="slide-up"
+        ref={sheet.ref} {...sheet.handlers}
         style={{background:T.card,borderTopLeftRadius:20,borderTopRightRadius:20,
           borderTop:`1px solid ${T.border}`,width:'100%',maxWidth:480,
           padding:'16px 18px calc(env(safe-area-inset-bottom,0px) + 18px)',
-          maxHeight:'82vh',overflowY:'auto'}}>
+          maxHeight:'82vh',overflowY:'auto',...sheet.style}}>
         <div style={{width:36,height:4,borderRadius:2,background:T.border,margin:'0 auto 14px'}}/>
         <div style={{color:T.t1,fontSize:17,fontWeight:800,marginBottom:3}}>Spielstil wählen</div>
         <div style={{color:T.t3,fontSize:12,lineHeight:1.5,marginBottom:14}}>
@@ -10032,15 +10069,18 @@ function RoundEndModal({roundNo,breakdown,names,winMode,onConfirm,onCancel}){
 function RoundHistorySheet({tourney,onClose}){
   const pById=id=>tourney.players.find(p=>p.id===id);
   const teamNames=ids=>(ids||[]).map(id=>pById(id)?.name||'?').join(' + ');
+  const sheet=useSheetDrag(onClose); // Nach-unten-Wischen schließt
   return(
     <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:300,
       background:'rgba(0,0,0,.7)',backdropFilter:'blur(4px)',display:'flex',
       alignItems:'flex-end',justifyContent:'center',animation:'fadeIn .15s ease'}}>
       <div onClick={e=>e.stopPropagation()} className="slide-up"
+        ref={sheet.ref} {...sheet.handlers}
         style={{background:T.card,borderTopLeftRadius:20,borderTopRightRadius:20,
           borderTop:`1px solid ${T.border}`,width:'100%',maxWidth:480,
           padding:'16px 18px calc(env(safe-area-inset-bottom,0px) + 18px)',
-          maxHeight:'82vh',overflowY:'auto',WebkitOverflowScrolling:'touch'}}>
+          maxHeight:'82vh',overflowY:'auto',WebkitOverflowScrolling:'touch',
+          ...sheet.style}}>
         <div style={{width:36,height:4,borderRadius:2,background:T.border,margin:'0 auto 14px'}}/>
         <div style={{display:'flex',alignItems:'center',gap:9,marginBottom:3}}>
           <HistoryIcon size={19} color={T.o}/>

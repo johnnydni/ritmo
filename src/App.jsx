@@ -9083,6 +9083,108 @@ function extractPinFromScan(text){
    3. Joinen → wartet auf Host-Freigabe (Realtime)
    4. Wenn Host startet (status='playing') → TournamentParticipantView
 ═══════════════════════════════════════════════════════════════ */
+/* ── TURNIER-MONITOR — read-only Anzeige für Tablet/Beamer an der
+   Anlage (Abfallprodukt von "Live teilen"): wechselt automatisch
+   alle 8 s zwischen aktueller Runde und Tabelle, live über die
+   Session-Subscription. Bewusst große Typo — wird aus Distanz
+   gelesen. */
+function TournamentMonitorView({session,pin}){
+  const ts=session.tournamentState||{};
+  const[view,setView]=useState('round');
+  useEffect(()=>{
+    const id=setInterval(()=>setView(v=>v==='round'?'board':'round'),8000);
+    return()=>clearInterval(id);
+  },[]);
+  const round=ts.rounds?.[ts.current];
+  const playerById=id=>ts.players?.find(p=>p.id===id);
+  const team=ids=>(ids||[]).map(id=>playerById(id)?.name||'?').join(' & ');
+  const lbRounds=ts.finished?(ts.rounds||[]):(ts.rounds||[]).slice(0,ts.current);
+  const lb=(ts.players&&ts.rounds)
+    ?calcLeaderboard(ts.players,lbRounds,ts.winMode||'points')
+      .sort((a,b)=>ts.winMode==='points'
+        ?b.totalPts-a.totalPts||b.totalWins-a.totalWins
+        :b.totalWins-a.totalWins||b.totalPts-a.totalPts)
+    :[];
+  return(
+    <div className="fi" style={{display:'flex',flexDirection:'column',gap:14}}>
+      <div style={{display:'flex',alignItems:'center',gap:10}}>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{color:T.t1,fontSize:24,fontWeight:900,letterSpacing:-.5,
+            overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+            {ts.name||'Turnier'}
+          </div>
+          <div style={{color:T.t3,fontSize:13,fontWeight:600,marginTop:2}}>
+            {ts.finished?'Endstand':`Runde ${(ts.current??0)+1}`}
+          </div>
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:7,flexShrink:0}}>
+          <span className="court-live-dot" style={{width:9,height:9,borderRadius:'50%',
+            background:T.r,boxShadow:`0 0 8px ${T.r}aa`,display:'inline-block'}}/>
+          <span style={{color:T.r,fontSize:11,fontWeight:900,letterSpacing:1.3}}>LIVE</span>
+        </div>
+      </div>
+
+      {view==='round'&&round&&(
+        <div style={{display:'flex',flexDirection:'column',gap:10}}>
+          {round.courts.map((c,ci)=>(
+            <div key={c.id} style={{background:T.card,
+              border:`1.5px solid ${c.done?T.o:T.border}`,
+              borderRadius:16,padding:'14px 16px'}}>
+              <div style={{color:T.o,fontSize:11,fontWeight:900,letterSpacing:1.3,
+                textTransform:'uppercase',marginBottom:8}}>
+                {courtLabel(ts.courtNames,ci)}{c.single?' — 1v1':''}
+              </div>
+              <div style={{display:'flex',alignItems:'center',gap:10}}>
+                <div style={{flex:1,minWidth:0,color:T.t1,fontSize:16,fontWeight:700,
+                  lineHeight:1.4}}>{team(c.t1)}</div>
+                <div style={{flexShrink:0,color:c.done?T.t1:T.t3,fontSize:22,
+                  fontWeight:900,fontVariantNumeric:'tabular-nums'}}>
+                  {c.done?`${c.s1} : ${c.s2}`:'– : –'}
+                </div>
+                <div style={{flex:1,minWidth:0,color:T.t1,fontSize:16,fontWeight:700,
+                  lineHeight:1.4,textAlign:'right'}}>{team(c.t2)}</div>
+              </div>
+            </div>
+          ))}
+          {round.sitOut?.length>0&&(
+            <div style={{color:T.t3,fontSize:13,textAlign:'center'}}>
+              Pause: {round.sitOut.map(id=>playerById(id)?.name||'?').join(', ')}
+            </div>
+          )}
+        </div>
+      )}
+
+      {view==='board'&&(
+        <div style={{background:T.card,border:`1px solid ${T.border}`,
+          borderRadius:16,padding:'6px 16px'}}>
+          {lb.length===0&&(
+            <div style={{color:T.t3,fontSize:13,textAlign:'center',padding:'16px 0'}}>
+              Noch keine abgeschlossene Runde.
+            </div>
+          )}
+          {lb.map((p,i)=>(
+            <div key={p.id} style={{display:'flex',alignItems:'center',gap:12,
+              padding:'11px 0',borderTop:i>0?`1px solid ${T.sep}`:'none'}}>
+              <span style={{width:28,color:i===0?T.o:T.t3,fontSize:16,
+                fontWeight:900,flexShrink:0}}>{i+1}</span>
+              <span style={{flex:1,minWidth:0,color:T.t1,fontSize:17,fontWeight:700,
+                overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.name}</span>
+              <span style={{color:T.o,fontSize:17,fontWeight:900,
+                fontVariantNumeric:'tabular-nums',flexShrink:0}}>
+                {ts.winMode==='wins'?`${p.totalWins} S`:`${p.totalPts} P`}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{color:T.t3,fontSize:11,textAlign:'center',fontWeight:600}}>
+        Wechselt automatisch, Beitritt mit PIN {(pin||'').toUpperCase()}
+      </div>
+    </div>
+  );
+}
+
 function JoinTournament({initialPin,profile,onHome,onJoin,restored}){
   const[pin,setPin]=useState((restored?.pin||initialPin||'').toLowerCase());
   const[name,setName]=useState(restored?.name||profile?.name||'');
@@ -9141,6 +9243,22 @@ function JoinTournament({initialPin,profile,onHome,onJoin,restored}){
       setStatus('input');
     }
   };
+
+  // ── Monitor-Modus: read-only Anzeige (Tablet/Beamer) — kein
+  // Beitritt, nur PIN prüfen + Live-Subscription.
+  const startMonitor=async()=>{
+    const p=(pin||'').trim().toLowerCase();
+    if(!p||p.length<4){setErr('Bitte PIN eingeben.');return;}
+    setErr('');
+    const s=await fetchOnlineTournament(p);
+    if(!s){setErr('Turnier nicht gefunden — PIN prüfen.');return;}
+    setPin(p);setSession(s);setStatus('monitor');
+  };
+  useEffect(()=>{
+    if(status!=='monitor') return;
+    const unsub=subscribeToTournament(pin,setSession);
+    return()=>unsub();
+  },[status,pin]);
 
   return(
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
@@ -9203,8 +9321,31 @@ function JoinTournament({initialPin,profile,onHome,onJoin,restored}){
                 {err}
               </div>
             )}
+            {/* Monitor-Modus — read-only für Tablet/Beamer an der Anlage. */}
+            <button onClick={startMonitor}
+              style={{width:'100%',marginTop:14,padding:'12px 14px',
+                background:T.card2,border:`1px solid ${T.border}`,borderRadius:13,
+                color:T.t2,fontSize:13,fontWeight:700,cursor:'pointer',
+                display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"
+                strokeLinejoin="round" aria-hidden="true">
+                <rect x="2" y="4" width="20" height="13" rx="2"/>
+                <path d="M8 21h8M12 17v4"/>
+              </svg>
+              Monitor-Modus (nur Anzeige)
+            </button>
           </div>
         </>):null}
+
+        {status==='monitor'&&(
+          session?.tournamentState
+            ?<TournamentMonitorView session={session} pin={pin}/>
+            :<div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
+                padding:'24px 20px',textAlign:'center',color:T.t3,fontSize:13,lineHeight:1.6}}>
+                Verbunden — warte auf den Turnierstart …
+              </div>
+        )}
 
         {status==='waiting'&&(
           <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
@@ -10149,12 +10290,97 @@ function RoundHistorySheet({tourney,onClose}){
   );
 }
 
+/* ── LIVE TEILEN (Bottom-Sheet) — spiegelt ein LOKALES Turnier als
+   PIN-Session, damit Spieler vor Ort Paarungen live sehen und
+   Ergebnisse einreichen können, ohne zum Turnierleiter zu laufen.
+   Der Host bleibt Single Source of Truth: sein Gerät rechnet Runden
+   und Standings, die Session ist Spiegel + Score-Briefkasten
+   (Submissions mit Host-Freigabe — bestehende Online-Maschinerie). */
+function LiveShareSheet({pin,busy,err,onClose}){
+  const sheet=useSheetDrag(onClose);
+  const joinUrl=(()=>{
+    if(typeof window==='undefined'||!pin) return '';
+    const base=window.__BASE__||'/';
+    return window.location.origin+base+'?join='+pin;
+  })();
+  const qrSrc=pin?`https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(joinUrl)}&size=220x220&bgcolor=ffffff&color=000000&margin=8`:null;
+  return(
+    <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:300,
+      background:'rgba(0,0,0,.7)',backdropFilter:'blur(4px)',display:'flex',
+      alignItems:'flex-end',justifyContent:'center',animation:'fadeIn .15s ease'}}>
+      <div onClick={e=>e.stopPropagation()} className="slide-up"
+        ref={sheet.ref} {...sheet.handlers}
+        style={{background:T.card,borderTopLeftRadius:20,borderTopRightRadius:20,
+          borderTop:`1px solid ${T.border}`,width:'100%',maxWidth:480,
+          padding:'16px 18px calc(env(safe-area-inset-bottom,0px) + 18px)',
+          maxHeight:'86vh',overflowY:'auto',WebkitOverflowScrolling:'touch',
+          ...sheet.style}}>
+        <div style={{width:36,height:4,borderRadius:2,background:T.border,margin:'0 auto 14px'}}/>
+        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:3}}>
+          <span className="court-live-dot" style={{width:9,height:9,borderRadius:'50%',
+            background:T.r,boxShadow:`0 0 8px ${T.r}aa`,display:'inline-block'}}/>
+          <div style={{color:T.t1,fontSize:17,fontWeight:800}}>Live teilen</div>
+        </div>
+        <div style={{color:T.t3,fontSize:12,lineHeight:1.55,marginBottom:14}}>
+          Spieler scannen den QR-Code und sehen Paarungen &amp; Tabelle live auf
+          ihrem Handy — Ergebnisse reichen sie direkt vom Court ein, du
+          bestätigst nur noch.
+        </div>
+        {busy&&(
+          <div style={{color:T.t3,fontSize:13,textAlign:'center',padding:'24px 0'}}>
+            Live-Session wird erstellt …
+          </div>
+        )}
+        {err&&(
+          <div style={{background:'rgba(232,69,69,0.08)',border:'1px solid rgba(232,69,69,0.4)',
+            borderRadius:12,padding:'10px 14px',color:'#FF6B6B',fontSize:12,
+            fontWeight:600,lineHeight:1.55,marginBottom:12}}>
+            {err}
+          </div>
+        )}
+        {pin&&(<>
+          <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:12,
+            background:T.card2,border:`1px solid ${T.border}`,borderRadius:16,
+            padding:'18px 16px',marginBottom:14}}>
+            {qrSrc&&(
+              <img src={qrSrc} alt="QR-Code zum Beitreten" width={190} height={190}
+                style={{borderRadius:12,background:'#fff',padding:6}}/>
+            )}
+            <div style={{textAlign:'center'}}>
+              <div style={{color:T.t3,fontSize:10.5,fontWeight:800,letterSpacing:1.4,
+                textTransform:'uppercase',marginBottom:4}}>PIN</div>
+              <div style={{color:T.o,fontSize:30,fontWeight:900,letterSpacing:6,
+                fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace'}}>
+                {pin.toUpperCase()}
+              </div>
+            </div>
+          </div>
+          <div style={{background:T.card2,border:`1px solid ${T.border}`,borderRadius:14,
+            padding:'12px 14px',color:T.t3,fontSize:11.5,lineHeight:1.65}}>
+            <span style={{color:T.t1,fontWeight:700}}>So geht's für Spieler:</span>{' '}
+            QR scannen (oder PIN unter „Turnier beitreten" eingeben) und den
+            eigenen Turniernamen eintragen — dann zeigt die Ansicht ihren Court.
+            <br/>
+            <span style={{color:T.t1,fontWeight:700}}>Monitor für die Anlage:</span>{' '}
+            Auf einem Tablet den PIN eingeben und „Monitor-Modus" wählen —
+            wechselt automatisch zwischen Runde und Tabelle.
+          </div>
+        </>)}
+      </div>
+    </div>
+  );
+}
+
 function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onMatchLogged}){
   const[tab,setTab]=useState('round');
   const[confirmEnd,setConfirmEnd]=useState(false);
   const[showSitOutInfo,setShowSitOutInfo]=useState(false);
   // Runden-Historie-Sheet + Transparenz-Popup vor dem Rundenwechsel.
   const[showHistory,setShowHistory]=useState(false);
+  // "Live teilen": lokales Turnier als PIN-Session spiegeln.
+  const[liveSheet,setLiveSheet]=useState(false);
+  const[liveBusy,setLiveBusy]=useState(false);
+  const[liveErr,setLiveErr]=useState('');
   const[roundEndInfo,setRoundEndInfo]=useState(null);
   const[editLineupCourtId,setEditLineupCourtId]=useState(null);
   const[editPtsId,setEditPtsId]=useState(null);
@@ -10224,6 +10450,28 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
   // Ready-Check Broadcast
   const broadcastReady=async()=>{await sendReadyCheck(tourney.onlinePin,tourney.current);};
   const dismissReady=async()=>{await clearReadyCheck(tourney.onlinePin);};
+
+  // ── "Live teilen" — erzeugt beim ersten Öffnen eine Mirror-Session
+  // (status 'playing', Late-Join mit Auto-Approve) und hängt onlinePin/
+  // isHost ans Turnier: damit greift die KOMPLETTE bestehende Online-
+  // Maschinerie (Publish-Loop, Submissions, Ready-Check) unverändert.
+  const openLiveShare=async()=>{
+    buzz(8);
+    setLiveSheet(true);
+    if(tourney.onlinePin||liveBusy) return;
+    setLiveBusy(true);setLiveErr('');
+    try{
+      const pin=await createOnlineTournament({
+        name:tourney.name,format:tourney.format,winMode:tourney.winMode,
+        numCourts:tourney.numCourts,roundDurationMin:tourney.roundDurationMin,
+        mode:'mirror',status:'playing',allowLateJoin:true,
+      });
+      await publishTournamentState(pin,tourney);
+      setTourney(t=>({...t,onlinePin:pin,isHost:true}));
+    }catch(e){
+      setLiveErr(e?.message||'Live-Session konnte nicht erstellt werden — Internetverbindung prüfen.');
+    }finally{setLiveBusy(false);}
+  };
 
   // ── Tournament-Court Logging ──
   // Wenn ein Court done=true wird (und noch nicht .logged), wird das
@@ -10487,6 +10735,27 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
             display:'flex',alignItems:'center',justifyContent:'center'}}>
           <HistoryIcon size={25} color={T.o}/>
         </button>
+
+        {/* Live teilen — QR/PIN für Spieler vor Ort (Mirror-Session). */}
+        <button onClick={openLiveShare}
+          title="Live teilen" aria-label="Live teilen"
+          style={{width:58,flexShrink:0,position:'relative',
+            background:tourney.onlinePin?T.oSoft:T.bg,
+            border:`2px solid ${T.o}`,borderRadius:16,cursor:'pointer',
+            display:'flex',alignItems:'center',justifyContent:'center'}}>
+          {/* Broadcast-Glyph: Punkt mit Funkwellen */}
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+            stroke={T.o} strokeWidth="1.9" strokeLinecap="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="1.8" fill={T.o} stroke="none"/>
+            <path d="M8.5 15.5a5 5 0 0 1 0-7M15.5 8.5a5 5 0 0 1 0 7"/>
+            <path d="M6 18a8.5 8.5 0 0 1 0-12M18 6a8.5 8.5 0 0 1 0 12"/>
+          </svg>
+          {tourney.onlinePin&&(
+            <span className="court-live-dot" style={{position:'absolute',top:6,right:6,
+              width:7,height:7,borderRadius:'50%',background:T.r,
+              boxShadow:`0 0 6px ${T.r}aa`}}/>
+          )}
+        </button>
       </div>
 
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:12,overflowY:'auto'}}>
@@ -10699,6 +10968,12 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
       {/* Runden-Historie */}
       {showHistory&&(
         <RoundHistorySheet tourney={tourney} onClose={()=>setShowHistory(false)}/>
+      )}
+
+      {/* Live teilen — QR/PIN-Sheet für die Mirror-Session */}
+      {liveSheet&&(
+        <LiveShareSheet pin={tourney.onlinePin} busy={liveBusy} err={liveErr}
+          onClose={()=>setLiveSheet(false)}/>
       )}
     </div>
   );

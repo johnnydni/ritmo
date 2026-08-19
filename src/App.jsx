@@ -7216,7 +7216,7 @@ function TimeDial({start,end,onChange}){
     </g>);};
   return(
     <div>
-      <div style={{position:'relative',width:'min(78vw, 300px)',margin:'0 auto'}}>
+      <div style={{position:'relative',width:'min(70vw, 268px)',margin:'0 auto'}}>
         <svg ref={svgRef} viewBox="0 0 340 340"
           onPointerDown={down} onPointerMove={move}
           onPointerUp={up} onPointerCancel={up}
@@ -7252,20 +7252,28 @@ function TimeDial({start,end,onChange}){
           {knob(a,'a',T.o)}
           {knob(b,'b',T.t1)}
         </svg>
-        {/* Start–Ende unten links, Spieldauer unten rechts */}
-        <div style={{position:'absolute',left:0,bottom:2,color:T.t3,
-          fontSize:13,fontWeight:700,fontVariantNumeric:'tabular-nums',
+      </div>
+      {/* Ablesezeile unter dem Zifferblatt — groß gesetzt, damit Zeiten
+          und Spieldauer auch aus Armlänge lesbar sind. Farben spiegeln
+          die Zeiger: Orange = Start, Hell = Ende. */}
+      <div style={{display:'flex',flexDirection:'column',alignItems:'center',
+        gap:7,marginTop:8}}>
+        <div style={{display:'flex',alignItems:'baseline',gap:9,
+          fontVariantNumeric:'tabular-nums',letterSpacing:-.5,lineHeight:1,
           pointerEvents:'none'}}>
-          {fmt(a)} – {fmt(b)}
+          <span style={{color:T.o,fontSize:30,fontWeight:800}}>{fmt(a)}</span>
+          <span style={{color:T.t3,fontSize:20,fontWeight:600}}>–</span>
+          <span style={{color:T.t1,fontSize:30,fontWeight:800}}>{fmt(b)}</span>
         </div>
-        <div style={{position:'absolute',right:0,bottom:2,color:T.t1,
-          fontSize:15,fontWeight:800,fontVariantNumeric:'tabular-nums',
-          pointerEvents:'none'}}>
-          {durTxt}
+        <div style={{...glass,display:'inline-flex',alignItems:'center',gap:7,
+          borderRadius:999,padding:'6px 14px',pointerEvents:'none'}}>
+          <StopwatchIcon size={14} color={T.o}/>
+          <span style={{color:T.t1,fontSize:16,fontWeight:800,
+            fontVariantNumeric:'tabular-nums'}}>{durTxt}</span>
         </div>
       </div>
       {/* Schnellwahl: Ende = Start + Dauer */}
-      <div style={{display:'flex',gap:6,justifyContent:'center',marginTop:10,flexWrap:'wrap'}}>
+      <div style={{display:'flex',gap:6,justifyContent:'center',marginTop:12,flexWrap:'wrap'}}>
         {[['1 Std',60],['1,5 Std',90],['2 Std',120],['3 Std',180]].map(([lab,min])=>(
           <button key={lab} onClick={()=>{buzz(5);set(a,(a+min)%1440);}}
             style={{...glass,borderRadius:999,padding:'7px 13px',cursor:'pointer',
@@ -7993,10 +8001,10 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
 
         {/* Zeitfenster (nur lokal) — Start/End-Uhrzeit → Rundenzeit-Vorschlag. */}
         {mode==='lokal'&&(
-          <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,padding:'14px 18px'}}>
-            <div style={{color:T.t1,fontSize:15,fontWeight:600,marginBottom:2}}>Zeitfenster</div>
-            <div style={{color:T.t3,fontSize:11,fontWeight:500,marginBottom:12}}>
-              Zeiger ziehen: Orange = Start, Hell = Ende — „Empfehlung" berechnet die Rundenzeit (3 Min Rotationspause/Runde)
+          <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,padding:'14px 18px 16px'}}>
+            <div style={{color:T.t1,fontSize:15,fontWeight:600}}>Zeitfenster</div>
+            <div style={{color:T.t3,fontSize:11,fontWeight:500,marginBottom:6}}>
+              Zeiger ziehen — Orange = Start, Hell = Ende
             </div>
             {/* Immer sichtbare Drag-Uhr — schreibt direkt in startTime/endTime. */}
             <TimeDial start={startTime} end={endTime}
@@ -8004,7 +8012,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
 
             {/* Priorität: Längere Runden ⇄ Jeder gegen Jeden — steuert
                 Ziel-/Min-/Max-Rundenzeit des Vorschlags. */}
-            <div style={{marginTop:14}}>
+            <div style={{marginTop:16}}>
               <div style={{color:T.t3,fontSize:11,fontWeight:600,marginBottom:7}}>
                 Priorität: Längere Runden oder Jeder gegen Jeden?
               </div>
@@ -8038,6 +8046,12 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
                 <StopwatchIcon size={15} color={appliedSuggest?T.o:'#000'}/>
                 {appliedSuggest?'Empfehlung übernommen':'Empfehlung'}
               </button>
+            )}
+            {suggest&&!suggestShown&&(
+              <div style={{color:T.t4,fontSize:10.5,fontWeight:500,marginTop:6,
+                lineHeight:1.5,textAlign:'center'}}>
+                Berechnet die Rundenzeit fürs Zeitfenster — inkl. 3 Min Rotationspause pro Runde.
+              </div>
             )}
             {suggest&&suggestShown&&(
               <div className="fi" style={{marginTop:10,padding:'10px 12px',borderRadius:12,background:T.oSoft,

@@ -345,13 +345,26 @@ function BetaLanding({onLogin,onRegister}){
 ═══════════════════════════════════════════════════════════════ */
 function Splash({onDone}){
   // Primär läuft das Logomotion-Video (~9 s, einmal durch — Ende
-  // öffnet die App, Tap überspringt sofort). Startet es nicht binnen
-  // 2,5 s oder wirft es einen Fehler, greift der BACKUP-Splash unten
-  // (bisheriges Setup: Loading-Video im Loop + Puls-Streifen, 4 s).
+  // öffnet die App, Tap überspringt sofort). Zwei Wege zum BRAND-
+  // Splash (Pulse-Gradient + RITMO-Schriftzug + drei Puls-Streifen):
+  //  - ritmo_skip_intro gesetzt (Check-Button im Video; wird beim
+  //    Logout gelöscht → nach neuem Login läuft das Video wieder)
+  //  - Video-Fehler/Timeout — der Brand-Splash IST der neue Fallback
+  //    (das alte Loop-Video ritmo-loadingscreen.mp4 ist raus).
   const doneRef=useRef(false);
   const finish=()=>{ if(doneRef.current) return; doneRef.current=true; onDone(); };
   const[videoFailed,setVideoFailed]=useState(false);
   const playingRef=useRef(false);
+  // Einmal beim Mount gelesen — Umschalten greift ab dem nächsten Start.
+  const[skipVideo]=useState(()=>!!lsGet('ritmo_skip_intro',false));
+  // Check-Button-Zustand ("Intro nicht mehr zeigen") im Video-Pfad.
+  const[noIntro,setNoIntro]=useState(false);
+  const toggleNoIntro=(e)=>{
+    e.stopPropagation(); // Tap auf den Button darf den Splash nicht beenden
+    buzz(8);
+    setNoIntro(v=>{ lsSet('ritmo_skip_intro',!v); return !v; });
+  };
+  const brand=skipVideo||videoFailed;
   // ── Intro-Phase: ~2 s schwarzer Pulse-Gradient, BEVOR das Video
   // startet. Das Video ist währenddessen unsichtbar gemountet
   // (preload läuft) und wird erst nach dem Intro per play() gestartet
@@ -359,11 +372,13 @@ function Splash({onDone}){
   const INTRO_MS=2000;
   const[intro,setIntro]=useState(true);
   useEffect(()=>{
+    if(skipVideo) return;
     const t=setTimeout(()=>setIntro(false),INTRO_MS);
     return()=>clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   },[]);
   useEffect(()=>{
-    if(intro||videoFailed) return;
+    if(skipVideo||intro||videoFailed) return;
     vidRef.current?.play?.().catch(()=>setVideoFailed(true));
     // Startet das Video binnen 2,5 s nach dem Intro nicht → Fallback.
     const t=setTimeout(()=>{ if(!playingRef.current) setVideoFailed(true); },2500);
@@ -371,13 +386,13 @@ function Splash({onDone}){
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[intro,videoFailed]);
   // Backstop-Timer: Video-Pfad 15 s (Intro 2 s + ~10,5 s Video wegen
-  // 0,75×-erster-Hälfte; onEnded beendet ohnehin früher), Fallback-Pfad
-  // wie bisher 4 s ab Umschalten.
+  // 0,75×-erster-Hälfte; onEnded beendet ohnehin früher). Brand-Splash
+  // (Skip oder Fallback) öffnet nach 3,5 s.
   useEffect(()=>{
-    const t=setTimeout(finish,videoFailed?4000:15000);
+    const t=setTimeout(finish,brand?3500:15000);
     return()=>clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[videoFailed]);
+  },[brand]);
   // html/body/theme-color solange auf Schwarz zwingen: die Zonen
   // außerhalb des Web-Viewports (Safari-Bottom-Bar, Safe-Areas)
   // werden von iOS mit html-Hintergrund bzw. theme-color getönt —
@@ -414,7 +429,7 @@ function Splash({onDone}){
   // Ab der Hälfte des Ladebalkens: subtiler "Tippe zum starten"-Hinweis.
   const[hintOn,setHintOn]=useState(false);
   useEffect(()=>{
-    if(videoFailed) return;
+    if(brand) return;
     let raf;
     const loop=()=>{
       const v=vidRef.current,b=barRef.current;
@@ -433,9 +448,9 @@ function Splash({onDone}){
     };
     raf=requestAnimationFrame(loop);
     return()=>cancelAnimationFrame(raf);
-  },[videoFailed]);
+  },[brand]);
   useEffect(()=>{
-    if(videoFailed) return;
+    if(brand) return;
     const AR=720/1280; // logomotion720p ist 720×1280 (9:16)
     const fit=()=>{
       const el=vidRef.current; if(!el) return;
@@ -466,7 +481,7 @@ function Splash({onDone}){
       window.removeEventListener('orientationchange',fit);
       window.visualViewport?.removeEventListener('resize',fit);
     };
-  },[videoFailed]);
+  },[brand]);
   return(
     <div onClick={finish} style={{position:'fixed',inset:0,zIndex:1000,
       /* Ladebildschirm IMMER schwarz — bewusst hartkodiert (#000),
@@ -475,7 +490,7 @@ function Splash({onDone}){
          iOS einen Streifen frei ließ. */
       background:'#000',overflow:'hidden',
       cursor:'pointer',userSelect:'none'}}>
-      {!videoFailed?(<>
+      {!brand?(<>
         {/* ── Logomotion-Intro — startet NACH der Pulse-Phase (play()
             im Intro-Effekt), spielt einmal, Ende öffnet die App. */}
         <video ref={vidRef}
@@ -539,21 +554,60 @@ function Splash({onDone}){
             <span key={i}>{c===' '?' ':c}</span>
           ))}
         </div>
+        {/* ── "Intro nicht mehr zeigen" — Liquid-Glass-Pille mit Check.
+            Merkt sich die Wahl (ritmo_skip_intro); beim Logout wird
+            sie gelöscht → nach neuem Login läuft das Video wieder. */}
+        <button onClick={toggleNoIntro}
+          aria-label="Intro-Video nicht mehr zeigen"
+          style={{position:'absolute',left:'50%',zIndex:4,
+            bottom:'calc(env(safe-area-inset-bottom,0px) + 28px)',
+            transform:'translateX(-50%)',
+            display:'flex',alignItems:'center',gap:10,
+            padding:'11px 16px',borderRadius:999,cursor:'pointer',
+            background:'rgba(255,255,255,0.10)',
+            border:'1px solid rgba(255,255,255,0.22)',
+            backdropFilter:'blur(14px) saturate(160%)',
+            WebkitBackdropFilter:'blur(14px) saturate(160%)',
+            opacity:intro?0:1,transition:'opacity .7s ease',
+            pointerEvents:intro?'none':'auto'}}>
+          <span style={{width:22,height:22,borderRadius:'50%',flexShrink:0,
+            display:'flex',alignItems:'center',justifyContent:'center',
+            background:noIntro?'#FF7A1A':'transparent',
+            border:`1.5px solid ${noIntro?'#FF7A1A':'rgba(255,255,255,0.7)'}`,
+            transition:'background .2s,border-color .2s'}}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"
+              style={{opacity:noIntro?1:0,transition:'opacity .2s'}}>
+              <polyline points="20 6 9 17 4 12" stroke="#fff" strokeWidth="3"
+                strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </span>
+          <span style={{color:'rgba(255,255,255,0.88)',fontSize:12.5,fontWeight:700,
+            letterSpacing:.2,whiteSpace:'nowrap'}}>
+            Intro nicht mehr zeigen
+          </span>
+        </button>
       </>):(
-        /* ── BACKUP-Splash (bisherige Einstellungen, unverändert) —
-              dient als Fallback, wenn das Logomotion-Video nicht lädt. */
+        /* ── BRAND-SPLASH — Skip-Modus UND neuer Fallback:
+              Pulse-Gradient + RITMO-Schriftzug + drei Puls-Streifen. */
         <>
-          {/* Loading-Video — füllt den Screen auf schwarzem Grund. */}
-          <video
-            src={`${getAssetBase()}assets/ritmo-loadingscreen.mp4`}
-            autoPlay muted playsInline loop preload="auto" aria-hidden="true"
-            style={{position:'absolute',inset:0,width:'100%',height:'100%',
-              objectFit:'contain',background:'#000',pointerEvents:'none'}}/>
+          {/* Pulsierender Glow — Echo des Video-Intros, im Loop. */}
+          <div aria-hidden="true" style={{position:'absolute',left:'50%',top:'50%',
+            width:'72vmin',height:'72vmin',transform:'translate(-50%,-50%)',
+            borderRadius:'50%',pointerEvents:'none',
+            background:'radial-gradient(circle, rgba(255,122,26,.30) 0%, rgba(255,122,26,.10) 42%, transparent 70%)',
+            animation:'splashPulse 1.9s ease-in-out infinite'}}/>
 
-          {/* Pulsierende RITMO-Streifen statt Ladebalken — schlicht, im
-              Loop (Echo der Logo-Speed-Lines), knapp unter dem Splash-Logo.
+          {/* RITMO-Schriftzug — zentriert, ohne Slide. */}
+          <img src={`${getAssetBase()}assets/ritmo-lettering.png`} alt="RITMO"
+            draggable={false}
+            style={{position:'absolute',left:'50%',top:'50%',zIndex:2,
+              transform:'translate(-50%,-50%)',width:'min(56vw, 260px)',
+              pointerEvents:'none',userSelect:'none'}}/>
+
+          {/* Pulsierende RITMO-Streifen — schlicht, im Loop (Echo der
+              Logo-Speed-Lines), knapp unter dem Schriftzug.
               Brand-Orange bewusst hartkodiert wie der schwarze Grund. */}
-          <div style={{position:'absolute',left:0,right:0,top:'47%',
+          <div style={{position:'absolute',left:0,right:0,top:'60%',
             display:'flex',justifyContent:'center',pointerEvents:'none',zIndex:2}}>
             <div style={{display:'flex',flexDirection:'column',gap:7}}>
               {[64,42,26].map((w,i)=>(
@@ -12353,6 +12407,7 @@ function SettingsSicherheit({onBack,onHome}){
       // scope:'global' beendet alle Sessions des Users auf allen
       // Geräten — der refresh_token wird invalidiert.
       if(window.supabase) await window.supabase.auth.signOut({scope:'global'});
+      lsSet('ritmo_skip_intro',false); // Abmeldung → Intro-Video läuft wieder
       showFlash('ok','Alle Sessions beendet. Du wirst gleich abgemeldet …',2500);
       setTimeout(()=>{
         try{ if(typeof window!=='undefined') window.location.reload(); }catch{}
@@ -19445,6 +19500,7 @@ export default function App(){
       onLogout={async()=>{
         try{await auth.signOut();}catch(e){}
         setLoggedIn(false);
+        lsSet('ritmo_skip_intro',false); // Abmeldung → Intro-Video läuft wieder
         // onboarded NICHT zurücksetzen — bleibt persistiert, damit
         // ein erneuter Login desselben Users nicht ins Onboarding
         // läuft. Bei User-Wechsel auf demselben Gerät korrigiert der
@@ -19550,6 +19606,7 @@ export default function App(){
       onLogout={async()=>{
         try{await auth.signOut();}catch(e){}
         setLoggedIn(false);
+        lsSet('ritmo_skip_intro',false); // Abmeldung → Intro-Video läuft wieder
         nav('login');
       }}/>}
     {scr==='settings-steuerung'&&<SettingsSteuerung
@@ -19575,6 +19632,7 @@ export default function App(){
       onLogout={async()=>{
         try{await auth.signOut();}catch(e){}
         setLoggedIn(false);
+        lsSet('ritmo_skip_intro',false); // Abmeldung → Intro-Video läuft wieder
         nav('login');
       }}/>}
     {scr==='ritmopost'&&<RitmoPost onHome={goHome} profile={profile}

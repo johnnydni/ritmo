@@ -7153,6 +7153,165 @@ function CourtFlip({single,onFlip}){
   );
 }
 
+/* ── Zeitfenster-Uhr (Bottom-Sheet) — runde 24-h-Uhr mit zwei
+   Linienzeigern zum Zentrum: Orange = Start, Hell = Ende. Zeiger per
+   Drag ums Zifferblatt ziehen (15-Min-Raster), der orangene Bogen
+   dazwischen ist das Spielfenster; Fenster über Mitternacht sind
+   erlaubt (gleiche Wrap-Semantik wie windowMin im Setup). */
+function TimeDialSheet({start,end,onApply,onClose}){
+  const sheet=useSheetDrag(onClose); // Nach-unten-Wischen schließt
+  const parse=s=>{const m=/^(\d{1,2}):(\d{2})$/.exec((s||'').trim());
+    if(!m)return null;const h=+m[1],mi=+m[2];
+    return h>23||mi>59?null:h*60+mi;};
+  const fmt=m=>`${String(Math.floor(m/60)%24).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
+  const[a,setA]=useState(()=>parse(start)??18*60); // Start-Minuten
+  const[b,setB]=useState(()=>parse(end)??21*60);   // End-Minuten
+  const[drag,setDrag]=useState(null);              // 'a' | 'b' | null
+  const svgRef=useRef(null);
+  const CX=170,CY=170,R=126,HUB=54;
+  const pt=(m,r)=>{const t=(m/1440)*2*Math.PI;
+    return [CX+r*Math.sin(t),CY-r*Math.cos(t)];};
+  // Pointer → Minuten (0..1440, 15er-Raster), 00:00 oben, Uhrzeigersinn.
+  const minutesAt=e=>{
+    const el=svgRef.current;if(!el)return 0;
+    const r=el.getBoundingClientRect();
+    const x=e.clientX-(r.left+r.width/2),y=e.clientY-(r.top+r.height/2);
+    let deg=Math.atan2(x,-y)*180/Math.PI;if(deg<0)deg+=360;
+    return Math.round(deg/360*1440/15)*15%1440;
+  };
+  // Beim Antippen wandert der (zirkulär) nähere Zeiger zum Finger.
+  const nearest=m=>{
+    const d=x=>Math.min((x-m+1440)%1440,(m-x+1440)%1440);
+    return d(a)<=d(b)?'a':'b';
+  };
+  const down=e=>{
+    e.preventDefault();
+    const m=minutesAt(e),h=nearest(m);
+    setDrag(h);(h==='a'?setA:setB)(m);buzz(6);
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+  };
+  const move=e=>{
+    if(!drag)return;
+    const m=minutesAt(e);
+    (drag==='a'?setA:setB)(p=>{if(p!==m)buzz(3);return m;});
+  };
+  const up=()=>setDrag(null);
+  const dur=((b-a+1440)%1440)||1440;
+  const durTxt=`${Math.floor(dur/60)} Std${dur%60?` ${dur%60} Min`:''}`;
+  // Fenster-Bogen von Start nach Ende (im Uhrzeigersinn).
+  const arcPath=(()=>{const[x1,y1]=pt(a,R),[x2,y2]=pt(b,R);
+    return `M ${x1} ${y1} A ${R} ${R} 0 ${dur>720?1:0} 1 ${x2} ${y2}`;})();
+  const glass={background:'color-mix(in srgb, var(--card2) 72%, transparent)',
+    border:'1px solid color-mix(in srgb, var(--t1) 16%, transparent)',
+    WebkitBackdropFilter:'blur(14px) saturate(160%)',
+    backdropFilter:'blur(14px) saturate(160%)'};
+  const knob=(m,hand,accent)=>{const[x,y]=pt(m,R);
+    return(<g style={{pointerEvents:'none'}}>
+      <circle cx={x} cy={y} r={drag===hand?16:14} fill={T.card}
+        stroke={accent} strokeWidth="2.5"
+        style={{transition:'r .15s',filter:drag===hand?`drop-shadow(0 0 8px ${T.o})`:'none'}}/>
+      <circle cx={x} cy={y} r="4.5" fill={accent}/>
+    </g>);};
+  return(
+    <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:300,
+      background:'rgba(0,0,0,.7)',backdropFilter:'blur(4px)',display:'flex',
+      alignItems:'flex-end',justifyContent:'center',animation:'fadeIn .15s ease'}}>
+      <div onClick={e=>e.stopPropagation()} className="slide-up"
+        ref={sheet.ref} {...sheet.handlers}
+        style={{borderTopLeftRadius:22,borderTopRightRadius:22,
+          borderTop:`1px solid ${T.border}`,width:'100%',maxWidth:480,
+          padding:'16px 20px calc(env(safe-area-inset-bottom,0px) + 18px)',
+          maxHeight:'90vh',overflowY:'auto',
+          background:'color-mix(in srgb, var(--card) 90%, transparent)',
+          WebkitBackdropFilter:'blur(18px) saturate(160%)',
+          backdropFilter:'blur(18px) saturate(160%)',...sheet.style}}>
+        <div style={{width:36,height:4,borderRadius:2,background:T.border,margin:'0 auto 14px'}}/>
+        <div style={{color:T.t1,fontSize:17,fontWeight:800,marginBottom:3}}>Zeitfenster wählen</div>
+        <div style={{color:T.t3,fontSize:12,lineHeight:1.5,marginBottom:8}}>
+          Ziehe die Zeiger ums Zifferblatt — Orange = Start, Hell = Ende.
+        </div>
+        {/* Zifferblatt — eigene Touch-Handler stoppen den Sheet-Drag,
+            damit Ziehen den Zeiger dreht statt das Sheet zu schließen. */}
+        <svg ref={svgRef} viewBox="0 0 340 340"
+          onPointerDown={down} onPointerMove={move}
+          onPointerUp={up} onPointerCancel={up}
+          onTouchStart={e=>e.stopPropagation()}
+          onTouchMove={e=>e.stopPropagation()}
+          style={{width:'min(78vw, 320px)',display:'block',margin:'0 auto',
+            touchAction:'none',cursor:'grab'}}>
+          {/* Ring + Stunden-Ticks (24 h, Labels alle 6 h) */}
+          <circle cx={CX} cy={CY} r="146" fill="none" stroke={T.border} strokeWidth="1.5"/>
+          {Array.from({length:24}).map((_,h)=>{
+            const major=h%6===0;
+            const[x1,y1]=pt(h*60,major?136:139),[x2,y2]=pt(h*60,146);
+            return <line key={h} x1={x1} y1={y1} x2={x2} y2={y2}
+              stroke={major?T.t2:T.t3} strokeWidth={major?2:1}
+              opacity={major?0.9:0.4} strokeLinecap="round"/>;
+          })}
+          {[[0,'24'],[360,'06'],[720,'12'],[1080,'18']].map(([m,lab])=>{
+            const[x,y]=pt(m,158);
+            return <text key={lab} x={x} y={y+4} textAnchor="middle"
+              fill={T.t3} fontSize="11" fontWeight="700">{lab}</text>;
+          })}
+          {/* Spielfenster-Bogen (Glow + Kern) */}
+          <path d={arcPath} fill="none" stroke={T.o} strokeWidth="18"
+            strokeLinecap="round" opacity="0.22"/>
+          <path d={arcPath} fill="none" stroke={T.o} strokeWidth="9"
+            strokeLinecap="round" opacity="0.95"/>
+          {/* Linienzeiger zum Zentrum */}
+          <line x1={CX} y1={CY} x2={pt(a,R)[0]} y2={pt(a,R)[1]}
+            stroke={T.o} strokeWidth="3.5" strokeLinecap="round" opacity="0.95"/>
+          <line x1={CX} y1={CY} x2={pt(b,R)[0]} y2={pt(b,R)[1]}
+            stroke={T.t1} strokeWidth="3" strokeLinecap="round" opacity="0.85"/>
+          {/* Nabe mit Spieldauer */}
+          <circle cx={CX} cy={CY} r={HUB} fill={T.card2} stroke={T.border} strokeWidth="1.5"/>
+          <text x={CX} y={CY-2} textAnchor="middle" fill={T.t1}
+            fontSize="19" fontWeight="800">{durTxt}</text>
+          <text x={CX} y={CY+17} textAnchor="middle" fill={T.t3}
+            fontSize="10" fontWeight="700" letterSpacing="1.2">SPIELZEIT</text>
+          {knob(a,'a',T.o)}
+          {knob(b,'b',T.t1)}
+        </svg>
+        {/* Start/Ende-Anzeige als Glass-Pills */}
+        <div style={{display:'flex',gap:8,justifyContent:'center',margin:'12px 0 4px'}}>
+          {[['Start',fmt(a),T.o],['Ende',fmt(b),T.t1]].map(([lab,val,c])=>(
+            <div key={lab} style={{...glass,display:'flex',alignItems:'center',gap:7,
+              borderRadius:999,padding:'8px 14px'}}>
+              <span style={{width:8,height:8,borderRadius:'50%',background:c,display:'block'}}/>
+              <span style={{color:T.t3,fontSize:11,fontWeight:700}}>{lab}</span>
+              <span style={{color:T.t1,fontSize:14,fontWeight:800,
+                fontVariantNumeric:'tabular-nums'}}>{val}</span>
+            </div>
+          ))}
+        </div>
+        {/* Schnellwahl: Ende = Start + Dauer */}
+        <div style={{display:'flex',gap:6,justifyContent:'center',marginBottom:14,flexWrap:'wrap'}}>
+          {[['1 Std',60],['1,5 Std',90],['2 Std',120],['3 Std',180]].map(([lab,min])=>(
+            <button key={lab} onClick={()=>{buzz(5);setB((a+min)%1440);}}
+              style={{...glass,borderRadius:999,padding:'7px 13px',cursor:'pointer',
+                color:dur===min?T.o:T.t2,fontSize:12,fontWeight:700,
+                ...(dur===min?{border:`1px solid ${T.o}`}:{})}}>
+              {lab}
+            </button>
+          ))}
+        </div>
+        <div style={{display:'flex',gap:8}}>
+          <button onClick={onClose}
+            style={{flex:1,padding:'13px',background:'none',border:`1px solid ${T.border}`,
+              borderRadius:13,color:T.t2,fontSize:14,fontWeight:700,cursor:'pointer'}}>
+            Abbrechen
+          </button>
+          <button onClick={()=>{buzz(8);onApply(fmt(a),fmt(b));onClose();}}
+            style={{flex:1.4,padding:'13px',background:T.o,border:'none',
+              borderRadius:13,color:'#000',fontSize:14,fontWeight:800,cursor:'pointer'}}>
+            Übernehmen
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ═══════════════════════════════════════════════════════════════
    TURNIER-ASSISTENT — geführter Setup-Wizard (6 Schritte).
 
@@ -7569,6 +7728,8 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
   // nur beim Mount, nicht bei externer value-Änderung).
   const[pickerKey,setPickerKey]=useState(0);
   const[creatingOnline,setCreatingOnline]=useState(false);
+  // Zeitfenster-Uhr (Bottom-Sheet mit Drag-Zeigern) offen?
+  const[showTimeDial,setShowTimeDial]=useState(false);
   // Court-Namen — werden auf die Matches angewendet. Sparse-Array:
   // Index i = eigener Name fuer Court i, sonst Default "Court i+1".
   const[courtNames,setCourtNames]=useState(saved?.courtNames||[]);
@@ -7864,10 +8025,32 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
         {/* Zeitfenster (nur lokal) — Start/End-Uhrzeit → Rundenzeit-Vorschlag. */}
         {mode==='lokal'&&(
           <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,padding:'14px 18px'}}>
-            <div style={{color:T.t1,fontSize:15,fontWeight:600,marginBottom:2}}>Zeitfenster</div>
-            <div style={{color:T.t3,fontSize:11,fontWeight:500,marginBottom:12}}>
-              Start- & End-Uhrzeit → schlägt die Rundenzeit vor (− 2 Min Rotation/Runde)
+            <div style={{display:'flex',alignItems:'flex-start',gap:10,marginBottom:12}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{color:T.t1,fontSize:15,fontWeight:600,marginBottom:2}}>Zeitfenster</div>
+                <div style={{color:T.t3,fontSize:11,fontWeight:500}}>
+                  Start- & End-Uhrzeit → schlägt die Rundenzeit vor (− 2 Min Rotation/Runde)
+                </div>
+              </div>
+              {/* Uhr-Button (Liquid Glass) → öffnet die Drag-Uhr. */}
+              <button onClick={()=>{buzz(6);setShowTimeDial(true);}}
+                aria-label="Zeitfenster per Uhr wählen"
+                style={{width:40,height:40,borderRadius:14,flexShrink:0,cursor:'pointer',
+                  display:'flex',alignItems:'center',justifyContent:'center',
+                  background:'color-mix(in srgb, var(--card2) 72%, transparent)',
+                  border:'1px solid color-mix(in srgb, var(--t1) 18%, transparent)',
+                  WebkitBackdropFilter:'blur(14px) saturate(160%)',
+                  backdropFilter:'blur(14px) saturate(160%)'}}>
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9" stroke={T.o} strokeWidth="1.8"/>
+                  <path d="M12 7v5l3.2 2" stroke={T.o} strokeWidth="1.8"
+                    strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
             </div>
+            {showTimeDial&&<TimeDialSheet start={startTime} end={endTime}
+              onApply={(s,e)=>{setStartTime(s);setEndTime(e);}}
+              onClose={()=>setShowTimeDial(false)}/>}
             {/* START + ENDE in einer Zeile, aber als feste 2-Spalten-Grid
                 mit minmax(0,1fr): so respektiert die native type=time-
                 Mindestbreite die Spaltenbreite und steht nicht über den
@@ -11122,9 +11305,24 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
 
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
 
-        {/* Winner Hero */}
+        {/* Winner Hero — der Pokal swoosht von rechts hinter die
+            Schriften, dazu regnet kurz Konfetti (einmalig beim Mount). */}
         <div style={{background:T.card,border:`1px solid ${T.o}`,borderRadius:20,
-          padding:'24px 22px',textAlign:'center'}}>
+          padding:'24px 22px',textAlign:'center',position:'relative',overflow:'hidden'}}>
+          <div aria-hidden="true" style={{position:'absolute',right:-6,top:'50%',
+            marginTop:-58,opacity:.22,pointerEvents:'none'}}>
+            <div style={{animation:'trophySwoosh .8s cubic-bezier(.2,.9,.3,1.12) .25s both'}}>
+              <TrophyIcon size={118}/>
+            </div>
+          </div>
+          {Array.from({length:16}).map((_,i)=>{
+            const cols=[T.o,T.gold,T.blue,T.g];
+            return <span key={i} aria-hidden="true" style={{position:'absolute',
+              left:`${6+((i*37)%88)}%`,top:8,width:6,height:11,borderRadius:2,
+              background:cols[i%4],pointerEvents:'none',zIndex:2,
+              animation:`confettiFall ${1.15+((i*29)%60)/100}s ease-in ${(0.7+((i*53)%45)/100)}s both`}}/>;
+          })}
+          <div style={{position:'relative',zIndex:1}}>
           <div style={{marginBottom:8,display:'flex',justifyContent:'center'}}><MedalIcon size={50} rank={1}/></div>
           <div style={{fontSize:24,fontWeight:800,color:T.t1,letterSpacing:-.3}}>{winner?.name}</div>
           <div style={{fontSize:16,color:T.o,fontWeight:700,marginTop:4}}>
@@ -11142,6 +11340,7 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
             </svg>
             Ergebnis teilen
           </button>
+          </div>
         </div>
 
         {/* Full Leaderboard */}
@@ -11191,7 +11390,7 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
         <div style={{height:100,flexShrink:0}}/>
       </div>
 
-      <MatchBar onHome={onHome} rightIcon={<SearchIcon size={20}/>}/>
+      <MatchBar onHome={onHome}/>
     </div>
   );
 }
@@ -11203,6 +11402,7 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
   onDeleteMatch,onDeleteTourney,onOpenTourney,joinedSession,onLeaveJoined,onDeleteAll}){
   const[moreItem,setMoreItem]=useState(null); // Item fürs "… mehr"-Sheet
   const[confirmAll,setConfirmAll]=useState(false); // "Alle löschen"-Popup
+  const[plusOpen,setPlusOpen]=useState(false); // Plus-Menü im Leer-Zustand
 
   // ── Teilen über die native Share-API (WhatsApp & Co.);
   // Desktop-Fallback Zwischenablage. Abbruch des Dialogs ist kein Fehler.
@@ -11315,8 +11515,44 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
 
         {items.length===0&&(
-          <div style={{textAlign:'center',color:T.t3,fontSize:16,padding:'40px 20px',lineHeight:1.6}}>
-            Starte ein neues Spiel oder Turnier auf dem Home-Screen, um es hier wieder aufzunehmen.
+          <div className="fi" style={{display:'flex',flexDirection:'column',
+            alignItems:'center',gap:20,padding:'34px 20px'}}>
+            <div style={{textAlign:'center',color:T.t3,fontSize:16,lineHeight:1.6}}>
+              Noch nichts los — starte direkt hier ein neues Match oder Turnier.
+            </div>
+            {/* Plus-Button (Liquid Glass) → klappt die zwei Start-Optionen auf. */}
+            <button onClick={()=>{buzz(8);setPlusOpen(v=>!v);}}
+              aria-label="Neues Match oder Turnier starten" aria-expanded={plusOpen}
+              style={{width:62,height:62,borderRadius:'50%',cursor:'pointer',
+                display:'flex',alignItems:'center',justifyContent:'center',
+                background:'color-mix(in srgb, var(--card2) 72%, transparent)',
+                border:'1px solid color-mix(in srgb, var(--t1) 18%, transparent)',
+                WebkitBackdropFilter:'blur(14px) saturate(160%)',
+                backdropFilter:'blur(14px) saturate(160%)'}}>
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"
+                style={{transform:plusOpen?'rotate(45deg)':'none',transition:'transform .25s ease'}}>
+                <path d="M12 5v14M5 12h14" stroke={T.o} strokeWidth="2.4" strokeLinecap="round"/>
+              </svg>
+            </button>
+            {plusOpen&&(
+              <div className="fi" style={{display:'flex',flexDirection:'column',gap:10,
+                width:'100%',maxWidth:300}}>
+                {[
+                  {lab:'Einzelnes Match',icon:<SingleMatchIcon size={26}/>,to:'single-setup'},
+                  {lab:'Turnier',icon:<TrophyIcon size={26}/>,to:'tournament-hub'},
+                ].map(o=>(
+                  <button key={o.to} onClick={()=>{buzz(6);nav(o.to);}}
+                    style={{display:'flex',alignItems:'center',gap:14,padding:'14px 18px',
+                      borderRadius:16,cursor:'pointer',color:T.t1,fontSize:15,fontWeight:700,
+                      background:'color-mix(in srgb, var(--card2) 72%, transparent)',
+                      border:`1px solid ${T.border}`,textAlign:'left',
+                      WebkitBackdropFilter:'blur(14px) saturate(160%)',
+                      backdropFilter:'blur(14px) saturate(160%)'}}>
+                    {o.icon}{o.lab}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

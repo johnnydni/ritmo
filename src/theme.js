@@ -652,6 +652,19 @@ input[type="time"]::-webkit-datetime-edit{padding:0;text-align:center;}
   0%,100%{opacity:.22;transform:scaleX(.86);}
   50%{opacity:1;transform:scaleX(1);}
 }
+/* Endstand: Pokal swoosht von rechts hinter die Sieger-Schriften … */
+@keyframes trophySwoosh{
+  0%{transform:translateX(170px) rotate(16deg);opacity:0;}
+  55%{opacity:1;}
+  72%{transform:translateX(-12px) rotate(-5deg);}
+  100%{transform:translateX(0) rotate(0);opacity:1;}
+}
+/* … und Konfetti rieselt einmalig durch die Sieger-Card. */
+@keyframes confettiFall{
+  0%{transform:translateY(-8px) rotate(0) scale(0);opacity:0;}
+  14%{opacity:1;transform:translateY(4px) rotate(60deg) scale(1);}
+  100%{transform:translateY(130px) rotate(340deg);opacity:0;}
+}
 @keyframes flashOrange{0%,100%{background:var(--card)}40%{background:var(--oFlash)}}
 /* Court-View: Live-Pulse (Punkt + Border), VS-Pulse (rotation + scale)
    und Score-Pop (Skalierung beim Punkte-Update). Eigene Animationen,

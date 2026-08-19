@@ -7335,6 +7335,8 @@ function TournamentWizard({onClose,onFinish,canStart,
   roundDur,setRoundDur,suggest,pauseStats,nameHistory}){
   const[step,setStep]=useState(0);
   const inputRefs=useRef({});
+  // Zeitfenster-Uhr (Schritt „Zeit") offen?
+  const[showDial,setShowDial]=useState(false);
   // Validierung je Schritt — „Weiter" bleibt aus, bis der Schritt steht.
   const namesOk=players.every(p=>(p.name||'').trim().length>0);
   const meta=FORMATS[format]||FORMATS.americano;
@@ -7366,10 +7368,6 @@ function TournamentWizard({onClose,onFinish,canStart,
   const inp={width:'100%',height:46,borderRadius:13,background:T.card2,
     border:`1px solid ${T.border}`,color:T.t1,fontSize:16,fontWeight:600,
     padding:'0 12px',outline:'none',boxSizing:'border-box'};
-  const timeInp={width:'100%',height:46,borderRadius:13,background:T.card2,
-    border:`1px solid ${T.border}`,color:T.t1,fontSize:16,fontWeight:700,textAlign:'center',
-    outline:'none',boxSizing:'border-box',fontFamily:'inherit',
-    display:'flex',alignItems:'center',justifyContent:'center'};
   const stepBtn={width:38,height:38,borderRadius:12,background:T.card2,
     border:`1px solid ${T.border}`,color:T.t1,fontSize:18,fontWeight:800,cursor:'pointer',
     display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0};
@@ -7576,16 +7574,29 @@ function TournamentWizard({onClose,onFinish,canStart,
           {step===3&&(<>
             <div style={stepTitle}>Wie lange wollt ihr spielen?</div>
             <div style={stepSub}>Mit Start & Ende schlägt RITMO Rundenzahl und -dauer automatisch vor.</div>
+            {/* Start + Ende als tappbare Glass-Pills — öffnen die
+                Drag-Uhr (ersetzen die nativen Scroll-Zeitfelder). */}
             <div style={{display:'flex',gap:10,marginBottom:16}}>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={label}>Start</div>
-                <input type="time" value={startTime} onChange={e=>setStartTime(e.target.value)} style={timeInp}/>
-              </div>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={label}>Ende</div>
-                <input type="time" value={endTime} onChange={e=>setEndTime(e.target.value)} style={timeInp}/>
-              </div>
+              {[['Start',startTime,T.o],['Ende',endTime,T.t1]].map(([lab,val,c])=>(
+                <button key={lab} onClick={()=>{buzz(6);setShowDial(true);}}
+                  aria-label={`${lab}zeit per Uhr wählen`}
+                  style={{flex:1,minWidth:0,height:48,borderRadius:13,cursor:'pointer',
+                    display:'flex',alignItems:'center',justifyContent:'center',gap:8,
+                    background:'color-mix(in srgb, var(--card2) 72%, transparent)',
+                    border:`1px solid ${T.border}`,
+                    WebkitBackdropFilter:'blur(14px) saturate(160%)',
+                    backdropFilter:'blur(14px) saturate(160%)'}}>
+                  <span style={{width:8,height:8,borderRadius:'50%',background:c,
+                    flexShrink:0,display:'block'}}/>
+                  <span style={{color:T.t3,fontSize:11,fontWeight:700}}>{lab}</span>
+                  <span style={{color:val?T.t1:T.t3,fontSize:15,fontWeight:800,
+                    fontVariantNumeric:'tabular-nums'}}>{val||'–:–'}</span>
+                </button>
+              ))}
             </div>
+            {showDial&&<TimeDialSheet start={startTime} end={endTime}
+              onApply={(s,e)=>{setStartTime(s);setEndTime(e);}}
+              onClose={()=>setShowDial(false)}/>}
             <div style={label}>Was ist euch wichtiger?</div>
             <div style={{display:'flex',gap:8,marginBottom:18}}>
               <button onClick={()=>setRoundPrio('variety')} style={chip(roundPrio==='variety')}>
@@ -8056,31 +8067,25 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
             {showTimeDial&&<TimeDialSheet start={startTime} end={endTime}
               onApply={(s,e)=>{setStartTime(s);setEndTime(e);}}
               onClose={()=>setShowTimeDial(false)}/>}
-            {/* START + ENDE in einer Zeile, aber als feste 2-Spalten-Grid
-                mit minmax(0,1fr): so respektiert die native type=time-
-                Mindestbreite die Spaltenbreite und steht nicht über den
-                Card-Rand. */}
+            {/* START + ENDE als tappbare Glass-Pills — öffnen die
+                Drag-Uhr (ersetzen die nativen Scroll-Zeitfelder). */}
             <div style={{display:'grid',gridTemplateColumns:'minmax(0,1fr) minmax(0,1fr)',gap:8}}>
-              <div style={{minWidth:0}}>
-                <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:.4,marginBottom:5}}>START</div>
-                <input type="time" value={startTime} onChange={e=>setStartTime(e.target.value)}
-                  style={{width:'100%',maxWidth:'100%',height:44,borderRadius:12,background:T.card2,
-                    border:`1px solid ${T.border}`,color:T.t1,fontSize:15,fontWeight:700,padding:'0 4px',
-                    outline:'none',boxSizing:'border-box',colorScheme:'dark',minWidth:0,
-                    textAlign:'center',WebkitAppearance:'none',appearance:'none',
-                    fontFamily:'inherit',display:'flex',alignItems:'center',
-                    justifyContent:'center'}}/>
-              </div>
-              <div style={{minWidth:0}}>
-                <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:.4,marginBottom:5}}>ENDE</div>
-                <input type="time" value={endTime} onChange={e=>setEndTime(e.target.value)}
-                  style={{width:'100%',maxWidth:'100%',height:44,borderRadius:12,background:T.card2,
-                    border:`1px solid ${T.border}`,color:T.t1,fontSize:15,fontWeight:700,padding:'0 4px',
-                    outline:'none',boxSizing:'border-box',colorScheme:'dark',minWidth:0,
-                    textAlign:'center',WebkitAppearance:'none',appearance:'none',
-                    fontFamily:'inherit',display:'flex',alignItems:'center',
-                    justifyContent:'center'}}/>
-              </div>
+              {[['START',startTime,T.o],['ENDE',endTime,T.t1]].map(([lab,val,c])=>(
+                <button key={lab} onClick={()=>{buzz(6);setShowTimeDial(true);}}
+                  aria-label={`${lab==='START'?'Start':'End'}zeit per Uhr wählen`}
+                  style={{minWidth:0,height:44,borderRadius:12,cursor:'pointer',
+                    display:'flex',alignItems:'center',justifyContent:'center',gap:8,
+                    background:'color-mix(in srgb, var(--card2) 72%, transparent)',
+                    border:`1px solid ${T.border}`,
+                    WebkitBackdropFilter:'blur(14px) saturate(160%)',
+                    backdropFilter:'blur(14px) saturate(160%)'}}>
+                  <span style={{width:8,height:8,borderRadius:'50%',background:c,
+                    flexShrink:0,display:'block'}}/>
+                  <span style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:.4}}>{lab}</span>
+                  <span style={{color:val?T.t1:T.t3,fontSize:15,fontWeight:800,
+                    fontVariantNumeric:'tabular-nums'}}>{val||'–:–'}</span>
+                </button>
+              ))}
             </div>
 
             {/* Priorität: Längere Runden ⇄ Jeder gegen Jeden — steuert

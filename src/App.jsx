@@ -7208,19 +7208,34 @@ function TimeDial({start,end,onChange}){
     WebkitBackdropFilter:'blur(14px) saturate(160%)',
     backdropFilter:'blur(14px) saturate(160%)'};
   // Schnellwahl-Leiter: die zwei nächstkleineren Dauern stehen links,
-  // die zwei nächstgrößeren rechts von der aktuellen Spieldauer —
-  // die Leiter wandert also mit dem gezogenen Fenster mit.
+  // die zwei nächstgrößeren rechts von der aktuellen Spieldauer. Beide
+  // Seiten rendern IMMER die ganze Leiter — nicht aktive Stufen liegen
+  // mit maxWidth:0 zusammengeklappt daneben. Beim Wechsel wächst die
+  // neue Stufe auf und die alte klappt zu: die Reihe wandert dadurch
+  // geschmeidig wie ein Slider, statt hart umzuspringen.
   const LADDER=[30,60,90,120,150,180,240];
   const durLab=m=>m<60?`${m} Min`:`${String(m/60).replace('.',',')} Std`;
   const shorter=LADDER.filter(m=>m<dur).slice(-2);
   const longer=LADDER.filter(m=>m>dur).slice(0,2);
-  const quick=min=>(
-    <button key={min} onClick={()=>{buzz(5);set(a,(a+min)%1440);}}
-      style={{...glass,borderRadius:999,padding:'6px 10px',cursor:'pointer',
-        color:T.t2,fontSize:11,fontWeight:700,whiteSpace:'nowrap'}}>
-      {durLab(min)}
-    </button>
-  );
+  const SLIDE=['max-width','padding','margin','transform','border-width']
+    .map(p=>`${p} .34s cubic-bezier(.4,0,.2,1)`).join(',')+',opacity .26s ease';
+  const quick=(m,side)=>{
+    const on=(side==='l'?shorter:longer).includes(m);
+    return(
+      <button key={m} onClick={()=>{buzz(5);set(a,(a+m)%1440);}}
+        tabIndex={on?0:-1} aria-hidden={!on}
+        style={{...glass,borderRadius:999,cursor:'pointer',
+          color:T.t2,fontSize:10.5,fontWeight:700,whiteSpace:'nowrap',
+          overflow:'hidden',boxSizing:'border-box',flexShrink:0,
+          maxWidth:on?110:0,opacity:on?1:0,
+          padding:on?'6px 9px':'6px 0',margin:on?'0 3px':0,
+          borderWidth:on?1:0,pointerEvents:on?'auto':'none',
+          transform:on?'translateX(0)':`translateX(${side==='l'?-12:12}px)`,
+          transition:SLIDE}}>
+        {durLab(m)}
+      </button>
+    );
+  };
   const knob=(m,hand,accent)=>{const[x,y]=pt(m,R);
     return(<g style={{pointerEvents:'none'}}>
       <circle cx={x} cy={y} r={drag===hand?16:14} fill={T.card}
@@ -7280,18 +7295,19 @@ function TimeDial({start,end,onChange}){
       {/* Spieldauer mittig, die Schnellwahl-Dauern links (kürzer) und
           rechts (länger) davon — Tap setzt das Ende relativ zum Start. */}
       <div style={{display:'flex',alignItems:'center',justifyContent:'center',
-        gap:7,marginTop:10}}>
-        <div style={{flex:1,display:'flex',justifyContent:'flex-end',gap:5}}>
-          {shorter.map(quick)}
+        gap:6,marginTop:10}}>
+        <div style={{flex:1,minWidth:0,display:'flex',justifyContent:'flex-end',
+          overflow:'hidden'}}>
+          {LADDER.map(m=>quick(m,'l'))}
         </div>
-        <div style={{...glass,display:'inline-flex',alignItems:'center',gap:6,
-          flexShrink:0,borderRadius:999,padding:'7px 13px'}}>
-          <StopwatchIcon size={14} color={T.o}/>
+        <div style={{...glass,display:'inline-flex',alignItems:'center',
+          flexShrink:0,borderRadius:999,padding:'7px 14px'}}>
           <span style={{color:T.t1,fontSize:16,fontWeight:800,whiteSpace:'nowrap',
             fontVariantNumeric:'tabular-nums'}}>{durTxt}</span>
         </div>
-        <div style={{flex:1,display:'flex',justifyContent:'flex-start',gap:5}}>
-          {longer.map(quick)}
+        <div style={{flex:1,minWidth:0,display:'flex',justifyContent:'flex-start',
+          overflow:'hidden'}}>
+          {LADDER.map(m=>quick(m,'r'))}
         </div>
       </div>
     </div>

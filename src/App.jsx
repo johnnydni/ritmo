@@ -7638,7 +7638,11 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
     setPlayers(p=>[...p,{id,name:`Spieler ${p.length+1}`,color:PCOLS[id%PCOLS.length]}]);
   };
   const removePlayer=id=>setPlayers(p=>p.filter(x=>x.id!==id));
-  const renamePlayer=(id,name)=>setPlayers(p=>p.map(x=>x.id===id?{...x,name}:x));
+  // Erster Buchstabe automatisch groß — autoCapitalize ist nur ein
+  // Tastatur-Hint und greift beim schnellen Durchtippen mit Enter
+  // (Fokus-Sprung zum nächsten Spieler) nicht zuverlässig.
+  const capFirst=s=>s?s.charAt(0).toUpperCase()+s.slice(1):s;
+  const renamePlayer=(id,name)=>setPlayers(p=>p.map(x=>x.id===id?{...x,name:capFirst(name)}:x));
   // Spieler mit fertigem Namen anlegen (Historie-Chips im Assistenten).
   const addPlayerNamed=(nm)=>{const id=nextId.current++;
     setPlayers(p=>[...p,{id,name:nm,color:PCOLS[id%PCOLS.length]}]);};

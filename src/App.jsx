@@ -597,21 +597,19 @@ function Splash({onDone}){
             background:'radial-gradient(circle, rgba(255,122,26,.30) 0%, rgba(255,122,26,.10) 42%, transparent 70%)',
             animation:'splashPulse 1.9s ease-in-out infinite'}}/>
 
-          {/* RITMO-Schriftzug — zentriert, ohne Slide. */}
-          <img src={`${getAssetBase()}assets/ritmo-lettering.png`} alt="RITMO"
-            draggable={false}
-            style={{position:'absolute',left:'50%',top:'50%',zIndex:2,
-              transform:'translate(-50%,-50%)',width:'min(56vw, 260px)',
-              pointerEvents:'none',userSelect:'none'}}/>
-
-          {/* Pulsierende RITMO-Streifen — schlicht, im Loop (Echo der
-              Logo-Speed-Lines), knapp unter dem Schriftzug.
-              Brand-Orange bewusst hartkodiert wie der schwarze Grund. */}
-          <div style={{position:'absolute',left:0,right:0,top:'60%',
-            display:'flex',justifyContent:'center',pointerEvents:'none',zIndex:2}}>
-            <div style={{display:'flex',flexDirection:'column',gap:7}}>
-              {[64,42,26].map((w,i)=>(
-                <span key={i} style={{width:w,height:5.5,borderRadius:3,
+          {/* RITMO-Schriftzug + Puls-Streifen als Gruppe zentriert; die
+              Streifen sitzen linksbündig direkt unter dem R (Echo der
+              Logo-Speed-Lines). Brand-Orange bewusst hartkodiert wie
+              der schwarze Grund. */}
+          <div style={{position:'absolute',left:'50%',top:'50%',zIndex:2,
+            transform:'translate(-50%,-50%)',pointerEvents:'none',
+            display:'flex',flexDirection:'column',alignItems:'flex-start',gap:9}}>
+            <img src={`${getAssetBase()}assets/ritmo-lettering.png`} alt="RITMO"
+              draggable={false}
+              style={{width:'min(56vw, 260px)',display:'block',userSelect:'none'}}/>
+            <div style={{display:'flex',flexDirection:'column',gap:6,marginLeft:2}}>
+              {[54,36,22].map((w,i)=>(
+                <span key={i} style={{width:w,height:5,borderRadius:3,
                   background:'#FF7A1A',transformOrigin:'left center',
                   animation:`stripePulse 1.5s ease-in-out ${i*0.18}s infinite`,
                   display:'block'}}/>

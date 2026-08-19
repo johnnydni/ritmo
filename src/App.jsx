@@ -10955,12 +10955,16 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
         title={tourney.name||(FORMATS[tourney.format]||FORMATS.americano).name}
         subtitle={`${(FORMATS[tourney.format]||FORMATS.americano).name}, Runde ${tourney.current+1}${round.koPhase?`, ${round.koPhase}`:''}${tourney.endTime?`, bis ${tourney.endTime}`:''}`}
         icon={
-          // Pokal → Button: springt zum Live-Screen (Turnier-Übersicht).
-          <button onClick={()=>onLive&&onLive()} aria-label="Zum Live-Screen"
-            style={{background:'none',border:'none',padding:0,margin:0,
-              cursor:'pointer',display:'inline-flex',alignItems:'center',
-              color:'inherit'}}>
-            <TrophyIcon size={40}/>
+          // Pokal → Button (Liquid Glass): springt zum Live-Screen.
+          <button onClick={()=>{buzz(6);onLive&&onLive();}} aria-label="Zum Live-Screen"
+            style={{width:46,height:46,borderRadius:16,cursor:'pointer',
+              display:'flex',alignItems:'center',justifyContent:'center',
+              padding:0,margin:0,color:'inherit',
+              background:'color-mix(in srgb, var(--card2) 72%, transparent)',
+              border:'1px solid color-mix(in srgb, var(--t1) 18%, transparent)',
+              WebkitBackdropFilter:'blur(14px) saturate(160%)',
+              backdropFilter:'blur(14px) saturate(160%)'}}>
+            <TrophyIcon size={30}/>
           </button>
         }/>
 

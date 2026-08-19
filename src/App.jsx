@@ -7168,7 +7168,7 @@ function TimeDialSheet({start,end,onApply,onClose}){
   const[b,setB]=useState(()=>parse(end)??21*60);   // End-Minuten
   const[drag,setDrag]=useState(null);              // 'a' | 'b' | null
   const svgRef=useRef(null);
-  const CX=170,CY=170,R=126,HUB=54;
+  const CX=170,CY=170,R=126;
   const pt=(m,r)=>{const t=(m/1440)*2*Math.PI;
     return [CX+r*Math.sin(t),CY-r*Math.cos(t)];};
   // Pointer → Minuten (0..1440, 15er-Raster), 00:00 oben, Uhrzeigersinn.
@@ -7232,14 +7232,16 @@ function TimeDialSheet({start,end,onApply,onClose}){
         </div>
         {/* Zifferblatt — eigene Touch-Handler stoppen den Sheet-Drag,
             damit Ziehen den Zeiger dreht statt das Sheet zu schließen. */}
+        <div style={{position:'relative',width:'min(78vw, 320px)',margin:'0 auto'}}>
         <svg ref={svgRef} viewBox="0 0 340 340"
           onPointerDown={down} onPointerMove={move}
           onPointerUp={up} onPointerCancel={up}
           onTouchStart={e=>e.stopPropagation()}
           onTouchMove={e=>e.stopPropagation()}
-          style={{width:'min(78vw, 320px)',display:'block',margin:'0 auto',
+          style={{width:'100%',display:'block',
             touchAction:'none',cursor:'grab'}}>
-          {/* Ring + Stunden-Ticks (24 h, Labels alle 6 h) */}
+          {/* Doppelter Ring + Stunden-Ticks (24 h, Labels alle 6 h) */}
+          <circle cx={CX} cy={CY} r="166" fill="none" stroke={T.border} strokeWidth="1.5"/>
           <circle cx={CX} cy={CY} r="146" fill="none" stroke={T.border} strokeWidth="1.5"/>
           {Array.from({length:24}).map((_,h)=>{
             const major=h%6===0;
@@ -7263,15 +7265,18 @@ function TimeDialSheet({start,end,onApply,onClose}){
             stroke={T.o} strokeWidth="3.5" strokeLinecap="round" opacity="0.95"/>
           <line x1={CX} y1={CY} x2={pt(b,R)[0]} y2={pt(b,R)[1]}
             stroke={T.t1} strokeWidth="3" strokeLinecap="round" opacity="0.85"/>
-          {/* Nabe mit Spieldauer */}
-          <circle cx={CX} cy={CY} r={HUB} fill={T.card2} stroke={T.border} strokeWidth="1.5"/>
-          <text x={CX} y={CY-2} textAnchor="middle" fill={T.t1}
-            fontSize="19" fontWeight="800">{durTxt}</text>
-          <text x={CX} y={CY+17} textAnchor="middle" fill={T.t3}
-            fontSize="10" fontWeight="700" letterSpacing="1.2">SPIELZEIT</text>
+          {/* Kleine Nabe am Zeiger-Treffpunkt */}
+          <circle cx={CX} cy={CY} r="7" fill={T.card2} stroke={T.border} strokeWidth="1.5"/>
           {knob(a,'a',T.o)}
           {knob(b,'b',T.t1)}
         </svg>
+        {/* Spieldauer — nur unten rechts neben dem Zifferblatt */}
+        <div style={{position:'absolute',right:0,bottom:2,color:T.t1,
+          fontSize:15,fontWeight:800,fontVariantNumeric:'tabular-nums',
+          pointerEvents:'none'}}>
+          {durTxt}
+        </div>
+        </div>
         {/* Start/Ende-Anzeige als Glass-Pills */}
         <div style={{display:'flex',gap:8,justifyContent:'center',margin:'12px 0 4px'}}>
           {[['Start',fmt(a),T.o],['Ende',fmt(b),T.t1]].map(([lab,val,c])=>(

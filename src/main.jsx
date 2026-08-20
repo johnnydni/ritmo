@@ -20,6 +20,10 @@ import "@fontsource/tinos/latin-400.css";
 import "@fontsource/tinos/latin-700.css";
 import "@fontsource/tinos/latin-400-italic.css";
 import "@fontsource/tinos/latin-700-italic.css";
+// Centauri — Display-Schrift für Headlines/Akzente; liegt im Repo, weil
+// es sie weder bei Google Fonts noch bei Fontsource gibt. Versalschrift
+// mit ergänzten deutschen Zeichen, Details in src/fonts/README.md.
+import "./fonts/centauri.css";
 import App from "./App.jsx";
 
 // Initialize Supabase if env vars are configured

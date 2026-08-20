@@ -42,23 +42,17 @@ export const CSS = `
      --font-sans     Inter — die UI-Grundschrift (Fließtext, Buttons)
      --font-serif    Times New Roman — Systemschrift auf iOS/macOS/
                      Windows; auf Android/Linux springt das metrisch
-                     kompatible Tinos ein (Import in main.jsx)
-     --font-display  Centauri — Headlines/Akzente
+                     kompatible Tinos ein
+     --font-display  Centauri — Headlines/Akzente. VERSALSCHRIFT:
+                     Kleinbuchstaben erscheinen als Versalien, für
+                     Fließtext also ungeeignet. Nicht enthaltene
+                     Zeichen (→ ✓ € @, Akzentbuchstaben) fallen pro
+                     Zeichen auf --font-serif zurück.
+   Alle drei werden in main.jsx importiert und von Vite gebündelt —
+   kein CDN, damit font-src 'self' in der CSP reicht.
+
    In Komponenten NICHT hart setzen, sondern T.fontSerif /
    T.fontDisplay verwenden (oder die Klassen .serif / .display).
-
-   Centauri liegt nicht auf Google Fonts / Fontsource und ist deshalb
-   nicht mitinstalliert: Die Schrift greift, wenn sie lokal auf dem
-   Gerät installiert ist. Zum Ausliefern die Datei nach
-   public/fonts/ legen (siehe public/fonts/README.md) und den
-   folgenden Block einkommentieren — mehr ist nicht nötig:
-
-   @font-face{
-     font-family:'Centauri';
-     src:local('Centauri'),
-         url('fonts/centauri.woff2') format('woff2');
-     font-weight:400;font-style:normal;font-display:swap;
-   }
 ──────────────────────────────────────────────────────────────── */
 :root{
   --font-sans:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','SF Pro Text','Helvetica Neue','Segoe UI',Roboto,sans-serif;

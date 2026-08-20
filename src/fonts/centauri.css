@@ -1,0 +1,12 @@
+/* Centauri — Display-Schrift für Headlines/Akzente.
+   Über Vite gebündelt (nicht public/), damit BASE_PATH und Cache-
+   Hashing automatisch stimmen und die CSP (font-src 'self') greift.
+   Die Datei ist die um deutsche Zeichen ergänzte Fassung, siehe
+   src/fonts/README.md und tools/extend-centauri.py. */
+@font-face {
+  font-family: 'Centauri';
+  src: url('./centauri.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}

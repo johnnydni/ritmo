@@ -87,7 +87,7 @@ plus the `.serif` / `.display` utility classes:
 |---|---|---|
 | `T.fontSans` | Inter | `@fontsource/inter`, imported in [src/main.jsx](src/main.jsx) |
 | `T.fontSerif` | Times New Roman | system font; `@fontsource/tinos` (latin subset) is the metric-compatible fallback for Android/Linux |
-| `T.fontDisplay` | Centauri | **not bundled** — resolves only if installed locally; see [public/fonts/README.md](public/fonts/README.md) to ship it |
+| `T.fontDisplay` | Centauri | bundled from [src/fonts/](src/fonts/README.md) — **unicase** (lowercase renders as caps), German glyphs generated via [tools/extend-centauri.py](tools/extend-centauri.py) |
 
 Fonts are self-hosted via npm + Vite, never a CDN — the CSP in `index.html`
 allows `font-src 'self' data:` only. Use the tokens instead of hardcoding

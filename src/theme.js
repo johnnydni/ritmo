@@ -30,9 +30,45 @@ export const T = {
   blueSoft: 'var(--blueSoft)',
   blueGlow: 'var(--blueGlow)',
   gold:     'var(--gold)',
+  /* Schriften — siehe --font-* in CSS unten. */
+  fontSans:    'var(--font-sans)',     // Inter — UI-Grundschrift
+  fontSerif:   'var(--font-serif)',    // Times New Roman (Tinos-Fallback)
+  fontDisplay: 'var(--font-display)',  // Centauri — Headlines/Akzente
 };
 
 export const CSS = `
+/* ── SCHRIFTEN ────────────────────────────────────────────────────
+   Drei Familien, themeunabhängig als Tokens:
+     --font-sans     Inter — die UI-Grundschrift (Fließtext, Buttons)
+     --font-serif    Times New Roman — Systemschrift auf iOS/macOS/
+                     Windows; auf Android/Linux springt das metrisch
+                     kompatible Tinos ein (Import in main.jsx)
+     --font-display  Centauri — Headlines/Akzente
+   In Komponenten NICHT hart setzen, sondern T.fontSerif /
+   T.fontDisplay verwenden (oder die Klassen .serif / .display).
+
+   Centauri liegt nicht auf Google Fonts / Fontsource und ist deshalb
+   nicht mitinstalliert: Die Schrift greift, wenn sie lokal auf dem
+   Gerät installiert ist. Zum Ausliefern die Datei nach
+   public/fonts/ legen (siehe public/fonts/README.md) und den
+   folgenden Block einkommentieren — mehr ist nicht nötig:
+
+   @font-face{
+     font-family:'Centauri';
+     src:local('Centauri'),
+         url('fonts/centauri.woff2') format('woff2');
+     font-weight:400;font-style:normal;font-display:swap;
+   }
+──────────────────────────────────────────────────────────────── */
+:root{
+  --font-sans:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','SF Pro Text','Helvetica Neue','Segoe UI',Roboto,sans-serif;
+  --font-serif:'Times New Roman','Tinos',Times,'Liberation Serif',serif;
+  --font-display:'Centauri','Times New Roman','Tinos',Times,serif;
+}
+/* Utility-Klassen für die Screen-Überarbeitung. */
+.serif{font-family:var(--font-serif);letter-spacing:0;}
+.display{font-family:var(--font-display);letter-spacing:0;}
+
 :root, :root[data-theme="dark"] {
   /* Clean-Modern-Redesign: weicheres Near-Black statt hartem #000,
      klar abgestufte Flächen (bg → card → card2) und feine Hairline-
@@ -567,7 +603,7 @@ export const CSS = `
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html,body,#root{background:var(--bg);height:100%;min-height:100dvh;overflow:hidden;
   overscroll-behavior:none;
-  font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','SF Pro Text','Helvetica Neue','Segoe UI',Roboto,sans-serif;
+  font-family:var(--font-sans);
   -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
   text-rendering:optimizeLegibility;letter-spacing:-0.011em;color:var(--t1);}
 /* Branded Text-Selektion statt Browser-Default-Blau. */

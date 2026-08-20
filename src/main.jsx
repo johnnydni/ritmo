@@ -12,6 +12,14 @@ import "@fontsource/inter/600.css";
 import "@fontsource/inter/700.css";
 import "@fontsource/inter/800.css";
 import "@fontsource/inter/900.css";
+// Times New Roman — auf iOS/macOS/Windows Systemschrift, auf Android/
+// Linux nicht. Tinos ist metrisch kompatibel und springt dort ein (nur
+// Latin-Subset, deckt Deutsch komplett ab). Wer TNR lokal hat, lädt
+// Tinos gar nicht erst — das regeln Stack-Reihenfolge + unicode-range.
+import "@fontsource/tinos/latin-400.css";
+import "@fontsource/tinos/latin-700.css";
+import "@fontsource/tinos/latin-400-italic.css";
+import "@fontsource/tinos/latin-700-italic.css";
 import App from "./App.jsx";
 
 // Initialize Supabase if env vars are configured

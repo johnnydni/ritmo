@@ -28,7 +28,7 @@ Pure / side-effect-free modules have been extracted from the original mega-file.
 |------|------------------|-------|
 | [src/main.jsx](src/main.jsx) | Entry point. Dynamically imports `@supabase/supabase-js` and attaches a client to `window.supabase`. Injects `window.__BASE__`. | The `auth` module reads `window.supabase` at call time, not import time. |
 | [src/App.jsx](src/App.jsx) | All screens, modal components, the `<App/>` root that wires routing/state. | ~8500 lines. Adding a new screen → add it here. |
-| [src/theme.js](src/theme.js) | `T` token mirror, `CSS` template literal with all 5 theme variable sets, palette helpers (`hexToRgb`, `rgba`, `luminance`, `shiftColor`, `buildThemePalette`). | Source of truth for visual constants. |
+| [src/theme.js](src/theme.js) | `T` token mirror, `CSS` template literal with the theme variable sets + font tokens, palette helpers (`hexToRgb`, `rgba`, `luminance`, `shiftColor`, `buildThemePalette`). | Source of truth for visual constants. |
 | [src/utils.js](src/utils.js) | `lsGet` / `lsSet` (safe localStorage), `getAssetBase`, `getInitials`, `readImageAsDataUrl`, `resizeImage`. | Pure JS; no React. |
 | [src/levels.js](src/levels.js) | `getLevelLabel` / `getLevelTier` / `getLevelColor` (L1..L7 mapping) and `estimateLevel(profile)` for the RITMO questionnaire. | Pure functions; safe to import anywhere. |
 | [src/game.js](src/game.js) | `bo3R` / `amR` reducers + initial states `B0` / `A0` + helpers `ptD`, `wG`. | Pure; UI-agnostic. |
@@ -73,9 +73,25 @@ When changing scoring rules, edit the reducer — the `Match` screen is a thin s
 
 ### Theming
 
-Five themes (`dark`, `light`, `padel`, `wimbledon`, `funky`) are defined as CSS variable sets in the `CSS` template literal in [`src/theme.js`](src/theme.js). The `T` object is the JS mirror — components use `T.bg`, `T.card`, etc., which all resolve to `var(--bg)`. The active theme is set via `document.documentElement.setAttribute('data-theme', theme)` plus a sync of the `--bg` value to `<body>` background and the `theme-color` meta tag (so iOS/Android system chrome matches).
+Themes are defined as CSS variable sets in the `CSS` template literal in [`src/theme.js`](src/theme.js). Only `glass` (RITMO Liquid Glass) is selectable — the sets for `dark`, `light`, `padel`, `wimbledon` and `funky` are still in the file but no longer offered in Settings → Anpassung, and stored legacy values fall back to `glass`. The `T` object is the JS mirror — components use `T.bg`, `T.card`, etc., which all resolve to `var(--bg)`. The active theme is set via `document.documentElement.setAttribute('data-theme', theme)` plus a sync of the `--bg` value to `<body>` background and the `theme-color` meta tag (so iOS/Android system chrome matches).
 
 When adding a styled element: use the `T.*` tokens. Never hardcode hex colors in components — the theme switch will break.
+
+### Fonts
+
+Three families, exposed as theme-independent tokens (`--font-sans`, `--font-serif`,
+`--font-display`) with the JS mirrors `T.fontSans`, `T.fontSerif`, `T.fontDisplay`
+plus the `.serif` / `.display` utility classes:
+
+| Token | Family | Loading |
+|---|---|---|
+| `T.fontSans` | Inter | `@fontsource/inter`, imported in [src/main.jsx](src/main.jsx) |
+| `T.fontSerif` | Times New Roman | system font; `@fontsource/tinos` (latin subset) is the metric-compatible fallback for Android/Linux |
+| `T.fontDisplay` | Centauri | **not bundled** — resolves only if installed locally; see [public/fonts/README.md](public/fonts/README.md) to ship it |
+
+Fonts are self-hosted via npm + Vite, never a CDN — the CSP in `index.html`
+allows `font-src 'self' data:` only. Use the tokens instead of hardcoding
+family names, same rule as for colors.
 
 ### Auth — Supabase only
 

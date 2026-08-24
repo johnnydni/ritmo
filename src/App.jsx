@@ -33,6 +33,7 @@ import { B0, A0, PL, ptD, wG, bo3R, amR, DEFCFG } from "./game.js";
 import { PCOLS, shuffle, genAmericanoRound, genMexicanoRound, calcLeaderboard, FORMATS, genRound } from "./tournament.js";
 import { RINGS, playRing, unlockAudio } from "./audio.js";
 import { auth } from "./auth.js";
+import { readNamesFromImage, releaseOcr } from "./ocr.js";
 import {
   RitmoWordmark, RitmoSplashLogo, CourtIcon, RacketMini, TrophyIcon, JoinIcon,
   SingleMatchIcon, BestOfThreeIcon,
@@ -7083,6 +7084,168 @@ function StylePickerSheet({current,onSelect,onClose}){
   );
 }
 
+/* ── Screenshot-Scan (Bottom-Sheet) — Spielernamen aus Bildern.
+   Der eigentliche OCR-Lauf steckt in src/ocr.js und läuft auf dem
+   Gerät. Hier hängt nur die Bedienung dran: Bilder wählen → Fortschritt
+   → Trefferliste bestätigen/korrigieren → übernehmen. Bewusst mit
+   Bestätigungsschritt: OCR liegt gelegentlich daneben, und ein falsch
+   geschriebener Name zieht sich sonst durchs ganze Turnier. */
+function PlayerScanSheet({existing,onAdd,onClose}){
+  const sheet=useSheetDrag(onClose);
+  const[phase,setPhase]=useState('pick');   // pick | work | list
+  const[prog,setProg]=useState({step:'load',pct:0,file:0,total:0});
+  const[rows,setRows]=useState([]);          // {name,on}
+  const[err,setErr]=useState('');
+  const fileRef=useRef(null);
+  // Worker samt WASM-Speicher freigeben, sobald das Sheet zugeht.
+  useEffect(()=>()=>{ releaseOcr(); },[]);
+
+  const run=async(files)=>{
+    const list=Array.from(files||[]).slice(0,6); // mehr als 6 Bilder ist kein Anwendungsfall
+    if(!list.length) return;
+    setErr(''); setPhase('work');
+    const found=[]; const known=[...existing];
+    try{
+      for(let i=0;i<list.length;i++){
+        setProg({step:'load',pct:0,file:i+1,total:list.length});
+        // Gleicher gehärteter Pfad wie beim Profilbild: Magic-Bytes
+        // prüfen, dann über Canvas neu encoden (strippt EXIF/Geo).
+        const img=await processImageUpload(list[i],2200);
+        const names=await readNamesFromImage(img,{
+          existing:known,
+          onProgress:(step,pct)=>setProg({step,pct,file:i+1,total:list.length}),
+        });
+        names.forEach(n=>{ known.push(n); found.push(n); });
+      }
+      setRows(found.map(n=>({name:n,on:true})));
+      setPhase('list');
+      buzz(found.length?12:6);
+    }catch(e){
+      setErr(e?.message||'Der Screenshot konnte nicht gelesen werden.');
+      setPhase('pick');
+    }
+  };
+
+  const take=()=>{
+    onAdd(rows.filter(r=>r.on&&r.name.trim()).map(r=>r.name.trim()));
+    buzz(14); onClose();
+  };
+  const nOn=rows.filter(r=>r.on&&r.name.trim()).length;
+
+  return(
+    <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:300,
+      background:'rgba(0,0,0,.7)',backdropFilter:'blur(4px)',display:'flex',
+      alignItems:'flex-end',justifyContent:'center',animation:'fadeIn .15s ease'}}>
+      <div onClick={e=>e.stopPropagation()} className="slide-up"
+        ref={sheet.ref} {...sheet.handlers}
+        style={{background:T.card,borderTopLeftRadius:20,borderTopRightRadius:20,
+          borderTop:`1px solid ${T.border}`,width:'100%',maxWidth:480,
+          padding:'16px 18px calc(env(safe-area-inset-bottom,0px) + 18px)',
+          maxHeight:'86vh',overflowY:'auto',...sheet.style}}>
+        <div style={{width:36,height:4,borderRadius:2,background:T.border,margin:'0 auto 14px'}}/>
+        <div style={{color:T.t1,fontSize:17,fontWeight:800,marginBottom:3}}>
+          Spieler aus Screenshot
+        </div>
+        <div style={{color:T.t3,fontSize:12,lineHeight:1.5,marginBottom:14}}>
+          {phase==='list'
+            ?'Häkchen prüfen, Namen bei Bedarf korrigieren — dann übernehmen.'
+            :'WhatsApp-Liste, Platzbuchung, Notiz — die Namen werden direkt auf dem Gerät gelesen, die Bilder verlassen es nicht.'}
+        </div>
+
+        {phase==='pick'&&(<>
+          <input ref={fileRef} type="file" accept="image/*" multiple
+            onChange={e=>{ run(e.target.files); e.target.value=''; }}
+            style={{display:'none'}}/>
+          <button onClick={()=>fileRef.current?.click()}
+            style={{width:'100%',padding:'15px',borderRadius:14,cursor:'pointer',
+              background:T.o,border:'none',color:'#000',fontSize:15,fontWeight:800,
+              display:'flex',alignItems:'center',justifyContent:'center',gap:9}}>
+            <ScanGlyph size={18} color="#000"/> Screenshots auswählen
+          </button>
+          <div style={{color:T.t4,fontSize:10.5,lineHeight:1.55,marginTop:10,textAlign:'center'}}>
+            Bis zu 6 Bilder auf einmal. Beim ersten Mal werden einmalig
+            ~4 MB Erkennungsdaten geladen, danach läuft es offline.
+          </div>
+          {err&&<div style={{color:T.r,fontSize:12,fontWeight:600,marginTop:12,
+            lineHeight:1.5,textAlign:'center'}}>{err}</div>}
+        </>)}
+
+        {phase==='work'&&(
+          <div style={{padding:'18px 0 8px'}}>
+            <div style={{color:T.t2,fontSize:13,fontWeight:600,marginBottom:10,textAlign:'center'}}>
+              {prog.step==='load'?'Erkennung wird vorbereitet …':'Namen werden gelesen …'}
+              {prog.total>1&&<span style={{color:T.t3}}> ({prog.file}/{prog.total})</span>}
+            </div>
+            <div style={{height:6,borderRadius:3,background:T.card2,overflow:'hidden'}}>
+              <div style={{height:'100%',borderRadius:3,background:T.o,
+                width:`${Math.round((prog.pct||0)*100)}%`,transition:'width .25s ease'}}/>
+            </div>
+          </div>
+        )}
+
+        {phase==='list'&&(<>
+          {rows.length===0&&(
+            <div style={{color:T.t3,fontSize:13,lineHeight:1.6,textAlign:'center',padding:'10px 0 16px'}}>
+              Keine Namen gefunden. Ein schärferer Ausschnitt mit gut
+              lesbarer Namensliste klappt meist besser.
+            </div>
+          )}
+          {rows.map((r,i)=>(
+            <div key={i} style={{display:'flex',alignItems:'center',gap:10,padding:'9px 0',
+              borderBottom:i<rows.length-1?`1px solid ${T.sep}`:'none'}}>
+              <button onClick={()=>{buzz(5);setRows(rs=>rs.map((x,j)=>j===i?{...x,on:!x.on}:x));}}
+                aria-label={r.on?'Abwählen':'Auswählen'}
+                style={{width:24,height:24,borderRadius:8,flexShrink:0,cursor:'pointer',
+                  background:r.on?T.o:'transparent',
+                  border:`1.5px solid ${r.on?T.o:T.border}`,
+                  display:'flex',alignItems:'center',justifyContent:'center',padding:0}}>
+                {r.on&&(
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <polyline points="20 6 9 17 4 12" stroke="#000" strokeWidth="3.4"
+                      strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                )}
+              </button>
+              <input value={r.name}
+                onChange={e=>setRows(rs=>rs.map((x,j)=>j===i?{...x,name:e.target.value}:x))}
+                autoCapitalize="words" autoCorrect="off" spellCheck={false}
+                style={{flex:1,minWidth:0,fontSize:15,fontWeight:600,
+                  color:r.on?T.t1:T.t3,background:'none',border:'none',outline:'none'}}/>
+            </div>
+          ))}
+          <div style={{display:'flex',gap:8,marginTop:16}}>
+            <button onClick={()=>{setRows([]);setPhase('pick');}}
+              style={{flex:1,padding:'13px',background:'none',border:`1px solid ${T.border}`,
+                borderRadius:13,color:T.t2,fontSize:14,fontWeight:700,cursor:'pointer'}}>
+              Neues Bild
+            </button>
+            <button onClick={take} disabled={!nOn}
+              style={{flex:1.5,padding:'13px',border:'none',borderRadius:13,
+                background:nOn?T.o:T.card2,color:nOn?'#000':T.t3,
+                fontSize:14,fontWeight:800,cursor:nOn?'pointer':'default'}}>
+              {nOn?`${nOn} übernehmen`:'Nichts gewählt'}
+            </button>
+          </div>
+        </>)}
+      </div>
+    </div>
+  );
+}
+
+/* Scan-Glyph — Bild im Sucherrahmen, passend zum Icon-Set der App. */
+function ScanGlyph({size=18,color}){
+  const c=color||T.o;
+  return(
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M3 8V5.5A2.5 2.5 0 0 1 5.5 3H8M16 3h2.5A2.5 2.5 0 0 1 21 5.5V8M21 16v2.5a2.5 2.5 0 0 1-2.5 2.5H16M8 21H5.5A2.5 2.5 0 0 1 3 18.5V16"
+        stroke={c} strokeWidth="1.9" strokeLinecap="round"/>
+      <circle cx="9.5" cy="10" r="1.5" fill={c}/>
+      <path d="M7 16l3.2-3.2a1.2 1.2 0 0 1 1.7 0L14 15l1.1-1.1a1.2 1.2 0 0 1 1.7 0L18 15"
+        stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+
 /* Court-Label: eigener Name (aus dem Setup) oder Default "Court N". */
 const courtLabel=(names,i)=>((names&&names[i]&&String(names[i]).trim())||`Court ${i+1}`);
 
@@ -7702,6 +7865,8 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
   const[editScopePrompt,setEditScopePrompt]=useState(null);
   // Turnier-Assistent (geführter Setup) — nur im Lokal-Modus.
   const[wizardOpen,setWizardOpen]=useState(false);
+  // Screenshot-Scan (Spieler per OCR uebernehmen).
+  const[scanOpen,setScanOpen]=useState(false);
   // Namens-Historie für die Schnellauswahl im Assistenten (LRU, max 24;
   // wird bei jedem lokalen Start in startLocal() gepflegt).
   const[nameHistory]=useState(()=>lsGet('ritmo_player_history',[]));
@@ -7822,6 +7987,25 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
   // Spieler mit fertigem Namen anlegen (Historie-Chips im Assistenten).
   const addPlayerNamed=(nm)=>{const id=nextId.current++;
     setPlayers(p=>[...p,{id,name:nm,color:PCOLS[id%PCOLS.length]}]);};
+  // Gescannte Namen einsetzen: zuerst die unbenannten Platzhalter-Slots
+  // ("Spieler 1" …) fuellen, erst danach neue Zeilen anhaengen — sonst
+  // steht nach dem Scan eine Liste aus Platzhaltern PLUS echten Namen da.
+  const addScannedPlayers=(names)=>{
+    if(!names?.length) return;
+    setPlayers(prev=>{
+      const isPlaceholder=p=>!p.name||/^Spieler\s*\d+$/i.test(p.name.trim());
+      const out=[...prev];
+      let i=0;
+      for(let k=0;k<out.length&&i<names.length;k++){
+        if(isPlaceholder(out[k])) out[k]={...out[k],name:names[i++]};
+      }
+      while(i<names.length){
+        const id=nextId.current++;
+        out.push({id,name:names[i++],color:PCOLS[id%PCOLS.length]});
+      }
+      return out;
+    });
+  };
   // Spielstil je Spieler — treibt das Match-Tier-Rating der Paarungen.
   const setPlayerStyle=(id,style)=>setPlayers(p=>p.map(x=>x.id===id?{...x,style:style||null}:x));
   // Gruppe A/B je Spieler (Mixicano). Beim Wechsel auf ein Gruppen-
@@ -8292,6 +8476,24 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
                 :!teamOk?`${fmtMeta.name} braucht eine gerade Spielerzahl — aktuell ${players.length}.`
                 :`Mixicano braucht mind. 2 pro Gruppe (aktuell A ×${grpA}, B ×${grpB}).`}
             </div>
+          )}
+          {/* Screenshot-Scan — Namen aus WhatsApp-Liste, Platzbuchung
+              oder Notiz uebernehmen, statt sie abzutippen. */}
+          <button onClick={()=>{buzz(8);setScanOpen(true);}}
+            style={{width:'100%',marginTop:12,padding:'12px',borderRadius:13,
+              cursor:'pointer',display:'flex',alignItems:'center',
+              justifyContent:'center',gap:9,
+              background:'color-mix(in srgb, var(--card2) 72%, transparent)',
+              border:`1px solid ${T.border}`,color:T.t1,fontSize:13.5,fontWeight:700,
+              WebkitBackdropFilter:'blur(14px) saturate(160%)',
+              backdropFilter:'blur(14px) saturate(160%)'}}>
+            <ScanGlyph size={17}/> Aus Screenshot übernehmen
+          </button>
+          {scanOpen&&(
+            <PlayerScanSheet
+              existing={players.map(p=>p.name).filter(n=>n&&!/^Spieler\s*\d+$/i.test(n.trim()))}
+              onAdd={addScannedPlayers}
+              onClose={()=>setScanOpen(false)}/>
           )}
           {canStart&&format!=='knockout'&&pauseStats&&pauseStats.sitOut>0&&(
             <div style={{color:T.t3,fontSize:11,marginTop:10,paddingBottom:6,fontWeight:500,lineHeight:1.55}}>

@@ -34,6 +34,7 @@ import { PCOLS, shuffle, genAmericanoRound, genMexicanoRound, calcLeaderboard, F
 import { RINGS, playRing, unlockAudio } from "./audio.js";
 import { auth } from "./auth.js";
 import { readNamesFromImage, releaseOcr } from "./ocr.js";
+import { LEGAL_SECTIONS, STAND } from "./legal.js";
 import {
   RitmoWordmark, RitmoSplashLogo, CourtIcon, RacketMini, TrophyIcon, JoinIcon,
   SingleMatchIcon, BestOfThreeIcon,
@@ -12296,6 +12297,12 @@ function Settings({onHome,onBack,nav,onLogout}){
           desc="Passwort, Sessions, Zwei-Faktor."
           onClick={()=>nav('settings-sicherheit')}/>
 
+        <SettingsCard q={q}
+          icon={<ScrollIcon size={22} color="currentColor"/>}
+          title="Rechtliches"
+          desc="Impressum, Datenschutz, Nutzungsbedingungen."
+          onClick={()=>nav('settings-rechtliches')}/>
+
         {/* Konto-Löschung wird bewusst NICHT als eigene Top-Level-Karte
             angeboten — sie liegt ausschließlich unter
             Privatsphäre → "Konto und Daten löschen", damit User vor
@@ -12684,6 +12691,89 @@ function SettingsFlash({kind,text}){
    default ist "alles teilen", damit Bestands-User keine
    versteckten Profile bekommen.
 ═══════════════════════════════════════════════════════════════ */
+/* ── Rechtliches — Impressum, Datenschutz, Nutzungsbedingungen.
+   Die Texte liegen als Daten in src/legal.js; hier wird nur gerendert.
+   Akkordeon statt Endlos-Seite: Wer das Impressum sucht, soll es nach
+   § 5 DDG „leicht erkennbar und unmittelbar erreichbar" finden und
+   nicht erst an der Datenschutzerklärung vorbeiscrollen. */
+function SettingsRechtliches({onBack,onHome}){
+  const[open,setOpen]=useState(null);   // id des offenen Abschnitts
+  return(
+    <SettingsSubLayout title="Rechtliches"
+      desc="Impressum, Datenschutz und Nutzungsbedingungen."
+      icon={<ScrollIcon size={22} color="currentColor"/>}
+      onBack={onBack} onHome={onHome}>
+      {LEGAL_SECTIONS.map(sec=>{
+        const isOpen=open===sec.id;
+        return(
+          <div key={sec.id} style={{background:T.card,border:`1px solid ${isOpen?T.o:T.border}`,
+            borderRadius:16,marginBottom:12,overflow:'hidden',
+            transition:'border-color .2s'}}>
+            <button onClick={()=>{buzz(6);setOpen(o=>o===sec.id?null:sec.id);}}
+              aria-expanded={isOpen}
+              style={{width:'100%',padding:'16px 18px',background:'none',border:'none',
+                cursor:'pointer',display:'flex',alignItems:'center',gap:12,textAlign:'left'}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{color:isOpen?T.o:T.t1,fontSize:15,fontWeight:700,
+                  transition:'color .2s'}}>{sec.title}</div>
+                <div style={{color:T.t3,fontSize:11.5,fontWeight:500,marginTop:2}}>{sec.sub}</div>
+              </div>
+              <span style={{color:isOpen?T.o:T.t3,fontSize:15,flexShrink:0,
+                transform:isOpen?'rotate(90deg)':'none',
+                transition:'transform .25s cubic-bezier(.3,0,.2,1),color .2s',
+                display:'inline-block'}}>›</span>
+            </button>
+            {isOpen&&(
+              <div className="fi" style={{padding:'0 18px 18px'}}>
+                {sec.blocks.map((b,i)=>{
+                  if(b.h) return(
+                    <div key={i} style={{color:T.t1,fontSize:12.5,fontWeight:800,
+                      marginTop:i?16:4,marginBottom:6}}>{b.h}</div>
+                  );
+                  if(b.p) return(
+                    <p key={i} style={{color:T.t3,fontSize:12.5,fontWeight:500,
+                      lineHeight:1.65,marginBottom:8}}>{b.p}</p>
+                  );
+                  if(b.ul) return(
+                    <div key={i} style={{marginBottom:8}}>
+                      {b.ul.map((li,j)=>(
+                        <div key={j} style={{display:'flex',gap:8,marginBottom:4}}>
+                          <span style={{color:T.o,flexShrink:0,lineHeight:1.65,fontSize:12.5}}>–</span>
+                          <span style={{color:T.t3,fontSize:12.5,fontWeight:500,
+                            lineHeight:1.65,flex:1,minWidth:0}}>{li}</span>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                  if(b.kv) return(
+                    <div key={i} style={{marginBottom:8}}>
+                      {b.kv.map(([k,v],j)=>(
+                        <div key={j} style={{display:'flex',gap:10,marginBottom:7,
+                          alignItems:'flex-start'}}>
+                          <span style={{color:T.t2,fontSize:11.5,fontWeight:800,
+                            width:96,flexShrink:0,lineHeight:1.6}}>{k}</span>
+                          <span style={{color:T.t3,fontSize:12.5,fontWeight:500,
+                            lineHeight:1.6,flex:1,minWidth:0}}>{v}</span>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                  return null;
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
+      <div style={{color:T.t4,fontSize:11,fontWeight:500,lineHeight:1.6,
+        textAlign:'center',marginTop:4}}>
+        Stand: {STAND}
+      </div>
+      <div style={{height:120,flexShrink:0}}/>
+    </SettingsSubLayout>
+  );
+}
+
 function SettingsPrivatsphaere({onBack,onHome,profile,setProfile,onOpenDelete}){
   const[flash,setFlash]=useState(null);
   const isPublic=!profile.private;
@@ -20207,6 +20297,8 @@ export default function App(){
     {scr==='settings-benachrichtigungen'&&<SettingsBenachrichtigungen
       onBack={()=>setScr('settings')} onHome={goHome}
       notify={notify} setNotify={setNotify}/>}
+    {scr==='settings-rechtliches'&&<SettingsRechtliches
+      onBack={()=>setScr('settings')} onHome={goHome}/>}
     {scr==='settings-sicherheit'&&<SettingsSicherheit
       onBack={()=>setScr('settings')} onHome={goHome}/>}
     {scr==='settings-konto'&&<SettingsKonto

@@ -1,7 +1,7 @@
 import { useState, useEffect, useLayoutEffect, useReducer, useCallback, useMemo, useRef, Fragment } from "react";
 import { SKILL_DESCRIPTIONS } from "./skillDescriptions.js";
 import { loadProfile as dbLoadProfile, saveProfile as dbSaveProfile, logMatch as dbLogMatch, loadMatchStats as dbLoadMatchStats,
-  createOnlineTournament, joinOnlineTournament, leaveOnlineTournament, fetchOnlineTournament, updateOnlineTournament, subscribeToTournament,
+  createOnlineTournament, joinOnlineTournament, leaveOnlineTournament, fetchOnlineTournament, updateOnlineTournament, endOnlineTournament, subscribeToTournament,
   publishTournamentState, submitScore, approveScore, rejectScore, sendReadyCheck, confirmReady, clearReadyCheck,
   checkBetaKey, redeemBetaKey, deleteMyMatches as dbDeleteMyMatches,
   logMatchLocal, loadMatchStatsLocal as dbLoadMatchStatsLocal, clearMatchLog,
@@ -9786,6 +9786,12 @@ function JoinTournament({initialPin,profile,onHome,onJoin,onLeave,restored}){
         setStatus('rejected');
         return;
       }
+      // Host hat die Übertragung beendet — nicht stillschweigend in
+      // den Warte-Zustand zurückfallen lassen.
+      if(data.status==='ended'){
+        setStatus('ended');
+        return;
+      }
       if(data.status==='playing'){
         setStatus('playing');
         return;
@@ -9978,13 +9984,29 @@ function JoinTournament({initialPin,profile,onHome,onJoin,onLeave,restored}){
         )}
 
         {/* Turnier verlassen — im Warte-, Freigegeben- UND Spiel-Status. */}
-        {(status==='waiting'||status==='approved'||status==='playing')&&(
+        {(status==='waiting'||status==='approved'||status==='playing'||status==='ended')&&(
           <button onClick={()=>{buzz(8);setConfirmLeave(true);}}
             style={{padding:'12px',borderRadius:13,cursor:'pointer',flexShrink:0,
               background:'transparent',border:`1.5px solid ${T.r}`,color:T.r,
               fontSize:13,fontWeight:800}}>
             Turnier verlassen
           </button>
+        )}
+
+        {status==='ended'&&(
+          <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
+            padding:'24px 20px',textAlign:'center'}}>
+            <div style={{display:'flex',justifyContent:'center',marginBottom:14}}>
+              <TrophyIcon size={40}/>
+            </div>
+            <div style={{color:T.t1,fontSize:16,fontWeight:800,marginBottom:6}}>
+              Live-Übertragung beendet
+            </div>
+            <div style={{color:T.t3,fontSize:12,lineHeight:1.55,maxWidth:280,margin:'0 auto'}}>
+              Der Host überträgt dieses Turnier nicht mehr live. Den
+              Endstand erfährst du vor Ort bei der Turnierleitung.
+            </div>
+          </div>
         )}
 
         {status==='rejected'&&(
@@ -10903,8 +10925,9 @@ function RoundHistorySheet({tourney,onClose}){
    Der Host bleibt Single Source of Truth: sein Gerät rechnet Runden
    und Standings, die Session ist Spiegel + Score-Briefkasten
    (Submissions mit Host-Freigabe — bestehende Online-Maschinerie). */
-function LiveShareSheet({pin,busy,err,onClose}){
+function LiveShareSheet({pin,busy,err,onClose,onEnd}){
   const sheet=useSheetDrag(onClose);
+  const[ask,setAsk]=useState(false);
   const joinUrl=(()=>{
     if(typeof window==='undefined'||!pin) return '';
     const base=window.__BASE__||'/';
@@ -10972,7 +10995,32 @@ function LiveShareSheet({pin,busy,err,onClose}){
             Auf einem Tablet den PIN eingeben und „Monitor-Modus" wählen —
             wechselt automatisch zwischen Runde und Tabelle.
           </div>
+          {/* Live-Modus beenden — das Turnier läuft lokal weiter, nur
+              die Übertragung endet. Mit Rückfrage, weil damit alle
+              beigetretenen Handys aus der Live-Ansicht fallen und der
+              PIN verbraucht ist. */}
+          {onEnd&&(
+            <button onClick={()=>{buzz(8);setAsk(true);}}
+              style={{width:'100%',marginTop:14,padding:'13px',borderRadius:13,
+                cursor:'pointer',background:'transparent',
+                border:`1.5px solid ${T.r}`,color:T.r,fontSize:13.5,fontWeight:800,
+                display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+              <span style={{width:9,height:9,borderRadius:'50%',background:T.r,
+                display:'inline-block'}}/>
+              Live-Modus beenden
+            </button>
+          )}
         </>)}
+        {ask&&(
+          <ResetModal
+            title="Live-Modus beenden"
+            description="Das Turnier läuft auf diesem Gerät normal weiter — nur die Live-Ansicht der Spieler endet. Der PIN wird ungültig; zum erneuten Teilen wird ein neuer erzeugt."
+            question="Übertragung jetzt beenden?"
+            confirmLabel="Beenden"
+            cancelLabel="Abbrechen"
+            onCancel={()=>setAsk(false)}
+            onConfirm={()=>{setAsk(false);onEnd();}}/>
+        )}
       </div>
     </div>
   );
@@ -11078,6 +11126,16 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
     }catch(e){
       setLiveErr(e?.message||'Live-Session konnte nicht erstellt werden — Internetverbindung prüfen.');
     }finally{setLiveBusy(false);}
+  };
+
+  // Live-Modus beenden: Session serverseitig als beendet markieren und
+  // onlinePin/isHost vom Turnier lösen — damit stoppt der Publish-Loop
+  // und der „Live"-Knopf ist wieder frei für eine neue Übertragung.
+  const endLiveShare=async()=>{
+    const pin=tourney.onlinePin;
+    setTourney(t=>{const{onlinePin,isHost,...rest}=t;return rest;});
+    setLiveSheet(false);
+    if(pin){ try{ await endOnlineTournament(pin); }catch(e){} }
   };
 
   // ── Tournament-Court Logging ──
@@ -11592,6 +11650,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
       {/* Live teilen — QR/PIN-Sheet für die Mirror-Session */}
       {liveSheet&&(
         <LiveShareSheet pin={tourney.onlinePin} busy={liveBusy} err={liveErr}
+          onEnd={endLiveShare}
           onClose={()=>setLiveSheet(false)}/>
       )}
     </div>

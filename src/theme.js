@@ -682,6 +682,15 @@ input[type="time"]::-webkit-datetime-edit{padding:0;text-align:center;}
   0%,100%{opacity:.22;transform:scaleX(.86);}
   50%{opacity:1;transform:scaleX(1);}
 }
+/* Einmaliger Orange-Ring um eine Karte — Hinweis, dass sich an ihr
+   gerade etwas geändert hat (Spielerkarte ab dem 5. Spieler: ab da
+   lassen sich Zeilen per Wisch löschen). Läuft genau einmal. */
+@keyframes cardHint{
+  0%{box-shadow:0 0 0 0 rgba(255,122,26,.0);}
+  18%{box-shadow:0 0 0 3px rgba(255,122,26,.75);}
+  62%{box-shadow:0 0 0 3px rgba(255,122,26,.55);}
+  100%{box-shadow:0 0 0 12px rgba(255,122,26,0);}
+}
 /* Endstand: Pokal swoosht von rechts hinter die Sieger-Schriften … */
 @keyframes trophySwoosh{
   0%{transform:translateX(170px) rotate(16deg);opacity:0;}

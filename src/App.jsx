@@ -359,7 +359,7 @@ function Splash({onDone}){
   const playingRef=useRef(false);
   // Einmal beim Mount gelesen — Umschalten greift ab dem nächsten Start.
   const[skipVideo]=useState(()=>!!lsGet('ritmo_skip_intro',false));
-  // Check-Button-Zustand ("Intro nicht mehr zeigen") im Video-Pfad.
+  // Check-Button-Zustand ("Skip Intro") im Video-Pfad.
   const[noIntro,setNoIntro]=useState(false);
   const toggleNoIntro=(e)=>{
     e.stopPropagation(); // Tap auf den Button darf den Splash nicht beenden
@@ -556,11 +556,12 @@ function Splash({onDone}){
             <span key={i}>{c===' '?' ':c}</span>
           ))}
         </div>
-        {/* ── "Intro nicht mehr zeigen" — Liquid-Glass-Pille mit Check.
+        {/* ── "Skip Intro" — Liquid-Glass-Pille mit Check.
             Merkt sich die Wahl (ritmo_skip_intro); beim Logout wird
             sie gelöscht → nach neuem Login läuft das Video wieder. */}
         <button onClick={toggleNoIntro}
-          aria-label="Intro-Video nicht mehr zeigen"
+          aria-pressed={noIntro}
+          aria-label="Skip Intro — Intro-Video künftig überspringen"
           style={{position:'absolute',left:'50%',zIndex:4,
             bottom:'calc(env(safe-area-inset-bottom,0px) + 28px)',
             transform:'translateX(-50%)',
@@ -585,7 +586,7 @@ function Splash({onDone}){
           </span>
           <span style={{color:'rgba(255,255,255,0.88)',fontSize:12.5,fontWeight:700,
             letterSpacing:.2,whiteSpace:'nowrap'}}>
-            Intro nicht mehr zeigen
+            Skip Intro
           </span>
         </button>
       </>):(

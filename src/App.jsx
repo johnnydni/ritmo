@@ -6879,6 +6879,90 @@ function TimerCard({minutes,setMinutes,running,secsLeft,finished,onStart,onPause
    der Kante — voll durchswipen löscht direkt. onShare/onMore sind
    optional; ohne sie bleibt es reines Swipe-to-Delete.
 ═══════════════════════════════════════════════════════════════ */
+/* Wisch-Zeile für kompakte Listen (Spieler im Turnier-Setup): nach
+   links ziehen legt „Löschen" frei, ganz durchziehen löscht sofort.
+   Bewusst schlanker als SwipeableCard — eine Aktion, Zeilenhöhe statt
+   Kartenradius. Die Achse wird beim ersten Move festgelegt, sonst
+   klaut die Zeile dem Formular das vertikale Scrollen und dem
+   Namensfeld die Cursor-Bedienung. */
+function SwipeableRow({children,onDelete,disabled=false,label='Löschen'}){
+  const[tx,setTx]=useState(0);
+  const[swiping,setSwiping]=useState(false);
+  const g=useRef({x:0,y:0,tx:0,tx2:null,axis:null});
+  const active=useRef(false);        // laufende Geste (siehe onStart)
+  const W=86;                       // Breite der freigelegten Aktion
+  const MAX=W+110;                  // Overdrag bis zum Direkt-Löschen
+  // Offene Zeile nach 3 s wieder einfahren — wie im Live-Screen.
+  useEffect(()=>{
+    if(swiping||tx===0||tx<=-400) return;
+    const t=setTimeout(()=>setTx(0),3000);
+    return()=>clearTimeout(t);
+  },[tx,swiping]);
+  const doDelete=()=>{ buzz(12); setTx(-460); setTimeout(()=>onDelete&&onDelete(),180); };
+  const onStart=e=>{
+    if(disabled) return;
+    const t=e.touches[0];
+    g.current={x:t.clientX,y:t.clientY,tx,axis:null};
+    // Der laufende Zustand haengt an einem Ref, nicht am State: kaeme
+    // das erste touchmove noch im selben Frame wie touchstart, waere
+    // ein State-Flag noch nicht gesetzt und die Geste verpufft.
+    active.current=true;
+    setSwiping(true);
+  };
+  const onMove=e=>{
+    if(!active.current) return;
+    const t=e.touches[0];
+    const dx=t.clientX-g.current.x, dy=t.clientY-g.current.y;
+    if(g.current.axis===null){
+      if(Math.abs(dx)<8&&Math.abs(dy)<8) return;
+      // Nur eindeutig horizontale Gesten übernehmen.
+      g.current.axis=Math.abs(dx)>Math.abs(dy)*1.6?'x':'y';
+    }
+    if(g.current.axis!=='x') return;
+    const next=Math.min(0,Math.max(-MAX,g.current.tx+dx));
+    g.current.tx2=next;      // Ref statt State — siehe onEnd
+    setTx(next);
+  };
+  const onEnd=()=>{
+    if(!active.current) return;
+    active.current=false;
+    setSwiping(false);
+    // Endstand aus dem Ref lesen: kaeme touchend noch im selben Frame
+    // wie das letzte touchmove (schnelle Wischer), waere der State-Wert
+    // noch der alte und die Zeile spraenge kommentarlos zurueck.
+    const end=g.current.tx2??tx;
+    g.current.tx2=null;
+    if(end<-(W+70)) doDelete();        // voll durchgezogen
+    else if(end<-W*0.45) setTx(-W);    // Snap: Aktion offen
+    else setTx(0);
+  };
+  if(disabled) return children;
+  return(
+    <div style={{position:'relative',overflow:'hidden'}}>
+      <button onClick={doDelete} tabIndex={tx?0:-1} aria-hidden={!tx}
+        style={{position:'absolute',right:0,top:4,bottom:4,width:W,
+          borderRadius:12,border:'none',cursor:'pointer',
+          background:T.r,color:'#fff',fontSize:12,fontWeight:800,
+          display:'flex',alignItems:'center',justifyContent:'center',gap:5,
+          opacity:Math.min(1,-tx/(W*0.6)),pointerEvents:tx?'auto':'none'}}>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13" stroke="#fff"
+            strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+        {label}
+      </button>
+      <div onTouchStart={onStart} onTouchMove={onMove}
+        onTouchEnd={onEnd} onTouchCancel={onEnd}
+        onClickCapture={e=>{ if(tx!==0){ e.stopPropagation(); e.preventDefault(); setTx(0); } }}
+        style={{transform:`translateX(${tx}px)`,
+          transition:swiping?'none':'transform .25s cubic-bezier(.3,0,.2,1)',
+          background:T.card,position:'relative'}}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 function SwipeableCard({children,onDelete,onShare,onMore}){
   const[tx,setTx]=useState(0);
   const[swiping,setSwiping]=useState(false);
@@ -7451,13 +7535,15 @@ function TimeDial({start,end,onChange}){
 ═══════════════════════════════════════════════════════════════ */
 function TournamentWizard({onClose,onFinish,canStart,
   format,setFormat,winMode,setWinMode,name,setName,
-  players,addPlayer,addPlayerNamed,removePlayer,renamePlayer,setPlayerGroup,
+  players,addPlayer,addPlayerNamed,addScannedPlayers,removePlayer,renamePlayer,setPlayerGroup,
   numCourts,setNumCourts,maxCourts,courtNames,setCourtName,
   courtSingles,toggleCourtSingle,
   startTime,setStartTime,endTime,setEndTime,roundPrio,setRoundPrio,
   roundDur,setRoundDur,suggest,pauseStats,nameHistory}){
   const[step,setStep]=useState(0);
   const inputRefs=useRef({});
+  // Screenshot-Scan im Spieler-Schritt (gleiche Funktion wie im Formular).
+  const[scanOpen,setScanOpen]=useState(false);
   // Validierung je Schritt — „Weiter" bleibt aus, bis der Schritt steht.
   const namesOk=players.every(p=>(p.name||'').trim().length>0);
   const meta=FORMATS[format]||FORMATS.americano;
@@ -7582,7 +7668,11 @@ function TournamentWizard({onClose,onFinish,canStart,
               </div>
             </>)}
             {players.map((p,idx)=>(
-              <div key={p.id} style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
+              // Nach links wischen legt „Löschen" frei — unter 5 Spielern
+              // inaktiv, weil das Turnier sonst unter die Mindestzahl fällt.
+              <SwipeableRow key={p.id} disabled={players.length<=4}
+                onDelete={()=>removePlayer(p.id)}>
+              <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
                 <span style={{width:26,height:26,borderRadius:'50%',background:p.color,flexShrink:0,
                   display:'flex',alignItems:'center',justifyContent:'center',
                   color:'#000',fontSize:12,fontWeight:900}}>{idx+1}</span>
@@ -7610,6 +7700,7 @@ function TournamentWizard({onClose,onFinish,canStart,
                     style={{...stepBtn,width:34,height:34,color:T.t3}}>×</button>
                 )}
               </div>
+              </SwipeableRow>
             ))}
             <button onClick={addPlayer}
               style={{width:'100%',padding:'12px',borderRadius:12,background:'none',
@@ -7617,6 +7708,23 @@ function TournamentWizard({onClose,onFinish,canStart,
                 cursor:'pointer',marginTop:2}}>
               + Spieler hinzufügen
             </button>
+            {/* Screenshot-Scan — spart das Abtippen ganzer Gruppenlisten. */}
+            <button onClick={()=>{buzz(8);setScanOpen(true);}}
+              style={{width:'100%',marginTop:8,padding:'12px',borderRadius:12,
+                cursor:'pointer',display:'flex',alignItems:'center',
+                justifyContent:'center',gap:9,
+                background:'color-mix(in srgb, var(--card2) 72%, transparent)',
+                border:`1px solid ${T.border}`,color:T.t1,fontSize:14,fontWeight:700,
+                WebkitBackdropFilter:'blur(14px) saturate(160%)',
+                backdropFilter:'blur(14px) saturate(160%)'}}>
+              <ScanGlyph size={17}/> Aus Screenshot übernehmen
+            </button>
+            {scanOpen&&(
+              <PlayerScanSheet
+                existing={players.map(p=>p.name).filter(n=>n&&!/^Spieler\s*\d+$/i.test(n.trim()))}
+                onAdd={addScannedPlayers}
+                onClose={()=>setScanOpen(false)}/>
+            )}
             {format!=='knockout'&&pauseStats&&pauseStats.sitOut>0&&(
               <div style={{marginTop:14,padding:'10px 14px',borderRadius:12,background:T.card2,
                 border:`1px solid ${T.border}`,color:T.t3,fontSize:12,lineHeight:1.55}}>
@@ -8399,7 +8507,11 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
             </div>
           </div>
           {players.map((p,i)=>(
-            <div key={p.id} style={{display:'flex',alignItems:'center',padding:'10px 0',
+            // Nach links wischen legt „Löschen" frei — unter 5 Spielern
+            // inaktiv, weil das Turnier sonst unter die Mindestzahl fällt.
+            <SwipeableRow key={p.id} disabled={players.length<=4}
+              onDelete={()=>removePlayer(p.id)}>
+            <div style={{display:'flex',alignItems:'center',padding:'10px 0',
               borderBottom:i<players.length-1?`1px solid ${T.sep}`:'none',gap:10}}>
               <div style={{width:10,height:10,borderRadius:'50%',background:p.color,flexShrink:0}}/>
               <input value={p.name}
@@ -8469,6 +8581,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
                     justifyContent:'center',fontWeight:700,lineHeight:1}}>×</button>
               )}
             </div>
+            </SwipeableRow>
           ))}
           {!canStart&&(
             <div style={{color:T.r,fontSize:11,marginTop:10,paddingBottom:6,fontWeight:500}}>
@@ -8592,6 +8705,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
           winMode={winMode} setWinMode={setWinMode}
           name={name} setName={setName}
           players={players} addPlayer={addPlayer} addPlayerNamed={addPlayerNamed}
+          addScannedPlayers={addScannedPlayers}
           removePlayer={removePlayer} renamePlayer={renamePlayer} setPlayerGroup={setPlayerGroup}
           numCourts={numCourts} setNumCourts={setNumCourts} maxCourts={maxCourts}
           courtNames={courtNames} setCourtName={setCourtName}

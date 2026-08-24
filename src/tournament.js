@@ -159,6 +159,55 @@ export const FORMATS={
   knockout:     {name:'K.-o.-Turnier',    short:'Feste Teams — wer verliert, ist raus. Bis zum Finale.',  team:true, groups:false,online:true},
 };
 
+/* Kurzregeln je Format — Inhalt für den Info-Aufklapper in der
+   Format-Karte des Konfigurators. Bewusst knapp: was gespielt wird,
+   wie RITMO paart und wer gewinnt. Die ausführliche Fassung steht in
+   der Regel-Bibel. */
+export const FORMAT_RULES={
+  americano:[
+    ['Prinzip','Doppel mit wechselnden Partnern — jede Runde werden neu gemischt.'],
+    ['Paarung','Zufällig, dabei werden bereits gespielte Partner so lange wie möglich vermieden.'],
+    ['Wertung','Individuell: jede:r sammelt eigene Punkte, unabhängig vom Partner.'],
+    ['Passt für','Gemischte Spielstärken — jede:r spielt mit jedem.'],
+  ],
+  mexicano:[
+    ['Prinzip','Americano mit Leistungsprinzip: die Tabelle bestimmt, wer gegen wen spielt.'],
+    ['Paarung','Je vier Nachbarn der Tabelle bilden einen Court — 1+4 gegen 2+3.'],
+    ['Wertung','Individuell. Nach jeder Runde wird die Tabelle neu sortiert.'],
+    ['Passt für','Ausgeglichene Matches — die Spitze spielt gegen die Spitze.'],
+  ],
+  teamamericano:[
+    ['Prinzip','Feste Paare über das ganze Turnier, nur die Gegner rotieren.'],
+    ['Teams','Nach Listen-Reihenfolge: 1+2, 3+4, … — dafür braucht es eine gerade Spielerzahl.'],
+    ['Paarung','Zufällig, Wiederholungen derselben Begegnung werden vermieden.'],
+    ['Wertung','Beide Team-Mitglieder bekommen dieselben Punkte.'],
+  ],
+  teammexicano:[
+    ['Prinzip','Feste Paare, Gegner nach Tabellenstand statt zufällig.'],
+    ['Teams','Nach Listen-Reihenfolge: 1+2, 3+4, … — gerade Spielerzahl nötig.'],
+    ['Paarung','Tabellennachbarn treffen aufeinander: 1. gegen 2., 3. gegen 4. und so weiter.'],
+    ['Wertung','Beide Team-Mitglieder bekommen dieselben Punkte.'],
+  ],
+  mixicano:[
+    ['Prinzip','Mixed-Format: jedes Team besteht aus einer Person aus Gruppe A und einer aus Gruppe B.'],
+    ['Gruppen','Zuweisung über den A/B-Knopf neben den Namen — mindestens zwei pro Gruppe.'],
+    ['Paarung','Partner wechseln jede Runde, die Gruppen-Mischung bleibt erhalten.'],
+    ['Wertung','Individuell wie beim Americano.'],
+  ],
+  kingofcourt:[
+    ['Prinzip','Court 1 ist der Thron: wer gewinnt, rückt auf, wer verliert, rutscht ab.'],
+    ['Paarung','Sieger steigen einen Court hoch, Verlierer einen runter; auf jedem Court wird neu gemischt.'],
+    ['Wertung','Individuell — entscheidend ist, wie weit oben man am Ende steht.'],
+    ['Wichtig','Jedes Match braucht einen Sieger — bei Gleichstand Golden Point spielen.'],
+  ],
+  knockout:[
+    ['Prinzip','K.-o.-System mit festen Teams: wer verliert, ist raus.'],
+    ['Teams','Nach Listen-Reihenfolge: 1+2, 3+4, … — gerade Spielerzahl nötig.'],
+    ['Ablauf','Jede Runde halbiert das Feld bis zum Finale; bei ungerader Team-Zahl gibt es ein Freilos.'],
+    ['Wichtig','Unentschieden gibt es nicht — bei Gleichstand entscheidet der Golden Point.'],
+  ],
+};
+
 /* ── Gemeinsame Helfer ── */
 // Feste Teams aus der Listen-Reihenfolge: (1,2)(3,4)… = Setzliste.
 export const fixedTeams=ids=>{const t=[];for(let i=0;i+1<ids.length;i+=2)t.push([ids[i],ids[i+1]]);return t;};

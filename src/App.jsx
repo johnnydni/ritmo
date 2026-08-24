@@ -30,7 +30,7 @@ import { T, CSS, rgba } from "./theme.js";
 import { lsGet, lsSet, getAssetBase, getInitials, processImageUpload, safeImageSrc, buzz } from "./utils.js";
 import { getLevelLabel, getLevelTier, getLevelColor, estimateLevel } from "./levels.js";
 import { B0, A0, PL, ptD, wG, bo3R, amR, DEFCFG } from "./game.js";
-import { PCOLS, shuffle, genAmericanoRound, genMexicanoRound, calcLeaderboard, FORMATS, genRound } from "./tournament.js";
+import { PCOLS, shuffle, genAmericanoRound, genMexicanoRound, calcLeaderboard, FORMATS, FORMAT_RULES, genRound } from "./tournament.js";
 import { RINGS, playRing, unlockAudio } from "./audio.js";
 import { auth } from "./auth.js";
 import { readNamesFromImage, releaseOcr } from "./ocr.js";
@@ -7982,6 +7982,8 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
   const[wizardOpen,setWizardOpen]=useState(false);
   // Screenshot-Scan (Spieler per OCR uebernehmen).
   const[scanOpen,setScanOpen]=useState(false);
+  // Regel-Aufklapper in der Format-Karte.
+  const[rulesOpen,setRulesOpen]=useState(false);
   // Ab dem 5. Spieler lassen sich Zeilen per Wisch loeschen. Statt das
   // dauerhaft einzufaerben, blitzt die Karte beim Ueberschreiten der
   // Schwelle einmal orange auf. Der Ref haelt den vorherigen Stand, damit
@@ -8258,9 +8260,29 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
           </div>
         )}
 
-        {/* Format — 7 klassische Modi als 2-Spalten-Grid */}
+        {/* Format — 7 klassische Modi als 2-Spalten-Grid, dazu ein
+            Info-Knopf, der die Kurzregeln des gewählten Formats
+            aufklappt (erneuter Tipp klappt sie wieder ein). */}
         <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,padding:'18px'}}>
-          <div style={{color:T.t1,fontSize:17,fontWeight:700,marginBottom:12}}>Format</div>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
+            <div style={{color:T.t1,fontSize:17,fontWeight:700}}>Format</div>
+            <button onClick={()=>{buzz(6);setRulesOpen(v=>!v);}}
+              aria-expanded={rulesOpen}
+              aria-label={rulesOpen?'Regeln ausblenden':`Regeln zu ${fmtMeta.name} anzeigen`}
+              title={rulesOpen?'Regeln ausblenden':'Regeln anzeigen'}
+              style={{width:30,height:30,borderRadius:'50%',flexShrink:0,padding:0,
+                cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',
+                background:rulesOpen?T.oSoft:'transparent',
+                border:`1.5px solid ${rulesOpen?T.o:T.border}`,
+                color:rulesOpen?T.o:T.t2,
+                transition:'background .2s,border-color .2s,color .2s'}}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle cx="12" cy="12" r="9.2" stroke="currentColor" strokeWidth="1.8"/>
+                <path d="M12 10.6v6" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round"/>
+                <circle cx="12" cy="7.4" r="1.15" fill="currentColor"/>
+              </svg>
+            </button>
+          </div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
             {Object.entries(FORMATS)
               .filter(([,f])=>mode!=='online'||f.online!==false)
@@ -8280,6 +8302,26 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
             {fmtMeta.team&&' Feste Teams nach Listen-Reihenfolge (1+2, 3+4, …) — gerade Spielerzahl nötig.'}
             {fmtMeta.groups&&' Gruppen per A/B-Knopf neben den Namen zuweisen (z. B. Damen/Herren).'}
           </div>
+          {/* Kurzregeln — wachsen in die Karte hinein statt in ein
+              eigenes Overlay: der Formatwechsel bleibt einen Tipp weit
+              entfernt, während man liest. */}
+          {rulesOpen&&(
+            <div className="fi" style={{marginTop:14,paddingTop:14,
+              borderTop:`1px solid ${T.sep}`}}>
+              <div style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:1.2,
+                textTransform:'uppercase',marginBottom:10}}>
+                {fmtMeta.name} — Regeln
+              </div>
+              {(FORMAT_RULES[format]||[]).map(([label,text])=>(
+                <div key={label} style={{display:'flex',gap:10,marginBottom:9}}>
+                  <span style={{color:T.t2,fontSize:11.5,fontWeight:800,flexShrink:0,
+                    width:64,paddingTop:1}}>{label}</span>
+                  <span style={{color:T.t3,fontSize:12,fontWeight:500,lineHeight:1.55,
+                    flex:1,minWidth:0}}>{text}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Sieger-Modus */}

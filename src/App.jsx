@@ -1,7 +1,7 @@
 import { useState, useEffect, useLayoutEffect, useReducer, useCallback, useMemo, useRef, Fragment } from "react";
 import { SKILL_DESCRIPTIONS } from "./skillDescriptions.js";
 import { loadProfile as dbLoadProfile, saveProfile as dbSaveProfile, logMatch as dbLogMatch, loadMatchStats as dbLoadMatchStats,
-  createOnlineTournament, joinOnlineTournament, leaveOnlineTournament, fetchOnlineTournament, updateOnlineTournament, subscribeToTournament,
+  createOnlineTournament, joinOnlineTournament, leaveOnlineTournament, fetchOnlineTournament, updateOnlineTournament, endOnlineTournament, subscribeToTournament,
   publishTournamentState, submitScore, approveScore, rejectScore, sendReadyCheck, confirmReady, clearReadyCheck,
   checkBetaKey, redeemBetaKey, deleteMyMatches as dbDeleteMyMatches,
   logMatchLocal, loadMatchStatsLocal as dbLoadMatchStatsLocal, clearMatchLog,
@@ -7339,6 +7339,80 @@ function ScanGlyph({size=18,color}){
   );
 }
 
+/* Court-Emoji — kleiner Marker neben dem Court-Namen in der Turnier-
+   Übersicht. Rein kosmetisch, hilft aber beim Zurufen über die Anlage
+   ("der Court mit der Rakete"). Auswahl als Popover direkt an der
+   Karte statt als Sheet: es ist eine Ein-Tipp-Entscheidung. */
+const COURT_EMOJIS=['🎾','🔥','⚡','🚀','⭐','💥','🏆','🐐','🦈','🐉',
+  '🌊','🌴','❄️','☀️','🎯','💎','👑','🎸','🍀','🧊'];
+
+function CourtEmojiPicker({value,onPick}){
+  const[open,setOpen]=useState(false);
+  return(
+    <div style={{position:'relative',flexShrink:0}}>
+      <button onClick={()=>{buzz(6);setOpen(o=>!o);}}
+        aria-label={value?'Court-Emoji ändern':'Court-Emoji wählen'}
+        aria-expanded={open}
+        style={{width:26,height:26,borderRadius:8,cursor:'pointer',padding:0,
+          display:'flex',alignItems:'center',justifyContent:'center',
+          background:value?'transparent':T.card2,
+          border:`1px solid ${value?'transparent':T.border}`,
+          fontSize:value?16:11,lineHeight:1,color:T.t3}}>
+        {value||'+'}
+      </button>
+      {open&&(
+        <>
+          {/* Klick daneben schließt — ohne den Rest der Karte zu blockieren. */}
+          <div onClick={()=>setOpen(false)}
+            style={{position:'fixed',inset:0,zIndex:40}}/>
+          <div className="fi" style={{position:'absolute',top:32,left:0,zIndex:41,
+            width:214,padding:8,borderRadius:14,
+            background:'color-mix(in srgb, var(--card2) 94%, transparent)',
+            border:`1px solid ${T.border}`,
+            WebkitBackdropFilter:'blur(14px) saturate(160%)',
+            backdropFilter:'blur(14px) saturate(160%)',
+            boxShadow:'0 12px 28px rgba(0,0,0,.45)',
+            display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:4}}>
+            {COURT_EMOJIS.map(e=>(
+              <button key={e} onClick={()=>{buzz(6);onPick(e===value?null:e);setOpen(false);}}
+                aria-label={`Emoji ${e}`}
+                style={{height:34,borderRadius:9,cursor:'pointer',fontSize:17,padding:0,
+                  background:e===value?T.oSoft:'transparent',
+                  border:`1px solid ${e===value?T.o:'transparent'}`}}>
+                {e}
+              </button>
+            ))}
+            {value&&(
+              <button onClick={()=>{buzz(5);onPick(null);setOpen(false);}}
+                style={{gridColumn:'1 / -1',marginTop:2,height:30,borderRadius:9,
+                  cursor:'pointer',background:'transparent',
+                  border:`1px solid ${T.border}`,color:T.t3,
+                  fontSize:11.5,fontWeight:700}}>
+                Emoji entfernen
+              </button>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+/* Namen bleiben kurz — sonst sprengen sie Court-Karten, Tabelle und
+   Monitor-Ansicht, wo nebeneinander bis zu vier Namen stehen. */
+export const NAME_MAX=10;
+/* Beim Tippen: hart bei NAME_MAX kappen. */
+const clampName=s=>String(s??'').slice(0,NAME_MAX);
+/* Für übernommene Namen (Screenshot-Scan, Verlauf): lieber den Vornamen
+   behalten als mitten im Wort abschneiden — "Ben Schneider" wird "Ben",
+   nicht "Ben Schnei". */
+const shortenName=s=>{
+  const t=String(s??'').trim();
+  if(t.length<=NAME_MAX) return t;
+  const first=t.split(/\s+/)[0];
+  return first.length<=NAME_MAX?first:first.slice(0,NAME_MAX);
+};
+
 /* Court-Label: eigener Name (aus dem Setup) oder Default "Court N". */
 const courtLabel=(names,i)=>((names&&names[i]&&String(names[i]).trim())||`Court ${i+1}`);
 
@@ -7686,7 +7760,7 @@ function TournamentWizard({onClose,onFinish,canStart,
                   display:'flex',alignItems:'center',justifyContent:'center',
                   color:'#000',fontSize:12,fontWeight:900}}>{idx+1}</span>
                 <input ref={el=>{inputRefs.current[p.id]=el;}} value={p.name}
-                  onChange={e=>renamePlayer(p.id,e.target.value)}
+                  onChange={e=>renamePlayer(p.id,e.target.value)} maxLength={NAME_MAX}
                   autoCapitalize="words" autoCorrect="off" spellCheck={false} enterKeyHint="next"
                   onFocus={e=>e.target.select()}
                   onKeyDown={e=>{if(e.key==='Enter'){
@@ -7800,6 +7874,7 @@ function TournamentWizard({onClose,onFinish,canStart,
             {Array.from({length:numCourts}).map((_,i)=>(
               <div key={i} style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
                 <input value={courtNames[i]??''} onChange={e=>setCourtName(i,e.target.value)}
+                  maxLength={NAME_MAX}
                   placeholder={`Court ${i+1}`} autoCapitalize="words" autoCorrect="off" spellCheck={false}
                   style={{...inp,height:44,borderRadius:12,flex:1,width:'auto',minWidth:0}}/>
                 {wCanSingles&&(
@@ -7968,7 +8043,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
   // Court-Namen — werden auf die Matches angewendet. Sparse-Array:
   // Index i = eigener Name fuer Court i, sonst Default "Court i+1".
   const[courtNames,setCourtNames]=useState(saved?.courtNames||[]);
-  const setCourtName=(i,val)=>setCourtNames(a=>{const n=[...a];n[i]=val;return n;});
+  const setCourtName=(i,val)=>setCourtNames(a=>{const n=[...a];n[i]=clampName(val);return n;});
   // Einzel-Courts (1v1): Index i = true ⇒ auf Court i spielen nur 2
   // Spieler. Nur Americano/Mexicano — Team-/Gruppen-/Leiter-Formate
   // brauchen 4er-Courts, dort ist der Flip ausgeblendet + wirkungslos.
@@ -8117,10 +8192,10 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
   // Tastatur-Hint und greift beim schnellen Durchtippen mit Enter
   // (Fokus-Sprung zum nächsten Spieler) nicht zuverlässig.
   const capFirst=s=>s?s.charAt(0).toUpperCase()+s.slice(1):s;
-  const renamePlayer=(id,name)=>setPlayers(p=>p.map(x=>x.id===id?{...x,name:capFirst(name)}:x));
+  const renamePlayer=(id,name)=>setPlayers(p=>p.map(x=>x.id===id?{...x,name:capFirst(clampName(name))}:x));
   // Spieler mit fertigem Namen anlegen (Historie-Chips im Assistenten).
   const addPlayerNamed=(nm)=>{const id=nextId.current++;
-    setPlayers(p=>[...p,{id,name:nm,color:PCOLS[id%PCOLS.length]}]);};
+    setPlayers(p=>[...p,{id,name:shortenName(nm),color:PCOLS[id%PCOLS.length]}]);};
   // Gescannte Namen einsetzen: zuerst die unbenannten Platzhalter-Slots
   // ("Spieler 1" …) fuellen, erst danach neue Zeilen anhaengen — sonst
   // steht nach dem Scan eine Liste aus Platzhaltern PLUS echten Namen da.
@@ -8131,11 +8206,11 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
       const out=[...prev];
       let i=0;
       for(let k=0;k<out.length&&i<names.length;k++){
-        if(isPlaceholder(out[k])) out[k]={...out[k],name:names[i++]};
+        if(isPlaceholder(out[k])) out[k]={...out[k],name:shortenName(names[i++])};
       }
       while(i<names.length){
         const id=nextId.current++;
-        out.push({id,name:names[i++],color:PCOLS[id%PCOLS.length]});
+        out.push({id,name:shortenName(names[i++]),color:PCOLS[id%PCOLS.length]});
       }
       return out;
     });
@@ -8509,6 +8584,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
               <input value={courtNames[i]??''}
                 ref={el=>{courtInputRefs.current[i]=el;}}
                 onChange={e=>setCourtName(i,e.target.value)}
+                maxLength={NAME_MAX}
                 onKeyDown={e=>{
                   if(e.key==='Enter'){
                     e.preventDefault();
@@ -8584,6 +8660,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
               <input value={p.name}
                 ref={el=>{playerInputRefs.current[p.id]=el;}}
                 onChange={e=>renamePlayer(p.id,e.target.value)}
+                maxLength={NAME_MAX}
                 onFocus={e=>{
                   // Default-Namen ("Spieler N") räumen wir beim ersten
                   // Tap automatisch ab — sonst tippt der User in den
@@ -9786,6 +9863,12 @@ function JoinTournament({initialPin,profile,onHome,onJoin,onLeave,restored}){
         setStatus('rejected');
         return;
       }
+      // Host hat die Übertragung beendet — nicht stillschweigend in
+      // den Warte-Zustand zurückfallen lassen.
+      if(data.status==='ended'){
+        setStatus('ended');
+        return;
+      }
       if(data.status==='playing'){
         setStatus('playing');
         return;
@@ -9978,13 +10061,29 @@ function JoinTournament({initialPin,profile,onHome,onJoin,onLeave,restored}){
         )}
 
         {/* Turnier verlassen — im Warte-, Freigegeben- UND Spiel-Status. */}
-        {(status==='waiting'||status==='approved'||status==='playing')&&(
+        {(status==='waiting'||status==='approved'||status==='playing'||status==='ended')&&(
           <button onClick={()=>{buzz(8);setConfirmLeave(true);}}
             style={{padding:'12px',borderRadius:13,cursor:'pointer',flexShrink:0,
               background:'transparent',border:`1.5px solid ${T.r}`,color:T.r,
               fontSize:13,fontWeight:800}}>
             Turnier verlassen
           </button>
+        )}
+
+        {status==='ended'&&(
+          <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
+            padding:'24px 20px',textAlign:'center'}}>
+            <div style={{display:'flex',justifyContent:'center',marginBottom:14}}>
+              <TrophyIcon size={40}/>
+            </div>
+            <div style={{color:T.t1,fontSize:16,fontWeight:800,marginBottom:6}}>
+              Live-Übertragung beendet
+            </div>
+            <div style={{color:T.t3,fontSize:12,lineHeight:1.55,maxWidth:280,margin:'0 auto'}}>
+              Der Host überträgt dieses Turnier nicht mehr live. Den
+              Endstand erfährst du vor Ort bei der Turnierleitung.
+            </div>
+          </div>
         )}
 
         {status==='rejected'&&(
@@ -10372,7 +10471,7 @@ function ScoreWheel({value,onChange,max=40,color=T.o,w=52}){
   );
 }
 
-function TournamentCourtCard({court,courtIndex,courtName,playerById,onScoreChange,onConfirm,onEditLineup,scoreMax=40}){
+function TournamentCourtCard({court,courtIndex,courtName,emoji,onPickEmoji,playerById,onScoreChange,onConfirm,onEditLineup,scoreMax=40}){
   // Score-Werte aus dem Court ziehen. null/undefined = noch nicht
   // eingegeben → Input rendert leer, damit Tippen "5" auch wirklich
   // "5" wird und nicht "05". Beim Abschluss zählt 0 als gültiger
@@ -10484,6 +10583,7 @@ function TournamentCourtCard({court,courtIndex,courtName,playerById,onScoreChang
             textTransform:'uppercase'}}>
             {courtName||`Court ${courtIndex+1}`}
           </div>
+          {onPickEmoji&&<CourtEmojiPicker value={emoji} onPick={onPickEmoji}/>}
           {court.single&&(
             <div style={{padding:'4px 8px',borderRadius:8,background:T.card2,
               border:`1px solid ${T.border}`,color:T.t2,fontSize:10,
@@ -10903,8 +11003,9 @@ function RoundHistorySheet({tourney,onClose}){
    Der Host bleibt Single Source of Truth: sein Gerät rechnet Runden
    und Standings, die Session ist Spiegel + Score-Briefkasten
    (Submissions mit Host-Freigabe — bestehende Online-Maschinerie). */
-function LiveShareSheet({pin,busy,err,onClose}){
+function LiveShareSheet({pin,busy,err,onClose,onEnd}){
   const sheet=useSheetDrag(onClose);
+  const[ask,setAsk]=useState(false);
   const joinUrl=(()=>{
     if(typeof window==='undefined'||!pin) return '';
     const base=window.__BASE__||'/';
@@ -10972,7 +11073,32 @@ function LiveShareSheet({pin,busy,err,onClose}){
             Auf einem Tablet den PIN eingeben und „Monitor-Modus" wählen —
             wechselt automatisch zwischen Runde und Tabelle.
           </div>
+          {/* Live-Modus beenden — das Turnier läuft lokal weiter, nur
+              die Übertragung endet. Mit Rückfrage, weil damit alle
+              beigetretenen Handys aus der Live-Ansicht fallen und der
+              PIN verbraucht ist. */}
+          {onEnd&&(
+            <button onClick={()=>{buzz(8);setAsk(true);}}
+              style={{width:'100%',marginTop:14,padding:'13px',borderRadius:13,
+                cursor:'pointer',background:'transparent',
+                border:`1.5px solid ${T.r}`,color:T.r,fontSize:13.5,fontWeight:800,
+                display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+              <span style={{width:9,height:9,borderRadius:'50%',background:T.r,
+                display:'inline-block'}}/>
+              Live-Modus beenden
+            </button>
+          )}
         </>)}
+        {ask&&(
+          <ResetModal
+            title="Live-Modus beenden"
+            description="Das Turnier läuft auf diesem Gerät normal weiter — nur die Live-Ansicht der Spieler endet. Der PIN wird ungültig; zum erneuten Teilen wird ein neuer erzeugt."
+            question="Übertragung jetzt beenden?"
+            confirmLabel="Beenden"
+            cancelLabel="Abbrechen"
+            onCancel={()=>setAsk(false)}
+            onConfirm={()=>{setAsk(false);onEnd();}}/>
+        )}
       </div>
     </div>
   );
@@ -11078,6 +11204,16 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
     }catch(e){
       setLiveErr(e?.message||'Live-Session konnte nicht erstellt werden — Internetverbindung prüfen.');
     }finally{setLiveBusy(false);}
+  };
+
+  // Live-Modus beenden: Session serverseitig als beendet markieren und
+  // onlinePin/isHost vom Turnier lösen — damit stoppt der Publish-Loop
+  // und der „Live"-Knopf ist wieder frei für eine neue Übertragung.
+  const endLiveShare=async()=>{
+    const pin=tourney.onlinePin;
+    setTourney(t=>{const{onlinePin,isHost,...rest}=t;return rest;});
+    setLiveSheet(false);
+    if(pin){ try{ await endOnlineTournament(pin); }catch(e){} }
   };
 
   // ── Tournament-Court Logging ──
@@ -11409,6 +11545,12 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
             <TournamentCourtCard key={court.id}
               court={court} courtIndex={ci}
               courtName={courtLabel(tourney.courtNames,ci)}
+              emoji={tourney.courtEmojis?.[ci]||null}
+              onPickEmoji={(e)=>setTourney(t=>{
+                const arr=[...(t.courtEmojis||[])];
+                arr[ci]=e;
+                return {...t,courtEmojis:arr};
+              })}
               playerById={playerById}
               onScoreChange={(field,val)=>updateScore(court.id,field,val)}
               onConfirm={()=>confirmCourt(court.id)}
@@ -11592,6 +11734,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
       {/* Live teilen — QR/PIN-Sheet für die Mirror-Session */}
       {liveSheet&&(
         <LiveShareSheet pin={tourney.onlinePin} busy={liveBusy} err={liveErr}
+          onEnd={endLiveShare}
           onClose={()=>setLiveSheet(false)}/>
       )}
     </div>

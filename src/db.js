@@ -531,6 +531,17 @@ export async function publishTournamentState(pin, tournamentState) {
 }
 
 /**
+ * Host beendet die Live-Übertragung: Session bleibt bestehen (die
+ * Ergebnisse sollen abrufbar sein), bekommt aber status 'ended' —
+ * daran erkennen beigetretene Spieler, dass nichts mehr nachkommt.
+ */
+export async function endOnlineTournament(pin) {
+  const session = await fetchOnlineTournament(pin);
+  if (!session) return;
+  await updateOnlineTournament(pin, { ...session, status: 'ended' });
+}
+
+/**
  * Player reicht ein Match-Ergebnis ein. Dupes vom selben Submitter
  * für denselben Court/Runde werden ersetzt (resubmit overrides).
  */

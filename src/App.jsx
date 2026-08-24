@@ -6939,12 +6939,19 @@ function SwipeableRow({children,onDelete,disabled=false,label='Löschen'}){
   if(disabled) return children;
   return(
     <div style={{position:'relative',overflow:'hidden'}}>
+      {/* Die Aktion füllt exakt den freigewischten Streifen — so liegt
+          sie nie unter der Zeile und die Zeile braucht keinen eigenen
+          Hintergrund. Genau der hatte sie sonst grau eingefärbt: in der
+          Glass-Optik ist --card halbtransparent, ein zweites Mal über
+          die Karte gelegt hellt es die ganze Zeile auf. */}
       <button onClick={doDelete} tabIndex={tx?0:-1} aria-hidden={!tx}
-        style={{position:'absolute',right:0,top:4,bottom:4,width:W,
-          borderRadius:12,border:'none',cursor:'pointer',
+        style={{position:'absolute',right:0,top:4,bottom:4,
+          width:Math.max(0,-tx),overflow:'hidden',
+          borderRadius:Math.min(12,-tx/2),border:'none',
+          cursor:'pointer',padding:0,
           background:T.r,color:'#fff',fontSize:12,fontWeight:800,
           display:'flex',alignItems:'center',justifyContent:'center',gap:5,
-          opacity:Math.min(1,-tx/(W*0.6)),pointerEvents:tx?'auto':'none'}}>
+          whiteSpace:'nowrap',pointerEvents:tx?'auto':'none'}}>
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path d="M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13" stroke="#fff"
             strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/>
@@ -6956,7 +6963,7 @@ function SwipeableRow({children,onDelete,disabled=false,label='Löschen'}){
         onClickCapture={e=>{ if(tx!==0){ e.stopPropagation(); e.preventDefault(); setTx(0); } }}
         style={{transform:`translateX(${tx}px)`,
           transition:swiping?'none':'transform .25s cubic-bezier(.3,0,.2,1)',
-          background:T.card,position:'relative'}}>
+          position:'relative'}}>
         {children}
       </div>
     </div>

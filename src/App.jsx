@@ -7982,6 +7982,21 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
   const[wizardOpen,setWizardOpen]=useState(false);
   // Screenshot-Scan (Spieler per OCR uebernehmen).
   const[scanOpen,setScanOpen]=useState(false);
+  // Ab dem 5. Spieler lassen sich Zeilen per Wisch loeschen. Statt das
+  // dauerhaft einzufaerben, blitzt die Karte beim Ueberschreiten der
+  // Schwelle einmal orange auf. Der Ref haelt den vorherigen Stand, damit
+  // die Animation nur beim echten Zuwachs laeuft — nicht beim Mount mit
+  // bereits gefuellter Liste und nicht beim Loeschen zurueck auf 4.
+  const[cardHint,setCardHint]=useState(false);
+  const prevCount=useRef(players.length);
+  useEffect(()=>{
+    const prev=prevCount.current;
+    prevCount.current=players.length;
+    if(prev>=5||players.length<5) return;
+    setCardHint(true);
+    const t=setTimeout(()=>setCardHint(false),1500);
+    return()=>clearTimeout(t);
+  },[players.length]);
   // Namens-Historie für die Schnellauswahl im Assistenten (LRU, max 24;
   // wird bei jedem lokalen Start in startLocal() gepflegt).
   const[nameHistory]=useState(()=>lsGet('ritmo_player_history',[]));
@@ -8477,7 +8492,8 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
             da Spieler nach Erstellung über PIN/QR joinen. */}
         {mode==='lokal'?(
         <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
-          padding:'18px 18px 8px'}}>
+          padding:'18px 18px 8px',
+          animation:cardHint?'cardHint 1.4s cubic-bezier(.3,0,.2,1) 1':undefined}}>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
             <div style={{color:T.t1,fontSize:17,fontWeight:700}}>Spieler</div>
             <div style={{display:'flex',alignItems:'center',gap:10}}>

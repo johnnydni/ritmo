@@ -3,12 +3,16 @@
 
    Reine Inhaltsdaten, kein React. Der Screen in App.jsx rendert nur.
 
-   ⚠️  VOR DEM LAUNCH AUSFÜLLEN: In OPERATOR und PROCESSORS stehen
-   Platzhalter in eckigen Klammern — Anschrift, Kontakt, Supabase-
-   Region. Ohne diese Angaben ist das Impressum nach § 5 DDG
-   unvollständig (abmahnfähig). Alles andere ist an dem ausgerichtet,
-   was die App tatsächlich tut; ändert sich die Datenverarbeitung,
-   gehört die Änderung auch hierhin.
+   ⚠️  VOR DEM LAUNCH AUSFÜLLEN: In OPERATOR stehen Platzhalter in
+   eckigen Klammern — Name und Anschrift. Ohne diese Angaben ist das
+   Impressum nach § 5 DDG unvollständig (abmahnfähig).
+
+   Der Abschnitt „Empfänger" nennt bewusst keine einzelnen Dienste
+   mehr. Art. 13 Abs. 1 lit. e DSGVO verlangt Empfänger ODER Kategorien
+   von Empfängern — wer wieder konkret werden will, trägt Hosting,
+   Datenbank und QR-Dienst dort wieder ein. Alles Übrige ist an dem
+   ausgerichtet, was die App tatsächlich tut; ändert sich die
+   Datenverarbeitung, gehört die Änderung auch hierhin.
 
    Kein Rechtsrat: Die Texte sind eine sorgfältige, auf diese App
    zugeschnittene Vorlage. Eine anwaltliche Prüfung ersetzen sie nicht,
@@ -29,13 +33,6 @@ export const OPERATOR = {
   represented: '',                                   // bei Gesellschaften: vertretungsberechtigte Person
   register:    '',                                   // z. B. 'Amtsgericht München, HRB 123456'
   vatId:       '',                                   // USt-IdNr. nach § 27a UStG, falls vorhanden
-};
-
-/* ── Empfänger / Auftragsverarbeiter ───────────────────────────── */
-export const PROCESSORS = {
-  // Region prüfen: eu-central-1 hält die Daten in der EU, US-Regionen
-  // brauchen zusätzlich eine Grundlage nach Art. 44 ff. DSGVO.
-  supabaseRegion: '[Region deines Supabase-Projekts, z. B. eu-central-1]',
 };
 
 const A = OPERATOR;
@@ -109,12 +106,6 @@ export const LEGAL_SECTIONS = [
 
       { h: 'Empfänger' },
       { p: 'Wir geben Daten nur weiter, soweit es für den Betrieb nötig ist. Mit Dienstleistern, die für uns Daten verarbeiten, bestehen Verträge zur Auftragsverarbeitung nach Art. 28 DSGVO.' },
-      { kv: [
-        ['Supabase', `Konto, Profil, Spiel- und Turnierdaten. Serverstandort: ${PROCESSORS.supabaseRegion}.`],
-        ['GitHub Pages', 'Auslieferung der App. Beim Aufruf verarbeitet GitHub Inc. (USA) technisch notwendige Verbindungsdaten wie IP-Adresse, Zeitpunkt und Browsertyp in Server-Logfiles. Grundlage der Übermittlung sind die Standardvertragsklauseln bzw. das EU-US Data Privacy Framework.'],
-        ['api.qrserver.com', 'Erzeugt den QR-Code für Online-Turniere. Übermittelt werden dabei die Beitritts-Adresse samt Turnier-PIN und deine IP-Adresse. Der Aufruf erfolgt nur, wenn du ein Turnier online teilst.'],
-        ['Pexels', 'Liefert Hintergrundvideos in einzelnen Ansichten. Dabei wird deine IP-Adresse an den Anbieter übertragen.'],
-      ] },
       { p: 'Eine Weitergabe zu Werbezwecken findet nicht statt.' },
 
       { h: 'Speicherdauer' },

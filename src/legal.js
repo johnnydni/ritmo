@@ -24,7 +24,7 @@ export const OPERATOR = {
   street:      '[Straße und Hausnummer]',
   city:        '[PLZ und Ort]',
   country:     'Deutschland',
-  email:       '[kontakt@deine-domain.de]',
+  email:       'hallo@ritmopadel.de',
   phone:       '',                                   // optional, aber schnelle Kontaktaufnahme muss möglich sein
   represented: '',                                   // bei Gesellschaften: vertretungsberechtigte Person
   register:    '',                                   // z. B. 'Amtsgericht München, HRB 123456'

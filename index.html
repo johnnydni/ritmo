@@ -21,10 +21,14 @@
         - data: + blob: für Image-Previews + Worker-Bundles
       'unsafe-inline' bei style-src ist nötig, weil React Inline-Styles
       benutzt. 'unsafe-eval' wird bewusst NICHT erlaubt.
+      'wasm-unsafe-eval' erlaubt ausschliesslich das Kompilieren von
+      WebAssembly (die On-Device-Texterkennung fuer den Spieler-Scan
+      laeuft als WASM-Modul) — im Gegensatz zu 'unsafe-eval' bleibt
+      eval() fuer JavaScript weiterhin gesperrt.
     -->
     <meta http-equiv="Content-Security-Policy"
       content="default-src 'self';
-               script-src 'self';
+               script-src 'self' 'wasm-unsafe-eval';
                style-src 'self' 'unsafe-inline';
                img-src 'self' data: blob: https://api.qrserver.com https://images.pexels.com https://images.unsplash.com;
                media-src 'self' blob: https://videos.pexels.com https://*.pexels.com;

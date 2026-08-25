@@ -95,6 +95,26 @@ Fonts are self-hosted via npm + Vite, never a CDN — the CSP in `index.html`
 allows `font-src 'self' data:` only. Use the tokens instead of hardcoding
 family names, same rule as for colors.
 
+**Each family has one job** ("Sport meets Lifestyle" — the app should read
+like a sports magazine, not like a settings dialog):
+
+| Family | Used for | Never for |
+|---|---|---|
+| **Centauri** (`T.fontDisplay`) | Kickers/ressorts above a title, section labels (`SectionRule`), table column heads, long-form headings. Short words, generously letter-spaced (`letterSpacing` 1.6–3). | **Numbers** — the `0` is an empty rectangle and the `2` is barely distinguishable from a `Z`. Also anything longer than ~16 characters: at 15 px a line runs ~19 px per character, so it stops fitting 390 px screens. |
+| **Times** (`T.fontSerif`, `.serif`) | Subtitles under a screen title, card descriptions, legal/long-form body copy. Usually italic for sublines, upright for body. | Labels, buttons, anything functional. |
+| **Inter** (`T.fontSans`) | Everything else — titles, body, buttons, all figures (with `fontVariantNumeric:'tabular-nums'`). | — |
+
+Two shared components carry the pattern; prefer extending them over
+re-inventing a header:
+
+- `ScreenHeader({kicker,title,subtitle,rule})` — ressort → headline →
+  orange hairline → italic standfirst. `rule={false}` drops the hairline
+  where vertical space is tight (the running-tournament screen).
+- `SectionRule({children,trailing})` — section label plus a full-width
+  hairline underneath. The hairline sits *below* the row on purpose: inline
+  it collapsed to a stub whenever the label was long and a trailing action
+  was present.
+
 ### Auth — Supabase only
 
 The `auth` object in [`src/auth.js`](src/auth.js) reads `window.supabase` (set up in `main.jsx`). If the client is missing, every method throws `SUPA_MISSING` immediately — there is no localStorage mock fallback. The single non-Supabase code path is the dev bypass: signing in as `ritmo` / `padelhaus` returns a synthetic test user without calling Supabase.

@@ -2580,10 +2580,16 @@ function ExitGlyph({size=18}){
   );
 }
 
-/* iOS Large-Title-Header: kompakte Brand-Zeile oben, darunter der
-   große Titel (34/700, Primärfarbe) und eine ruhige Caption —
-   Hierarchie über Größe & Gewicht statt Farbe/Deko (Apple HIG). */
-function ScreenHeader({title,subtitle,icon,right,pad=22,ellipsis=false}){
+/* Screen-Kopf im Magazin-Aufbau: Ressort (kicker) → Schlagzeile →
+   Trennstrich → Vorspann. Die drei Schriften teilen sich die Arbeit
+   nach Funktion, nicht nach Laune:
+     kicker    Centauri — kurz, gesperrt, das sportliche Signal
+     title     Inter    — trägt beliebige Längen ohne Umbruch-Drama
+                          (Centauri ist zu breit für „Turnier
+                          bearbeiten" auf 390 px)
+     subtitle  Times    — kursiv, die ruhige Lifestyle-Stimme
+   kicker ist optional; ohne ihn sieht der Kopf aus wie vorher. */
+function ScreenHeader({title,subtitle,icon,right,pad=22,ellipsis=false,kicker,rule=true}){
   return(
     <div className="fi" style={{padding:`0 9px ${pad}px`,flexShrink:0}}>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
@@ -2594,19 +2600,51 @@ function ScreenHeader({title,subtitle,icon,right,pad=22,ellipsis=false}){
           </span>
         )}
       </div>
+      {kicker&&(
+        <div style={{fontFamily:T.fontDisplay,color:T.o,fontSize:11,letterSpacing:3,
+          lineHeight:1,marginTop:12,marginLeft:10}}>{kicker}</div>
+      )}
       {title!=null&&(
-        <div style={{color:T.t1,fontSize:34,marginTop:10,marginLeft:10,fontWeight:700,
+        <div style={{color:T.t1,fontSize:34,marginTop:kicker?7:10,marginLeft:10,fontWeight:700,
           letterSpacing:-.6,lineHeight:1.12,
           ...(ellipsis?{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}:{})}}>
           {title}
         </div>
       )}
-      {subtitle&&(
-        <div style={{color:T.t3,fontSize:15,marginTop:4,marginLeft:10,fontWeight:400,
-          lineHeight:1.45}}>
+      {subtitle&&(<>
+        {rule&&(
+          <div style={{height:1,width:34,marginTop:11,marginLeft:10,borderRadius:1,
+            background:`linear-gradient(90deg,${T.o},transparent)`}}/>
+        )}
+        <div className="serif" style={{color:T.t3,fontSize:15.5,marginTop:rule?9:5,
+          marginLeft:10,fontStyle:'italic',lineHeight:1.45}}>
           {subtitle}
         </div>
-      )}
+      </>)}
+    </div>
+  );
+}
+
+/* Centauri bleibt Wortschrift: Ressorts, Rubriken, Spaltenköpfe.
+   Für Kennzahlen taugt sie nicht — die 0 ist ein leeres Rechteck,
+   die 2 kaum von einem Z zu unterscheiden. Zahlen laufen weiter in
+   Inter mit tabular-nums.
+
+   Ressort-Zeile über einem Abschnitt: Label + Haarlinie bis zum Rand.
+   Bewusst klein und gesperrt statt fett und groß — die Karten
+   darunter sollen die Fläche tragen, die Zeile nur einordnen.
+   Centauri passt hier, weil selbst „Matches für dich" auf 390 px
+   noch in eine Zeile geht (gemessen: 287 px bei 15 px). */
+function SectionRule({children,trailing,top=26,bottom=13,mx=0}){
+  return(
+    <div style={{margin:`${top}px ${mx}px ${bottom}px`}}>
+      <div style={{display:'flex',alignItems:'center',gap:12,minHeight:26}}>
+        <div style={{fontFamily:T.fontDisplay,color:T.t1,fontSize:15,letterSpacing:2.4,
+          lineHeight:1,flex:1,minWidth:0,whiteSpace:'nowrap',
+          overflow:'hidden',textOverflow:'ellipsis'}}>{children}</div>
+        {trailing}
+      </div>
+      <div style={{height:1,background:T.sep,marginTop:9}}/>
     </div>
   );
 }
@@ -3278,8 +3316,7 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
   const card={background:T.card,border:`1px solid ${T.border}`,borderRadius:16};
   const capSty={color:T.t3,fontSize:11.5,fontWeight:500,lineHeight:1.4};
   const SecTitle=({children,top=26})=>(
-    <div style={{color:T.t1,fontSize:22,fontWeight:700,letterSpacing:-.5,
-      margin:`${top}px 2px 12px`}}>{children}</div>
+    <SectionRule top={top} mx={2}>{children}</SectionRule>
   );
   // Karten-Eyebrow: Kategorie-Farbe + Icon, wie die Health-Karten.
   const Eyebrow=({color,icon,children,chev})=>(
@@ -3340,8 +3377,8 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
           display:'flex',alignItems:'center',justifyContent:'space-between',gap:14,
           opacity:1-titleIn}}>
           <div style={{minWidth:0,flex:1}}>
-            <div style={{color:T.t3,fontSize:13,fontWeight:600,letterSpacing:1.4,
-              textTransform:'uppercase'}}>Profil</div>
+            <div style={{fontFamily:T.fontDisplay,color:T.o,fontSize:11,letterSpacing:3,
+              lineHeight:1}}>Profil</div>
             <div style={{color:T.t1,fontSize:34,fontWeight:700,letterSpacing:-.6,
               lineHeight:1.1,marginTop:4,overflowWrap:'anywhere'}}>
               {displayName(profile)}
@@ -4009,7 +4046,7 @@ function MatchPrefs({profile,setProfile,currentUid,onHome}){
   return(
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
-      <ScreenHeader title="Matches für dich"
+      <ScreenHeader title="Matches für dich" kicker="Entdecken"
         subtitle="Sag uns, wie du spielen willst — wir schlagen passende Matches vor."
         icon={<span style={{color:T.t1,display:'inline-flex'}}><HeartIcon size={30} filled/></span>}/>
 
@@ -4262,11 +4299,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
 
   // Einheitlicher Sektions-Titel (iOS-Rhythmus).
   const SectionTitle=({children,trailing,top=26})=>(
-    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',
-      margin:`${top}px 2px 12px 0`}}>
-      <div style={{color:T.t1,fontSize:22,fontWeight:700,letterSpacing:-.5}}>{children}</div>
-      {trailing}
-    </div>
+    <SectionRule top={top} trailing={trailing}>{children}</SectionRule>
   );
 
   return(
@@ -4324,7 +4357,8 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
             <SingleMatchIcon size={44}/>
             <div>
               <div style={{color:T.t1,fontSize:17,fontWeight:700,letterSpacing:-.3}}>Single Match</div>
-              <div style={{color:T.t3,fontSize:12,fontWeight:500,marginTop:3,lineHeight:1.45}}>
+              <div className="serif" style={{color:T.t3,fontSize:13.5,fontStyle:'italic',
+                marginTop:4,lineHeight:1.4}}>
                 Best of 3, Americano
               </div>
             </div>
@@ -4338,7 +4372,8 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
             <TrophyIcon size={44}/>
             <div>
               <div style={{color:T.t1,fontSize:17,fontWeight:700,letterSpacing:-.3}}>Turnier</div>
-              <div style={{color:T.t3,fontSize:12,fontWeight:500,marginTop:3,lineHeight:1.45}}>
+              <div className="serif" style={{color:T.t3,fontSize:13.5,fontStyle:'italic',
+                marginTop:4,lineHeight:1.4}}>
                 Americano, Mexicano &amp; mehr
               </div>
             </div>
@@ -4382,7 +4417,8 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
             Event tragen den Akzent, der Rest bleibt neutral. */}
         <div className="fu" style={{animationDelay:'.12s'}}>
           <SectionTitle trailing={
-            <span style={{color:T.t3,fontSize:13,fontWeight:600}}>{monthName}</span>
+            <span className="serif" style={{color:T.t3,fontSize:14.5,fontStyle:'italic',
+              flexShrink:0}}>{monthName}</span>
           }>Events</SectionTitle>
           <div className="hscroll" style={{display:'flex',gap:10,overflowX:'auto',
             margin:'0 -22px',padding:'2px 22px 4px',
@@ -4621,7 +4657,8 @@ function SearchHub({nav,onTab}){
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
-      <ScreenHeader title="Suche" subtitle="Finde Spieler, Clubs und Courts."
+      <ScreenHeader title="Suche" kicker="Entdecken"
+        subtitle="Finde Spieler, Clubs und Courts."
         icon={<SearchIcon size={34}/>}/>
 
       <div style={{flex:1,padding:'0 22px 140px',overflowY:'auto',
@@ -4813,7 +4850,9 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
-      <ScreenHeader title="Single Match" icon={<SingleMatchIcon size={40}/>}/>
+      <ScreenHeader title="Single Match" kicker="Match"
+        subtitle="Best of 3 oder Americano — ihr vier, ein Court."
+        icon={<SingleMatchIcon size={40}/>}/>
 
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
 
@@ -7410,11 +7449,11 @@ function LbStats({played=0,wins=0,losses=0,pauses=0,withPauses=true,head=false})
   return(
     <div style={{display:'flex',alignItems:'center',gap:2,flexShrink:0}}>
       {cells.map(([h,v])=>(
-        <div key={h} style={{width:25,textAlign:'center',
-          fontVariantNumeric:'tabular-nums',lineHeight:1.2,
-          color:head?T.t4:(v?T.t2:T.t4),
-          fontSize:head?9.5:12.5,fontWeight:head?800:700,
-          letterSpacing:head?.6:0}}>
+        <div key={h} style={{width:25,textAlign:'center',lineHeight:1.2,
+          color:head?T.t3:(v?T.t2:T.t4),
+          ...(head
+            ?{fontFamily:T.fontDisplay,fontSize:10,letterSpacing:.8}
+            :{fontVariantNumeric:'tabular-nums',fontSize:12.5,fontWeight:700})}}>
           {head?h:v}
         </div>
       ))}
@@ -7430,12 +7469,12 @@ function LbHead({withPauses=true,trail='PKT',lead='SPIELER',
       borderBottom:`1px solid ${T.sep}`}}>
       <div style={{width:rankW,flexShrink:0}}/>
       {dot&&<div style={{width:8,flexShrink:0}}/>}
-      <div style={{flex:1,minWidth:0,color:T.t4,fontSize:9.5,fontWeight:800,
-        letterSpacing:1.1}}>{lead}</div>
+      <div style={{flex:1,minWidth:0,fontFamily:T.fontDisplay,color:T.t3,fontSize:10,
+        letterSpacing:1.6}}>{lead}</div>
       <LbStats head withPauses={withPauses}/>
       {trail&&(
-        <div style={{minWidth:38,textAlign:'right',color:T.t4,fontSize:9.5,
-          fontWeight:800,letterSpacing:.8,flexShrink:0}}>{trail}</div>
+        <div style={{minWidth:38,textAlign:'right',fontFamily:T.fontDisplay,color:T.t3,
+          fontSize:10,letterSpacing:.8,flexShrink:0}}>{trail}</div>
       )}
     </div>
   );
@@ -8310,7 +8349,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
       <ScreenHeader title={isEdit?'Turnier bearbeiten':saved?.draft?'Entwurf':'Turnier'}
-        icon={<TrophyIcon size={40}/>}/>
+        kicker="Konfigurator" icon={<TrophyIcon size={40}/>}/>
 
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
 
@@ -9083,7 +9122,7 @@ function OnlineTournamentLobby({pin,onHome,onStart,onCancel}){
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
-      <ScreenHeader title="Online-Lobby" icon={<TrophyIcon size={40}/>}/>
+      <ScreenHeader title="Online-Lobby" kicker="Turnier" icon={<TrophyIcon size={40}/>}/>
 
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
 
@@ -9409,8 +9448,8 @@ function TournamentParticipantView({session,participantId,pin}){
       {/* Winner Hero */}
       <div className="fi" style={{background:T.card,border:`1px solid ${T.o}`,borderRadius:20,
         padding:'24px 22px',textAlign:'center'}}>
-        <div style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:1.5,
-          textTransform:'uppercase',marginBottom:6}}>Turnier beendet</div>
+        <div style={{fontFamily:T.fontDisplay,color:T.o,fontSize:11,letterSpacing:3,
+          lineHeight:1,marginBottom:9}}>Turnier beendet</div>
         <div style={{marginBottom:8,display:'flex',justifyContent:'center'}}><MedalIcon size={50} rank={1}/></div>
         <div style={{fontSize:24,fontWeight:800,color:T.t1,letterSpacing:-.3}}>
           {winner?.name||'?'}
@@ -9974,7 +10013,7 @@ function JoinTournament({initialPin,profile,onHome,onJoin,onLeave,restored}){
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
-      <ScreenHeader title="Turnier beitreten" icon={<JoinIcon size={36}/>}/>
+      <ScreenHeader title="Turnier beitreten" kicker="Turnier" icon={<JoinIcon size={36}/>}/>
 
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
         {status==='input'||status==='joining'?(<>
@@ -11463,7 +11502,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
-      <ScreenHeader pad={14} ellipsis
+      <ScreenHeader pad={14} ellipsis rule={false}
         title={tourney.name||(FORMATS[tourney.format]||FORMATS.americano).name}
         subtitle={`${(FORMATS[tourney.format]||FORMATS.americano).name}, Runde ${tourney.current+1}${round.koPhase?`, ${round.koPhase}`:''}${tourney.endTime?`, bis ${tourney.endTime}`:''}`}
         icon={
@@ -11822,7 +11861,7 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
-      <ScreenHeader title="Endstand" icon={<TrophyIcon size={40}/>}/>
+      <ScreenHeader title="Endstand" kicker="Turnier" icon={<TrophyIcon size={40}/>}/>
 
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
 
@@ -12557,15 +12596,16 @@ function SettingsSubLayout({title,desc,icon,onBack,onHome,children}){
             </div>
           )}
           <div style={{flex:1,minWidth:0}}>
-            <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.5,
-              textTransform:'uppercase'}}>Einstellungen</div>
+            <div style={{fontFamily:T.fontDisplay,color:T.o,fontSize:11,letterSpacing:3,
+              lineHeight:1}}>Einstellungen</div>
             <div style={{color:T.t1,fontSize:24,fontWeight:800,letterSpacing:-.3,marginTop:2}}>
               {title}
             </div>
           </div>
         </div>
         {desc&&(
-          <div style={{color:T.t3,fontSize:13,lineHeight:1.5,marginTop:8}}>{desc}</div>
+          <div className="serif" style={{color:T.t3,fontSize:14.5,fontStyle:'italic',
+            lineHeight:1.45,marginTop:9}}>{desc}</div>
         )}
       </div>
 
@@ -12909,20 +12949,20 @@ function SettingsRechtliches({onBack,onHome}){
               <div className="fi" style={{padding:'0 18px 18px'}}>
                 {sec.blocks.map((b,i)=>{
                   if(b.h) return(
-                    <div key={i} style={{color:T.t1,fontSize:12.5,fontWeight:800,
-                      marginTop:i?16:4,marginBottom:6}}>{b.h}</div>
+                    <div key={i} style={{fontFamily:T.fontDisplay,color:T.t1,fontSize:11.5,
+                      letterSpacing:1.8,lineHeight:1.3,marginTop:i?18:4,marginBottom:8}}>{b.h}</div>
                   );
                   if(b.p) return(
-                    <p key={i} style={{color:T.t3,fontSize:12.5,fontWeight:500,
-                      lineHeight:1.65,marginBottom:8}}>{b.p}</p>
+                    <p key={i} className="serif" style={{color:T.t2,fontSize:14.5,
+                      lineHeight:1.62,marginBottom:9}}>{b.p}</p>
                   );
                   if(b.ul) return(
                     <div key={i} style={{marginBottom:8}}>
                       {b.ul.map((li,j)=>(
                         <div key={j} style={{display:'flex',gap:8,marginBottom:4}}>
-                          <span style={{color:T.o,flexShrink:0,lineHeight:1.65,fontSize:12.5}}>–</span>
-                          <span style={{color:T.t3,fontSize:12.5,fontWeight:500,
-                            lineHeight:1.65,flex:1,minWidth:0}}>{li}</span>
+                          <span style={{color:T.o,flexShrink:0,lineHeight:1.62,fontSize:14.5}}>–</span>
+                          <span className="serif" style={{color:T.t2,fontSize:14.5,
+                            lineHeight:1.62,flex:1,minWidth:0}}>{li}</span>
                         </div>
                       ))}
                     </div>
@@ -17250,8 +17290,8 @@ function LigaScreen({profile,onHome}){
   const card={background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
     padding:'16px 18px',marginBottom:12};
   const cap=t=>(
-    <div style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:1.4,
-      textTransform:'uppercase',marginBottom:10}}>{t}</div>);
+    <div style={{fontFamily:T.fontDisplay,color:T.o,fontSize:11,letterSpacing:2.4,
+      lineHeight:1,marginBottom:11}}>{t}</div>);
   const btn=(bg,fg,line)=>({width:'100%',padding:'13px 16px',borderRadius:14,
     background:bg,border:line?`1.5px solid ${line}`:'none',color:fg,
     fontSize:14.5,fontWeight:800,cursor:'pointer',opacity:busy?.55:1});
@@ -17665,7 +17705,8 @@ function HubBigCard({icon,title,desc,onClick,accent,delay='0s'}){
         <div style={{color:accent||T.o,fontSize:18,fontWeight:800,letterSpacing:-.2,marginBottom:3}}>
           {title}
         </div>
-        <div style={{color:T.t3,fontSize:12,fontWeight:500,lineHeight:1.55}}>
+        <div className="serif" style={{color:T.t3,fontSize:13.5,fontStyle:'italic',
+          lineHeight:1.45}}>
           {desc}
         </div>
       </div>
@@ -17679,7 +17720,7 @@ function TournamentHub({onHome,onStart,onJoin,onCup}){
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
-      <ScreenHeader title="Turnier" subtitle="Starten oder beitreten."
+      <ScreenHeader title="Turnier" kicker="Spielen" subtitle="Starten oder beitreten."
         icon={<TrophyIcon size={32}/>}/>
 
       <div style={{flex:1,padding:'0 22px 120px',overflowY:'auto',
@@ -17714,7 +17755,8 @@ function RitmoBibel({onHome,onRules,onJourney,onFaq,onTab}){
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
-      <ScreenHeader title="Bibel" subtitle="Regeln, Taktik und alles dazwischen."
+      <ScreenHeader title="Bibel" kicker="Wissen"
+        subtitle="Regeln, Taktik und alles dazwischen."
         icon={<BookIcon size={36}/>}/>
 
       <div style={{flex:1,padding:'0 22px 120px',overflowY:'auto',

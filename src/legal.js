@@ -199,7 +199,6 @@ export const LEGAL_SECTIONS = [
         ['Tesseract.js', 'Apache-Lizenz 2.0 — Texterkennung auf dem Gerät'],
         ['qr-scanner', 'MIT-Lizenz'],
         ['Inter', 'SIL Open Font License 1.1'],
-        ['Tinos', 'SIL Open Font License 1.1'],
       ] },
       { p: 'Die vollständigen Lizenztexte liegen den jeweiligen Paketen bei. Marken- und Produktnamen Dritter sind Eigentum der jeweiligen Inhaber.' },
     ],

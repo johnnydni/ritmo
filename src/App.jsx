@@ -736,6 +736,25 @@ function FlagIcon({code,size=20}){
   );
 }
 
+/* Auth-Screens scrollen selbst: html/body/#root stehen global auf
+   overflow:hidden, ein Screen mit bloss minHeight waechst also aus
+   dem Viewport heraus und wird abgeschnitten. Deshalb feste Hoehe —
+   erst dann greift overflow-y ueberhaupt.
+
+   justifyContent:'center' ist hier verboten: ein zentrierter Flex-
+   Container schiebt ueberlaufenden Inhalt nach OBEN aus dem
+   Scrollbereich heraus, wo er unerreichbar ist (bekannter Flexbox-
+   Fallstrick). margin:'auto' auf der Box macht dasselbe optisch,
+   ohne den Ueberlauf zu kappen. Genau daran hing der Registrier-
+   Screen fest, sobald die Tastatur den Viewport verkleinerte. */
+const AUTH_SCREEN={
+  height:'100dvh',overflowY:'auto',WebkitOverflowScrolling:'touch',
+  display:'flex',flexDirection:'column',alignItems:'center',
+  padding:'calc(env(safe-area-inset-top,0px) + 40px) 22px calc(env(safe-area-inset-bottom,0px) + 40px)',
+};
+const AUTH_BOX={width:'100%',maxWidth:380,margin:'auto',
+  display:'flex',flexDirection:'column'};
+
 function Login({onSuccess,onRegister}){
   const[username,setUsername]=useState('');
   const[password,setPassword]=useState('');
@@ -808,10 +827,7 @@ function Login({onSuccess,onRegister}){
   const onKeyDown=(e)=>{ if(e.key==='Enter'&&!locked) tryLogin(); };
 
   return(
-    <div style={{minHeight:'100dvh',background:T.bgGrad,display:'flex',
-      flexDirection:'column',alignItems:'center',justifyContent:'center',
-      padding:'calc(env(safe-area-inset-top,0px) + 40px) 22px calc(env(safe-area-inset-bottom,0px) + 40px)',
-      overflow:'auto'}}>
+    <div style={{...AUTH_SCREEN,background:T.bgGrad}}>
       <style>{`
         @keyframes shakeBox {
           0%,100%{transform:translateX(0)}
@@ -824,7 +840,7 @@ function Login({onSuccess,onRegister}){
       `}</style>
 
       <div className={`fi ${shake?'login-shake':''}`}
-        style={{width:'100%',maxWidth:380,display:'flex',flexDirection:'column',alignItems:'stretch'}}>
+        style={{...AUTH_BOX,alignItems:'stretch'}}>
 
         {/* Logo + Title */}
         <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:14,marginBottom:32}}>
@@ -1069,10 +1085,7 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
   };
 
   return(
-    <div style={{minHeight:'100dvh',background:T.bgGrad,display:'flex',
-      flexDirection:'column',alignItems:'center',justifyContent:'center',
-      padding:'calc(env(safe-area-inset-top,0px) + 40px) 22px calc(env(safe-area-inset-bottom,0px) + 40px)',
-      overflow:'auto'}}>
+    <div style={{...AUTH_SCREEN,background:T.bgGrad}}>
       <style>{`
         @keyframes shakeBox {
           0%,100%{transform:translateX(0)}
@@ -1082,8 +1095,7 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
         .reg-shake{animation:shakeBox .42s ease}
       `}</style>
 
-      <div className={`fi ${shake?'reg-shake':''}`}
-        style={{width:'100%',maxWidth:380,display:'flex',flexDirection:'column'}}>
+      <div className={`fi ${shake?'reg-shake':''}`} style={AUTH_BOX}>
 
         <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:14,marginBottom:28}}>
           <RitmoSplashLogo size={110}/>
@@ -1315,27 +1327,124 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
 /* ═══════════════════════════════════════════════════════════════
    EMAIL VERIFICATION — nach Email-Signup
 ═══════════════════════════════════════════════════════════════ */
-function EmailVerification({email,onBack,onSignIn}){
+/* Webmail-Direktlinks: „Öffne dein Postfach" ist ein Rat, kein Weg.
+   Für die großen Anbieter kennen wir die Adresse und sparen dem User
+   das Suchen. Unbekannte Domain → kein Button, statt einer Wette. */
+const WEBMAIL={
+  'gmail.com':['Gmail öffnen','https://mail.google.com/mail/u/0/#search/ritmo'],
+  'googlemail.com':['Gmail öffnen','https://mail.google.com/mail/u/0/#search/ritmo'],
+  'gmx.de':['GMX öffnen','https://www.gmx.net'],
+  'gmx.net':['GMX öffnen','https://www.gmx.net'],
+  'gmx.at':['GMX öffnen','https://www.gmx.at'],
+  'gmx.ch':['GMX öffnen','https://www.gmx.ch'],
+  'web.de':['WEB.DE öffnen','https://web.de'],
+  'outlook.com':['Outlook öffnen','https://outlook.live.com/mail/0/'],
+  'outlook.de':['Outlook öffnen','https://outlook.live.com/mail/0/'],
+  'hotmail.com':['Outlook öffnen','https://outlook.live.com/mail/0/'],
+  'hotmail.de':['Outlook öffnen','https://outlook.live.com/mail/0/'],
+  'live.de':['Outlook öffnen','https://outlook.live.com/mail/0/'],
+  'live.com':['Outlook öffnen','https://outlook.live.com/mail/0/'],
+  'yahoo.com':['Yahoo Mail öffnen','https://mail.yahoo.com'],
+  'yahoo.de':['Yahoo Mail öffnen','https://mail.yahoo.com'],
+  'icloud.com':['iCloud Mail öffnen','https://www.icloud.com/mail'],
+  'me.com':['iCloud Mail öffnen','https://www.icloud.com/mail'],
+  'mac.com':['iCloud Mail öffnen','https://www.icloud.com/mail'],
+  't-online.de':['T-Online öffnen','https://email.t-online.de'],
+  'posteo.de':['Posteo öffnen','https://posteo.de/#login'],
+  'mailbox.org':['mailbox.org öffnen','https://office.mailbox.org'],
+};
+const webmailFor=e=>WEBMAIL[String(e||'').split('@')[1]?.toLowerCase()]||null;
+
+/* Supabase drosselt Bestätigungsmails pro Adresse. Ein Button, der
+   nach drei Sekunden wieder klickbar aussieht, führt genau dorthin:
+   zweiter Tap, Rate-Limit-Fehler, Ratlosigkeit. Deshalb ein sichtbarer
+   Countdown, der die Wartezeit erklärt statt sie zu verstecken. */
+const RESEND_COOLDOWN=60;
+
+function EmailVerification({email,onBack,onSignIn,onVerified}){
   const[busy,setBusy]=useState(false);
-  const[resent,setResent]=useState(false);
+  const[cool,setCool]=useState(0);
+  const[sentOnce,setSentOnce]=useState(false);
   const[error,setError]=useState('');
+  const[confirmed,setConfirmed]=useState(false);
+  const mail=webmailFor(email);
+
+  useEffect(()=>{
+    if(cool<=0) return;
+    const t=setTimeout(()=>setCool(c=>c-1),1000);
+    return()=>clearTimeout(t);
+  },[cool]);
+
+  /* Der Screen wartet jetzt mit, statt den User raten zu lassen.
+     Klickt er den Link im selben Browser, legt Supabase die Session
+     im gemeinsamen Storage ab — getSession() findet sie auch aus
+     diesem Tab heraus. Der Listener deckt denselben Tab ab, der
+     Poll die Nachbar-Tabs. Anderer Browser/Gerät: dort läuft der
+     Flow ohnehin weiter, hier bleibt der Button zum Login. */
+  useEffect(()=>{
+    if(typeof window==='undefined'||!window.supabase||confirmed) return;
+    let alive=true;
+    const hit=()=>{
+      if(!alive) return;
+      alive=false;
+      setConfirmed(true);
+      setTimeout(()=>onVerified?.(),1400);
+    };
+    const check=async()=>{
+      try{
+        const{data}=await window.supabase.auth.getSession();
+        if(data?.session) hit();
+      }catch(e){}
+    };
+    check();
+    const iv=setInterval(check,3000);
+    const{data:sub}=window.supabase.auth.onAuthStateChange((ev,session)=>{
+      if(session&&ev!=='PASSWORD_RECOVERY') hit();
+    });
+    return()=>{alive=false;clearInterval(iv);sub?.subscription?.unsubscribe?.();};
+  },[confirmed,onVerified]);
 
   const resend=async()=>{
     setBusy(true);setError('');
     try{
       await auth.resendVerification(email);
-      setResent(true);
-      setTimeout(()=>setResent(false),3000);
+      setSentOnce(true);
+      setCool(RESEND_COOLDOWN);
     }catch(e){setError(e.message||'Fehler beim Senden');}
     finally{setBusy(false);}
   };
 
+  const btn={width:'100%',borderRadius:15,padding:'13px 16px',fontSize:14,
+    fontWeight:700,cursor:'pointer',marginBottom:10,display:'flex',
+    alignItems:'center',justifyContent:'center',gap:8};
+
+  /* Bestätigt: kurzer Moment mit dem grünen Haken, dann routet die
+     App weiter. Kein Button — hier gibt es nichts zu entscheiden. */
+  if(confirmed) return(
+    <div style={{...AUTH_SCREEN,background:T.bgGrad}}>
+      <div className="fi" style={{...AUTH_BOX,alignItems:'center',textAlign:'center'}}>
+        <div style={{width:88,height:88,borderRadius:'50%',marginBottom:22,
+          background:`${T.g}22`,border:`2px solid ${T.g}`,
+          display:'flex',alignItems:'center',justifyContent:'center',
+          boxShadow:`0 0 26px ${T.g}55`}}>
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none"
+            stroke={T.g} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+        <div style={{color:T.t1,fontSize:22,fontWeight:800,letterSpacing:-.3,marginBottom:8}}>
+          E-Mail bestätigt
+        </div>
+        <div className="txt" style={{color:T.t3,fontSize:15,fontStyle:'italic'}}>
+          Wir richten dein Konto ein …
+        </div>
+      </div>
+    </div>
+  );
+
   return(
-    <div style={{minHeight:'100dvh',background:T.bgGrad,display:'flex',
-      flexDirection:'column',alignItems:'center',justifyContent:'center',
-      padding:'calc(env(safe-area-inset-top,0px) + 40px) 22px calc(env(safe-area-inset-bottom,0px) + 40px)'}}>
-      <div className="fi" style={{width:'100%',maxWidth:380,display:'flex',
-        flexDirection:'column',alignItems:'center'}}>
+    <div style={{...AUTH_SCREEN,background:T.bgGrad}}>
+      <div className="fi" style={{...AUTH_BOX,alignItems:'center'}}>
 
         {/* Mail icon */}
         <div style={{width:88,height:88,borderRadius:'50%',background:T.oSoft,
@@ -1349,21 +1458,31 @@ function EmailVerification({email,onBack,onSignIn}){
         </div>
 
         <div style={{color:T.t1,fontSize:22,fontWeight:800,letterSpacing:-.3,
-          textAlign:'center',marginBottom:8}}>
+          textAlign:'center',marginBottom:10}}>
           Bestätige deine E-Mail
         </div>
-        <div style={{color:T.t2,fontSize:16,lineHeight:1.5,textAlign:'center',
-          maxWidth:320,marginBottom:6}}>
-          Wir haben einen Link an
+        <div style={{color:T.t2,fontSize:15,lineHeight:1.5,textAlign:'center',
+          maxWidth:320}}>
+          Wir haben einen Link geschickt an
         </div>
-        <div style={{color:T.o,fontSize:15,fontWeight:700,marginBottom:14,
+        <div style={{color:T.o,fontSize:15,fontWeight:700,margin:'4px 0 12px',
           wordBreak:'break-all',textAlign:'center'}}>
           {email}
         </div>
-        <div style={{color:T.t3,fontSize:13,lineHeight:1.5,textAlign:'center',
-          maxWidth:320,marginBottom:26}}>
-          geschickt. Klick darauf, um dein Konto zu aktivieren. Danach kannst
-          du dich hier ganz normal anmelden.
+        <div className="txt" style={{color:T.t3,fontSize:14,lineHeight:1.5,
+          fontStyle:'italic',textAlign:'center',maxWidth:320,marginBottom:18}}>
+          Tippe darauf — dieser Screen merkt es und macht von allein weiter.
+        </div>
+
+        {/* Lebenszeichen: der Screen pollt, das soll man sehen. */}
+        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:20,
+          padding:'7px 13px',borderRadius:999,
+          background:T.card,border:`1px solid ${T.border}`}}>
+          <span className="pulse-dot" style={{width:7,height:7,borderRadius:'50%',
+            background:T.o,flexShrink:0}}/>
+          <span style={{color:T.t3,fontSize:12,fontWeight:600}}>
+            Warte auf Bestätigung
+          </span>
         </div>
 
         {error&&(
@@ -1374,27 +1493,47 @@ function EmailVerification({email,onBack,onSignIn}){
           </div>
         )}
 
-        <button onClick={resend} disabled={busy||resent}
-          style={{width:'100%',background:T.card,border:`1px solid ${T.border}`,
-            borderRadius:15,padding:'12px 16px',color:T.t1,fontSize:13,fontWeight:600,
-            cursor:(busy||resent)?'not-allowed':'pointer',opacity:(busy||resent)?.6:1,
-            marginBottom:10}}>
-          {resent?'✓ Erneut gesendet':'E-Mail erneut senden'}
+        {mail&&(
+          <button onClick={()=>window.open(mail[1],'_blank','noopener,noreferrer')}
+            style={{...btn,background:T.o,border:'none',color:'#000',fontSize:15,
+              fontWeight:800,boxShadow:'0 4px 14px var(--oGlow)'}}>
+            {mail[0]} →
+          </button>
+        )}
+
+        <button onClick={resend} disabled={busy||cool>0}
+          style={{...btn,background:T.card,border:`1px solid ${T.border}`,color:T.t1,
+            cursor:(busy||cool>0)?'not-allowed':'pointer',opacity:(busy||cool>0)?.55:1}}>
+          {busy?'…'
+            :cool>0?`Erneut senden in ${cool} s`
+            :sentOnce?'Nochmal senden':'E-Mail erneut senden'}
         </button>
 
-        <button onClick={()=>onSignIn?.(email)}
-          style={{width:'100%',background:T.o,border:'none',borderRadius:15,
-            padding:'14px 16px',color:'#000',fontSize:16,fontWeight:800,letterSpacing:.3,
-            cursor:'pointer',marginBottom:18,
-            boxShadow:'0 4px 14px var(--oGlow)'}}>
-          Bestätigt? Auf zum Login →
-        </button>
+        {sentOnce&&cool>0&&(
+          <div style={{color:T.g,fontSize:12,fontWeight:600,marginBottom:10}}>
+            ✓ Neue Mail unterwegs
+          </div>
+        )}
 
-        <button onClick={onBack}
-          style={{background:'none',border:'none',color:T.t3,fontSize:12,
-            cursor:'pointer',padding:6,textDecoration:'underline'}}>
-          Falsche E-Mail? Zurück
-        </button>
+        <div className="txt" style={{color:T.t4,fontSize:12.5,lineHeight:1.5,
+          fontStyle:'italic',textAlign:'center',maxWidth:300,margin:'6px 0 18px'}}>
+          Nichts angekommen? Schau im Spam-Ordner nach — Bestätigungsmails
+          landen dort gern.
+        </div>
+
+        <div style={{display:'flex',gap:14,alignItems:'center'}}>
+          <button onClick={()=>onSignIn?.(email)}
+            style={{background:'none',border:'none',color:T.t2,fontSize:12.5,
+              fontWeight:600,cursor:'pointer',padding:6,textDecoration:'underline'}}>
+            Zum Login
+          </button>
+          <span style={{color:T.t4,fontSize:12}}>·</span>
+          <button onClick={onBack}
+            style={{background:'none',border:'none',color:T.t3,fontSize:12.5,
+              cursor:'pointer',padding:6,textDecoration:'underline'}}>
+            Falsche E-Mail?
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -1423,10 +1562,8 @@ function PasswordRecovery({onDone}){
   };
 
   return(
-    <div style={{minHeight:'100dvh',background:T.bgGrad,display:'flex',
-      flexDirection:'column',alignItems:'center',justifyContent:'center',
-      padding:'calc(env(safe-area-inset-top,0px) + 40px) 22px calc(env(safe-area-inset-bottom,0px) + 40px)'}}>
-      <div className="fi" style={{width:'100%',maxWidth:380,display:'flex',flexDirection:'column'}}>
+    <div style={{...AUTH_SCREEN,background:T.bgGrad}}>
+      <div className="fi" style={AUTH_BOX}>
         <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:14,marginBottom:24}}>
           <RitmoSplashLogo size={110}/>
           <div style={{color:T.t1,fontSize:22,fontWeight:800,letterSpacing:-.3}}>
@@ -1483,19 +1620,38 @@ function PasswordRecovery({onDone}){
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   VERIFIED LANDING — Standalone Info-Page nach Email-Verify
-   (statt direkter Sprung ins Onboarding). Wird durch ?verified=1
-   in der Redirect-URL aus dem Supabase-Mail-Link aktiviert.
+   VERIFIED LANDING — die Seite, auf der der Mail-Link landet
+   (?verified=1 in der Redirect-URL).
+
+   Vorher endete der Flow hier: eine Infoseite ohne Button, mit der
+   Bitte, den Tab zu schließen und sich neu anzumelden. Dabei hat
+   Supabase in genau diesem Tab bereits eine Session gesetzt — der
+   User war eingeloggt und wurde trotzdem zum Login geschickt.
+   Jetzt führt der Weg von hier direkt weiter; nur wenn der Link in
+   einem anderen Browser geöffnet wurde (keine Session), bleibt der
+   Umweg über den Login.
 ═══════════════════════════════════════════════════════════════ */
-function VerifiedLanding(){
+function VerifiedLanding({onContinue}){
+  const[hasSession,setHasSession]=useState(null);   // null = wird geprüft
+
+  useEffect(()=>{
+    let alive=true;
+    (async()=>{
+      try{
+        if(typeof window==='undefined'||!window.supabase) throw 0;
+        const{data}=await window.supabase.auth.getSession();
+        if(alive) setHasSession(!!data?.session);
+      }catch(e){ if(alive) setHasSession(false); }
+    })();
+    return()=>{alive=false;};
+  },[]);
+
   return(
-    <div style={{position:'fixed',inset:0,zIndex:900,
-      background:T.bg,display:'flex',
-      flexDirection:'column',alignItems:'center',justifyContent:'center',
-      overflowY:'auto',
+    <div style={{position:'fixed',inset:0,zIndex:900,background:T.bg,
+      height:'100dvh',overflowY:'auto',WebkitOverflowScrolling:'touch',
+      display:'flex',flexDirection:'column',alignItems:'center',
       padding:'calc(env(safe-area-inset-top,0px) + 40px) 22px calc(env(safe-area-inset-bottom,0px) + 40px)'}}>
-      <div className="fi" style={{width:'100%',maxWidth:380,display:'flex',
-        flexDirection:'column',alignItems:'center'}}>
+      <div className="fi" style={{...AUTH_BOX,alignItems:'center'}}>
 
         {/* Check-Icon */}
         <div style={{width:96,height:96,borderRadius:'50%',
@@ -1511,14 +1667,25 @@ function VerifiedLanding(){
         <RitmoSplashLogo size={88}/>
 
         <div style={{color:T.t1,fontSize:22,fontWeight:800,letterSpacing:-.3,
-          textAlign:'center',marginTop:20,marginBottom:14,maxWidth:320,lineHeight:1.45}}>
-          Deine Email ist nun bestätigt.
+          textAlign:'center',marginTop:20,marginBottom:12,maxWidth:320,lineHeight:1.45}}>
+          Deine E-Mail ist bestätigt.
         </div>
 
-        <div style={{color:T.t2,fontSize:16,lineHeight:1.55,textAlign:'center',
-          maxWidth:320}}>
-          Logge dich nun gerne in der Applikation ein.
+        <div className="txt" style={{color:T.t3,fontSize:15,lineHeight:1.55,
+          fontStyle:'italic',textAlign:'center',maxWidth:320,marginBottom:26}}>
+          {hasSession===false
+            ?'Melde dich jetzt an — dein Konto ist freigeschaltet.'
+            :'Willkommen bei RITMO. Es kann losgehen.'}
         </div>
+
+        <button onClick={()=>onContinue?.(hasSession)} disabled={hasSession===null}
+          style={{width:'100%',background:T.o,border:'none',borderRadius:15,
+            padding:'15px 16px',color:'#000',fontSize:16,fontWeight:800,
+            letterSpacing:.3,cursor:hasSession===null?'wait':'pointer',
+            opacity:hasSession===null?.6:1,
+            boxShadow:'0 4px 14px var(--oGlow)'}}>
+          {hasSession===false?'Zum Login →':"Los geht's →"}
+        </button>
 
       </div>
     </div>
@@ -19909,7 +20076,11 @@ export default function App(){
       window.history.replaceState({},'',url.toString());
     }catch{}
   },[joinPinFromUrl]);
-  const[pendingEmail,setPendingEmail]=useState('');
+  const[pendingEmail,setPendingEmail]=useState(()=>lsGet('ritmo_pending_email',''));
+  useEffect(()=>{
+    if(pendingEmail) lsSet('ritmo_pending_email',pendingEmail);
+    else{try{localStorage.removeItem('ritmo_pending_email');}catch{}}
+  },[pendingEmail]);
   // Aktuelle Supabase User-ID — wird vom Auth-Listener gesetzt und
   // an Social-Screens (PublicProfile, BookingDetail, …) durchgereicht.
   const[currentUid,setCurrentUid]=useState(null);
@@ -20072,9 +20243,20 @@ export default function App(){
   // bei jedem Onboarding-Schritt neu aufgebaut wird.
   const onboardedRef=useRef(onboarded);
   useEffect(()=>{onboardedRef.current=onboarded;},[onboarded]);
+  // Die VerifiedLanding blockiert enter(), solange sie sichtbar ist.
+  // Damit ihr „Los geht's" den Weiterweg trotzdem auslösen kann,
+  // liegt enter hier als ref bereit.
+  const enterRef=useRef(null);
+  // Solange der Verify-Screen offen ist, routet der Auth-Listener
+  // NICHT selbst weiter: der Screen zeigt erst seinen Bestätigt-
+  // Moment und übergibt dann per onVerified. Sonst stünde der User
+  // nach dem Mail-Klick unvermittelt im Onboarding und wüsste nicht,
+  // ob die Bestätigung überhaupt angekommen ist.
+  const verifyHoldRef=useRef(false);
+  useEffect(()=>{verifyHoldRef.current=(scr==='verify-email');},[scr]);
   useEffect(()=>{
     if(typeof window==='undefined'||!window.supabase) return;
-    const enter=async()=>{
+    const enter=async(opts)=>{
       // Während VerifiedLanding sichtbar ist: NICHT auto-routen,
       // sonst springt der Listener sofort weiter und der User
       // sieht die Info-Page nie.
@@ -20104,6 +20286,7 @@ export default function App(){
         }
       }catch(e){}
       setScr(curr=>{
+        if(curr==='verify-email'&&verifyHoldRef.current) return curr;
         // Auth-Screens und welcome/home: hier korrigiert der Listener
         // nach DB-Profil, falls Login.onSuccess auf Basis von stale
         // localStorage-Werten geroutet hat. Andere Screens (match,
@@ -20113,13 +20296,18 @@ export default function App(){
         // automatisch in die App reinladen, sondern stehen bleiben, bis
         // der User tippt. loggedIn + onboarded sind oben bereits gesetzt,
         // sodass der Tap (Splash.onDone) dann korrekt nach home routet.
+        // Ausnahme: opts.fromSplash — dann hat der User schon getippt
+        // („Los geht's" auf der Verified-Landing) und soll nicht gleich
+        // nochmal auf ein „Tippe zum Starten" stoßen.
         if(curr==='login'||curr==='register'||curr==='verify-email'
-          ||curr==='beta-landing'||curr==='welcome'||curr==='home'){
+          ||curr==='beta-landing'||curr==='welcome'||curr==='home'
+          ||(curr==='splash'&&opts?.fromSplash)){
           return isOnboarded?'home':'welcome';
         }
         return curr;
       });
     };
+    enterRef.current=enter;
     // Initiale Session (Verify-Link auf Cold-Load) prüfen
     window.supabase.auth.getSession().then(({data})=>{
       if(data?.session){
@@ -20370,7 +20558,12 @@ export default function App(){
       enabled={scr==='match'&&(inputMode==='ring'||inputMode==='presenter')}
       onKey={onMatchKey}/>
 
-    {scr==='splash'&&<Splash onDone={()=>{
+    {/* Kein Splash, wenn wir aus dem Bestätigungslink kommen: der
+        Splash liegt auf zIndex 1000 und würde die Verified-Landing
+        verdecken, bis der User „Tippe zum Starten" wegtippt. Wer
+        gerade auf einen Link in seiner Mail getippt hat, hat seine
+        Absicht schon bekundet. */}
+    {scr==='splash'&&!verifyLanding&&<Splash onDone={()=>{
       // ?join=PIN aus QR-Scan: direkt zur Turnier-Join-Maske, auch
       // ohne Login (Auth-Pflicht wäre Reibung für den eingeladenen
       // Spieler).
@@ -20414,7 +20607,12 @@ export default function App(){
     {scr==='verify-email'&&<EmailVerification
       email={pendingEmail}
       onBack={()=>nav('register')}
-      onSignIn={()=>nav('login')}/>}
+      onSignIn={()=>nav('login')}
+      onVerified={()=>{
+        verifyHoldRef.current=false;
+        setPendingEmail('');
+        enterRef.current?.();
+      }}/>}
     {scr==='password-recovery'&&<PasswordRecovery
       onDone={()=>{setLoggedIn(true);nav(onboarded?'home':'welcome');}}/>}
     {scr==='welcome'&&<Welcome
@@ -20726,11 +20924,31 @@ export default function App(){
 
     {/* First-launch disclaimer — liegt über allen Screens, blockiert
         Interaktion bis OK gedrückt wurde */}
-    {!welcomeSeen&&<WelcomeNotice onConfirm={()=>setWelcomeSeen(true)}/>}
+    {/* Nicht über der Verified-Landing: wer gerade aus der
+        Bestätigungsmail kommt, soll zuerst die Bestätigung sehen und
+        nicht den Beta-Hinweis wegtippen müssen. Danach kommt er
+        ohnehin (welcomeSeen bleibt false). */}
+    {!welcomeSeen&&!verifyLanding&&<WelcomeNotice onConfirm={()=>setWelcomeSeen(true)}/>}
 
     {/* Verified-Landing nach Email-Verify (?verified=1 in der URL).
-        Statisches Overlay ohne Buttons — User soll den Tab manuell
-        schließen und sich neu einloggen. */}
-    {verifyLanding&&<VerifiedLanding/>}
+        „Los geht's" räumt das Overlay weg, putzt den Parameter aus
+        der URL (sonst kommt das Overlay bei jedem Reload wieder)
+        und stößt das Routing an, das der Listener bis dahin
+        zurückgehalten hat. Ohne Session führt der Button zum Login. */}
+    {verifyLanding&&<VerifiedLanding onContinue={(hasSession)=>{
+      try{
+        const u=new URL(window.location.href);
+        u.searchParams.delete('verified');
+        window.history.replaceState({},'',u.pathname+u.search+u.hash);
+      }catch(e){}
+      verifyLandingRef.current=false;
+      setVerifyLanding(false);
+      setPendingEmail('');
+      // Ohne Session (Link in einem anderen Browser geöffnet) darf
+      // enter() NICHT laufen — das würde loggedIn setzen, ohne dass
+      // jemand angemeldet ist.
+      if(hasSession&&enterRef.current) enterRef.current({fromSplash:true});
+      else nav('login');
+    }}/>}
   </>);
 }

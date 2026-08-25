@@ -32,7 +32,7 @@ export const T = {
   gold:     'var(--gold)',
   /* Schriften — siehe --font-* in CSS unten. */
   fontSans:    'var(--font-sans)',     // Inter — UI-Grundschrift
-  fontSerif:   'var(--font-serif)',    // Times New Roman (Tinos-Fallback)
+  fontText:    'var(--font-text)',     // SF Pro — die ruhige Zweitstimme
   fontDisplay: 'var(--font-display)',  // Centauri — Headlines/Akzente
 };
 
@@ -40,27 +40,28 @@ export const CSS = `
 /* ── SCHRIFTEN ────────────────────────────────────────────────────
    Drei Familien, themeunabhängig als Tokens:
      --font-sans     Inter — die UI-Grundschrift (Fließtext, Buttons)
-     --font-serif    Times New Roman — Systemschrift auf iOS/macOS/
-                     Windows; auf Android/Linux springt das metrisch
-                     kompatible Tinos ein
+     --font-text     SF Pro — die ruhige Zweitstimme (Vorspann,
+                     Kartenbeschreibungen, Langtext). Systemschrift auf
+                     iOS/macOS; wo es sie nicht gibt, greift die
+                     jeweilige System-Grotesk. Wird NICHT ausgeliefert —
+                     Apple lizenziert SF Pro nicht zum Selbsthosten.
      --font-display  Centauri — Headlines/Akzente. VERSALSCHRIFT:
                      Kleinbuchstaben erscheinen als Versalien, für
                      Fließtext also ungeeignet. Nicht enthaltene
                      Zeichen (→ ✓ € @, Akzentbuchstaben) fallen pro
-                     Zeichen auf --font-serif zurück.
-   Alle drei werden in main.jsx importiert und von Vite gebündelt —
-   kein CDN, damit font-src 'self' in der CSP reicht.
+                     Zeichen auf --font-text zurück.
+   Inter und Centauri werden in main.jsx importiert und von Vite
+   gebündelt — kein CDN, damit font-src 'self' in der CSP reicht.
 
-   In Komponenten NICHT hart setzen, sondern T.fontSerif /
-   T.fontDisplay verwenden (oder die Klassen .serif / .display).
-──────────────────────────────────────────────────────────────── */
+   In Komponenten NICHT hart setzen, sondern T.fontText /
+   T.fontDisplay verwenden (oder die Klassen .txt / .display). */
 :root{
   --font-sans:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','SF Pro Text','Helvetica Neue','Segoe UI',Roboto,sans-serif;
-  --font-serif:'Times New Roman','Tinos',Times,'Liberation Serif',serif;
-  --font-display:'Centauri','Times New Roman','Tinos',Times,serif;
+  --font-text:'SF Pro Text','SF Pro Display',-apple-system,BlinkMacSystemFont,'Helvetica Neue','Segoe UI',Roboto,sans-serif;
+  --font-display:'Centauri','SF Pro Text',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
 }
 /* Utility-Klassen für die Screen-Überarbeitung. */
-.serif{font-family:var(--font-serif);letter-spacing:0;}
+.txt{font-family:var(--font-text);letter-spacing:0;}
 .display{font-family:var(--font-display);letter-spacing:0;}
 
 :root, :root[data-theme="dark"] {

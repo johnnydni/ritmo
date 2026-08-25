@@ -81,18 +81,18 @@ When adding a styled element: use the `T.*` tokens. Never hardcode hex colors in
 
 ### Fonts
 
-Three families, exposed as theme-independent tokens (`--font-sans`, `--font-serif`,
-`--font-display`) with the JS mirrors `T.fontSans`, `T.fontSerif`, `T.fontDisplay`
-plus the `.serif` / `.display` utility classes:
+Three families, exposed as theme-independent tokens (`--font-sans`, `--font-text`,
+`--font-display`) with the JS mirrors `T.fontSans`, `T.fontText`, `T.fontDisplay`
+plus the `.txt` / `.display` utility classes:
 
 | Token | Family | Loading |
 |---|---|---|
 | `T.fontSans` | Inter | `@fontsource/inter`, imported in [src/main.jsx](src/main.jsx) |
-| `T.fontSerif` | Times New Roman | system font; `@fontsource/tinos` (latin subset) is the metric-compatible fallback for Android/Linux |
+| `T.fontText` | SF Pro | system font on iOS/macOS, **never bundled** — Apple does not license it for self-hosting. Elsewhere the stack falls through to the platform's own grotesque |
 | `T.fontDisplay` | Centauri | bundled from [src/fonts/](src/fonts/README.md) — **unicase** (lowercase renders as caps), German glyphs generated via [tools/extend-centauri.py](tools/extend-centauri.py) |
 
-Fonts are self-hosted via npm + Vite, never a CDN — the CSP in `index.html`
-allows `font-src 'self' data:` only. Use the tokens instead of hardcoding
+Bundled fonts (Inter, Centauri) are self-hosted via npm + Vite, never a CDN —
+the CSP in `index.html` allows `font-src 'self' data:` only. Use the tokens instead of hardcoding
 family names, same rule as for colors.
 
 **Each family has one job** ("Sport meets Lifestyle" — the app should read
@@ -101,7 +101,7 @@ like a sports magazine, not like a settings dialog):
 | Family | Used for | Never for |
 |---|---|---|
 | **Centauri** (`T.fontDisplay`) | Kickers/ressorts above a title, section labels (`SectionRule`), table column heads, long-form headings. Short words, generously letter-spaced (`letterSpacing` 1.6–3). | **Numbers** — the `0` is an empty rectangle and the `2` is barely distinguishable from a `Z`. Also anything longer than ~16 characters: at 15 px a line runs ~19 px per character, so it stops fitting 390 px screens. |
-| **Times** (`T.fontSerif`, `.serif`) | Subtitles under a screen title, card descriptions, legal/long-form body copy. Usually italic for sublines, upright for body. | Labels, buttons, anything functional. |
+| **SF Pro** (`T.fontText`, `.txt`) | Subtitles under a screen title, card descriptions, legal/long-form body copy. Italic for sublines, upright for body. | Labels, buttons, anything functional. |
 | **Inter** (`T.fontSans`) | Everything else — titles, body, buttons, all figures (with `fontVariantNumeric:'tabular-nums'`). | — |
 
 Two shared components carry the pattern; prefer extending them over

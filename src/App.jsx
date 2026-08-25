@@ -2618,7 +2618,7 @@ function ScreenHeader({title,subtitle,icon,right,pad=22,ellipsis=false,kicker,ru
           <div style={{height:1,width:34,marginTop:11,marginLeft:10,borderRadius:1,
             background:`linear-gradient(90deg,${T.o},transparent)`}}/>
         )}
-        <div className="serif" style={{color:T.t3,fontSize:15.5,marginTop:rule?9:5,
+        <div className="txt" style={{color:T.t3,fontSize:15,marginTop:rule?9:5,
           marginLeft:10,fontStyle:'italic',lineHeight:1.45}}>
           {subtitle}
         </div>
@@ -4363,7 +4363,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
             <SingleMatchIcon size={44}/>
             <div>
               <div style={{color:T.t1,fontSize:17,fontWeight:700,letterSpacing:-.3}}>Single Match</div>
-              <div className="serif" style={{color:T.t3,fontSize:13.5,fontStyle:'italic',
+              <div className="txt" style={{color:T.t3,fontSize:12.5,fontStyle:'italic',
                 marginTop:4,lineHeight:1.4}}>
                 Best of 3, Americano
               </div>
@@ -4378,7 +4378,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
             <TrophyIcon size={44}/>
             <div>
               <div style={{color:T.t1,fontSize:17,fontWeight:700,letterSpacing:-.3}}>Turnier</div>
-              <div className="serif" style={{color:T.t3,fontSize:13.5,fontStyle:'italic',
+              <div className="txt" style={{color:T.t3,fontSize:12.5,fontStyle:'italic',
                 marginTop:4,lineHeight:1.4}}>
                 Americano, Mexicano &amp; mehr
               </div>
@@ -4423,7 +4423,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
             Event tragen den Akzent, der Rest bleibt neutral. */}
         <div className="fu" style={{animationDelay:'.12s'}}>
           <SectionTitle trailing={
-            <span className="serif" style={{color:T.t3,fontSize:14.5,fontStyle:'italic',
+            <span className="txt" style={{color:T.t3,fontSize:13.5,fontStyle:'italic',
               flexShrink:0}}>{monthName}</span>
           }>Events</SectionTitle>
           <div className="hscroll" style={{display:'flex',gap:10,overflowX:'auto',
@@ -12638,7 +12638,7 @@ function SettingsSubLayout({title,desc,icon,onBack,onHome,children}){
           </div>
         </div>
         {desc&&(
-          <div className="serif" style={{color:T.t3,fontSize:14.5,fontStyle:'italic',
+          <div className="txt" style={{color:T.t3,fontSize:13.5,fontStyle:'italic',
             lineHeight:1.45,marginTop:9}}>{desc}</div>
         )}
       </div>
@@ -12987,15 +12987,15 @@ function SettingsRechtliches({onBack,onHome}){
                       letterSpacing:1.8,lineHeight:1.3,marginTop:i?18:4,marginBottom:8}}>{b.h}</div>
                   );
                   if(b.p) return(
-                    <p key={i} className="serif" style={{color:T.t2,fontSize:14.5,
+                    <p key={i} className="txt" style={{color:T.t2,fontSize:13,
                       lineHeight:1.62,marginBottom:9}}>{b.p}</p>
                   );
                   if(b.ul) return(
                     <div key={i} style={{marginBottom:8}}>
                       {b.ul.map((li,j)=>(
                         <div key={j} style={{display:'flex',gap:8,marginBottom:4}}>
-                          <span style={{color:T.o,flexShrink:0,lineHeight:1.62,fontSize:14.5}}>–</span>
-                          <span className="serif" style={{color:T.t2,fontSize:14.5,
+                          <span style={{color:T.o,flexShrink:0,lineHeight:1.62,fontSize:13}}>–</span>
+                          <span className="txt" style={{color:T.t2,fontSize:13,
                             lineHeight:1.62,flex:1,minWidth:0}}>{li}</span>
                         </div>
                       ))}
@@ -17740,7 +17740,7 @@ function HubBigCard({icon,title,desc,onClick,accent,delay='0s'}){
         <div style={{color:accent||T.o,fontSize:18,fontWeight:800,letterSpacing:-.2,marginBottom:3}}>
           {title}
         </div>
-        <div className="serif" style={{color:T.t3,fontSize:13.5,fontStyle:'italic',
+        <div className="txt" style={{color:T.t3,fontSize:12.5,fontStyle:'italic',
           lineHeight:1.45}}>
           {desc}
         </div>

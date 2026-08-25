@@ -710,6 +710,9 @@ input[type="time"]::-webkit-datetime-edit{padding:0;text-align:center;}
    und Score-Pop (Skalierung beim Punkte-Update). Eigene Animationen,
    damit die übrigen Screens nicht versehentlich mitwackeln. */
 @keyframes courtLivePulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.55;transform:scale(.92)}}
+/* Wartepunkt auf dem Verify-Screen: zeigt, dass der Screen mitläuft
+   und nicht eingefroren ist, während er auf den Mail-Klick wartet. */
+.pulse-dot{animation:courtLivePulse 1.4s ease-in-out infinite;}
 @keyframes courtBorderPulse{0%,100%{box-shadow:0 0 0 0 var(--oGlow)}50%{box-shadow:0 0 0 6px transparent}}
 @keyframes vsPulse{0%,100%{transform:scale(1) rotate(0deg);opacity:.85}50%{transform:scale(1.12) rotate(-3deg);opacity:1}}
 @keyframes scorePop{0%{transform:scale(.7);opacity:.4}60%{transform:scale(1.18);opacity:1}100%{transform:scale(1);opacity:1}}

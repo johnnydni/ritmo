@@ -108,7 +108,8 @@ function RulesLanding({onHome,onContinue,onMarkRead,alreadyRead}){
       </div>
 
       <MatchBar onHome={onHome} rightButtons={[
-        {icon:<ArrowRightCircleIcon size={22}/>,onClick:onContinue}
+        {icon:<ArrowRightCircleIcon size={22}/>,onClick:onContinue,
+         label:'Weiter zum Regelwerk'}
       ]}/>
     </div>
   );
@@ -154,7 +155,8 @@ function JourneyLanding({onHome,onContinue,onMarkRead,alreadyRead}){
       </div>
 
       <MatchBar onHome={onHome} rightButtons={[
-        {icon:<ArrowRightCircleIcon size={22}/>,onClick:onContinue}
+        {icon:<ArrowRightCircleIcon size={22}/>,onClick:onContinue,
+         label:'Weiter zur Journey'}
       ]}/>
     </div>
   );
@@ -2245,7 +2247,7 @@ function ProfileRitmoDNA({profile,onBack,onHome}){
       </div>
 
       <MatchBar onHome={onHome} rightButtons={[
-        {icon:<PersonGlyph size={20}/>, onClick:onBack}
+        {icon:<PersonGlyph size={20}/>, onClick:onBack, label:'Zurück zum Profil'}
       ]}/>
     </div>
   );
@@ -3065,7 +3067,7 @@ function TabBar({active,onTab}){
 /* ═══════════════════════════════════════════════════════════════
    IN-MATCH BOTTOM BAR (Home + Search separat)
 ═══════════════════════════════════════════════════════════════ */
-function MatchBar({onHome,rightIcon,onRight,rightButtons}){
+function MatchBar({onHome,rightIcon,onRight,rightButtons,homeLabel='Zurück zur Startseite'}){
   // Liquid-Glass-FABs: Material kommt aus der .glass-bar-Klasse
   // (Backdrop-Blur + Tönung); eigene btn.style-Overrides (z. B. der
   // grüne Start-Button) gewinnen als Inline-Styles weiterhin.
@@ -3086,13 +3088,17 @@ function MatchBar({onHome,rightIcon,onRight,rightButtons}){
       bottom:'calc(env(safe-area-inset-bottom, 0px) * 0.3 - 3px)',height:57,
       left:0,right:0,display:'flex',alignItems:'center',justifyContent:'space-between',
       padding:'0 24px',pointerEvents:'none',zIndex:5}}>
-      <button onClick={onHome} className="glass-bar" style={{...baseStyle,cursor:'pointer'}}>
+      <button onClick={onHome} className="glass-bar"
+        aria-label={homeLabel} title={homeLabel}
+        style={{...baseStyle,cursor:'pointer'}}>
         <HomeIcon size={20}/>
       </button>
       <div style={{display:'flex',gap:10,alignItems:'center',pointerEvents:'auto'}}>
         {buttons.map((btn,i)=>(
           <button key={i} onClick={btn.onClick} disabled={btn.disabled}
             className="glass-bar"
+            aria-label={btn.label||btn.title||undefined}
+            title={btn.label||btn.title||undefined}
             style={{
               ...baseStyle,
               ...(btn.style||{}),
@@ -4791,7 +4797,9 @@ function AppFAQ({onBack,onHome}){
       </div>
 
       <BottomFade/>
-      <MatchBar onHome={onHome} rightButtons={[{icon:<BookIcon size={22}/>,onClick:onBack}]}/>
+      <MatchBar onHome={onHome} rightButtons={[
+        {icon:<BookIcon size={22}/>,onClick:onBack,label:'Zurück zur Bibel'}
+      ]}/>
     </div>
   );
 }
@@ -4887,6 +4895,7 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
                   style={{flex:1,fontSize:16,color:T.t2,fontWeight:500,textAlign:'right',
                     background:'transparent',border:'none',outline:'none'}}/>
                 <button onClick={()=>setPlayer(idx,'')}
+                  aria-label="Namen löschen" title="Namen löschen"
                   style={{width:20,height:20,borderRadius:'50%',background:T.t4,border:'none',
                     color:T.t1,fontSize:12,cursor:'pointer',display:'flex',alignItems:'center',
                     justifyContent:'center',fontWeight:700,flexShrink:0}}>{'×'}</button>
@@ -4915,6 +4924,7 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
                 style={{flex:1,fontSize:16,color:T.t2,fontWeight:500,textAlign:'right',
                   background:'transparent',border:'none',outline:'none'}}/>
               <button onClick={()=>setPlayer(idx,'')}
+                aria-label="Namen löschen" title="Namen löschen"
                 style={{width:20,height:20,borderRadius:'50%',background:T.t4,border:'none',
                   color:T.t1,fontSize:12,cursor:'pointer',display:'flex',alignItems:'center',
                   justifyContent:'center',fontWeight:700,flexShrink:0}}>{'×'}</button>
@@ -4930,6 +4940,7 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
           <div style={{display:'flex',background:T.card2,borderRadius:30,padding:4,gap:4,
             border:`1px solid ${T.border}`,marginBottom:14}}>
             <button onClick={()=>setFmt('bo3')}
+              aria-label="Best of 3" title="Best of 3" aria-pressed={fmt==='bo3'}
               style={{flex:1,padding:'10px',borderRadius:20,border:'none',cursor:'pointer',
                 background:fmt==='bo3'?T.t4:'transparent',
                 display:'flex',alignItems:'center',justifyContent:'center',
@@ -4937,6 +4948,7 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
               <BestOfThreeIcon size={22}/>
             </button>
             <button onClick={()=>setFmt('americano')}
+              aria-label="Americano" title="Americano" aria-pressed={fmt==='americano'}
               style={{flex:1,padding:'10px',borderRadius:20,border:'none',cursor:'pointer',
                 background:fmt==='americano'?T.t4:'transparent',
                 display:'flex',alignItems:'center',justifyContent:'center',
@@ -5002,6 +5014,8 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
                     Split 21
                   </button>
                   <button onClick={()=>setAmLim(0)}
+                    aria-label="Ohne Punktelimit" title="Ohne Punktelimit"
+                    aria-pressed={amLim===0}
                     style={{padding:'5px 14px',borderRadius:25,border:'none',cursor:'pointer',
                       background:amLim===0?T.t4:'transparent',
                       color:T.t1,fontSize:16,fontWeight:600,transition:'background .2s',
@@ -5018,6 +5032,7 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
 
       <MatchBar onHome={onHome} rightButtons={[{
         icon:'Start',
+        label:'Match starten',
         onClick:()=>{
           setCfg({players,nameA:teamA,nameB:teamB,format:fmt,amLimit:amLim,goldenPointAfter:gpAfter});
           nav('match');
@@ -5632,6 +5647,7 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
             ihn anzufressen. */}
         <div style={{position:'absolute',bottom:theme==='padel'?58:18,left:18}}>
           <button onClick={onHome}
+            aria-label="Zurück zur Startseite" title="Zurück zur Startseite"
             style={{width:42,height:42,borderRadius:'50%',
               background:T.card,border:`1px solid ${T.border}`,
               cursor:'pointer',
@@ -5664,6 +5680,7 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
             <span style={{fontSize:11,opacity:.85}}>×</span>
           </button>
           <button onClick={()=>setBigScreen(false)}
+            aria-label="Vollbild verlassen" title="Vollbild verlassen"
             style={{width:42,height:42,borderRadius:'50%',
               background:T.card,border:`1px solid ${T.border}`,
               cursor:'pointer',
@@ -5884,10 +5901,12 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
         rightButtons={[
           {icon:<span style={{color:T.r,fontSize:20,lineHeight:1}}>↺</span>,
            onClick:()=>setConfReset(true),
+           label:'Spielstand zurücksetzen',
            style:{background:'rgba(232,69,69,0.12)',
                   border:`1px solid rgba(232,69,69,0.45)`}},
           {icon:<FullscreenIcon size={18}/>,
-           onClick:()=>setBigScreen(true)},
+           onClick:()=>setBigScreen(true),
+           label:'Anzeigetafel im Vollbild'},
         ]}/>
 
       {confReset&&<ResetModal onCancel={()=>setConfReset(false)} onConfirm={()=>{reset();setConfReset(false);}}/>}
@@ -6775,7 +6794,7 @@ function WimbledonTimerCard({minutes,setMinutes,running,secsLeft,finished,onStar
             <div style={{color:T.t3,fontSize:10,fontWeight:500,marginTop:2,letterSpacing:1.5}}>MINUTEN</div>
           </div>
           <ScrollPicker value={minutes} onChange={setMinutes} options={opts} bgColor={T.bg}/>
-          <button onClick={onStart}
+          <button onClick={onStart} aria-label="Timer starten" title="Timer starten"
             style={{flexShrink:0,background:T.o,color:T.bg,
               border:'none',borderRadius:'50%',width:52,height:52,
               fontSize:18,fontWeight:800,cursor:'pointer',
@@ -6789,6 +6808,8 @@ function WimbledonTimerCard({minutes,setMinutes,running,secsLeft,finished,onStar
       {hasStarted&&!finished&&(
         <div style={{display:'flex',gap:10}}>
           <button onClick={running?onPause:onStart}
+            aria-label={running?'Timer pausieren':'Timer fortsetzen'}
+            title={running?'Timer pausieren':'Timer fortsetzen'}
             style={{width:46,height:46,borderRadius:'50%',
               background:T.o,border:'none',color:T.bg,
               fontSize:15,fontWeight:800,cursor:'pointer',
@@ -6876,6 +6897,8 @@ function TimerCard({minutes,setMinutes,running,secsLeft,finished,onStart,onPause
             </div>
             <div style={{display:'flex',gap:8}}>
               <button onClick={running?onPause:onStart}
+                aria-label={running?'Timer pausieren':'Timer fortsetzen'}
+                title={running?'Timer pausieren':'Timer fortsetzen'}
                 style={{width:42,height:42,borderRadius:'50%',
                   background:T.o,border:'none',color:T.bg,
                   fontSize:16,fontWeight:800,cursor:'pointer',
@@ -8880,6 +8903,8 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
         }]:[]),
         {
         icon:creatingOnline?'…':(isEdit?'✓':'Start'),
+        label:creatingOnline?'Turnier wird erstellt'
+          :(isEdit?'Änderungen übernehmen':'Turnier starten'),
         disabled:creatingOnline||(mode==='lokal'&&!canStart),
         onClick:async()=>{
           if(creatingOnline) return;
@@ -9248,12 +9273,13 @@ function OnlineTournamentLobby({pin,onHome,onStart,onCancel}){
       </div>
 
       <MatchBar onHome={onHome} rightButtons={[
-        {icon:'✕',onClick:onCancel,
+        {icon:'✕',onClick:onCancel,label:'Turnier abbrechen',
           style:{width:46,height:46,
             background:'rgba(232,69,69,0.12)',
             border:'1px solid rgba(232,69,69,0.4)',color:T.r,
             fontSize:16,fontWeight:700}},
         {icon:busy?'…':'Start',
+          label:busy?'Turnier wird gestartet':'Turnier starten',
           disabled:!canStart||busy,
           onClick:startTournament,
           style:{width:56,height:56,
@@ -10193,6 +10219,7 @@ function JoinTournament({initialPin,profile,onHome,onJoin,onLeave,restored}){
       <MatchBar onHome={onHome} rightButtons={[
         (status==='input'||status==='joining')?{
           icon:status==='joining'?'…':'Join',
+          label:status==='joining'?'Verbinde …':'Turnier beitreten',
           disabled:status==='joining',
           onClick:submitJoin,
           style:{width:56,height:56,background:T.g,
@@ -11540,6 +11567,10 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
             {fmtT(tourney.timerSecsLeft||0)}
           </div>
           <button onClick={toggleTimer}
+            aria-label={tourney.timerFinished?'Rundenzeit neu starten'
+              :tourney.timerRunning?'Rundenzeit pausieren':'Rundenzeit starten'}
+            title={tourney.timerFinished?'Rundenzeit neu starten'
+              :tourney.timerRunning?'Rundenzeit pausieren':'Rundenzeit starten'}
             style={{width:40,height:40,borderRadius:'50%',
               background:tourney.timerFinished?T.r:T.o,border:'none',
               color:T.bg,fontSize:16,fontWeight:800,
@@ -11749,6 +11780,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
         {
           icon:'■',
           onClick:()=>setConfirmEnd(true),
+          label:'Turnier beenden',
           style:{
             background:'rgba(232,69,69,0.12)',
             border:`1px solid rgba(232,69,69,0.5)`,
@@ -11760,6 +11792,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
         {
           icon:<EditIcon size={20} color={T.o}/>,
           onClick:onEdit,
+          label:'Turnier bearbeiten',
         }
       ]}/>
 
@@ -12553,7 +12586,8 @@ function Settings({onHome,onBack,nav,onLogout}){
 
       <BottomFade/>
       <MatchBar onHome={onHome}
-        rightButtons={[{icon:<PersonGlyph size={20}/>,onClick:onBack}]}/>
+        rightButtons={[{icon:<PersonGlyph size={20}/>,onClick:onBack,
+          label:'Zurück zum Profil'}]}/>
     </div>
   );
 }
@@ -14349,6 +14383,7 @@ function ClubCreate({onHome,onDone,onCancel,initial}){
           <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
             textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Cover</div>
           <button onClick={()=>coverInput.current?.click()}
+            aria-label="Cover-Bild wählen" title="Cover-Bild wählen"
             style={{width:'100%',position:'relative',aspectRatio:'16/9',
               background:T.card2,border:`1px dashed ${T.border}`,borderRadius:15,
               overflow:'hidden',cursor:'pointer',color:T.t2,padding:0}}>
@@ -17819,7 +17854,7 @@ function RulesDef({term,children}){
 
 /* ───── Shared shell for detail screens ───── */
 function RulesDetailLayout({icon,title,sub,visual,children,onBackToRules,onHome,
-  onNext,onPrev,currentIdx,totalSections,backIcon}){
+  onNext,onPrev,currentIdx,totalSections,backIcon,backLabel}){
   const[dx,setDx]=useState(0);
   const[animating,setAnimating]=useState(false);
   const dragRef=useRef({active:false,startX:0,startY:0,isHoriz:false,decided:false});
@@ -17918,7 +17953,8 @@ function RulesDetailLayout({icon,title,sub,visual,children,onBackToRules,onHome,
       </div>
 
       <MatchBar onHome={onHome} rightButtons={[
-        {icon:backIcon||<BookIcon size={18}/>,onClick:onBackToRules}
+        {icon:backIcon||<BookIcon size={18}/>,onClick:onBackToRules,
+         label:backLabel||'Zurück zur Übersicht'}
       ]}/>
     </div>
   );
@@ -18343,7 +18379,8 @@ function Rules({onHome,onSelect,alreadyRead,onToggleRead,onBibel}){
         ))}
       </div>
       <MatchBar onHome={onHome}
-        rightButtons={onBibel?[{icon:<BookIcon size={20}/>,onClick:onBibel}]:[]}/>
+        rightButtons={onBibel?[{icon:<BookIcon size={20}/>,onClick:onBibel,
+          label:'Zur Bibel'}]:[]}/>
     </div>
   );
 }
@@ -18816,7 +18853,8 @@ function Journey({onHome,onSelect,alreadyRead,onToggleRead,onBibel}){
         ))}
       </div>
       <MatchBar onHome={onHome}
-        rightButtons={onBibel?[{icon:<BookIcon size={20}/>,onClick:onBibel}]:[]}/>
+        rightButtons={onBibel?[{icon:<BookIcon size={20}/>,onClick:onBibel,
+          label:'Zur Bibel'}]:[]}/>
     </div>
   );
 }
@@ -18895,7 +18933,7 @@ function JourneySpielstileList({onBack,onHome,onSelect}){
         })}
       </div>
       <MatchBar onHome={onHome} rightButtons={[
-        {icon:<JourneyIcon size={18}/>,onClick:onBack}
+        {icon:<JourneyIcon size={18}/>,onClick:onBack,label:'Zurück zur Journey'}
       ]}/>
     </div>
   );
@@ -18935,7 +18973,7 @@ function JourneySpielstile({styleId,onBack,onHome,onNext,onPrev,currentIdx,total
       onPrev={onPrev}
       currentIdx={currentIdx}
       totalSections={totalSections}
-      backIcon={<JourneyIcon size={18}/>}>
+      backIcon={<JourneyIcon size={18}/>} backLabel="Zurück zur Journey">
 
       {/* Tagline */}
       <div style={{color:style.accent,fontSize:16,fontWeight:600,fontStyle:'italic',
@@ -19120,7 +19158,7 @@ function JourneyRitmoDNA({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalS
       onPrev={onPrev}
       currentIdx={currentIdx}
       totalSections={totalSections}
-      backIcon={<JourneyIcon size={18}/>}>
+      backIcon={<JourneyIcon size={18}/>} backLabel="Zurück zur Journey">
 
       <div style={{color:T.t2,fontSize:16,lineHeight:1.6,marginBottom:22}}>
         RITMO DNA ist das System hinter den Partner- und Gegner-Matchings.

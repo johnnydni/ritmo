@@ -119,13 +119,15 @@ export function ligaMatchTier(state,m){
 export function ligaGroupTable(state,g){
   const rows={};
   state.teams.filter(t=>t.group===g).forEach(t=>{
-    rows[t.id]={team:t,w:0,played:0,gf:0,ga:0};
+    rows[t.id]={team:t,w:0,l:0,played:0,gf:0,ga:0};
   });
   state.matches.filter(m=>m.phase==='gruppe'&&m.group===g&&done(m)).forEach(m=>{
     const a=rows[m.t1],b=rows[m.t2];if(!a||!b)return;
     const s1=m.s1??0,s2=m.s2??0;
     a.played++;b.played++;a.gf+=s1;a.ga+=s2;b.gf+=s2;b.ga+=s1;
-    if(s1>s2)a.w++;else if(s2>s1)b.w++;
+    // Niederlagen explizit zählen: played-w waere bei einem
+    // Unentschieden falsch (zaehlt fuer keine Seite als Sieg).
+    if(s1>s2){a.w++;b.l++;}else if(s2>s1){b.w++;a.l++;}
   });
   const list=Object.values(rows);
   list.sort((a,b)=>b.w-a.w||(b.gf-b.ga)-(a.gf-a.ga)||b.gf-a.gf);

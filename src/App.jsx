@@ -7398,6 +7398,49 @@ function CourtEmojiPicker({value,onPick}){
   );
 }
 
+/* Tabellen-Spalten wie in einer Fußball-Tabelle: Spiele, Siege,
+   Niederlagen, Pausen. Als echte Spalten statt als Fließtext-Subline —
+   nur so lässt sich die Tabelle senkrecht vergleichen. Dieselbe
+   Komponente rendert auch die Kopfzeile (head), damit Überschrift und
+   Zahlen zwangsläufig aufeinander sitzen. Nullen bleiben gedimmt, der
+   Blick soll an den Werten hängen bleiben. */
+function LbStats({played=0,wins=0,losses=0,pauses=0,withPauses=true,head=false}){
+  const cells=[['SP',played],['S',wins],['N',losses]];
+  if(withPauses) cells.push(['P',pauses]);
+  return(
+    <div style={{display:'flex',alignItems:'center',gap:2,flexShrink:0}}>
+      {cells.map(([h,v])=>(
+        <div key={h} style={{width:25,textAlign:'center',
+          fontVariantNumeric:'tabular-nums',lineHeight:1.2,
+          color:head?T.t4:(v?T.t2:T.t4),
+          fontSize:head?9.5:12.5,fontWeight:head?800:700,
+          letterSpacing:head?.6:0}}>
+          {head?h:v}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* Kopfzeile über einer Tabelle — Spaltenbreiten spiegeln die Zeile. */
+function LbHead({withPauses=true,trail='PKT',lead='SPIELER',
+  rankW=24,dot=true,gap=10,pad='9px 16px 7px'}){
+  return(
+    <div style={{display:'flex',alignItems:'center',gap,padding:pad,
+      borderBottom:`1px solid ${T.sep}`}}>
+      <div style={{width:rankW,flexShrink:0}}/>
+      {dot&&<div style={{width:8,flexShrink:0}}/>}
+      <div style={{flex:1,minWidth:0,color:T.t4,fontSize:9.5,fontWeight:800,
+        letterSpacing:1.1}}>{lead}</div>
+      <LbStats head withPauses={withPauses}/>
+      {trail&&(
+        <div style={{minWidth:38,textAlign:'right',color:T.t4,fontSize:9.5,
+          fontWeight:800,letterSpacing:.8,flexShrink:0}}>{trail}</div>
+      )}
+    </div>
+  );
+}
+
 /* Namen bleiben kurz — sonst sprengen sie Court-Karten, Tabelle und
    Monitor-Ansicht, wo nebeneinander bis zu vier Namen stehen. */
 export const NAME_MAX=10;
@@ -9386,6 +9429,7 @@ function TournamentParticipantView({session,participantId,pin}){
       {/* Full Leaderboard */}
       <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
         overflow:'hidden'}}>
+        <LbHead trail={ts.winMode==='wins'?'SIEGE':'PKT'}/>
         {sortedLb.map((p,i)=>{
           const isMe=myRow&&p.id===myRow.id;
           return(
@@ -9398,16 +9442,13 @@ function TournamentParticipantView({session,participantId,pin}){
               </div>
               <div style={{width:8,height:8,borderRadius:'50%',background:p.color,flexShrink:0}}/>
               <div style={{flex:1,minWidth:0}}>
-                <div style={{color:T.t1,fontSize:16,fontWeight:isMe||i===0?700:600,
+                <div style={{color:T.t1,fontSize:15,fontWeight:isMe||i===0?700:600,
                   overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
                   {p.name}{isMe?' (Du)':''}
                 </div>
-                <div style={{color:T.t3,fontSize:11}}>
-                  {p.played} Spiele, {p.wins}S {p.losses}N
-                  {p.sitOut>0&&<>, {p.sitOut} Pause{p.sitOut>1?'n':''}</>}
-                </div>
               </div>
-              <div style={{textAlign:'right'}}>
+              <LbStats played={p.played} wins={p.wins} losses={p.losses} pauses={p.sitOut}/>
+              <div style={{textAlign:'right',minWidth:38,flexShrink:0}}>
                 <div style={{color:T.o,fontSize:16,fontWeight:800}}>
                   {ts.winMode==='wins'?p.totalWins:p.totalPts}
                 </div>
@@ -11621,6 +11662,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
         {tab==='board'&&(
           <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
             overflow:'hidden',display:'flex',flexDirection:'column',maxHeight:'100%'}}>
+            <LbHead trail={tourney.winMode==='wins'?'SIEGE':'PKT'}/>
             <div style={{overflowY:'auto',WebkitOverflowScrolling:'touch'}}>
               {sortedLb.map((p,i)=>(
                 <div key={p.id} style={{display:'flex',alignItems:'center',padding:'12px 16px',
@@ -11632,13 +11674,10 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
                   </div>
                   <div style={{width:8,height:8,borderRadius:'50%',background:p.color,flexShrink:0}}/>
                   <div style={{flex:1,minWidth:0}}>
-                    <div style={{color:T.t1,fontSize:16,fontWeight:i===0?700:600,
+                    <div style={{color:T.t1,fontSize:15,fontWeight:i===0?700:600,
                       overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.name}</div>
-                    <div style={{color:T.t3,fontSize:11,marginTop:1}}>
-                      {p.played} Spiele, {p.wins}S {p.losses}N
-                      {p.sitOut>0&&<>, {p.sitOut} Pause{p.sitOut>1?'n':''}</>}
-                    </div>
                   </div>
+                  <LbStats played={p.played} wins={p.wins} losses={p.losses} pauses={p.sitOut}/>
                   <button onClick={()=>setEditPtsId(p.id)}
                     title="Punkte anpassen"
                     style={{textAlign:'right',background:'none',border:'none',cursor:'pointer',
@@ -11828,6 +11867,7 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
         {/* Full Leaderboard */}
         <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
           overflow:'hidden',flex:1,minHeight:120,display:'flex',flexDirection:'column'}}>
+          <LbHead trail={tourney.winMode==='wins'?'SIEGE':'PKT'}/>
           <div style={{overflowY:'auto',WebkitOverflowScrolling:'touch'}}>
             {sortedLb.map((p,i)=>(
               <div key={p.id} style={{display:'flex',alignItems:'center',padding:'12px 16px',
@@ -11837,15 +11877,13 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
                   {i<3?<MedalIcon size={20} rank={i+1}/>:`${i+1}`}
                 </div>
                 <div style={{width:8,height:8,borderRadius:'50%',background:p.color,flexShrink:0}}/>
-                <div style={{flex:1}}>
-                  <div style={{color:T.t1,fontSize:16,fontWeight:i===0?700:600}}>{p.name}</div>
-                  <div style={{color:T.t3,fontSize:11}}>
-                    {p.played} Spiele, {p.wins}S {p.losses}N
-                    {p.sitOut>0&&<>, {p.sitOut} Pause{p.sitOut>1?'n':''}</>}
-                  </div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{color:T.t1,fontSize:15,fontWeight:i===0?700:600,
+                    overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.name}</div>
                 </div>
+                <LbStats played={p.played} wins={p.wins} losses={p.losses} pauses={p.sitOut}/>
                 <div style={{textAlign:'right',display:'flex',flexDirection:'column',
-                  alignItems:'flex-end',gap:2}}>
+                  alignItems:'flex-end',gap:2,minWidth:38,flexShrink:0}}>
                   <div style={{color:T.o,fontSize:16,fontWeight:800}}>
                     {tourney.winMode==='wins'?p.totalWins:p.totalPts}
                   </div>
@@ -17390,6 +17428,8 @@ function LigaScreen({profile,onHome}){
           return(
             <div key={g} style={card}>
               {cap(`Gruppe ${g}, Court ${LIGA_GROUPS.indexOf(g)+1}`)}
+              <LbHead lead="TEAM" trail="TORE" withPauses={false}
+                rankW={20} dot={false} gap={9} pad="0 0 6px"/>
               {table.map(r=>(
                 <div key={r.team.id} style={{display:'flex',alignItems:'center',gap:9,
                   padding:'7px 0',borderBottom:`1px solid ${T.sep}`,minWidth:0}}>
@@ -17400,12 +17440,10 @@ function LigaScreen({profile,onHome}){
                     overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
                     {ligaTeamLabel(liga,r.team.id)}
                   </span>
-                  <span style={{color:T.t3,fontSize:12,flexShrink:0}}>{r.played} Sp.</span>
-                  <span style={{color:T.t2,fontSize:12.5,fontWeight:700,flexShrink:0}}>
+                  <LbStats played={r.played} wins={r.w} losses={r.l} withPauses={false}/>
+                  <span style={{color:T.o,fontSize:13,fontWeight:900,minWidth:38,
+                    textAlign:'right',flexShrink:0,fontVariantNumeric:'tabular-nums'}}>
                     {r.gf}:{r.ga}
-                  </span>
-                  <span style={{color:T.o,fontSize:14,fontWeight:900,width:26,textAlign:'right'}}>
-                    {r.w}S
                   </span>
                 </div>
               ))}

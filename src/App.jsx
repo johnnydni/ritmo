@@ -249,8 +249,7 @@ function BetaLanding({onLogin,onRegister}){
         <div style={{maxWidth:340,display:'flex',flexDirection:'column',gap:18}}>
           <div style={{color:T.t3,fontSize:11,fontWeight:800,letterSpacing:2.5,
             textTransform:'uppercase'}}>Coming Soon</div>
-          <div style={{color:T.t1,fontSize:24,fontWeight:900,letterSpacing:-.4,lineHeight:1.2,
-            fontStyle:'italic'}}>
+          <div style={{color:T.t1,fontSize:24,fontWeight:900,letterSpacing:-.4,lineHeight:1.2}}>
             Bald im Google Play Store<br/>und App Store erhältlich!
           </div>
         </div>

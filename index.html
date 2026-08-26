@@ -44,8 +44,13 @@
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <!-- iOS unterstützt KEIN SVG als Touch-Icon — PNG nötig, sonst
-         fällt die Home-Screen-Installation auf Defaults zurück. -->
-    <link rel="apple-touch-icon" href="./assets/ritmohigh.png" />
+         fällt die Home-Screen-Installation auf Defaults zurück.
+         Und: iOS kennt für Home-Screen-Icons keine Transparenz und
+         legt alles auf WEISS. Das Logo ist weiß auf transparent —
+         auf dem Home-Screen blieb deshalb eine fast leere weiße
+         Kachel übrig. Die icon-*.png tragen Schwarz als Fläche
+         (RGB ohne Alphakanal), gebaut von tools/make-icons.py. -->
+    <link rel="apple-touch-icon" sizes="180x180" href="./assets/icon-180.png" />
     <!-- Web App Manifest: neuere iOS-Versionen richten die installierte
          Home-Screen-App hieran aus (display/theme/background) — ohne
          Manifest boxt iOS die App teils mit schwarzen Balken ein. -->

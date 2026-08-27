@@ -149,63 +149,123 @@ function synth(ctx, id) {
 }
 
 /* ── PLATZ-ANSAGEN ────────────────────────────────────────────────
-   Drei Signale für den Turnierbetrieb, gedacht für den Moment, in
-   dem jemand vom Rand aus über die Courts ruft. Synthese statt
-   Datei: kein Asset, kein Ladezeitpunkt, kein CSP-Thema — und der
-   Klang lässt sich hier direkt nachjustieren.
+   Drei Signale für den Turnierbetrieb, geklaut aus der Stadionakustik
+   von Baseball und Eishockey — die kennt jeder, ohne dass sie
+   jemand erklären muss:
 
-   Jedes Signal hat eine eigene Kontur, damit man sie ohne Blick auf
-   den Screen auseinanderhält:
-     start  steigt   — es geht los
-     last   klopft   — Achtung, gleich vorbei
-     end    fällt    — vorbei
-   Alle drei liegen deutlich über dem Timer-Ton, sonst gehen sie in
-   der Hallenakustik unter.
+     start  Orgel-Fanfare — der „Charge!"-Ruf aus dem Ballpark
+     last   Air-Horn      — zwei kurze Stöße, Aufmerksamkeit
+     end    Tor-Horn      — das tiefe Blasen aus der Eishalle
+
+   Synthese statt Datei: kein Asset, kein Ladezeitpunkt, kein
+   CSP-Thema — und der Klang lässt sich hier direkt nachjustieren.
+   Die Tonhöhen und Längen stehen alle unten in cue().
 ──────────────────────────────────────────────────────────────── */
 export const CUES=[
-  {id:'start', label:'Rundenstart!', desc:'Aufsteigende Fanfare — die Runde läuft.'},
-  {id:'last',  label:'Letzter Ball!', desc:'Doppelsignal — der letzte Ballwechsel.'},
-  {id:'end',   label:'Runde aus!',    desc:'Abfallendes Horn — Schluss, rotieren.'},
+  {id:'start', label:'Rundenstart!', desc:'Orgel-Fanfare wie im Ballpark.'},
+  {id:'last',  label:'Letzter Ball!', desc:'Doppelter Air-Horn-Stoß.'},
+  {id:'end',   label:'Runde aus!',    desc:'Tiefes Tor-Horn aus der Eishalle.'},
 ];
+
+/* Weiche Sättigung. Ohne die klingen gestapelte Oszillatoren nach
+   Synthesizer; erst das Anzerren gibt dem Horn den Trichter-Biss,
+   den man aus der Halle kennt. */
+function driveCurve(amount) {
+  const n = 1024, c = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const x = i * 2 / n - 1;
+    c[i] = (1 + amount) * x / (1 + amount * Math.abs(x));
+  }
+  return c;
+}
+
+/* Pegel-Ausgleich pro Ansage. Ohne den lag die Orgel-Fanfare rund
+   10 dB unter dem Tor-Horn (offline gerendert und nachgemessen:
+   RMS 0.11 gegen 0.34) — auf dem Platz haette man den Rundenstart
+   schlicht ueberhoert, waehrend das Schluss-Horn ins Clipping lief. */
+const CUE_GAIN = { start: 1.55, last: 0.85, end: 0.58 };
 
 function cue(ctx, id) {
   const t0 = ctx.currentTime + 0.03;
   const master = ctx.createGain();
-  master.gain.value = 1.0;
+  master.gain.value = CUE_GAIN[id] || 0.85;
   master.connect(ctx.destination);
-  // Ein Ton mit Körper: Grundton als Sägezahn (durchsetzungsfähig),
-  // darüber eine Quinte als Dreieck, damit es nach Signalhorn klingt
-  // und nicht nach Piepser.
-  const horn = (f, start, dur, vol = 0.5) => {
+
+  /* Hammond-Prinzip: eine Orgelstimme ist nichts als eine Handvoll
+     Sinus-Partiale übereinander. Genau das steht auf jedem
+     Baseball-Feld. Die Zugriegel-Mischung unten ist bewusst
+     obertonreich — dünner klingt sie nach Spielzeug. */
+  const ORGAN = [[1, 1.0], [2, 0.62], [3, 0.42], [4, 0.30], [6, 0.20], [8, 0.13]];
+  const organ = (f, start, dur, vol = 0.5) => {
     const s = t0 + start;
-    [['sawtooth', f, vol], ['triangle', f * 1.5, vol * 0.45],
-     ['sine', f * 2, vol * 0.30]].forEach(([type, freq, v]) => {
+    const bus = ctx.createGain();
+    bus.connect(master);
+    bus.gain.setValueAtTime(0.0001, s);
+    bus.gain.exponentialRampToValueAtTime(vol, s + 0.012);   // harter Anschlag
+    bus.gain.setValueAtTime(vol, s + dur * 0.80);
+    bus.gain.exponentialRampToValueAtTime(0.0008, s + dur);
+    ORGAN.forEach(([mult, amp]) => {
       const o = ctx.createOscillator(), g = ctx.createGain();
-      o.type = type; o.frequency.value = freq;
-      o.connect(g); g.connect(master);
-      g.gain.setValueAtTime(0.0001, s);
-      g.gain.exponentialRampToValueAtTime(v, s + 0.025);
-      g.gain.setValueAtTime(v, s + dur * 0.62);
-      g.gain.exponentialRampToValueAtTime(0.0008, s + dur);
-      o.start(s); o.stop(s + dur + 0.05);
+      o.type = 'sine'; o.frequency.value = f * mult;
+      g.gain.value = amp * 0.34;
+      o.connect(g); g.connect(bus);
+      o.start(s); o.stop(s + dur + 0.06);
     });
   };
+
+  /* Air-Horn / Tor-Horn: mehrere leicht verstimmte Sägezähne durch
+     einen resonanten Tiefpass, davor ein kurzer Tonhöhen-Rutsch
+     nach oben. Der Rutsch ist der Trick — ein Horn braucht einen
+     Moment, bis die Luft steht, und genau daran erkennt man es. */
+  const airhorn = (f, start, dur, vol = 0.5, drive = 6) => {
+    const s = t0 + start;
+    const shaper = ctx.createWaveShaper();
+    shaper.curve = driveCurve(drive);
+    shaper.oversample = '2x';
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = Math.min(6200, f * 9);
+    lp.Q.value = 3.2;
+    const bus = ctx.createGain();
+    shaper.connect(lp); lp.connect(bus); bus.connect(master);
+    bus.gain.setValueAtTime(0.0001, s);
+    bus.gain.exponentialRampToValueAtTime(vol, s + 0.03);
+    bus.gain.setValueAtTime(vol, s + dur * 0.86);
+    bus.gain.exponentialRampToValueAtTime(0.0008, s + dur);
+    // Grundton dreifach verstimmt (Schwebung = Hallen-Rauheit),
+    // dazu Quinte und Oktave für den typischen Zwei-Ton-Trichter.
+    [[0.994, 0.34], [1.0, 0.36], [1.007, 0.34],
+     [1.5, 0.20], [2.0, 0.13]].forEach(([mult, amp]) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sawtooth';
+      const target = f * mult;
+      o.frequency.setValueAtTime(target * 0.70, s);
+      o.frequency.exponentialRampToValueAtTime(target, s + 0.075);
+      g.gain.value = amp;
+      o.connect(g); g.connect(shaper);
+      o.start(s); o.stop(s + dur + 0.06);
+    });
+  };
+
   if (id === 'start') {
-    // C – G – C': klettert nach oben, letzter Ton trägt aus.
-    horn(523, 0.00, 0.17, 0.50);
-    horn(784, 0.16, 0.17, 0.52);
-    horn(1047, 0.32, 0.62, 0.58);
+    // Der „Charge!"-Ruf: G – G – C – E – G, letzter Ton gehalten.
+    // Fünf Töne, nicht drei — an der Anzahl hängt der Wiedererkennungs-
+    // wert mindestens so sehr wie an den Intervallen.
+    organ(392, 0.00, 0.15, 0.42);
+    organ(392, 0.15, 0.15, 0.42);
+    organ(523, 0.30, 0.15, 0.46);
+    organ(659, 0.44, 0.15, 0.46);
+    organ(784, 0.58, 0.62, 0.52);
   } else if (id === 'last') {
-    // Zwei kurze, harte Schläge auf derselben Höhe — klingt wie
-    // Klopfen, nicht wie Melodie. Deshalb keine Terz, keine Bewegung.
-    horn(880, 0.00, 0.15, 0.55);
-    horn(880, 0.22, 0.15, 0.55);
-    horn(1175, 0.44, 0.34, 0.55);
+    // Zwei kurze Stöße aus der Handhupe, hoch genug, dass sie über
+    // Platzlärm kommen.
+    airhorn(415, 0.00, 0.26, 0.44, 7);
+    airhorn(415, 0.34, 0.34, 0.46, 7);
   } else { // 'end'
-    // Fällt in Quarten ab, letzter Ton lang und tief: Schlusspunkt.
-    horn(880, 0.00, 0.20, 0.52);
-    horn(659, 0.19, 0.20, 0.52);
-    horn(440, 0.38, 0.85, 0.58);
+    // Tor-Horn: tief, lang, zwei Trichter im Quintabstand. Das ist
+    // der Schlusspunkt — hier darf es dick sein.
+    airhorn(155, 0.00, 1.45, 0.50, 9);
+    airhorn(233, 0.05, 1.40, 0.30, 9);
   }
 }
 

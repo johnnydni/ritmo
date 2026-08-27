@@ -148,6 +148,80 @@ function synth(ctx, id) {
   }
 }
 
+/* ── PLATZ-ANSAGEN ────────────────────────────────────────────────
+   Drei Signale für den Turnierbetrieb, gedacht für den Moment, in
+   dem jemand vom Rand aus über die Courts ruft. Synthese statt
+   Datei: kein Asset, kein Ladezeitpunkt, kein CSP-Thema — und der
+   Klang lässt sich hier direkt nachjustieren.
+
+   Jedes Signal hat eine eigene Kontur, damit man sie ohne Blick auf
+   den Screen auseinanderhält:
+     start  steigt   — es geht los
+     last   klopft   — Achtung, gleich vorbei
+     end    fällt    — vorbei
+   Alle drei liegen deutlich über dem Timer-Ton, sonst gehen sie in
+   der Hallenakustik unter.
+──────────────────────────────────────────────────────────────── */
+export const CUES=[
+  {id:'start', label:'Rundenstart!', desc:'Aufsteigende Fanfare — die Runde läuft.'},
+  {id:'last',  label:'Letzter Ball!', desc:'Doppelsignal — der letzte Ballwechsel.'},
+  {id:'end',   label:'Runde aus!',    desc:'Abfallendes Horn — Schluss, rotieren.'},
+];
+
+function cue(ctx, id) {
+  const t0 = ctx.currentTime + 0.03;
+  const master = ctx.createGain();
+  master.gain.value = 1.0;
+  master.connect(ctx.destination);
+  // Ein Ton mit Körper: Grundton als Sägezahn (durchsetzungsfähig),
+  // darüber eine Quinte als Dreieck, damit es nach Signalhorn klingt
+  // und nicht nach Piepser.
+  const horn = (f, start, dur, vol = 0.5) => {
+    const s = t0 + start;
+    [['sawtooth', f, vol], ['triangle', f * 1.5, vol * 0.45],
+     ['sine', f * 2, vol * 0.30]].forEach(([type, freq, v]) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = type; o.frequency.value = freq;
+      o.connect(g); g.connect(master);
+      g.gain.setValueAtTime(0.0001, s);
+      g.gain.exponentialRampToValueAtTime(v, s + 0.025);
+      g.gain.setValueAtTime(v, s + dur * 0.62);
+      g.gain.exponentialRampToValueAtTime(0.0008, s + dur);
+      o.start(s); o.stop(s + dur + 0.05);
+    });
+  };
+  if (id === 'start') {
+    // C – G – C': klettert nach oben, letzter Ton trägt aus.
+    horn(523, 0.00, 0.17, 0.50);
+    horn(784, 0.16, 0.17, 0.52);
+    horn(1047, 0.32, 0.62, 0.58);
+  } else if (id === 'last') {
+    // Zwei kurze, harte Schläge auf derselben Höhe — klingt wie
+    // Klopfen, nicht wie Melodie. Deshalb keine Terz, keine Bewegung.
+    horn(880, 0.00, 0.15, 0.55);
+    horn(880, 0.22, 0.15, 0.55);
+    horn(1175, 0.44, 0.34, 0.55);
+  } else { // 'end'
+    // Fällt in Quarten ab, letzter Ton lang und tief: Schlusspunkt.
+    horn(880, 0.00, 0.20, 0.52);
+    horn(659, 0.19, 0.20, 0.52);
+    horn(440, 0.38, 0.85, 0.58);
+  }
+}
+
+/* Spielt eine Platz-Ansage (siehe CUES). Unbekannte id → nichts. */
+export function playCue(id) {
+  try {
+    const ctx = getCtx();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+    if (!CUES.some(c => c.id === id)) return;
+    cue(ctx, id);
+  } catch (e) {
+    console.warn('Audio cue:', e);
+  }
+}
+
 /* Spielt einen RINGS-Ton. Unbekannte/leere id → RINGS[0] (Standard,
    = RITMO-Datei), damit alte gespeicherte IDs nie in Stille resultieren. */
 export function playRing(id) {

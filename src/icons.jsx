@@ -871,3 +871,13 @@ export function MonitorIcon({size=22,color='currentColor'}){
     <path d="M9 20h6M12 16v4"/>
   </svg>);
 }
+
+// Lautsprecher — Platz-Ansagen im laufenden Turnier
+export function SpeakerIcon({size=24,color='currentColor'}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 9.5h3.2L12 5.4v13.2L7.2 14.5H4a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1z"/>
+    <path d="M15.8 9.2a4 4 0 0 1 0 5.6"/>
+    <path d="M18.4 6.6a7.6 7.6 0 0 1 0 10.8"/>
+  </svg>);
+}

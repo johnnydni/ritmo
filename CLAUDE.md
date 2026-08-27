@@ -33,7 +33,7 @@ Pure / side-effect-free modules have been extracted from the original mega-file.
 | [src/levels.js](src/levels.js) | `getLevelLabel` / `getLevelTier` / `getLevelColor` (L1..L7 mapping) and `estimateLevel(profile)` for the RITMO questionnaire. | Pure functions; safe to import anywhere. |
 | [src/game.js](src/game.js) | `bo3R` / `amR` reducers + initial states `B0` / `A0` + helpers `ptD`, `wG`. | Pure; UI-agnostic. |
 | [src/tournament.js](src/tournament.js) | `genAmericanoRound`, `genMexicanoRound`, `calcLeaderboard`, `PCOLS`, `shuffle`. | Pure round-generation + standings. |
-| [src/audio.js](src/audio.js) | `RINGS` config + `playRing(id)` synthesised via Web Audio API. | No audio files. |
+| [src/audio.js](src/audio.js) | `RINGS` (timer tones) + `CUES` (the three court calls behind the speaker button in a running tournament) plus `playRing(id)` / `playCue(id)`, synthesised via Web Audio API. | Two ring tones are mp3; everything else is synthesised, no asset. |
 | [src/auth.js](src/auth.js) | `auth.*` methods + `sb()` wrapper around `window.supabase`. Email-only, password-validated. No localStorage mock fallback. | `ritmo` / `padelhaus` is a deliberate dev bypass. |
 | [src/icons.jsx](src/icons.jsx) | Every small SVG glyph + brand logos. | Imports `T` from theme; uses `getAssetBase()` for PNG fallback paths. |
 | [src/padelStyles.js](src/padelStyles.js) | `PADEL_STYLES` (6 archetypes), `PADEL_QUIZ`, `computeStyle`, `STYLE_IMAGES`. | Content/data; no React. |

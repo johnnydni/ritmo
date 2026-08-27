@@ -31,7 +31,7 @@ import { lsGet, lsSet, getAssetBase, getInitials, processImageUpload, safeImageS
 import { getLevelLabel, getLevelTier, getLevelColor, estimateLevel } from "./levels.js";
 import { B0, A0, PL, ptD, wG, bo3R, amR, DEFCFG } from "./game.js";
 import { PCOLS, shuffle, genAmericanoRound, genMexicanoRound, calcLeaderboard, FORMATS, FORMAT_RULES, genRound } from "./tournament.js";
-import { RINGS, playRing, unlockAudio } from "./audio.js";
+import { RINGS, CUES, playRing, playCue, unlockAudio } from "./audio.js";
 import { auth } from "./auth.js";
 import { readNamesFromImage, releaseOcr } from "./ocr.js";
 import { LEGAL_SECTIONS, STAND } from "./legal.js";
@@ -45,6 +45,7 @@ import {
   HeroRulesVisual, HeroJourneyVisual,
   // Settings + RITMO Post line-art icons
   SteeringWheelIcon, PaletteIcon, EyeIcon, BellIcon, LockIcon, DoorOutIcon,
+  SpeakerIcon,
   ChevronRightIcon, AirPlayIcon, CoffeeCupIcon,
   ArchetypeGlyph, PauseIcon,
   // Emoji-Ersatz-Glyphen
@@ -11276,6 +11277,90 @@ function RoundHistorySheet({tourney,onClose}){
    Der Host bleibt Single Source of Truth: sein Gerät rechnet Runden
    und Standings, die Session ist Spiegel + Score-Briefkasten
    (Submissions mit Host-Freigabe — bestehende Online-Maschinerie). */
+/* Platz-Ansagen: die drei Rufe, die im Turnierbetrieb sowieso über
+   den Platz gehen, als Knopfdruck. Kein Automatismus — der Host
+   entscheidet, wann er drückt, und sieht am Leuchten, welcher Ton
+   zuletzt lief. */
+function SoundCueSheet({onClose}){
+  const sheet=useSheetDrag(onClose);
+  const[last,setLast]=useState(null);
+  const fire=id=>{
+    buzz(14);
+    unlockAudio();          // iOS: Context lebt nur nach einer Geste
+    playCue(id);
+    setLast(id);
+    setTimeout(()=>setLast(l=>l===id?null:l),900);
+  };
+  return(
+    <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:300,
+      background:'rgba(0,0,0,.7)',backdropFilter:'blur(4px)',display:'flex',
+      alignItems:'flex-end',justifyContent:'center',animation:'fadeIn .15s ease'}}>
+      <div onClick={e=>e.stopPropagation()} className="slide-up"
+        ref={sheet.ref} {...sheet.handlers}
+        style={{background:T.card,borderTopLeftRadius:20,borderTopRightRadius:20,
+          borderTop:`1px solid ${T.border}`,width:'100%',maxWidth:480,
+          padding:'16px 18px calc(env(safe-area-inset-bottom,0px) + 18px)',
+          maxHeight:'86vh',overflowY:'auto',WebkitOverflowScrolling:'touch',
+          ...sheet.style}}>
+        <div style={{width:36,height:4,borderRadius:2,background:T.border,margin:'0 auto 14px'}}/>
+        <div style={{display:'flex',alignItems:'center',gap:9,marginBottom:3}}>
+          <span style={{color:T.o,display:'inline-flex'}}><SpeakerIcon size={19}/></span>
+          <div style={{color:T.t1,fontSize:17,fontWeight:800}}>Platz-Ansagen</div>
+        </div>
+        <div className="txt" style={{color:T.t3,fontSize:13.5,fontStyle:'italic',
+          lineHeight:1.5,marginBottom:16}}>
+          Tippen und über den Platz schallen lassen.
+        </div>
+
+        {CUES.map((c,i)=>{
+          const on=last===c.id;
+          return(
+            <button key={c.id} onClick={()=>fire(c.id)}
+              style={{width:'100%',display:'flex',alignItems:'center',gap:14,
+                marginBottom:i<CUES.length-1?10:4,padding:'15px 16px',
+                borderRadius:16,cursor:'pointer',textAlign:'left',
+                background:on?T.oSoft:T.card2,
+                border:`1px solid ${on?T.o:T.border}`,
+                transition:'background .18s,border-color .18s'}}>
+              <span style={{width:40,height:40,borderRadius:13,flexShrink:0,
+                display:'flex',alignItems:'center',justifyContent:'center',
+                background:on?T.o:'transparent',
+                border:`1px solid ${on?T.o:T.border}`,
+                color:on?T.bg:T.o,transition:'background .18s,color .18s'}}>
+                <SpeakerIcon size={19} color="currentColor"/>
+              </span>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{color:on?T.o:T.t1,fontSize:16,fontWeight:800,
+                  letterSpacing:-.2,transition:'color .18s'}}>{c.label}</div>
+                <div className="txt" style={{color:T.t3,fontSize:12.5,
+                  fontStyle:'italic',marginTop:2,lineHeight:1.4}}>{c.desc}</div>
+              </div>
+              {/* Schallwellen laufen mit, solange der Ton spielt. */}
+              <span aria-hidden="true" style={{display:'flex',alignItems:'flex-end',
+                gap:3,height:20,flexShrink:0,opacity:on?1:.25,
+                transition:'opacity .18s'}}>
+                {[0,1,2].map(k=>(
+                  <span key={k} className={on?'pulse-dot':undefined}
+                    style={{width:3,borderRadius:2,background:on?T.o:T.t4,
+                      height:[9,17,12][k],
+                      animationDelay:`${k*.12}s`}}/>
+                ))}
+              </span>
+            </button>
+          );
+        })}
+
+        <button onClick={onClose}
+          style={{width:'100%',marginTop:12,padding:'13px',borderRadius:15,
+            background:'none',border:`1px solid ${T.border}`,color:T.t2,
+            fontSize:14,fontWeight:700,cursor:'pointer'}}>
+          Schließen
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function LiveShareSheet({pin,busy,err,onClose,onEnd}){
   const sheet=useSheetDrag(onClose);
   const[ask,setAsk]=useState(false);
@@ -11380,6 +11465,7 @@ function LiveShareSheet({pin,busy,err,onClose,onEnd}){
 function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onMatchLogged,onLive}){
   const[tab,setTab]=useState('round');
   const[confirmEnd,setConfirmEnd]=useState(false);
+  const[cueSheet,setCueSheet]=useState(false);
   const[showSitOutInfo,setShowSitOutInfo]=useState(false);
   // Runden-Historie-Sheet + Transparenz-Popup vor dem Rundenwechsel.
   const[showHistory,setShowHistory]=useState(false);
@@ -11956,11 +12042,18 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
           }
         },
         {
+          icon:<SpeakerIcon size={20} color={T.o}/>,
+          onClick:()=>{buzz(6);setCueSheet(true);},
+          label:'Platz-Ansagen',
+        },
+        {
           icon:<EditIcon size={20} color={T.o}/>,
           onClick:onEdit,
           label:'Turnier bearbeiten',
         }
       ]}/>
+
+      {cueSheet&&<SoundCueSheet onClose={()=>setCueSheet(false)}/>}
 
       {confirmEnd&&(
         <ResetModal

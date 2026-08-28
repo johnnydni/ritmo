@@ -457,9 +457,15 @@ export function genRound(format,players,{history=[],leaderboard=[],maxCourts=nul
      'none'  Gar nichts. Eine Pause ist dann schlicht eine Runde
              ohne Punkte — haerter, aber fuer manche Runden das
              ehrlichere Bild.
+     'fixed' Ein fester Wert je Pause, pausePts. Unabhaengig davon,
+             was auf den Courts passiert ist — planbar, und bei
+             Turnieren mit festem Punktelimit oft das Erwartete.
+             Gutgeschrieben wird als bonusPts, auch in der Siege-
+             Wertung: dort sortiert die App nach Siegen und nimmt
+             Punkte als Gleichstand-Kriterium.
    Die Boni liegen weiterhin auf eigenen Feldern (bonusPts/bonusWins)
    und werden erst am Ende in totalPts/totalWins gefaltet. */
-export function calcLeaderboard(players,rounds,winMode='points',pauseMode='mean'){
+export function calcLeaderboard(players,rounds,winMode='points',pauseMode='mean',pausePts=0){
   const stats={};
   // adjPts/adjWins = manuelle Korrekturen vom Host (Leaderboard-Edit).
   // Liegen auf dem Spieler-Record, damit sie persistieren + online
@@ -492,6 +498,12 @@ export function calcLeaderboard(players,rounds,winMode='points',pauseMode='mean'
   if(pauseMode==='none'){
     // Kein Ausgleich gewuenscht — sitOut wird weiter gezaehlt (die
     // Tabelle zeigt die Pausen), aber ohne Gutschrift.
+  } else if(pauseMode==='fixed'){
+    // Fester Wert je Pause. Kein Blick auf die Rundenergebnisse noetig,
+    // also auch dann gueltig, wenn in der Runde noch nichts bestaetigt
+    // ist — anders als beim Mittelwert.
+    const per=Math.max(0,Math.round(Number(pausePts)||0));
+    if(per>0) Object.values(stats).forEach(st=>{ st.bonusPts+=st.sitOut*per; });
   } else if(winMode==='points'){
     // Mittelwert (mean, aufgerundet) per-round bonus for sit-outs
     rounds.forEach(round=>{

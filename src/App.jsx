@@ -7895,7 +7895,7 @@ function TournamentWizard({onClose,onFinish,canStart,
   numCourts,setNumCourts,maxCourts,courtNames,setCourtName,
   courtSingles,toggleCourtSingle,
   startTime,setStartTime,endTime,setEndTime,roundPrio,setRoundPrio,
-  roundDur,setRoundDur,pauseMode,setPauseMode,
+  roundDur,setRoundDur,pauseMode,setPauseMode,pausePts,setPausePts,
   suggest,pauseStats,nameHistory}){
   const[step,setStep]=useState(0);
   const inputRefs=useRef({});
@@ -7938,6 +7938,14 @@ function TournamentWizard({onClose,onFinish,canStart,
     display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0};
   const infoBox={padding:'12px 16px',borderRadius:13,background:T.oSoft,
     border:`1px solid ${T.o}`,color:T.t2,fontSize:12.5,lineHeight:1.6};
+  // Abschnitts-Überschrift mit Glyphe — gibt den Blöcken auf den
+  // dichteren Schritten einen Ankerpunkt statt nur Kapitälchen.
+  const labelRow=(icon,text)=>(
+    <div style={{...label,display:'flex',alignItems:'center',gap:7}}>
+      <span style={{color:T.o,display:'inline-flex',flexShrink:0}}>{icon}</span>
+      {text}
+    </div>
+  );
 
   // Zusammenfassungs-Zeilen (Schritt 6) — [Label, Wert, Ziel-Schritt].
   const fmtLabel=meta.name;
@@ -7948,13 +7956,18 @@ function TournamentWizard({onClose,onFinish,canStart,
     ['Courts',String(numCourts),2],
     ['Zeit',startTime&&endTime?`${startTime}–${endTime}`:'offen',3],
     ['Runden',`${roundDur} Min, ${roundPrio==='variety'?'jeder mit jedem':'längere Runden'}`,4],
-    ['Pausen',pauseMode==='none'?'ohne Ausgleich':'mit Ausgleich',4],
+    ['Pausen',pauseMode==='none'?'ohne Ausgleich'
+      :pauseMode==='fixed'?`${pausePts} Punkt${pausePts===1?'':'e'} je Pause`
+      :'mit Ausgleich',4],
     ['Wertung',wmLabel,5],
     ...(name.trim()?[['Name',name.trim(),5]]:[]),
   ];
 
   return(
-    <div className="fi" style={{position:'fixed',inset:0,zIndex:300,background:T.bg,
+    // Derselbe Tiefen-Verlauf wie auf den Screens — der Assistent
+    // stand vorher als einziges Vollbild auf flachem Schwarz.
+    <div className="fi" style={{position:'fixed',inset:0,zIndex:300,
+      background:T.bg,backgroundImage:'var(--bgGrad)',
       display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 18px)'}}>
 
@@ -8016,7 +8029,7 @@ function TournamentWizard({onClose,onFinish,canStart,
             <div style={stepTitle}>Wer spielt mit?</div>
             <div style={stepSub}>Mindestens 4 Spieler — Enter springt zum nächsten Namen.</div>
             {histFree.length>0&&(<>
-              <div style={label}>Zuletzt dabei</div>
+              {labelRow(<PeopleIcon size={13}/>,'Zuletzt dabei')}
               <div style={{display:'flex',flexWrap:'wrap',gap:6,marginBottom:16}}>
                 {histFree.map(n=>(
                   <button key={n} onClick={()=>{buzz(6);addPlayerNamed(n);}}
@@ -8147,7 +8160,7 @@ function TournamentWizard({onClose,onFinish,canStart,
             <div style={{color:T.t3,fontSize:12,textAlign:'center',marginBottom:18}}>
               Frei wählbar — pro Court spielen 4, überzählige Courts bleiben frei.
             </div>
-            <div style={label}>Court-Namen (optional)</div>
+            {labelRow(<CourtIcon size={13}/>,'Court-Namen (optional)')}
             {Array.from({length:numCourts}).map((_,i)=>(
               <div key={i} style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
                 <input value={courtNames[i]??''} onChange={e=>setCourtName(i,e.target.value)}
@@ -8186,7 +8199,7 @@ function TournamentWizard({onClose,onFinish,canStart,
             <div style={stepSub}>Der Rhythmus des Turniers — Rundenlänge, Paarungen und
               der Umgang mit Pausen.</div>
 
-            <div style={label}>Rundendauer</div>
+            {labelRow(<StopwatchIcon size={13}/>,'Rundendauer')}
             <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:14}}>
               <button onClick={()=>setRoundDur(Math.max(4,roundDur-1))} style={stepBtn}>−</button>
               <div style={{flex:1,textAlign:'center',color:T.t1,fontSize:24,fontWeight:900}}>
@@ -8212,7 +8225,7 @@ function TournamentWizard({onClose,onFinish,canStart,
               </div>
             )}
 
-            <div style={label}>Paarungen</div>
+            {labelRow(<PeopleIcon size={13}/>,'Paarungen')}
             <div style={{display:'flex',gap:8,marginBottom:8}}>
               <button onClick={()=>setRoundPrio('variety')} style={chip(roundPrio==='variety')}>
                 Jeder mit jedem
@@ -8227,21 +8240,59 @@ function TournamentWizard({onClose,onFinish,canStart,
                 :'Weniger, dafür längere Runden — dann trifft nicht jede:r auf jeden.'}
             </div>
 
-            <div style={label}>Wenn jemand pausiert</div>
+            {labelRow(<PauseIcon size={13}/>,'Wenn jemand pausiert')}
             <div style={{display:'flex',gap:8,marginBottom:8}}>
               <button onClick={()=>setPauseMode('mean')} style={chip(pauseMode==='mean')}>
                 Ausgleich
+              </button>
+              <button onClick={()=>setPauseMode('fixed')} style={chip(pauseMode==='fixed')}>
+                Eigener Wert
               </button>
               <button onClick={()=>setPauseMode('none')} style={chip(pauseMode==='none')}>
                 Nichts
               </button>
             </div>
+
+            {/* Eigener Wert: fester Betrag je Pause. Bewusst mit
+                Schrittknöpfen UND Tastatur — auf dem Platz tippt
+                niemand gern, beim Aufsetzen schon. */}
+            {pauseMode==='fixed'&&(
+              <div className="fi" style={{display:'flex',alignItems:'center',gap:12,
+                marginBottom:10,padding:'10px 12px',borderRadius:14,
+                background:T.oSoft,border:`1px solid ${T.o}`}}>
+                <button onClick={()=>setPausePts(Math.max(0,(pausePts||0)-1))}
+                  aria-label="Ein Punkt weniger" style={{...stepBtn,width:34,height:34}}>−</button>
+                <div style={{flex:1,display:'flex',alignItems:'baseline',
+                  justifyContent:'center',gap:6}}>
+                  <input value={pausePts} inputMode="numeric" pattern="[0-9]*"
+                    aria-label="Punkte je Pause"
+                    onChange={e=>{
+                      const v=e.target.value.replace(/[^0-9]/g,'').slice(0,3);
+                      setPausePts(v===''?0:parseInt(v,10));
+                    }}
+                    style={{width:62,textAlign:'right',background:'none',border:'none',
+                      color:T.o,fontSize:26,fontWeight:900,outline:'none',padding:0,
+                      fontVariantNumeric:'tabular-nums'}}/>
+                  <span style={{color:T.t2,fontSize:13,fontWeight:700}}>
+                    Punkt{pausePts===1?'':'e'} je Pause
+                  </span>
+                </div>
+                <button onClick={()=>setPausePts(Math.min(999,(pausePts||0)+1))}
+                  aria-label="Ein Punkt mehr" style={{...stepBtn,width:34,height:34}}>+</button>
+              </div>
+            )}
+
             <div style={{color:T.t3,fontSize:12,lineHeight:1.55}}>
               {pauseMode==='none'
                 ?'Eine Pause ist eine Runde ohne Punkte — härter, dafür ungeschönt.'
-                :(winMode==='wins'
-                  ?'Die untere Tabellenhälfte bekommt +1 Sieg je Pause gutgeschrieben — niemand fällt durch eine erzwungene Pause weiter zurück.'
-                  :'Pausierende bekommen den aufgerundeten Rundenmittelwert gutgeschrieben — niemand wird durch eine erzwungene Pause benachteiligt.')}
+                :pauseMode==='fixed'
+                  ?(pausePts>0
+                    ?`Jede Pause bringt genau ${pausePts} Punkt${pausePts===1?'':'e'} — unabhängig davon, was auf den Courts passiert ist.`
+                      +(winMode==='wins'?' In der Siege-Wertung zählen sie als Gleichstand-Kriterium.':'')
+                    :'Bei 0 bleibt die Pause ohne Gutschrift — wie „Nichts".')
+                  :(winMode==='wins'
+                    ?'Die untere Tabellenhälfte bekommt +1 Sieg je Pause gutgeschrieben — niemand fällt durch eine erzwungene Pause weiter zurück.'
+                    :'Pausierende bekommen den aufgerundeten Rundenmittelwert gutgeschrieben — niemand wird durch eine erzwungene Pause benachteiligt.')}
             </div>
             {numCourts*4>=players.length&&(
               <div style={{color:T.t4,fontSize:11.5,lineHeight:1.55,marginTop:12}}>
@@ -8274,7 +8325,7 @@ function TournamentWizard({onClose,onFinish,canStart,
               {winMode==='wins'&&<span style={{color:T.o,fontSize:18,fontWeight:900,flexShrink:0}}>✓</span>}
             </button>
             <div style={{height:18}}/>
-            <div style={label}>Turniername (optional)</div>
+            {labelRow(<TrophyIcon size={13} color="currentColor"/>,'Turniername (optional)')}
             <input value={name} onChange={e=>setName(e.target.value)} maxLength={40}
               placeholder="z. B. Sunset Americano, Fr" style={inp}/>
           </>)}
@@ -8364,8 +8415,10 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
   // jeder gegen jeden (mehr Runden, dafür kürzer).
   const[roundPrio,setRoundPrio]=useState(saved?.roundPrio||'variety');
   // Pausen-Ausgleich: 'mean' = Pausierende bekommen etwas gutgeschrieben
-  // (Vorgabe), 'none' = eine Pause ist einfach eine Runde ohne Punkte.
+  // (Vorgabe), 'none' = eine Pause ist einfach eine Runde ohne Punkte,
+  // 'fixed' = fester Wert je Pause (pausePts).
   const[pauseMode,setPauseMode]=useState(saved?.pauseMode||'mean');
+  const[pausePts,setPausePts]=useState(saved?.pausePts??10);
   const[creatingOnline,setCreatingOnline]=useState(false);
   // Court-Namen — werden auf die Matches angewendet. Sparse-Array:
   // Index i = eigener Name fuer Court i, sonst Default "Court i+1".
@@ -8567,7 +8620,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
     const hist=lsGet('ritmo_player_history',[]);
     const cur=players.map(p=>(p.name||'').trim()).filter(n=>n&&!/^Spieler \d+$/i.test(n));
     lsSet('ritmo_player_history',[...new Set([...cur,...hist])].slice(0,24));
-    const lb=calcLeaderboard(players,[],winMode,pauseMode);
+    const lb=calcLeaderboard(players,[],winMode,pauseMode,pausePts);
     const r0=genRound(format,players,{leaderboard:lb,maxCourts:numCourts,singles});
     if(!r0) return; // defensiv — kann bei gültigem canStart nicht passieren
     onStart({
@@ -8577,7 +8630,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
       id:saved?.id,createdAt:saved?.createdAt,
       name:name.trim()||('Turnier '+new Date().toLocaleDateString('de-DE')),
       startTime,endTime,roundPrio,
-      players,format,winMode,pauseMode,
+      players,format,winMode,pauseMode,pausePts,
       numCourts,courtNames,courtSingles:singles,
       roundDurationMin:roundDur,
       rounds:[r0],
@@ -8745,26 +8798,62 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
 
           {/* Pausen-Ausgleich — dieselbe Einstellung wie im Assistenten,
               damit Formular und Assistent dasselbe Turnier beschreiben. */}
-          <div style={{color:T.t3,fontSize:11,fontWeight:600,margin:'16px 0 7px'}}>
+          <div style={{display:'flex',alignItems:'center',gap:6,
+            color:T.t3,fontSize:11,fontWeight:600,margin:'16px 0 7px'}}>
+            <span style={{color:T.o,display:'inline-flex'}}><PauseIcon size={12}/></span>
             Was bekommen Pausierende?
           </div>
           <div style={{display:'flex',background:T.card2,borderRadius:30,padding:4,gap:4,
             border:`1px solid ${T.border}`}}>
-            {[{v:'mean',l:'Ausgleich'},{v:'none',l:'Nichts'}].map(o=>(
+            {[{v:'mean',l:'Ausgleich'},{v:'fixed',l:'Eigener Wert'},{v:'none',l:'Nichts'}].map(o=>(
               <button key={o.v} onClick={()=>setPauseMode(o.v)}
-                style={{flex:1,padding:'10px',borderRadius:20,border:'none',cursor:'pointer',
-                  background:pauseMode===o.v?T.t4:'transparent',color:T.t1,fontSize:13,fontWeight:600,
+                style={{flex:1,padding:'10px 6px',borderRadius:20,border:'none',cursor:'pointer',
+                  background:pauseMode===o.v?T.t4:'transparent',color:T.t1,fontSize:12.5,fontWeight:600,
                   transition:'background .2s'}}>
                 {o.l}
               </button>
             ))}
           </div>
+          {pauseMode==='fixed'&&(
+            <div className="fi" style={{display:'flex',alignItems:'center',gap:12,marginTop:10,
+              padding:'10px 12px',borderRadius:14,background:T.oSoft,border:`1px solid ${T.o}`}}>
+              <button onClick={()=>setPausePts(Math.max(0,(pausePts||0)-1))}
+                aria-label="Ein Punkt weniger"
+                style={{width:32,height:32,borderRadius:11,background:T.card2,
+                  border:`1px solid ${T.border}`,color:T.t1,fontSize:17,fontWeight:800,
+                  cursor:'pointer',flexShrink:0}}>−</button>
+              <div style={{flex:1,display:'flex',alignItems:'baseline',
+                justifyContent:'center',gap:6}}>
+                <input value={pausePts} inputMode="numeric" pattern="[0-9]*"
+                  aria-label="Punkte je Pause"
+                  onChange={e=>{
+                    const v=e.target.value.replace(/[^0-9]/g,'').slice(0,3);
+                    setPausePts(v===''?0:parseInt(v,10));
+                  }}
+                  style={{width:56,textAlign:'right',background:'none',border:'none',
+                    color:T.o,fontSize:23,fontWeight:900,outline:'none',padding:0,
+                    fontVariantNumeric:'tabular-nums'}}/>
+                <span style={{color:T.t2,fontSize:12.5,fontWeight:700}}>
+                  Punkt{pausePts===1?'':'e'} je Pause
+                </span>
+              </div>
+              <button onClick={()=>setPausePts(Math.min(999,(pausePts||0)+1))}
+                aria-label="Ein Punkt mehr"
+                style={{width:32,height:32,borderRadius:11,background:T.card2,
+                  border:`1px solid ${T.border}`,color:T.t1,fontSize:17,fontWeight:800,
+                  cursor:'pointer',flexShrink:0}}>+</button>
+            </div>
+          )}
           <div style={{color:T.t3,fontSize:11.5,lineHeight:1.55,marginTop:8}}>
             {pauseMode==='none'
               ?'Eine Pause ist eine Runde ohne Punkte — härter, aber ungeschönt.'
-              :(winMode==='wins'
-                ?'Die untere Tabellenhälfte bekommt +1 Sieg je Pause.'
-                :'Pausierende bekommen den aufgerundeten Rundenmittelwert gutgeschrieben.')}
+              :pauseMode==='fixed'
+                ?(pausePts>0
+                  ?`Jede Pause bringt genau ${pausePts} Punkt${pausePts===1?'':'e'}.`
+                  :'Bei 0 bleibt die Pause ohne Gutschrift.')
+                :(winMode==='wins'
+                  ?'Die untere Tabellenhälfte bekommt +1 Sieg je Pause.'
+                  :'Pausierende bekommen den aufgerundeten Rundenmittelwert gutgeschrieben.')}
           </div>
         </div>
 
@@ -9143,7 +9232,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
           onClick:()=>onSaveDraft?.({
             id:saved?.id,createdAt:saved?.createdAt,
             name:name.trim(),startTime,endTime,roundPrio,
-            players,format,winMode,pauseMode,numCourts,roundDurationMin:roundDur,courtNames,courtSingles,
+            players,format,winMode,pauseMode,pausePts,numCourts,roundDurationMin:roundDur,courtNames,courtSingles,
           }),
           style:{width:56,height:56,background:T.card2,border:`1px solid ${T.border}`,color:T.t1},
         }]:[]),
@@ -9157,7 +9246,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
           if(isEdit){
             // Änderungen am laufenden Turnier → erst fragen, ob sie für
             // die aktuelle oder die nächste Runde wirksam werden.
-            setEditScopePrompt({players,format,winMode,pauseMode,numCourts,roundDurationMin:roundDur,
+            setEditScopePrompt({players,format,winMode,pauseMode,pausePts,numCourts,roundDurationMin:roundDur,
               name:name.trim(),startTime,endTime,roundPrio,courtNames,courtSingles:singles});
             return;
           }
@@ -9212,6 +9301,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,pro
           roundPrio={roundPrio} setRoundPrio={setRoundPrio}
           roundDur={roundDur} setRoundDur={setRoundDur}
           pauseMode={pauseMode} setPauseMode={setPauseMode}
+          pausePts={pausePts} setPausePts={setPausePts}
           suggest={suggest} pauseStats={pauseStats}
           nameHistory={nameHistory}/>
       )}
@@ -9347,7 +9437,7 @@ function OnlineTournamentLobby({pin,onHome,onStart,onCancel}){
         color:PCOLS[i%PCOLS.length],
         sessionParticipantId:p.id,
       }));
-      const lb=calcLeaderboard(tPlayers,[],session.winMode||'points',session.pauseMode);
+      const lb=calcLeaderboard(tPlayers,[],session.winMode||'points',session.pauseMode,session.pausePts);
       const r0=genRound(session.format||'americano',tPlayers,
         {leaderboard:lb,maxCourts:session.numCourts});
       if(!r0) throw new Error('Zu wenige Teams für dieses Format.');
@@ -9706,7 +9796,7 @@ function TournamentParticipantView({session,participantId,pin}){
   // das Endstand-Layout (Winner + komplettes Leaderboard) — gleicher
   // Inhalt wie TournamentLeaderboard für die lokale Variante.
   if(ts.finished&&ts.players&&ts.rounds){
-    const lb=calcLeaderboard(ts.players,ts.rounds,ts.winMode||'points',ts.pauseMode);
+    const lb=calcLeaderboard(ts.players,ts.rounds,ts.winMode||'points',ts.pauseMode,ts.pausePts);
     const sortedLb=lb.sort((a,b)=>ts.winMode==='points'
       ?b.totalPts-a.totalPts||b.totalWins-a.totalWins
       :b.totalWins-a.totalWins||b.totalPts-a.totalPts);
@@ -10101,7 +10191,7 @@ function TournamentMonitorView({session,pin}){
   const team=ids=>(ids||[]).map(id=>playerById(id)?.name||'?').join(' & ');
   const lbRounds=ts.finished?(ts.rounds||[]):(ts.rounds||[]).slice(0,ts.current);
   const lb=(ts.players&&ts.rounds)
-    ?calcLeaderboard(ts.players,lbRounds,ts.winMode||'points',ts.pauseMode)
+    ?calcLeaderboard(ts.players,lbRounds,ts.winMode||'points',ts.pauseMode,ts.pausePts)
       .sort((a,b)=>ts.winMode==='points'
         ?b.totalPts-a.totalPts||b.totalWins-a.totalWins
         :b.totalWins-a.totalWins||b.totalPts-a.totalPts)
@@ -11166,7 +11256,7 @@ function ViewSwitchIcon({mode='round',size=24,color=T.o}){
    Mittelwert dieser Runde, den kompletten Rechenweg (jede Team-
    Wertung × Spieler → Summe ÷ Wertungen → Mittelwert → aufgerundet)
    und wer ihn gutgeschrieben bekommt. */
-function RoundEndModal({roundNo,breakdown,names,winMode,pauseMode='mean',onConfirm,onCancel}){
+function RoundEndModal({roundNo,breakdown,names,winMode,pauseMode='mean',pausePts=0,onConfirm,onCancel}){
   const bonus=breakdown?.bonus??null;
   // Mittelwert deutsch formatiert (max. 2 Nachkommastellen).
   const meanStr=breakdown?(Math.round(breakdown.mean*100)/100).toLocaleString('de-DE'):'';
@@ -11184,12 +11274,29 @@ function RoundEndModal({roundNo,breakdown,names,winMode,pauseMode='mean',onConfi
         <div style={{color:T.t3,fontSize:12,lineHeight:1.5,marginTop:4,marginBottom:14}}>
           {pauseMode==='none'
             ?'Diese Runde hat pausierte Spieler — laut Turnier-Regel ohne Ausgleich.'
-            :'Pausen-Ausgleich dieser Runde — wird dem Gesamtscore gutgeschrieben.'}
+            :pauseMode==='fixed'
+              ?'Fester Pausen-Wert dieses Turniers — wird dem Gesamtscore gutgeschrieben.'
+              :'Pausen-Ausgleich dieser Runde — wird dem Gesamtscore gutgeschrieben.'}
         </div>
 
         {/* Ohne Ausgleich gibt es nichts aufzuschlüsseln — dann nur die
             Namen, damit der Host sieht, wen es trifft. */}
-        {pauseMode==='none'?(
+        {pauseMode==='fixed'?(
+          <div style={{background:pausePts>0?T.blueSoft:T.card2,
+            border:`1px solid ${pausePts>0?T.blue:T.border}`,
+            borderRadius:15,padding:'14px 16px',marginBottom:14}}>
+            <div style={{color:pausePts>0?T.blue:T.t1,fontSize:20,fontWeight:900,lineHeight:1.1}}>
+              +{pausePts} Punkt{pausePts===1?'':'e'}
+            </div>
+            <div style={{color:T.t2,fontSize:11.5,marginTop:3,lineHeight:1.55}}>
+              {pausePts>0
+                ?<>Fester Wert je Pause — geht an{' '}
+                   <span style={{color:T.blue,fontWeight:800}}>{names.join(', ')}</span>.</>
+                :<>Der feste Wert steht auf 0 — {names.join(', ')} {names.length===1?'geht':'gehen'}
+                   {' '}ohne Gutschrift aus dieser Runde.</>}
+            </div>
+          </div>
+        ):pauseMode==='none'?(
           <div style={{background:T.card2,border:`1px solid ${T.border}`,
             borderRadius:15,padding:'14px 16px',marginBottom:14}}>
             <div style={{color:T.t1,fontSize:13,fontWeight:700}}>
@@ -11302,7 +11409,7 @@ function EndReviewSheet({tourney,onClose,onHistory,onConfirm}){
   // Genau die Rechnung, die auch der Endstand fährt — was hier steht,
   // steht gleich auch dort. Alles andere wäre eine Vorschau, der man
   // nicht trauen kann.
-  const lb=calcLeaderboard(tourney.players,tourney.rounds,tourney.winMode,tourney.pauseMode);
+  const lb=calcLeaderboard(tourney.players,tourney.rounds,tourney.winMode,tourney.pauseMode,tourney.pausePts);
   const sorted=[...lb].sort((a,b)=>tourney.winMode==='points'
     ?b.totalPts-a.totalPts||b.totalWins-a.totalWins
     :b.totalWins-a.totalWins||b.totalPts-a.totalPts);
@@ -11990,7 +12097,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
   const savePlayerPoints=(playerId,newTotal)=>{
     setTourney(t=>{
       // Gleiche (bestätigte) Basis wie das angezeigte Leaderboard.
-      const lb=calcLeaderboard(t.players,t.finished?t.rounds:t.rounds.slice(0,t.current),t.winMode,t.pauseMode);
+      const lb=calcLeaderboard(t.players,t.finished?t.rounds:t.rounds.slice(0,t.current),t.winMode,t.pauseMode,t.pausePts);
       const e=lb.find(x=>x.id===playerId);
       if(!e) return t;
       const players=t.players.map(p=>{
@@ -12041,7 +12148,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
     // Außerhalb von setTourney generieren: bei K.-o. kann null kommen
     // (Finale entschieden) → Turnier direkt sauber beenden.
     const t=tourney;
-    const lb=calcLeaderboard(t.players,t.rounds,t.winMode,t.pauseMode);
+    const lb=calcLeaderboard(t.players,t.rounds,t.winMode,t.pauseMode,t.pausePts);
     const sortedLb=lb.sort((a,b)=>t.winMode==='points'?b.totalPts-a.totalPts:b.totalWins-a.totalWins);
     const newR=genRound(t.format,t.players,
       {history:t.rounds,leaderboard:sortedLb,maxCourts:t.numCourts,singles:t.courtSingles});
@@ -12065,6 +12172,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
       roundNo:tourney.current+1,
       breakdown:tourney.winMode==='points'?roundMeanBreakdown(round):null,
       pauseMode:tourney.pauseMode||'mean',
+      pausePts:tourney.pausePts??0,
       names:so.map(id=>playerById(id)?.name||'?'),
     });
   };
@@ -12079,7 +12187,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
   // aktualisiert sich erst beim Rundenwechsel ("Nächste Runde"), nicht
   // schon beim Bestätigen einzelner Courts in der aktuellen Runde.
   const lbRounds=tourney.finished?tourney.rounds:tourney.rounds.slice(0,tourney.current);
-  const lb=calcLeaderboard(tourney.players,lbRounds,tourney.winMode,tourney.pauseMode);
+  const lb=calcLeaderboard(tourney.players,lbRounds,tourney.winMode,tourney.pauseMode,tourney.pausePts);
   const sortedLb=lb.sort((a,b)=>tourney.winMode==='points'?b.totalPts-a.totalPts||b.totalWins-a.totalWins:b.totalWins-a.totalWins||b.totalPts-a.totalPts);
   // Live nachgeschlagen, damit die offenen Modals immer den frischen
   // Court/Leaderboard-Eintrag bekommen (sonst stale nach setTourney).
@@ -12269,11 +12377,14 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
                 <div style={{padding:'0 14px 12px',borderTop:`1px solid ${T.sep}`,
                   marginTop:2,paddingTop:10}}>
                   <div style={{color:T.t1,fontSize:12,fontWeight:600,marginBottom:4}}>
-                    {tourney.pauseMode==='none'?'Kein Pausen-Ausgleich':'Pausen-Bonus'}
+                    {tourney.pauseMode==='none'?'Kein Pausen-Ausgleich'
+                      :tourney.pauseMode==='fixed'?'Fester Pausen-Wert':'Pausen-Bonus'}
                   </div>
                   <div style={{color:T.t3,fontSize:11,lineHeight:1.5}}>
                     {tourney.pauseMode==='none'
                       ?'Für dieses Turnier ist kein Ausgleich eingestellt — eine Pause ist eine Runde ohne Punkte.'
+                      :tourney.pauseMode==='fixed'
+                      ?`Für dieses Turnier sind ${tourney.pausePts??0} Punkte je Pause eingestellt — unabhängig von den Ergebnissen der Runde.`
                       :(tourney.winMode==='points'
                         ?'Pausierte Spieler bekommen den aufgerundeten Mittelwert aller Punkte einer Runde gutgeschrieben — keine Benachteiligung durch erzwungene Pause.'
                         :'Pausierte Spieler in der unteren Tabellenhälfte bekommen +1 Sieg pro Pause gutgeschrieben — damit niemand durch erzwungene Pause weiter zurückfällt.')}
@@ -12405,6 +12516,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
           names={roundEndInfo.names}
           winMode={tourney.winMode}
           pauseMode={roundEndInfo.pauseMode}
+          pausePts={roundEndInfo.pausePts}
           onCancel={()=>setRoundEndInfo(null)}
           onConfirm={()=>{setRoundEndInfo(null);nextRound();}}/>
       )}
@@ -12429,7 +12541,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
 ═══════════════════════════════════════════════════════════════ */
 function TournamentLeaderboard({tourney,onHome,onNew}){
   const[showHistory,setShowHistory]=useState(false);
-  const lb=calcLeaderboard(tourney.players,tourney.rounds,tourney.winMode,tourney.pauseMode);
+  const lb=calcLeaderboard(tourney.players,tourney.rounds,tourney.winMode,tourney.pauseMode,tourney.pausePts);
   const sortedLb=lb.sort((a,b)=>tourney.winMode==='points'?b.totalPts-a.totalPts||b.totalWins-a.totalWins:b.totalWins-a.totalWins||b.totalPts-a.totalPts);
   const winner=sortedLb[0];
   // ── Teilen: Endstand + komplette Rundenhistorie als Text über die
@@ -12601,7 +12713,7 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
     L.push(`🏆 ${t.name||'RITMO Turnier'} — ${t.finished?'Endstand':t.draft?'Entwurf':`Zwischenstand (Runde ${(t.current||0)+1})`}`);
     L.push(`${fmt}, ${(t.players||[]).length} Spieler`,'');
     if((t.rounds||[]).length){
-      calcLeaderboard(t.players,t.rounds,t.winMode,t.pauseMode)
+      calcLeaderboard(t.players,t.rounds,t.winMode,t.pauseMode,t.pausePts)
         .sort((a,b)=>t.winMode==='points'?b.totalPts-a.totalPts||b.totalWins-a.totalWins:b.totalWins-a.totalWins||b.totalPts-a.totalPts)
         .forEach((p,i)=>L.push(`${i+1}. ${p.name} — ${t.winMode==='wins'?`${p.totalWins} Siege`:`${p.totalPts} Punkte`}`));
     } else L.push((t.players||[]).map(p=>p.name).join(', '));
@@ -20866,7 +20978,7 @@ export default function App(){
       };
       if(scope==='current'&&Array.isArray(next.rounds)){
         const prevRounds=next.rounds.slice(0,next.current);
-        const lb=calcLeaderboard(next.players,prevRounds,next.winMode,next.pauseMode);
+        const lb=calcLeaderboard(next.players,prevRounds,next.winMode,next.pauseMode,next.pausePts);
         const sortedLb=lb.sort((a,b)=>next.winMode==='points'?b.totalPts-a.totalPts:b.totalWins-a.totalWins);
         const newR=genRound(next.format,next.players,
           {history:prevRounds,leaderboard:sortedLb,maxCourts:next.numCourts,singles:next.courtSingles});

@@ -449,7 +449,17 @@ export function genRound(format,players,{history=[],leaderboard=[],maxCourts=nul
   }
 }
 
-export function calcLeaderboard(players,rounds,winMode='points'){
+/* pauseMode steuert den Pausen-Ausgleich:
+     'mean'  Pausierende bekommen etwas gutgeschrieben (Vorgabe) —
+             in Punkte-Wertung den aufgerundeten Rundenmittelwert,
+             in Siege-Wertung +1 Sieg je Pause fuer die untere
+             Tabellenhaelfte.
+     'none'  Gar nichts. Eine Pause ist dann schlicht eine Runde
+             ohne Punkte — haerter, aber fuer manche Runden das
+             ehrlichere Bild.
+   Die Boni liegen weiterhin auf eigenen Feldern (bonusPts/bonusWins)
+   und werden erst am Ende in totalPts/totalWins gefaltet. */
+export function calcLeaderboard(players,rounds,winMode='points',pauseMode='mean'){
   const stats={};
   // adjPts/adjWins = manuelle Korrekturen vom Host (Leaderboard-Edit).
   // Liegen auf dem Spieler-Record, damit sie persistieren + online
@@ -479,7 +489,10 @@ export function calcLeaderboard(players,rounds,winMode='points'){
     (round.sitOut||[]).forEach(pid=>{if(stats[pid]) stats[pid].sitOut++;});
   });
   // Phase 2: compute bonuses (kept SEPARATE from real stats)
-  if(winMode==='points'){
+  if(pauseMode==='none'){
+    // Kein Ausgleich gewuenscht — sitOut wird weiter gezaehlt (die
+    // Tabelle zeigt die Pausen), aber ohne Gutschrift.
+  } else if(winMode==='points'){
     // Mittelwert (mean, aufgerundet) per-round bonus for sit-outs
     rounds.forEach(round=>{
       if(!round.sitOut||round.sitOut.length===0)return;

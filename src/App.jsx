@@ -11188,6 +11188,218 @@ function RoundEndModal({roundNo,breakdown,names,winMode,onConfirm,onCancel}){
   );
 }
 
+/* ── ABSCHLUSS-PRÜFUNG ────────────────────────────────────────────
+   „Turnier beenden" war ein Ja/Nein-Dialog. Für einen Schritt, der
+   die Wertung einfriert, ist das zu wenig: unbestätigte Courts
+   fallen still aus der Rechnung, und wer das erst im Endstand
+   merkt, hat das Turnier schon beendet.
+
+   Deshalb zwei Schritte — erst zeigen, was offen ist und was zählt,
+   dann den Endstand, der dabei herauskommt. Abbrechen führt zurück
+   in die Runde, nicht in den Endstand.
+──────────────────────────────────────────────────────────────── */
+function EndReviewSheet({tourney,onClose,onHistory,onConfirm}){
+  const sheet=useSheetDrag(onClose);
+  const[step,setStep]=useState(0);
+  const pName=id=>tourney.players.find(p=>p.id===id)?.name||'?';
+  const team=ids=>(ids||[]).map(pName).join(' + ');
+
+  // Genau die Rechnung, die auch der Endstand fährt — was hier steht,
+  // steht gleich auch dort. Alles andere wäre eine Vorschau, der man
+  // nicht trauen kann.
+  const lb=calcLeaderboard(tourney.players,tourney.rounds,tourney.winMode);
+  const sorted=[...lb].sort((a,b)=>tourney.winMode==='points'
+    ?b.totalPts-a.totalPts||b.totalWins-a.totalWins
+    :b.totalWins-a.totalWins||b.totalPts-a.totalPts);
+
+  const open=[];      // {ri, ci, court} — bestätigt fehlt
+  let counted=0;      // Matches, die in die Wertung gehen
+  (tourney.rounds||[]).forEach((r,ri)=>(r.courts||[]).forEach((c,ci)=>{
+    if(c.done) counted++; else open.push({ri,ci,court:c});
+  }));
+  const roundsWithResult=(tourney.rounds||[])
+    .filter(r=>(r.courts||[]).some(c=>c.done)).length;
+
+  const row={display:'flex',alignItems:'flex-start',gap:11,padding:'13px 14px',
+    borderRadius:14,background:T.card2,border:`1px solid ${T.border}`,marginBottom:9};
+  const btn=(bg,fg,line)=>({width:'100%',padding:'13px 16px',borderRadius:15,
+    background:bg,border:line?`1px solid ${line}`:'none',color:fg,
+    fontSize:14.5,fontWeight:800,cursor:'pointer'});
+
+  return(
+    <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:300,
+      background:'rgba(0,0,0,.7)',backdropFilter:'blur(4px)',display:'flex',
+      alignItems:'flex-end',justifyContent:'center',animation:'fadeIn .15s ease'}}>
+      <div onClick={e=>e.stopPropagation()} className="slide-up"
+        ref={sheet.ref} {...sheet.handlers}
+        style={{background:T.card,borderTopLeftRadius:20,borderTopRightRadius:20,
+          borderTop:`1px solid ${T.border}`,width:'100%',maxWidth:480,
+          padding:'16px 18px calc(env(safe-area-inset-bottom,0px) + 18px)',
+          maxHeight:'88vh',overflowY:'auto',WebkitOverflowScrolling:'touch',
+          ...sheet.style}}>
+        <div style={{width:36,height:4,borderRadius:2,background:T.border,margin:'0 auto 14px'}}/>
+
+        <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:3}}>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontFamily:T.fontDisplay,color:T.o,fontSize:10.5,
+              letterSpacing:2.6,lineHeight:1}}>
+              Schritt {step+1} von 2
+            </div>
+            <div style={{color:T.t1,fontSize:17,fontWeight:800,marginTop:5}}>
+              {step===0?'Ergebnisse prüfen':'Endstand bestätigen'}
+            </div>
+          </div>
+          <div style={{display:'flex',gap:5,flexShrink:0}}>
+            {[0,1].map(i=>(
+              <div key={i} style={{width:i===step?20:7,height:6,borderRadius:3,
+                background:i<=step?T.o:T.t4,transition:'all .25s ease'}}/>
+            ))}
+          </div>
+        </div>
+
+        {step===0?(<>
+          <div className="txt" style={{color:T.t3,fontSize:13.5,fontStyle:'italic',
+            lineHeight:1.5,margin:'8px 0 14px'}}>
+            Nach dem Beenden lässt sich nichts mehr nachtragen.
+          </div>
+
+          {open.length===0?(
+            <div style={{...row,borderColor:`${T.g}66`,background:`${T.g}14`}}>
+              <span style={{color:T.g,flexShrink:0,fontSize:15,lineHeight:1.3}}>✓</span>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{color:T.t1,fontSize:14,fontWeight:700}}>
+                  Alle Ergebnisse bestätigt
+                </div>
+                <div style={{color:T.t3,fontSize:12,lineHeight:1.5,marginTop:2}}>
+                  Kein Court steht mehr offen.
+                </div>
+              </div>
+            </div>
+          ):(
+            <div style={{...row,flexDirection:'column',gap:0,
+              borderColor:'rgba(232,69,69,.5)',background:'rgba(232,69,69,.08)'}}>
+              <div style={{display:'flex',alignItems:'flex-start',gap:11,width:'100%'}}>
+                <span style={{color:T.r,flexShrink:0,fontSize:15,lineHeight:1.3}}>!</span>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{color:T.t1,fontSize:14,fontWeight:700}}>
+                    {open.length} Ergebnis{open.length===1?'':'se'} offen
+                  </div>
+                  <div style={{color:T.t3,fontSize:12,lineHeight:1.5,marginTop:2}}>
+                    Unbestätigte Courts zählen nicht in die Wertung.
+                  </div>
+                </div>
+              </div>
+              <div style={{width:'100%',marginTop:10,paddingTop:10,
+                borderTop:'1px solid rgba(232,69,69,.25)'}}>
+                {open.slice(0,6).map(({ri,ci,court})=>(
+                  <div key={`${ri}-${ci}`} style={{display:'flex',alignItems:'center',
+                    gap:8,padding:'4px 0'}}>
+                    <span style={{color:T.t4,fontSize:10,fontWeight:800,flexShrink:0,
+                      width:52}}>R{ri+1} · C{ci+1}</span>
+                    <span style={{flex:1,minWidth:0,color:T.t2,fontSize:12,
+                      overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                      {team(court.t1)} vs {team(court.t2)}
+                    </span>
+                  </div>
+                ))}
+                {open.length>6&&(
+                  <div style={{color:T.t4,fontSize:11,marginTop:4}}>
+                    … und {open.length-6} weitere
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div style={row}>
+            <span style={{color:T.o,flexShrink:0,display:'inline-flex',marginTop:1}}>
+              <TrophyIcon size={16} color="currentColor"/>
+            </span>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{color:T.t1,fontSize:14,fontWeight:700}}>
+                {counted} Match{counted===1?'':'es'} aus {roundsWithResult} Runde{roundsWithResult===1?'':'n'}
+              </div>
+              <div style={{color:T.t3,fontSize:12,lineHeight:1.5,marginTop:2}}>
+                Das geht in die Wertung — inklusive Pausen-Ausgleich.
+              </div>
+            </div>
+          </div>
+
+          <button onClick={()=>{buzz(6);onHistory();}}
+            style={{...btn('none',T.t1,T.border),marginTop:5,marginBottom:9,
+              display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+            <HistoryIcon size={16} color="currentColor"/>
+            Alle Runden durchsehen
+          </button>
+          <button onClick={()=>{buzz(6);setStep(1);}}
+            style={{...btn(T.o,'#000'),marginBottom:9}}>
+            Weiter →
+          </button>
+          <button onClick={onClose} style={btn('none',T.t3,T.border)}>
+            Zurück zum Turnier
+          </button>
+        </>):(<>
+          <div className="txt" style={{color:T.t3,fontSize:13.5,fontStyle:'italic',
+            lineHeight:1.5,margin:'8px 0 14px'}}>
+            So steht es, wenn du jetzt beendest.
+          </div>
+
+          <div style={{background:T.card2,border:`1px solid ${T.border}`,
+            borderRadius:15,overflow:'hidden',marginBottom:12}}>
+            {sorted.slice(0,5).map((p,i)=>(
+              <div key={p.id} style={{display:'flex',alignItems:'center',gap:10,
+                padding:'11px 14px',
+                borderBottom:i<Math.min(5,sorted.length)-1?`1px solid ${T.sep}`:'none',
+                background:i===0?'var(--oSoft)':'transparent'}}>
+                <div style={{width:22,textAlign:'center',flexShrink:0}}>
+                  {i<3?<MedalIcon size={18} rank={i+1}/>
+                    :<span style={{color:T.t3,fontSize:12,fontWeight:800}}>{i+1}</span>}
+                </div>
+                <div style={{width:7,height:7,borderRadius:'50%',background:p.color,
+                  flexShrink:0}}/>
+                <div style={{flex:1,minWidth:0,color:T.t1,fontSize:14,
+                  fontWeight:i===0?700:600,overflow:'hidden',
+                  textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.name}</div>
+                <div style={{color:i===0?T.o:T.t2,fontSize:15,fontWeight:800,
+                  flexShrink:0,fontVariantNumeric:'tabular-nums'}}>
+                  {tourney.winMode==='wins'?p.totalWins:p.totalPts}
+                </div>
+              </div>
+            ))}
+            {sorted.length>5&&(
+              <div style={{color:T.t4,fontSize:11,padding:'9px 14px',
+                borderTop:`1px solid ${T.sep}`}}>
+                … und {sorted.length-5} weitere im Endstand
+              </div>
+            )}
+          </div>
+
+          {open.length>0&&(
+            <div style={{...row,borderColor:'rgba(232,69,69,.5)',
+              background:'rgba(232,69,69,.08)'}}>
+              <span style={{color:T.r,flexShrink:0,fontSize:15,lineHeight:1.3}}>!</span>
+              <div style={{flex:1,minWidth:0,color:T.t2,fontSize:12.5,lineHeight:1.55}}>
+                {open.length} unbestätigte{open.length===1?'s':''} Ergebnis
+                {open.length===1?'':'se'} {open.length===1?'ist':'sind'} hier nicht
+                eingerechnet.
+              </div>
+            </div>
+          )}
+
+          <button onClick={()=>{buzz(14);onConfirm();}}
+            style={{...btn('rgba(232,69,69,0.16)',T.r,'rgba(232,69,69,0.55)'),
+              marginBottom:9}}>
+            Turnier jetzt beenden
+          </button>
+          <button onClick={()=>{buzz(6);setStep(0);}} style={btn('none',T.t3,T.border)}>
+            ← Zurück zur Prüfung
+          </button>
+        </>)}
+      </div>
+    </div>
+  );
+}
+
 /* ── Runden-Historie — alle gespielten Runden mit Paarungen,
    Ergebnissen, Pausen und dem jeweils angewandten Ausgleich.
    Die Runden liegen vollständig in tourney.rounds (persistiert
@@ -11212,12 +11424,16 @@ function RoundHistorySheet({tourney,onClose}){
           <HistoryIcon size={19} color={T.o}/>
           <div style={{color:T.t1,fontSize:17,fontWeight:800}}>Runden-Historie</div>
         </div>
-        <div style={{color:T.t3,fontSize:12,lineHeight:1.5,marginBottom:14}}>
-          Alle Runden mit Ergebnissen & Pausen-Ausgleich — bleiben über das
-          ganze Turnier gespeichert.
+        {/* Neutral formuliert: das Sheet steht jetzt auch im Endstand,
+            wo „bleiben gespeichert" in der Gegenwart schief klaenge. */}
+        <div className="txt" style={{color:T.t3,fontSize:13.5,fontStyle:'italic',
+          lineHeight:1.5,marginBottom:14}}>
+          Jede Runde mit Paarungen, Ergebnissen und Pausen-Ausgleich.
         </div>
         {tourney.rounds.map((r,ri)=>{
-          const isCurrent=ri===tourney.current;
+          // Nach Turnierschluss läuft nichts mehr — sonst trüge die
+          // letzte Runde im Endstand fälschlich das Laufend-Etikett.
+          const isCurrent=!tourney.finished&&ri===tourney.current;
           const bonus=tourney.winMode==='points'?roundMeanBonus(r):null;
           return(
             <div key={ri} style={{background:T.card2,borderRadius:15,marginBottom:10,
@@ -12056,12 +12272,10 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
       {cueSheet&&<SoundCueSheet onClose={()=>setCueSheet(false)}/>}
 
       {confirmEnd&&(
-        <ResetModal
-          title="Turnier beenden"
-          description="Das Turnier wird beendet und der Endstand angezeigt."
-          question="Turnier jetzt beenden?"
-          confirmLabel="Beenden"
-          onCancel={()=>setConfirmEnd(false)}
+        <EndReviewSheet
+          tourney={tourney}
+          onClose={()=>setConfirmEnd(false)}
+          onHistory={()=>{setConfirmEnd(false);setShowHistory(true);}}
           onConfirm={()=>{setConfirmEnd(false);endTournament();}}/>
       )}
 
@@ -12115,6 +12329,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
    TOURNAMENT LEADERBOARD (Endstand)
 ═══════════════════════════════════════════════════════════════ */
 function TournamentLeaderboard({tourney,onHome,onNew}){
+  const[showHistory,setShowHistory]=useState(false);
   const lb=calcLeaderboard(tourney.players,tourney.rounds,tourney.winMode);
   const sortedLb=lb.sort((a,b)=>tourney.winMode==='points'?b.totalPts-a.totalPts||b.totalWins-a.totalWins:b.totalWins-a.totalWins||b.totalPts-a.totalPts);
   const winner=sortedLb[0];
@@ -12180,18 +12395,32 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
           <div style={{fontSize:16,color:T.o,fontWeight:700,marginTop:4}}>
             {tourney.winMode==='wins'?`${winner?.totalWins} Siege`:`${winner?.totalPts} Punkte`}
           </div>
-          <button onClick={shareResults}
-            style={{marginTop:14,padding:'12px 24px',borderRadius:999,cursor:'pointer',
-              background:T.oSoft,border:`1.5px solid ${T.o}`,color:T.o,
-              fontSize:13.5,fontWeight:800,display:'inline-flex',
-              alignItems:'center',gap:8}}>
-            {/* iOS-Share-Glyph: Kasten mit Pfeil nach oben */}
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M8 10H6a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1h-2M12 14V3m0 0L8.5 6.5M12 3l3.5 3.5"
-                stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            Ergebnis teilen
-          </button>
+          <div style={{marginTop:14,display:'flex',gap:9,justifyContent:'center',
+            flexWrap:'wrap'}}>
+            <button onClick={shareResults}
+              style={{padding:'12px 20px',borderRadius:999,cursor:'pointer',
+                background:T.oSoft,border:`1.5px solid ${T.o}`,color:T.o,
+                fontSize:13.5,fontWeight:800,display:'inline-flex',
+                alignItems:'center',gap:8}}>
+              {/* iOS-Share-Glyph: Kasten mit Pfeil nach oben */}
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M8 10H6a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1h-2M12 14V3m0 0L8.5 6.5M12 3l3.5 3.5"
+                  stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Teilen
+            </button>
+            {/* Die Historie lag bisher nur im laufenden Turnier — genau
+                nachschlagen will man sie aber hinterher, wenn jemand
+                fragt, wie ein Ergebnis zustande kam. */}
+            <button onClick={()=>{buzz(6);setShowHistory(true);}}
+              style={{padding:'12px 20px',borderRadius:999,cursor:'pointer',
+                background:'none',border:`1.5px solid ${T.border}`,color:T.t1,
+                fontSize:13.5,fontWeight:800,display:'inline-flex',
+                alignItems:'center',gap:8}}>
+              <HistoryIcon size={15} color="currentColor"/>
+              Runden
+            </button>
+          </div>
           </div>
         </div>
 
@@ -12240,6 +12469,9 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
         </div>
         <div style={{height:100,flexShrink:0}}/>
       </div>
+
+      {showHistory&&<RoundHistorySheet tourney={tourney}
+        onClose={()=>setShowHistory(false)}/>}
 
       <MatchBar onHome={onHome}/>
     </div>

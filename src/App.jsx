@@ -11390,6 +11390,74 @@ function RoundEndModal({roundNo,breakdown,names,winMode,pauseMode='mean',pausePt
   );
 }
 
+/* ── TURNIER-START-VORHANG ────────────────────────────────────────
+   Zwischen „Start" und der ersten Runde passiert einiges: Runde
+   auslosen, Turnier in die Liste schreiben, Screen wechseln. Das ging
+   bisher hart auf Schnitt. Jetzt liegt ein kurzer Vorhang darüber —
+   Ball dreht sich, holt aus, schießt auf den Betrachter zu und gibt
+   das darunter längst fertige Turnier frei.
+
+   Der Screenwechsel passiert SOFORT, nicht nach der Animation: der
+   Vorhang deckt ihn nur zu. Sonst würde die Animation die App
+   künstlich langsamer machen, statt eine ohnehin nötige Pause zu
+   füllen. */
+const SPLASH_SPIN=820;   // Ball dreht sich
+const SPLASH_FLY=560;    // Ball schießt heraus
+function TournamentStartSplash({name,onDone}){
+  const[phase,setPhase]=useState('spin');
+  useEffect(()=>{
+    const a=setTimeout(()=>setPhase('fly'),SPLASH_SPIN);
+    const b=setTimeout(()=>onDone&&onDone(),SPLASH_SPIN+SPLASH_FLY);
+    return()=>{clearTimeout(a);clearTimeout(b);};
+  },[onDone]);
+  const flying=phase==='fly';
+  return(
+    <div aria-hidden="true" style={{position:'fixed',inset:0,zIndex:800,
+      background:T.bg,backgroundImage:'var(--bgGrad)',
+      display:'flex',flexDirection:'column',alignItems:'center',
+      justifyContent:'center',gap:26,pointerEvents:'none',
+      /* Die Blende muss VOR dem Unmount fertig sein, sonst reisst der
+         Vorhang halbtransparent ab: 190 + 336 = 526 ms < 560 ms. */
+      animation:flying?`splashFade ${Math.round(SPLASH_FLY*0.60)}ms ease-in ${Math.round(SPLASH_FLY*0.34)}ms both`:'none'}}>
+
+      <div style={{position:'relative',display:'flex',alignItems:'center',
+        justifyContent:'center',width:120,height:120}}>
+        {/* Schweif — liegt hinter dem Ball und zieht mit heraus. */}
+        <div className={flying?'ball-glow':undefined}
+          style={{position:'absolute',width:120,height:120,borderRadius:'50%',
+            background:'radial-gradient(circle, var(--oGlow) 0%, transparent 68%)',
+            opacity:.55,
+            animation:flying?`ballGlow ${SPLASH_FLY}ms cubic-bezier(.55,0,.85,.3) both`:'none'}}/>
+        {/* Äußere Hülle fliegt, innere dreht sich — zwei Elemente,
+            weil ein transform beides nicht gleichzeitig kann. */}
+        <div className={flying?'ball-launch':undefined}
+          style={{animation:flying?`ballLaunch ${SPLASH_FLY}ms cubic-bezier(.55,0,.85,.3) both`:'none'}}>
+          <div className="ball-spin"
+            style={{display:'flex',animation:`ballSpin ${flying?400:900}ms linear infinite`}}>
+            <TennisBallIcon size={82}/>
+          </div>
+        </div>
+      </div>
+
+      {!flying&&(
+        <div className="fi" style={{textAlign:'center',padding:'0 32px'}}>
+          <div style={{fontFamily:T.fontDisplay,color:T.o,fontSize:11,
+            letterSpacing:3,lineHeight:1}}>Aufschlag</div>
+          <div style={{color:T.t1,fontSize:19,fontWeight:800,letterSpacing:-.3,
+            marginTop:9,overflow:'hidden',textOverflow:'ellipsis',
+            whiteSpace:'nowrap',maxWidth:300}}>
+            {name||'Turnier'}
+          </div>
+          <div className="txt" style={{color:T.t3,fontSize:13.5,fontStyle:'italic',
+            marginTop:5}}>
+            Runde 1 wird ausgelost …
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── ABSCHLUSS-PRÜFUNG ────────────────────────────────────────────
    „Turnier beenden" war ein Ja/Nein-Dialog. Für einen Schritt, der
    die Wertung einfriert, ist das zu wenig: unbestätigte Courts
@@ -20611,6 +20679,9 @@ export default function App(){
       window.history.replaceState({},'',url.toString());
     }catch{}
   },[joinPinFromUrl]);
+  // Turnier-Start-Vorhang: Name des gerade gestarteten Turniers,
+  // null = kein Vorhang.
+  const[startSplash,setStartSplash]=useState(null);
   const[pendingEmail,setPendingEmail]=useState(()=>lsGet('ritmo_pending_email',''));
   useEffect(()=>{
     if(pendingEmail) lsSet('ritmo_pending_email',pendingEmail);
@@ -20931,6 +21002,9 @@ export default function App(){
     setTourneys(list=>[nt,...list.filter(x=>x.id!==id)]);
     setCurrentTourneyId(id);
     setScr('tournament-play');setTourneyEditMode(false);
+    // Vorhang NACH dem Screenwechsel — er deckt den harten Schnitt zu,
+    // statt ihn zu verzögern.
+    setStartSplash(nt.name);
   };
   const newTourney=()=>{setCurrentTourneyId(null);setScr('tournament-setup');setTourneyEditMode(false);};
   // Entwurf speichern: Turnier OHNE generierte Runden in der Liste ablegen
@@ -21464,6 +21538,9 @@ export default function App(){
         nicht den Beta-Hinweis wegtippen müssen. Danach kommt er
         ohnehin (welcomeSeen bleibt false). */}
     {!welcomeSeen&&!verifyLanding&&<WelcomeNotice onConfirm={()=>setWelcomeSeen(true)}/>}
+
+    {startSplash!=null&&<TournamentStartSplash name={startSplash}
+      onDone={()=>setStartSplash(null)}/>}
 
     {/* Verified-Landing nach Email-Verify (?verified=1 in der URL).
         „Los geht's" räumt das Overlay weg, putzt den Parameter aus

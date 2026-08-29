@@ -710,6 +710,30 @@ input[type="time"]::-webkit-datetime-edit{padding:0;text-align:center;}
    und Score-Pop (Skalierung beim Punkte-Update). Eigene Animationen,
    damit die übrigen Screens nicht versehentlich mitwackeln. */
 @keyframes courtLivePulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.55;transform:scale(.92)}}
+
+/* ── TURNIER-START ────────────────────────────────────────────────
+   Kurzer Vorhang beim Turnierstart: der Ball dreht sich, holt dann
+   kurz aus (Skalierung UNTER 1) und schießt auf den Betrachter zu.
+   Das Ausholen ist der Trick — ohne es wirkt der Zoom wie ein
+   Bildfehler, mit ihm wie ein Aufschlag. */
+@keyframes ballSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+@keyframes ballLaunch{
+  0%  {transform:scale(1)    rotate(0);      opacity:1}
+  26% {transform:scale(.78)  rotate(70deg);  opacity:1}
+  100%{transform:scale(17)   rotate(330deg); opacity:0}
+}
+@keyframes splashFade{from{opacity:1}to{opacity:0}}
+/* Der Schweif hinter dem Ball — zieht mit, bleibt aber dezent. */
+@keyframes ballGlow{
+  0%  {transform:scale(1);opacity:.55}
+  26% {transform:scale(.8);opacity:.75}
+  100%{transform:scale(9);opacity:0}
+}
+@media (prefers-reduced-motion: reduce){
+  /* Ohne Bewegung bleibt der Vorhang eine kurze Blende. */
+  .ball-spin{animation:none;}
+  .ball-launch,.ball-glow{animation:splashFade .3s ease both;}
+}
 /* Wartepunkt auf dem Verify-Screen: zeigt, dass der Screen mitläuft
    und nicht eingefroren ist, während er auf den Mail-Klick wartet. */
 .pulse-dot{animation:courtLivePulse 1.4s ease-in-out infinite;}

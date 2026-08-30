@@ -87,9 +87,12 @@ The participant's match view is a two-page swipe (`MatchPager`, scroll-snap — 
 
 One match, one component: Team A left, Team B right, the net between, two rows of players (one when `court.single`). Used by the host's `TournamentCourtCard` in the running tournament *and* by the participant's live view, so both sides see the same picture.
 
+The grid is five columns — `players | innerA | net | innerB | players` — and the two inner columns collapse to zero when unused.
+
 - `meName` highlights that player's seat (orange ring, glow, "Du").
-- `net` puts content **on** the net; pass an array and the component draws net segments between the items, so the line never runs through a number. Do not try to mask the line with a background — `--card2` is semi-transparent in the glass theme and the strike-through stays visible.
-- The host passes `[scoreA, VS, scoreB]`: score A on the upper half, score B on the lower, each with a small Inter `A`/`B` marker. The marker is what makes the mapping readable — stacked vertically, the upper box otherwise reads as belonging to the upper *row* rather than to Team A. Centauri is wrong here: a lone display `A` at 9 px is just a triangle.
+- `innerA` / `innerB` put content at the net side of a team's own half, spanning both rows. The host's court card puts the score there: 21 left of the net, 9 right of it, read like a scoreboard. Do **not** stack the two scores on the net instead — vertically stacked they need `A`/`B` markers and are still read as belonging to the upper/lower *row*.
+- `net` puts content **on** the net (the host's VS circle); pass an array and the component draws net segments between the items so the line never runs through it. Masking the line with a background does not work — `--card2` is semi-transparent in the glass theme and the strike-through stays visible.
+- Both score cells carry the same fixed width, otherwise a one-digit score sits closer to the net than a two-digit one.
 - Open courts show a `ScoreWheel` (its row height is the `h` prop — 28 in the grid, the default 34 elsewhere), confirmed courts a large number with the winner in the accent color.
 
 ### Theming

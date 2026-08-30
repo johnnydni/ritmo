@@ -30,7 +30,8 @@ import { T, CSS, rgba } from "./theme.js";
 import { lsGet, lsSet, getAssetBase, getInitials, processImageUpload, safeImageSrc, buzz } from "./utils.js";
 import { getLevelLabel, getLevelTier, getLevelColor, estimateLevel } from "./levels.js";
 import { B0, A0, PL, ptD, wG, bo3R, amR, DEFCFG } from "./game.js";
-import { PCOLS, shuffle, genAmericanoRound, genMexicanoRound, calcLeaderboard, FORMATS, FORMAT_RULES, genRound } from "./tournament.js";
+import { PCOLS, shuffle, genAmericanoRound, genMexicanoRound, calcLeaderboard, FORMATS, FORMAT_RULES, genRound,
+  QUICK_STARTS, quickStartPreset } from "./tournament.js";
 import { RINGS, CUES, playRing, playCue, unlockAudio } from "./audio.js";
 import { auth } from "./auth.js";
 import { readNamesFromImage, releaseOcr } from "./ocr.js";
@@ -2818,6 +2819,19 @@ function SectionRule({children,trailing,top=26,bottom=13,mx=0}){
   );
 }
 
+/* Freistehende Home-/Zurück-Knöpfe sitzen auf der Navbar-Mittellinie:
+   die Navbar liegt bei bottom = inset*0.3 - 3px und ist 57 px hoch,
+   ihr Zentrum also bei inset*0.3 + 25.5px. Ein 54-px-Knopf trifft das
+   mit bottom = inset*0.3 - 1.5px.
+
+   Steht hier zentral, weil sich die Geometrie sonst je Screen leicht
+   unterscheidet — RITMO Post und die Social-Screens hatten
+   `inset + 28px` und saßen dadurch sichtbar höher als überall sonst. */
+const FAB_BASE={position:'absolute',
+  bottom:'calc(env(safe-area-inset-bottom, 0px) * 0.3 - 1.5px)',
+  width:54,height:54,borderRadius:'50%',color:T.t1,cursor:'pointer',
+  display:'flex',alignItems:'center',justifyContent:'center',zIndex:5};
+
 /* Tab-Tap → Pill-Blend-Handshake über den Screen-Wechsel hinweg.
    Jeder Screen mountet seine EIGENE TabBar; beim Tap wird der Blend
    hier „bewaffnet" und vom TabBar-Mount des Ziel-Screens konsumiert.
@@ -3946,10 +3960,7 @@ function ProfileEdit({profile,setProfile,onBack,onHome,onResetStats}){
   const inputSty={width:'100%',background:T.card2,border:`1px solid ${T.border}`,
     borderRadius:13,padding:'14px 16px',color:T.t1,fontSize:16,fontWeight:500,
     outline:'none',boxSizing:'border-box'};
-  const fabBase={position:'absolute',
-    bottom:'calc(env(safe-area-inset-bottom, 0px) * 0.3 - 1.5px)',
-    width:54,height:54,borderRadius:'50%',color:T.t1,cursor:'pointer',
-    display:'flex',alignItems:'center',justifyContent:'center',zIndex:5};
+  const fabBase=FAB_BASE;
   return(
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',
@@ -4444,7 +4455,7 @@ const HOME_CARD_GLASS={
    klare Sektionen mit einheitlichem Rhythmus. Glas gibt es nur noch
    dort, wo iOS es einsetzt: in der Top-Bar beim Scrollen und in der
    Tab-Pill — der Content liegt auf soliden Material-Flächen. */
-function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
+function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onQuickStart}){
   const needsOnboarding=!onboarded;
   const hasUnread=(unread||0)>0;
 
@@ -4470,6 +4481,13 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
     setActiveTab(id);
   };
 
+  // Feste Kartenbreite im Spielen-Streifen: schmal genug, dass die
+  // dritte Karte anschneidet und der Streifen als wischbar lesbar ist.
+  const playCard={flexShrink:0,width:156,minHeight:150,scrollSnapAlign:'start',
+    background:T.card,border:`1px solid ${T.border}`,borderRadius:20,
+    padding:'16px 15px 15px',cursor:'pointer',color:T.t1,textAlign:'left',
+    display:'flex',flexDirection:'column',alignItems:'flex-start',
+    justifyContent:'space-between',overflow:'hidden'};
   // Einheitlicher Sektions-Titel (iOS-Rhythmus).
   const SectionTitle=({children,trailing,top=26})=>(
     <SectionRule top={top} trailing={trailing}>{children}</SectionRule>
@@ -4521,15 +4539,19 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
         {/* ── SPIELEN — die drei Kern-Aktionen auf soliden Material-
             Karten (Glas bleibt der Navigation vorbehalten). */}
         <SectionTitle top={10}>Spielen</SectionTitle>
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+        {/* Waagerechter Streifen statt 2×1-Raster: die beiden
+            Einstiege bleiben vorn, dahinter liegen die Schnellstarts.
+            Die dritte Karte lugt am Rand herein — daran erkennt man,
+            dass es weitergeht, ohne dass ein Hinweis nötig wäre. */}
+        <div className="hscroll" style={{display:'flex',gap:12,overflowX:'auto',
+          margin:'0 -22px',padding:'2px 22px 4px',
+          scrollSnapType:'x mandatory',scrollPaddingLeft:22,
+          WebkitOverflowScrolling:'touch'}}>
           <button onClick={()=>nav('single-setup')} className="fu" data-lift
-            style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:20,
-              padding:'18px 16px 16px',width:'100%',minHeight:148,cursor:'pointer',
-              color:T.t1,textAlign:'left',display:'flex',flexDirection:'column',
-              alignItems:'flex-start',justifyContent:'space-between'}}>
-            <SingleMatchIcon size={44}/>
+            style={{...playCard,animationDelay:'.02s'}}>
+            <SingleMatchIcon size={40}/>
             <div>
-              <div style={{color:T.t1,fontSize:17,fontWeight:700,letterSpacing:-.3}}>Single Match</div>
+              <div style={{color:T.t1,fontSize:16,fontWeight:700,letterSpacing:-.3}}>Single Match</div>
               <div className="txt" style={{color:T.t3,fontSize:12.5,fontStyle:'italic',
                 marginTop:4,lineHeight:1.4}}>
                 Best of 3, Americano
@@ -4537,20 +4559,41 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread}){
             </div>
           </button>
           <button onClick={()=>nav('tournament-hub')} className="fu" data-lift
-            style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:20,
-              padding:'18px 16px 16px',width:'100%',minHeight:148,cursor:'pointer',
-              color:T.t1,textAlign:'left',display:'flex',flexDirection:'column',
-              alignItems:'flex-start',justifyContent:'space-between',
-              animationDelay:'.05s'}}>
-            <TrophyIcon size={44}/>
+            style={{...playCard,animationDelay:'.05s'}}>
+            <TrophyIcon size={40}/>
             <div>
-              <div style={{color:T.t1,fontSize:17,fontWeight:700,letterSpacing:-.3}}>Turnier</div>
+              <div style={{color:T.t1,fontSize:16,fontWeight:700,letterSpacing:-.3}}>Turnier</div>
               <div className="txt" style={{color:T.t3,fontSize:12.5,fontStyle:'italic',
                 marginTop:4,lineHeight:1.4}}>
                 Americano, Mexicano &amp; mehr
               </div>
             </div>
           </button>
+          {QUICK_STARTS.map((q,i)=>(
+            <button key={q.id} onClick={()=>{buzz(6);onQuickStart&&onQuickStart(q);}}
+              className="fu" data-lift
+              style={{...playCard,background:T.oSoft,border:`1px solid ${T.o}55`,
+                animationDelay:`${.08+i*.03}s`}}>
+              <span style={{color:T.o,display:'inline-flex'}}>
+                {q.format==='mexicano'?<MedalIcon size={34} rank={1}/>
+                  :q.format==='mixicano'?<PeopleIcon size={34} color="currentColor"/>
+                  :<TennisBallIcon size={34}/>}
+              </span>
+              <div style={{maxWidth:'100%',minWidth:0}}>
+                {/* Kurzes Wort mit Absicht: Centauri läuft rund 1,4×
+                    der Schriftgröße pro Zeichen — „Schnellstart" maß
+                    174 px in einer 156-px-Karte und lief quer über die
+                    Nachbarkarten. */}
+                <div style={{fontFamily:T.fontDisplay,color:T.o,fontSize:9.5,
+                  letterSpacing:2.2,lineHeight:1,marginBottom:6}}>Sofort</div>
+                <div style={{color:T.t1,fontSize:16,fontWeight:700,letterSpacing:-.3}}>
+                  {q.label}
+                </div>
+                <div className="txt" style={{color:T.t3,fontSize:12.5,fontStyle:'italic',
+                  marginTop:4,lineHeight:1.4}}>{q.sub}</div>
+              </div>
+            </button>
+          ))}
         </div>
 
         {/* RITMO DNA Liga — große Karte. AUSGEBLENDET bis zum Launch
@@ -8393,41 +8436,48 @@ function TournamentWizard({onClose,onFinish,canStart,
   );
 }
 
-function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,isEdit,profile,onCreateOnline}){
+function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,preset,isEdit,profile,onCreateOnline}){
+  // Schnellstart von Home: hat dieselben Felder wie ein gespeichertes
+  // Turnier, nur ohne id/rounds — deshalb reicht es, beide vorne
+  // zusammenzuführen. NUR für die Anfangswerte; alles, was hinterher
+  // über saved entscheidet (id, Entwurf, Bearbeiten), liest weiter
+  // saved, sonst würde ein Schnellstart ein bestehendes Turnier
+  // überschreiben.
+  const seed=saved||preset||null;
   // mode: 'lokal' = bestehender Flow (lokale Spielerliste).
   // 'online' = Host erstellt Session, Player joinen via PIN/QR.
-  const[mode,setMode]=useState(saved?.mode||'lokal');
-  const[players,setPlayers]=useState(saved?.players||[
+  const[mode,setMode]=useState(seed?.mode||'lokal');
+  const[players,setPlayers]=useState(seed?.players||[
     {id:0,name:'Spieler 1',color:PCOLS[0]},
     {id:1,name:'Spieler 2',color:PCOLS[1]},
     {id:2,name:'Spieler 3',color:PCOLS[2]},
     {id:3,name:'Spieler 4',color:PCOLS[3]},
   ]);
-  const[format,setFormat]=useState(saved?.format||'americano');
-  const[winMode,setWinMode]=useState(saved?.winMode||'points');
-  const[numCourts,setNumCourts]=useState(saved?.numCourts||1);
-  const[roundDur,setRoundDur]=useState(saved?.roundDurationMin||10);
+  const[format,setFormat]=useState(seed?.format||'americano');
+  const[winMode,setWinMode]=useState(seed?.winMode||'points');
+  const[numCourts,setNumCourts]=useState(seed?.numCourts||1);
+  const[roundDur,setRoundDur]=useState(seed?.roundDurationMin||10);
   const[name,setName]=useState(saved?.name||'');
-  const[startTime,setStartTime]=useState(saved?.startTime||'');
-  const[endTime,setEndTime]=useState(saved?.endTime||'');
+  const[startTime,setStartTime]=useState(seed?.startTime||'');
+  const[endTime,setEndTime]=useState(seed?.endTime||'');
   // Priorität für den Rundenzeit-Vorschlag: 'length' = längere Runden
   // (weniger Runden, dafür spielt nicht jeder gegen jeden), 'variety' =
   // jeder gegen jeden (mehr Runden, dafür kürzer).
-  const[roundPrio,setRoundPrio]=useState(saved?.roundPrio||'variety');
+  const[roundPrio,setRoundPrio]=useState(seed?.roundPrio||'variety');
   // Pausen-Ausgleich: 'mean' = Pausierende bekommen etwas gutgeschrieben
   // (Vorgabe), 'none' = eine Pause ist einfach eine Runde ohne Punkte,
   // 'fixed' = fester Wert je Pause (pausePts).
-  const[pauseMode,setPauseMode]=useState(saved?.pauseMode||'mean');
-  const[pausePts,setPausePts]=useState(saved?.pausePts??10);
+  const[pauseMode,setPauseMode]=useState(seed?.pauseMode||'mean');
+  const[pausePts,setPausePts]=useState(seed?.pausePts??10);
   const[creatingOnline,setCreatingOnline]=useState(false);
   // Court-Namen — werden auf die Matches angewendet. Sparse-Array:
   // Index i = eigener Name fuer Court i, sonst Default "Court i+1".
-  const[courtNames,setCourtNames]=useState(saved?.courtNames||[]);
+  const[courtNames,setCourtNames]=useState(seed?.courtNames||[]);
   const setCourtName=(i,val)=>setCourtNames(a=>{const n=[...a];n[i]=clampName(val);return n;});
   // Einzel-Courts (1v1): Index i = true ⇒ auf Court i spielen nur 2
   // Spieler. Nur Americano/Mexicano — Team-/Gruppen-/Leiter-Formate
   // brauchen 4er-Courts, dort ist der Flip ausgeblendet + wirkungslos.
-  const[courtSingles,setCourtSingles]=useState(saved?.courtSingles||[]);
+  const[courtSingles,setCourtSingles]=useState(seed?.courtSingles||[]);
   const toggleCourtSingle=i=>setCourtSingles(a=>{const n=[...a];n[i]=!n[i];return n;});
   const canSingles=format==='americano'||format==='mexicano';
   const singles=canSingles?courtSingles:[];
@@ -13373,17 +13423,7 @@ function SettingsSubLayout({title,desc,icon,onBack,onHome,children}){
   // Wiederverwendbarer FAB-Stil — beide Buttons sind identisch aufgebaut,
   // nur die Position (links vs. rechts) und das Icon unterscheiden sich.
   // Liquid-Glass-FABs — Material liefert die .glass-bar-Klasse.
-  const fabBase={
-    position:'absolute',
-    // Auf Navbar-Hoehe: 54px-FAB so setzen, dass sein Zentrum auf der
-    // Navbar-Mittellinie liegt (Navbar-Center = inset*0.3 + 25.5px →
-    // FAB-bottom = center - 27 = inset*0.3 - 1.5px).
-    bottom:'calc(env(safe-area-inset-bottom, 0px) * 0.3 - 1.5px)',
-    width:54,height:54,borderRadius:'50%',
-    color:T.t1,cursor:'pointer',
-    display:'flex',alignItems:'center',justifyContent:'center',
-    zIndex:5,
-  };
+  const fabBase=FAB_BASE;
   return(
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',
@@ -14551,14 +14591,9 @@ function RitmoPost({onHome,profile,onOpenChat,unread=0}){
         )}
       </div>
 
-      {/* Floating Home-FAB → zurück (links-unten) */}
+      {/* Floating Home-FAB → zurück (links-unten), auf Navbar-Höhe */}
       <button onClick={onHome} aria-label="Zurück zu Home"
-        style={{position:'absolute',left:22,bottom:'calc(env(safe-area-inset-bottom,0px) + 28px)',
-          width:54,height:54,borderRadius:'50%',
-          background:T.card,border:`1px solid ${T.border}`,
-          color:T.t1,cursor:'pointer',
-          display:'flex',alignItems:'center',justifyContent:'center',
-          boxShadow:'0 8px 24px rgba(0,0,0,.45)',zIndex:5}}>
+        className="glass-bar" style={{...FAB_BASE,left:22}}>
         <HomeIcon size={22}/>
       </button>
     </div>
@@ -14690,12 +14725,7 @@ function SocialScreen({eyebrow,title,desc,icon,onHome,onBack,backLabel='Zurück'
       <div style={{flex:1,padding:'0 22px 140px',overflowY:'auto',
         WebkitOverflowScrolling:'touch'}}>{children}</div>
       <button onClick={onHome} aria-label="Zurück zur Startseite"
-        style={{position:'absolute',left:22,bottom:'calc(env(safe-area-inset-bottom,0px) + 28px)',
-          width:54,height:54,borderRadius:'50%',
-          background:T.card,border:`1px solid ${T.border}`,
-          color:T.t1,cursor:'pointer',
-          display:'flex',alignItems:'center',justifyContent:'center',
-          boxShadow:'0 8px 24px rgba(0,0,0,.45)',zIndex:5}}>
+        className="glass-bar" style={{...FAB_BASE,left:22}}>
         <HomeIcon size={22}/>
       </button>
     </div>
@@ -20682,6 +20712,14 @@ export default function App(){
   // Turnier-Start-Vorhang: Name des gerade gestarteten Turniers,
   // null = kein Vorhang.
   const[startSplash,setStartSplash]=useState(null);
+  // Schnellstart von Home: Vorbelegung fuer den naechsten frischen
+  // Konfigurator. Wird beim Verlassen des Setups wieder geleert,
+  // damit ein spaeteres „Turnier starten" wieder leer beginnt.
+  const[setupPreset,setSetupPreset]=useState(null);
+  // Die Vorbelegung lebt genau so lange wie der Konfigurator. Sobald
+  // man ihn verlaesst, ist sie weg — sonst begaenne ein spaeteres
+  // „Turnier starten" ueberraschend mit 12 Spielern.
+  useEffect(()=>{ if(scr!=='tournament-setup') setSetupPreset(null); },[scr]);
   const[pendingEmail,setPendingEmail]=useState(()=>lsGet('ritmo_pending_email',''));
   useEffect(()=>{
     if(pendingEmail) lsSet('ritmo_pending_email',pendingEmail);
@@ -21228,7 +21266,15 @@ export default function App(){
       profile={profile} setProfile={setProfile}
       onComplete={()=>{setOnboarded(true);nav('home');}}/>}
     {scr==='home'&&<Home nav={nav} activeTab={activeTab} setActiveTab={handleTab}
-      profile={profile} onboarded={onboarded} unread={unreadTotal}/>}
+      profile={profile} onboarded={onboarded} unread={unreadTotal}
+      onQuickStart={q=>{
+        // Frischer Konfigurator mit Vorbelegung — kein laufendes
+        // Turnier anfassen, deshalb erst currentTourneyId loesen.
+        setCurrentTourneyId(null);
+        setTourneyEditMode(false);
+        setSetupPreset(quickStartPreset(q));
+        setScr('tournament-setup');
+      }}/>}
     {scr==='profile'&&<Profile profile={profile} setProfile={setProfile}
       onHome={goHome} currentUid={currentUid} onTab={handleTab}
       onOpenSettings={()=>setScr('settings')}
@@ -21417,7 +21463,7 @@ export default function App(){
       onMatchLogged={onMatchLogged}/>}
     {scr==='tournament-setup'&&<TournamentSetup nav={nav} onHome={goHome}
       onStart={startTourney} onSave={saveTourneyEdit} onSaveDraft={saveTourneyDraft}
-      saved={tourney} isEdit={tourneyEditMode&&!!tourney}
+      saved={tourney} preset={setupPreset} isEdit={tourneyEditMode&&!!tourney}
       profile={profile}
       onCreateOnline={(pin)=>{setOnlinePin(pin);setScr('online-lobby');}}/>}
     {scr==='online-lobby'&&onlinePin&&<OnlineTournamentLobby

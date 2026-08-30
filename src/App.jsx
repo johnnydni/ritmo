@@ -5038,12 +5038,15 @@ function SetupHero({icon,title,desc,accent}){
         {icon}
       </div>
       <div style={{flex:1,minWidth:0}}>
-        <div style={{color:T.t1,fontSize:17,fontWeight:700,letterSpacing:-.3,marginBottom:4}}>
+        <div style={{color:T.t1,fontSize:17,fontWeight:700,letterSpacing:-.3,
+          marginBottom:desc?4:0}}>
           {title}
         </div>
-        <div style={{color:T.t3,fontSize:13,lineHeight:1.5}}>
-          {desc}
-        </div>
+        {desc&&(
+          <div style={{color:T.t3,fontSize:13,lineHeight:1.5}}>
+            {desc}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -8101,8 +8104,8 @@ function TournamentWizard({onClose,onFinish,canStart,
             </div>
             {/* Bewusst OHNE Pausen-Rechnung: wie viele pausieren, haengt
                 an der Court-Zahl aus dem naechsten Schritt (und an
-                Einzel-Courts). Die Zahl steht weiter unten in der
-                Hinweiskarte, die pauseStats benutzt und damit stimmt. */}
+                Einzel-Courts). In diesem Schritt steht die Zahl gar
+                nicht fest — die Zusammenfassung am Ende nennt sie. */}
             <div style={{color:T.t3,fontSize:12,textAlign:'center',marginBottom:18}}>
               {players.length<4
                 ? 'Unter vier Spielern lässt sich keine Runde auslosen.'
@@ -8171,12 +8174,6 @@ function TournamentWizard({onClose,onFinish,canStart,
                 existing={players.map(p=>p.name).filter(n=>n&&!/^Spieler\s*\d+$/i.test(n.trim()))}
                 onAdd={addScannedPlayers}
                 onClose={()=>setScanOpen(false)}/>
-            )}
-            {format!=='knockout'&&pauseStats&&pauseStats.sitOut>0&&(
-              <div style={{marginTop:14,padding:'10px 14px',borderRadius:12,background:T.card2,
-                border:`1px solid ${T.border}`,color:T.t3,fontSize:12,lineHeight:1.55}}>
-                Bei {players.length} Spielern pausieren {pauseStats.sitOut} pro Runde — RITMO rotiert fair (±1 Pause).
-              </div>
             )}
             {/* Team-Formate: feste Paare nach Listen-Reihenfolge */}
             {meta.team&&wTeamOk&&(
@@ -8757,9 +8754,9 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
 
         <SetupHero
           icon={<TrophyIcon size={40}/>}
-          title={isEdit?'Laufendes Turnier ändern':'Turnier erstellen'}
+          title={isEdit?'Turnier Details anpassen':'Turnier erstellen'}
           desc={isEdit
-            ?'Spieler, Format, Courts und Wertung des laufenden Turniers anpassen. Beim Übernehmen fragt RITMO, ob die Änderung schon für die aktuelle Runde gilt oder erst ab der nächsten — gespielte Runden bleiben unangetastet.'
+            ?null
             :'Mehrere Runden, rotierende Partner oder Mexicano-Pairings. Beliebig viele Spieler — lokal oder online via QR-Code.'}/>
 
         {/* Turnier-Assistent — geführter Einstieg (nur neu + lokal) */}

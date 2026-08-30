@@ -51,13 +51,37 @@ const planCourts=(numPlayers,maxCourts,singles)=>{
   return caps;
 };
 
+/* ── BEGEGNUNGEN ZAEHLEN ──────────────────────────────────────────
+   Wer hat mit wem gespielt, wer gegen wen. Beides getrennt, weil
+   „jeder gegen jeden" beide Seiten meint: einmal zusammen im Team
+   und einmal auf der anderen Netzseite sind zwei verschiedene
+   Begegnungen. Einzel-Courts liefern nur Gegner-Paare. */
+const pairKey=(a,b)=>a<b?`${a}_${b}`:`${b}_${a}`;
+
+export function meetCounts(history=[]){
+  const partner=new Map(),opp=new Map();
+  const bump=(m,a,b)=>{const k=pairKey(a,b);m.set(k,(m.get(k)||0)+1);};
+  history.forEach(r=>(r.courts||[]).forEach(m=>{
+    const t1=m.t1||[],t2=m.t2||[];
+    if(t1.length>1) bump(partner,t1[0],t1[1]);
+    if(t2.length>1) bump(partner,t2[0],t2[1]);
+    t1.forEach(a=>t2.forEach(b=>bump(opp,a,b)));
+  }));
+  return {partner,opp};
+}
+
+/* Gewichte der Wiederholung. Ein zweites Mal mit demselben Partner
+   faellt staerker auf als ein zweites Mal gegen dieselbe Person —
+   deshalb wiegt Partner schwerer. Die Kosten wachsen linear mit der
+   Zahl der bisherigen Begegnungen: das dritte Treffen kostet doppelt
+   so viel wie das zweite, wodurch sich Wiederholungen von selbst
+   ueber das Feld verteilen, statt sich auf ein Paar zu haeufen. */
+const W_PARTNER=4, W_OPP=1;
+
 export function genAmericanoRound(playerIds,history=[],maxCourts=null,singles=[]){
-  // Wiederholungs-Keys: Partner-Paare (Doppel) + "s"-präfixte
-  // Gegner-Paare (Einzel — gleiche 1v1-Begegnung vermeiden).
-  const used=new Set(history.flatMap(r=>r.courts.flatMap(m=>m.single
-    ?[`s${Math.min(m.t1[0],m.t2[0])}_${Math.max(m.t1[0],m.t2[0])}`]
-    :[`${Math.min(...m.t1)}_${Math.max(...m.t1)}`,
-      `${Math.min(...m.t2)}_${Math.max(...m.t2)}`])));
+  const {partner,opp}=meetCounts(history);
+  const pc=(a,b)=>partner.get(pairKey(a,b))||0;
+  const oc=(a,b)=>opp.get(pairKey(a,b))||0;
   const caps=planCourts(playerIds.length,maxCourts,singles);
   const playingCount=caps.reduce((a,b)=>a+b,0);
   const numSit=playerIds.length-playingCount;
@@ -73,30 +97,70 @@ export function genAmericanoRound(playerIds,history=[],maxCourts=null,singles=[]
     : [];
   const playing=playerIds.filter(id=>!sitOut.includes(id));
 
-  // Courts in Index-Reihenfolge aus s füllen (cap 2 ⇒ 1v1, cap 4 ⇒ 2v2).
-  const build=(s,check)=>{
-    const courts=[];let p=0;
-    for(let ci=0;ci<caps.length;ci++){
-      if(caps[ci]===2){
-        const k=`s${Math.min(s[p],s[p+1])}_${Math.max(s[p],s[p+1])}`;
-        if(check&&used.has(k))return null;
-        courts.push({id:`c${ci}`,t1:[s[p]],t2:[s[p+1]],s1:null,s2:null,done:false,single:true});
-        p+=2;
-      }else{
-        const p1=[s[p],s[p+1]].sort((a,b)=>a-b),p2=[s[p+2],s[p+3]].sort((a,b)=>a-b);
-        if(check&&(used.has(`${p1[0]}_${p1[1]}`)||used.has(`${p2[0]}_${p2[1]}`)))return null;
-        courts.push({id:`c${ci}`,t1:[s[p],s[p+1]],t2:[s[p+2],s[p+3]],s1:null,s2:null,done:false});
+  /* Eine Sitzordnung s wird der Reihe nach in die Courts gefuellt
+     (cap 2 ⇒ 1v1, cap 4 ⇒ 2v2). Die Kosten sagen, wie viel
+     Wiederholung diese Sitzordnung bedeutet — 0 heisst: lauter
+     Begegnungen, die es so noch nicht gab. */
+  const seatCost=s=>{
+    let c=0,p=0;
+    for(const cap of caps){
+      if(cap===2){ c+=W_OPP*oc(s[p],s[p+1]); p+=2; }
+      else{
+        c+=W_PARTNER*(pc(s[p],s[p+1])+pc(s[p+2],s[p+3]));
+        c+=W_OPP*(oc(s[p],s[p+2])+oc(s[p],s[p+3])
+                 +oc(s[p+1],s[p+2])+oc(s[p+1],s[p+3]));
         p+=4;
       }
     }
-    return courts;
+    return c;
   };
-  for(let attempt=0;attempt<60;attempt++){
-    const courts=build(shuffle(playing),true);
-    if(courts) return {courts,sitOut};
+
+  /* Bergabstieg: zwei Plaetze tauschen, solange es billiger wird.
+     Der Zufallsstart allein findet bei vielen gespielten Runden kaum
+     noch eine gute Anordnung — erst das gezielte Nachbessern holt
+     die letzten Wiederholungen raus. */
+  const improve=s=>{
+    let cur=seatCost(s);
+    for(let pass=0;pass<6&&cur>0;pass++){
+      let moved=false;
+      for(let i=0;i<s.length-1;i++){
+        for(let j=i+1;j<s.length;j++){
+          [s[i],s[j]]=[s[j],s[i]];
+          const c=seatCost(s);
+          if(c<cur){cur=c;moved=true;}
+          else [s[i],s[j]]=[s[j],s[i]];
+        }
+      }
+      if(!moved) break;
+    }
+    return cur;
+  };
+
+  // Mehrere Zufallsstarts, der beste gewinnt. Frueher nahm der
+  // Generator den ERSTEN Wurf ohne Partner-Wiederholung und fiel nach
+  // 60 Fehlversuchen auf reinen Zufall zurueck — genau in den spaeten
+  // Runden, wo Struktur am meisten zaehlt. Jetzt gibt es keinen
+  // Absturz mehr: schlimmstenfalls die am wenigsten schlechte Lösung.
+  let best=null,bestCost=Infinity;
+  for(let attempt=0;attempt<24;attempt++){
+    const s=shuffle(playing);
+    const c=improve(s);
+    if(c<bestCost){bestCost=c;best=s;}
+    if(bestCost===0) break;
   }
-  // Fallback: accept partner repeats if no clean config found
-  return {courts:build(shuffle(playing),false),sitOut};
+
+  const courts=[];let p=0;
+  caps.forEach((cap,ci)=>{
+    if(cap===2){
+      courts.push({id:`c${ci}`,t1:[best[p]],t2:[best[p+1]],s1:null,s2:null,done:false,single:true});
+      p+=2;
+    }else{
+      courts.push({id:`c${ci}`,t1:[best[p],best[p+1]],t2:[best[p+2],best[p+3]],
+        s1:null,s2:null,done:false});
+      p+=4;
+    }
+  });
+  return {courts,sitOut};
 }
 
 export function genMexicanoRound(playerIds,leaderboard,maxCourts=null,history=[],singles=[]){

@@ -10515,7 +10515,7 @@ function PadelCourtBlue({t1=[],t2=[],playerById,meName,single=false}){
    Die Netzspalte kann Inhalt tragen (`net`): in der Turnieruebersicht
    haengen dort die beiden Punktestaende, in der Spieleransicht bleibt
    sie eine blosse Linie. `meName` hebt den eigenen Platz hervor. */
-function MatchSlotGrid({court,playerById,meName,net=null,netWidth=null,avatar=52}){
+function MatchSlotGrid({court,playerById,meName,net=null,avatar=52,innerA=null,innerB=null}){
   const nm=id=>playerById?.(id)?.name||'?';
   const col=id=>playerById?.(id)?.color||T.border;
   const isMe=id=>meName&&nm(id).toLowerCase()===meName.toLowerCase();
@@ -10544,31 +10544,48 @@ function MatchSlotGrid({court,playerById,meName,net=null,netWidth=null,avatar=52
   const t1=court.t1||[],t2=court.t2||[];
   const rows=court.single?1:2;
   const netItems=net==null?[]:(Array.isArray(net)?net.filter(Boolean):[net]);
-  // Ohne Inhalt ist die Netzspalte nur der Strich selbst.
-  const nw=netWidth??(netItems.length?62:2);
-  // Netz-Stueck. Die Linie wird NICHT hinter den Inhalt gelegt: --card2
-  // ist im Glass-Theme halbtransparent, ein "Grund" darunter wuerde sie
-  // nicht verdecken und die Ziffern bekaemen einen Strich durch die
-  // Mitte. Stattdessen sitzt zwischen den Kaesten je ein Segment — wie
-  // ein Netz, an dem die Anzeige haengt.
+  // Netz-Stueck. Was auf dem Netz sitzt (das VS), bekommt KEINEN Grund
+  // untergelegt — --card2 ist im Glass-Theme halbtransparent, die Linie
+  // bliebe sichtbar. Stattdessen setzt sich das Netz darueber und
+  // darunter fort.
   const netBit=(grow)=>(
     <div aria-hidden style={{width:1.5,background:T.o,opacity:.55,
       flex:grow?'1 1 0':'0 0 9px',minHeight:grow?6:9}}/>
   );
-  const head=(txt)=>(
-    <div style={{fontFamily:T.fontDisplay,color:T.t3,fontSize:9,letterSpacing:2.2,
-      textAlign:'center',padding:'9px 4px 0'}}>{txt}</div>
+  // Inhalt an der Netzseite einer Haelfte — in der Turnieruebersicht
+  // der Punktestand. Er steht bewusst IN der Haelfte seiner Mannschaft
+  // und nicht auf dem Netz: links vom Netz gehoert zu Team A, rechts zu
+  // Team B, so wie man eine Anzeigetafel liest. Uebereinander auf dem
+  // Netz brauchte es dagegen A-/B-Marker, und die las man trotzdem als
+  // Zugehoerigkeit zur oberen bzw. unteren REIHE.
+  const asideCell=(node,gc)=>(
+    <div style={{gridColumn:gc,gridRow:`2 / span ${rows}`,
+      display:'flex',alignItems:'center',justifyContent:'center',
+      padding:'6px 2px'}}>
+      {node}
+    </div>
   );
+  const head=(txt,gc)=>(
+    <div style={{gridColumn:gc,fontFamily:T.fontDisplay,color:T.t3,fontSize:9,
+      letterSpacing:2.2,textAlign:'center',padding:'9px 4px 0'}}>{txt}</div>
+  );
+  // 5 Spalten: Spieler | Punkte A | Netz | Punkte B | Spieler. Ohne
+  // Punkte fallen die beiden inneren Spalten auf 0 zusammen. Die
+  // Netzspalte ist nur der Strich — ausser sie traegt etwas (das VS),
+  // dann braucht sie dessen Breite, sonst ragt der Kreis in die
+  // Punktefelder.
+  const nw=netItems.length?32:2;
   return(
-    <div style={{display:'grid',gridTemplateColumns:`1fr ${nw}px 1fr`,
+    <div style={{display:'grid',
+      gridTemplateColumns:`1fr ${innerA?'auto':'0'} ${nw}px ${innerB?'auto':'0'} 1fr`,
       border:`1px solid ${T.border}`,borderRadius:16,overflow:'hidden',
       background:T.card2}}>
-      {head('Team A')}
-      <div/>
-      {head('Team B')}
+      {head('Team A','1 / 3')}
+      <div style={{gridColumn:3}}/>
+      {head('Team B','4 / 6')}
       {/* Netz — laeuft ueber beide Reihen durch, damit es als eine
           Linie liest und die Reihentrennung daran endet. */}
-      <div style={{gridColumn:2,gridRow:`2 / span ${rows}`,
+      <div style={{gridColumn:3,gridRow:`2 / span ${rows}`,
         display:'flex',flexDirection:'column',alignItems:'center',
         justifyContent:'center'}}>
         {netBit(true)}
@@ -10577,11 +10594,13 @@ function MatchSlotGrid({court,playerById,meName,net=null,netWidth=null,avatar=52
         ))}
         {netBit(true)}
       </div>
+      {innerA&&asideCell(innerA,2)}
+      {innerB&&asideCell(innerB,4)}
       {Array.from({length:rows}).map((_,r)=>(
         <Fragment key={r}>
           <div style={{gridColumn:1,gridRow:r+2,
             borderTop:r?`1px solid ${T.sep}`:'none'}}>{slot(t1[r],`a${r}`)}</div>
-          <div style={{gridColumn:3,gridRow:r+2,
+          <div style={{gridColumn:5,gridRow:r+2,
             borderTop:r?`1px solid ${T.sep}`:'none'}}>{slot(t2[r],`b${r}`)}</div>
         </Fragment>
       ))}
@@ -11490,20 +11509,19 @@ function TournamentCourtCard({court,courtIndex,courtName,emoji,onPickEmoji,playe
   const scoreSlot=(team,val,raw,onCh)=>{
     const winner=done&&winnerTeam===team;
     return(
-      // Der Buchstabe steht in Inter, nicht in Centauri — bei 9 px
-      // ist ein einzelnes Display-A nur noch ein Dreieck.
+      // Feste Breite, damit beide Punktespalten gleich breit sind:
+      // sonst rueckt eine einstellige Zahl naeher ans Netz als eine
+      // zweistellige und der Stand steht schief.
       <div key={`slot-${team}`}
-        style={{display:'flex',flexDirection:'column',alignItems:'center',gap:2}}>
-        <div style={{fontSize:9.5,fontWeight:900,letterSpacing:1.4,lineHeight:1,
-          color:winner?T.o:T.t2}}>{team}</div>
+        style={{width:46,display:'flex',alignItems:'center',justifyContent:'center'}}>
         {done?(
           <div key={`${team}-${val}`} className="court-score-pop"
-            style={{fontSize:30,fontWeight:900,letterSpacing:-1,lineHeight:1,
-              padding:'2px 6px 4px',color:winner?T.o:T.t2}}>
+            style={{fontSize:32,fontWeight:900,letterSpacing:-1,lineHeight:1,
+              padding:'2px 8px',color:winner?T.o:T.t2}}>
             {val}
           </div>
         ):(
-          <ScoreWheel value={raw} onChange={onCh} max={scoreMax} w={54} h={28}/>
+          <ScoreWheel value={raw} onChange={onCh} max={scoreMax} w={46} h={28}/>
         )}
       </div>
     );
@@ -11593,21 +11611,23 @@ function TournamentCourtCard({court,courtIndex,courtName,emoji,onPickEmoji,playe
       </div>
 
       {/* Matchup als 2×2-Raster (gleiche Darstellung wie in der
-          Spieleransicht): Team A links, Team B rechts, das Netz
-          dazwischen — und auf dem Netz haengen die beiden Punkte-
-          staende, oben A, unten B. Vorher standen die Namen als
-          gestaffelte Liste links und rechts; bei vier Namen plus
-          zwei Score-Feldern in EINER Zeile blieb pro Name kaum
-          Platz, und wer mit wem spielt, musste man sich aus der
-          Reihenfolge zusammenreimen. */}
+          Spieleransicht): Team A links, Team B rechts, das Netz als
+          durchgehende Linie dazwischen, das VS auf der Kreuzung mit
+          dem Reihentrenner. Der Punktestand steht innen in der
+          Haelfte SEINER Mannschaft — 18 links, 9 rechts, wie auf
+          einer Anzeigetafel. Vorher standen die Namen als gestaffelte
+          Liste links und rechts; bei vier Namen plus zwei Score-
+          Feldern in EINER Zeile blieb pro Name kaum Platz, und wer
+          mit wem spielt, musste man sich aus der Reihenfolge
+          zusammenreimen. */}
       <div style={{position:'relative',marginBottom:14}}>
         <MatchSlotGrid
           court={court}
           playerById={playerById}
           avatar={44}
-          netWidth={70}
+          innerA={scoreSlot('A',s1,s1Raw,v=>onScoreChange('s1',v))}
+          innerB={scoreSlot('B',s2,s2Raw,v=>onScoreChange('s2',v))}
           net={[
-            scoreSlot('A',s1,s1Raw,v=>onScoreChange('s1',v)),
             /* VS sitzt genau auf der Kreuzung von Netz und
                Reihentrenner. */
             <div key="vs" className={done?'':'court-vs'}
@@ -11619,7 +11639,6 @@ function TournamentCourtCard({court,courtIndex,courtName,emoji,onPickEmoji,playe
                 fontSize:9,fontWeight:900,letterSpacing:.4}}>
               VS
             </div>,
-            scoreSlot('B',s2,s2Raw,v=>onScoreChange('s2',v)),
           ]}/>
       </div>
 

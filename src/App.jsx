@@ -4554,7 +4554,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onQuickStart}
               <div style={{color:T.t1,fontSize:16,fontWeight:700,letterSpacing:-.3}}>Single Match</div>
               <div className="txt" style={{color:T.t3,fontSize:12.5,fontStyle:'italic',
                 marginTop:4,lineHeight:1.4}}>
-                Best of 3, Americano
+                Best of 3
               </div>
             </div>
           </button>
@@ -4565,7 +4565,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onQuickStart}
               <div style={{color:T.t1,fontSize:16,fontWeight:700,letterSpacing:-.3}}>Turnier</div>
               <div className="txt" style={{color:T.t3,fontSize:12.5,fontStyle:'italic',
                 marginTop:4,lineHeight:1.4}}>
-                Americano, Mexicano &amp; mehr
+                Americano &amp; mehr
               </div>
             </div>
           </button>
@@ -4580,12 +4580,6 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onQuickStart}
                   :<TennisBallIcon size={34}/>}
               </span>
               <div style={{maxWidth:'100%',minWidth:0}}>
-                {/* Kurzes Wort mit Absicht: Centauri läuft rund 1,4×
-                    der Schriftgröße pro Zeichen — „Schnellstart" maß
-                    174 px in einer 156-px-Karte und lief quer über die
-                    Nachbarkarten. */}
-                <div style={{fontFamily:T.fontDisplay,color:T.o,fontSize:9.5,
-                  letterSpacing:2.2,lineHeight:1,marginBottom:6}}>Sofort</div>
                 <div style={{color:T.t1,fontSize:16,fontWeight:700,letterSpacing:-.3}}>
                   {q.label}
                 </div>

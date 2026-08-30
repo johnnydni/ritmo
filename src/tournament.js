@@ -618,7 +618,7 @@ export const QUICK_STARTS=[
   {id:'mixicano8',   label:'Mixicano',   sub:'8 Spieler, gemischt',
    format:'mixicano',  players:8,  courts:2, winMode:'points', roundDurationMin:12,
    groups:true},
-  {id:'wettkampf8',  label:'Wettkampf',  sub:'8 Spieler, nach Tabelle',
+  {id:'wettkampf8',  label:'Wettkampf',  sub:'8 Spieler, Mexicano',
    format:'mexicano',  players:8,  courts:2, winMode:'wins',   roundDurationMin:14},
   {id:'feierabend4', label:'Feierabend', sub:'4 Spieler, ein Court',
    format:'americano', players:4,  courts:1, winMode:'points', roundDurationMin:15},

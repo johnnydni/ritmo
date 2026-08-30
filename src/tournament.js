@@ -603,3 +603,39 @@ export function calcLeaderboard(players,rounds,winMode='points',pauseMode='mean'
   });
   return Object.values(stats);
 }
+
+/* ── SCHNELLSTARTS ────────────────────────────────────────────────
+   Fertige Turnier-Zuschnitte fuer die Home-Karten. Sie fuellen nur
+   den Konfigurator vor — gestartet wird weiterhin dort, damit Namen
+   und Zeiten noch stimmen koennen, bevor es losgeht.
+
+   Die Werte sind bewusst die haeufigen Faelle aus der Halle: ein
+   volles Feld Americano, eine gemischte Runde, eine Runde nach
+   Tabellenstand. Wer etwas anderes will, hat den Assistenten. */
+export const QUICK_STARTS=[
+  {id:'americano12', label:'Americano',  sub:'12 Spieler, 3 Courts',
+   format:'americano', players:12, courts:3, winMode:'points', roundDurationMin:12},
+  {id:'mixicano8',   label:'Mixicano',   sub:'8 Spieler, gemischt',
+   format:'mixicano',  players:8,  courts:2, winMode:'points', roundDurationMin:12,
+   groups:true},
+  {id:'wettkampf8',  label:'Wettkampf',  sub:'8 Spieler, nach Tabelle',
+   format:'mexicano',  players:8,  courts:2, winMode:'wins',   roundDurationMin:14},
+  {id:'feierabend4', label:'Feierabend', sub:'4 Spieler, ein Court',
+   format:'americano', players:4,  courts:1, winMode:'points', roundDurationMin:15},
+];
+
+/* Baut aus einem Schnellstart die Vorbelegung fuer TournamentSetup —
+   dieselbe Form, die auch ein gespeichertes Turnier hat, nur ohne
+   id/rounds. Mixicano braucht zwei Gruppen, deshalb wechseln sich
+   A und B ab. */
+export function quickStartPreset(q){
+  if(!q) return null;
+  return {
+    format:q.format, winMode:q.winMode, numCourts:q.courts,
+    roundDurationMin:q.roundDurationMin,
+    players:Array.from({length:q.players},(_,i)=>({
+      id:i, name:`Spieler ${i+1}`, color:PCOLS[i%PCOLS.length],
+      ...(q.groups?{group:i%2?'B':'A'}:{}),
+    })),
+  };
+}

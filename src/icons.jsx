@@ -881,3 +881,15 @@ export function SpeakerIcon({size=24,color='currentColor'}){
     <path d="M18.4 6.6a7.6 7.6 0 0 1 0 10.8"/>
   </svg>);
 }
+
+// Sprechblase — Club-Chat. Die Glocke stand dort fuer eine
+// Benachrichtigung, gemeint war aber das Gespraech.
+export function ChatBubbleIcon({size=24,color='currentColor'}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20.5 12.4c0 3.9-3.8 7-8.5 7-1 0-2-.15-2.9-.42L4 20.5l1.2-3.5C4.1 15.7 3.5 14.1 3.5 12.4c0-3.9 3.8-7 8.5-7s8.5 3.1 8.5 7Z"/>
+    <circle cx="8.6" cy="12.4" r="1.05" fill={color} stroke="none"/>
+    <circle cx="12" cy="12.4" r="1.05" fill={color} stroke="none"/>
+    <circle cx="15.4" cy="12.4" r="1.05" fill={color} stroke="none"/>
+  </svg>);
+}

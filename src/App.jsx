@@ -45,7 +45,7 @@ import {
   HeroRulesVisual, HeroJourneyVisual,
   // Settings + RITMO Post line-art icons
   SteeringWheelIcon, PaletteIcon, EyeIcon, BellIcon, LockIcon, DoorOutIcon,
-  SpeakerIcon,
+  SpeakerIcon, ChatBubbleIcon,
   ChevronRightIcon, AirPlayIcon, CoffeeCupIcon,
   ArchetypeGlyph, PauseIcon,
   // Emoji-Ersatz-Glyphen
@@ -15326,7 +15326,7 @@ function ClubDetail({clubId,currentUid,onHome,onBack,onOpenPlayer,onOpenChat,onE
               <button onClick={()=>onOpenChat&&onOpenChat(clubId)}
                 style={{flex:1,background:T.oSoft,border:`1px solid ${T.o}`,borderRadius:15,
                   padding:'14px 16px',textAlign:'center',cursor:'pointer',color:T.o}}>
-                <BellIcon size={20} color="currentColor"/>
+                <ChatBubbleIcon size={20} color="currentColor"/>
                 <div style={{color:T.o,fontSize:10,fontWeight:800,letterSpacing:1.3,
                   textTransform:'uppercase',marginTop:4}}>Chat öffnen</div>
               </button>

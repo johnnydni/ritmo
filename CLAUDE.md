@@ -81,7 +81,16 @@ When changing scoring rules, edit the reducer — the `Match` screen is a thin s
 - If the session already carries a roster (`tournamentState.players` — always the case for a mirror session), `RosterNamePicker` lists those names; names already claimed by another participant are disabled. Picking a name joins with it *verbatim*, which matters because `TournamentParticipantView` matches a participant to a player by `sessionParticipantId` or, failing that, by lowercased name — a typed "Chris" for a rostered "Christian" used to leave the player without a match.
 - Without a roster (lobby session, not yet started) the flow falls back to the free-text `name` step, also reachable via "Mein Name steht nicht dabei".
 
-The participant's match view is a two-page swipe (`MatchPager`, scroll-snap — same mechanism as the Home "Spielen" strip): **Jetzt** shows the running match as a 2×2 grid (`MatchSlotGrid`, Team A left, Team B right, net between), **Danach** shows the next match on a blue padel court (`PadelCourtBlue`, real 20 m × 10 m proportions) plus a Mit/Gegen readout. The pager sits outside the score-submission card on purpose so players who are sitting out still see what is coming.
+The participant's match view is a two-page swipe (`MatchPager`, scroll-snap — same mechanism as the Home "Spielen" strip): **Jetzt** shows the running match as a 2×2 grid (`MatchSlotGrid`), **Danach** shows the next match on a blue padel court (`PadelCourtBlue`, real 20 m × 10 m proportions) plus a Mit/Gegen readout. The pager sits outside the score-submission card on purpose so players who are sitting out still see what is coming.
+
+### `MatchSlotGrid` — the standard way a match is drawn
+
+One match, one component: Team A left, Team B right, the net between, two rows of players (one when `court.single`). Used by the host's `TournamentCourtCard` in the running tournament *and* by the participant's live view, so both sides see the same picture.
+
+- `meName` highlights that player's seat (orange ring, glow, "Du").
+- `net` puts content **on** the net; pass an array and the component draws net segments between the items, so the line never runs through a number. Do not try to mask the line with a background — `--card2` is semi-transparent in the glass theme and the strike-through stays visible.
+- The host passes `[scoreA, VS, scoreB]`: score A on the upper half, score B on the lower, each with a small Inter `A`/`B` marker. The marker is what makes the mapping readable — stacked vertically, the upper box otherwise reads as belonging to the upper *row* rather than to Team A. Centauri is wrong here: a lone display `A` at 9 px is just a triangle.
+- Open courts show a `ScoreWheel` (its row height is the `h` prop — 28 in the grid, the default 34 elsewhere), confirmed courts a large number with the winner in the accent color.
 
 ### Theming
 

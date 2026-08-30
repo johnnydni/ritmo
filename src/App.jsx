@@ -10506,24 +10506,28 @@ function PadelCourtBlue({t1=[],t2=[],playerById,meName,single=false}){
   );
 }
 
-/* ── Die vier Plaetze des laufenden Matches als 2×2-Raster: links
-   Team A, rechts Team B, dazwischen das Netz. Nebeneinander liest man
-   sofort, wer mit wem und gegen wen spielt — die frueher hier
+/* ── Die vier Plaetze eines Matches als 2×2-Raster: links Team A,
+   rechts Team B, dazwischen das Netz. Nebeneinander liest man sofort,
+   wer mit wem und gegen wen spielt — die frueher an beiden Stellen
    stehende Zeile "Anna & Ben vs Cem & Dana" wurde bei langen Namen
-   abgeschnitten und war auf Distanz kaum zu erfassen. */
-function MatchSlotGrid({court,playerById,meName}){
+   abgeschnitten und war auf Distanz kaum zu erfassen.
+
+   Die Netzspalte kann Inhalt tragen (`net`): in der Turnieruebersicht
+   haengen dort die beiden Punktestaende, in der Spieleransicht bleibt
+   sie eine blosse Linie. `meName` hebt den eigenen Platz hervor. */
+function MatchSlotGrid({court,playerById,meName,net=null,netWidth=null,avatar=52}){
   const nm=id=>playerById?.(id)?.name||'?';
   const col=id=>playerById?.(id)?.color||T.border;
   const isMe=id=>meName&&nm(id).toLowerCase()===meName.toLowerCase();
   const slot=(id,pos)=>(
     <div key={pos} style={{display:'flex',flexDirection:'column',alignItems:'center',
-      gap:7,padding:'14px 6px',minWidth:0}}>
-      <div style={{width:52,height:52,borderRadius:'50%',flexShrink:0,
+      justifyContent:'center',gap:7,padding:'14px 6px',minWidth:0,height:'100%'}}>
+      <div style={{width:avatar,height:avatar,borderRadius:'50%',flexShrink:0,
         background:isMe(id)?T.oSoft:T.card2,
         border:`2px solid ${isMe(id)?T.o:col(id)}`,
-        color:T.t1,fontSize:17,fontWeight:800,display:'flex',
+        color:T.t1,fontSize:avatar*.33,fontWeight:800,display:'flex',
         alignItems:'center',justifyContent:'center',
-        boxShadow:isMe(id)?'0 4px 16px var(--oGlow)':'none'}}>
+        boxShadow:isMe(id)?'0 4px 16px var(--oGlow)':`0 0 10px ${col(id)}33`}}>
         {getInitials(nm(id))||'?'}
       </div>
       <div style={{color:isMe(id)?T.o:T.t1,fontSize:13,fontWeight:isMe(id)?800:600,
@@ -10539,22 +10543,46 @@ function MatchSlotGrid({court,playerById,meName}){
   );
   const t1=court.t1||[],t2=court.t2||[];
   const rows=court.single?1:2;
+  const netItems=net==null?[]:(Array.isArray(net)?net.filter(Boolean):[net]);
+  // Ohne Inhalt ist die Netzspalte nur der Strich selbst.
+  const nw=netWidth??(netItems.length?62:2);
+  // Netz-Stueck. Die Linie wird NICHT hinter den Inhalt gelegt: --card2
+  // ist im Glass-Theme halbtransparent, ein "Grund" darunter wuerde sie
+  // nicht verdecken und die Ziffern bekaemen einen Strich durch die
+  // Mitte. Stattdessen sitzt zwischen den Kaesten je ein Segment — wie
+  // ein Netz, an dem die Anzeige haengt.
+  const netBit=(grow)=>(
+    <div aria-hidden style={{width:1.5,background:T.o,opacity:.55,
+      flex:grow?'1 1 0':'0 0 9px',minHeight:grow?6:9}}/>
+  );
+  const head=(txt)=>(
+    <div style={{fontFamily:T.fontDisplay,color:T.t3,fontSize:9,letterSpacing:2.2,
+      textAlign:'center',padding:'9px 4px 0'}}>{txt}</div>
+  );
   return(
-    <div style={{display:'grid',gridTemplateColumns:'1fr 1px 1fr',
+    <div style={{display:'grid',gridTemplateColumns:`1fr ${nw}px 1fr`,
       border:`1px solid ${T.border}`,borderRadius:16,overflow:'hidden',
       background:T.card2}}>
-      {/* Kopfzeile der beiden Haelften */}
-      <div style={{fontFamily:T.fontDisplay,color:T.t3,fontSize:9,letterSpacing:2.2,
-        textAlign:'center',padding:'9px 4px 0'}}>Team A</div>
+      {head('Team A')}
       <div/>
-      <div style={{fontFamily:T.fontDisplay,color:T.t3,fontSize:9,letterSpacing:2.2,
-        textAlign:'center',padding:'9px 4px 0'}}>Team B</div>
+      {head('Team B')}
+      {/* Netz — laeuft ueber beide Reihen durch, damit es als eine
+          Linie liest und die Reihentrennung daran endet. */}
+      <div style={{gridColumn:2,gridRow:`2 / span ${rows}`,
+        display:'flex',flexDirection:'column',alignItems:'center',
+        justifyContent:'center'}}>
+        {netBit(true)}
+        {netItems.map((n,i)=>(
+          <Fragment key={i}>{n}{i<netItems.length-1&&netBit(false)}</Fragment>
+        ))}
+        {netBit(true)}
+      </div>
       {Array.from({length:rows}).map((_,r)=>(
         <Fragment key={r}>
-          <div style={{borderTop:r?`1px solid ${T.sep}`:'none'}}>{slot(t1[r],`a${r}`)}</div>
-          {/* Netz */}
-          <div style={{background:T.o,opacity:.55}}/>
-          <div style={{borderTop:r?`1px solid ${T.sep}`:'none'}}>{slot(t2[r],`b${r}`)}</div>
+          <div style={{gridColumn:1,gridRow:r+2,
+            borderTop:r?`1px solid ${T.sep}`:'none'}}>{slot(t1[r],`a${r}`)}</div>
+          <div style={{gridColumn:3,gridRow:r+2,
+            borderTop:r?`1px solid ${T.sep}`:'none'}}>{slot(t2[r],`b${r}`)}</div>
         </Fragment>
       ))}
     </div>
@@ -11230,15 +11258,17 @@ function ReadyCheckHostCard({tourney,participants,readyCheck,onBroadcast,onDismi
    TOURNAMENT COURT CARD
 
    Animierter Court-Eintrag im Runden-View. Zeigt pro Court:
-     - Court-Nummer (groß, Akzent-Farbe)
+     - Court-Nummer (groß, Akzent-Farbe) + Emoji-Picker
      - Live-Pulse oder Fertig-Häkchen rechts oben
-     - Team A links: Spieler-Avatare (Initial-Pill) + Namen, Farbpunkt
-     - „VS" zwischen den Teams, dauerhaft pulsierend solange offen
-     - Team B rechts: gespiegelt
-     - Score-Felder mittig unten, gross + Score-Pop-Animation bei
-       Punktänderung
+     - das Match als 2×2-Raster (MatchSlotGrid, dieselbe Darstellung
+       wie in der Spieleransicht): Team A links, Team B rechts, Netz
+       dazwischen
+     - auf dem Netz die beiden Punktestände, oben A, unten B — offen
+       als Scrollrad, bestätigt als große Zahl mit Score-Pop; das
+       „VS" sitzt auf der Kreuzung von Netz und Reihentrenner
+     - Match-Tier-Rating (RITMO DNA), wenn alle vier einen Stil haben
      - Confirm-/Edit-Button am unteren Rand
-   Staggered Entrance via animationDelay (50ms × Court-Index).
+   Staggered Entrance via animationDelay (60ms × Court-Index).
 ═══════════════════════════════════════════════════════════════ */
 /* ── Lineup-Editor — Host tauscht die Spieler eines Courts. Auswahl
    aus ALLEN Turnier-Spielern (inkl. Pause). Tausch ist immer 1:1
@@ -11393,9 +11423,11 @@ function PointsEditModal({entry,winMode,onSave,onClose}){
 
 /* Kompaktes Score-Wheel (iPhone-Wecker-Stil) für die Court-Übersicht —
    3 sichtbare Reihen, Snap, statt Zahleneingabe. */
-function ScoreWheel({value,onChange,max=40,color=T.o,w=52}){
+function ScoreWheel({value,onChange,max=40,color=T.o,w=52,h=34}){
   const ref=useRef(null);
-  const ITEM_H=34, VISIBLE=3, HEIGHT=ITEM_H*VISIBLE, PAD=(HEIGHT-ITEM_H)/2;
+  // h steuert die Zeilenhoehe: im Court-Raster stehen zwei Wheels
+  // uebereinander auf dem Netz, da waeren 3x34 px zu hoch.
+  const ITEM_H=h, VISIBLE=3, HEIGHT=ITEM_H*VISIBLE, PAD=(HEIGHT-ITEM_H)/2;
   const opts=Array.from({length:max+1},(_,i)=>i);
   const v=value==null?0:value;
   const init=useRef(false), toRef=useRef(null);
@@ -11419,7 +11451,7 @@ function ScoreWheel({value,onChange,max=40,color=T.o,w=52}){
         <div style={{height:PAD}}/>
         {opts.map(o=>{ const active=o===v;
           return <div key={o} style={{height:ITEM_H,display:'flex',alignItems:'center',justifyContent:'center',
-            scrollSnapAlign:'start',fontSize:active?24:15,fontWeight:active?900:600,
+            scrollSnapAlign:'start',fontSize:active?ITEM_H*.7:ITEM_H*.44,fontWeight:active?900:600,
             color:active?T.t1:T.t3,transition:'color .15s,font-size .15s'}}>{o}</div>; })}
         <div style={{height:PAD}}/>
       </div>
@@ -11449,52 +11481,33 @@ function TournamentCourtCard({court,courtIndex,courtName,emoji,onPickEmoji,playe
   // Gewinnerseite ermitteln (für goldenen Glow auf der Karte).
   const winnerTeam=done?(s1>s2?'A':s2>s1?'B':null):null;
 
-  // Pill mit Initialen + Farb-Border um den Spieler-Avatar zu hinten —
-  // sieht in der Liste lebendiger aus als nur ein Farbpunkt.
-  const Avatar=({player})=>(
-    <div style={{
-      width:28,height:28,borderRadius:'50%',flexShrink:0,
-      background:`${player?.color||T.t3}22`,
-      border:`1.5px solid ${player?.color||T.border}`,
-      color:player?.color||T.t1,
-      display:'flex',alignItems:'center',justifyContent:'center',
-      fontSize:11,fontWeight:800,letterSpacing:.3,
-      boxShadow:`0 0 8px ${player?.color||'transparent'}44`,
-    }}>
-      {getInitials(player?.name||'?')}
-    </div>
-  );
-
-  // Spieler-Namen leicht VERSETZT (gestaffelt) übereinander: der 2. Spieler
-  // ist nach innen eingerückt, damit beide Zeilen klar getrennt lesbar
-  // sind. Namen bleiben EINZEILIG (nowrap + Ellipsis) — kein Umbruch
-  // mitten im Namen ("Spieler 1" brach als "Spieler"/"1" um).
-  const teamSide=(playerIds,align)=>(
-    <div style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',gap:8,
-      alignItems:align==='right'?'flex-end':'flex-start'}}>
-      {playerIds.map((pid,idx)=>{
-        const p=playerById(pid);
-        return(
-          <div key={pid}
-            style={{display:'flex',alignItems:'center',gap:7,minWidth:0,width:'100%',
-              flexDirection:align==='right'?'row-reverse':'row',
-              justifyContent:align==='right'?'flex-end':'flex-start',
-              // 2. Spieler versetzt einrücken → gestaffelte Optik.
-              ...(idx===1?(align==='right'?{paddingRight:12}:{paddingLeft:12}):null)}}>
-            <Avatar player={p}/>
-            <div style={{minWidth:0,flex:'1 1 auto',
-              textAlign:align==='right'?'right':'left'}}>
-              <div style={{color:T.t1,fontSize:12.5,fontWeight:700,letterSpacing:-.2,
-                lineHeight:1.16,whiteSpace:'nowrap',overflow:'hidden',
-                textOverflow:'ellipsis'}}>
-                {p?.name||'—'}
-              </div>
-            </div>
+  // Ein Punktestand auf dem Netz: Buchstabe der Mannschaft plus
+  // Wert. Solange der Court offen ist, ist das ein Scrollrad; ist er
+  // bestaetigt, steht dort nur noch die Zahl, und die Karte wird
+  // wieder kurz. Der Buchstabe ist noetig, weil die beiden Staende
+  // uebereinander stehen — ohne ihn wuerde man den oberen der oberen
+  // REIHE zuordnen statt Team A.
+  const scoreSlot=(team,val,raw,onCh)=>{
+    const winner=done&&winnerTeam===team;
+    return(
+      // Der Buchstabe steht in Inter, nicht in Centauri — bei 9 px
+      // ist ein einzelnes Display-A nur noch ein Dreieck.
+      <div key={`slot-${team}`}
+        style={{display:'flex',flexDirection:'column',alignItems:'center',gap:2}}>
+        <div style={{fontSize:9.5,fontWeight:900,letterSpacing:1.4,lineHeight:1,
+          color:winner?T.o:T.t2}}>{team}</div>
+        {done?(
+          <div key={`${team}-${val}`} className="court-score-pop"
+            style={{fontSize:30,fontWeight:900,letterSpacing:-1,lineHeight:1,
+              padding:'2px 6px 4px',color:winner?T.o:T.t2}}>
+            {val}
           </div>
-        );
-      })}
-    </div>
-  );
+        ):(
+          <ScoreWheel value={raw} onChange={onCh} max={scoreMax} w={54} h={28}/>
+        )}
+      </div>
+    );
+  };
 
   return(
     <div className="court-card"
@@ -11579,62 +11592,35 @@ function TournamentCourtCard({court,courtIndex,courtName,emoji,onPickEmoji,playe
         </div>
       </div>
 
-      {/* Matchup: [Team A] [Score A] [VS] [Score B] [Team B]
-          Alles in einer Zeile, Scores links + rechts vom VS-Kreis,
-          mittig vertikal ausgerichtet. Score-Inputs sind kompakter
-          gehalten (48x48 statt 60x60) damit die Karte auf 320px+
-          Screens nicht überläuft. */}
-      <div style={{position:'relative',display:'flex',alignItems:'center',
-        gap:6,marginBottom:14}}>
-        {teamSide(court.t1||[],'left')}
-
-        {/* Score A — Input wenn offen, große Zahl wenn fertig */}
-        {done?(
-          <div key={`s1-${s1}`} className="court-score-pop"
-            style={{
-              flexShrink:0,
-              minWidth:44,textAlign:'center',
-              fontSize:32,fontWeight:900,letterSpacing:-1,lineHeight:1,
-              color:winnerTeam==='A'?T.o:T.t2,
-            }}>
-            {s1}
-          </div>
-        ):(
-          <ScoreWheel value={s1Raw} onChange={v=>onScoreChange('s1',v)} max={scoreMax} w={46}/>
-        )}
-
-        {/* VS-Kreis bleibt zentral zwischen den Scores */}
-        <div className={done?'':'court-vs'}
-          style={{
-            flexShrink:0,
-            width:30,height:30,borderRadius:'50%',
-            background:done
-              ?(winnerTeam?`${T.o}33`:T.card2)
-              :`${T.r}22`,
-            border:`1.5px solid ${done?(winnerTeam?T.o:T.border):T.r}`,
-            color:done?(winnerTeam?T.o:T.t3):T.r,
-            display:'flex',alignItems:'center',justifyContent:'center',
-            fontSize:10,fontWeight:900,letterSpacing:.4,
-          }}>
-          VS
-        </div>
-
-        {/* Score B */}
-        {done?(
-          <div key={`s2-${s2}`} className="court-score-pop"
-            style={{
-              flexShrink:0,
-              minWidth:44,textAlign:'center',
-              fontSize:32,fontWeight:900,letterSpacing:-1,lineHeight:1,
-              color:winnerTeam==='B'?T.o:T.t2,
-            }}>
-            {s2}
-          </div>
-        ):(
-          <ScoreWheel value={s2Raw} onChange={v=>onScoreChange('s2',v)} max={scoreMax} w={46}/>
-        )}
-
-        {teamSide(court.t2||[],'right')}
+      {/* Matchup als 2×2-Raster (gleiche Darstellung wie in der
+          Spieleransicht): Team A links, Team B rechts, das Netz
+          dazwischen — und auf dem Netz haengen die beiden Punkte-
+          staende, oben A, unten B. Vorher standen die Namen als
+          gestaffelte Liste links und rechts; bei vier Namen plus
+          zwei Score-Feldern in EINER Zeile blieb pro Name kaum
+          Platz, und wer mit wem spielt, musste man sich aus der
+          Reihenfolge zusammenreimen. */}
+      <div style={{position:'relative',marginBottom:14}}>
+        <MatchSlotGrid
+          court={court}
+          playerById={playerById}
+          avatar={44}
+          netWidth={70}
+          net={[
+            scoreSlot('A',s1,s1Raw,v=>onScoreChange('s1',v)),
+            /* VS sitzt genau auf der Kreuzung von Netz und
+               Reihentrenner. */
+            <div key="vs" className={done?'':'court-vs'}
+              style={{width:26,height:26,borderRadius:'50%',flexShrink:0,
+                background:done?(winnerTeam?`${T.o}33`:T.card2):`${T.r}22`,
+                border:`1.5px solid ${done?(winnerTeam?T.o:T.border):T.r}`,
+                color:done?(winnerTeam?T.o:T.t3):T.r,
+                display:'flex',alignItems:'center',justifyContent:'center',
+                fontSize:9,fontWeight:900,letterSpacing:.4}}>
+              VS
+            </div>,
+            scoreSlot('B',s2,s2Raw,v=>onScoreChange('s2',v)),
+          ]}/>
       </div>
 
       {/* Match-Tier-Rating (RITMO DNA) — Stil-Chemie beider Teams */}

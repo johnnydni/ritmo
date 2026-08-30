@@ -89,6 +89,7 @@ One match, one component: Team A left, Team B right, the net between, two rows o
 
 The grid is five columns — `players | innerA | net | innerB | players` — and the two inner columns collapse to zero when unused.
 
+- The `Team A` / `Team B` labels sit over the **player** column, not over the whole half — with the score column beside them, centering over the half pulls them inward and off the circles.
 - `meName` highlights that player's seat (orange ring, glow, "Du").
 - `innerA` / `innerB` put content at the net side of a team's own half, spanning both rows. The host's court card puts the score there: 21 left of the net, 9 right of it, read like a scoreboard. Do **not** stack the two scores on the net instead — vertically stacked they need `A`/`B` markers and are still read as belonging to the upper/lower *row*.
 - `net` puts content **on** the net (the host's VS circle); pass an array and the component draws net segments between the items so the line never runs through it. Masking the line with a background does not work — `--card2` is semi-transparent in the glass theme and the strike-through stays visible.

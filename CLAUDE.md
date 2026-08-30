@@ -72,6 +72,16 @@ When changing scoring rules, edit the reducer — the `Match` screen is a thin s
 - **Americano**: random pairings; avoids partner-repeats for up to 60 attempts, then falls back to allowing repeats. Fair sit-out (players with fewest prior sit-outs sit out next).
 - **Mexicano**: pairings driven by current leaderboard standings (1+4 vs 2+3 per court group of 4).
 - **Sit-out compensation**: controlled by the tournament's `pauseMode` (wizard step "Runden & Regeln", or the Sieger-Modus card in the classic form). `'mean'` (default, and the fallback for tournaments saved before the setting existed) credits sit-outs the rounded per-round mean as `bonusPts` in `points` mode, or `+1 win per sit-out` for lower-half players in `wins` mode. `'fixed'` credits a flat `pausePts` per sit-out as `bonusPts` (also in `wins` mode, where points act as the tiebreak) — unlike `'mean'` it needs no confirmed results in the round. `'none'` credits nothing — sit-outs are still counted for the P column, just not compensated. Bonuses are kept on separate fields (`bonusPts`/`bonusWins`) and only folded into `totalPts`/`totalWins` at the end.
+- **Next-round preview**: while a round runs, `TournamentPlay` already draws the *following* round and keeps it on `tourney.nextPreview = {forRound, round}`; `nextRound()` then plays exactly that draw instead of generating a fresh one. This is what feeds the "Danach" page in the live participant view. It only happens for formats in `PREVIEWABLE_FORMATS` (`americano`, `teamamericano`, `mixicano`) whose pairings depend on the *history* of who played with/against whom. Mexicano and Team-Mexicano draw from the leaderboard, King of the Court and Knockout from the current round's winners — previewing those would fix the pairings before the results exist and stop them being the format the host picked, so they show an honest "steht noch nicht fest" instead.
+
+### Live mode (players joining a shared tournament)
+
+"Live teilen" in the running-tournament screen mirrors a local tournament into a PIN session (`mode:'mirror'`, `allowLateJoin:true`). Players join via `JoinTournament`, which resolves the PIN first (`lookup`) and only then asks who they are:
+
+- If the session already carries a roster (`tournamentState.players` — always the case for a mirror session), `RosterNamePicker` lists those names; names already claimed by another participant are disabled. Picking a name joins with it *verbatim*, which matters because `TournamentParticipantView` matches a participant to a player by `sessionParticipantId` or, failing that, by lowercased name — a typed "Chris" for a rostered "Christian" used to leave the player without a match.
+- Without a roster (lobby session, not yet started) the flow falls back to the free-text `name` step, also reachable via "Mein Name steht nicht dabei".
+
+The participant's match view is a two-page swipe (`MatchPager`, scroll-snap — same mechanism as the Home "Spielen" strip): **Jetzt** shows the running match as a 2×2 grid (`MatchSlotGrid`, Team A left, Team B right, net between), **Danach** shows the next match on a blue padel court (`PadelCourtBlue`, real 20 m × 10 m proportions) plus a Mit/Gegen readout. The pager sits outside the score-submission card on purpose so players who are sitting out still see what is coming.
 
 ### Theming
 

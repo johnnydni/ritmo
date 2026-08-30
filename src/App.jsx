@@ -8075,6 +8075,39 @@ function TournamentWizard({onClose,onFinish,canStart,
           {step===1&&(<>
             <div style={stepTitle}>Wer spielt mit?</div>
             <div style={stepSub}>Mindestens 4 Spieler — Enter springt zum nächsten Namen.</div>
+            {/* Anzahl zuerst, wie im Court-Schritt: erst sagen, wie viele
+                ihr seid, dann die Namen fuellen. Minus nimmt den letzten
+                Platz weg — der steht am Ende der Liste und ist damit der,
+                den man beim Verzaehlen zuletzt angelegt hat. */}
+            <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:20,
+              margin:'6px 0 14px'}}>
+              <button onClick={()=>{
+                  if(players.length<=4) return;
+                  buzz(6);removePlayer(players[players.length-1].id);
+                }}
+                disabled={players.length<=4}
+                aria-label="Einen Spieler weniger"
+                style={{...stepBtn,width:52,height:52,borderRadius:16,fontSize:24,
+                  opacity:players.length<=4?.4:1,
+                  cursor:players.length<=4?'not-allowed':'pointer'}}>−</button>
+              <div style={{textAlign:'center',minWidth:84}}>
+                <div style={{color:T.t1,fontSize:46,fontWeight:900,lineHeight:1}}>{players.length}</div>
+                <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.2,
+                  textTransform:'uppercase',marginTop:5}}>Spieler</div>
+              </div>
+              <button onClick={()=>{buzz(6);addPlayer();}}
+                aria-label="Einen Spieler mehr"
+                style={{...stepBtn,width:52,height:52,borderRadius:16,fontSize:24}}>+</button>
+            </div>
+            {/* Bewusst OHNE Pausen-Rechnung: wie viele pausieren, haengt
+                an der Court-Zahl aus dem naechsten Schritt (und an
+                Einzel-Courts). Die Zahl steht weiter unten in der
+                Hinweiskarte, die pauseStats benutzt und damit stimmt. */}
+            <div style={{color:T.t3,fontSize:12,textAlign:'center',marginBottom:18}}>
+              {players.length<4
+                ? 'Unter vier Spielern lässt sich keine Runde auslosen.'
+                : 'Vier pro Court — wie viele Courts ihr habt, kommt im nächsten Schritt.'}
+            </div>
             {histFree.length>0&&(<>
               {labelRow(<PeopleIcon size={13}/>,'Zuletzt dabei')}
               <div style={{display:'flex',flexWrap:'wrap',gap:6,marginBottom:16}}>
@@ -8122,12 +8155,6 @@ function TournamentWizard({onClose,onFinish,canStart,
               </div>
               </SwipeableRow>
             ))}
-            <button onClick={addPlayer}
-              style={{width:'100%',padding:'12px',borderRadius:12,background:'none',
-                border:`1.5px dashed ${T.border}`,color:T.o,fontSize:16,fontWeight:700,
-                cursor:'pointer',marginTop:2}}>
-              + Spieler hinzufügen
-            </button>
             {/* Screenshot-Scan — spart das Abtippen ganzer Gruppenlisten. */}
             <button onClick={()=>{buzz(8);setScanOpen(true);}}
               style={{width:'100%',marginTop:8,padding:'12px',borderRadius:12,
@@ -8440,7 +8467,7 @@ function TournamentWizard({onClose,onFinish,canStart,
   );
 }
 
-function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,preset,isEdit,profile,onCreateOnline}){
+function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,saved,preset,isEdit,profile,onCreateOnline}){
   // Schnellstart von Home: hat dieselben Felder wie ein gespeichertes
   // Turnier, nur ohne id/rounds — deshalb reicht es, beide vorne
   // zusammenzuführen. NUR für die Anfangswerte; alles, was hinterher
@@ -8489,6 +8516,29 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,preset,isE
   // Edit-Scope-Popup: haelt die zu speichernden Updates, bis der Host
   // waehlt, ob sie fuer die aktuelle oder die naechste Runde gelten.
   const[editScopePrompt,setEditScopePrompt]=useState(null);
+  // Abbrechen im Bearbeiten-Modus. Nur wenn wirklich etwas anders ist
+  // als im laufenden Turnier, wird nachgefragt — sonst waere die
+  // Rueckfrage bei jedem versehentlichen Antippen im Weg.
+  const[confirmDiscard,setConfirmDiscard]=useState(false);
+  const editDirty=useMemo(()=>{
+    if(!isEdit||!saved) return false;
+    const trim=a=>(a||[]).map(x=>x??null);
+    const roster=ps=>(ps||[]).map(x=>`${x.name||''}|${x.group||'A'}`).join(',');
+    return name.trim()!==(saved.name||'')
+      ||format!==saved.format
+      ||winMode!==(saved.winMode||'points')
+      ||pauseMode!==(saved.pauseMode||'mean')
+      ||pausePts!==(saved.pausePts??10)
+      ||numCourts!==(saved.numCourts||1)
+      ||roundDur!==(saved.roundDurationMin||10)
+      ||startTime!==(saved.startTime||'')
+      ||endTime!==(saved.endTime||'')
+      ||roundPrio!==(saved.roundPrio||'variety')
+      ||JSON.stringify(trim(courtNames))!==JSON.stringify(trim(saved.courtNames))
+      ||JSON.stringify(trim(courtSingles))!==JSON.stringify(trim(saved.courtSingles))
+      ||roster(players)!==roster(saved.players);
+  },[isEdit,saved,name,format,winMode,pauseMode,pausePts,numCourts,roundDur,
+     startTime,endTime,roundPrio,courtNames,courtSingles,players]);
   // Turnier-Assistent (geführter Setup) — nur im Lokal-Modus.
   const[wizardOpen,setWizardOpen]=useState(false);
   // Screenshot-Scan (Spieler per OCR uebernehmen).
@@ -8707,8 +8757,10 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,preset,isE
 
         <SetupHero
           icon={<TrophyIcon size={40}/>}
-          title="Turnier erstellen"
-          desc="Mehrere Runden, rotierende Partner oder Mexicano-Pairings. Beliebig viele Spieler — lokal oder online via QR-Code."/>
+          title={isEdit?'Laufendes Turnier ändern':'Turnier erstellen'}
+          desc={isEdit
+            ?'Spieler, Format, Courts und Wertung des laufenden Turniers anpassen. Beim Übernehmen fragt RITMO, ob die Änderung schon für die aktuelle Runde gilt oder erst ab der nächsten — gespielte Runden bleiben unangetastet.'
+            :'Mehrere Runden, rotierende Partner oder Mexicano-Pairings. Beliebig viele Spieler — lokal oder online via QR-Code.'}/>
 
         {/* Turnier-Assistent — geführter Einstieg (nur neu + lokal) */}
         {!isEdit&&mode==='lokal'&&(
@@ -9275,6 +9327,18 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,preset,isE
       </div>
 
       <MatchBar onHome={onHome} rightButtons={[
+        // Abbrechen — zurueck ins laufende Turnier, ohne etwas zu
+        // uebernehmen. Ohne diesen Weg kam man aus dem Bearbeiten nur
+        // ueber „Übernehmen" oder den Home-Knopf heraus, und Home
+        // verlaesst das Turnier ganz. Hat man wirklich etwas geaendert,
+        // wird vorher gefragt.
+        ...(isEdit?[{
+          icon:'✕',
+          label:'Änderungen verwerfen',
+          onClick:()=>{ if(editDirty) setConfirmDiscard(true); else onCancelEdit?.(); },
+          style:{width:56,height:56,background:T.card2,
+            border:`1px solid ${T.border}`,color:T.t2,fontSize:20,fontWeight:800},
+        }]:[]),
         // „Als Entwurf speichern" — nur im Lokal-Neu-Modus (online erzeugt
         // direkt eine Session, edit hat schon ein laufendes Turnier). Ein
         // Entwurf darf unvollständig sein (kein 4-Spieler-Minimum).
@@ -9369,6 +9433,17 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,saved,preset,isE
 
       {/* Edit-Scope: gelten die Änderungen ab der nächsten Runde
           (sicher) oder schon für die laufende (neu gemischt)? */}
+      {confirmDiscard&&(
+        <ResetModal
+          title="Änderungen verwerfen"
+          description="Das laufende Turnier bleibt so, wie es ist — Spieler, Format, Courts und Wertung werden nicht angefasst. Gespielte Runden und Ergebnisse sind ohnehin nicht betroffen."
+          question="Bearbeiten ohne Übernehmen verlassen?"
+          confirmLabel="Verwerfen"
+          cancelLabel="Weiter bearbeiten"
+          onCancel={()=>setConfirmDiscard(false)}
+          onConfirm={()=>{setConfirmDiscard(false);onCancelEdit?.();}}/>
+      )}
+
       {editScopePrompt&&(
         <div onClick={()=>setEditScopePrompt(null)}
           style={{position:'fixed',inset:0,zIndex:400,background:'rgba(0,0,0,.7)',
@@ -10565,9 +10640,12 @@ function MatchSlotGrid({court,playerById,meName,net=null,avatar=52,innerA=null,i
       {node}
     </div>
   );
+  // Steht ueber der Spieler-Spalte, nicht ueber der ganzen Haelfte:
+  // sonst zieht das Punktefeld die Beschriftung nach innen und sie
+  // sitzt nicht mehr ueber den Kreisen.
   const head=(txt,gc)=>(
-    <div style={{gridColumn:gc,fontFamily:T.fontDisplay,color:T.t3,fontSize:9,
-      letterSpacing:2.2,textAlign:'center',padding:'9px 4px 0'}}>{txt}</div>
+    <div style={{gridColumn:gc,gridRow:1,fontFamily:T.fontDisplay,color:T.t3,
+      fontSize:9,letterSpacing:2.2,textAlign:'center',padding:'9px 4px 0'}}>{txt}</div>
   );
   // 5 Spalten: Spieler | Punkte A | Netz | Punkte B | Spieler. Ohne
   // Punkte fallen die beiden inneren Spalten auf 0 zusammen. Die
@@ -10580,9 +10658,8 @@ function MatchSlotGrid({court,playerById,meName,net=null,avatar=52,innerA=null,i
       gridTemplateColumns:`1fr ${innerA?'auto':'0'} ${nw}px ${innerB?'auto':'0'} 1fr`,
       border:`1px solid ${T.border}`,borderRadius:16,overflow:'hidden',
       background:T.card2}}>
-      {head('Team A','1 / 3')}
-      <div style={{gridColumn:3}}/>
-      {head('Team B','4 / 6')}
+      {head('Team A',1)}
+      {head('Team B',5)}
       {/* Netz — laeuft ueber beide Reihen durch, damit es als eine
           Linie liest und die Reihentrennung daran endet. */}
       <div style={{gridColumn:3,gridRow:`2 / span ${rows}`,
@@ -21964,6 +22041,7 @@ export default function App(){
       onMatchLogged={onMatchLogged}/>}
     {scr==='tournament-setup'&&<TournamentSetup nav={nav} onHome={goHome}
       onStart={startTourney} onSave={saveTourneyEdit} onSaveDraft={saveTourneyDraft}
+      onCancelEdit={()=>{setTourneyEditMode(false);setScr('tournament-play');}}
       saved={tourney} preset={setupPreset} isEdit={tourneyEditMode&&!!tourney}
       profile={profile}
       onCreateOnline={(pin)=>{setOnlinePin(pin);setScr('online-lobby');}}/>}

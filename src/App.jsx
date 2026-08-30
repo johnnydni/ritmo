@@ -4481,6 +4481,11 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onQuickStart}
     setActiveTab(id);
   };
 
+  // Ressort-Zeile der Spielen-Karten. Kurz halten: Centauri braucht
+  // rund das 1,4-fache der Schriftgröße pro Zeichen, in eine 156-px-
+  // Karte passen also höchstens acht Zeichen.
+  const playKicker={fontFamily:T.fontDisplay,color:T.o,fontSize:9.5,
+    letterSpacing:2.2,lineHeight:1,marginBottom:6};
   // Feste Kartenbreite im Spielen-Streifen: schmal genug, dass die
   // dritte Karte anschneidet und der Streifen als wischbar lesbar ist.
   const playCard={flexShrink:0,width:156,minHeight:150,scrollSnapAlign:'start',
@@ -4550,7 +4555,8 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onQuickStart}
           <button onClick={()=>nav('single-setup')} className="fu" data-lift
             style={{...playCard,animationDelay:'.02s'}}>
             <SingleMatchIcon size={40}/>
-            <div>
+            <div style={{maxWidth:'100%',minWidth:0}}>
+              <div style={playKicker}>Match</div>
               <div style={{color:T.t1,fontSize:16,fontWeight:700,letterSpacing:-.3}}>Single Match</div>
               <div className="txt" style={{color:T.t3,fontSize:12.5,fontStyle:'italic',
                 marginTop:4,lineHeight:1.4}}>
@@ -4561,7 +4567,10 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onQuickStart}
           <button onClick={()=>nav('tournament-hub')} className="fu" data-lift
             style={{...playCard,animationDelay:'.05s'}}>
             <TrophyIcon size={40}/>
-            <div>
+            <div style={{maxWidth:'100%',minWidth:0}}>
+              {/* Nicht „Turnier" — das steht schon als Titel darunter.
+                  Das Ressort sagt, was ein Turnier ausmacht. */}
+              <div style={playKicker}>Runden</div>
               <div style={{color:T.t1,fontSize:16,fontWeight:700,letterSpacing:-.3}}>Turnier</div>
               <div className="txt" style={{color:T.t3,fontSize:12.5,fontStyle:'italic',
                 marginTop:4,lineHeight:1.4}}>
@@ -4580,6 +4589,7 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onQuickStart}
                   :<TennisBallIcon size={34}/>}
               </span>
               <div style={{maxWidth:'100%',minWidth:0}}>
+                <div style={playKicker}>Sofort</div>
                 <div style={{color:T.t1,fontSize:16,fontWeight:700,letterSpacing:-.3}}>
                   {q.label}
                 </div>

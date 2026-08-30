@@ -9777,15 +9777,41 @@ function TournamentParticipantView({session,participantId,pin}){
   // Welcher Court (wenn überhaupt) hat den User? Match anhand
   // sessionParticipantId (bevorzugt) oder Name.
   const playerById=id=>ts.players?.find(p=>p.id===id);
-  const myCourt=round?.courts?.find(c=>{
-    const all=[...(c.t1||[]),...(c.t2||[])];
-    return all.some(pid=>{
-      const p=playerById(pid);
-      if(!p) return false;
-      if(p.sessionParticipantId&&p.sessionParticipantId===participantId) return true;
-      return p.name&&p.name.toLowerCase()===myName.toLowerCase();
-    });
-  });
+  const isMe=pid=>{
+    const p=playerById(pid);
+    if(!p) return false;
+    if(p.sessionParticipantId&&p.sessionParticipantId===participantId) return true;
+    return !!(p.name&&myName&&p.name.toLowerCase()===myName.toLowerCase());
+  };
+  const courtWithMe=r=>r?.courts?.find(c=>
+    [...(c.t1||[]),...(c.t2||[])].some(isMe));
+  const myCourt=courtWithMe(round);
+  const courtLabel=(r,c)=>{
+    const i=r?.courts?.indexOf(c);
+    return (ts.courtNames?.[i]||'').trim()||`Court ${(i??0)+1}`;
+  };
+
+  // ── Was kommt danach? Der Host lost die naechste Runde bei
+  // historie-basierten Formaten schon waehrend der laufenden aus und
+  // publiziert sie als nextPreview; bei tabellen-basierten Formaten
+  // gibt es bewusst nichts zu zeigen, weil die Paarung noch von den
+  // Ergebnissen abhaengt.
+  const nextInfo=(()=>{
+    const pv=ts.nextPreview;
+    const r=ts.rounds?.[roundIndex+1]
+      ||((pv&&pv.forRound===roundIndex)?pv.round:null);
+    if(!r) return {kind:'pending',
+      reason:PREVIEWABLE_FORMATS[ts.format||'americano']
+        ?'Die nächste Runde wird ausgelost, sobald diese hier abgerechnet ist.'
+        :'In diesem Format richten sich die Paarungen nach der Tabelle — sie stehen erst am Rundenende fest.'};
+    const c=courtWithMe(r);
+    // Kein Versprechen, dass es danach weitergeht: bei vielen Spielern
+    // auf wenigen Courts pausiert man durchaus zweimal hintereinander.
+    // Ehrlicher ist die Regel selbst.
+    if(!c) return {kind:'sitout',
+      reason:'Die Auslosung setzt dich diesmal aus — wer am wenigsten pausiert hat, kommt zuerst wieder dran.'};
+    return {kind:'court',court:c,courtLabel:courtLabel(r,c)};
+  })();
 
   // Lokaler Score-Submit State
   const[sA,setSA]=useState('');
@@ -9970,27 +9996,28 @@ function TournamentParticipantView({session,participantId,pin}){
       </div>
     </div>
 
+    {/* Dein Match — wischbar: links das laufende, rechts das
+        naechste. Bewusst AUSSERHALB der Score-Karte, damit auch
+        Pausierende sehen, worauf sie warten. */}
+    {round&&(
+      <div style={{background:T.card,border:`1px solid ${myCourt?T.o:T.border}`,
+        borderRadius:20,padding:'18px'}}>
+        <MatchPager
+          court={myCourt}
+          next={nextInfo}
+          playerById={playerById}
+          meName={myName}
+          roundIndex={roundIndex}
+          courtLabel={myCourt?courtLabel(round,myCourt):'Pause'}/>
+      </div>
+    )}
+
     {/* Eigener Court — Score Submission */}
     {myCourt&&(
       <div style={{background:T.card,border:`1px solid ${myTeam?T.o:T.border}`,
         borderRadius:16,padding:'18px'}}>
         <div style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:1.3,
-          textTransform:'uppercase',marginBottom:10}}>Dein Match</div>
-        <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:14}}>
-          <div style={{flex:1,minWidth:0}}>
-            <div style={{color:myTeam==='A'?T.o:T.t1,fontSize:16,fontWeight:myTeam==='A'?800:600,
-              textOverflow:'ellipsis',overflow:'hidden',whiteSpace:'nowrap'}}>
-              {teamLabel(myCourt.t1)}
-            </div>
-          </div>
-          <div style={{color:T.t3,fontSize:12,fontWeight:700,padding:'0 6px'}}>vs</div>
-          <div style={{flex:1,minWidth:0,textAlign:'right'}}>
-            <div style={{color:myTeam==='B'?T.o:T.t1,fontSize:16,fontWeight:myTeam==='B'?800:600,
-              textOverflow:'ellipsis',overflow:'hidden',whiteSpace:'nowrap'}}>
-              {teamLabel(myCourt.t2)}
-            </div>
-          </div>
-        </div>
+          textTransform:'uppercase',marginBottom:12}}>Ergebnis</div>
         {/* Score-Modus — Live-Zähler fürs eigene Match (öffnet Vollbild) */}
         {!courtDone&&(
           <button onClick={()=>setScoreMode(true)}
@@ -10330,6 +10357,339 @@ function TournamentMonitorView({session,pin}){
   );
 }
 
+/* ══════════════════════════════════════════════════════════════
+   LIVE-BEITRITT — Namensauswahl
+
+   Beim Live-Teilen hat der Host die Teilnehmer schon lokal erfasst;
+   die Namen stehen also bereits im Spielplan. Frueher musste der
+   Spieler seinen Namen trotzdem noch einmal abtippen — ein Tippfehler
+   oder ein "Chris" statt "Christian" und die App fand sein Match
+   nicht mehr, weil die Zuordnung ueber den Namen laeuft. Deshalb:
+   erst die Liste, dann der Beitritt. Freitext bleibt als Ausweg fuer
+   Lobby-Sessions, in denen noch gar kein Spielplan existiert.
+══════════════════════════════════════════════════════════════ */
+function RosterNamePicker({roster=[],taken,suggest,busy,err,onPick,onFree,onBack}){
+  const[q,setQ]=useState('');
+  const norm=x=>(x||'').trim().toLowerCase();
+  const list=roster.filter(p=>!q||norm(p.name).includes(norm(q)));
+  return(
+    <div className="fi" style={{display:'flex',flexDirection:'column',gap:14}}>
+      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:20,
+        padding:'18px'}}>
+        <div style={{fontFamily:T.fontDisplay,color:T.o,fontSize:10,letterSpacing:2.4,
+          lineHeight:1,marginBottom:8}}>Wer bist du</div>
+        <div style={{color:T.t1,fontSize:19,fontWeight:800,letterSpacing:-.3,marginBottom:4}}>
+          Namen wählen
+        </div>
+        <div className="txt" style={{color:T.t3,fontSize:13,fontStyle:'italic',
+          lineHeight:1.5,marginBottom:14}}>
+          Such dich in der Teilnehmerliste — dann findet die App dein Match von allein.
+        </div>
+        {roster.length>8&&(
+          <input value={q} onChange={e=>setQ(e.target.value)}
+            placeholder="Name suchen" aria-label="Name suchen"
+            autoCapitalize="words" autoCorrect="off" spellCheck={false}
+            style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
+              borderRadius:13,padding:'11px 14px',color:T.t1,fontSize:14,fontWeight:600,
+              outline:'none',boxSizing:'border-box',marginBottom:12}}/>
+        )}
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:9}}>
+          {list.map(p=>{
+            const isTaken=taken.has(norm(p.name));
+            const isMe=suggest&&norm(p.name)===norm(suggest);
+            return(
+              <button key={p.id} disabled={isTaken||busy}
+                onClick={()=>{buzz(6);onPick(p.name);}}
+                style={{display:'flex',alignItems:'center',gap:9,minWidth:0,
+                  background:isMe?T.oSoft:T.card2,textAlign:'left',
+                  border:`1px solid ${isMe?T.o:T.border}`,borderRadius:14,
+                  padding:'10px 11px',cursor:isTaken?'not-allowed':'pointer',
+                  opacity:isTaken?.42:1}}>
+                <div style={{width:30,height:30,borderRadius:'50%',flexShrink:0,
+                  background:T.card,border:`1.5px solid ${p.color||T.border}`,
+                  color:T.t1,fontSize:11,fontWeight:800,display:'flex',
+                  alignItems:'center',justifyContent:'center'}}>
+                  {getInitials(p.name)||'?'}
+                </div>
+                <div style={{minWidth:0,flex:1}}>
+                  <div style={{color:T.t1,fontSize:13.5,fontWeight:700,overflow:'hidden',
+                    textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.name}</div>
+                  {isTaken&&(
+                    <div style={{color:T.t3,fontSize:10,fontWeight:600,marginTop:1}}>
+                      schon vergeben
+                    </div>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        {list.length===0&&(
+          <div style={{color:T.t3,fontSize:12,textAlign:'center',padding:'16px 0'}}>
+            Kein Name passt zu „{q}“.
+          </div>
+        )}
+        {err&&(
+          <div style={{color:'#FF6B6B',fontSize:12,fontWeight:600,marginTop:12}}>{err}</div>
+        )}
+      </div>
+      <button onClick={onFree}
+        style={{padding:'13px',borderRadius:14,cursor:'pointer',
+          background:T.card,border:`1px solid ${T.border}`,color:T.t2,
+          fontSize:13,fontWeight:700}}>
+        Mein Name steht nicht dabei
+      </button>
+      <button onClick={onBack}
+        style={{padding:'11px',borderRadius:14,cursor:'pointer',background:'transparent',
+          border:'none',color:T.t3,fontSize:12.5,fontWeight:700}}>
+        Anderen PIN eingeben
+      </button>
+    </div>
+  );
+}
+
+/* ── Padel-Court in Blau — Aufsicht, Netz senkrecht in der Mitte.
+   Masse sind echt: 20 m × 10 m, Aufschlaglinie 3 m vor dem Netz. Die
+   Flaeche kommt als Verlauf aus --blue statt als fixem Hex, damit der
+   Court beim Theme-Wechsel nicht aus dem Rahmen faellt. */
+function PadelCourtBlue({t1=[],t2=[],playerById,meName,single=false}){
+  const nm=id=>playerById?.(id)?.name||'?';
+  const isMe=id=>meName&&nm(id).toLowerCase()===meName.toLowerCase();
+  // Der Court ist 20 m lang und 10 m breit — quer gelegt also genau
+  // doppelt so breit wie hoch: 300 x 150 px. Daraus folgt der Rest,
+  // 1 m = 15 px: die Aufschlaglinie steht 3 m (45 px) vom Netz.
+  const seats=(team,x)=>single
+    ?[{id:team[0],x,y:85}]
+    :[{id:team[0],x,y:48},{id:team[1],x,y:122}];
+  const spots=[...seats(t1,72),...seats(t2,248)];
+  return(
+    <svg viewBox="0 0 320 170" width="100%" role="img"
+      aria-label="Court mit der Aufstellung des nächsten Matches"
+      style={{display:'block'}}>
+      <defs>
+        <linearGradient id="pcb" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="var(--blue)" stopOpacity=".46"/>
+          <stop offset="1" stopColor="var(--blue)" stopOpacity=".14"/>
+        </linearGradient>
+      </defs>
+      <rect x="10" y="10" width="300" height="150" rx="4" fill="url(#pcb)"
+        stroke="var(--blue)" strokeWidth="1.6"/>
+      {/* Aufschlaglinien — 3 m beiderseits des Netzes */}
+      <line x1="115" y1="10" x2="115" y2="160" stroke="#fff" strokeWidth="1" opacity=".5"/>
+      <line x1="205" y1="10" x2="205" y2="160" stroke="#fff" strokeWidth="1" opacity=".5"/>
+      {/* Mittellinien — nur zwischen Aufschlaglinie und Rueckwand */}
+      <line x1="10" y1="85" x2="115" y2="85" stroke="#fff" strokeWidth="1" opacity=".5"/>
+      <line x1="205" y1="85" x2="310" y2="85" stroke="#fff" strokeWidth="1" opacity=".5"/>
+      {/* Netz */}
+      <line x1="160" y1="10" x2="160" y2="160" stroke="#fff" strokeWidth="2.2" opacity=".95"/>
+      {[22,38,54,70,86,102,118,134,150].map(y=>(
+        <line key={y} x1="156" y1={y} x2="164" y2={y} stroke="#fff" strokeWidth=".5" opacity=".45"/>
+      ))}
+      {spots.map((sp,i)=>(
+        <g key={i}>
+          <circle cx={sp.x} cy={sp.y} r="17"
+            fill={isMe(sp.id)?'var(--o)':'rgba(0,0,0,.55)'}
+            stroke={isMe(sp.id)?'var(--o)':'#fff'} strokeWidth="1.6" opacity=".95"/>
+          <text x={sp.x} y={sp.y+4} textAnchor="middle" fontSize="11.5" fontWeight="800"
+            fill={isMe(sp.id)?'#000':'#fff'} fontFamily="var(--font-sans)">
+            {getInitials(nm(sp.id))||'?'}
+          </text>
+          <text x={sp.x} y={sp.y+31} textAnchor="middle" fontSize="10.5" fontWeight="700"
+            fill="#fff" fontFamily="var(--font-sans)" opacity=".92">
+            {/* Notbremse: Spielernamen sind ohnehin auf NAME_MAX (10)
+                begrenzt, in eine Court-Haelfte passen rund 24 Zeichen. */}
+            {nm(sp.id).length>20?nm(sp.id).slice(0,19)+'\u2026':nm(sp.id)}
+          </text>
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+/* ── Die vier Plaetze des laufenden Matches als 2×2-Raster: links
+   Team A, rechts Team B, dazwischen das Netz. Nebeneinander liest man
+   sofort, wer mit wem und gegen wen spielt — die frueher hier
+   stehende Zeile "Anna & Ben vs Cem & Dana" wurde bei langen Namen
+   abgeschnitten und war auf Distanz kaum zu erfassen. */
+function MatchSlotGrid({court,playerById,meName}){
+  const nm=id=>playerById?.(id)?.name||'?';
+  const col=id=>playerById?.(id)?.color||T.border;
+  const isMe=id=>meName&&nm(id).toLowerCase()===meName.toLowerCase();
+  const slot=(id,pos)=>(
+    <div key={pos} style={{display:'flex',flexDirection:'column',alignItems:'center',
+      gap:7,padding:'14px 6px',minWidth:0}}>
+      <div style={{width:52,height:52,borderRadius:'50%',flexShrink:0,
+        background:isMe(id)?T.oSoft:T.card2,
+        border:`2px solid ${isMe(id)?T.o:col(id)}`,
+        color:T.t1,fontSize:17,fontWeight:800,display:'flex',
+        alignItems:'center',justifyContent:'center',
+        boxShadow:isMe(id)?'0 4px 16px var(--oGlow)':'none'}}>
+        {getInitials(nm(id))||'?'}
+      </div>
+      <div style={{color:isMe(id)?T.o:T.t1,fontSize:13,fontWeight:isMe(id)?800:600,
+        maxWidth:'100%',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
+        textAlign:'center'}}>
+        {nm(id)}
+      </div>
+      {isMe(id)&&(
+        <div style={{color:T.o,fontSize:9,fontWeight:800,letterSpacing:1.6,
+          textTransform:'uppercase',lineHeight:1}}>Du</div>
+      )}
+    </div>
+  );
+  const t1=court.t1||[],t2=court.t2||[];
+  const rows=court.single?1:2;
+  return(
+    <div style={{display:'grid',gridTemplateColumns:'1fr 1px 1fr',
+      border:`1px solid ${T.border}`,borderRadius:16,overflow:'hidden',
+      background:T.card2}}>
+      {/* Kopfzeile der beiden Haelften */}
+      <div style={{fontFamily:T.fontDisplay,color:T.t3,fontSize:9,letterSpacing:2.2,
+        textAlign:'center',padding:'9px 4px 0'}}>Team A</div>
+      <div/>
+      <div style={{fontFamily:T.fontDisplay,color:T.t3,fontSize:9,letterSpacing:2.2,
+        textAlign:'center',padding:'9px 4px 0'}}>Team B</div>
+      {Array.from({length:rows}).map((_,r)=>(
+        <Fragment key={r}>
+          <div style={{borderTop:r?`1px solid ${T.sep}`:'none'}}>{slot(t1[r],`a${r}`)}</div>
+          {/* Netz */}
+          <div style={{background:T.o,opacity:.55}}/>
+          <div style={{borderTop:r?`1px solid ${T.sep}`:'none'}}>{slot(t2[r],`b${r}`)}</div>
+        </Fragment>
+      ))}
+    </div>
+  );
+}
+
+/* ── Zwei Seiten zum Wischen: links das laufende Match als Raster,
+   rechts der Court in Blau mit dem naechsten Match. Getragen von
+   scroll-snap statt einer Gesten-Bibliothek — das ist der gleiche
+   Mechanismus wie im Spielen-Streifen auf Home und faellt ohne
+   JavaScript auf normales Scrollen zurueck. */
+/* Wer ist Partner, wer Gegner — aus Sicht des angemeldeten Spielers.
+   Steht er nicht selbst auf dem Court (Monitor, Pause), fallen wir auf
+   die neutrale Team-gegen-Team-Lesart zurueck. */
+function MatchRoles({court,playerById,meName}){
+  const nm=id=>playerById?.(id)?.name||'?';
+  const mine=(court.t1||[]).some(id=>nm(id).toLowerCase()===(meName||'').toLowerCase())
+    ?'t1':(court.t2||[]).some(id=>nm(id).toLowerCase()===(meName||'').toLowerCase())?'t2':null;
+  const partner=mine?(court[mine]||[]).filter(id=>nm(id).toLowerCase()!==(meName||'').toLowerCase()):[];
+  const foes=mine?(court[mine==='t1'?'t2':'t1']||[]):[];
+  const row=(label,names)=>(
+    <div style={{display:'flex',alignItems:'baseline',gap:10,minWidth:0}}>
+      {/* Feste Spalte, damit die beiden Namen buendig stehen. 74 px,
+          weil Centauri rund das 1,4-fache der Schriftgroesse je Zeichen
+          braucht: „GEGEN" sind 5 Zeichen ≈ 63 px plus Sperrung. */}
+      <div style={{fontFamily:T.fontDisplay,color:T.t3,fontSize:9,letterSpacing:1.6,
+        lineHeight:1,width:74,flexShrink:0}}>{label}</div>
+      <div style={{color:T.t1,fontSize:13.5,fontWeight:700,minWidth:0,
+        overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+        {names.map(id=>nm(id)).join(' & ')||'—'}
+      </div>
+    </div>
+  );
+  return(
+    <div style={{padding:'12px 14px',borderTop:`1px solid ${T.sep}`,
+      display:'flex',flexDirection:'column',gap:7}}>
+      {mine
+        ?<>{row('Mit',partner)}{row('Gegen',foes)}</>
+        :<>{row('Team A',court.t1||[])}{row('Team B',court.t2||[])}</>}
+    </div>
+  );
+}
+
+function MatchPager({court,next,playerById,meName,roundIndex,courtLabel}){
+  const ref=useRef(null);
+  const[page,setPage]=useState(0);
+  const onScroll=()=>{
+    const el=ref.current; if(!el) return;
+    setPage(Math.round(el.scrollLeft/Math.max(1,el.clientWidth)));
+  };
+  const goto=i=>{
+    const el=ref.current; if(!el) return;
+    el.scrollTo({left:i*el.clientWidth,behavior:'smooth'});
+  };
+  const pageBox={flex:'0 0 100%',scrollSnapAlign:'start',minWidth:0,
+    display:'flex',flexDirection:'column'};
+  return(
+    <div>
+      <div ref={ref} className="hscroll" onScroll={onScroll}
+        style={{display:'flex',overflowX:'auto',scrollSnapType:'x mandatory',
+          WebkitOverflowScrolling:'touch',overscrollBehaviorX:'contain'}}>
+
+        {/* Seite 1 — das Match, das gerade laeuft */}
+        <div style={pageBox}>
+          <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',
+            marginBottom:10,gap:8}}>
+            <div style={{fontFamily:T.fontDisplay,color:T.o,fontSize:10,letterSpacing:2.4,
+              lineHeight:1}}>Jetzt</div>
+            <div style={{color:T.t3,fontSize:11,fontWeight:700}}>
+              {courtLabel} · Runde {roundIndex+1}
+            </div>
+          </div>
+          {court
+            ?<MatchSlotGrid court={court} playerById={playerById} meName={meName}/>
+            :<div style={{border:`1px solid ${T.border}`,borderRadius:16,padding:'28px 18px',
+                textAlign:'center',color:T.t3,fontSize:13,background:T.card2}}>
+                Du pausierst diese Runde.
+              </div>}
+        </div>
+
+        {/* Seite 2 — Court in Blau mit dem naechsten Match */}
+        <div style={pageBox}>
+          <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',
+            marginBottom:10,gap:8}}>
+            <div style={{fontFamily:T.fontDisplay,color:T.blue,fontSize:10,letterSpacing:2.4,
+              lineHeight:1}}>Danach</div>
+            <div style={{color:T.t3,fontSize:11,fontWeight:700}}>
+              {next?.courtLabel?`${next.courtLabel} · `:''}Runde {roundIndex+2}
+            </div>
+          </div>
+          <div style={{border:`1px solid ${T.border}`,borderRadius:16,overflow:'hidden',
+            background:'rgba(0,0,0,.35)',flex:1,display:'flex',
+            flexDirection:'column',justifyContent:'center'}}>
+            {next?.kind==='court'?(<>
+              <PadelCourtBlue t1={next.court.t1} t2={next.court.t2}
+                playerById={playerById} meName={meName} single={!!next.court.single}/>
+              {/* Der Court zeigt die Aufstellung, diese Zeilen die
+                  Rollen — beim Blick aufs Handy zwischen zwei Ballwechseln
+                  ist "mit wem, gegen wen" die Frage, nicht "wo stehe ich". */}
+              <MatchRoles court={next.court} playerById={playerById} meName={meName}/>
+            </>):(
+              <div style={{padding:'34px 20px',textAlign:'center'}}>
+                <div style={{display:'flex',justifyContent:'center',marginBottom:12}}>
+                  {next?.kind==='sitout'?<PauseIcon size={26} color={T.blue}/>
+                    :<CourtIcon size={30}/>}
+                </div>
+                <div style={{color:T.t1,fontSize:14,fontWeight:800,marginBottom:6}}>
+                  {next?.kind==='sitout'?'Du pausierst nächste Runde'
+                    :'Steht noch nicht fest'}
+                </div>
+                <div className="txt" style={{color:T.t3,fontSize:12.5,fontStyle:'italic',
+                  lineHeight:1.5,maxWidth:250,margin:'0 auto'}}>
+                  {next?.reason||'Die nächste Runde wird ausgelost, sobald diese hier abgerechnet ist.'}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Seiten-Punkte — zugleich Sprungziele fuer alle, die nicht wischen */}
+      <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:7,
+        marginTop:12}}>
+        {[0,1].map(i=>(
+          <button key={i} onClick={()=>goto(i)}
+            aria-label={i===0?'Laufendes Match':'Nächstes Match'}
+            style={{width:page===i?20:7,height:7,borderRadius:4,padding:0,
+              border:'none',cursor:'pointer',transition:'width .2s',
+              background:page===i?(i?T.blue:T.o):T.border}}/>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function JoinTournament({initialPin,profile,onHome,onJoin,onLeave,restored}){
   const[pin,setPin]=useState((restored?.pin||initialPin||'').toLowerCase());
   const[name,setName]=useState(restored?.name||profile?.name||'');
@@ -10375,25 +10735,65 @@ function JoinTournament({initialPin,profile,onHome,onJoin,onLeave,restored}){
     return ()=>unsub();
   },[status,pin,participantId]);
 
-  const submitJoin=async()=>{
+  // ── Beitritt in zwei Zuegen: erst den PIN aufloesen, dann den
+  // Namen. Wenn der Host sein laufendes Turnier live teilt, steht
+  // die Teilnehmerliste schon im Spielplan — dann waehlt der Spieler
+  // sich dort aus, statt seinen Namen zu tippen und mit einem
+  // Tippfehler unauffindbar zu werden. Ohne Spielplan (Lobby, noch
+  // nicht gestartet) bleibt es beim Freitext.
+  const[roster,setRoster]=useState([]);
+  const[taken,setTaken]=useState(new Set());
+
+  const lookupPin=async()=>{
     const p=(pin||'').trim().toLowerCase();
-    const n=(name||'').trim();
     if(!p||p.length<4){setErr('Bitte PIN eingeben.');return;}
+    setStatus('lookup');setErr('');
+    const found=await fetchOnlineTournament(p);
+    if(!found){
+      setErr('Turnier nicht gefunden — PIN prüfen.');
+      setStatus('input');return;
+    }
+    if(found.status&&found.status!=='lobby'&&!found.allowLateJoin){
+      setErr('Dieses Turnier läuft bereits oder ist beendet.');
+      setStatus('input');return;
+    }
+    setPin(p);
+    setSession(found);
+    const players=found.tournamentState?.players||[];
+    if(players.length){
+      setRoster(players);
+      setTaken(new Set((found.participants||[])
+        .map(x=>(x.name||'').trim().toLowerCase())));
+      setStatus('pick');
+    }else{
+      setStatus('name');
+    }
+  };
+
+  const doJoin=async(chosen)=>{
+    const p=(pin||'').trim().toLowerCase();
+    const n=(chosen??name??'').trim();
     if(!n){setErr('Bitte Namen eingeben.');return;}
+    const from=status;
     setStatus('joining');setErr('');
     try{
       const id=await joinOnlineTournament(p,n);
       setParticipantId(id);
       setPin(p);
+      setName(n);
       setStatus('waiting');
       // App-State persistieren, damit der Beitritt unter Live
       // sichtbar bleibt und beim Reload wiederhergestellt wird.
       onJoin?.({pin:p,participantId:id,name:n});
     }catch(e){
       setErr(e?.message||'Beitritt fehlgeschlagen.');
-      setStatus('input');
+      // Zurueck dorthin, wo der Name herkam — nicht bis zur
+      // PIN-Eingabe, sonst tippt man den PIN wegen eines belegten
+      // Namens ein zweites Mal.
+      setStatus(from==='joining'?'name':from);
     }
   };
+  const submitJoin=()=>doJoin();
 
   // ── Turnier verlassen: aus der Teilnehmerliste austragen (inkl.
   // eigener offener Submissions), persistierten Beitritt löschen und
@@ -10433,11 +10833,11 @@ function JoinTournament({initialPin,profile,onHome,onJoin,onLeave,restored}){
       <ScreenHeader title="Turnier beitreten" kicker="Turnier" icon={<JoinIcon size={36}/>}/>
 
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
-        {status==='input'||status==='joining'?(<>
+        {status==='input'||status==='lookup'?(<>
           <SetupHero
             icon={<JoinIcon size={36}/>}
             title="Beitreten"
-            desc="Scan den QR-Code des Hosts oder tippe den PIN ein, um in ein laufendes Online-Turnier einzusteigen."/>
+            desc="Scan den QR-Code des Hosts oder tippe den PIN ein. Deinen Namen wählst du gleich danach aus der Teilnehmerliste."/>
           <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
             padding:'18px'}}>
             {/* QR-Code Scanner Button */}
@@ -10473,15 +10873,6 @@ function JoinTournament({initialPin,profile,onHome,onJoin,onLeave,restored}){
                 borderRadius:13,padding:'14px 16px',color:T.t1,fontSize:18,
                 fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',letterSpacing:4,
                 outline:'none',boxSizing:'border-box',textAlign:'center'}}/>
-            <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
-              textTransform:'uppercase',marginTop:14,marginBottom:6}}>Dein Name</div>
-            <input value={name}
-              onChange={e=>{setName(e.target.value);setErr('');}}
-              placeholder="Wie du im Tournament heißt"
-              autoCapitalize="words" autoCorrect="off" spellCheck={false}
-              style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-                borderRadius:13,padding:'14px 16px',color:T.t1,fontSize:16,fontWeight:500,
-                outline:'none',boxSizing:'border-box'}}/>
             {err&&(
               <div style={{color:'#FF6B6B',fontSize:12,fontWeight:600,marginTop:10}}>
                 {err}
@@ -10503,6 +10894,65 @@ function JoinTournament({initialPin,profile,onHome,onJoin,onLeave,restored}){
             </button>
           </div>
         </>):null}
+
+        {status==='pick'&&(
+          <RosterNamePicker
+            roster={roster}
+            taken={taken}
+            suggest={profile?.name||''}
+            busy={false}
+            err={err}
+            onPick={n=>doJoin(n)}
+            onFree={()=>{setErr('');setStatus('name');}}
+            onBack={()=>{setErr('');setRoster([]);setStatus('input');}}/>
+        )}
+
+        {status==='name'&&(
+          <div className="fi" style={{background:T.card,border:`1px solid ${T.border}`,
+            borderRadius:20,padding:'18px'}}>
+            <div style={{fontFamily:T.fontDisplay,color:T.o,fontSize:10,letterSpacing:2.4,
+              lineHeight:1,marginBottom:8}}>Wer bist du</div>
+            <div style={{color:T.t1,fontSize:19,fontWeight:800,letterSpacing:-.3,marginBottom:4}}>
+              Namen eingeben
+            </div>
+            <div className="txt" style={{color:T.t3,fontSize:13,fontStyle:'italic',
+              lineHeight:1.5,marginBottom:14}}>
+              {roster.length
+                ?'Schreib ihn genau so, wie der Host dich in der Liste führt — sonst findet die App dein Match nicht.'
+                :'Das Turnier ist noch nicht gestartet, es gibt also noch keine Liste. Dein Name landet direkt in der Lobby.'}
+            </div>
+            <input value={name} autoFocus
+              onChange={e=>{setName(e.target.value);setErr('');}}
+              onKeyDown={e=>{if(e.key==='Enter')submitJoin();}}
+              placeholder="Wie du im Turnier heißt"
+              aria-label="Dein Name"
+              autoCapitalize="words" autoCorrect="off" spellCheck={false}
+              style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
+                borderRadius:13,padding:'14px 16px',color:T.t1,fontSize:16,fontWeight:500,
+                outline:'none',boxSizing:'border-box'}}/>
+            {err&&(
+              <div style={{color:'#FF6B6B',fontSize:12,fontWeight:600,marginTop:10}}>{err}</div>
+            )}
+            {roster.length>0&&(
+              <button onClick={()=>{setErr('');setStatus('pick');}}
+                style={{width:'100%',marginTop:12,padding:'12px',background:T.card2,
+                  border:`1px solid ${T.border}`,borderRadius:13,color:T.t2,
+                  fontSize:13,fontWeight:700,cursor:'pointer'}}>
+                Zurück zur Teilnehmerliste
+              </button>
+            )}
+          </div>
+        )}
+
+        {status==='joining'&&(
+          <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
+            padding:'26px 20px',textAlign:'center'}}>
+            <div style={{display:'flex',justifyContent:'center',marginBottom:14}}>
+              <BallSpinner/>
+            </div>
+            <div style={{color:T.t2,fontSize:13,fontWeight:700}}>Verbinde …</div>
+          </div>
+        )}
 
         {status==='monitor'&&(
           session?.tournamentState
@@ -10608,10 +11058,18 @@ function JoinTournament({initialPin,profile,onHome,onJoin,onLeave,restored}){
       </div>
 
       <MatchBar onHome={onHome} rightButtons={[
-        (status==='input'||status==='joining')?{
-          icon:status==='joining'?'…':'Join',
-          label:status==='joining'?'Verbinde …':'Turnier beitreten',
-          disabled:status==='joining',
+        (status==='input'||status==='lookup')?{
+          icon:status==='lookup'?'…':'PIN',
+          label:status==='lookup'?'Suche Turnier …':'Weiter zur Namensauswahl',
+          disabled:status==='lookup',
+          onClick:lookupPin,
+          style:{width:56,height:56,background:T.g,
+            border:`1px solid ${T.border}`,
+            color:T.t1,fontSize:13,fontWeight:800}
+        }:null,
+        status==='name'?{
+          icon:'Join',
+          label:'Turnier beitreten',
           onClick:submitJoin,
           style:{width:56,height:56,background:T.g,
             border:`1px solid ${T.border}`,
@@ -11964,8 +12422,8 @@ function LiveShareSheet({pin,busy,err,onClose,onEnd}){
           <div style={{background:T.card2,border:`1px solid ${T.border}`,borderRadius:14,
             padding:'12px 14px',color:T.t3,fontSize:11.5,lineHeight:1.65}}>
             <span style={{color:T.t1,fontWeight:700}}>So geht's für Spieler:</span>{' '}
-            QR scannen (oder PIN unter „Turnier beitreten" eingeben) und den
-            eigenen Turniernamen eintragen — dann zeigt die Ansicht ihren Court.
+            QR scannen (oder PIN unter „Turnier beitreten" eingeben) und sich
+            in der Teilnehmerliste antippen — dann zeigt die Ansicht ihr Match.
             <br/>
             <span style={{color:T.t1,fontWeight:700}}>Monitor für die Anlage:</span>{' '}
             Auf einem Tablet den PIN eingeben und „Monitor-Modus" wählen —
@@ -12001,6 +12459,12 @@ function LiveShareSheet({pin,busy,err,onClose,onEnd}){
     </div>
   );
 }
+
+/* Formate, deren naechste Runde sich VOR den Ergebnissen auslosen
+   laesst: die Paarung haengt nur daran, wer schon mit wem und gegen
+   wen gespielt hat. Alles andere (Mexicano, Team-Mexicano, King of
+   the Court, K.-o.) braucht erst den Punktestand. */
+const PREVIEWABLE_FORMATS={americano:1,teamamericano:1,mixicano:1};
 
 function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onMatchLogged,onLive}){
   const[tab,setTab]=useState('round');
@@ -12266,18 +12730,46 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
 
   const fmtT=(s)=>`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
 
+  // ── Vorschau auf die naechste Runde ───────────────────────────
+  // Damit Spieler im Live-Modus sehen, worauf sie zusteuern, losen
+  // wir die naechste Runde schon aus, sobald diese hier laeuft, und
+  // veroeffentlichen sie mit. Beim Rundenwechsel wird genau diese
+  // Auslosung genommen — sonst waere die Vorschau eine Luege.
+  //
+  // Das geht nur bei Formaten, deren Paarungen an der HISTORIE
+  // haengen (wer hat schon mit/gegen wen gespielt). Mexicano und
+  // Team-Mexicano ziehen aus der Tabelle, King of the Court und
+  // K.-o. aus den Siegern der laufenden Runde — die duerfen erst
+  // fallen, wenn die Ergebnisse stehen, sonst waere es nicht mehr
+  // das Format, das der Host gewaehlt hat.
+  const previewable=!!PREVIEWABLE_FORMATS[tourney.format||'americano'];
+  useEffect(()=>{
+    if(!previewable||tourney.finished||!rawRound) return;
+    if(tourney.nextPreview?.forRound===tourney.current) return;
+    const pv=genRound(tourney.format,tourney.players,
+      {history:tourney.rounds,maxCourts:tourney.numCourts,singles:tourney.courtSingles});
+    setTourney(t=>({...t,nextPreview:pv?{forRound:t.current,round:pv}:null}));
+  },[previewable,tourney.current,tourney.rounds.length,tourney.finished,rawRound]);  // eslint-disable-line react-hooks/exhaustive-deps
+
   const nextRound=()=>{
     // Außerhalb von setTourney generieren: bei K.-o. kann null kommen
     // (Finale entschieden) → Turnier direkt sauber beenden.
     const t=tourney;
-    const lb=calcLeaderboard(t.players,t.rounds,t.winMode,t.pauseMode,t.pausePts);
-    const sortedLb=lb.sort((a,b)=>t.winMode==='points'?b.totalPts-a.totalPts:b.totalWins-a.totalWins);
-    const newR=genRound(t.format,t.players,
-      {history:t.rounds,leaderboard:sortedLb,maxCourts:t.numCourts,singles:t.courtSingles});
+    // Liegt eine veroeffentlichte Vorschau fuer genau diese Runde
+    // vor, wird sie eingeloest — die Spieler haben sie schon gesehen.
+    const pre=t.nextPreview?.forRound===t.current?t.nextPreview.round:null;
+    let newR=pre;
+    if(!newR){
+      const lb=calcLeaderboard(t.players,t.rounds,t.winMode,t.pauseMode,t.pausePts);
+      const sortedLb=lb.sort((a,b)=>t.winMode==='points'?b.totalPts-a.totalPts:b.totalWins-a.totalWins);
+      newR=genRound(t.format,t.players,
+        {history:t.rounds,leaderboard:sortedLb,maxCourts:t.numCourts,singles:t.courtSingles});
+    }
     if(!newR){ endTournament(); return; }
     setTourney(tt=>({...tt,
       rounds:[...tt.rounds,newR],
       current:tt.current+1,
+      nextPreview:null,
       timerSecsLeft:tt.roundDurationMin*60,
       timerRunning:false,
       timerFinished:false,

@@ -77,11 +77,19 @@ When changing scoring rules, edit the reducer — the `Match` screen is a thin s
 
 ### Turnier-PDF (`src/tourneyPdf.js`)
 
-Der Endstand hat neben "Als Text" einen PDF-Export: schwarzes Kopfband
-mit Wortmarke, ein Gratulationsblock fuer den Sieger, Podest 2/3, die
-vollstaendige Tabelle und danach jede Runde mit Paarungen, Ergebnissen
-und Pausen. Einstiegspunkte sind der Endstand-Screen und - fuer bereits
-beendete Turniere - das "... mehr"-Sheet in der Live-Liste.
+"Teilen" an einem beendeten Turnier erzeugt ein PDF: schwarzes
+Kopfband mit Wortmarke, ein Gratulationsblock fuer den Sieger, Podest
+2/3, die vollstaendige Tabelle und danach jede Runde mit Paarungen,
+Ergebnissen und Pausen. Einstiege sind der Endstand-Screen und die
+Live-Liste (Swipe-Aktion und "... mehr"-Sheet).
+
+Es gibt genau EINEN Weg nach draussen. Der fruehere Textversand stand
+eine Weile als zweiter Knopf daneben ("Als Text") - das war eine
+Auswahl, die niemand treffen will, und der Knopf heisst deshalb nur
+"Teilen" mit dem Share-Glyph. Dass ein PDF entsteht, ist Ergebnis und
+nicht Option. `shareTourney` (Text) bleibt fuer die Faelle ohne
+Endstand: laufende Turniere, Entwuerfe, Einzelmatches und beigetretene
+Online-Sessions.
 
 Warum eine echte Datei statt `window.print()`: das Ergebnis soll ohne
 Umweg ueber den Druckdialog in die Gruppe. `exportTourneyPdf` gibt den

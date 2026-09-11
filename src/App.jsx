@@ -11763,15 +11763,13 @@ function PauseBonusChip({value,size=9.5}){
 }
 
 /* Uhr mit Rückwärts-Pfeil — Runden-Historie. */
-/* Dokument mit Eselsohr — steht fuer den PDF-Export des Turniers.
-   Bewusst ohne die drei Buchstaben: bei 15 px waeren sie Matsch, das
-   Wort steht ohnehin daneben. */
-function PdfIcon({size=22,color=T.o}){
+/* iOS-Share-Glyph: Kasten mit Pfeil nach oben. Was hinten rauskommt,
+   ist ein PDF — das Icon zeigt aber die Handlung, nicht das Format. */
+function ShareIcon({size=22,color='currentColor'}){
   return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke={color} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M14 2.5H7a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7.5z"/>
-    <path d="M14 2.5v5h5"/>
-    <path d="M9 13h6M9 17h4"/>
+    stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M8 10H6a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1h-2"/>
+    <path d="M12 14V3m0 0L8.5 6.5M12 3l3.5 3.5"/>
   </svg>);
 }
 function HistoryIcon({size=22,color=T.o}){
@@ -13238,37 +13236,6 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
   const lb=calcLeaderboard(tourney.players,tourney.rounds,tourney.winMode,tourney.pauseMode,tourney.pausePts);
   const sortedLb=lb.sort((a,b)=>tourney.winMode==='points'?b.totalPts-a.totalPts||b.totalWins-a.totalWins:b.totalWins-a.totalWins||b.totalPts-a.totalPts);
   const winner=sortedLb[0];
-  // ── Teilen: Endstand + komplette Rundenhistorie als Text über die
-  // native Share-API (WhatsApp & Co.); Desktop-Fallback Zwischenablage.
-  const shareResults=async()=>{
-    buzz(8);
-    const nameOf=id=>tourney.players.find(p=>p.id===id)?.name||'?';
-    const team=t=>t.map(nameOf).join(' & ');
-    const L=[];
-    L.push(`🏆 ${tourney.name||'RITMO Turnier'} — Endstand`);
-    L.push(`${new Date().toLocaleDateString('de-DE')}, ${tourney.players.length} Spieler, ${tourney.rounds.length} Runden`);
-    L.push('');
-    sortedLb.forEach((p,i)=>{
-      L.push(`${i+1}. ${p.name} — ${tourney.winMode==='wins'
-        ?`${p.totalWins} Siege`:`${p.totalPts} Punkte`} (${p.wins}S/${p.losses}N)`);
-    });
-    L.push('','— Rundenhistorie —');
-    tourney.rounds.forEach((r,ri)=>{
-      L.push(`Runde ${ri+1}:`);
-      r.courts.forEach((m,ci)=>{
-        const cn=(tourney.courtNames?.[ci]||'').trim()||`Court ${ci+1}`;
-        L.push(`  ${cn}${m.single?' (1v1)':''}: ${team(m.t1)}  ${m.s1??'–'}:${m.s2??'–'}  ${team(m.t2)}`);
-      });
-      if(r.sitOut?.length) L.push(`  Pause: ${r.sitOut.map(nameOf).join(', ')}`);
-    });
-    L.push('','Erstellt mit RITMO 🎾');
-    const text=L.join('\n');
-    try{
-      if(navigator.share) await navigator.share({title:tourney.name||'RITMO Turnier',text});
-      else{await navigator.clipboard.writeText(text);alert('Endstand & Rundenhistorie in die Zwischenablage kopiert!');}
-    }catch(e){/* Nutzer hat den Share-Dialog geschlossen — kein Fehler */}
-  };
-
   return(
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
@@ -13302,30 +13269,18 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
           </div>
           <div style={{marginTop:14,display:'flex',gap:9,justifyContent:'center',
             flexWrap:'wrap'}}>
-            {/* Das PDF ist der Hauptweg nach draussen — gefuellt, links,
-                zuerst. Der Textversand bleibt daneben fuer den schnellen
-                Wurf in die Gruppe. */}
+            {/* Ein Weg nach draussen, nicht zwei. „Teilen" heisst
+                teilen — dass dabei ein PDF entsteht, ist Ergebnis und
+                nicht Auswahl, deshalb steht es nicht auf dem Knopf. */}
             <button onClick={makePdf} disabled={pdfBusy}
-              aria-label="Turnier als PDF teilen"
-              style={{padding:'12px 18px',borderRadius:999,
+              aria-label="Turnier teilen"
+              style={{padding:'12px 20px',borderRadius:999,
                 cursor:pdfBusy?'default':'pointer',opacity:pdfBusy?.65:1,
                 background:T.o,border:`1.5px solid ${T.o}`,color:T.bg,
                 fontSize:13.5,fontWeight:800,display:'inline-flex',
                 alignItems:'center',gap:8}}>
-              <PdfIcon size={15} color={T.bg}/>
-              {pdfBusy?'PDF wird erstellt …':'PDF teilen'}
-            </button>
-            <button onClick={shareResults}
-              style={{padding:'12px 16px',borderRadius:999,cursor:'pointer',
-                background:'none',border:`1.5px solid ${T.border}`,color:T.t1,
-                fontSize:13,fontWeight:800,display:'inline-flex',
-                alignItems:'center',gap:7}}>
-              {/* iOS-Share-Glyph: Kasten mit Pfeil nach oben */}
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M8 10H6a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1h-2M12 14V3m0 0L8.5 6.5M12 3l3.5 3.5"
-                  stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              Als Text
+              <ShareIcon size={15} color={T.bg}/>
+              {pdfBusy?'PDF wird erstellt …':'Teilen'}
             </button>
             {/* Die Historie lag bisher nur im laufenden Turnier — genau
                 nachschlagen will man sie aber hinterher, wenn jemand
@@ -13464,10 +13419,13 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
         tourney:t,
         onClick:()=>onOpenTourney(t.id),
         onDelete:()=>onDeleteTourney(t.id),
-        onShare:()=>shareTourney(t),
-        // Das PDF will man vor allem NACHTRAeGLICH — wenn in der
-        // Gruppe jemand fragt, wie das nochmal ausging.
-        onPdf:t.finished?()=>makePdf(t):null,
+        // „Teilen" heisst ueberall dasselbe: das Beste, was es zu
+        // dem Eintrag gibt. Bei einem beendeten Turnier ist das das
+        // PDF — genau dann will man es, wenn in der Gruppe jemand
+        // fragt, wie es nochmal ausging. Laufende Turniere, Entwuerfe
+        // und Matches haben keinen Endstand, dort bleibt der Text.
+        onShare:t.finished?()=>makePdf(t):()=>shareTourney(t),
+        sharesPdf:!!t.finished,
       });
     });
   if(joinedSession){
@@ -13647,21 +13605,23 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
                   background:T.o,color:T.bg,fontSize:14,fontWeight:800}}>
                 {moreItem.finished?'Ansehen':'Öffnen'}
               </button>
-              {moreItem.onPdf&&(
-                <button onClick={()=>{const f=moreItem.onPdf;setMoreItem(null);f();}}
-                  style={{padding:'13px',borderRadius:14,cursor:'pointer',
+              {moreItem.onShare&&(
+                /* Beim PDF bleibt das Sheet offen, bis die Datei steht —
+                   das Nachladen von jsPDF dauert beim ersten Mal einen
+                   Moment, und der Knopf ist die einzige Stelle, an der
+                   man das sehen kann. */
+                <button disabled={!!pdfFor}
+                  onClick={async()=>{
+                    const f=moreItem.onShare;
+                    if(moreItem.sharesPdf){ await f(); setMoreItem(null); }
+                    else { setMoreItem(null); f(); }
+                  }}
+                  style={{padding:'13px',borderRadius:14,
+                    cursor:pdfFor?'default':'pointer',opacity:pdfFor?.65:1,
                     background:T.oSoft,border:`1.5px solid ${T.o}`,color:T.o,
                     fontSize:14,fontWeight:800,display:'inline-flex',
                     alignItems:'center',justifyContent:'center',gap:8}}>
-                  <PdfIcon size={15} color="currentColor"/>Als PDF teilen
-                </button>
-              )}
-              {moreItem.onShare&&(
-                <button onClick={()=>{setMoreItem(null);moreItem.onShare();}}
-                  style={{padding:'13px',borderRadius:14,cursor:'pointer',
-                    background:'none',border:`1.5px solid ${T.border}`,color:T.t1,
-                    fontSize:14,fontWeight:800}}>
-                  Als Text teilen ↗
+                  {pdfFor?'PDF wird erstellt …':<><ShareIcon size={15}/>Teilen</>}
                 </button>
               )}
               <button onClick={()=>{setMoreItem(null);moreItem.onDelete();}}

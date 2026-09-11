@@ -639,3 +639,26 @@ export function quickStartPreset(q){
     })),
   };
 }
+
+/* ── Pausen-Ausgleich einer Runde: aufgerundeter Mittelwert aller
+   Punkte aus BESTAETIGTEN Matches (spiegelt calcLeaderboard). null,
+   wenn noch kein Match bestaetigt ist. Die Breakdown-Variante liefert
+   zusaetzlich die Zusammensetzung fuers Runden-Abschluss-Popup:
+   parts = eine Wertung je Team (score × Spielerzahl, Court-Reihen-
+   folge), sum/count/mean = Rechenweg bis zum aufgerundeten Bonus. */
+export function roundMeanBreakdown(round){
+  const parts=[];
+  (round?.courts||[]).forEach(m=>{
+    if(!m.done) return;
+    if((m.t1||[]).length) parts.push({score:m.s1??0,n:m.t1.length});
+    if((m.t2||[]).length) parts.push({score:m.s2??0,n:m.t2.length});
+  });
+  if(!parts.length) return null;
+  const sum=parts.reduce((a,p)=>a+p.score*p.n,0);
+  const count=parts.reduce((a,p)=>a+p.n,0);
+  const mean=sum/count;
+  return {parts,sum,count,mean,bonus:Math.ceil(mean)};
+}
+export function roundMeanBonus(round){
+  return roundMeanBreakdown(round)?.bonus??null;
+}

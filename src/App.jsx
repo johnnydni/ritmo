@@ -31,8 +31,9 @@ import { lsGet, lsSet, getAssetBase, getInitials, processImageUpload, safeImageS
 import { getLevelLabel, getLevelTier, getLevelColor, estimateLevel } from "./levels.js";
 import { B0, A0, PL, ptD, wG, bo3R, amR, DEFCFG } from "./game.js";
 import { PCOLS, shuffle, genAmericanoRound, genMexicanoRound, calcLeaderboard, FORMATS, FORMAT_RULES, genRound,
-  QUICK_STARTS, quickStartPreset } from "./tournament.js";
+  QUICK_STARTS, quickStartPreset, roundMeanBreakdown, roundMeanBonus } from "./tournament.js";
 import { RINGS, CUES, playRing, playCue, unlockAudio } from "./audio.js";
+import { exportTourneyPdf } from "./tourneyPdf.js";
 import { auth } from "./auth.js";
 import { readNamesFromImage, releaseOcr } from "./ocr.js";
 import { LEGAL_SECTIONS, STAND } from "./legal.js";
@@ -11746,28 +11747,6 @@ function TournamentCourtCard({court,courtIndex,courtName,emoji,onPickEmoji,playe
 /* ═══════════════════════════════════════════════════════════════
    TOURNAMENT PLAY
 ═══════════════════════════════════════════════════════════════ */
-/* ── Pausen-Ausgleich einer Runde: aufgerundeter Mittelwert aller
-   Punkte aus BESTÄTIGTEN Matches (spiegelt calcLeaderboard). null,
-   wenn noch kein Match bestätigt ist. Die Breakdown-Variante liefert
-   zusätzlich die Zusammensetzung fürs Runden-Abschluss-Popup:
-   parts = eine Wertung je Team (score × Spielerzahl, Court-Reihen-
-   folge), sum/count/mean = Rechenweg bis zum aufgerundeten Bonus. */
-function roundMeanBreakdown(round){
-  const parts=[];
-  (round?.courts||[]).forEach(m=>{
-    if(!m.done) return;
-    if((m.t1||[]).length) parts.push({score:m.s1??0,n:m.t1.length});
-    if((m.t2||[]).length) parts.push({score:m.s2??0,n:m.t2.length});
-  });
-  if(!parts.length) return null;
-  const sum=parts.reduce((a,p)=>a+p.score*p.n,0);
-  const count=parts.reduce((a,p)=>a+p.n,0);
-  const mean=sum/count;
-  return {parts,sum,count,mean,bonus:Math.ceil(mean)};
-}
-function roundMeanBonus(round){
-  return roundMeanBreakdown(round)?.bonus??null;
-}
 
 /* Kleiner blauer Chip „⏸ +X" — kennzeichnet im Leaderboard farblich,
    wie viele Punkte/Siege aus dem Pausen-Ausgleich stammen. */
@@ -11784,6 +11763,17 @@ function PauseBonusChip({value,size=9.5}){
 }
 
 /* Uhr mit Rückwärts-Pfeil — Runden-Historie. */
+/* Dokument mit Eselsohr — steht fuer den PDF-Export des Turniers.
+   Bewusst ohne die drei Buchstaben: bei 15 px waeren sie Matsch, das
+   Wort steht ohnehin daneben. */
+function PdfIcon({size=22,color=T.o}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke={color} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M14 2.5H7a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7.5z"/>
+    <path d="M14 2.5v5h5"/>
+    <path d="M9 13h6M9 17h4"/>
+  </svg>);
+}
 function HistoryIcon({size=22,color=T.o}){
   return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"
     stroke={color} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -13234,6 +13224,17 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
 ═══════════════════════════════════════════════════════════════ */
 function TournamentLeaderboard({tourney,onHome,onNew}){
   const[showHistory,setShowHistory]=useState(false);
+  // PDF: jsPDF wird erst beim Klick nachgeladen, das dauert beim ersten
+  // Mal spuerbar — deshalb ein eigener Busy-Zustand am Knopf.
+  const[pdfBusy,setPdfBusy]=useState(false);
+  const[pdfErr,setPdfErr]=useState('');
+  const makePdf=async()=>{
+    if(pdfBusy) return;
+    buzz(8); setPdfErr(''); setPdfBusy(true);
+    try{ await exportTourneyPdf(tourney); }
+    catch(e){ setPdfErr('PDF konnte nicht erstellt werden.'); }
+    finally{ setPdfBusy(false); }
+  };
   const lb=calcLeaderboard(tourney.players,tourney.rounds,tourney.winMode,tourney.pauseMode,tourney.pausePts);
   const sortedLb=lb.sort((a,b)=>tourney.winMode==='points'?b.totalPts-a.totalPts||b.totalWins-a.totalWins:b.totalWins-a.totalWins||b.totalPts-a.totalPts);
   const winner=sortedLb[0];
@@ -13301,30 +13302,44 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
           </div>
           <div style={{marginTop:14,display:'flex',gap:9,justifyContent:'center',
             flexWrap:'wrap'}}>
-            <button onClick={shareResults}
-              style={{padding:'12px 20px',borderRadius:999,cursor:'pointer',
-                background:T.oSoft,border:`1.5px solid ${T.o}`,color:T.o,
+            {/* Das PDF ist der Hauptweg nach draussen — gefuellt, links,
+                zuerst. Der Textversand bleibt daneben fuer den schnellen
+                Wurf in die Gruppe. */}
+            <button onClick={makePdf} disabled={pdfBusy}
+              aria-label="Turnier als PDF teilen"
+              style={{padding:'12px 18px',borderRadius:999,
+                cursor:pdfBusy?'default':'pointer',opacity:pdfBusy?.65:1,
+                background:T.o,border:`1.5px solid ${T.o}`,color:T.bg,
                 fontSize:13.5,fontWeight:800,display:'inline-flex',
                 alignItems:'center',gap:8}}>
+              <PdfIcon size={15} color={T.bg}/>
+              {pdfBusy?'PDF wird erstellt …':'PDF teilen'}
+            </button>
+            <button onClick={shareResults}
+              style={{padding:'12px 16px',borderRadius:999,cursor:'pointer',
+                background:'none',border:`1.5px solid ${T.border}`,color:T.t1,
+                fontSize:13,fontWeight:800,display:'inline-flex',
+                alignItems:'center',gap:7}}>
               {/* iOS-Share-Glyph: Kasten mit Pfeil nach oben */}
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M8 10H6a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1h-2M12 14V3m0 0L8.5 6.5M12 3l3.5 3.5"
                   stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
-              Teilen
+              Als Text
             </button>
             {/* Die Historie lag bisher nur im laufenden Turnier — genau
                 nachschlagen will man sie aber hinterher, wenn jemand
                 fragt, wie ein Ergebnis zustande kam. */}
             <button onClick={()=>{buzz(6);setShowHistory(true);}}
-              style={{padding:'12px 20px',borderRadius:999,cursor:'pointer',
+              style={{padding:'12px 16px',borderRadius:999,cursor:'pointer',
                 background:'none',border:`1.5px solid ${T.border}`,color:T.t1,
-                fontSize:13.5,fontWeight:800,display:'inline-flex',
-                alignItems:'center',gap:8}}>
-              <HistoryIcon size={15} color="currentColor"/>
+                fontSize:13,fontWeight:800,display:'inline-flex',
+                alignItems:'center',gap:7}}>
+              <HistoryIcon size={14} color="currentColor"/>
               Runden
             </button>
           </div>
+          {pdfErr&&<div style={{marginTop:9,color:T.r,fontSize:12,fontWeight:600}}>{pdfErr}</div>}
           </div>
         </div>
 
@@ -13389,6 +13404,13 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
   onDeleteMatch,onDeleteTourney,onOpenTourney,joinedSession,onLeaveJoined,onDeleteAll}){
   const[moreItem,setMoreItem]=useState(null); // Item fürs "… mehr"-Sheet
   const[confirmAll,setConfirmAll]=useState(false); // "Alle löschen"-Popup
+  const[pdfFor,setPdfFor]=useState(null); // Turnier-ID, für die gerade ein PDF baut
+  const makePdf=async(t)=>{
+    if(pdfFor) return;
+    buzz(8); setPdfFor(t.id);
+    try{ await exportTourneyPdf(t); }catch(e){/* still, das Sheet ist schon zu */}
+    finally{ setPdfFor(null); }
+  };
   const[plusOpen,setPlusOpen]=useState(false); // Plus-Menü im Leer-Zustand
 
   // ── Teilen über die native Share-API (WhatsApp & Co.);
@@ -13443,6 +13465,9 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
         onClick:()=>onOpenTourney(t.id),
         onDelete:()=>onDeleteTourney(t.id),
         onShare:()=>shareTourney(t),
+        // Das PDF will man vor allem NACHTRAeGLICH — wenn in der
+        // Gruppe jemand fragt, wie das nochmal ausging.
+        onPdf:t.finished?()=>makePdf(t):null,
       });
     });
   if(joinedSession){
@@ -13622,12 +13647,21 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
                   background:T.o,color:T.bg,fontSize:14,fontWeight:800}}>
                 {moreItem.finished?'Ansehen':'Öffnen'}
               </button>
+              {moreItem.onPdf&&(
+                <button onClick={()=>{const f=moreItem.onPdf;setMoreItem(null);f();}}
+                  style={{padding:'13px',borderRadius:14,cursor:'pointer',
+                    background:T.oSoft,border:`1.5px solid ${T.o}`,color:T.o,
+                    fontSize:14,fontWeight:800,display:'inline-flex',
+                    alignItems:'center',justifyContent:'center',gap:8}}>
+                  <PdfIcon size={15} color="currentColor"/>Als PDF teilen
+                </button>
+              )}
               {moreItem.onShare&&(
                 <button onClick={()=>{setMoreItem(null);moreItem.onShare();}}
                   style={{padding:'13px',borderRadius:14,cursor:'pointer',
-                    background:T.oSoft,border:`1.5px solid ${T.o}`,color:T.o,
+                    background:'none',border:`1.5px solid ${T.border}`,color:T.t1,
                     fontSize:14,fontWeight:800}}>
-                  Teilen ↗
+                  Als Text teilen ↗
                 </button>
               )}
               <button onClick={()=>{setMoreItem(null);moreItem.onDelete();}}

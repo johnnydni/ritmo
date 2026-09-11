@@ -40,6 +40,7 @@ Pure / side-effect-free modules have been extracted from the original mega-file.
 | [src/db.js](src/db.js) | Profile load/save + match logging + online tournament helpers (publish/subscribe/score-submit/ready-check). | Talks to Supabase via `window.supabase`. |
 | [src/ocr.js](src/ocr.js) | On-device OCR (tesseract.js, lazy-loaded) plus the name-extraction heuristic (`lineToName`, `namesFromText`) behind "Aus Screenshot übernehmen" in the tournament setup. | Worker, WASM core and language data are all same-origin — the CDN defaults would fail the CSP. |
 | [src/legal.js](src/legal.js) | Impressum, Datenschutzerklärung, Nutzungsbedingungen, Haftung und Lizenzhinweise als Datenblöcke; `OPERATOR` / `PROCESSORS` halten die vor dem Launch auszufüllenden Betreiberangaben. | Rendered by `SettingsRechtliches`. Keep in sync when data processing changes. |
+| [src/tourneyPdf.js](src/tourneyPdf.js) | Turnier-Export als A4-PDF (Endstand, Sieger, Rundenverlauf) und `exportTourneyPdf` (Share-Sheet bzw. Download). | jsPDF wird per `import()` nachgeladen; eigene Schriften unter [src/fonts/pdf/](src/fonts/pdf/). |
 | [src/skillDescriptions.js](src/skillDescriptions.js) | `SKILL_DESCRIPTIONS` — text for the RITMO DNA Skill tier card. | Translation-ready content. |
 | [src/supabase.js](src/supabase.js) | Older standalone tournament-sharing helper (legacy). | Currently unused by the active flow. |
 
@@ -73,6 +74,41 @@ When changing scoring rules, edit the reducer — the `Match` screen is a thin s
 - **Mexicano**: pairings driven by current leaderboard standings (1+4 vs 2+3 per court group of 4).
 - **Sit-out compensation**: controlled by the tournament's `pauseMode` (wizard step "Runden & Regeln", or the Sieger-Modus card in the classic form). `'mean'` (default, and the fallback for tournaments saved before the setting existed) credits sit-outs the rounded per-round mean as `bonusPts` in `points` mode, or `+1 win per sit-out` for lower-half players in `wins` mode. `'fixed'` credits a flat `pausePts` per sit-out as `bonusPts` (also in `wins` mode, where points act as the tiebreak) — unlike `'mean'` it needs no confirmed results in the round. `'none'` credits nothing — sit-outs are still counted for the P column, just not compensated. Bonuses are kept on separate fields (`bonusPts`/`bonusWins`) and only folded into `totalPts`/`totalWins` at the end.
 - **Next-round preview**: while a round runs, `TournamentPlay` already draws the *following* round and keeps it on `tourney.nextPreview = {forRound, round}`; `nextRound()` then plays exactly that draw instead of generating a fresh one. This is what feeds the "Danach" page in the live participant view. It only happens for formats in `PREVIEWABLE_FORMATS` (`americano`, `teamamericano`, `mixicano`) whose pairings depend on the *history* of who played with/against whom. Mexicano and Team-Mexicano draw from the leaderboard, King of the Court and Knockout from the current round's winners — previewing those would fix the pairings before the results exist and stop them being the format the host picked, so they show an honest "steht noch nicht fest" instead.
+
+### Turnier-PDF (`src/tourneyPdf.js`)
+
+Der Endstand hat neben "Als Text" einen PDF-Export: schwarzes Kopfband
+mit Wortmarke, ein Gratulationsblock fuer den Sieger, Podest 2/3, die
+vollstaendige Tabelle und danach jede Runde mit Paarungen, Ergebnissen
+und Pausen. Einstiegspunkte sind der Endstand-Screen und - fuer bereits
+beendete Turniere - das "... mehr"-Sheet in der Live-Liste.
+
+Warum eine echte Datei statt `window.print()`: das Ergebnis soll ohne
+Umweg ueber den Druckdialog in die Gruppe. `exportTourneyPdf` gibt den
+Blob an `navigator.share({files})` weiter, wo der Browser das kann
+(iOS/Android), sonst faellt es auf einen Download zurueck.
+
+Drei Dinge, an denen ein erster Entwurf scheiterte:
+
+- **jsPDF gehoert nicht ins Startbundle** (~390 kB). Es wird per
+  `await import('jspdf')` erst beim Klick geholt - gleiches Muster wie
+  tesseract.js. `html2canvas`/`dompurify` zieht jsPDF selbst dynamisch
+  und nur fuer `doc.html()`, das hier niemand aufruft.
+- **Die 14 PDF-Standardschriften koennen nur WinAnsi.** Aus
+  "Wisniewska" (mit s-acute) wurde ein "Wi[niewska". Deshalb ist Inter
+  eingebettet, auf Latin-1 + Latin Extended-A beschnitten, erzeugt von
+  [tools/make-pdf-fonts.py](tools/make-pdf-fonts.py) (25 kB je Schnitt,
+  beide Schnitte noetig - sonst faellt fetter Text still auf Helvetica
+  zurueck). Centauri kommt als TTF aus derselben Quelle wie der Webfont
+  und gilt mit denselben Regeln: nie Zahlen, nie Namen.
+- **`charSpace` rechnet in der Dokumenteinheit**, hier also in
+  Millimetern, und `align:'right'` beruecksichtigt es nicht. Gesperrter
+  rechtsbuendiger Text lief dadurch ueber seinen Anker hinaus; dafuer
+  gibt es `putRS()`.
+
+Schlaegt das Nachladen von Schrift oder Wortmarke fehl, entsteht das
+PDF trotzdem - in Helvetica und ohne Logo. Das Dokument darf nicht an
+einer Kuer haengen.
 
 ### Live mode (players joining a shared tournament)
 

@@ -168,6 +168,11 @@ links nach rechts:
   sind für genau diesen Stapel bemessen: mit 54 px stieß der Chip unten
   durch die Trennlinie. Der Knopf darf deshalb auch nicht
   `height:'100%'` tragen, sonst kann die Zelle nicht mitwachsen.
+  `LB_PKT_W` (62) ist nach **drei** Ziffern bemessen — ab 100 Punkten
+  klebte die Zahl bei 50 px an beiden Rändern. Der Stift im laufenden
+  Turnier hängt absolut am linken Zellenrand: inline schob er die Zahl
+  aus der Mitte, und dreistellig stand sie sichtbar neben ihrem eigenen
+  Label.
 
 ### Theming
 

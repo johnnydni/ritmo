@@ -7754,7 +7754,9 @@ function CourtEmojiPicker({value,onPick}){
 ═══════════════════════════════════════════════════════════════ */
 const LB_BAR=3;                    // Farbkante links
 const LB_BADGE=27;                 // Platz-Medaille bzw. Kreis
-const LB_PKT_W=50;                 // Breite der Wertungsspalte
+const LB_PKT_W=62;                 /* Breite der Wertungsspalte: bemessen
+                                      nach drei Ziffern neben dem Stift —
+                                      mit 50 klebte eine 100 an beiden Raendern. */
 const LB_PKT_BG='rgba(0,0,0,.22)';
 const LB_ROW_H=58;                 // Wertungsspalte: Zahl + Label + Pausen-Chip
 
@@ -13229,8 +13231,15 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
                     style={{width:'100%',flex:1,minHeight:0,background:'none',border:'none',
                       cursor:'pointer',padding:0,display:'flex',flexDirection:'column',
                       alignItems:'center',justifyContent:'center',gap:1}}>
-                    <div style={{display:'flex',alignItems:'center',gap:3}}>
-                      <EditIcon size={10} color={T.t4}/>
+                    {/* Der Stift haengt links an der Zelle statt neben der
+                        Zahl: inline schob er die Zahl aus der Mitte, und
+                        dreistellig fiel das gegen das zentrierte Label auf. */}
+                    <div style={{position:'relative',width:'100%',display:'flex',
+                      alignItems:'center',justifyContent:'center'}}>
+                      <span style={{position:'absolute',left:4,top:'50%',
+                        transform:'translateY(-50%)',display:'flex'}}>
+                        <EditIcon size={10} color={T.t4}/>
+                      </span>
                       <span style={{color:adj?T.o:T.t1,fontSize:17,fontWeight:800,
                         lineHeight:1,fontVariantNumeric:'tabular-nums'}}>
                         {tourney.winMode==='wins'?p.totalWins:p.totalPts}

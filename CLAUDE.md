@@ -140,6 +140,35 @@ The grid is five columns — `players | innerA | net | innerB | players` — and
 - Both score cells carry the same fixed width, otherwise a one-digit score sits closer to the net than a two-digit one.
 - Open courts show a `ScoreWheel` (its row height is the `h` prop — 28 in the grid, the default 34 elsewhere), confirmed courts a large number with the winner in the accent color.
 
+### `LbRow` — die Turniertabelle
+
+Eine Zeile, drei Aufrufer: die Tabelle im laufenden Turnier (Tab
+"Tabelle"), der Endstand und die Live-Teilnehmeransicht. Aufbau von
+links nach rechts:
+
+`Farbkante | Medaille/Kreis + Name | SP S N P | Wertung`
+
+- Die **Farbkante** (`LB_BAR`, 3 px, Spielerfarbe) sitzt bündig am
+  Kartenrand. Sie hat den früheren Farbpunkt neben dem Namen ersetzt —
+  zwei Träger derselben Information in einer Zeile.
+- Der **Platz** ist Medaille für 1–3 (`MedalIcon`), sonst ein Kreis mit
+  der Ziffer. Der Kreis hält die Spalte gleich breit; eine nackte Ziffer
+  neben drei Medaillen sah aus, als fehle etwas. Der Erste trägt
+  **keinen** orangen Zeilengrund mehr — die Goldmedaille sagt dasselbe.
+  Die einzige getönte Zeile ist `highlight` (die eigene Zeile in der
+  Teilnehmeransicht).
+- **`LbStats`** zieht SP/S/N/P als echte Spalten mit Haarlinie davor
+  (`rules`). Die Ligatabelle auf dem Home-Screen schaltet sie mit
+  `rules={false}` ab — sie ist eine randlose Liste ohne Wertungsspalte.
+- Die **Wertungsspalte** (`LB_PKT_W`, dunkleres Panel) nimmt die
+  Wertung als `children`: im laufenden Turnier ein Knopf über die volle
+  Zellenhöhe (Punkte anpassen — der Stift allein war ein 12-px-Ziel),
+  sonst nur Text. Darin stapeln sich Zahl, Label und der
+  `PauseBonusChip`. `LB_ROW_H` (58) und die 5 px Polsterung der Zelle
+  sind für genau diesen Stapel bemessen: mit 54 px stieß der Chip unten
+  durch die Trennlinie. Der Knopf darf deshalb auch nicht
+  `height:'100%'` tragen, sonst kann die Zelle nicht mitwachsen.
+
 ### Theming
 
 Themes are defined as CSS variable sets in the `CSS` template literal in [`src/theme.js`](src/theme.js). Only `glass` (RITMO Liquid Glass) is selectable — the sets for `dark`, `light`, `padel`, `wimbledon` and `funky` are still in the file but no longer offered in Settings → Anpassung, and stored legacy values fall back to `glass`. The `T` object is the JS mirror — components use `T.bg`, `T.card`, etc., which all resolve to `var(--bg)`. The active theme is set via `document.documentElement.setAttribute('data-theme', theme)` plus a sync of the `--bg` value to `<body>` background and the `theme-color` meta tag (so iOS/Android system chrome matches).

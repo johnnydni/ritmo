@@ -7730,23 +7730,78 @@ function CourtEmojiPicker({value,onPick}){
   );
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   TURNIER-TABELLE
+
+   Eine Zeile, drei Zonen: Farbkante + Platz + Name links, die
+   Zahlenspalten in der Mitte, die Wertung rechts auf dunklerem Grund.
+
+   Die Spielerfarbe steht als Kante an der Kartenaussenkante. Sie war
+   vorher ein Punkt neben dem Namen — zweimal dieselbe Information
+   braucht niemand, und die durchgehende Kante laesst sich beim
+   Ueberfliegen der Tabelle schneller scannen als ein Punkt, der
+   hinter unterschiedlich langen Platzziffern sitzt.
+
+   Die Wertungsspalte liegt auf einer dunkleren Flaeche. Ein
+   schwarzer Schleier und kein hellerer Farbtoken: --card ist im
+   Glass-Theme halbtransparent, eine hellere Flaeche wuerde den Grund
+   aufhellen statt die Spalte abzusetzen — dieselbe Falle wie beim
+   Netz in MatchSlotGrid.
+
+   Der Erste traegt KEINEN orangen Zeilengrund mehr. Die Goldmedaille
+   sagt dasselbe, und mit der Farbkante daneben standen drei Signale
+   fuer eine Aussage in derselben Zeile.
+═══════════════════════════════════════════════════════════════ */
+const LB_BAR=3;                    // Farbkante links
+const LB_BADGE=27;                 // Platz-Medaille bzw. Kreis
+const LB_PKT_W=50;                 // Breite der Wertungsspalte
+const LB_PKT_BG='rgba(0,0,0,.22)';
+const LB_ROW_H=58;                 // Wertungsspalte: Zahl + Label + Pausen-Chip
+
+/* Platz: Medaille fuer 1–3, sonst ein Kreis mit der Ziffer. Der
+   Kreis haelt die Spalte optisch gleich breit — eine nackte Ziffer
+   neben drei Medaillen sah aus, als fehlte etwas. */
+function RankBadge({rank,size=LB_BADGE}){
+  if(rank<=3) return(
+    <span style={{width:size,height:size,flexShrink:0,display:'flex',
+      alignItems:'center',justifyContent:'center'}}>
+      <MedalIcon size={size} rank={rank}/>
+    </span>);
+  return(
+    <span style={{width:size,height:size,flexShrink:0,borderRadius:'50%',
+      border:`1px solid ${T.border}`,display:'flex',alignItems:'center',
+      justifyContent:'center',color:T.t2,fontSize:12.5,fontWeight:700,
+      fontVariantNumeric:'tabular-nums'}}>{rank}</span>);
+}
+
 /* Tabellen-Spalten wie in einer Fußball-Tabelle: Spiele, Siege,
    Niederlagen, Pausen. Als echte Spalten statt als Fließtext-Subline —
    nur so lässt sich die Tabelle senkrecht vergleichen. Dieselbe
    Komponente rendert auch die Kopfzeile (head), damit Überschrift und
    Zahlen zwangsläufig aufeinander sitzen. Nullen bleiben gedimmt, der
-   Blick soll an den Werten hängen bleiben. */
-function LbStats({played=0,wins=0,losses=0,pauses=0,withPauses=true,head=false}){
+   Blick soll an den Werten hängen bleiben.
+
+   rules zieht die Haarlinien zwischen den Spalten. In der Zeile
+   stehen sie vor jeder Spalte, im Kopf nur vor der ersten — dort
+   trennen schon die Wortabstaende. Die Ligatabelle schaltet sie ganz
+   ab, sie ist eine randlose Liste ohne Wertungsspalte. */
+function LbStats({played=0,wins=0,losses=0,pauses=0,withPauses=true,head=false,rules=true}){
   const cells=[['SP',played],['S',wins],['N',losses]];
   if(withPauses) cells.push(['P',pauses]);
   return(
-    <div style={{display:'flex',alignItems:'center',gap:2,flexShrink:0}}>
-      {cells.map(([h,v])=>(
-        <div key={h} style={{width:25,textAlign:'center',lineHeight:1.2,
+    <div style={{display:'flex',alignItems:'stretch',flexShrink:0}}>
+      {cells.map(([h,v],i)=>(
+        <div key={h} style={{width:rules?27:25,position:'relative',display:'flex',
+          alignItems:'center',justifyContent:'center',lineHeight:1.2,
+          ...(rules?{}:{marginLeft:i?2:0}),
           color:head?T.t3:(v?T.t2:T.t4),
           ...(head
             ?{fontFamily:T.fontDisplay,fontSize:10,letterSpacing:.8}
             :{fontVariantNumeric:'tabular-nums',fontSize:12.5,fontWeight:700})}}>
+          {rules&&(head?i===0:true)&&(
+            <span aria-hidden="true" style={{position:'absolute',left:0,
+              top:head?'26%':'22%',bottom:head?'26%':'22%',width:1,background:T.sep}}/>
+          )}
           {head?h:v}
         </div>
       ))}
@@ -7756,19 +7811,59 @@ function LbStats({played=0,wins=0,losses=0,pauses=0,withPauses=true,head=false})
 
 /* Kopfzeile über einer Tabelle — Spaltenbreiten spiegeln die Zeile. */
 function LbHead({withPauses=true,trail='PKT',lead='SPIELER',
-  rankW=24,dot=true,gap=10,pad='9px 16px 7px'}){
+  rankW=LB_BADGE,dot=false,gap=10,pad='9px 10px 7px 8px',rules=true}){
   return(
-    <div style={{display:'flex',alignItems:'center',gap,padding:pad,
+    <div style={{display:'flex',alignItems:'stretch',
       borderBottom:`1px solid ${T.sep}`}}>
-      <div style={{width:rankW,flexShrink:0}}/>
-      {dot&&<div style={{width:8,flexShrink:0}}/>}
-      <div style={{flex:1,minWidth:0,fontFamily:T.fontDisplay,color:T.t3,fontSize:10,
-        letterSpacing:1.6}}>{lead}</div>
-      <LbStats head withPauses={withPauses}/>
-      {trail&&(
-        <div style={{minWidth:38,textAlign:'right',fontFamily:T.fontDisplay,color:T.t3,
-          fontSize:10,letterSpacing:.8,flexShrink:0}}>{trail}</div>
-      )}
+      {rules&&<span style={{width:LB_BAR,flexShrink:0}}/>}
+      <div style={{flex:1,minWidth:0,display:'flex',alignItems:'center',gap,padding:pad}}>
+        <div style={{width:rankW,flexShrink:0}}/>
+        {dot&&<div style={{width:8,flexShrink:0}}/>}
+        <div style={{flex:1,minWidth:0,fontFamily:T.fontDisplay,color:T.t3,fontSize:10,
+          letterSpacing:1.6}}>{lead}</div>
+      </div>
+      <LbStats head withPauses={withPauses} rules={rules}/>
+      {trail&&(rules
+        ?<div style={{width:LB_PKT_W,flexShrink:0,position:'relative',display:'flex',
+            alignItems:'center',justifyContent:'center',fontFamily:T.fontDisplay,
+            color:T.t3,fontSize:10,letterSpacing:.8}}>
+            <span aria-hidden="true" style={{position:'absolute',left:0,top:'26%',
+              bottom:'26%',width:1,background:T.sep}}/>
+            {trail}
+          </div>
+        :<div style={{minWidth:38,textAlign:'right',fontFamily:T.fontDisplay,color:T.t3,
+            fontSize:10,letterSpacing:.8,flexShrink:0}}>{trail}</div>)}
+    </div>
+  );
+}
+
+/* Eine Tabellenzeile. Die Wertungszelle kommt als children herein —
+   im laufenden Turnier ist sie ein Knopf (Punkte anpassen), im
+   Endstand und in der Teilnehmeransicht nur Text. */
+function LbRow({rank,color,name,suffix='',played=0,wins=0,losses=0,pauses=0,
+  withPauses=true,highlight=false,last=false,children}){
+  return(
+    <div style={{display:'flex',alignItems:'stretch',minHeight:LB_ROW_H,
+      borderBottom:last?'none':`1px solid ${T.sep}`,
+      background:highlight?T.oSoft:'transparent'}}>
+      <span aria-hidden="true" style={{width:LB_BAR,flexShrink:0,
+        background:color||'transparent'}}/>
+      <div style={{flex:1,minWidth:0,display:'flex',alignItems:'center',gap:10,
+        padding:'8px 10px 8px 8px'}}>
+        <RankBadge rank={rank}/>
+        <div style={{flex:1,minWidth:0,color:T.t1,fontSize:15,
+          fontWeight:rank===1?700:600,overflow:'hidden',
+          textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{name}{suffix}</div>
+      </div>
+      <LbStats played={played} wins={wins} losses={losses} pauses={pauses}
+        withPauses={withPauses}/>
+      {/* Die Polsterung haelt den Pausen-Chip von der Trennlinie weg —
+          ohne sie stiess der Stapel aus Zahl, Label und Chip unten an. */}
+      <div style={{width:LB_PKT_W,flexShrink:0,background:LB_PKT_BG,
+        display:'flex',flexDirection:'column',alignItems:'center',
+        justifyContent:'center',gap:1,padding:'5px 0'}}>
+        {children}
+      </div>
     </div>
   );
 }
@@ -10030,32 +10125,19 @@ function TournamentParticipantView({session,participantId,pin}){
         {sortedLb.map((p,i)=>{
           const isMe=myRow&&p.id===myRow.id;
           return(
-            <div key={p.id} style={{display:'flex',alignItems:'center',padding:'12px 16px',
-              gap:10,borderBottom:i<sortedLb.length-1?`1px solid ${T.sep}`:'none',
-              background:isMe?T.oSoft:'transparent'}}>
-              <div style={{width:24,fontSize:i<3?16:13,fontWeight:800,
-                color:i===0?T.o:i===1?T.t2:i===2?T.t3:T.t3,textAlign:'center'}}>
-                {i<3?<MedalIcon size={20} rank={i+1}/>:`${i+1}`}
+            <LbRow key={p.id} rank={i+1} color={p.color} name={p.name}
+              suffix={isMe?' (Du)':''} highlight={isMe}
+              played={p.played} wins={p.wins} losses={p.losses} pauses={p.sitOut}
+              last={i===sortedLb.length-1}>
+              <div style={{color:i===0?T.o:T.t1,fontSize:17,fontWeight:800,
+                lineHeight:1,fontVariantNumeric:'tabular-nums'}}>
+                {ts.winMode==='wins'?p.totalWins:p.totalPts}
               </div>
-              <div style={{width:8,height:8,borderRadius:'50%',background:p.color,flexShrink:0}}/>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{color:T.t1,fontSize:15,fontWeight:isMe||i===0?700:600,
-                  overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                  {p.name}{isMe?' (Du)':''}
-                </div>
+              <div style={{color:T.t3,fontSize:9.5,fontWeight:600}}>
+                {ts.winMode==='wins'?'Siege':'Punkte'}
               </div>
-              <LbStats played={p.played} wins={p.wins} losses={p.losses} pauses={p.sitOut}/>
-              <div style={{textAlign:'right',minWidth:38,flexShrink:0}}>
-                <div style={{color:T.o,fontSize:16,fontWeight:800}}>
-                  {ts.winMode==='wins'?p.totalWins:p.totalPts}
-                </div>
-                {((ts.winMode==='wins'?p.bonusWins:p.bonusPts)>0)&&(
-                  <div style={{color:T.t3,fontSize:10,fontWeight:600}}>
-                    +{ts.winMode==='wins'?p.bonusWins:p.bonusPts} Pause
-                  </div>
-                )}
-              </div>
-            </div>
+              <PauseBonusChip value={ts.winMode==='wins'?p.bonusWins:p.bonusPts} size={8}/>
+            </LbRow>
           );
         })}
       </div>
@@ -13134,42 +13216,34 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
             overflow:'hidden',display:'flex',flexDirection:'column',maxHeight:'100%'}}>
             <LbHead trail={tourney.winMode==='wins'?'SIEGE':'PKT'}/>
             <div style={{overflowY:'auto',WebkitOverflowScrolling:'touch'}}>
-              {sortedLb.map((p,i)=>(
-                <div key={p.id} style={{display:'flex',alignItems:'center',padding:'12px 16px',
-                  gap:10,borderBottom:i<sortedLb.length-1?`1px solid ${T.sep}`:'none',
-                  background:i===0?'var(--oSoft)':'transparent'}}>
-                  <div style={{width:24,fontSize:i<3?18:13,fontWeight:800,
-                    color:i===0?T.o:i===1?T.t2:i===2?T.t3:T.t3,textAlign:'center'}}>
-                    {i<3?<MedalIcon size={20} rank={i+1}/>:`${i+1}`}
-                  </div>
-                  <div style={{width:8,height:8,borderRadius:'50%',background:p.color,flexShrink:0}}/>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{color:T.t1,fontSize:15,fontWeight:i===0?700:600,
-                      overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.name}</div>
-                  </div>
-                  <LbStats played={p.played} wins={p.wins} losses={p.losses} pauses={p.sitOut}/>
+              {sortedLb.map((p,i)=>{
+                const adj=tourney.winMode==='wins'?p.adjWins:p.adjPts;
+                return(
+                <LbRow key={p.id} rank={i+1} color={p.color} name={p.name}
+                  played={p.played} wins={p.wins} losses={p.losses} pauses={p.sitOut}
+                  last={i===sortedLb.length-1}>
+                  {/* Die ganze Wertungsspalte ist der Knopf zum Anpassen —
+                      der Stift allein war ein 12-px-Ziel. */}
                   <button onClick={()=>setEditPtsId(p.id)}
-                    title="Punkte anpassen"
-                    style={{textAlign:'right',background:'none',border:'none',cursor:'pointer',
-                      padding:'2px 0 2px 10px',display:'flex',flexDirection:'column',
-                      alignItems:'flex-end',gap:1,flexShrink:0}}>
-                    <div style={{display:'flex',alignItems:'center',gap:5}}>
-                      <EditIcon size={12} color={T.t4}/>
-                      <span style={{color:T.t1,fontSize:17,fontWeight:700}}>
+                    title="Punkte anpassen" aria-label={`Punkte von ${p.name} anpassen`}
+                    style={{width:'100%',flex:1,minHeight:0,background:'none',border:'none',
+                      cursor:'pointer',padding:0,display:'flex',flexDirection:'column',
+                      alignItems:'center',justifyContent:'center',gap:1}}>
+                    <div style={{display:'flex',alignItems:'center',gap:3}}>
+                      <EditIcon size={10} color={T.t4}/>
+                      <span style={{color:adj?T.o:T.t1,fontSize:17,fontWeight:800,
+                        lineHeight:1,fontVariantNumeric:'tabular-nums'}}>
                         {tourney.winMode==='wins'?p.totalWins:p.totalPts}
                       </span>
                     </div>
-                    <div style={{display:'flex',alignItems:'center',gap:5}}>
-                      <PauseBonusChip value={tourney.winMode==='wins'?p.bonusWins:p.bonusPts}/>
-                      <span style={{color:(tourney.winMode==='wins'?p.adjWins:p.adjPts)?T.o:T.t3,
-                        fontSize:10,fontWeight:600}}>
-                        {tourney.winMode==='wins'?'Siege':'Punkte'}
-                        {(tourney.winMode==='wins'?p.adjWins:p.adjPts)?', angepasst':''}
-                      </span>
-                    </div>
+                    <span style={{color:adj?T.o:T.t3,fontSize:9.5,fontWeight:600}}>
+                      {adj?'angepasst':(tourney.winMode==='wins'?'Siege':'Punkte')}
+                    </span>
+                    <PauseBonusChip value={tourney.winMode==='wins'?p.bonusWins:p.bonusPts} size={8}/>
                   </button>
-                </div>
-              ))}
+                </LbRow>
+                );
+              })}
             </div>
           </div>
         )}
@@ -13346,26 +13420,18 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
           <LbHead trail={tourney.winMode==='wins'?'SIEGE':'PKT'}/>
           <div style={{overflowY:'auto',WebkitOverflowScrolling:'touch'}}>
             {sortedLb.map((p,i)=>(
-              <div key={p.id} style={{display:'flex',alignItems:'center',padding:'12px 16px',
-                gap:10,borderBottom:i<sortedLb.length-1?`1px solid ${T.sep}`:'none'}}>
-                <div style={{width:24,fontSize:i<3?16:13,fontWeight:800,
-                  color:i===0?T.o:i===1?T.t2:i===2?T.t3:T.t3,textAlign:'center'}}>
-                  {i<3?<MedalIcon size={20} rank={i+1}/>:`${i+1}`}
+              <LbRow key={p.id} rank={i+1} color={p.color} name={p.name}
+                played={p.played} wins={p.wins} losses={p.losses} pauses={p.sitOut}
+                last={i===sortedLb.length-1}>
+                <div style={{color:i===0?T.o:T.t1,fontSize:17,fontWeight:800,
+                  lineHeight:1,fontVariantNumeric:'tabular-nums'}}>
+                  {tourney.winMode==='wins'?p.totalWins:p.totalPts}
                 </div>
-                <div style={{width:8,height:8,borderRadius:'50%',background:p.color,flexShrink:0}}/>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{color:T.t1,fontSize:15,fontWeight:i===0?700:600,
-                    overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.name}</div>
+                <div style={{color:T.t3,fontSize:9.5,fontWeight:600}}>
+                  {tourney.winMode==='wins'?'Siege':'Punkte'}
                 </div>
-                <LbStats played={p.played} wins={p.wins} losses={p.losses} pauses={p.sitOut}/>
-                <div style={{textAlign:'right',display:'flex',flexDirection:'column',
-                  alignItems:'flex-end',gap:2,minWidth:38,flexShrink:0}}>
-                  <div style={{color:T.o,fontSize:16,fontWeight:800}}>
-                    {tourney.winMode==='wins'?p.totalWins:p.totalPts}
-                  </div>
-                  <PauseBonusChip value={tourney.winMode==='wins'?p.bonusWins:p.bonusPts}/>
-                </div>
-              </div>
+                <PauseBonusChip value={tourney.winMode==='wins'?p.bonusWins:p.bonusPts} size={8}/>
+              </LbRow>
             ))}
           </div>
         </div>
@@ -18914,7 +18980,7 @@ function LigaScreen({profile,onHome}){
           return(
             <div key={g} style={card}>
               {cap(`Gruppe ${g}, Court ${LIGA_GROUPS.indexOf(g)+1}`)}
-              <LbHead lead="TEAM" trail="TORE" withPauses={false}
+              <LbHead lead="TEAM" trail="TORE" withPauses={false} rules={false}
                 rankW={20} dot={false} gap={9} pad="0 0 6px"/>
               {table.map(r=>(
                 <div key={r.team.id} style={{display:'flex',alignItems:'center',gap:9,
@@ -18926,7 +18992,7 @@ function LigaScreen({profile,onHome}){
                     overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
                     {ligaTeamLabel(liga,r.team.id)}
                   </span>
-                  <LbStats played={r.played} wins={r.w} losses={r.l} withPauses={false}/>
+                  <LbStats played={r.played} wins={r.w} losses={r.l} withPauses={false} rules={false}/>
                   <span style={{color:T.o,fontSize:13,fontWeight:900,minWidth:38,
                     textAlign:'right',flexShrink:0,fontVariantNumeric:'tabular-nums'}}>
                     {r.gf}:{r.ga}

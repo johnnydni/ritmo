@@ -140,6 +140,28 @@ The grid is five columns — `players | innerA | net | innerB | players` — and
 - Both score cells carry the same fixed width, otherwise a one-digit score sits closer to the net than a two-digit one.
 - Open courts show a `ScoreWheel` (its row height is the `h` prop — 28 in the grid, the default 34 elsewhere), confirmed courts a large number with the winner in the accent color.
 
+### `MinuteRuler` — die Rundendauer
+
+Eine waagerechte Skala mit Schnappraster, darunter Zeiger und Dauer als
+`mm:ss`. Sie steht an **beiden** Wegen zur selben Einstellung: im freien
+Konfigurator (`TournamentSetup`) und im Schritt "Runden & Regeln" des
+Assistenten (`TournamentWizard`). Der Assistent hatte dort lange ein
+−/+‑Paar; zwei Wege zur selben Einstellung sollen nicht zwei
+Bedienungen sein.
+
+- Die Masse (`RL_*`) stammen aus einer Vorlage und sind gemessen, nicht
+  geschätzt — wer sie ändert, misst nach.
+- Der Wert läuft **während** des Wischens nur nach innen (`live`), nach
+  aussen erst 110 ms nach dem letzten Scroll-Event. Sonst rendert der
+  ganze Setup-Screen bei jedem Scroll-Tick neu.
+- Der Zeiger folgt dem Wert auch von aussen (Empfehlung, geladener
+  Entwurf), aber nicht, während der Nutzer selbst wischt (letzte
+  500 ms) — sonst kämpfen Snap und Korrektur gegeneinander.
+- Die Ränder blenden per CSS-Maske aus, **nicht** per Farbverlauf in
+  `--card`: die Karte ist im Glass-Theme halbtransparent, ein Verlauf
+  daraus legt einen hellen Schleier über den Rand. Dieselbe Falle wie
+  beim Netz in `MatchSlotGrid`.
+
 ### `LbRow` — die Turniertabelle
 
 Eine Zeile, drei Aufrufer: die Tabelle im laufenden Turnier (Tab

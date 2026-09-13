@@ -171,6 +171,25 @@ Dieselbe Karte steht an drei Stellen und tut dort zwei Dinge:
   waagerechte und senkrechte Linien unterschiedlich und das Netz sieht
   nach Fehler aus statt nach Grundriss.
 
+### Turnier-Setup: Assistent zuerst
+
+"Turnier starten" oeffnet den **Assistenten** (`TournamentWizard`) —
+er liegt als Vollbild-Overlay ueber dem freien Konfigurator
+(`TournamentSetup`), der dieselben States haelt. Schliessen bedeutet
+deshalb nicht "abbrechen", sondern "frei weiterbauen": alles Getippte
+steht im Formular darunter, und die Karte "Turnier-Assistent ›" fuehrt
+zurueck.
+
+Von allein geht er nur bei einem **frischen** Turnier auf
+(`!isEdit && !seed`). Ein Entwurf, ein Schnellstart-Preset oder das
+Bearbeiten eines laufenden Turniers bringt schon eine Konfiguration
+mit — wer die oeffnet, will sie sehen und nicht in Schritt 1 von 7
+landen.
+
+Beide Wege zeigen dieselbe Spielerliste (Nummernkreis, Ressort, Name
+auf einer Linie) und dieselben Bausteine (`MinuteRuler`, `CourtMap`,
+Screenshot-Scan). Wer einen davon aendert, aendert beide.
+
 ### `MinuteRuler` — die Rundendauer
 
 Eine waagerechte Skala mit Schnappraster, darunter Zeiger und Dauer als

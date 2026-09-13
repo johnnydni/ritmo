@@ -8902,8 +8902,14 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
       ||roster(players)!==roster(saved.players);
   },[isEdit,saved,name,format,winMode,pauseMode,pausePts,numCourts,roundDur,
      startTime,endTime,roundPrio,courtNames,courtSingles,layout,players]);
-  // Turnier-Assistent (geführter Setup) — nur im Lokal-Modus.
-  const[wizardOpen,setWizardOpen]=useState(false);
+  /* Turnier-Assistent (gefuehrter Setup) — nur im Lokal-Modus, und
+     seit er der Standard ist: er geht bei einem FRISCHEN Turnier von
+     allein auf. Ein Entwurf, ein Schnellstart oder das Bearbeiten
+     eines laufenden Turniers bringt schon eine Konfiguration mit — wer
+     die oeffnet, will sie sehen und nicht in Schritt 1 von 7 landen.
+     Schliessen fuehrt in den freien Konfigurator darunter, nicht nach
+     Hause: die Eingaben sind dieselben und bleiben erhalten. */
+  const[wizardOpen,setWizardOpen]=useState(!isEdit&&!seed);
   // Screenshot-Scan (Spieler per OCR uebernehmen).
   const[scanOpen,setScanOpen]=useState(false);
   const scanFileRef=useRef(null);
@@ -9579,14 +9585,24 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
             // inaktiv, weil das Turnier sonst unter die Mindestzahl fällt.
             <SwipeableRow key={p.id} disabled={players.length<=4}
               onDelete={()=>removePlayer(p.id)}>
-            <div style={{display:'flex',alignItems:'center',padding:'10px 0',
-              borderBottom:i<players.length-1?`1px solid ${T.sep}`:'none',gap:10}}>
-              <div style={{width:10,height:10,borderRadius:'50%',background:p.color,flexShrink:0}}/>
+            {/* Gleiche Zeile wie im Assistenten: Nummernkreis in der
+                Spielerfarbe, Ressort, Name auf einer Linie. Der fruehere
+                Farbpunkt neben einem Textfeld sagte weniger und stand
+                dafuer in der Spalte, in der jetzt die Nummer steht. */}
+            <div style={{display:'flex',alignItems:'center',gap:13,padding:'9px 0 4px'}}>
+              <span style={{width:32,height:32,borderRadius:'50%',background:p.color,flexShrink:0,
+                display:'flex',alignItems:'center',justifyContent:'center',
+                color:'#000',fontSize:14,fontWeight:900}}>{i+1}</span>
+              <div style={{flex:1,minWidth:0}}>
+              <div style={{fontFamily:T.fontDisplay,color:T.t3,fontSize:9.5,
+                letterSpacing:1.6,marginBottom:1}}>SPIELER</div>
               <input value={p.name}
                 ref={el=>{playerInputRefs.current[p.id]=el;}}
                 onChange={e=>renamePlayer(p.id,e.target.value)}
                 maxLength={NAME_MAX}
+                onBlur={e=>{e.target.style.borderBottomColor=T.border;}}
                 onFocus={e=>{
+                  e.currentTarget.style.borderBottomColor=T.o;
                   // Default-Namen ("Spieler N") räumen wir beim ersten
                   // Tap automatisch ab — sonst tippt der User in den
                   // Platzhalter rein und produziert "Spieler 1Anna".
@@ -9618,8 +9634,12 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
                 }}
                 autoCapitalize="words" autoCorrect="off" spellCheck={false}
                 enterKeyHint="next"
-                placeholder={`Spieler ${i+1}`}
-                style={{flex:1,fontSize:16,color:T.t1,fontWeight:500}}/>
+                placeholder="Name"
+                style={{width:'100%',minWidth:0,height:34,background:'none',
+                  border:'none',borderRadius:0,borderBottom:`1px solid ${T.border}`,
+                  color:T.t1,fontSize:17,fontWeight:600,padding:'0 0 3px',
+                  outline:'none',boxSizing:'border-box',transition:'border-color .18s'}}/>
+              </div>
               {/* Spielstil-Picker — Glyph des gewählten Archetyps, sonst
                   DNA-Platzhalter. Bestimmt das Match-Tier der Paarungen. */}
               <button onClick={()=>setStylePickerFor(p.id)}

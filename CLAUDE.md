@@ -192,6 +192,9 @@ Bedienungen sein.
   `--card`: die Karte ist im Glass-Theme halbtransparent, ein Verlauf
   daraus legt einen hellen Schleier über den Rand. Dieselbe Falle wie
   beim Netz in `MatchSlotGrid`.
+- `RL_TIME_FS` setzt auch die Ablesezeile der `TimeDial` im Zeit-Schritt
+  des Assistenten. Zwei Zeitangaben im selben Assistenten sollen nicht
+  aus zwei Uhren stammen — wer die Größe ändert, ändert beide.
 
 ### `LbRow` — die Turniertabelle
 

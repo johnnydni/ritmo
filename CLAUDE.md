@@ -41,6 +41,7 @@ Pure / side-effect-free modules have been extracted from the original mega-file.
 | [src/ocr.js](src/ocr.js) | On-device OCR (tesseract.js, lazy-loaded) plus the name-extraction heuristic (`lineToName`, `namesFromText`) behind "Aus Screenshot übernehmen" in the tournament setup. | Worker, WASM core and language data are all same-origin — the CDN defaults would fail the CSP. |
 | [src/legal.js](src/legal.js) | Impressum, Datenschutzerklärung, Nutzungsbedingungen, Haftung und Lizenzhinweise als Datenblöcke; `OPERATOR` / `PROCESSORS` halten die vor dem Launch auszufüllenden Betreiberangaben. | Rendered by `SettingsRechtliches`. Keep in sync when data processing changes. |
 | [src/tourneyPdf.js](src/tourneyPdf.js) | Turnier-Export als A4-PDF (Endstand, Sieger, Rundenverlauf) und `exportTourneyPdf` (Share-Sheet bzw. Download). | jsPDF wird per `import()` nachgeladen; eigene Schriften unter [src/fonts/pdf/](src/fonts/pdf/). |
+| [src/courtLayout.js](src/courtLayout.js) | Raeumliche Anordnung der Courts: `defaultLayout`, `normLayout`, `layoutBounds`, `moveTo`, `rotateCourt`, `compactLayout`. | Reines Raster (4 x 5), keine React-Abhaengigkeit. Gezeichnet wird in `CourtMap` (App.jsx). |
 | [src/skillDescriptions.js](src/skillDescriptions.js) | `SKILL_DESCRIPTIONS` — text for the RITMO DNA Skill tier card. | Translation-ready content. |
 | [src/supabase.js](src/supabase.js) | Older standalone tournament-sharing helper (legacy). | Currently unused by the active flow. |
 
@@ -139,6 +140,36 @@ The grid is five columns — `players | innerA | net | innerB | players` — and
 - `net` puts content **on** the net (the host's VS circle); pass an array and the component draws net segments between the items so the line never runs through it. Masking the line with a background does not work — `--card2` is semi-transparent in the glass theme and the strike-through stays visible.
 - Both score cells carry the same fixed width, otherwise a one-digit score sits closer to the net than a two-digit one.
 - Open courts show a `ScoreWheel` (its row height is the `h` prop — 28 in the grid, the default 34 elsewhere), confirmed courts a large number with the winner in the accent color.
+
+### `CourtMap` — die Anlage als Skizze
+
+Ein Court war lange nur eine Zeile in einer Liste; auf der Anlage ist
+er ein Ort. Jedes Turnier traegt deshalb eine Anordnung — pro Court ein
+Rasterfeld und eine Ausrichtung (`tourney.courtLayout`, Logik in
+[src/courtLayout.js](src/courtLayout.js)).
+
+Dieselbe Karte steht an drei Stellen und tut dort zwei Dinge:
+
+- **Setup** (Assistent, Schritt "Courts", und die Court-Karte im freien
+  Formular): `editable` — erst den Platz antippen, dann das Feld.
+  **Kein Drag**: auf 390 px trifft ein Finger das Raster nicht
+  zuverlaessig, und ein Zug, der danebengeht, sieht aus wie ein
+  kaputter Knopf. Ein belegtes Zielfeld *tauscht* die beiden Plaetze,
+  statt den Zug zu verweigern.
+- **Laufendes Turnier** (ueber den Court-Karten, ab 2 Courts): zeigt je
+  Platz die Aufstellung und den Stand und **filtert** die Karten
+  darunter auf einen Court. Der Filter faellt beim Rundenwechsel weg —
+  sonst steht der Host vor einer leeren Liste und sucht den Schalter.
+  "Stellen" schaltet dieselbe Karte in den Editiermodus, damit sich die
+  Anordnung vor Ort noch gerade ruecken laesst.
+
+- `normLayout` laeuft **bei jeder Benutzung**, nie nur beim Speichern:
+  so ueberleben Turniere von vor dieser Funktion, geaenderte
+  Court-Zahlen und halb kaputte Datensaetze ohne Sonderfall.
+- Die Glyph-Box traegt das Seitenverhaeltnis des Platzes (20 x 10 m) per
+  `aspectRatio`, **nicht** `preserveAspectRatio="none"` — sonst skalieren
+  waagerechte und senkrechte Linien unterschiedlich und das Netz sieht
+  nach Fehler aus statt nach Grundriss.
 
 ### `MinuteRuler` — die Rundendauer
 

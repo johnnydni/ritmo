@@ -33,6 +33,8 @@ import { B0, A0, PL, ptD, wG, bo3R, amR, DEFCFG } from "./game.js";
 import { PCOLS, shuffle, genAmericanoRound, genMexicanoRound, calcLeaderboard, FORMATS, FORMAT_RULES, genRound,
   QUICK_STARTS, quickStartPreset, roundMeanBreakdown, roundMeanBonus } from "./tournament.js";
 import { RINGS, CUES, playRing, playCue, unlockAudio } from "./audio.js";
+import { CL_COLS, CL_ROWS, defaultLayout, normLayout, layoutBounds, moveTo,
+  rotateCourt, compactLayout } from "./courtLayout.js";
 import { exportTourneyPdf } from "./tourneyPdf.js";
 import { auth } from "./auth.js";
 import { readNamesFromImage, releaseOcr } from "./ocr.js";
@@ -7918,6 +7920,137 @@ function CourtFlip({single,onFlip}){
   );
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   COURT-KARTE — die Anlage als Skizze
+
+   Ein Court ist bisher eine Zeile in einer Liste. Auf der Anlage ist
+   er ein Ort. Wer "Court 3" hoert, weiss ohne Karte nicht, wo das
+   ist; wer ein Ergebnis eintraegt, sucht die Zeile zum Platz.
+
+   Dieselbe Karte steht an zwei Stellen und tut dort zwei Dinge:
+   im Setup (Assistent und Formular) laesst sie sich stellen, im
+   laufenden Turnier zeigt sie, wer gerade wo spielt, und filtert die
+   Court-Karten darunter auf einen Platz.
+
+   Warum ein Raster und keine freie Flaeche: mit dem Finger auf 390 px
+   pixelgenau zu ziehen ist eine Qual, und niemand will die Anlage
+   vermessen. Vier Spalten, Tippen statt Ziehen — das ist die
+   Serviettenskizze, die im Kopf ohnehin schon existiert.
+═══════════════════════════════════════════════════════════════ */
+
+/* Der Platz selbst: Rahmen, Netz, Aufschlag- und Mittellinie in den
+   echten Proportionen (20 m x 10 m, Netz in der Mitte, Aufschlaglinie
+   6,95 m davor). Quer gelegte Plaetze drehen nur das viewBox. */
+function CourtGlyph({vert=false,color=T.o,opacity=1,strokeW=1}){
+  const W=vert?10:20, H=vert?20:10;
+  const L=vert
+    ?[['M',0,10,'L',10,10],['M',0,3.05,'L',10,3.05],['M',0,16.95,'L',10,16.95],
+      ['M',5,0,'L',5,3.05],['M',5,16.95,'L',5,20]]
+    :[['M',10,0,'L',10,10],['M',3.05,0,'L',3.05,10],['M',16.95,0,'L',16.95,10],
+      ['M',0,5,'L',3.05,5],['M',16.95,5,'L',20,5]];
+  return(
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="100%" fill="none"
+      aria-hidden="true" style={{opacity,display:'block'}}>
+      <rect x={strokeW/2} y={strokeW/2} width={W-strokeW} height={H-strokeW}
+        rx={.6} stroke={color} strokeWidth={strokeW}/>
+      {L.map((d,i)=>(
+        <path key={i} d={d.join(' ')} stroke={color}
+          strokeWidth={i===0?strokeW:strokeW*.62} opacity={i===0?1:.75}/>
+      ))}
+    </svg>
+  );
+}
+
+/* Eine Kachel: der Platz, sein Name, darunter optional die Aufstellung.
+   Quer gelegte Plaetze bekommen dieselbe Hoehe wie laengs gelegte,
+   aber die halbe Breite — sonst springt die Zeilenhoehe. */
+function CourtTile({i,pos,name,single,sub,active,dimmed,onClick,glyphH=34}){
+  return(
+    <button onClick={onClick} disabled={!onClick}
+      aria-pressed={onClick?!!active:undefined}
+      aria-label={`${name}${single?', Einzel':''}`}
+      style={{padding:'7px 5px 6px',borderRadius:12,cursor:onClick?'pointer':'default',
+        background:active?T.oSoft:'transparent',
+        border:`1.5px solid ${active?T.o:'transparent'}`,
+        opacity:dimmed?.38:1,transition:'opacity .2s, background .2s',
+        display:'flex',flexDirection:'column',alignItems:'center',gap:5,
+        minWidth:0,textAlign:'center'}}>
+      {/* Die Box traegt das Seitenverhaeltnis des Platzes (20 x 10 m),
+          damit die Linien in beiden Achsen gleich dick bleiben — ein
+          verzerrtes Netz sieht nach Fehler aus, nicht nach Grundriss. */}
+      <div style={{height:glyphH,aspectRatio:pos.vert?'1 / 2':'2 / 1',maxWidth:'100%'}}>
+        <CourtGlyph vert={pos.vert} color={active?T.o:T.t2}
+          opacity={active?1:.85} strokeW={.55}/>
+      </div>
+      <div style={{width:'100%',minWidth:0,color:active?T.o:T.t1,fontSize:10.5,
+        fontWeight:700,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+        {name}{single?' · 1v1':''}
+      </div>
+      {sub}
+    </button>
+  );
+}
+
+/* Die Karte. `editable` macht aus dem Bild einen Planer: erst den
+   Platz antippen, dann das Feld — Ziehen mit dem Finger auf einem
+   Raster dieser Groesse trifft niemand zuverlaessig. Das leere Feld
+   bleibt sichtbar antippbar, sonst waere nicht zu erkennen, dass sich
+   ueberhaupt etwas verschieben laesst. */
+function CourtMap({layout,names,singles,editable=false,sel=null,onSel,
+  onMove,onRotate,active=null,canSel,sub,glyphH=34,pad=0}){
+  const b=layoutBounds(layout);
+  const cols=editable?Math.min(CL_COLS,Math.max(b.cols+1,2)):b.cols;
+  const rows=editable?Math.min(CL_ROWS,b.rows+1):b.rows;
+  const byCell=new Map();
+  layout.forEach((p,i)=>byCell.set(p.y*CL_COLS+p.x,i));
+  const cells=[];
+  for(let y=0;y<rows;y++) for(let x=0;x<cols;x++){
+    const i=byCell.get(y*CL_COLS+x);
+    cells.push(i==null
+      ? <button key={`e${x}-${y}`} onClick={editable&&sel!=null?()=>{buzz(6);onMove(sel,x,y);}:undefined}
+          disabled={!(editable&&sel!=null)}
+          aria-label={`Feld ${x+1}/${y+1}${sel!=null?` — ${names(sel)} hierher`:''}`}
+          style={{borderRadius:12,minWidth:0,height:glyphH+pad,alignSelf:'center',
+            background:'none',cursor:editable&&sel!=null?'pointer':'default',
+            border:`1.5px dashed ${editable?(sel!=null?T.o:T.border):'transparent'}`,
+            opacity:editable?(sel!=null?1:.45):0,transition:'opacity .2s'}}/>
+      : <CourtTile key={`c${i}`} i={i} pos={layout[i]} name={names(i)}
+          single={!!singles?.[i]} sub={sub?.(i)} glyphH={glyphH}
+          active={editable?sel===i:active===i}
+          dimmed={active!=null&&active!==i&&!editable}
+          onClick={editable?()=>{buzz(6);onSel(sel===i?null:i);}
+            :(onSel&&(!canSel||canSel(i)))?()=>{buzz(6);onSel(active===i?null:i);}:undefined}/>);
+  }
+  return(
+    <div>
+      <div style={{display:'grid',gap:6,
+        gridTemplateColumns:`repeat(${cols},minmax(0,1fr))`,alignItems:'center'}}>
+        {cells}
+      </div>
+      {editable&&(
+        <div style={{marginTop:10,display:'flex',alignItems:'center',gap:8,minHeight:34}}>
+          {sel==null
+            ?<div style={{color:T.t3,fontSize:11.5,lineHeight:1.5}}>
+               Platz antippen, dann das Feld, auf das er soll.
+             </div>
+            :<>
+              <div style={{flex:1,minWidth:0,color:T.o,fontSize:11.5,fontWeight:700,
+                overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                {names(sel)} — Feld wählen
+              </div>
+              <button onClick={()=>{buzz(6);onRotate(sel);}}
+                style={{padding:'7px 12px',borderRadius:10,background:T.card2,
+                  border:`1px solid ${T.border}`,color:T.t1,fontSize:12,
+                  fontWeight:700,cursor:'pointer',flexShrink:0}}>
+                Drehen
+              </button>
+             </>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── Zeitfenster-Uhr (inline) — runde 24-h-Uhr mit zwei Linienzeigern
    zum Zentrum: Orange = Start, Hell = Ende. Zeiger per Drag ums
    Zifferblatt ziehen (15-Min-Raster); Änderungen schreiben SOFORT in
@@ -8094,6 +8227,7 @@ function TournamentWizard({onClose,onFinish,canStart,
   players,addPlayer,addPlayerNamed,addScannedPlayers,removePlayer,renamePlayer,setPlayerGroup,
   numCourts,setNumCourts,maxCourts,courtNames,setCourtName,
   courtSingles,toggleCourtSingle,
+  layout,layoutSel,setLayoutSel,moveCourtTo,rotateCourtAt,
   startTime,setStartTime,endTime,setEndTime,roundPrio,setRoundPrio,
   roundDur,setRoundDur,pauseMode,setPauseMode,pausePts,setPausePts,
   suggest,pauseStats,nameHistory}){
@@ -8393,6 +8527,18 @@ function TournamentWizard({onClose,onFinish,canStart,
                 )}
               </div>
             ))}
+            {numCourts>1&&(<>
+              <div style={{height:18}}/>
+              {labelRow(<CourtIcon size={13}/>,'Anordnung auf der Anlage')}
+              <div style={{color:T.t3,fontSize:12,lineHeight:1.55,marginBottom:12}}>
+                Legt die Plätze so, wie sie bei euch liegen — im laufenden Turnier
+                sieht dann jeder auf einen Blick, wo gespielt wird.
+              </div>
+              <CourtMap layout={layout} names={i=>courtLabel(courtNames,i)}
+                singles={wCanSingles?courtSingles:[]} editable
+                sel={layoutSel} onSel={setLayoutSel}
+                onMove={moveCourtTo} onRotate={rotateCourtAt}/>
+            </>)}
           </>)}
 
           {step===3&&(<>
@@ -8657,6 +8803,15 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
   const toggleCourtSingle=i=>setCourtSingles(a=>{const n=[...a];n[i]=!n[i];return n;});
   const canSingles=format==='americano'||format==='mexicano';
   const singles=canSingles?courtSingles:[];
+  /* Anordnung der Plaetze auf der Anlage. Roh gespeichert, aber immer
+     normalisiert benutzt — so ueberlebt sie jede Aenderung der
+     Court-Zahl und jeden Datensatz von vor dieser Funktion. */
+  const[courtLayout,setCourtLayout]=useState(seed?.courtLayout||null);
+  const layout=useMemo(()=>compactLayout(normLayout(courtLayout,numCourts)),
+    [courtLayout,numCourts]);
+  const[layoutSel,setLayoutSel]=useState(null);
+  const moveCourtTo=(i,x,y)=>{setCourtLayout(compactLayout(moveTo(layout,i,x,y)));setLayoutSel(null);};
+  const rotateCourtAt=i=>setCourtLayout(rotateCourt(layout,i));
   const courtInputRefs=useRef({});
   // Edit-Scope-Popup: haelt die zu speichernden Updates, bis der Host
   // waehlt, ob sie fuer die aktuelle oder die naechste Runde gelten.
@@ -8681,9 +8836,10 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
       ||roundPrio!==(saved.roundPrio||'variety')
       ||JSON.stringify(trim(courtNames))!==JSON.stringify(trim(saved.courtNames))
       ||JSON.stringify(trim(courtSingles))!==JSON.stringify(trim(saved.courtSingles))
+      ||JSON.stringify(layout)!==JSON.stringify(normLayout(saved.courtLayout,saved.numCourts||1))
       ||roster(players)!==roster(saved.players);
   },[isEdit,saved,name,format,winMode,pauseMode,pausePts,numCourts,roundDur,
-     startTime,endTime,roundPrio,courtNames,courtSingles,players]);
+     startTime,endTime,roundPrio,courtNames,courtSingles,layout,players]);
   // Turnier-Assistent (geführter Setup) — nur im Lokal-Modus.
   const[wizardOpen,setWizardOpen]=useState(false);
   // Screenshot-Scan (Spieler per OCR uebernehmen).
@@ -8880,7 +9036,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
       name:name.trim()||('Turnier '+new Date().toLocaleDateString('de-DE')),
       startTime,endTime,roundPrio,
       players,format,winMode,pauseMode,pausePts,
-      numCourts,courtNames,courtSingles:singles,
+      numCourts,courtNames,courtSingles:singles,courtLayout:layout,
       roundDurationMin:roundDur,
       rounds:[r0],
       current:0,
@@ -9286,6 +9442,22 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
               Tippe auf 2v2, um einen Court auf Einzel (1v1) zu flippen — dort spielen nur 2 Spieler.
             </div>
           )}
+          {/* Anordnung — dieselbe Karte wie im Assistenten. */}
+          {numCourts>1&&(
+            <div style={{borderTop:`1px solid ${T.sep}`,marginTop:6,paddingTop:14,paddingBottom:12}}>
+              <div style={{color:T.t1,fontSize:13,fontWeight:700,marginBottom:2}}>
+                Anordnung auf der Anlage
+              </div>
+              <div style={{color:T.t3,fontSize:11.5,lineHeight:1.5,marginBottom:12}}>
+                Legt die Plätze so, wie sie bei euch liegen — im laufenden Turnier
+                sieht dann jeder auf einen Blick, wo gespielt wird.
+              </div>
+              <CourtMap layout={layout} names={i=>courtLabel(courtNames,i)}
+                singles={singles} editable
+                sel={layoutSel} onSel={setLayoutSel}
+                onMove={moveCourtTo} onRotate={rotateCourtAt}/>
+            </div>
+          )}
         </div>
 
         {/* Spieler — nur im Lokal-Modus editierbar.
@@ -9486,6 +9658,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
             id:saved?.id,createdAt:saved?.createdAt,
             name:name.trim(),startTime,endTime,roundPrio,
             players,format,winMode,pauseMode,pausePts,numCourts,roundDurationMin:roundDur,courtNames,courtSingles,
+            courtLayout:layout,
           }),
           style:{width:56,height:56,background:T.card2,border:`1px solid ${T.border}`,color:T.t1},
         }]:[]),
@@ -9500,7 +9673,8 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
             // Änderungen am laufenden Turnier → erst fragen, ob sie für
             // die aktuelle oder die nächste Runde wirksam werden.
             setEditScopePrompt({players,format,winMode,pauseMode,pausePts,numCourts,roundDurationMin:roundDur,
-              name:name.trim(),startTime,endTime,roundPrio,courtNames,courtSingles:singles});
+              name:name.trim(),startTime,endTime,roundPrio,courtNames,courtSingles:singles,
+              courtLayout:layout});
             return;
           }
           if(mode==='online'){
@@ -9549,6 +9723,8 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
           numCourts={numCourts} setNumCourts={setNumCourts} maxCourts={maxCourts}
           courtNames={courtNames} setCourtName={setCourtName}
           courtSingles={courtSingles} toggleCourtSingle={toggleCourtSingle}
+          layout={layout} layoutSel={layoutSel} setLayoutSel={setLayoutSel}
+          moveCourtTo={moveCourtTo} rotateCourtAt={rotateCourtAt}
           startTime={startTime} setStartTime={setStartTime}
           endTime={endTime} setEndTime={setEndTime}
           roundPrio={roundPrio} setRoundPrio={setRoundPrio}
@@ -12671,6 +12847,12 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
   const[roundEndInfo,setRoundEndInfo]=useState(null);
   const[editLineupCourtId,setEditLineupCourtId]=useState(null);
   const[editPtsId,setEditPtsId]=useState(null);
+  /* Platzkarte: Filter auf einen Court (null = alle) und der
+     Stell-Modus, mit dem der Host die Anordnung vor Ort noch gerade
+     rueckt — geplant wird am Kuechentisch, gespielt auf der Anlage. */
+  const[courtFilter,setCourtFilter]=useState(null);
+  const[layoutEdit,setLayoutEdit]=useState(false);
+  const[layoutSel,setLayoutSel]=useState(null);
   // Defensive: korrupte/unvollständige persistierte Turniere (z. B.
   // ohne generierte Runde) würden hart crashen — leeres Fallback
   // rendern und sauber zur Home navigieren (kein früher Return, damit
@@ -12679,6 +12861,12 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
   const round=rawRound||{courts:[],sitOut:[]};
   useEffect(()=>{ if(!rawRound) onHome&&onHome(); },[rawRound]);  // eslint-disable-line react-hooks/exhaustive-deps
   const playerById=id=>tourney.players.find(p=>p.id===id);
+  const tLayout=useMemo(()=>compactLayout(normLayout(tourney.courtLayout,tourney.numCourts||1)),
+    [tourney.courtLayout,tourney.numCourts]);
+  /* Ein Filter ueberlebt den Rundenwechsel nicht — sonst steht der
+     Host vor einer leeren Liste und sucht den Schalter. */
+  useEffect(()=>{setCourtFilter(null);},[tourney.current]);
+  const setLayout=l=>setTourney(t=>({...t,courtLayout:compactLayout(l)}));
 
   // ── Online-Sync (nur wenn dieses Turnier eine Online-Session hat) ──
   // Host publiziert tourney → session.tournamentState. Andere
@@ -13129,7 +13317,68 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
               onDismiss={dismissReady}/>
           )}
 
-          {round.courts.map((court,ci)=>(
+          {/* ── Platzkarte ── Die Anlage als Bild: wo liegt der Platz,
+              wer steht drauf, was ist schon eingetragen. Ein Tipp
+              filtert die Karten darunter auf genau diesen Court —
+              bei sechs Plaetzen ist das der Unterschied zwischen
+              Suchen und Finden. */}
+          {(tourney.numCourts||1)>1&&(
+            <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
+              padding:'12px 14px 14px'}}>
+              <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}>
+                <div style={{flex:1,minWidth:0,fontFamily:T.fontDisplay,color:T.t3,
+                  fontSize:10,letterSpacing:1.6}}>
+                  {layoutEdit?'ANORDNUNG STELLEN':'PLATZKARTE'}
+                </div>
+                {courtFilter!=null&&!layoutEdit&&(
+                  <button onClick={()=>{buzz(6);setCourtFilter(null);}}
+                    style={{padding:'5px 10px',borderRadius:999,background:T.oSoft,
+                      border:`1px solid ${T.o}`,color:T.o,fontSize:11,fontWeight:700,
+                      cursor:'pointer',flexShrink:0}}>
+                    Filter aus
+                  </button>
+                )}
+                <button onClick={()=>{buzz(6);setLayoutEdit(v=>!v);setLayoutSel(null);}}
+                  title={layoutEdit?'Fertig':'Anordnung ändern'}
+                  aria-label={layoutEdit?'Anordnung fertig stellen':'Anordnung ändern'}
+                  style={{padding:'5px 10px',borderRadius:999,flexShrink:0,cursor:'pointer',
+                    background:layoutEdit?T.o:T.card2,
+                    border:`1px solid ${layoutEdit?T.o:T.border}`,
+                    color:layoutEdit?T.bg:T.t2,fontSize:11,fontWeight:700}}>
+                  {layoutEdit?'Fertig':'Stellen'}
+                </button>
+              </div>
+              <CourtMap layout={tLayout} names={i=>courtLabel(tourney.courtNames,i)}
+                singles={tourney.courtSingles} glyphH={30}
+                editable={layoutEdit}
+                sel={layoutSel} onSel={layoutEdit?setLayoutSel:setCourtFilter}
+                onMove={(i,x,y)=>{setLayout(moveTo(tLayout,i,x,y));setLayoutSel(null);}}
+                onRotate={i=>setLayout(rotateCourt(tLayout,i))}
+                active={layoutEdit?null:courtFilter}
+                canSel={i=>i<round.courts.length}
+                sub={i=>{
+                  const c=round.courts[i];
+                  if(!c) return(<div style={{color:T.t4,fontSize:9,fontWeight:600}}>frei</div>);
+                  const nm=ids=>(ids||[]).map(id=>playerById(id)?.name||'?').join(' · ');
+                  return(
+                    <div style={{width:'100%',minWidth:0,lineHeight:1.3}}>
+                      {[c.t1,c.t2].map((t,k)=>(
+                        <div key={k} style={{color:T.t3,fontSize:9,fontWeight:600,
+                          overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                          {nm(t)}
+                        </div>
+                      ))}
+                      <div style={{marginTop:2,color:c.done?T.o:T.t4,fontSize:9.5,
+                        fontWeight:800,fontVariantNumeric:'tabular-nums'}}>
+                        {c.done?`${c.s1}:${c.s2}`:'läuft'}
+                      </div>
+                    </div>
+                  );
+                }}/>
+            </div>
+          )}
+
+          {round.courts.map((court,ci)=>(courtFilter!=null&&courtFilter!==ci)?null:(
             <TournamentCourtCard key={court.id}
               court={court} courtIndex={ci}
               courtName={courtLabel(tourney.courtNames,ci)}
@@ -21767,6 +22016,7 @@ export default function App(){
         roundDurationMin:updates.roundDurationMin,
         courtNames:updates.courtNames,
         courtSingles:updates.courtSingles,
+        courtLayout:updates.courtLayout,
         name:updates.name||prev.name,
         startTime:updates.startTime,
         endTime:updates.endTime,

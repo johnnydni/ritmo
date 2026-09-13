@@ -6670,37 +6670,59 @@ function ScrollPicker({value,onChange,options,bgColor=T.card,width=86}){
    MINUTEN-LINEAL
 
    Die Rundendauer wird an einer Skala eingestellt, die unter einem
-   festen Zeiger durchlaeuft — wie an einem Messschieber. Vorher stand
-   dort eine Ziffernreihe mit Lupe; man sah immer nur die zwei
-   Nachbarzahlen und nie, wo im Bereich 1..60 man gerade steht.
+   festen Zeiger durchlaeuft. Alle fuenf Minuten traegt ein Strich
+   seine Zahl; die Dauer selbst steht gross unten rechts als mm:ss.
 
-   Alle fuenf Minuten traegt ein Strich seine Zahl und ist laenger —
-   daran findet das Auge die Position, ohne zu zaehlen.
+   Die Masse sind aus der Vorlage ausgemessen, nicht geschaetzt: im
+   Screenshot (3x) lagen die Striche im 30-px-Raster, 10 px breit und
+   103 px hoch, die Labels 35 px hoch, das Dreieck 38 x 34 px, die
+   Ziffern der Zeit 89 px. Durch drei geteilt ergeben sich die
+   Konstanten unten — deshalb sind sie krumm und nicht gerundet.
 
-   Zwei Dinge, die anders sind als sie aussehen:
+   Die Fuellung traegt die Information: alles bis zum Zeiger steht in
+   voller Deckkraft, alles danach auf 40 % (im Screenshot rgb 234 zu
+   94). Der Zeiger selbst ist nur das Dreieck — es gibt KEINEN
+   hervorgehobenen Strich in der Mitte und keine laengeren Fuenfer,
+   beides hatte ich in einer frueheren Fassung erfunden.
 
-   - Der helle Strich in der Mitte ist KEINER der scrollenden Striche,
-     sondern liegt als Overlay darueber. Sonst muesste die Liste bei
-     jedem Scroll-Event neu rendern, nur damit ein Strich die Farbe
-     wechselt.
-   - Die Skala braucht links und rechts ein halbes Sichtfeld Anlauf,
-     damit auch 1 und 60 in die Mitte kommen. Das steht als
-     `calc(50% - STEP/2)` im Padding statt als gemessener Pixelwert —
-     Prozent-Padding rechnet gegen die Breite des Scrollers selbst,
-     die Komponente muss ihre eigene Breite also nicht kennen.
+   Zwei Dinge, die anders gebaut sind als sie aussehen:
+
+   - Die Skala blendet an den Raendern per CSS-Maske aus, nicht per
+     Farbverlauf darueber: --card ist im Glass-Theme halbtransparent,
+     ein Verlauf daraus legt einen hellen Schleier ueber den Rand
+     statt ihn zu kaschieren — dieselbe Falle wie beim Netz in
+     MatchSlotGrid.
+   - Der Anlauf links und rechts steht als `calc(50% - STEP/2)` im
+     Padding statt als gemessener Pixelwert. Prozent-Padding rechnet
+     gegen die Breite des Scrollers selbst, die Komponente muss ihre
+     eigene Breite also nicht kennen und fuellt die Karte.
 ═══════════════════════════════════════════════════════════════ */
-const RULER_STEP=13;                    // Abstand zweier Minutenstriche
-const RULER_MASK='linear-gradient(to right, transparent 0, #000 14%, #000 86%, transparent 100%)';
+const RL_STEP=10;        // Raster (Vorlage 30 px)
+const RL_TICK_W=3;       // Strichbreite (10)
+const RL_TICK_H=34;      // Strichhoehe (103)
+const RL_LABEL_FS=16;    // Versalhoehe 11,7 (35)
+const RL_LABEL_H=12;
+const RL_GAP_LABEL=8;    // Label-Unterkante bis Strich (24)
+const RL_GAP_TRI=7;      // Strich bis Dreieck (22)
+const RL_TRI_W=13;       // Dreieck (38 x 34)
+const RL_TRI_H=11;
+const RL_GAP_TIME=3;     /* Dreieck bis Zeit: in der Vorlage 24 px, hier
+                            nur 3 statt 8 — die Zeilenbox der Zeit hat
+                            ueber den Ziffern noch rund 5 px Vorlauf,
+                            die sonst obendrauf kaemen. */
+const RL_TIME_FS=41;     // Ziffernhoehe 29,7 (89)
+const RL_DIM=.4;         // Deckkraft hinter dem Zeiger (94/234)
+const RL_MASK='linear-gradient(to right, transparent 0, #000 12%, #000 88%, transparent 100%)';
 
-function MinuteRuler({value,onChange,min=1,max=60,unit='min'}){
+function MinuteRuler({value,onChange,min=1,max=60}){
   const ref=useRef(null);
   const settle=useRef(null);            // Debounce bis das Momentum steht
   const lastUser=useRef(0);             // Zeitstempel der letzten Nutzer-Scrollung
   const mounted=useRef(false);
   const raf=useRef(0);
-  // Die grosse Zahl laeuft WAEHREND des Wischens mit, der Wert nach
-  // aussen erst danach — sonst rendert der ganze Setup-Screen bei
-  // jedem Scroll-Event neu.
+  // Die Zeit und die Fuellung laufen WAEHREND des Wischens mit, der
+  // Wert nach aussen erst danach — sonst rendert der ganze
+  // Setup-Screen bei jedem Scroll-Event neu.
   const[live,setLive]=useState(value);
   useEffect(()=>{setLive(value);},[value]);
 
@@ -6714,7 +6736,7 @@ function MinuteRuler({value,onChange,min=1,max=60,unit='min'}){
   useEffect(()=>{
     const el=ref.current;
     if(!el||idx<0) return;
-    const target=idx*RULER_STEP;
+    const target=idx*RL_STEP;
     if(Math.abs(el.scrollLeft-target)<1.5){ mounted.current=true; return; }
     if(mounted.current&&Date.now()-lastUser.current<500) return;
     if(settle.current){ clearTimeout(settle.current); settle.current=null; }
@@ -6725,7 +6747,7 @@ function MinuteRuler({value,onChange,min=1,max=60,unit='min'}){
   useEffect(()=>()=>{ if(settle.current) clearTimeout(settle.current);
     if(raf.current) cancelAnimationFrame(raf.current); },[]);
 
-  const at=el=>Math.max(min,Math.min(max,min+Math.round(el.scrollLeft/RULER_STEP)));
+  const at=el=>Math.max(min,Math.min(max,min+Math.round(el.scrollLeft/RL_STEP)));
 
   const handleScroll=()=>{
     lastUser.current=Date.now();
@@ -6743,66 +6765,58 @@ function MinuteRuler({value,onChange,min=1,max=60,unit='min'}){
     },110);
   };
 
-  /* Die Striche aendern sich nie — einmal bauen, nicht bei jedem
-     Scroll neu. */
+  /* Nur die Fuellgrenze aendert sich, und die nur beim Wechsel der
+     Minute — nicht bei jedem Scroll-Event. */
   const ticks=useMemo(()=>vals.map(v=>{
-    const five=v%5===0;
+    const on=v<=live;
     return(
-      <div key={v} style={{width:RULER_STEP,flexShrink:0,scrollSnapAlign:'center',
-        display:'flex',flexDirection:'column',alignItems:'center',
-        justifyContent:'flex-end',height:'100%',gap:5}}>
-        <span style={{fontFamily:T.fontSans,fontSize:10,fontWeight:700,
-          color:T.t3,fontVariantNumeric:'tabular-nums',lineHeight:1,
-          opacity:five?1:0}}>{five?v:''}</span>
-        {/* Die Fuenfer stehen etwas heller und laenger da — daran
-            findet das Auge die Position, ohne Striche zu zaehlen.
-            Deckkraft statt eigener Farbtoken, damit beides aus dem
-            Akzent kommt und beim Themenwechsel mitgeht. */}
-        <span style={{width:2,borderRadius:1,background:T.o,
-          opacity:five?.62:.34,height:five?19:11}}/>
+      <div key={v} style={{width:RL_STEP,flexShrink:0,scrollSnapAlign:'center',
+        position:'relative',height:'100%'}}>
+        {v%5===0&&(
+          <span style={{position:'absolute',left:'50%',top:0,
+            transform:'translateX(-50%)',whiteSpace:'nowrap',
+            fontFamily:T.fontSans,fontSize:RL_LABEL_FS,fontWeight:600,
+            lineHeight:`${RL_LABEL_H}px`,color:T.o,opacity:on?1:RL_DIM,
+            fontVariantNumeric:'tabular-nums'}}>{v}</span>
+        )}
+        <span style={{position:'absolute',left:'50%',bottom:0,
+          transform:'translateX(-50%)',width:RL_TICK_W,height:RL_TICK_H,
+          borderRadius:RL_TICK_W/2,background:T.o,opacity:on?1:RL_DIM}}/>
       </div>
     );
-  }),[vals]);
+  }),[vals,live]);
 
   return(
-    <div style={{position:'relative',width:'100%'}}>
-      <div style={{textAlign:'center',marginBottom:10,
-        fontFamily:T.fontSans,color:T.t1,fontSize:30,fontWeight:800,
-        letterSpacing:-.8,lineHeight:1,fontVariantNumeric:'tabular-nums'}}>
-        {live}<span style={{color:T.t3,fontSize:13,fontWeight:600,
-          letterSpacing:0,marginLeft:4}}>{unit}</span>
+    <div style={{width:'100%'}}>
+      <div ref={ref} onScroll={handleScroll}
+        role="slider" aria-label="Rundendauer in Minuten"
+        aria-valuemin={min} aria-valuemax={max} aria-valuenow={value}
+        aria-valuetext={`${value} Minuten`}
+        style={{height:RL_LABEL_H+RL_GAP_LABEL+RL_TICK_H,
+          overflowX:'scroll',overflowY:'hidden',
+          scrollSnapType:'x mandatory',WebkitOverflowScrolling:'touch',
+          display:'flex',alignItems:'stretch',
+          WebkitMaskImage:RL_MASK, maskImage:RL_MASK,
+          paddingLeft:`calc(50% - ${RL_STEP/2}px)`,
+          paddingRight:`calc(50% - ${RL_STEP/2}px)`}}>
+        {ticks}
       </div>
 
-      <div style={{position:'relative',height:40}}>
-        {/* Fester Zeiger: heller Strich in der Mitte, Dreieck darunter. */}
-        <div aria-hidden="true" style={{position:'absolute',left:'50%',bottom:0,
-          transform:'translateX(-50%)',width:2.5,height:25,borderRadius:1.5,
-          background:T.t1,pointerEvents:'none',zIndex:3,
-          boxShadow:`0 0 9px ${T.oGlow}`}}/>
-
-        <div ref={ref} onScroll={handleScroll}
-          role="slider" aria-label="Rundendauer in Minuten"
-          aria-valuemin={min} aria-valuemax={max} aria-valuenow={value}
-          aria-valuetext={`${value} Minuten`}
-          style={{height:'100%',overflowX:'scroll',overflowY:'hidden',
-            scrollSnapType:'x mandatory',WebkitOverflowScrolling:'touch',
-            display:'flex',alignItems:'flex-end',
-            /* Die Skala blendet an den Raendern aus. Als Farbverlauf
-               DARUEBER ging das nicht: --card ist im Glass-Theme
-               halbtransparent, der Verlauf legte einen hellen Schleier
-               ueber den Rand statt ihn zu kaschieren — dieselbe Falle
-               wie beim Netz in MatchSlotGrid. Eine Maske nimmt die
-               Striche selbst weg und ist vom Untergrund unabhaengig. */
-            WebkitMaskImage:RULER_MASK, maskImage:RULER_MASK,
-            paddingLeft:`calc(50% - ${RULER_STEP/2}px)`,
-            paddingRight:`calc(50% - ${RULER_STEP/2}px)`}}>
-          {ticks}
-        </div>
+      <div aria-hidden="true" style={{display:'flex',justifyContent:'center',
+        marginTop:RL_GAP_TRI}}>
+        <span style={{width:0,height:0,
+          borderLeft:`${RL_TRI_W/2}px solid transparent`,
+          borderRight:`${RL_TRI_W/2}px solid transparent`,
+          borderBottom:`${RL_TRI_H}px solid ${T.o}`}}/>
       </div>
 
-      <div aria-hidden="true" style={{display:'flex',justifyContent:'center',marginTop:5}}>
-        <span style={{width:0,height:0,borderLeft:'5px solid transparent',
-          borderRight:'5px solid transparent',borderBottom:`6px solid ${T.o}`}}/>
+      {/* Die Dauer als mm:ss — bei ganzen Minuten immer :00, genau wie
+          in der Vorlage. */}
+      <div style={{textAlign:'right',marginTop:RL_GAP_TIME,
+        fontFamily:T.fontSans,fontSize:RL_TIME_FS,fontWeight:400,
+        lineHeight:1,letterSpacing:-.5,color:T.o,
+        fontVariantNumeric:'tabular-nums'}}>
+        {live}:00
       </div>
     </div>
   );

@@ -8182,13 +8182,17 @@ function TimeDial({start,end,onChange}){
       </div>
       {/* Ablesezeile unter dem Zifferblatt — groß gesetzt, damit Zeiten
           und Spieldauer auch aus Armlänge lesbar sind. Farben spiegeln
-          die Zeiger: Hell = Start, Orange = Ende. */}
+          die Zeiger: Hell = Start, Orange = Ende.
+
+          Schriftschnitt und Groesse sind dieselben wie bei der Zeit
+          unter der Rundendauer-Skala (RL_TIME_FS): zwei Zeitangaben im
+          selben Assistenten sollen nicht aus zwei Uhren stammen. */}
       <div style={{display:'flex',alignItems:'baseline',justifyContent:'center',
-        gap:9,marginTop:8,fontVariantNumeric:'tabular-nums',letterSpacing:-.5,
-        lineHeight:1,pointerEvents:'none'}}>
-        <span style={{color:T.t1,fontSize:30,fontWeight:800}}>{fmt(a)}</span>
-        <span style={{color:T.t3,fontSize:20,fontWeight:600}}>–</span>
-        <span style={{color:T.o,fontSize:30,fontWeight:800}}>{fmt(b)}</span>
+        gap:9,marginTop:8,fontFamily:T.fontSans,fontVariantNumeric:'tabular-nums',
+        letterSpacing:-.5,lineHeight:1,pointerEvents:'none'}}>
+        <span style={{color:T.t1,fontSize:RL_TIME_FS,fontWeight:400}}>{fmt(a)}</span>
+        <span style={{color:T.t3,fontSize:RL_TIME_FS*.55,fontWeight:400}}>–</span>
+        <span style={{color:T.o,fontSize:RL_TIME_FS,fontWeight:400}}>{fmt(b)}</span>
       </div>
       {/* Spieldauer mittig, die Schnellwahl-Dauern links (kürzer) und
           rechts (länger) davon — Tap setzt das Ende relativ zum Start. */}
@@ -8366,8 +8370,8 @@ function TournamentWizard({onClose,onFinish,canStart,
                 ihr seid, dann die Namen fuellen. Minus nimmt den letzten
                 Platz weg — der steht am Ende der Liste und ist damit der,
                 den man beim Verzaehlen zuletzt angelegt hat. */}
-            <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:20,
-              margin:'6px 0 14px'}}>
+            <div style={{position:'relative',display:'flex',alignItems:'center',
+              justifyContent:'center',gap:20,margin:'6px 0 14px'}}>
               <button onClick={()=>{
                   if(players.length<=4) return;
                   buzz(6);removePlayer(players[players.length-1].id);
@@ -8385,6 +8389,19 @@ function TournamentWizard({onClose,onFinish,canStart,
               <button onClick={()=>{buzz(6);addPlayer();}}
                 aria-label="Einen Spieler mehr"
                 style={{...stepBtn,width:52,height:52,borderRadius:16,fontSize:24}}>+</button>
+              {/* Screenshot-Scan sitzt am rechten Rand statt als
+                  Vollbreiten-Knopf unter der Liste: es ist eine zweite
+                  Art, Spieler hinzuzufuegen, und gehoert damit neben
+                  das Plus. Ohne Beschriftung — der Rahmen ums Bild ist
+                  dasselbe Zeichen wie in der Kamera-App, und die Zeile
+                  bleibt so eine Zeile. */}
+              <button onClick={()=>{buzz(8);setScanOpen(true);}}
+                title="Aus Screenshot übernehmen"
+                aria-label="Spieler aus Screenshot übernehmen"
+                style={{...stepBtn,position:'absolute',right:0,top:'50%',
+                  transform:'translateY(-50%)',width:46,height:46,borderRadius:15}}>
+                <ScanGlyph size={20}/>
+              </button>
             </div>
             {/* Bewusst OHNE Pausen-Rechnung: wie viele pausieren, haengt
                 an der Court-Zahl aus dem naechsten Schritt (und an
@@ -8412,19 +8429,33 @@ function TournamentWizard({onClose,onFinish,canStart,
               // inaktiv, weil das Turnier sonst unter die Mindestzahl fällt.
               <SwipeableRow key={p.id} disabled={players.length<=4}
                 onDelete={()=>removePlayer(p.id)}>
-              <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
-                <span style={{width:26,height:26,borderRadius:'50%',background:p.color,flexShrink:0,
+              {/* Eine Zeile pro Spieler, aber ohne Kasten: Ressort,
+                  darunter der Name auf einer Linie. Der gefuellte Block
+                  liess sieben Zeilen wie ein Formular aussehen — hier
+                  sollen sie wie eine Aufstellung aussehen. */}
+              <div style={{display:'flex',alignItems:'center',gap:13,padding:'9px 0 4px'}}>
+                <span style={{width:32,height:32,borderRadius:'50%',background:p.color,flexShrink:0,
                   display:'flex',alignItems:'center',justifyContent:'center',
-                  color:'#000',fontSize:12,fontWeight:900}}>{idx+1}</span>
-                <input ref={el=>{inputRefs.current[p.id]=el;}} value={p.name}
-                  onChange={e=>renamePlayer(p.id,e.target.value)} maxLength={NAME_MAX}
-                  autoCapitalize="words" autoCorrect="off" spellCheck={false} enterKeyHint="next"
-                  onFocus={e=>e.target.select()}
-                  onKeyDown={e=>{if(e.key==='Enter'){
-                    const nx=players[idx+1];
-                    if(nx) inputRefs.current[nx.id]?.focus(); else addPlayer();
-                  }}}
-                  style={{...inp,flex:1,width:'auto',minWidth:0,height:44,borderRadius:12}}/>
+                  color:'#000',fontSize:14,fontWeight:900}}>{idx+1}</span>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontFamily:T.fontDisplay,color:T.t3,fontSize:9.5,
+                    letterSpacing:1.6,marginBottom:1}}>SPIELER</div>
+                  <input ref={el=>{inputRefs.current[p.id]=el;}} value={p.name}
+                    onChange={e=>renamePlayer(p.id,e.target.value)} maxLength={NAME_MAX}
+                    placeholder="Name"
+                    autoCapitalize="words" autoCorrect="off" spellCheck={false} enterKeyHint="next"
+                    onFocus={e=>{e.target.select();e.target.style.borderBottomColor=T.o;}}
+                    onBlur={e=>{e.target.style.borderBottomColor=T.border;}}
+                    onKeyDown={e=>{if(e.key==='Enter'){
+                      const nx=players[idx+1];
+                      if(nx) inputRefs.current[nx.id]?.focus(); else addPlayer();
+                    }}}
+                    style={{width:'100%',minWidth:0,height:34,background:'none',
+                      border:'none',borderRadius:0,borderBottom:`1px solid ${T.border}`,
+                      color:T.t1,fontSize:17,fontWeight:600,padding:'0 0 3px',
+                      outline:'none',boxSizing:'border-box',
+                      transition:'border-color .18s'}}/>
+                </div>
                 {meta.groups&&(
                   <button onClick={()=>setPlayerGroup(p.id,(p.group||'A')==='B'?'A':'B')}
                     aria-label="Gruppe wechseln" title="Gruppe A/B wechseln"
@@ -8442,17 +8473,15 @@ function TournamentWizard({onClose,onFinish,canStart,
               </div>
               </SwipeableRow>
             ))}
-            {/* Screenshot-Scan — spart das Abtippen ganzer Gruppenlisten. */}
-            <button onClick={()=>{buzz(8);setScanOpen(true);}}
-              style={{width:'100%',marginTop:8,padding:'12px',borderRadius:12,
-                cursor:'pointer',display:'flex',alignItems:'center',
-                justifyContent:'center',gap:9,
-                background:'color-mix(in srgb, var(--card2) 72%, transparent)',
-                border:`1px solid ${T.border}`,color:T.t1,fontSize:14,fontWeight:700,
-                WebkitBackdropFilter:'blur(14px) saturate(160%)',
-                backdropFilter:'blur(14px) saturate(160%)'}}>
-              <ScanGlyph size={17}/> Aus Screenshot übernehmen
-            </button>
+            {/* Noch einer — in derselben Spalte wie die Nummern, damit
+                die Liste unten weitergeht statt oben am Zaehler. */}
+            <button onClick={()=>{buzz(6);addPlayer();}}
+              aria-label="Spieler hinzufügen"
+              style={{width:32,height:32,marginTop:14,borderRadius:'50%',
+                background:'none',border:`1.5px solid ${T.t3}`,color:T.t1,
+                fontSize:18,fontWeight:700,cursor:'pointer',display:'flex',
+                alignItems:'center',justifyContent:'center',lineHeight:1,
+                paddingBottom:2}}>+</button>
             {scanOpen&&(
               <PlayerScanSheet
                 existing={players.map(p=>p.name).filter(n=>n&&!/^Spieler\s*\d+$/i.test(n.trim()))}

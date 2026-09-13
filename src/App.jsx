@@ -6667,104 +6667,142 @@ function ScrollPicker({value,onChange,options,bgColor=T.card,width=86}){
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   HORIZONTAL SCROLL PICKER
+   MINUTEN-LINEAL
 
-   Wie ScrollPicker, nur horizontal. Wird im Turnier-Setup für die
-   Rundendauer verwendet — der User scrollt schnell durch Minuten
-   1..60 und die mittlere Ziffer wird "vergrößert" (Lupen-Effekt).
+   Die Rundendauer wird an einer Skala eingestellt, die unter einem
+   festen Zeiger durchlaeuft — wie an einem Messschieber. Vorher stand
+   dort eine Ziffernreihe mit Lupe; man sah immer nur die zwei
+   Nachbarzahlen und nie, wo im Bereich 1..60 man gerade steht.
 
-   Layout: ITEMS_VISIBLE Items in einer Reihe (≈ 5–7), das mittlere
-   Item ist die Auswahl. PAD links/rechts so groß, dass auch die
-   ersten/letzten Werte ihre Mitte erreichen können.
+   Alle fuenf Minuten traegt ein Strich seine Zahl und ist laenger —
+   daran findet das Auge die Position, ohne zu zaehlen.
+
+   Zwei Dinge, die anders sind als sie aussehen:
+
+   - Der helle Strich in der Mitte ist KEINER der scrollenden Striche,
+     sondern liegt als Overlay darueber. Sonst muesste die Liste bei
+     jedem Scroll-Event neu rendern, nur damit ein Strich die Farbe
+     wechselt.
+   - Die Skala braucht links und rechts ein halbes Sichtfeld Anlauf,
+     damit auch 1 und 60 in die Mitte kommen. Das steht als
+     `calc(50% - STEP/2)` im Padding statt als gemessener Pixelwert —
+     Prozent-Padding rechnet gegen die Breite des Scrollers selbst,
+     die Komponente muss ihre eigene Breite also nicht kennen.
 ═══════════════════════════════════════════════════════════════ */
-function HorizontalScrollPicker({value,onChange,options,bgColor=T.card,
-  itemW=56,visible=5,height=60,unit}){
-  const ref=useRef(null);
-  const TOTAL_W=itemW*visible;
-  const PAD=(TOTAL_W-itemW)/2;
-  const settle=useRef(null);   // Debounce, bis der Snap zur Ruhe kommt
-  const lastUser=useRef(0);    // Zeitstempel der letzten Nutzer-Scrollung
-  const mounted=useRef(false);
-  const idx=options.indexOf(value);
+const RULER_STEP=13;                    // Abstand zweier Minutenstriche
+const RULER_MASK='linear-gradient(to right, transparent 0, #000 14%, #000 86%, transparent 100%)';
 
-  // Der Picker folgt dem Wert auch, wenn er von AUSSEN kommt (Empfehlung,
-  // Assistent, geladener Entwurf). Vorher blieb er auf der Mount-Position
-  // stehen und schrieb beim nächsten Wischen den alten Wert zurück —
-  // Rundendauer und Anzeige liefen auseinander. Während der User selbst
-  // scrollt (letzte 500 ms), fassen wir die Position nicht an, sonst
-  // kämpfen Snap und Korrektur gegeneinander.
+function MinuteRuler({value,onChange,min=1,max=60,unit='min'}){
+  const ref=useRef(null);
+  const settle=useRef(null);            // Debounce bis das Momentum steht
+  const lastUser=useRef(0);             // Zeitstempel der letzten Nutzer-Scrollung
+  const mounted=useRef(false);
+  const raf=useRef(0);
+  // Die grosse Zahl laeuft WAEHREND des Wischens mit, der Wert nach
+  // aussen erst danach — sonst rendert der ganze Setup-Screen bei
+  // jedem Scroll-Event neu.
+  const[live,setLive]=useState(value);
+  useEffect(()=>{setLive(value);},[value]);
+
+  const vals=useMemo(()=>Array.from({length:max-min+1},(_,i)=>min+i),[min,max]);
+  const idx=value-min;
+
+  // Der Zeiger folgt dem Wert auch, wenn er von AUSSEN kommt
+  // (Empfehlung, Assistent, geladener Entwurf). Waehrend der User
+  // selbst wischt (letzte 500 ms) fassen wir die Position nicht an,
+  // sonst kaempfen Snap und Korrektur gegeneinander.
   useEffect(()=>{
     const el=ref.current;
     if(!el||idx<0) return;
-    const target=idx*itemW;
+    const target=idx*RULER_STEP;
     if(Math.abs(el.scrollLeft-target)<1.5){ mounted.current=true; return; }
     if(mounted.current&&Date.now()-lastUser.current<500) return;
     if(settle.current){ clearTimeout(settle.current); settle.current=null; }
     if(!mounted.current){ el.scrollLeft=target; mounted.current=true; }
     else if(el.scrollTo) el.scrollTo({left:target,behavior:'smooth'});
     else el.scrollLeft=target;
-  },[idx,itemW]);
-  // Debounce beim Unmount aufräumen — sonst feuert onChange ins Leere.
-  useEffect(()=>()=>{ if(settle.current) clearTimeout(settle.current); },[]);
+  },[idx]);
+  useEffect(()=>()=>{ if(settle.current) clearTimeout(settle.current);
+    if(raf.current) cancelAnimationFrame(raf.current); },[]);
+
+  const at=el=>Math.max(min,Math.min(max,min+Math.round(el.scrollLeft/RULER_STEP)));
 
   const handleScroll=()=>{
     lastUser.current=Date.now();
+    if(!raf.current) raf.current=requestAnimationFrame(()=>{
+      raf.current=0;
+      const el=ref.current; if(!el) return;
+      const v=at(el);
+      setLive(l=>l===v?l:v);
+    });
     if(settle.current) clearTimeout(settle.current);
-    // Position erst aus dem Element lesen, wenn das Momentum steht.
     settle.current=setTimeout(()=>{
       const el=ref.current; if(!el) return;
-      const i=Math.max(0,Math.min(options.length-1,Math.round(el.scrollLeft/itemW)));
-      if(options[i]!==undefined&&options[i]!==value) onChange(options[i]);
+      const v=at(el);
+      if(v!==value) onChange(v);
     },110);
   };
 
-  const FADE_W=Math.round(itemW*0.9);
+  /* Die Striche aendern sich nie — einmal bauen, nicht bei jedem
+     Scroll neu. */
+  const ticks=useMemo(()=>vals.map(v=>{
+    const five=v%5===0;
+    return(
+      <div key={v} style={{width:RULER_STEP,flexShrink:0,scrollSnapAlign:'center',
+        display:'flex',flexDirection:'column',alignItems:'center',
+        justifyContent:'flex-end',height:'100%',gap:5}}>
+        <span style={{fontFamily:T.fontSans,fontSize:10,fontWeight:700,
+          color:T.t3,fontVariantNumeric:'tabular-nums',lineHeight:1,
+          opacity:five?1:0}}>{five?v:''}</span>
+        {/* Die Fuenfer stehen etwas heller und laenger da — daran
+            findet das Auge die Position, ohne Striche zu zaehlen.
+            Deckkraft statt eigener Farbtoken, damit beides aus dem
+            Akzent kommt und beim Themenwechsel mitgeht. */}
+        <span style={{width:2,borderRadius:1,background:T.o,
+          opacity:five?.62:.34,height:five?19:11}}/>
+      </div>
+    );
+  }),[vals]);
 
   return(
-    <div style={{position:'relative',width:TOTAL_W,height,flexShrink:0}}>
-      {/* Selection band — die "Lupe" sitzt mittig und hebt das
-          aktive Item visuell hervor. */}
-      <div style={{position:'absolute',top:0,bottom:0,left:PAD,width:itemW,
-        background:'var(--oSoft)',
-        borderLeft:`1px solid ${T.border}`,borderRight:`1px solid ${T.border}`,
-        pointerEvents:'none',borderRadius:13}}/>
+    <div style={{position:'relative',width:'100%'}}>
+      <div style={{textAlign:'center',marginBottom:10,
+        fontFamily:T.fontSans,color:T.t1,fontSize:30,fontWeight:800,
+        letterSpacing:-.8,lineHeight:1,fontVariantNumeric:'tabular-nums'}}>
+        {live}<span style={{color:T.t3,fontSize:13,fontWeight:600,
+          letterSpacing:0,marginLeft:4}}>{unit}</span>
+      </div>
 
-      {/* Linker Fade — kaschiert das Ende der Reihe, damit der User
-          das Gefühl hat, durch eine Lupe zu schauen. */}
-      <div style={{position:'absolute',top:0,bottom:0,left:0,width:FADE_W,
-        background:`linear-gradient(to right, ${bgColor}, transparent)`,
-        pointerEvents:'none',zIndex:2}}/>
-      <div style={{position:'absolute',top:0,bottom:0,right:0,width:FADE_W,
-        background:`linear-gradient(to left, ${bgColor}, transparent)`,
-        pointerEvents:'none',zIndex:2}}/>
+      <div style={{position:'relative',height:40}}>
+        {/* Fester Zeiger: heller Strich in der Mitte, Dreieck darunter. */}
+        <div aria-hidden="true" style={{position:'absolute',left:'50%',bottom:0,
+          transform:'translateX(-50%)',width:2.5,height:25,borderRadius:1.5,
+          background:T.t1,pointerEvents:'none',zIndex:3,
+          boxShadow:`0 0 9px ${T.oGlow}`}}/>
 
-      <div ref={ref} onScroll={handleScroll}
-        style={{width:TOTAL_W,height,overflowX:'scroll',overflowY:'hidden',
-          scrollSnapType:'x mandatory',
-          scrollPaddingLeft:`${PAD}px`,
-          WebkitOverflowScrolling:'touch',
-          display:'flex',alignItems:'center'}}>
-        {/* Pad vor dem ersten Item, damit Wert 0 zentriert werden kann */}
-        <div style={{width:PAD,height:'100%',flexShrink:0}}/>
-        {options.map(o=>{
-          const active=o===value;
-          return(
-            <div key={o} style={{
-              width:itemW,height:'100%',flexShrink:0,
-              display:'flex',alignItems:'center',justifyContent:'center',
-              scrollSnapAlign:'start',
-              fontSize:active?26:16,
-              fontWeight:active?900:500,
-              color:active?T.t1:T.t2,
-              letterSpacing:active?-.5:0,
-              transform:active?'scale(1.05)':'scale(1)',
-              transformOrigin:'center',
-              transition:'color .18s,font-size .18s,transform .18s,font-weight .18s'}}>
-              {o}{active&&unit?<span style={{color:T.t3,fontSize:12,fontWeight:600,marginLeft:3}}>{unit}</span>:null}
-            </div>
-          );
-        })}
-        <div style={{width:PAD,height:'100%',flexShrink:0}}/>
+        <div ref={ref} onScroll={handleScroll}
+          role="slider" aria-label="Rundendauer in Minuten"
+          aria-valuemin={min} aria-valuemax={max} aria-valuenow={value}
+          aria-valuetext={`${value} Minuten`}
+          style={{height:'100%',overflowX:'scroll',overflowY:'hidden',
+            scrollSnapType:'x mandatory',WebkitOverflowScrolling:'touch',
+            display:'flex',alignItems:'flex-end',
+            /* Die Skala blendet an den Raendern aus. Als Farbverlauf
+               DARUEBER ging das nicht: --card ist im Glass-Theme
+               halbtransparent, der Verlauf legte einen hellen Schleier
+               ueber den Rand statt ihn zu kaschieren — dieselbe Falle
+               wie beim Netz in MatchSlotGrid. Eine Maske nimmt die
+               Striche selbst weg und ist vom Untergrund unabhaengig. */
+            WebkitMaskImage:RULER_MASK, maskImage:RULER_MASK,
+            paddingLeft:`calc(50% - ${RULER_STEP/2}px)`,
+            paddingRight:`calc(50% - ${RULER_STEP/2}px)`}}>
+          {ticks}
+        </div>
+      </div>
+
+      <div aria-hidden="true" style={{display:'flex',justifyContent:'center',marginTop:5}}>
+        <span style={{width:0,height:0,borderLeft:'5px solid transparent',
+          borderRight:'5px solid transparent',borderBottom:`6px solid ${T.o}`}}/>
       </div>
     </div>
   );
@@ -9052,9 +9090,8 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
           </div>
         )}
 
-        {/* Rundendauer — horizontaler Scroll-Picker mit Lupen-Effekt
-            auf dem mittleren Minutenwert. Schnelles Swipen statt
-            +/- Klick-Klick-Klick. */}
+        {/* Rundendauer — Skala statt Ziffernreihe: man sieht, wo im
+            Bereich man steht, nicht nur die Nachbarzahlen. */}
         <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
           padding:'14px 18px 16px'}}>
           <div style={{marginBottom:10}}>
@@ -9063,16 +9100,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
               Timer pro Runde — wische zur gewünschten Minute
             </div>
           </div>
-          <div style={{display:'flex',justifyContent:'center'}}>
-            <HorizontalScrollPicker
-              value={roundDur}
-              onChange={setRoundDur}
-              options={Array.from({length:60},(_,i)=>i+1)}
-              bgColor={T.card}
-              itemW={67}
-              visible={5}
-              unit="min"/>
-          </div>
+          <MinuteRuler value={roundDur} onChange={setRoundDur}/>
         </div>
 
         {/* Anzahl Courts — zwischen Rundendauer und Spieler-Card. */}

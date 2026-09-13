@@ -7517,15 +7517,29 @@ function StylePickerSheet({current,onSelect,onClose}){
    → Trefferliste bestätigen/korrigieren → übernehmen. Bewusst mit
    Bestätigungsschritt: OCR liegt gelegentlich daneben, und ein falsch
    geschriebener Name zieht sich sonst durchs ganze Turnier. */
-function PlayerScanSheet({existing,onAdd,onClose}){
+/* initialFiles: der Aufrufer hat den Dateidialog schon geoeffnet und
+   uebergibt die Auswahl. Dann startet das Sheet direkt in 'work' — die
+   Erklaerkarte davor war ein Zwischenschritt, den niemand lesen will,
+   wenn er gerade auf ein Scan-Symbol getippt hat.
+
+   Warum der Dialog beim Aufrufer aufgeht und nicht hier: ein
+   programmatischer Klick auf ein file-Input braucht die Nutzergeste,
+   und die ist nach Mount + Effekt nicht mehr sicher vorhanden. */
+function PlayerScanSheet({existing,onAdd,onClose,initialFiles=null}){
   const sheet=useSheetDrag(onClose);
-  const[phase,setPhase]=useState('pick');   // pick | work | list
+  const[phase,setPhase]=useState(initialFiles?.length?'work':'pick');   // pick | work | list
   const[prog,setProg]=useState({step:'load',pct:0,file:0,total:0});
   const[rows,setRows]=useState([]);          // {name,on}
   const[err,setErr]=useState('');
   const fileRef=useRef(null);
   // Worker samt WASM-Speicher freigeben, sobald das Sheet zugeht.
   useEffect(()=>()=>{ releaseOcr(); },[]);
+  const started=useRef(false);
+  useEffect(()=>{
+    if(started.current||!initialFiles?.length) return;
+    started.current=true;
+    run(initialFiles);
+  },[initialFiles]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   const run=async(files)=>{
     const list=Array.from(files||[]).slice(0,6); // mehr als 6 Bilder ist kein Anwendungsfall
@@ -7579,10 +7593,14 @@ function PlayerScanSheet({existing,onAdd,onClose}){
             :'WhatsApp-Liste, Platzbuchung, Notiz — die Namen werden direkt auf dem Gerät gelesen, die Bilder verlassen es nicht.'}
         </div>
 
+        {/* Liegt ausserhalb der Phasen: "Neues Bild" aus der Ergebnis-
+            liste soll denselben Dialog oeffnen, statt ueber die
+            Erklaerkarte zu gehen. */}
+        <input ref={fileRef} type="file" accept="image/*" multiple
+          onChange={e=>{ run(e.target.files); e.target.value=''; }}
+          style={{display:'none'}}/>
+
         {phase==='pick'&&(<>
-          <input ref={fileRef} type="file" accept="image/*" multiple
-            onChange={e=>{ run(e.target.files); e.target.value=''; }}
-            style={{display:'none'}}/>
           <button onClick={()=>fileRef.current?.click()}
             style={{width:'100%',padding:'15px',borderRadius:14,cursor:'pointer',
               background:T.o,border:'none',color:'#000',fontSize:15,fontWeight:800,
@@ -7641,7 +7659,7 @@ function PlayerScanSheet({existing,onAdd,onClose}){
             </div>
           ))}
           <div style={{display:'flex',gap:8,marginTop:16}}>
-            <button onClick={()=>{setRows([]);setPhase('pick');}}
+            <button onClick={()=>fileRef.current?.click()}
               style={{flex:1,padding:'13px',background:'none',border:`1px solid ${T.border}`,
                 borderRadius:13,color:T.t2,fontSize:14,fontWeight:700,cursor:'pointer'}}>
               Neues Bild
@@ -8239,6 +8257,19 @@ function TournamentWizard({onClose,onFinish,canStart,
   const inputRefs=useRef({});
   // Screenshot-Scan im Spieler-Schritt (gleiche Funktion wie im Formular).
   const[scanOpen,setScanOpen]=useState(false);
+  /* Der Dateidialog geht direkt aus dem Knopf auf — nur dort liegt die
+     Nutzergeste, die ein file-Input dafuer braucht. Das Sheet kommt
+     erst mit der Auswahl und faengt sofort an zu lesen. */
+  const scanFileRef=useRef(null);
+  const[scanFiles,setScanFiles]=useState(null);
+  const pickScans=()=>{buzz(8);scanFileRef.current?.click();};
+  const onScansPicked=e=>{
+    const f=Array.from(e.target.files||[]);
+    e.target.value='';
+    if(!f.length) return;
+    setScanFiles(f); setScanOpen(true);
+  };
+  const closeScan=()=>{setScanOpen(false);setScanFiles(null);};
   // Validierung je Schritt — „Weiter" bleibt aus, bis der Schritt steht.
   const namesOk=players.every(p=>(p.name||'').trim().length>0);
   const meta=FORMATS[format]||FORMATS.americano;
@@ -8395,7 +8426,7 @@ function TournamentWizard({onClose,onFinish,canStart,
                   das Plus. Ohne Beschriftung — der Rahmen ums Bild ist
                   dasselbe Zeichen wie in der Kamera-App, und die Zeile
                   bleibt so eine Zeile. */}
-              <button onClick={()=>{buzz(8);setScanOpen(true);}}
+              <button onClick={pickScans}
                 title="Aus Screenshot übernehmen"
                 aria-label="Spieler aus Screenshot übernehmen"
                 style={{...stepBtn,position:'absolute',right:0,top:'50%',
@@ -8482,11 +8513,13 @@ function TournamentWizard({onClose,onFinish,canStart,
                 fontSize:18,fontWeight:700,cursor:'pointer',display:'flex',
                 alignItems:'center',justifyContent:'center',lineHeight:1,
                 paddingBottom:2}}>+</button>
+            <input ref={scanFileRef} type="file" accept="image/*" multiple
+              onChange={onScansPicked} style={{display:'none'}}/>
             {scanOpen&&(
-              <PlayerScanSheet
+              <PlayerScanSheet initialFiles={scanFiles}
                 existing={players.map(p=>p.name).filter(n=>n&&!/^Spieler\s*\d+$/i.test(n.trim()))}
                 onAdd={addScannedPlayers}
-                onClose={()=>setScanOpen(false)}/>
+                onClose={closeScan}/>
             )}
             {/* Team-Formate: feste Paare nach Listen-Reihenfolge */}
             {meta.team&&wTeamOk&&(
@@ -8873,6 +8906,16 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
   const[wizardOpen,setWizardOpen]=useState(false);
   // Screenshot-Scan (Spieler per OCR uebernehmen).
   const[scanOpen,setScanOpen]=useState(false);
+  const scanFileRef=useRef(null);
+  const[scanFiles,setScanFiles]=useState(null);
+  const pickScans=()=>{buzz(8);scanFileRef.current?.click();};
+  const onScansPicked=e=>{
+    const f=Array.from(e.target.files||[]);
+    e.target.value='';
+    if(!f.length) return;
+    setScanFiles(f); setScanOpen(true);
+  };
+  const closeScan=()=>{setScanOpen(false);setScanFiles(null);};
   // Regel-Aufklapper in der Format-Karte.
   const[rulesOpen,setRulesOpen]=useState(false);
   // Ab dem 5. Spieler lassen sich Zeilen per Wisch loeschen. Statt das
@@ -9618,7 +9661,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
           )}
           {/* Screenshot-Scan — Namen aus WhatsApp-Liste, Platzbuchung
               oder Notiz uebernehmen, statt sie abzutippen. */}
-          <button onClick={()=>{buzz(8);setScanOpen(true);}}
+          <button onClick={pickScans}
             style={{width:'100%',marginTop:12,padding:'12px',borderRadius:13,
               cursor:'pointer',display:'flex',alignItems:'center',
               justifyContent:'center',gap:9,
@@ -9628,11 +9671,13 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
               backdropFilter:'blur(14px) saturate(160%)'}}>
             <ScanGlyph size={17}/> Aus Screenshot übernehmen
           </button>
+          <input ref={scanFileRef} type="file" accept="image/*" multiple
+            onChange={onScansPicked} style={{display:'none'}}/>
           {scanOpen&&(
-            <PlayerScanSheet
+            <PlayerScanSheet initialFiles={scanFiles}
               existing={players.map(p=>p.name).filter(n=>n&&!/^Spieler\s*\d+$/i.test(n.trim()))}
               onAdd={addScannedPlayers}
-              onClose={()=>setScanOpen(false)}/>
+              onClose={closeScan}/>
           )}
           {canStart&&format!=='knockout'&&pauseStats&&pauseStats.sitOut>0&&(
             <div style={{color:T.t3,fontSize:11,marginTop:10,paddingBottom:6,fontWeight:500,lineHeight:1.55}}>

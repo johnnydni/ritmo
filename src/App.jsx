@@ -8421,12 +8421,10 @@ function TournamentWizard({onClose,onFinish,canStart,
               der Umgang mit Pausen.</div>
 
             {labelRow(<StopwatchIcon size={13}/>,'Rundendauer')}
-            <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:14}}>
-              <button onClick={()=>setRoundDur(Math.max(4,roundDur-1))} style={stepBtn}>−</button>
-              <div style={{flex:1,textAlign:'center',color:T.t1,fontSize:24,fontWeight:900}}>
-                {roundDur} Min
-              </div>
-              <button onClick={()=>setRoundDur(Math.min(45,roundDur+1))} style={stepBtn}>+</button>
+            {/* Dieselbe Skala wie im freien Konfigurator — zwei Wege zur
+                selben Einstellung sollen nicht zwei Bedienungen sein. */}
+            <div style={{marginBottom:14}}>
+              <MinuteRuler value={roundDur} onChange={setRoundDur}/>
             </div>
             {suggest?(
               /* Empfehlung wird erst per Tap eingerechnet (setzt die Rundendauer). */

@@ -254,15 +254,23 @@ etwas, auch ohne dass man tippt) und oeffnet per Tipp ein `QuickSheet`
 mit genau dieser Einstellung. Das Formular darunter ist lang; diese
 vier fasst man staendig an.
 
-Entscheidend: das Sheet zeigt **dieselbe Karte**, die auch im Formular
-steht. Die vier Bloecke liegen als Variablen (`kSpieler`, `kCourts`,
-`kZeit`, `kDauer`) im `TournamentSetup` und werden an beiden Stellen
-gerendert — keine Kopie, keine zweite Bedienung, keine zweite
-Wahrheit. Wer eine Karte aendert, aendert beide Wege.
+Entscheidend: ein Schnellzugriff stellt **genau einen Wert** — die
+Anzahl, die Uhrzeit, die Dauer. Spieler und Courts bekommen einen
+`QuickStepper` (grosse Zahl, Minus, Plus), Zeit die `TimeDial`, Runde
+den `MinuteRuler`. Namen, Court-Namen, Platzkarte und die
+Rundenempfehlung bleiben im Formular: wer zwischendurch schnell einen
+Spieler mehr braucht, will nicht die halbe Konfiguration im Sheet
+haben.
 
-- Das Sheet traegt **nur das Ressort**, keine Ueberschrift: die Karte
-  darunter sagt selbst, was sie ist. Zweimal "Spieler" untereinander
-  liest niemand als Gliederung, sondern als Fehler.
+Ein erster Entwurf zeigte im Sheet die komplette Karte aus dem
+Formular. Technisch huebsch (eine Quelle), in der Hand aber ein
+zweites Formular im ersten — und genau das soll der Schnellzugriff ja
+abkuerzen.
+
+- Das Sheet traegt **nur das Ressort**, keine Ueberschrift: bei einem
+  einzigen Bedienelement sagt der Wert selbst, worum es geht.
+- Ein deaktivierter Stepper-Knopf bleibt stehen, statt zu
+  verschwinden — eine Reihe, die ihre Breite aendert, springt.
 - Im Online-Modus fehlen Spieler und Zeitfenster in der Leiste — dort
   gibt es beides im Formular auch nicht (Spieler joinen per PIN).
 - Am Body und zweilagiger Grund wie beim `PlayerScanSheet`, aus

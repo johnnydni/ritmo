@@ -52,7 +52,7 @@ import {
   SteeringWheelIcon, PaletteIcon, EyeIcon, BellIcon, LockIcon, DoorOutIcon,
   SpeakerIcon, ChatBubbleIcon,
   ChevronRightIcon, AirPlayIcon, CoffeeCupIcon,
-  ArchetypeGlyph, PauseIcon, TournamentModeIcon,
+  ArchetypeGlyph, PauseIcon, TournamentModeIcon, ClockIcon, CourtsIcon,
   // Emoji-Ersatz-Glyphen
   HeartIcon, MedalIcon, PhoneIcon, KeyboardIcon, RingIcon, WatchIcon, FlicIcon,
   MoonIcon, LeafIcon, TargetIcon, ScrollIcon, StopwatchIcon, MaskIcon,
@@ -7782,6 +7782,55 @@ function PlayerScanSheet({existing,onAdd,onClose,initialFiles=null}){
   );
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   SCHNELLZUGRIFF-SHEET
+
+   Das Formular ist lang, und vier Dinge aendert man staendig:
+   Spieler, Courts, Zeitfenster, Rundendauer. Die Leiste unter dem
+   Titel holt genau diese vier nach oben — und zeigt im Sheet
+   dieselbe Karte, die auch im Formular steht. Keine zweite
+   Bedienung, keine zweite Wahrheit.
+
+   Am Body wie das Scan-Sheet, und mit demselben zweilagigen Grund:
+   --card ist halbtransparent, und darunter liegt ein Formular voller
+   Kontraste.
+═══════════════════════════════════════════════════════════════ */
+function QuickSheet({kicker,onClose,children}){
+  const sheet=useSheetDrag(onClose);
+  return createPortal(
+    <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:300,
+      background:'rgba(0,0,0,.7)',backdropFilter:'blur(4px)',display:'flex',
+      alignItems:'flex-end',justifyContent:'center',animation:'fadeIn .15s ease'}}>
+      <div onClick={e=>e.stopPropagation()} className="slide-up"
+        ref={sheet.ref} {...sheet.handlers}
+        style={{background:`linear-gradient(0deg, ${T.card}, ${T.card}), ${T.bg}`,
+          borderTopLeftRadius:20,borderTopRightRadius:20,
+          borderTop:`1px solid ${T.border}`,width:'100%',maxWidth:480,
+          padding:'16px 18px 0',maxHeight:'88vh',overflowY:'auto',...sheet.style}}>
+        <div style={{width:36,height:4,borderRadius:2,background:T.border,margin:'0 auto 16px'}}/>
+        {/* Nur das Ressort, keine Ueberschrift: die Karte darunter
+            sagt selbst, was sie ist — zweimal "Spieler" untereinander
+            liest niemand als Gliederung, sondern als Fehler. */}
+        <div style={{fontFamily:T.fontDisplay,color:T.o,fontSize:10,
+          letterSpacing:1.8}}>{kicker}</div>
+        <div style={{height:1,background:T.o,opacity:.5,marginTop:9,marginBottom:14}}/>
+        {children}
+        <div style={{position:'sticky',bottom:0,zIndex:1,
+          margin:'18px -18px 0',padding:'12px 18px calc(env(safe-area-inset-bottom,0px) + 18px)',
+          borderTop:`1px solid ${T.sep}`,
+          background:`linear-gradient(0deg, ${T.card}, ${T.card}), ${T.bg}`}}>
+          <button onClick={onClose}
+            style={{width:'100%',padding:'13px',border:'none',borderRadius:13,
+              background:T.o,color:'#000',fontSize:14.5,fontWeight:800,cursor:'pointer'}}>
+            Fertig
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 /* Scan-Glyph — Bild im Sucherrahmen, passend zum Icon-Set der App. */
 function ScanGlyph({size=18,color}){
   const c=color||T.o;
@@ -9019,6 +9068,8 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
      Schliessen fuehrt in den freien Konfigurator darunter, nicht nach
      Hause: die Eingaben sind dieselben und bleiben erhalten. */
   const[wizardOpen,setWizardOpen]=useState(!isEdit&&!seed);
+  // Schnellzugriff: 'spieler' | 'courts' | 'zeit' | 'dauer' | null
+  const[quick,setQuick]=useState(null);
   // Screenshot-Scan (Spieler per OCR uebernehmen).
   const[scanOpen,setScanOpen]=useState(false);
   const scanFileRef=useRef(null);
@@ -9234,6 +9285,401 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
     });
   };
 
+  /* Die vier Karten, die auch hinter dem Schnellzugriff stecken.
+     Als Variablen, nicht als Kopien: der Schnellzugriff zeigt
+     dieselbe Karte wie das Formular, und wer eine aendert, aendert
+     beide. */
+  const kZeit=(<>
+        {/* Zeitfenster (nur lokal) — Start/End-Uhrzeit → Rundenzeit-Vorschlag. */}
+        {mode==='lokal'&&(
+          <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,padding:'14px 18px 16px'}}>
+            <div style={{color:T.t1,fontSize:15,fontWeight:600}}>Zeitfenster</div>
+            <div style={{color:T.t3,fontSize:11,fontWeight:500,marginBottom:6}}>
+              Zeiger ziehen — Hell = Start, Orange = Ende
+            </div>
+            {/* Immer sichtbare Drag-Uhr — schreibt direkt in startTime/endTime. */}
+            <TimeDial start={startTime} end={endTime}
+              onChange={(s,e)=>{setStartTime(s);setEndTime(e);}}/>
+
+            {/* Priorität: Längere Runden ⇄ Jeder gegen Jeden — steuert
+                Ziel-/Min-/Max-Rundenzeit des Vorschlags. */}
+            <div style={{marginTop:16}}>
+              <div style={{color:T.t3,fontSize:11,fontWeight:600,marginBottom:7}}>
+                Priorität: Längere Runden oder Jeder gegen Jeden?
+              </div>
+              <div style={{display:'flex',background:T.card2,borderRadius:30,padding:4,gap:4,
+                border:`1px solid ${T.border}`}}>
+                {[{v:'length',l:'Längere Runden'},{v:'variety',l:'Jeder gegen Jeden'}].map(o=>(
+                  <button key={o.v} onClick={()=>setRoundPrio(o.v)}
+                    style={{flex:1,padding:'9px 6px',borderRadius:20,border:'none',cursor:'pointer',
+                      background:roundPrio===o.v?T.o:'transparent',
+                      color:roundPrio===o.v?'#000':T.t2,fontSize:12,fontWeight:800,
+                      transition:'background .2s,color .2s',lineHeight:1.2}}>
+                    {o.l}
+                  </button>
+                ))}
+              </div>
+              <div style={{color:T.t4,fontSize:10.5,fontWeight:500,marginTop:6,lineHeight:1.55}}>
+                {roundPrio==='length'
+                  ?'Längere, ruhigere Runden — dafür spielt nicht jeder gegen jeden.'
+                  :'Mehr Runden, jeder gegen möglichst jeden — dafür kürzere Runden.'}
+              </div>
+            </div>
+            {/* „Empfehlung" — rechnet den Vorschlag erst auf Knopfdruck
+                ein (setzt die Rundendauer) und blendet die Details ein. */}
+            {suggest&&(
+              <button onClick={applySuggest}
+                style={{marginTop:12,width:'100%',display:'flex',alignItems:'center',
+                  justifyContent:'center',gap:8,padding:'12px',borderRadius:12,
+                  cursor:'pointer',border:`1.5px solid ${T.o}`,position:'relative',
+                  background:appliedSuggest?T.oSoft:T.o,
+                  color:appliedSuggest?T.o:'#000',fontSize:13.5,fontWeight:800}}>
+                <StopwatchIcon size={15} color={appliedSuggest?T.o:'#000'}/>
+                {appliedSuggest?'Empfehlung übernommen':'Empfehlung'}
+                {/* X blendet die Empfehlung wieder aus — eigener Klick-
+                    bereich im Button (kein verschachteltes <button>). */}
+                {suggestShown&&(
+                  <span role="button" tabIndex={0}
+                    aria-label="Empfehlung ausblenden"
+                    onClick={e=>{e.stopPropagation();buzz(6);setSuggestShown(false);}}
+                    style={{position:'absolute',right:7,top:'50%',
+                      transform:'translateY(-50%)',width:30,height:30,
+                      borderRadius:'50%',display:'flex',alignItems:'center',
+                      justifyContent:'center',cursor:'pointer'}}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M6 6l12 12M18 6L6 18"
+                        stroke={appliedSuggest?T.o:'#000'} strokeWidth="2.6"
+                        strokeLinecap="round"/>
+                    </svg>
+                  </span>
+                )}
+              </button>
+            )}
+            {suggest&&!suggestShown&&(
+              <div style={{color:T.t4,fontSize:10.5,fontWeight:500,marginTop:6,
+                lineHeight:1.5,textAlign:'center'}}>
+                Berechnet die Rundenzeit fürs Zeitfenster — inkl. 3 Min Rotationspause pro Runde.
+              </div>
+            )}
+            {suggest&&suggestShown&&(
+              <div className="fi" style={{marginTop:10,padding:'10px 12px',borderRadius:12,background:T.oSoft,
+                border:`1px solid ${T.o}`,display:'flex',alignItems:'flex-start',gap:8}}>
+                <span style={{marginTop:1,display:'inline-flex'}}><StopwatchIcon size={15} color={T.o}/></span>
+                <div style={{color:T.t2,fontSize:12,fontWeight:600,lineHeight:1.5,minWidth:0}}>
+                  Empfehlung: <span style={{color:T.o,fontWeight:800}}>≈ {suggest.rounds} Runden × {suggest.roundTime} Min</span>
+                  {' '}+ {suggest.rotation} Min Rotation, füllt {Math.floor(windowMin/60)} h {windowMin%60} Min.
+                  <br/>Bei {suggest.courts} Court{suggest.courts>1?'s':''}: ~{suggest.gamesEach} Spiele/Spieler
+                  {suggest.sitOut>0?`, ${suggest.sitOut} pausieren/Runde`:', keine Pausen'} — alle ±1 gleich oft.
+                </div>
+              </div>
+            )}
+            {windowMin&&!suggest&&(
+              <div style={{color:T.t3,fontSize:11,fontWeight:500,marginTop:10}}>
+                Mind. 4 Spieler eintragen für eine Rundenzeit-Empfehlung.
+              </div>
+            )}
+          </div>
+        )}
+
+  </>);
+  const kDauer=(<>
+        {/* Rundendauer — Skala statt Ziffernreihe: man sieht, wo im
+            Bereich man steht, nicht nur die Nachbarzahlen. */}
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
+          padding:'14px 18px 16px'}}>
+          <div style={{marginBottom:10}}>
+            <div style={{color:T.t1,fontSize:15,fontWeight:600}}>Rundendauer{appliedSuggest?', Empfehlung übernommen':''}</div>
+            <div style={{color:T.t3,fontSize:11,fontWeight:500,marginTop:1}}>
+              Timer pro Runde — wische zur gewünschten Minute
+            </div>
+          </div>
+          <MinuteRuler value={roundDur} onChange={setRoundDur}/>
+        </div>
+
+  </>);
+  const kCourts=(<>
+        {/* Anzahl Courts — zwischen Rundendauer und Spieler-Card. */}
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
+          padding:'14px 18px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+          <div>
+            <div style={{color:T.t1,fontSize:15,fontWeight:600}}>Anzahl Courts</div>
+            <div style={{color:T.t3,fontSize:11,fontWeight:500,marginTop:1}}>
+              frei wählbar, 4 Spieler pro Court
+            </div>
+          </div>
+          <div style={{display:'flex',alignItems:'center',gap:14}}>
+            <button onClick={()=>setNumCourts(c=>Math.max(1,c-1))}
+              style={{width:32,height:32,borderRadius:'50%',background:T.card2,border:`1px solid ${T.border}`,
+                color:T.t1,fontSize:16,cursor:'pointer'}}>−</button>
+            <span style={{color:T.t1,fontWeight:800,fontSize:18,minWidth:24,textAlign:'center'}}>{numCourts}</span>
+            <button onClick={()=>setNumCourts(c=>Math.min(maxCourts,c+1))}
+              style={{width:32,height:32,borderRadius:'50%',background:T.card2,border:`1px solid ${T.border}`,
+                color:T.t1,fontSize:16,cursor:'pointer'}}>+</button>
+          </div>
+        </div>
+
+        {/* Court-Namen — werden auf die Matches angewendet. +/- ändert
+            die Court-Zahl, Enter springt zum nächsten Court. Standard:
+            "Court 1", "Court 2" … */}
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
+          padding:'18px 18px 8px'}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
+            <div style={{color:T.t1,fontSize:17,fontWeight:700}}>Court-Namen</div>
+            <div style={{display:'flex',alignItems:'center',gap:10}}>
+              <span style={{color:T.t3,fontSize:12,fontWeight:600}}>{numCourts} Court{numCourts>1?'s':''}</span>
+              {numCourts>1&&(
+                <button onClick={()=>setNumCourts(c=>Math.max(1,c-1))}
+                  title="Court entfernen" aria-label="Court entfernen"
+                  style={{width:30,height:30,borderRadius:'50%',background:T.card2,
+                    border:`1px solid ${T.border}`,color:T.t1,fontSize:18,fontWeight:800,
+                    cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',
+                    lineHeight:1,paddingBottom:3}}>−</button>
+              )}
+              <button onClick={()=>setNumCourts(c=>Math.min(maxCourts,c+1))}
+                title="Court hinzufügen" aria-label="Court hinzufügen"
+                style={{width:30,height:30,borderRadius:'50%',background:T.o,border:'none',
+                  color:T.bg,fontSize:18,fontWeight:800,cursor:'pointer',display:'flex',
+                  alignItems:'center',justifyContent:'center',lineHeight:1,paddingBottom:2}}>+</button>
+            </div>
+          </div>
+          {Array.from({length:numCourts},(_,i)=>(
+            <div key={i} style={{display:'flex',alignItems:'center',padding:'10px 0',
+              borderBottom:i<numCourts-1?`1px solid ${T.sep}`:'none',gap:10}}>
+              <span style={{width:24,height:24,borderRadius:7,flexShrink:0,background:T.oSoft,
+                border:`1px solid ${T.o}`,color:T.o,fontSize:11,fontWeight:800,
+                display:'flex',alignItems:'center',justifyContent:'center'}}>{i+1}</span>
+              <input value={courtNames[i]??''}
+                ref={el=>{courtInputRefs.current[i]=el;}}
+                onChange={e=>setCourtName(i,e.target.value)}
+                maxLength={NAME_MAX}
+                onKeyDown={e=>{
+                  if(e.key==='Enter'){
+                    e.preventDefault();
+                    const next=courtInputRefs.current[i+1];
+                    if(next) next.focus(); else e.currentTarget.blur();
+                  }
+                }}
+                autoCapitalize="words" autoCorrect="off" spellCheck={false} enterKeyHint="next"
+                placeholder={`Court ${i+1}`}
+                style={{flex:1,fontSize:16,color:T.t1,fontWeight:500,minWidth:0}}/>
+              {canSingles&&(
+                <CourtFlip single={!!courtSingles[i]} onFlip={()=>toggleCourtSingle(i)}/>
+              )}
+            </div>
+          ))}
+          {canSingles&&(
+            <div style={{color:T.t3,fontSize:11,lineHeight:1.5,padding:'8px 0 10px'}}>
+              Tippe auf 2v2, um einen Court auf Einzel (1v1) zu flippen — dort spielen nur 2 Spieler.
+            </div>
+          )}
+          {/* Anordnung — dieselbe Karte wie im Assistenten. */}
+          {numCourts>1&&(
+            <div style={{borderTop:`1px solid ${T.sep}`,marginTop:6,paddingTop:14,paddingBottom:12}}>
+              <div style={{color:T.t1,fontSize:13,fontWeight:700,marginBottom:2}}>
+                Anordnung auf der Anlage
+              </div>
+              <div style={{color:T.t3,fontSize:11.5,lineHeight:1.5,marginBottom:12}}>
+                Legt die Plätze so, wie sie bei euch liegen — im laufenden Turnier
+                sieht dann jeder auf einen Blick, wo gespielt wird.
+              </div>
+              <CourtMap layout={layout} names={i=>courtLabel(courtNames,i)}
+                singles={singles} editable
+                sel={layoutSel} onSel={setLayoutSel}
+                onMove={moveCourtTo} onRotate={rotateCourtAt}/>
+            </div>
+          )}
+        </div>
+
+  </>);
+  const kSpieler=(<>
+        {/* Spieler — nur im Lokal-Modus editierbar.
+            Im Online-Modus erscheint stattdessen eine Info-Karte,
+            da Spieler nach Erstellung über PIN/QR joinen. */}
+        {mode==='lokal'?(
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
+          padding:'18px 18px 8px',
+          animation:cardHint?'cardHint 1.4s cubic-bezier(.3,0,.2,1) 1':undefined}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
+            <div style={{color:T.t1,fontSize:17,fontWeight:700}}>Spieler</div>
+            <div style={{display:'flex',alignItems:'center',gap:10}}>
+              <span style={{color:T.t3,fontSize:12,fontWeight:600}}>{players.length} Spieler</span>
+              {/* Minus = nur den ZULETZT hinzugefügten Spieler entfernen
+                  (nicht die ganze Liste leeren). Spiegelt das „+" daneben.
+                  Nur sichtbar, solange Spieler in der Liste sind. */}
+              {players.length>0&&(
+                <button onClick={()=>setPlayers(p=>p.slice(0,-1))}
+                  title="Letzten Spieler entfernen"
+                  aria-label="Letzten Spieler entfernen"
+                  style={{width:30,height:30,borderRadius:'50%',
+                    background:T.card2,
+                    border:`1px solid ${T.border}`,
+                    color:T.t1,
+                    fontSize:18,fontWeight:800,cursor:'pointer',
+                    display:'flex',alignItems:'center',justifyContent:'center',
+                    lineHeight:1,paddingBottom:3,transition:'opacity .15s,background .15s'}}
+                  onPointerDown={e=>e.currentTarget.style.opacity='.7'}
+                  onPointerUp={e=>e.currentTarget.style.opacity='1'}
+                  onPointerLeave={e=>e.currentTarget.style.opacity='1'}>−</button>
+              )}
+              <button onClick={addPlayer}
+                title="Spieler hinzufügen"
+                aria-label="Spieler hinzufügen"
+                style={{width:30,height:30,borderRadius:'50%',
+                  background:T.o,border:'none',color:T.bg,
+                  fontSize:18,fontWeight:800,cursor:'pointer',
+                  display:'flex',alignItems:'center',justifyContent:'center',
+                  lineHeight:1,paddingBottom:2,transition:'opacity .15s'}}
+                onPointerDown={e=>e.currentTarget.style.opacity='.7'}
+                onPointerUp={e=>e.currentTarget.style.opacity='1'}
+                onPointerLeave={e=>e.currentTarget.style.opacity='1'}>+</button>
+            </div>
+          </div>
+          {players.map((p,i)=>(
+            // Nach links wischen legt „Löschen" frei — unter 5 Spielern
+            // inaktiv, weil das Turnier sonst unter die Mindestzahl fällt.
+            <SwipeableRow key={p.id} disabled={players.length<=4}
+              onDelete={()=>removePlayer(p.id)}>
+            {/* Gleiche Zeile wie im Assistenten: Nummernkreis in der
+                Spielerfarbe, Ressort, Name auf einer Linie. Der fruehere
+                Farbpunkt neben einem Textfeld sagte weniger und stand
+                dafuer in der Spalte, in der jetzt die Nummer steht. */}
+            <div style={{display:'flex',alignItems:'center',gap:13,padding:'9px 0 4px'}}>
+              <span style={{width:32,height:32,borderRadius:'50%',background:p.color,flexShrink:0,
+                display:'flex',alignItems:'center',justifyContent:'center',
+                color:'#000',fontSize:14,fontWeight:900}}>{i+1}</span>
+              <div style={{flex:1,minWidth:0}}>
+              <div style={{fontFamily:T.fontDisplay,color:T.t3,fontSize:9.5,
+                letterSpacing:1.6,marginBottom:1}}>SPIELER</div>
+              <input value={p.name}
+                ref={el=>{playerInputRefs.current[p.id]=el;}}
+                onChange={e=>renamePlayer(p.id,e.target.value)}
+                maxLength={NAME_MAX}
+                onBlur={e=>{e.target.style.borderBottomColor=T.border;}}
+                onFocus={e=>{
+                  e.currentTarget.style.borderBottomColor=T.o;
+                  // Default-Namen ("Spieler N") räumen wir beim ersten
+                  // Tap automatisch ab — sonst tippt der User in den
+                  // Platzhalter rein und produziert "Spieler 1Anna".
+                  // Echte Namen bleiben unangetastet.
+                  if(/^Spieler\s*\d+$/i.test(p.name||'')){
+                    renamePlayer(p.id,'');
+                    // select() ist nach dem state-Update keinen Sinn —
+                    // wir leeren das Feld direkt, der Caret landet
+                    // automatisch am Anfang.
+                  } else {
+                    e.currentTarget.select();
+                  }
+                }}
+                onKeyDown={e=>{
+                  // Enter → zum nächsten Spieler-Slot springen, damit
+                  // man die Liste in einem Rutsch durchtippen kann.
+                  // Beim letzten Slot tut Enter nichts (oder
+                  // blur-aus), damit man nicht versehentlich „Start"
+                  // triggert. Tab funktioniert weiterhin nativ.
+                  if(e.key==='Enter'){
+                    e.preventDefault();
+                    const next=players[i+1];
+                    if(next){
+                      focusPlayer(next.id);
+                    } else {
+                      e.currentTarget.blur();
+                    }
+                  }
+                }}
+                autoCapitalize="words" autoCorrect="off" spellCheck={false}
+                enterKeyHint="next"
+                placeholder="Name"
+                style={{width:'100%',minWidth:0,height:34,background:'none',
+                  border:'none',borderRadius:0,borderBottom:`1px solid ${T.border}`,
+                  color:T.t1,fontSize:17,fontWeight:600,padding:'0 0 3px',
+                  outline:'none',boxSizing:'border-box',transition:'border-color .18s'}}/>
+              </div>
+              {/* Spielstil-Picker — Glyph des gewählten Archetyps, sonst
+                  DNA-Platzhalter. Bestimmt das Match-Tier der Paarungen. */}
+              <button onClick={()=>setStylePickerFor(p.id)}
+                title="Spielstil wählen" aria-label="Spielstil wählen"
+                style={{width:34,height:34,borderRadius:'50%',flexShrink:0,padding:0,cursor:'pointer',
+                  background:p.style?rgba(PADEL_STYLES[p.style].accent,0.16):T.card2,
+                  border:`1.5px solid ${p.style?PADEL_STYLES[p.style].accent:T.border}`,
+                  display:'flex',alignItems:'center',justifyContent:'center'}}>
+                {p.style
+                  ?<ArchetypeGlyph type={p.style} active color={PADEL_STYLES[p.style].accent} size={20}/>
+                  :<DNAIcon size={16} color={T.t3}/>}
+              </button>
+              {fmtMeta.groups&&(
+                <button onClick={()=>setPlayerGroup(p.id,(p.group||'A')==='B'?'A':'B')}
+                  aria-label="Gruppe wechseln" title="Gruppe A/B wechseln"
+                  style={{width:26,height:26,borderRadius:9,flexShrink:0,cursor:'pointer',
+                    background:(p.group||'A')==='B'?rgba(PCOLS[1],0.16):T.oSoft,
+                    border:`1.5px solid ${(p.group||'A')==='B'?PCOLS[1]:T.o}`,
+                    color:(p.group||'A')==='B'?PCOLS[1]:T.o,fontSize:11,fontWeight:900,
+                    display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1}}>
+                  {(p.group||'A')==='B'?'B':'A'}
+                </button>
+              )}
+              {players.length>4&&(
+                <button onClick={()=>removePlayer(p.id)}
+                  style={{width:22,height:22,borderRadius:'50%',background:T.t4,border:'none',
+                    color:T.t1,fontSize:11,cursor:'pointer',display:'flex',alignItems:'center',
+                    justifyContent:'center',fontWeight:700,lineHeight:1}}>×</button>
+              )}
+            </div>
+            </SwipeableRow>
+          ))}
+          {!canStart&&(
+            <div style={{color:T.r,fontSize:11,marginTop:10,paddingBottom:6,fontWeight:500}}>
+              {players.length<4?'Mindestens 4 Spieler nötig'
+                :!teamOk?`${fmtMeta.name} braucht eine gerade Spielerzahl — aktuell ${players.length}.`
+                :`Mixicano braucht mind. 2 pro Gruppe (aktuell A ×${grpA}, B ×${grpB}).`}
+            </div>
+          )}
+          {/* Screenshot-Scan — Namen aus WhatsApp-Liste, Platzbuchung
+              oder Notiz uebernehmen, statt sie abzutippen. */}
+          <button onClick={pickScans}
+            style={{width:'100%',marginTop:12,padding:'12px',borderRadius:13,
+              cursor:'pointer',display:'flex',alignItems:'center',
+              justifyContent:'center',gap:9,
+              background:'color-mix(in srgb, var(--card2) 72%, transparent)',
+              border:`1px solid ${T.border}`,color:T.t1,fontSize:13.5,fontWeight:700,
+              WebkitBackdropFilter:'blur(14px) saturate(160%)',
+              backdropFilter:'blur(14px) saturate(160%)'}}>
+            <ScanGlyph size={17}/> Aus Screenshot übernehmen
+          </button>
+          <input ref={scanFileRef} type="file" accept="image/*" multiple
+            onChange={onScansPicked} style={{display:'none'}}/>
+          {scanOpen&&(
+            <PlayerScanSheet initialFiles={scanFiles}
+              existing={players.map(p=>p.name).filter(n=>n&&!/^Spieler\s*\d+$/i.test(n.trim()))}
+              onAdd={addScannedPlayers}
+              onClose={closeScan}/>
+          )}
+          {canStart&&format!=='knockout'&&pauseStats&&pauseStats.sitOut>0&&(
+            <div style={{color:T.t3,fontSize:11,marginTop:10,paddingBottom:6,fontWeight:500,lineHeight:1.55}}>
+              {pauseStats.sitOut} {pauseStats.sitOut===1?'Spieler rotiert':'Spieler rotieren'} pro Runde durch den Pausen-Pool.
+              {pauseStats.pauses!=null
+                ?<> Bei {roundDur}-Min-Runden: <span style={{color:T.o,fontWeight:800}}>≈ {pauseStats.pauses} Pause{pauseStats.pauses===1?'':'n'} pro Spieler</span> ({pauseStats.rounds} Runden, alle ±1 gleich oft).</>
+                :<> <span style={{color:T.t2}}>Setze ein Zeitfenster, um die Pausen pro Spieler zu sehen.</span></>}
+            </div>
+          )}
+        </div>
+        ):(
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
+          padding:'18px'}}>
+          <div style={{color:T.t1,fontSize:17,fontWeight:700,marginBottom:8}}>Spieler joinen via QR</div>
+          <div style={{color:T.t2,fontSize:13,lineHeight:1.55,marginBottom:6}}>
+            Nach dem Start öffnest du die Lobby. Dort siehst du PIN + QR-Code.
+          </div>
+          <div style={{color:T.t3,fontSize:12,lineHeight:1.55}}>
+            Du bist als <span style={{color:T.o,fontWeight:700}}>{profile?.name||'Host'}</span> automatisch erster Spieler.
+            Andere scannen den QR oder geben den PIN unter „Turnier beitreten" ein.
+          </div>
+          {onlineError&&(
+            <div style={{color:T.r,fontSize:12,marginTop:10,fontWeight:600}}>{onlineError}</div>
+          )}
+        </div>
+        )}
+  </>);
+
   return(
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
@@ -9246,6 +9692,47 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
         kicker="Konfigurator" icon={<TrophyIcon size={40}/>}/>
 
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
+
+        {/* Schnellzugriff — die vier Stellschrauben, die man staendig
+            anfasst, direkt unter dem Titel. Jede zeigt ihren aktuellen
+            Wert, damit die Leiste auch ohne Tippen etwas sagt. */}
+        <div style={{display:'flex',gap:10,flexShrink:0}}>
+          {[
+            ...(mode==='lokal'?[{id:'spieler',lab:'Spieler',val:String(players.length),
+              icon:<PeopleIcon size={20} color={T.o}/>}]:[]),
+            {id:'courts',lab:'Courts',val:String(numCourts),
+              icon:<CourtsIcon size={20} color={T.o}/>},
+            ...(mode==='lokal'?[{id:'zeit',lab:'Zeit',
+              val:(startTime&&endTime)?`${startTime}–${endTime}`:'offen',
+              icon:<ClockIcon size={20} color={T.o}/>}]:[]),
+            {id:'dauer',lab:'Runde',val:`${roundDur} Min`,
+              icon:<StopwatchIcon size={20} color={T.o}/>},
+          ].map(q=>(
+            <button key={q.id} onClick={()=>{buzz(6);setQuick(q.id);}}
+              aria-label={`${q.lab} ändern`}
+              style={{flex:1,minWidth:0,padding:'11px 6px 9px',borderRadius:15,cursor:'pointer',
+                background:T.card,border:`1px solid ${T.border}`,
+                display:'flex',flexDirection:'column',alignItems:'center',gap:5}}>
+              <span style={{width:34,height:34,borderRadius:'50%',flexShrink:0,
+                background:T.oSoft,border:`1px solid ${T.o}`,display:'flex',
+                alignItems:'center',justifyContent:'center'}}>{q.icon}</span>
+              <span style={{width:'100%',color:T.t1,fontSize:12.5,fontWeight:800,
+                fontVariantNumeric:'tabular-nums',overflow:'hidden',
+                textOverflow:'ellipsis',whiteSpace:'nowrap',textAlign:'center'}}>{q.val}</span>
+              <span style={{fontFamily:T.fontDisplay,color:T.t3,fontSize:8.5,
+                letterSpacing:1.1,lineHeight:1}}>{q.lab.toUpperCase()}</span>
+            </button>
+          ))}
+        </div>
+
+        {quick&&(
+          <QuickSheet onClose={()=>setQuick(null)} kicker="SCHNELLZUGRIFF">
+            {quick==='spieler'&&kSpieler}
+            {quick==='courts'&&kCourts}
+            {quick==='zeit'&&kZeit}
+            {quick==='dauer'&&kDauer}
+          </QuickSheet>
+        )}
 
         {/* Turnier-Assistent — geführter Einstieg (nur neu + lokal) */}
         {!isEdit&&mode==='lokal'&&(
@@ -9448,388 +9935,10 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
           </div>
         </div>
 
-        {/* Zeitfenster (nur lokal) — Start/End-Uhrzeit → Rundenzeit-Vorschlag. */}
-        {mode==='lokal'&&(
-          <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,padding:'14px 18px 16px'}}>
-            <div style={{color:T.t1,fontSize:15,fontWeight:600}}>Zeitfenster</div>
-            <div style={{color:T.t3,fontSize:11,fontWeight:500,marginBottom:6}}>
-              Zeiger ziehen — Hell = Start, Orange = Ende
-            </div>
-            {/* Immer sichtbare Drag-Uhr — schreibt direkt in startTime/endTime. */}
-            <TimeDial start={startTime} end={endTime}
-              onChange={(s,e)=>{setStartTime(s);setEndTime(e);}}/>
-
-            {/* Priorität: Längere Runden ⇄ Jeder gegen Jeden — steuert
-                Ziel-/Min-/Max-Rundenzeit des Vorschlags. */}
-            <div style={{marginTop:16}}>
-              <div style={{color:T.t3,fontSize:11,fontWeight:600,marginBottom:7}}>
-                Priorität: Längere Runden oder Jeder gegen Jeden?
-              </div>
-              <div style={{display:'flex',background:T.card2,borderRadius:30,padding:4,gap:4,
-                border:`1px solid ${T.border}`}}>
-                {[{v:'length',l:'Längere Runden'},{v:'variety',l:'Jeder gegen Jeden'}].map(o=>(
-                  <button key={o.v} onClick={()=>setRoundPrio(o.v)}
-                    style={{flex:1,padding:'9px 6px',borderRadius:20,border:'none',cursor:'pointer',
-                      background:roundPrio===o.v?T.o:'transparent',
-                      color:roundPrio===o.v?'#000':T.t2,fontSize:12,fontWeight:800,
-                      transition:'background .2s,color .2s',lineHeight:1.2}}>
-                    {o.l}
-                  </button>
-                ))}
-              </div>
-              <div style={{color:T.t4,fontSize:10.5,fontWeight:500,marginTop:6,lineHeight:1.55}}>
-                {roundPrio==='length'
-                  ?'Längere, ruhigere Runden — dafür spielt nicht jeder gegen jeden.'
-                  :'Mehr Runden, jeder gegen möglichst jeden — dafür kürzere Runden.'}
-              </div>
-            </div>
-            {/* „Empfehlung" — rechnet den Vorschlag erst auf Knopfdruck
-                ein (setzt die Rundendauer) und blendet die Details ein. */}
-            {suggest&&(
-              <button onClick={applySuggest}
-                style={{marginTop:12,width:'100%',display:'flex',alignItems:'center',
-                  justifyContent:'center',gap:8,padding:'12px',borderRadius:12,
-                  cursor:'pointer',border:`1.5px solid ${T.o}`,position:'relative',
-                  background:appliedSuggest?T.oSoft:T.o,
-                  color:appliedSuggest?T.o:'#000',fontSize:13.5,fontWeight:800}}>
-                <StopwatchIcon size={15} color={appliedSuggest?T.o:'#000'}/>
-                {appliedSuggest?'Empfehlung übernommen':'Empfehlung'}
-                {/* X blendet die Empfehlung wieder aus — eigener Klick-
-                    bereich im Button (kein verschachteltes <button>). */}
-                {suggestShown&&(
-                  <span role="button" tabIndex={0}
-                    aria-label="Empfehlung ausblenden"
-                    onClick={e=>{e.stopPropagation();buzz(6);setSuggestShown(false);}}
-                    style={{position:'absolute',right:7,top:'50%',
-                      transform:'translateY(-50%)',width:30,height:30,
-                      borderRadius:'50%',display:'flex',alignItems:'center',
-                      justifyContent:'center',cursor:'pointer'}}>
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                      <path d="M6 6l12 12M18 6L6 18"
-                        stroke={appliedSuggest?T.o:'#000'} strokeWidth="2.6"
-                        strokeLinecap="round"/>
-                    </svg>
-                  </span>
-                )}
-              </button>
-            )}
-            {suggest&&!suggestShown&&(
-              <div style={{color:T.t4,fontSize:10.5,fontWeight:500,marginTop:6,
-                lineHeight:1.5,textAlign:'center'}}>
-                Berechnet die Rundenzeit fürs Zeitfenster — inkl. 3 Min Rotationspause pro Runde.
-              </div>
-            )}
-            {suggest&&suggestShown&&(
-              <div className="fi" style={{marginTop:10,padding:'10px 12px',borderRadius:12,background:T.oSoft,
-                border:`1px solid ${T.o}`,display:'flex',alignItems:'flex-start',gap:8}}>
-                <span style={{marginTop:1,display:'inline-flex'}}><StopwatchIcon size={15} color={T.o}/></span>
-                <div style={{color:T.t2,fontSize:12,fontWeight:600,lineHeight:1.5,minWidth:0}}>
-                  Empfehlung: <span style={{color:T.o,fontWeight:800}}>≈ {suggest.rounds} Runden × {suggest.roundTime} Min</span>
-                  {' '}+ {suggest.rotation} Min Rotation, füllt {Math.floor(windowMin/60)} h {windowMin%60} Min.
-                  <br/>Bei {suggest.courts} Court{suggest.courts>1?'s':''}: ~{suggest.gamesEach} Spiele/Spieler
-                  {suggest.sitOut>0?`, ${suggest.sitOut} pausieren/Runde`:', keine Pausen'} — alle ±1 gleich oft.
-                </div>
-              </div>
-            )}
-            {windowMin&&!suggest&&(
-              <div style={{color:T.t3,fontSize:11,fontWeight:500,marginTop:10}}>
-                Mind. 4 Spieler eintragen für eine Rundenzeit-Empfehlung.
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Rundendauer — Skala statt Ziffernreihe: man sieht, wo im
-            Bereich man steht, nicht nur die Nachbarzahlen. */}
-        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
-          padding:'14px 18px 16px'}}>
-          <div style={{marginBottom:10}}>
-            <div style={{color:T.t1,fontSize:15,fontWeight:600}}>Rundendauer{appliedSuggest?', Empfehlung übernommen':''}</div>
-            <div style={{color:T.t3,fontSize:11,fontWeight:500,marginTop:1}}>
-              Timer pro Runde — wische zur gewünschten Minute
-            </div>
-          </div>
-          <MinuteRuler value={roundDur} onChange={setRoundDur}/>
-        </div>
-
-        {/* Anzahl Courts — zwischen Rundendauer und Spieler-Card. */}
-        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
-          padding:'14px 18px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-          <div>
-            <div style={{color:T.t1,fontSize:15,fontWeight:600}}>Anzahl Courts</div>
-            <div style={{color:T.t3,fontSize:11,fontWeight:500,marginTop:1}}>
-              frei wählbar, 4 Spieler pro Court
-            </div>
-          </div>
-          <div style={{display:'flex',alignItems:'center',gap:14}}>
-            <button onClick={()=>setNumCourts(c=>Math.max(1,c-1))}
-              style={{width:32,height:32,borderRadius:'50%',background:T.card2,border:`1px solid ${T.border}`,
-                color:T.t1,fontSize:16,cursor:'pointer'}}>−</button>
-            <span style={{color:T.t1,fontWeight:800,fontSize:18,minWidth:24,textAlign:'center'}}>{numCourts}</span>
-            <button onClick={()=>setNumCourts(c=>Math.min(maxCourts,c+1))}
-              style={{width:32,height:32,borderRadius:'50%',background:T.card2,border:`1px solid ${T.border}`,
-                color:T.t1,fontSize:16,cursor:'pointer'}}>+</button>
-          </div>
-        </div>
-
-        {/* Court-Namen — werden auf die Matches angewendet. +/- ändert
-            die Court-Zahl, Enter springt zum nächsten Court. Standard:
-            "Court 1", "Court 2" … */}
-        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
-          padding:'18px 18px 8px'}}>
-          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
-            <div style={{color:T.t1,fontSize:17,fontWeight:700}}>Court-Namen</div>
-            <div style={{display:'flex',alignItems:'center',gap:10}}>
-              <span style={{color:T.t3,fontSize:12,fontWeight:600}}>{numCourts} Court{numCourts>1?'s':''}</span>
-              {numCourts>1&&(
-                <button onClick={()=>setNumCourts(c=>Math.max(1,c-1))}
-                  title="Court entfernen" aria-label="Court entfernen"
-                  style={{width:30,height:30,borderRadius:'50%',background:T.card2,
-                    border:`1px solid ${T.border}`,color:T.t1,fontSize:18,fontWeight:800,
-                    cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',
-                    lineHeight:1,paddingBottom:3}}>−</button>
-              )}
-              <button onClick={()=>setNumCourts(c=>Math.min(maxCourts,c+1))}
-                title="Court hinzufügen" aria-label="Court hinzufügen"
-                style={{width:30,height:30,borderRadius:'50%',background:T.o,border:'none',
-                  color:T.bg,fontSize:18,fontWeight:800,cursor:'pointer',display:'flex',
-                  alignItems:'center',justifyContent:'center',lineHeight:1,paddingBottom:2}}>+</button>
-            </div>
-          </div>
-          {Array.from({length:numCourts},(_,i)=>(
-            <div key={i} style={{display:'flex',alignItems:'center',padding:'10px 0',
-              borderBottom:i<numCourts-1?`1px solid ${T.sep}`:'none',gap:10}}>
-              <span style={{width:24,height:24,borderRadius:7,flexShrink:0,background:T.oSoft,
-                border:`1px solid ${T.o}`,color:T.o,fontSize:11,fontWeight:800,
-                display:'flex',alignItems:'center',justifyContent:'center'}}>{i+1}</span>
-              <input value={courtNames[i]??''}
-                ref={el=>{courtInputRefs.current[i]=el;}}
-                onChange={e=>setCourtName(i,e.target.value)}
-                maxLength={NAME_MAX}
-                onKeyDown={e=>{
-                  if(e.key==='Enter'){
-                    e.preventDefault();
-                    const next=courtInputRefs.current[i+1];
-                    if(next) next.focus(); else e.currentTarget.blur();
-                  }
-                }}
-                autoCapitalize="words" autoCorrect="off" spellCheck={false} enterKeyHint="next"
-                placeholder={`Court ${i+1}`}
-                style={{flex:1,fontSize:16,color:T.t1,fontWeight:500,minWidth:0}}/>
-              {canSingles&&(
-                <CourtFlip single={!!courtSingles[i]} onFlip={()=>toggleCourtSingle(i)}/>
-              )}
-            </div>
-          ))}
-          {canSingles&&(
-            <div style={{color:T.t3,fontSize:11,lineHeight:1.5,padding:'8px 0 10px'}}>
-              Tippe auf 2v2, um einen Court auf Einzel (1v1) zu flippen — dort spielen nur 2 Spieler.
-            </div>
-          )}
-          {/* Anordnung — dieselbe Karte wie im Assistenten. */}
-          {numCourts>1&&(
-            <div style={{borderTop:`1px solid ${T.sep}`,marginTop:6,paddingTop:14,paddingBottom:12}}>
-              <div style={{color:T.t1,fontSize:13,fontWeight:700,marginBottom:2}}>
-                Anordnung auf der Anlage
-              </div>
-              <div style={{color:T.t3,fontSize:11.5,lineHeight:1.5,marginBottom:12}}>
-                Legt die Plätze so, wie sie bei euch liegen — im laufenden Turnier
-                sieht dann jeder auf einen Blick, wo gespielt wird.
-              </div>
-              <CourtMap layout={layout} names={i=>courtLabel(courtNames,i)}
-                singles={singles} editable
-                sel={layoutSel} onSel={setLayoutSel}
-                onMove={moveCourtTo} onRotate={rotateCourtAt}/>
-            </div>
-          )}
-        </div>
-
-        {/* Spieler — nur im Lokal-Modus editierbar.
-            Im Online-Modus erscheint stattdessen eine Info-Karte,
-            da Spieler nach Erstellung über PIN/QR joinen. */}
-        {mode==='lokal'?(
-        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
-          padding:'18px 18px 8px',
-          animation:cardHint?'cardHint 1.4s cubic-bezier(.3,0,.2,1) 1':undefined}}>
-          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
-            <div style={{color:T.t1,fontSize:17,fontWeight:700}}>Spieler</div>
-            <div style={{display:'flex',alignItems:'center',gap:10}}>
-              <span style={{color:T.t3,fontSize:12,fontWeight:600}}>{players.length} Spieler</span>
-              {/* Minus = nur den ZULETZT hinzugefügten Spieler entfernen
-                  (nicht die ganze Liste leeren). Spiegelt das „+" daneben.
-                  Nur sichtbar, solange Spieler in der Liste sind. */}
-              {players.length>0&&(
-                <button onClick={()=>setPlayers(p=>p.slice(0,-1))}
-                  title="Letzten Spieler entfernen"
-                  aria-label="Letzten Spieler entfernen"
-                  style={{width:30,height:30,borderRadius:'50%',
-                    background:T.card2,
-                    border:`1px solid ${T.border}`,
-                    color:T.t1,
-                    fontSize:18,fontWeight:800,cursor:'pointer',
-                    display:'flex',alignItems:'center',justifyContent:'center',
-                    lineHeight:1,paddingBottom:3,transition:'opacity .15s,background .15s'}}
-                  onPointerDown={e=>e.currentTarget.style.opacity='.7'}
-                  onPointerUp={e=>e.currentTarget.style.opacity='1'}
-                  onPointerLeave={e=>e.currentTarget.style.opacity='1'}>−</button>
-              )}
-              <button onClick={addPlayer}
-                title="Spieler hinzufügen"
-                aria-label="Spieler hinzufügen"
-                style={{width:30,height:30,borderRadius:'50%',
-                  background:T.o,border:'none',color:T.bg,
-                  fontSize:18,fontWeight:800,cursor:'pointer',
-                  display:'flex',alignItems:'center',justifyContent:'center',
-                  lineHeight:1,paddingBottom:2,transition:'opacity .15s'}}
-                onPointerDown={e=>e.currentTarget.style.opacity='.7'}
-                onPointerUp={e=>e.currentTarget.style.opacity='1'}
-                onPointerLeave={e=>e.currentTarget.style.opacity='1'}>+</button>
-            </div>
-          </div>
-          {players.map((p,i)=>(
-            // Nach links wischen legt „Löschen" frei — unter 5 Spielern
-            // inaktiv, weil das Turnier sonst unter die Mindestzahl fällt.
-            <SwipeableRow key={p.id} disabled={players.length<=4}
-              onDelete={()=>removePlayer(p.id)}>
-            {/* Gleiche Zeile wie im Assistenten: Nummernkreis in der
-                Spielerfarbe, Ressort, Name auf einer Linie. Der fruehere
-                Farbpunkt neben einem Textfeld sagte weniger und stand
-                dafuer in der Spalte, in der jetzt die Nummer steht. */}
-            <div style={{display:'flex',alignItems:'center',gap:13,padding:'9px 0 4px'}}>
-              <span style={{width:32,height:32,borderRadius:'50%',background:p.color,flexShrink:0,
-                display:'flex',alignItems:'center',justifyContent:'center',
-                color:'#000',fontSize:14,fontWeight:900}}>{i+1}</span>
-              <div style={{flex:1,minWidth:0}}>
-              <div style={{fontFamily:T.fontDisplay,color:T.t3,fontSize:9.5,
-                letterSpacing:1.6,marginBottom:1}}>SPIELER</div>
-              <input value={p.name}
-                ref={el=>{playerInputRefs.current[p.id]=el;}}
-                onChange={e=>renamePlayer(p.id,e.target.value)}
-                maxLength={NAME_MAX}
-                onBlur={e=>{e.target.style.borderBottomColor=T.border;}}
-                onFocus={e=>{
-                  e.currentTarget.style.borderBottomColor=T.o;
-                  // Default-Namen ("Spieler N") räumen wir beim ersten
-                  // Tap automatisch ab — sonst tippt der User in den
-                  // Platzhalter rein und produziert "Spieler 1Anna".
-                  // Echte Namen bleiben unangetastet.
-                  if(/^Spieler\s*\d+$/i.test(p.name||'')){
-                    renamePlayer(p.id,'');
-                    // select() ist nach dem state-Update keinen Sinn —
-                    // wir leeren das Feld direkt, der Caret landet
-                    // automatisch am Anfang.
-                  } else {
-                    e.currentTarget.select();
-                  }
-                }}
-                onKeyDown={e=>{
-                  // Enter → zum nächsten Spieler-Slot springen, damit
-                  // man die Liste in einem Rutsch durchtippen kann.
-                  // Beim letzten Slot tut Enter nichts (oder
-                  // blur-aus), damit man nicht versehentlich „Start"
-                  // triggert. Tab funktioniert weiterhin nativ.
-                  if(e.key==='Enter'){
-                    e.preventDefault();
-                    const next=players[i+1];
-                    if(next){
-                      focusPlayer(next.id);
-                    } else {
-                      e.currentTarget.blur();
-                    }
-                  }
-                }}
-                autoCapitalize="words" autoCorrect="off" spellCheck={false}
-                enterKeyHint="next"
-                placeholder="Name"
-                style={{width:'100%',minWidth:0,height:34,background:'none',
-                  border:'none',borderRadius:0,borderBottom:`1px solid ${T.border}`,
-                  color:T.t1,fontSize:17,fontWeight:600,padding:'0 0 3px',
-                  outline:'none',boxSizing:'border-box',transition:'border-color .18s'}}/>
-              </div>
-              {/* Spielstil-Picker — Glyph des gewählten Archetyps, sonst
-                  DNA-Platzhalter. Bestimmt das Match-Tier der Paarungen. */}
-              <button onClick={()=>setStylePickerFor(p.id)}
-                title="Spielstil wählen" aria-label="Spielstil wählen"
-                style={{width:34,height:34,borderRadius:'50%',flexShrink:0,padding:0,cursor:'pointer',
-                  background:p.style?rgba(PADEL_STYLES[p.style].accent,0.16):T.card2,
-                  border:`1.5px solid ${p.style?PADEL_STYLES[p.style].accent:T.border}`,
-                  display:'flex',alignItems:'center',justifyContent:'center'}}>
-                {p.style
-                  ?<ArchetypeGlyph type={p.style} active color={PADEL_STYLES[p.style].accent} size={20}/>
-                  :<DNAIcon size={16} color={T.t3}/>}
-              </button>
-              {fmtMeta.groups&&(
-                <button onClick={()=>setPlayerGroup(p.id,(p.group||'A')==='B'?'A':'B')}
-                  aria-label="Gruppe wechseln" title="Gruppe A/B wechseln"
-                  style={{width:26,height:26,borderRadius:9,flexShrink:0,cursor:'pointer',
-                    background:(p.group||'A')==='B'?rgba(PCOLS[1],0.16):T.oSoft,
-                    border:`1.5px solid ${(p.group||'A')==='B'?PCOLS[1]:T.o}`,
-                    color:(p.group||'A')==='B'?PCOLS[1]:T.o,fontSize:11,fontWeight:900,
-                    display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1}}>
-                  {(p.group||'A')==='B'?'B':'A'}
-                </button>
-              )}
-              {players.length>4&&(
-                <button onClick={()=>removePlayer(p.id)}
-                  style={{width:22,height:22,borderRadius:'50%',background:T.t4,border:'none',
-                    color:T.t1,fontSize:11,cursor:'pointer',display:'flex',alignItems:'center',
-                    justifyContent:'center',fontWeight:700,lineHeight:1}}>×</button>
-              )}
-            </div>
-            </SwipeableRow>
-          ))}
-          {!canStart&&(
-            <div style={{color:T.r,fontSize:11,marginTop:10,paddingBottom:6,fontWeight:500}}>
-              {players.length<4?'Mindestens 4 Spieler nötig'
-                :!teamOk?`${fmtMeta.name} braucht eine gerade Spielerzahl — aktuell ${players.length}.`
-                :`Mixicano braucht mind. 2 pro Gruppe (aktuell A ×${grpA}, B ×${grpB}).`}
-            </div>
-          )}
-          {/* Screenshot-Scan — Namen aus WhatsApp-Liste, Platzbuchung
-              oder Notiz uebernehmen, statt sie abzutippen. */}
-          <button onClick={pickScans}
-            style={{width:'100%',marginTop:12,padding:'12px',borderRadius:13,
-              cursor:'pointer',display:'flex',alignItems:'center',
-              justifyContent:'center',gap:9,
-              background:'color-mix(in srgb, var(--card2) 72%, transparent)',
-              border:`1px solid ${T.border}`,color:T.t1,fontSize:13.5,fontWeight:700,
-              WebkitBackdropFilter:'blur(14px) saturate(160%)',
-              backdropFilter:'blur(14px) saturate(160%)'}}>
-            <ScanGlyph size={17}/> Aus Screenshot übernehmen
-          </button>
-          <input ref={scanFileRef} type="file" accept="image/*" multiple
-            onChange={onScansPicked} style={{display:'none'}}/>
-          {scanOpen&&(
-            <PlayerScanSheet initialFiles={scanFiles}
-              existing={players.map(p=>p.name).filter(n=>n&&!/^Spieler\s*\d+$/i.test(n.trim()))}
-              onAdd={addScannedPlayers}
-              onClose={closeScan}/>
-          )}
-          {canStart&&format!=='knockout'&&pauseStats&&pauseStats.sitOut>0&&(
-            <div style={{color:T.t3,fontSize:11,marginTop:10,paddingBottom:6,fontWeight:500,lineHeight:1.55}}>
-              {pauseStats.sitOut} {pauseStats.sitOut===1?'Spieler rotiert':'Spieler rotieren'} pro Runde durch den Pausen-Pool.
-              {pauseStats.pauses!=null
-                ?<> Bei {roundDur}-Min-Runden: <span style={{color:T.o,fontWeight:800}}>≈ {pauseStats.pauses} Pause{pauseStats.pauses===1?'':'n'} pro Spieler</span> ({pauseStats.rounds} Runden, alle ±1 gleich oft).</>
-                :<> <span style={{color:T.t2}}>Setze ein Zeitfenster, um die Pausen pro Spieler zu sehen.</span></>}
-            </div>
-          )}
-        </div>
-        ):(
-        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
-          padding:'18px'}}>
-          <div style={{color:T.t1,fontSize:17,fontWeight:700,marginBottom:8}}>Spieler joinen via QR</div>
-          <div style={{color:T.t2,fontSize:13,lineHeight:1.55,marginBottom:6}}>
-            Nach dem Start öffnest du die Lobby. Dort siehst du PIN + QR-Code.
-          </div>
-          <div style={{color:T.t3,fontSize:12,lineHeight:1.55}}>
-            Du bist als <span style={{color:T.o,fontWeight:700}}>{profile?.name||'Host'}</span> automatisch erster Spieler.
-            Andere scannen den QR oder geben den PIN unter „Turnier beitreten" ein.
-          </div>
-          {onlineError&&(
-            <div style={{color:T.r,fontSize:12,marginTop:10,fontWeight:600}}>{onlineError}</div>
-          )}
-        </div>
-        )}
+        {kZeit}
+        {kDauer}
+        {kCourts}
+        {kSpieler}
         <div style={{height:100,flexShrink:0}}/>
       </div>
 

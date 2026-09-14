@@ -9238,17 +9238,14 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
-      <ScreenHeader title={isEdit?'Turnier bearbeiten':saved?.draft?'Entwurf':'Turnier'}
+      {/* Der Titel sagt, was hier passiert. Darunter stand bis vor
+          kurzem noch ein Block, der genau das wiederholte — samt
+          Pokal, den die Kopfzeile schon traegt. Weg damit; alles
+          andere rueckt nach oben. */}
+      <ScreenHeader title={isEdit?'Turnier bearbeiten':saved?.draft?'Entwurf':'Turnier erstellen'}
         kicker="Konfigurator" icon={<TrophyIcon size={40}/>}/>
 
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
-
-        <SetupHero
-          icon={<TrophyIcon size={40}/>}
-          title={isEdit?'Turnier Details anpassen':'Turnier erstellen'}
-          desc={isEdit
-            ?null
-            :'Mehrere Runden, rotierende Partner oder Mexicano-Pairings. Beliebig viele Spieler — lokal oder online via QR-Code.'}/>
 
         {/* Turnier-Assistent — geführter Einstieg (nur neu + lokal) */}
         {!isEdit&&mode==='lokal'&&(

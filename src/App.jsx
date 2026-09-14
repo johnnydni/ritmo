@@ -51,7 +51,7 @@ import {
   SteeringWheelIcon, PaletteIcon, EyeIcon, BellIcon, LockIcon, DoorOutIcon,
   SpeakerIcon, ChatBubbleIcon,
   ChevronRightIcon, AirPlayIcon, CoffeeCupIcon,
-  ArchetypeGlyph, PauseIcon,
+  ArchetypeGlyph, PauseIcon, TournamentModeIcon,
   // Emoji-Ersatz-Glyphen
   HeartIcon, MedalIcon, PhoneIcon, KeyboardIcon, RingIcon, WatchIcon, FlicIcon,
   MoonIcon, LeafIcon, TargetIcon, ScrollIcon, StopwatchIcon, MaskIcon,
@@ -8392,6 +8392,7 @@ function TournamentWizard({onClose,onFinish,canStart,
             <div style={stepSub}>7 klassische Modi — von locker gemischt bis K.-o.-Bracket.</div>
             {Object.entries(FORMATS).map(([id,f],i)=>(
               <button key={id} onClick={()=>setFormat(id)}
+                aria-pressed={format===id}
                 style={{...card(format===id),marginTop:i?10:0}}>
                 <span style={{flex:1,minWidth:0}}>
                   <span style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
@@ -8415,7 +8416,10 @@ function TournamentWizard({onClose,onFinish,canStart,
                     {f.short}
                   </span>
                 </span>
-                {format===id&&<span style={{color:T.o,fontSize:18,fontWeight:900,flexShrink:0}}>✓</span>}
+                {/* Rechts stand ein Haken, der nur wiederholte, was die
+                    orange Kontur schon sagt. Jetzt steht dort, worum es
+                    geht: welcher Modus das ist. */}
+                <TournamentModeIcon mode={id} active={format===id} size={30}/>
               </button>
             ))}
           </>)}

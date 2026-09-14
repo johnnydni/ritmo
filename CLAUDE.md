@@ -141,6 +141,36 @@ The grid is five columns — `players | innerA | net | innerB | players` — and
 - Both score cells carry the same fixed width, otherwise a one-digit score sits closer to the net than a two-digit one.
 - Open courts show a `ScoreWheel` (its row height is the `h` prop — 28 in the grid, the default 34 elsewhere), confirmed courts a large number with the winner in the accent color.
 
+### `TournamentModeIcon` — die sieben Modus-Glyphen
+
+Steht in [src/icons.jsx](src/icons.jsx) und rechts auf den Format-Karten
+im Schritt 1 des Assistenten — dort, wo vorher ein Haken stand. Der
+Haken sagte nur, was die orange Kontur schon sagt; die Auswahl trägt
+jetzt `aria-pressed`, und der Platz trägt die Information, um die es
+geht.
+
+Die Bildsprache ist eine Grammatik, kein Sammelsurium:
+
+`SCHLÄGER (oder PAAR)  +  genau EIN Zeichen darüber  =  MODUS`
+
+- Der Schläger steht **einmal** im Satz (`TM_HEAD` + `TM_GRIP`) und
+  wird nur verschoben, skaliert und gedreht. `TmRacket` rechnet die
+  Strichstärke gegen die Skalierung (`TM_SW/k`) — sonst würden die
+  Paare dünner als die Solisten.
+- Der Kopf ist ein **Tropfen, kein Kreis**: ein hohler Kreis mit Stiel
+  liest sich bei 28 px als Ball oder Lupe.
+- **Nichts umschließt etwas anderes.** Ein Ring um zwei Köpfe wurde
+  zuverlässig als Eule gelesen, ein Strahlenkranz direkt am Kopf machte
+  aus der Sonne eine Glühbirne. Der Abstand zwischen Grundwort und
+  Zeichen ist das, was beide lesbar hält.
+- Team-Americano und Team-Mexicano tragen dasselbe Paar und
+  unterscheiden sich **nur** im Zeichen darüber (Kreispfeil bzw. ↑↓).
+- Farbe: `active` → `T.o`, sonst `T.t3`. Keine weiteren Farben, keine
+  Verläufe, keine Rasterbilder.
+
+Wer einen Glyph ändert, prüft ihn im Satz — nicht einzeln. Die
+Fallstricke stehen oben, weil jeder davon einmal passiert ist.
+
 ### `CourtMap` — die Anlage als Skizze
 
 Ein Court war lange nur eine Zeile in einer Liste; auf der Anlage ist

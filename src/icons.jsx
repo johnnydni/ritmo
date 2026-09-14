@@ -893,3 +893,178 @@ export function ChatBubbleIcon({size=24,color='currentColor'}){
     <circle cx="15.4" cy="12.4" r="1.05" fill={color} stroke="none"/>
   </svg>);
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   TURNIERMODUS-GLYPHEN
+
+   Sieben Modi, eine Bildsprache:
+
+       PADEL-SCHLAEGER  +  EIN Merkmal  =  MODUS
+
+   Der Schlaeger ist das Grundwort. Er steht als EINE Kontur im Satz
+   (TM_HEAD) und wird nur verschoben, skaliert und gedreht — nie
+   nachgezeichnet. So haben alle sieben Glyphen denselben Radius,
+   dieselbe Rundung und dasselbe Verhaeltnis von Kopf zu Griff.
+
+   Der Kopf ist ein Tropfen, kein Kreis. Ein hohler Kreis mit Stiel
+   liest sich bei 28 px als Ball oder als Lupe; zwei davon in einem
+   Ring lasen sich im ersten Entwurf als Eule. Die Verjuengung zum
+   Hals hin ist das, was die Form zum Schlaeger macht.
+
+   Jeder Modus fuegt genau EIN Zeichen hinzu — Hut, Sonne, Rotation,
+   Auf/Ab, Mischung, Krone, Baum. Zwei Merkmale in einem Glyph, und
+   keiner liest mehr das erste.
+
+   Warum das keine Haken mehr sind: an der Karte stand rechts ein
+   Haken, und der sagte nur, was die orange Kontur schon sagt. Der
+   Platz traegt jetzt die Information, um die es geht — welcher Modus
+   das ist. Ausgewaehlt in Orange, sonst gedeckt wie jede andere
+   Nebeninformation.
+
+   Alles Inline-SVG auf 24er-Raster, damit es in jeder Groesse scharf
+   bleibt und keine Datei nachgeladen wird.
+═══════════════════════════════════════════════════════════════ */
+
+const TM_SW=1.7;     // Konturen
+const TM_HW=2.1;     // Griffe — minimal fetter, sonst wirkt der Griff duenn
+
+/* Der Schlaegerkopf im Eigenkoordinatensystem: Mitte (12|9), Scheitel
+   bei 3.4, Hals bei 14.2, Griffende bei 19.2. */
+const TM_HEAD='M12 3.4c2.9 0 4.4 2.5 4.4 5.5 0 2.6-1.3 4.5-2.8 5.3h-3.2'
+  +'c-1.5-.8-2.8-2.7-2.8-5.3 0-3 1.5-5.5 4.4-5.5Z';
+const TM_GRIP='M12 14.2V19.2';
+
+/* k skaliert den ganzen Schlaeger, die Strichstaerke wird
+   gegengerechnet — sonst wuerden die Paare duenner als die Solisten. */
+function TmRacket({cx,cy,k=1,c,fill=false,fillOpacity=1,rot=0}){
+  const g=(
+    <g transform={`translate(${(cx-12*k).toFixed(2)} ${(cy-9*k).toFixed(2)}) scale(${k})`}>
+      <path d={TM_HEAD} fill={fill?c:'none'} fillOpacity={fill?fillOpacity:undefined} stroke={c}
+        strokeWidth={(TM_SW/k).toFixed(2)} strokeLinejoin="round"/>
+      <path d={TM_GRIP} stroke={c} strokeWidth={(TM_HW/k).toFixed(2)} strokeLinecap="round"/>
+    </g>
+  );
+  return rot?<g transform={`rotate(${rot} ${cx} ${cy})`}>{g}</g>:g;
+}
+
+/* Zwei Schlaeger nebeneinander = festes Paar. Identische Masse in
+   Team-Americano und Team-Mexicano: die beiden Modi sollen sich nur
+   im Merkmal unterscheiden, nicht in der Groesse. */
+function TmPair({c,cy=10.6,dx=3.2,k=.58}){
+  return(<>
+    <TmRacket cx={12-dx} cy={cy} k={k} c={c}/>
+    <TmRacket cx={12+dx} cy={cy} k={k} c={c}/>
+  </>);
+}
+
+/* Pfeilspitze als offenes V — nie als gefuelltes Dreieck: gefuellt
+   traegt es mehr Gewicht als jede andere Linie im Satz. */
+function TmArrow({x,y,dir,c,len=2.2}){
+  const d={up:[[-1,1],[1,1]],down:[[-1,-1],[1,-1]]}[dir];
+  const k=len/Math.SQRT2;
+  return(<path d={`M${(x+d[0][0]*k).toFixed(2)} ${(y+d[0][1]*k).toFixed(2)}L${x} ${y}`
+    +`L${(x+d[1][0]*k).toFixed(2)} ${(y+d[1][1]*k).toFixed(2)}`}
+    stroke={c} strokeWidth={TM_SW} strokeLinecap="round" strokeLinejoin="round" fill="none"/>);
+}
+
+/* Die Grammatik des Satzes: unten das Grundwort (ein Schlaeger oder
+   ein Paar), darueber genau EIN Zeichen. Nichts umschliesst etwas
+   anderes — ein Ring um zwei Koepfe wird unweigerlich als Gesicht
+   gelesen, und ein Kranz direkt am Kopf macht aus der Sonne eine
+   Gluehbirne. Der Abstand zwischen Grundwort und Zeichen ist das,
+   was beide lesbar haelt. */
+const TM_GLYPHS={
+  /* AMERICANO — Cowboyhut. Drei Dinge entscheiden, ob er als Hut
+     liest: die Krempe ist eine geschlossene Flaeche (als blosser
+     Bogen standen ihre Enden ab wie Fuehler), sie ist deutlich
+     breiter als der Kopf, und die Krone ist schmaler als er. */
+  americano:c=>(<>
+    <TmRacket cx={12} cy={13.9} k={.74} c={c}/>
+    <path d="M4.2 6.2c1.7 1.3 4.5 2 7.8 2s6.1-.7 7.8-2c-.7 1.9-3.9 3.2-7.8 3.2s-7.1-1.3-7.8-3.2Z"
+      stroke={c} strokeWidth={TM_SW} strokeLinejoin="round" fill="none"/>
+    <path d="M9.3 6.9V4c0-1.4 1.2-2.3 2.7-2.3s2.7.9 2.7 2.3v2.9"
+      stroke={c} strokeWidth={TM_SW} strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+  </>),
+
+  /* MEXICANO — Sonne. Als eigene kleine Scheibe ueber dem Schlaeger,
+     nicht als Kranz um den Kopf: anliegende Strahlen machen aus jedem
+     Kopf eine Gluehbirne. */
+  mexicano:c=>{
+    const sx=12,sy=5.4,r0=3,r1=4.5;
+    const rays=[0,45,90,135,225,270,315].map(a=>{   // 180 zeigte in den Kopf
+      const t=(a-90)*Math.PI/180;
+      return `M${(sx+r0*Math.cos(t)).toFixed(2)} ${(sy+r0*Math.sin(t)).toFixed(2)}`
+        +`L${(sx+r1*Math.cos(t)).toFixed(2)} ${(sy+r1*Math.sin(t)).toFixed(2)}`;
+    }).join('');
+    return(<>
+      <TmRacket cx={12} cy={14.1} k={.74} c={c}/>
+      <circle cx={sx} cy={sy} r={2} stroke={c} strokeWidth={TM_SW} fill="none"/>
+      <path d={rays} stroke={c} strokeWidth={TM_SW} strokeLinecap="round" fill="none"/>
+    </>);
+  },
+
+  /* TEAM-AMERICANO — das Paar bleibt, die Gegner rotieren. Der
+     Kreispfeil steht ueber dem Paar. Als Ring DRUMHERUM war es eine
+     Eule: zwei Koepfe in einem geschlossenen Umriss liest jeder als
+     Gesicht. */
+  teamamericano:c=>(<>
+    <path d="M13.42 2.5a3.4 3.4 0 1 1-2.84 0"
+      stroke={c} strokeWidth={TM_SW} strokeLinecap="round" fill="none"/>
+    <path d="M12.55 1.8 13.55 2.5 12.85 3.4"
+      stroke={c} strokeWidth={TM_SW} strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+    <TmPair c={c} cy={14.4} dx={3.3} k={.6}/>
+  </>),
+
+  /* TEAM-MEXICANO — das Paar bleibt, die Tabelle sortiert. Derselbe
+     Aufbau wie Team-Americano, nur mit anderem Zeichen darueber:
+     die beiden Modi sollen sich in genau einer Sache unterscheiden. */
+  teammexicano:c=>(<>
+    <path d="M10.2 9V3.1M13.8 3.1v5.9"
+      stroke={c} strokeWidth={TM_SW} strokeLinecap="round" fill="none"/>
+    <TmArrow x={10.2} y={2.8} dir="up" c={c} len={2.1}/>
+    <TmArrow x={13.8} y={9.3} dir="down" c={c} len={2.1}/>
+    <TmPair c={c} cy={14.4} dx={3.3} k={.6}/>
+  </>),
+
+  /* MIXICANO — zwei Gruppen kommen zusammen. Die Koepfe lehnen
+     gegeneinander und einer ist gefuellt: das sind A und B, ohne dass
+     ein Buchstabe noetig waere. Sie ueberlappen bewusst NICHT —
+     uebereinander wurde ein Fleck daraus, kein Paar. */
+  mixicano:c=>(<>
+    <TmRacket cx={8.2} cy={11.3} k={.78} c={c} fill rot={24}/>
+    <TmRacket cx={15.8} cy={11.3} k={.78} c={c} rot={-24}/>
+  </>),
+
+  /* KING OF THE COURT — Krone auf dem Schlaeger. Als Kontur, nicht
+     gefuellt: gefuellt zoege sie alle Blicke von den anderen sechs ab. */
+  kingofcourt:c=>(<>
+    <TmRacket cx={12} cy={14.1} k={.74} c={c}/>
+    <path d="M7.2 8.9V4.3l2.7 2.1L12 3.1l2.1 3.3 2.7-2.1v4.6z"
+      stroke={c} strokeWidth={TM_SW} strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+  </>),
+
+  /* K.-O.-TURNIER — vier steigen ein, einer bleibt uebrig. Die
+     Waagerechten brauchen Laenge, sonst wird aus dem Baum ein
+     Stecker. Kein Blitz, kein Totenkopf: es wird gespielt, nicht
+     gerichtet. */
+  knockout:c=>(<>
+    <path d="M2.3 5.4h3.9M2.3 9h3.9M6.2 5.4V9M6.2 7.2h3.2M2.3 15h3.9M2.3 18.6h3.9M6.2 15v3.6M6.2 16.8h3.2M9.4 7.2v9.6M9.4 12h3.1"
+      stroke={c} strokeWidth={TM_SW} strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+    <TmRacket cx={16.6} cy={12} k={.58} c={c}/>
+  </>),
+};
+
+/* Ein Glyph, ein Modus. `active` faerbt ihn in den RITMO-Akzent, sonst
+   bleibt er so gedeckt wie jede andere Nebeninformation. Dekorativ:
+   der Modusname steht in der Karte daneben. */
+export function TournamentModeIcon({mode,size=28,active=false,color}){
+  const c=color||(active?T.o:T.t3);
+  const draw=TM_GLYPHS[mode]||TM_GLYPHS.americano;
+  return(
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      aria-hidden="true" focusable="false"
+      style={{flexShrink:0,display:'block'}}>
+      {draw(c)}
+    </svg>
+  );
+}

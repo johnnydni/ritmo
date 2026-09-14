@@ -203,6 +203,34 @@ Dieselbe Karte steht an drei Stellen und tut dort zwei Dinge:
   waagerechte und senkrechte Linien unterschiedlich und das Netz sieht
   nach Fehler aus statt nach Grundriss.
 
+### `PlayerScanSheet` — das Fenster zum Screenshot-Scan
+
+Drei Zustaende, ein Kopf: Ressort ("AUS SCREENSHOT"), Zeile, orange
+Haarlinie — dieselbe Anmutung wie die Screen-Koepfe. Der Titel sagt,
+wo man steht ("Wird gelesen", "12 Namen gefunden"), statt zu
+wiederholen, was der Knopf davor schon gesagt hat.
+
+- **Lesen**: Schritt, Bildzaehler, Balken. Der Datenschutz-Satz steht
+  genau hier — das ist der Moment, in dem jemand wartet und liest.
+- **Liste**: Zaehler plus Sammelschalter (bei zwoelf Namen will niemand
+  zwoelf Haken einzeln wegklicken), dann eine Zeile je Name im Bild der
+  spaeteren Spielerliste: Haken-Kreis, Name auf einer Linie. Man sieht,
+  was man bekommt.
+- **Fehler**: der einzige Weg, auf dem die Auswahlkarte noch erscheint.
+
+Zwei Dinge, die beim Umbau aufgeflogen sind:
+
+- Das Sheet haengt per `createPortal` am **Body**. Der Wizard-Schritt
+  bildet einen eigenen Stapelkontext; darin bekam das
+  `position:fixed`-Overlay weder die volle Hoehe noch lag es ueber Kopf-
+  und Fusszeile des Assistenten — das Sheet stand oben abgeschnitten und
+  unten unter dem Weiter-Knopf.
+- Der Grund ist **zweilagig** (`linear-gradient(--card,--card), --bg`).
+  `--card` allein ist halbtransparent: sobald das Sheet ueber dem
+  Assistenten lag, schien dessen oranger Weiter-Knopf hindurch. Gleiche
+  Falle wie beim Netz in `MatchSlotGrid` und beim Rand des
+  `MinuteRuler`. Die klebende Fusszeile traegt denselben Grund.
+
 ### Bottom-Sheets (`useSheetDrag`)
 
 Nach unten wischen schliesst ein Sheet. Ob eine Geste das darf,

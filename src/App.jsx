@@ -1,4 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useReducer, useCallback, useMemo, useRef, Fragment } from "react";
+import { createPortal } from "react-dom";
 import { SKILL_DESCRIPTIONS } from "./skillDescriptions.js";
 import { loadProfile as dbLoadProfile, saveProfile as dbSaveProfile, logMatch as dbLogMatch, loadMatchStats as dbLoadMatchStats,
   createOnlineTournament, joinOnlineTournament, leaveOnlineTournament, fetchOnlineTournament, updateOnlineTournament, endOnlineTournament, subscribeToTournament,
@@ -7598,26 +7599,41 @@ function PlayerScanSheet({existing,onAdd,onClose,initialFiles=null}){
     buzz(14); onClose();
   };
   const nOn=rows.filter(r=>r.on&&r.name.trim()).length;
+  const setzeAlle=on=>setRows(rs=>rs.map(x=>({...x,on})));
 
-  return(
+  /* Ressort und Zeile statt Ueberschrift plus Erklaersatz: dieselbe
+     Anmutung wie die Screen-Koepfe, und der Titel sagt, wo man steht,
+     statt zu wiederholen, was der Knopf schon gesagt hat. */
+  const titel=phase==='work'?'Wird gelesen'
+    :phase==='list'?(rows.length?`${rows.length} ${rows.length===1?'Name':'Namen'} gefunden`:'Nichts gefunden')
+    :'Spieler aus Screenshot';
+
+  /* Am BODY, nicht im Assistenten: der Wizard-Schritt bildet einen
+     eigenen Stapelkontext, in dem ein position:fixed-Overlay weder
+     die volle Hoehe bekommt noch ueber der Kopf- und Fusszeile des
+     Assistenten liegt — das Sheet stand dort oben abgeschnitten und
+     unten unter den Weiter-Knopf geschoben. */
+  return createPortal(
     <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:300,
       background:'rgba(0,0,0,.7)',backdropFilter:'blur(4px)',display:'flex',
       alignItems:'flex-end',justifyContent:'center',animation:'fadeIn .15s ease'}}>
       <div onClick={e=>e.stopPropagation()} className="slide-up"
         ref={sheet.ref} {...sheet.handlers}
-        style={{background:T.card,borderTopLeftRadius:20,borderTopRightRadius:20,
+        /* Zweilagig: die Kartenfarbe ueber einem undurchsichtigen
+           Grund. --card allein ist halbtransparent — seit das Sheet am
+           Body haengt und ueber dem Assistenten liegt, schien dessen
+           oranger Weiter-Knopf glatt hindurch. */
+        style={{background:`linear-gradient(0deg, ${T.card}, ${T.card}), ${T.bg}`,
+          borderTopLeftRadius:20,borderTopRightRadius:20,
           borderTop:`1px solid ${T.border}`,width:'100%',maxWidth:480,
-          padding:'16px 18px calc(env(safe-area-inset-bottom,0px) + 18px)',
+          padding:'16px 18px 0',
           maxHeight:'86vh',overflowY:'auto',...sheet.style}}>
-        <div style={{width:36,height:4,borderRadius:2,background:T.border,margin:'0 auto 14px'}}/>
-        <div style={{color:T.t1,fontSize:17,fontWeight:800,marginBottom:3}}>
-          Spieler aus Screenshot
-        </div>
-        <div style={{color:T.t3,fontSize:12,lineHeight:1.5,marginBottom:14}}>
-          {phase==='list'
-            ?'Häkchen prüfen, Namen bei Bedarf korrigieren — dann übernehmen.'
-            :'WhatsApp-Liste, Platzbuchung, Notiz — die Namen werden direkt auf dem Gerät gelesen, die Bilder verlassen es nicht.'}
-        </div>
+        <div style={{width:36,height:4,borderRadius:2,background:T.border,margin:'0 auto 16px'}}/>
+
+        <div style={{fontFamily:T.fontDisplay,color:T.o,fontSize:10,
+          letterSpacing:1.8,marginBottom:4}}>AUS SCREENSHOT</div>
+        <div style={{color:T.t1,fontSize:21,fontWeight:900,letterSpacing:-.3}}>{titel}</div>
+        <div style={{height:1,background:T.o,opacity:.5,marginTop:10}}/>
 
         {/* Liegt ausserhalb der Phasen: "Neues Bild" aus der Ergebnis-
             liste soll denselben Dialog oeffnen, statt ueber die
@@ -7626,80 +7642,143 @@ function PlayerScanSheet({existing,onAdd,onClose,initialFiles=null}){
           onChange={e=>{ run(e.target.files); e.target.value=''; }}
           style={{display:'none'}}/>
 
+        {/* Hierher kommt man nur noch ueber einen Fehler — sonst geht
+            der Dateidialog direkt aus dem Knopf auf, der das Sheet
+            oeffnet. */}
         {phase==='pick'&&(<>
+          {err&&(
+            <div style={{marginTop:16,padding:'12px 14px',borderRadius:13,
+              background:'rgba(232,69,69,0.08)',border:'1px solid rgba(232,69,69,0.4)',
+              color:'#FF6B6B',fontSize:12.5,fontWeight:600,lineHeight:1.5}}>
+              {err}
+            </div>
+          )}
           <button onClick={()=>fileRef.current?.click()}
-            style={{width:'100%',padding:'15px',borderRadius:14,cursor:'pointer',
+            style={{width:'100%',marginTop:16,padding:'15px',borderRadius:14,cursor:'pointer',
               background:T.o,border:'none',color:'#000',fontSize:15,fontWeight:800,
               display:'flex',alignItems:'center',justifyContent:'center',gap:9}}>
             <ScanGlyph size={18} color="#000"/> Screenshots auswählen
           </button>
-          <div style={{color:T.t4,fontSize:10.5,lineHeight:1.55,marginTop:10,textAlign:'center'}}>
-            Bis zu 6 Bilder auf einmal. Beim ersten Mal werden einmalig
-            ~4 MB Erkennungsdaten geladen, danach läuft es offline.
+          <div style={{color:T.t4,fontSize:11,lineHeight:1.55,marginTop:12,textAlign:'center',
+            paddingBottom:'calc(env(safe-area-inset-bottom,0px) + 18px)'}}>
+            Bis zu 6 Bilder auf einmal.
           </div>
-          {err&&<div style={{color:T.r,fontSize:12,fontWeight:600,marginTop:12,
-            lineHeight:1.5,textAlign:'center'}}>{err}</div>}
         </>)}
 
+        {/* Waehrend des Lesens steht hier, was gerade passiert und warum
+            es beim ersten Mal dauert. Der Datenschutz-Satz steht genau
+            hier: das ist der Moment, in dem jemand wartet und liest. */}
         {phase==='work'&&(
-          <div style={{padding:'18px 0 8px'}}>
-            <div style={{color:T.t2,fontSize:13,fontWeight:600,marginBottom:10,textAlign:'center'}}>
-              {prog.step==='load'?'Erkennung wird vorbereitet …':'Namen werden gelesen …'}
-              {prog.total>1&&<span style={{color:T.t3}}> ({prog.file}/{prog.total})</span>}
+          <div style={{padding:'20px 0 6px'}}>
+            <div style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:12}}>
+              <span style={{flex:1,minWidth:0,color:T.t1,fontSize:15,fontWeight:700}}>
+                {prog.step==='load'?'Erkennung wird vorbereitet':'Namen werden gelesen'}
+              </span>
+              {prog.total>1&&(
+                <span style={{color:T.t3,fontSize:12,fontWeight:700,flexShrink:0,
+                  fontVariantNumeric:'tabular-nums'}}>Bild {prog.file}/{prog.total}</span>
+              )}
             </div>
-            <div style={{height:6,borderRadius:3,background:T.card2,overflow:'hidden'}}>
-              <div style={{height:'100%',borderRadius:3,background:T.o,
-                width:`${Math.round((prog.pct||0)*100)}%`,transition:'width .25s ease'}}/>
+            <div style={{height:8,borderRadius:4,background:T.card2,overflow:'hidden'}}>
+              <div style={{height:'100%',borderRadius:4,background:T.o,
+                width:`${Math.max(3,Math.round((prog.pct||0)*100))}%`,
+                transition:'width .25s ease'}}/>
+            </div>
+            <div className="txt" style={{color:T.t4,fontSize:12,lineHeight:1.65,marginTop:14,
+              fontStyle:'italic',paddingBottom:'calc(env(safe-area-inset-bottom,0px) + 12px)'}}>
+              Gelesen wird auf dem Gerät — die Bilder verlassen es nicht.
+              Beim ersten Mal werden einmalig rund 4 MB Erkennungsdaten geladen.
             </div>
           </div>
         )}
 
         {phase==='list'&&(<>
-          {rows.length===0&&(
-            <div style={{color:T.t3,fontSize:13,lineHeight:1.6,textAlign:'center',padding:'10px 0 16px'}}>
-              Keine Namen gefunden. Ein schärferer Ausschnitt mit gut
-              lesbarer Namensliste klappt meist besser.
-            </div>
-          )}
-          {rows.map((r,i)=>(
-            <div key={i} style={{display:'flex',alignItems:'center',gap:10,padding:'9px 0',
-              borderBottom:i<rows.length-1?`1px solid ${T.sep}`:'none'}}>
-              <button onClick={()=>{buzz(5);setRows(rs=>rs.map((x,j)=>j===i?{...x,on:!x.on}:x));}}
-                aria-label={r.on?'Abwählen':'Auswählen'}
-                style={{width:24,height:24,borderRadius:8,flexShrink:0,cursor:'pointer',
-                  background:r.on?T.o:'transparent',
-                  border:`1.5px solid ${r.on?T.o:T.border}`,
-                  display:'flex',alignItems:'center',justifyContent:'center',padding:0}}>
-                {r.on&&(
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <polyline points="20 6 9 17 4 12" stroke="#000" strokeWidth="3.4"
-                      strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                )}
-              </button>
-              <input value={r.name}
-                onChange={e=>setRows(rs=>rs.map((x,j)=>j===i?{...x,name:e.target.value}:x))}
-                autoCapitalize="words" autoCorrect="off" spellCheck={false}
-                style={{flex:1,minWidth:0,fontSize:15,fontWeight:600,
-                  color:r.on?T.t1:T.t3,background:'none',border:'none',outline:'none'}}/>
-            </div>
-          ))}
-          <div style={{display:'flex',gap:8,marginTop:16}}>
+          {rows.length===0
+            ?(
+              <div className="txt" style={{color:T.t3,fontSize:13.5,lineHeight:1.65,
+                fontStyle:'italic',padding:'20px 0 4px'}}>
+                Auf dem Bild war keine Namensliste zu erkennen. Ein engerer
+                Ausschnitt, in dem die Namen groß und gerade stehen, klappt
+                meistens.
+              </div>
+            )
+            :(<>
+              {/* Zaehler und Sammelschalter: bei zwoelf Namen will
+                  niemand zwoelf Haken einzeln wegklicken. */}
+              <div style={{display:'flex',alignItems:'center',gap:10,padding:'14px 0 2px'}}>
+                <div style={{flex:1,minWidth:0,color:T.t3,fontSize:12,fontWeight:700,
+                  fontVariantNumeric:'tabular-nums'}}>
+                  {nOn} von {rows.length} ausgewählt
+                </div>
+                <button onClick={()=>{buzz(5);setzeAlle(nOn!==rows.length);}}
+                  style={{padding:'6px 12px',borderRadius:999,background:'none',
+                    border:`1px solid ${T.border}`,color:T.t2,fontSize:11.5,
+                    fontWeight:700,cursor:'pointer',flexShrink:0}}>
+                  {nOn===rows.length?'Keinen':'Alle'}
+                </button>
+              </div>
+
+              {/* Eine Zeile sieht aus wie spaeter in der Spielerliste:
+                  Name auf einer Linie. Man sieht, was man bekommt. */}
+              {rows.map((r,i)=>(
+                <div key={i} style={{display:'flex',alignItems:'center',gap:12,
+                  padding:'10px 0 4px'}}>
+                  <button onClick={()=>{buzz(5);setRows(rs=>rs.map((x,j)=>j===i?{...x,on:!x.on}:x));}}
+                    aria-pressed={r.on} aria-label={`${r.name||'Name'} übernehmen`}
+                    style={{width:26,height:26,borderRadius:'50%',flexShrink:0,cursor:'pointer',
+                      background:r.on?T.o:'transparent',
+                      border:`1.5px solid ${r.on?T.o:T.border}`,padding:0,
+                      display:'flex',alignItems:'center',justifyContent:'center',
+                      transition:'background .15s, border-color .15s'}}>
+                    {r.on&&(
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <polyline points="20 6 9 17 4 12" stroke="#000" strokeWidth="3.4"
+                          strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </button>
+                  <input value={r.name}
+                    onChange={e=>setRows(rs=>rs.map((x,j)=>j===i?{...x,name:e.target.value}:x))}
+                    maxLength={NAME_MAX}
+                    onFocus={e=>{e.currentTarget.select();e.currentTarget.style.borderBottomColor=T.o;}}
+                    onBlur={e=>{e.currentTarget.style.borderBottomColor=T.border;}}
+                    autoCapitalize="words" autoCorrect="off" spellCheck={false}
+                    style={{flex:1,minWidth:0,height:32,background:'none',border:'none',
+                      borderBottom:`1px solid ${T.border}`,borderRadius:0,padding:'0 0 3px',
+                      color:r.on?T.t1:T.t4,fontSize:17,fontWeight:600,outline:'none',
+                      boxSizing:'border-box',transition:'color .15s, border-color .18s'}}/>
+                </div>
+              ))}
+            </>)}
+
+          {/* Klebt am unteren Rand: bei einer langen Liste sollen die
+              Knoepfe nicht erst am Ende des Scrollens auftauchen. */}
+          {/* Undurchsichtig per T.bg: --card ist halbtransparent, jede
+              Mischung daraus laesst die Liste durchscheinen. Dieselbe
+              Falle wie beim Netz in MatchSlotGrid. */}
+          <div style={{position:'sticky',bottom:0,zIndex:1,display:'flex',gap:8,
+            marginTop:18,padding:'12px 18px calc(env(safe-area-inset-bottom,0px) + 18px)',
+            margin:'18px -18px 0',
+            borderTop:`1px solid ${T.sep}`,
+            background:`linear-gradient(0deg, ${T.card}, ${T.card}), ${T.bg}`}}>
             <button onClick={()=>fileRef.current?.click()}
-              style={{flex:1,padding:'13px',background:'none',border:`1px solid ${T.border}`,
-                borderRadius:13,color:T.t2,fontSize:14,fontWeight:700,cursor:'pointer'}}>
+              style={{padding:'13px 16px',background:'none',border:`1px solid ${T.border}`,
+                borderRadius:13,color:T.t2,fontSize:14,fontWeight:700,cursor:'pointer',
+                flexShrink:0}}>
               Neues Bild
             </button>
             <button onClick={take} disabled={!nOn}
-              style={{flex:1.5,padding:'13px',border:'none',borderRadius:13,
+              style={{flex:1,padding:'13px',border:'none',borderRadius:13,
                 background:nOn?T.o:T.card2,color:nOn?'#000':T.t3,
-                fontSize:14,fontWeight:800,cursor:nOn?'pointer':'default'}}>
+                fontSize:14.5,fontWeight:800,cursor:nOn?'pointer':'default',
+                transition:'background .15s'}}>
               {nOn?`${nOn} übernehmen`:'Nichts gewählt'}
             </button>
           </div>
         </>)}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

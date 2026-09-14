@@ -12738,7 +12738,11 @@ function EndReviewSheet({tourney,onClose,onHistory,onConfirm}){
       alignItems:'flex-end',justifyContent:'center',animation:'fadeIn .15s ease'}}>
       <div onClick={e=>e.stopPropagation()} className="slide-up"
         ref={sheet.ref} {...sheet.handlers}
-        style={{background:T.card,borderTopLeftRadius:20,borderTopRightRadius:20,
+        /* Zweilagig: --card allein ist halbtransparent, und hinter
+           dem Sheet liegt der laufende Turnier-Screen — die Tabelle
+           bekam den Spielstand von dahinter durchgereicht. */
+        style={{background:`linear-gradient(0deg, ${T.card}, ${T.card}), ${T.bg}`,
+          borderTopLeftRadius:20,borderTopRightRadius:20,
           borderTop:`1px solid ${T.border}`,width:'100%',maxWidth:480,
           padding:'16px 18px calc(env(safe-area-inset-bottom,0px) + 18px)',
           maxHeight:'88vh',overflowY:'auto',WebkitOverflowScrolling:'touch',
@@ -12770,7 +12774,7 @@ function EndReviewSheet({tourney,onClose,onHistory,onConfirm}){
           </div>
 
           {open.length===0?(
-            <div style={{...row,borderColor:`${T.g}66`,background:`${T.g}14`}}>
+            <div style={{...row,border:`1px solid ${T.g}66`,background:`${T.g}14`}}>
               <span style={{color:T.g,flexShrink:0,fontSize:15,lineHeight:1.3}}>✓</span>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{color:T.t1,fontSize:14,fontWeight:700}}>
@@ -12783,7 +12787,7 @@ function EndReviewSheet({tourney,onClose,onHistory,onConfirm}){
             </div>
           ):(
             <div style={{...row,flexDirection:'column',gap:0,
-              borderColor:'rgba(232,69,69,.5)',background:'rgba(232,69,69,.08)'}}>
+              border:'1px solid rgba(232,69,69,.5)',background:'rgba(232,69,69,.08)'}}>
               <div style={{display:'flex',alignItems:'flex-start',gap:11,width:'100%'}}>
                 <span style={{color:T.r,flexShrink:0,fontSize:15,lineHeight:1.3}}>!</span>
                 <div style={{flex:1,minWidth:0}}>
@@ -12850,38 +12854,37 @@ function EndReviewSheet({tourney,onClose,onHistory,onConfirm}){
             So steht es, wenn du jetzt beendest.
           </div>
 
-          <div style={{background:T.card2,border:`1px solid ${T.border}`,
+          {/* Dieselbe Zeile wie in jeder anderen Spielertabelle
+              (LbRow): Farbkante am Rand statt Punkt neben dem Namen,
+              Medaille, SP/S/N/P, Wertung. Hier stand vorher eine
+              eigene kleine Liste — derselbe Endstand in einer zweiten
+              Gestalt. */}
+          <div style={{background:T.card,border:`1px solid ${T.border}`,
             borderRadius:15,overflow:'hidden',marginBottom:12}}>
+            <LbHead trail={tourney.winMode==='wins'?'SIEGE':'PKT'}/>
             {sorted.slice(0,5).map((p,i)=>(
-              <div key={p.id} style={{display:'flex',alignItems:'center',gap:10,
-                padding:'11px 14px',
-                borderBottom:i<Math.min(5,sorted.length)-1?`1px solid ${T.sep}`:'none',
-                background:i===0?'var(--oSoft)':'transparent'}}>
-                <div style={{width:22,textAlign:'center',flexShrink:0}}>
-                  {i<3?<MedalIcon size={18} rank={i+1}/>
-                    :<span style={{color:T.t3,fontSize:12,fontWeight:800}}>{i+1}</span>}
-                </div>
-                <div style={{width:7,height:7,borderRadius:'50%',background:p.color,
-                  flexShrink:0}}/>
-                <div style={{flex:1,minWidth:0,color:T.t1,fontSize:14,
-                  fontWeight:i===0?700:600,overflow:'hidden',
-                  textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.name}</div>
-                <div style={{color:i===0?T.o:T.t2,fontSize:15,fontWeight:800,
-                  flexShrink:0,fontVariantNumeric:'tabular-nums'}}>
+              <LbRow key={p.id} rank={i+1} color={p.color} name={p.name}
+                played={p.played} wins={p.wins} losses={p.losses} pauses={p.sitOut}
+                last={i===Math.min(5,sorted.length)-1&&sorted.length<=5}>
+                <div style={{color:i===0?T.o:T.t1,fontSize:17,fontWeight:800,
+                  lineHeight:1,fontVariantNumeric:'tabular-nums'}}>
                   {tourney.winMode==='wins'?p.totalWins:p.totalPts}
                 </div>
-              </div>
+                <div style={{color:T.t3,fontSize:9.5,fontWeight:600}}>
+                  {tourney.winMode==='wins'?'Siege':'Punkte'}
+                </div>
+                <PauseBonusChip value={tourney.winMode==='wins'?p.bonusWins:p.bonusPts} size={8}/>
+              </LbRow>
             ))}
             {sorted.length>5&&(
-              <div style={{color:T.t4,fontSize:11,padding:'9px 14px',
-                borderTop:`1px solid ${T.sep}`}}>
+              <div style={{color:T.t4,fontSize:11,padding:'9px 14px'}}>
                 … und {sorted.length-5} weitere im Endstand
               </div>
             )}
           </div>
 
           {open.length>0&&(
-            <div style={{...row,borderColor:'rgba(232,69,69,.5)',
+            <div style={{...row,border:'1px solid rgba(232,69,69,.5)',
               background:'rgba(232,69,69,.08)'}}>
               <span style={{color:T.r,flexShrink:0,fontSize:15,lineHeight:1.3}}>!</span>
               <div style={{flex:1,minWidth:0,color:T.t2,fontSize:12.5,lineHeight:1.55}}>

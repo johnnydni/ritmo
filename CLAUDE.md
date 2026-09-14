@@ -157,8 +157,10 @@ Dieselbe Karte steht an drei Stellen und tut dort zwei Dinge:
   kaputter Knopf. Ein belegtes Zielfeld *tauscht* die beiden Plaetze,
   statt den Zug zu verweigern.
 - **Laufendes Turnier** (ueber den Court-Karten, ab 2 Courts): zeigt je
-  Platz die Aufstellung und den Stand und **filtert** die Karten
-  darunter auf einen Court. Der Filter faellt beim Rundenwechsel weg —
+  Platz nur den Stand ("läuft", "21:14", "frei") und **filtert** die
+  Karten darunter auf einen Court. Keine Namen auf der Kachel — die
+  braucht man in Lesegroesse, und die passt auf 80 px nicht; wer sie
+  sehen will, tippt den Platz an. Der Filter faellt beim Rundenwechsel weg —
   sonst steht der Host vor einer leeren Liste und sucht den Schalter.
   "Stellen" schaltet dieselbe Karte in den Editiermodus, damit sich die
   Anordnung vor Ort noch gerade ruecken laesst.
@@ -170,6 +172,21 @@ Dieselbe Karte steht an drei Stellen und tut dort zwei Dinge:
   `aspectRatio`, **nicht** `preserveAspectRatio="none"` — sonst skalieren
   waagerechte und senkrechte Linien unterschiedlich und das Netz sieht
   nach Fehler aus statt nach Grundriss.
+
+### Bottom-Sheets (`useSheetDrag`)
+
+Nach unten wischen schliesst ein Sheet. Ob eine Geste das darf,
+entscheidet sich **beim Aufsetzen des Fingers** und gilt bis zum
+Loslassen: nur wenn der Inhalt ganz oben steht (`scrollTop <= 0`).
+Vorher wurde der Drag mitten in der Geste neu angekert, sobald die
+Liste oben ankam — wer in einer langen Liste (erkannte Namen aus dem
+Screenshot) zurueck nach oben wischte, hat damit das Sheet zugezogen
+statt gescrollt.
+
+Dazu entscheidet die erste Bewegung ueber 6 px die Achse; eine
+waagerechte Geste gibt den Drag ganz ab. Innerhalb einer erlaubten
+Geste bleibt der Anker stehen, waehrend die Liste noch scrollt — so
+geht es ab dem Listenanfang nahtlos ins Ziehen ueber.
 
 ### Turnier-Setup: Assistent zuerst
 

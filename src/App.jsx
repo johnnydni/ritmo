@@ -7435,20 +7435,46 @@ function useSheetDrag(onClose){
   const[dragging,setDragging]=useState(false);
   const[touched,setTouched]=useState(false);
   const startY=useRef(0);
+  const startX=useRef(0);
   const closing=useRef(false);
-  const onTouchStart=e=>{startY.current=e.touches[0].clientY;setDragging(true);setTouched(true);};
+  /* Ob DIESE Geste ueberhaupt schliessen darf, entscheidet sich beim
+     Aufsetzen des Fingers — nicht bei jeder Bewegung. Vorher wurde der
+     Drag mitten in der Geste neu angekert, sobald die Liste oben
+     ankam: wer in einer langen Liste nach oben zurueckwischte, hat
+     damit das Sheet zugezogen statt gescrollt. Steht der Inhalt beim
+     Aufsetzen nicht ganz oben, gehoert die Geste dem Scroller, und
+     zwar bis zum Loslassen. */
+  const armed=useRef(false);
+  const axis=useRef(null);          // 'y' | 'x' | null (noch unklar)
+  const onTouchStart=e=>{
+    startY.current=e.touches[0].clientY;
+    startX.current=e.touches[0].clientX;
+    armed.current=(ref.current?.scrollTop||0)<=0;
+    axis.current=null;
+    setDragging(true);setTouched(true);
+  };
   const onTouchMove=e=>{
-    if(closing.current)return;
-    // Sheet-Inhalt nicht oben → normal scrollen lassen, Drag neu ankern.
-    if((ref.current?.scrollTop||0)>0){startY.current=e.touches[0].clientY;return;}
-    const d=e.touches[0].clientY-startY.current;
+    if(closing.current||!armed.current)return;
+    const t=e.touches[0];
+    const d=t.clientY-startY.current;
+    if(axis.current===null){
+      const ax=Math.abs(t.clientX-startX.current), ay=Math.abs(d);
+      if(ay<6&&ax<6) return;        // Richtung steht noch nicht fest
+      axis.current=ay>ax?'y':'x';
+      if(axis.current==='x'){armed.current=false;return;}
+    }
+    // Innerhalb der Geste nach unten gescrollt → erst scrollen lassen.
+    // Der Anker bleibt, damit es ab dem Listenanfang nahtlos weitergeht.
+    if((ref.current?.scrollTop||0)>0){ if(dy) setDy(0); return; }
     setDy(d>0?d:0);
   };
   const onTouchEnd=()=>{
     setDragging(false);
+    axis.current=null;
     if(closing.current)return;
-    if(dy>110){closing.current=true;setDy(Math.max(400,dy*3));setTimeout(onClose,200);}
+    if(armed.current&&dy>110){closing.current=true;setDy(Math.max(400,dy*3));setTimeout(onClose,200);}
     else setDy(0);
+    armed.current=false;
   };
   return {ref,
     style:{transform:`translateY(${dy}px)`,
@@ -13450,22 +13476,17 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
                 onRotate={i=>setLayout(rotateCourt(tLayout,i))}
                 active={layoutEdit?null:courtFilter}
                 canSel={i=>i<round.courts.length}
+                /* Unter dem Platz steht nur, was mit ihm los ist — die
+                   Aufstellung braucht Namen in Lesegroesse, und die
+                   passen auf eine Kachel von 80 px nicht. Wer sie
+                   sehen will, tippt den Platz an: dann steht genau
+                   diese eine Court-Karte darunter. */
                 sub={i=>{
                   const c=round.courts[i];
-                  if(!c) return(<div style={{color:T.t4,fontSize:9,fontWeight:600}}>frei</div>);
-                  const nm=ids=>(ids||[]).map(id=>playerById(id)?.name||'?').join(' · ');
                   return(
-                    <div style={{width:'100%',minWidth:0,lineHeight:1.3}}>
-                      {[c.t1,c.t2].map((t,k)=>(
-                        <div key={k} style={{color:T.t3,fontSize:9,fontWeight:600,
-                          overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                          {nm(t)}
-                        </div>
-                      ))}
-                      <div style={{marginTop:2,color:c.done?T.o:T.t4,fontSize:9.5,
-                        fontWeight:800,fontVariantNumeric:'tabular-nums'}}>
-                        {c.done?`${c.s1}:${c.s2}`:'läuft'}
-                      </div>
+                    <div style={{color:c?(c.done?T.o:T.t4):T.t4,fontSize:9.5,fontWeight:800,
+                      fontVariantNumeric:'tabular-nums'}}>
+                      {!c?'frei':c.done?`${c.s1}:${c.s2}`:'läuft'}
                     </div>
                   );
                 }}/>

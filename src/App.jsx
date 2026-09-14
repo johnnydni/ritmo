@@ -32,7 +32,7 @@ import { lsGet, lsSet, getAssetBase, getInitials, processImageUpload, safeImageS
 import { getLevelLabel, getLevelTier, getLevelColor, estimateLevel } from "./levels.js";
 import { B0, A0, PL, ptD, wG, bo3R, amR, DEFCFG } from "./game.js";
 import { PCOLS, shuffle, genAmericanoRound, genMexicanoRound, calcLeaderboard, FORMATS, FORMAT_RULES, genRound,
-  QUICK_STARTS, quickStartPreset, roundMeanBreakdown, roundMeanBonus } from "./tournament.js";
+  QUICK_STARTS, quickStartPreset, roundMeanBreakdown, roundMeanBonus, meetLogEntry, MEET_LOG_MAX } from "./tournament.js";
 import { RINGS, CUES, playRing, playCue, unlockAudio } from "./audio.js";
 import { CL_COLS, CL_ROWS, defaultLayout, normLayout, layoutBounds, moveTo,
   rotateCourt, compactLayout } from "./courtLayout.js";
@@ -9012,6 +9012,31 @@ function TournamentWizard({onClose,onFinish,canStart,
   );
 }
 
+/* ── GEDAECHTNIS FUER DIE AUSLOSUNG ───────────────────────────────
+   Innerhalb eines Turniers weiss der Generator aus der Rundenhistorie,
+   wer schon mit wem gespielt hat. Ueber Turniere hinweg wusste er es
+   nicht — und eine Stammgruppe, die jeden Dienstag antritt, bekam
+   Woche fuer Woche aehnliche Paarungen, weil jedes Turnier bei null
+   anfing.
+
+   Quelle sind die gespeicherten Turniere selbst, nicht ein zweiter
+   Speicher: es gibt damit nichts, was auseinanderlaufen koennte, und
+   nichts nachzupflegen, wenn jemand ein Turnier loescht. Zugeordnet
+   wird ueber die Namen — die id eines Spielers ist nur seine
+   Listenposition und gilt nur innerhalb eines Turniers.
+
+   Die letzten MEET_LOG_MAX Turniere zaehlen, das laufende nicht. Im
+   Generator ist das Ganze ein Tiebreaker und kein Gesetz (siehe
+   meetCost in tournament.js). */
+const meetLogFor=excludeId=>{
+  const list=lsGet('ritmo_tourneys',[]);
+  return (Array.isArray(list)?list:[])
+    .filter(t=>t&&t.id!==excludeId&&!t.draft&&Array.isArray(t.rounds)&&t.rounds.length)
+    .sort((a,b)=>(b.createdAt||0)-(a.createdAt||0))
+    .slice(0,MEET_LOG_MAX)
+    .map(t=>({id:t.id,pairs:meetLogEntry(t.players,t.rounds)}));
+};
+
 function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,saved,preset,isEdit,profile,onCreateOnline}){
   // Schnellstart von Home: hat dieselben Felder wie ein gespeichertes
   // Turnier, nur ohne id/rounds — deshalb reicht es, beide vorne
@@ -9298,7 +9323,8 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
     const cur=players.map(p=>(p.name||'').trim()).filter(n=>n&&!/^Spieler \d+$/i.test(n));
     lsSet('ritmo_player_history',[...new Set([...cur,...hist])].slice(0,24));
     const lb=calcLeaderboard(players,[],winMode,pauseMode,pausePts);
-    const r0=genRound(format,players,{leaderboard:lb,maxCourts:numCourts,singles});
+    const r0=genRound(format,players,{leaderboard:lb,maxCourts:numCourts,singles,
+      meetLog:meetLogFor(saved?.id)});
     if(!r0) return; // defensiv — kann bei gültigem canStart nicht passieren
     onStart({
       // id/createdAt durchreichen, falls aus einem Entwurf gestartet —
@@ -10236,7 +10262,7 @@ function OnlineTournamentLobby({pin,onHome,onStart,onCancel}){
       }));
       const lb=calcLeaderboard(tPlayers,[],session.winMode||'points',session.pauseMode,session.pausePts);
       const r0=genRound(session.format||'americano',tPlayers,
-        {leaderboard:lb,maxCourts:session.numCourts});
+        {leaderboard:lb,maxCourts:session.numCourts,meetLog:meetLogFor(null)});
       if(!r0) throw new Error('Zu wenige Teams für dieses Format.');
       const tourneyState={
         players:tPlayers,
@@ -13486,7 +13512,8 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
     if(!previewable||tourney.finished||!rawRound) return;
     if(tourney.nextPreview?.forRound===tourney.current) return;
     const pv=genRound(tourney.format,tourney.players,
-      {history:tourney.rounds,maxCourts:tourney.numCourts,singles:tourney.courtSingles});
+      {history:tourney.rounds,maxCourts:tourney.numCourts,singles:tourney.courtSingles,
+       meetLog:meetLogFor(tourney.id)});
     setTourney(t=>({...t,nextPreview:pv?{forRound:t.current,round:pv}:null}));
   },[previewable,tourney.current,tourney.rounds.length,tourney.finished,rawRound]);  // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -13502,7 +13529,8 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
       const lb=calcLeaderboard(t.players,t.rounds,t.winMode,t.pauseMode,t.pausePts);
       const sortedLb=lb.sort((a,b)=>t.winMode==='points'?b.totalPts-a.totalPts:b.totalWins-a.totalWins);
       newR=genRound(t.format,t.players,
-        {history:t.rounds,leaderboard:sortedLb,maxCourts:t.numCourts,singles:t.courtSingles});
+        {history:t.rounds,leaderboard:sortedLb,maxCourts:t.numCourts,singles:t.courtSingles,
+         meetLog:meetLogFor(t.id)});
     }
     if(!newR){ endTournament(); return; }
     setTourney(tt=>({...tt,
@@ -22382,7 +22410,8 @@ export default function App(){
         const lb=calcLeaderboard(next.players,prevRounds,next.winMode,next.pauseMode,next.pausePts);
         const sortedLb=lb.sort((a,b)=>next.winMode==='points'?b.totalPts-a.totalPts:b.totalWins-a.totalWins);
         const newR=genRound(next.format,next.players,
-          {history:prevRounds,leaderboard:sortedLb,maxCourts:next.numCourts,singles:next.courtSingles});
+          {history:prevRounds,leaderboard:sortedLb,maxCourts:next.numCourts,singles:next.courtSingles,
+           meetLog:meetLogFor(next.id)});
         // K.-o. fertig (null) → keine neue Runde, Turnier gilt als beendet.
         next=newR
           ?{...next,rounds:[...prevRounds,newR],

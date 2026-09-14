@@ -1068,3 +1068,27 @@ export function TournamentModeIcon({mode,size=28,active=false,color}){
     </svg>
   );
 }
+
+/* Uhr — Zeitfenster. Zeiger auf 10 nach 2, damit beide sichtbar sind. */
+export function ClockIcon({size=24,color='currentColor'}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+    aria-hidden="true">
+    <circle cx="12" cy="12" r="8.6"/>
+    <path d="M12 7.2V12l3.3 2"/>
+  </svg>);
+}
+
+/* Court von oben — Rahmen, Netz, Aufschlaglinien in den echten
+   Proportionen (20 m x 10 m). Dieselbe Zeichnung wie in der
+   Platzkarte, nur als eigenstaendiges Icon. */
+export function CourtsIcon({size=24,color='currentColor'}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+    aria-hidden="true">
+    <rect x="2.6" y="6.6" width="18.8" height="10.8" rx="1.4"/>
+    <path d="M12 6.6v10.8"/>
+    <path d="M6.6 6.6v10.8M17.4 6.6v10.8" opacity=".55"/>
+    <path d="M2.6 12h4M17.4 12h4" opacity=".55"/>
+  </svg>);
+}

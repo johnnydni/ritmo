@@ -246,6 +246,28 @@ waagerechte Geste gibt den Drag ganz ab. Innerhalb einer erlaubten
 Geste bleibt der Anker stehen, waehrend die Liste noch scrollt — so
 geht es ab dem Listenanfang nahtlos ins Ziehen ueber.
 
+### Schnellzugriff im Konfigurator
+
+Unter dem Titel steht eine Leiste aus vier Kacheln — Spieler, Courts,
+Zeit, Runde. Jede zeigt ihren aktuellen Wert (die Leiste sagt also
+etwas, auch ohne dass man tippt) und oeffnet per Tipp ein `QuickSheet`
+mit genau dieser Einstellung. Das Formular darunter ist lang; diese
+vier fasst man staendig an.
+
+Entscheidend: das Sheet zeigt **dieselbe Karte**, die auch im Formular
+steht. Die vier Bloecke liegen als Variablen (`kSpieler`, `kCourts`,
+`kZeit`, `kDauer`) im `TournamentSetup` und werden an beiden Stellen
+gerendert — keine Kopie, keine zweite Bedienung, keine zweite
+Wahrheit. Wer eine Karte aendert, aendert beide Wege.
+
+- Das Sheet traegt **nur das Ressort**, keine Ueberschrift: die Karte
+  darunter sagt selbst, was sie ist. Zweimal "Spieler" untereinander
+  liest niemand als Gliederung, sondern als Fehler.
+- Im Online-Modus fehlen Spieler und Zeitfenster in der Leiste — dort
+  gibt es beides im Formular auch nicht (Spieler joinen per PIN).
+- Am Body und zweilagiger Grund wie beim `PlayerScanSheet`, aus
+  denselben zwei Gruenden.
+
 ### Turnier-Setup: Assistent zuerst
 
 "Turnier starten" oeffnet den **Assistenten** (`TournamentWizard`) —

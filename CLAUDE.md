@@ -322,8 +322,9 @@ Bedienungen sein.
 
 ### `LbRow` — die Turniertabelle
 
-Eine Zeile, drei Aufrufer: die Tabelle im laufenden Turnier (Tab
-"Tabelle"), der Endstand und die Live-Teilnehmeransicht. Aufbau von
+Eine Zeile, vier Aufrufer: die Tabelle im laufenden Turnier (Tab
+"Tabelle"), der Endstand, die Live-Teilnehmeransicht und der
+Bestaetigungsschritt vor dem Beenden (`EndReviewSheet`). Aufbau von
 links nach rechts:
 
 `Farbkante | Medaille/Kreis + Name | SP S N P | Wertung`

@@ -7,11 +7,20 @@
      - Fair sit-out: prefer players with fewest prior sit-outs
      - Return {courts:[{id,t1,t2,s1,s2,done}], sitOut:[id]}
 
-   Americano: random pairings, up to 60 attempts to avoid partner
-   repeats, then falls back to allowing them.
+   Americano, Team-Americano, Mixicano und King-of-the-Court (Runde 1)
+   paaren ueber EINEN Optimierer (anneal): mehrere Zufallsstarts, dann
+   Bergabstieg auf die Runde mit den wenigsten Wiederholungen. Die
+   Kosten stehen bei meetCost — Partner schwerer als Gegner, und ein
+   Anteil auf jede Begegnung ueberhaupt, damit „jeder gegen jeden"
+   nicht daran scheitert, dass zwei Leute nur die Netzseite wechseln.
 
-   Mexicano: 1+4 vs 2+3 group-of-four pairings driven by current
-   leaderboard rank.
+   Mexicano und Team-Mexicano paaren nach Tabellenstand (1+4 vs 2+3
+   bzw. 1. gegen 2.). Frei ist dort nur die Reihenfolge unter
+   Punktgleichen — und genau die nutzt derselbe Optimierer.
+
+   Ueber Turniere hinweg zaehlt ein kleines Gedaechtnis mit
+   (meetLog/priorFromLog): gedaempft und gedeckelt, damit es eine
+   Wiederholung im laufenden Turnier nie aufwiegt.
 
    Leaderboard supports two win modes:
      'points' — actual game points; sit-outs get the round's mean score (ceil)
@@ -70,134 +79,284 @@ export function meetCounts(history=[]){
   return {partner,opp};
 }
 
-/* Gewichte der Wiederholung. Ein zweites Mal mit demselben Partner
-   faellt staerker auf als ein zweites Mal gegen dieselbe Person —
-   deshalb wiegt Partner schwerer. Die Kosten wachsen linear mit der
-   Zahl der bisherigen Begegnungen: das dritte Treffen kostet doppelt
-   so viel wie das zweite, wodurch sich Wiederholungen von selbst
-   ueber das Feld verteilen, statt sich auf ein Paar zu haeufen. */
-const W_PARTNER=4, W_OPP=1;
+/* ── GEDAECHTNIS UEBER TURNIERE HINWEG ────────────────────────────
+   Innerhalb eines Turniers weiss der Generator aus der Historie, wer
+   schon mit wem gespielt hat. Ueber Turniere hinweg wusste er es
+   nicht — und dieselbe Stammgruppe bekam Woche fuer Woche aehnliche
+   Paarungen, weil jedes Turnier bei null anfing.
 
-export function genAmericanoRound(playerIds,history=[],maxCourts=null,singles=[]){
-  const {partner,opp}=meetCounts(history);
-  const pc=(a,b)=>partner.get(pairKey(a,b))||0;
-  const oc=(a,b)=>opp.get(pairKey(a,b))||0;
-  const caps=planCourts(playerIds.length,maxCourts,singles);
-  const playingCount=caps.reduce((a,b)=>a+b,0);
-  const numSit=playerIds.length-playingCount;
+   Deshalb fuehrt die App ein kleines Gedaechtnis: die Begegnungen der
+   letzten MEET_LOG_MAX Turniere, ueber NAMEN statt ids (die id ist
+   nur die Listenposition und gilt nur innerhalb eines Turniers).
+   Ein Eintrag je Turnier, ersetzt sich selbst — wer dasselbe Turnier
+   zweimal wegschreibt, zaehlt es trotzdem einmal.
 
-  // Fair sit-out: players with FEWEST prior sit-outs sit out next
-  // (those with more sit-outs deserve to play; random tie-break)
-  const sitOut=numSit>0
-    ? playerIds
-        .map(id=>({id,c:history.filter(r=>r.sitOut?.includes(id)).length,r:Math.random()}))
-        .sort((a,b)=>a.c-b.c||a.r-b.r)
-        .slice(0,numSit)
-        .map(x=>x.id)
-    : [];
-  const playing=playerIds.filter(id=>!sitOut.includes(id));
+   Das Gedaechtnis ist ein Tiebreaker, kein Gesetz: PRIOR_CAP und
+   PRIOR_W sind so gewaehlt, dass es eine Wiederholung IM LAUFENDEN
+   Turnier nie aufwiegen kann (siehe meetCost). */
+export const MEET_LOG_MAX=6;
+export const meetName=n=>String(n||'').trim().toLowerCase();
 
-  /* Eine Sitzordnung s wird der Reihe nach in die Courts gefuellt
-     (cap 2 ⇒ 1v1, cap 4 ⇒ 2v2). Die Kosten sagen, wie viel
-     Wiederholung diese Sitzordnung bedeutet — 0 heisst: lauter
-     Begegnungen, die es so noch nicht gab. */
-  const seatCost=s=>{
-    let c=0,p=0;
-    for(const cap of caps){
-      if(cap===2){ c+=W_OPP*oc(s[p],s[p+1]); p+=2; }
-      else{
-        c+=W_PARTNER*(pc(s[p],s[p+1])+pc(s[p+2],s[p+3]));
-        c+=W_OPP*(oc(s[p],s[p+2])+oc(s[p],s[p+3])
-                 +oc(s[p+1],s[p+2])+oc(s[p+1],s[p+3]));
-        p+=4;
-      }
-    }
-    return c;
+export function meetLogEntry(players,rounds){
+  const nm=new Map((players||[]).map(p=>[p.id,meetName(p.name)]));
+  const pairs={};
+  const bump=(a,b,i)=>{
+    const na=nm.get(a),nb=nm.get(b);
+    if(!na||!nb||na===nb) return;
+    const k=na<nb?`${na}|${nb}`:`${nb}|${na}`;
+    (pairs[k]||(pairs[k]=[0,0]))[i]++;
   };
+  (rounds||[]).forEach(r=>(r.courts||[]).forEach(m=>{
+    const t1=m.t1||[],t2=m.t2||[];
+    if(t1.length>1) bump(t1[0],t1[1],0);
+    if(t2.length>1) bump(t2[0],t2[1],0);
+    t1.forEach(a=>t2.forEach(b=>bump(a,b,1)));
+  }));
+  return pairs;
+}
 
-  /* Bergabstieg: zwei Plaetze tauschen, solange es billiger wird.
-     Der Zufallsstart allein findet bei vielen gespielten Runden kaum
-     noch eine gute Anordnung — erst das gezielte Nachbessern holt
-     die letzten Wiederholungen raus. */
-  const improve=s=>{
-    let cur=seatCost(s);
-    for(let pass=0;pass<6&&cur>0;pass++){
+export function pushMeetLog(log,id,pairs){
+  if(!pairs||!Object.keys(pairs).length) return Array.isArray(log)?log:[];
+  const rest=(Array.isArray(log)?log:[]).filter(e=>e&&e.id!==id);
+  return [...rest,{id,pairs}].slice(-MEET_LOG_MAX);
+}
+
+/* Log (Namen) → Karten fuer genau dieses Feld (ids). Wer heute nicht
+   dabei ist, faellt still raus; wer neu ist, hat eine leere Akte. */
+export function priorFromLog(players,log){
+  const partner=new Map(),opp=new Map();
+  if(!Array.isArray(log)||!log.length) return {partner,opp};
+  const byName=new Map();
+  (players||[]).forEach(p=>{const k=meetName(p.name);if(k&&!byName.has(k))byName.set(k,p.id);});
+  if(byName.size<2) return {partner,opp};
+  log.forEach(e=>Object.entries(e?.pairs||{}).forEach(([k,v])=>{
+    const i=k.indexOf('|'); if(i<0) return;
+    const a=byName.get(k.slice(0,i)),b=byName.get(k.slice(i+1));
+    if(a===undefined||b===undefined||a===b) return;
+    const key=pairKey(a,b);
+    if(v?.[0]) partner.set(key,(partner.get(key)||0)+v[0]);
+    if(v?.[1]) opp.set(key,(opp.get(key)||0)+v[1]);
+  }));
+  return {partner,opp};
+}
+
+/* ── KOSTEN EINER PAARUNG ─────────────────────────────────────────
+   Ein zweites Mal mit demselben Partner faellt staerker auf als ein
+   zweites Mal gegen dieselbe Person — deshalb wiegt Partner schwerer.
+
+   W_MEET ist der Teil, der „jeder gegen jeden" erzwingt: er zaehlt
+   jede Begegnung, egal ob mit oder gegen. Ohne ihn waeren zwei
+   Leute, die dreimal zusammen im Team standen, als Gegner gratis —
+   und es entstand das Feld, in dem sich immer dieselben Gesichter
+   begegnen, waehrend zwei andere sich nie sehen.
+
+   Die Kosten wachsen linear mit der Zahl der bisherigen Begegnungen:
+   das dritte Treffen kostet doppelt so viel wie das zweite, wodurch
+   sich Wiederholungen von selbst ueber das Feld verteilen, statt sich
+   auf ein Paar zu haeufen.
+
+   Die Abstaende zwischen den Gewichten sind bewusst gross — sie
+   bilden eine Rangfolge, keine Abwaegung:
+
+     1. keinen Partner zweimal          (W_PARTNER)
+     2. dann keinen Gegner zweimal      (W_OPP)
+     3. dann Begegnungen gleich streuen (W_MEET)
+
+   Mit engeren Abstaenden kippt Stufe 3 die Stufe 1: ein Court hat
+   zwei Partner-, aber vier Gegner-Paare, und vier kleine Ersparnisse
+   kaufen dann eine Partner-Wiederholung. Genau das ist passiert —
+   bei 8 Spielern und 7 Runden, wo jeder mit jedem genau einmal
+   spielen kann und eine Wiederholung sofort auffaellt.
+
+   Turniere davor liegen als eigener, kleiner Summand daneben
+   (W_PRIOR, gedeckelt auf PRIOR_CAP): genug, um einen Gleichstand zu
+   entscheiden, zu wenig, um irgendeine der drei Stufen zu kippen. */
+const W_PARTNER=60, W_OPP=8, W_MEET=1, W_MATCH=40;
+const W_PRIOR=0.3, PRIOR_CAP=2;
+
+export function meetCost(history=[],prior=null,ids=null){
+  const {partner,opp}=meetCounts(history);
+  const pp=prior?.partner,po=prior?.opp;
+  const cap=v=>Math.min(v||0,PRIOR_CAP);
+  const pCost=k=>{const p=partner.get(k)||0,o=opp.get(k)||0;
+    return W_PARTNER*p+W_MEET*(p+o)+W_PRIOR*(2*cap(pp?.get(k))+cap(po?.get(k)));};
+  const oCost=k=>{const p=partner.get(k)||0,o=opp.get(k)||0;
+    return W_OPP*o+W_MEET*(p+o)+W_PRIOR*(cap(pp?.get(k))+cap(po?.get(k)));};
+  if(!ids) return {partner:(a,b)=>pCost(pairKey(a,b)),opp:(a,b)=>oCost(pairKey(a,b))};
+  // Kosten einmal als Tabelle. Der Optimierer fragt sie zehntausendfach
+  // ab; jedes Mal einen Schluessel-String zu bauen und in einer Map
+  // nachzuschlagen war der Loewenanteil der Rechenzeit.
+  const at=new Map(ids.map((id,i)=>[id,i]));
+  const n=ids.length;
+  const P=new Float64Array(n*n),O=new Float64Array(n*n);
+  for(let i=0;i<n;i++)for(let j=i+1;j<n;j++){
+    const k=pairKey(ids[i],ids[j]),pv=pCost(k),ov=oCost(k);
+    P[i*n+j]=P[j*n+i]=pv; O[i*n+j]=O[j*n+i]=ov;
+  }
+  const idx=(a,b)=>{const i=at.get(a),j=at.get(b);return i===undefined||j===undefined?-1:i*n+j;};
+  return {
+    partner:(a,b)=>{const k=idx(a,b);return k<0?pCost(pairKey(a,b)):P[k];},
+    opp:    (a,b)=>{const k=idx(a,b);return k<0?oCost(pairKey(a,b)):O[k];},
+  };
+}
+
+/* ── OPTIMIERER ───────────────────────────────────────────────────
+   Bergabstieg mit mehreren Zufallsstarts: zwei Plaetze tauschen,
+   solange es billiger wird, das Ganze aus verschiedenen zufaelligen
+   Anfangsaufstellungen. Frueher nahm der Generator den ERSTEN Wurf
+   ohne Wiederholung und fiel nach 60 Fehlversuchen auf reinen Zufall
+   zurueck — genau in den spaeten Runden, wo Struktur am meisten
+   zaehlt. Jetzt gibt es keinen Absturz mehr: schlimmstenfalls die am
+   wenigsten schlechte Loesung.
+
+   Der Zufallsstart ist zugleich das, was zwei Turniere mit demselben
+   Feld verschieden aussehen laesst — bei Kostengleichstand entscheidet
+   er, nicht eine feste Reihenfolge.
+
+   cells sind die Gruppen von Plaetzen, die zusammen einen Court (bzw.
+   eine Begegnung) ergeben; jeder Platz liegt in genau einer. Ein
+   Tausch beruehrt damit hoechstens ZWEI Courts, und nur die werden
+   neu gerechnet. Mit der vollen Rundenkosten-Rechnung je Probetausch
+   brauchte eine Runde bei 24 Spielern rund 90 ms — auf einem Telefon
+   ein sichtbares Stocken beim Rundenwechsel.
+
+   blocks grenzt ein, welche Plaetze ueberhaupt tauschen duerfen. Damit
+   laeuft derselbe Optimierer auch dort, wo die Reihenfolge feststeht
+   und nur Gleichstaende frei sind (Mexicano) oder zwei Gruppen
+   getrennt bleiben muessen (Mixicano). */
+function anneal(items,cells,cellCost,{starts=20,passes=8,blocks=null}={}){
+  const n=items.length;
+  const owner=new Array(n).fill(-1);
+  cells.forEach((c,ci)=>c.forEach(k=>{if(k>=0&&k<n)owner[k]=ci;}));
+  const bl=(blocks||[[0,n]]).filter(([a,b])=>b-a>1);
+  const cc=new Array(cells.length).fill(0);
+  const total=s=>{let t=0;for(let c=0;c<cells.length;c++){cc[c]=cellCost(s,cells[c]);t+=cc[c];}return t;};
+  // Kein Start aus der unveraenderten Liste: in Runde 1 ist noch nichts
+  // gespielt, jede Aufstellung kostet 0 — und die erste, die geprueft
+  // wird, gewinnt. Das war die Anmeldeliste, Turnier fuer Turnier
+  // dieselbe: 1+2 gegen 3+4 auf Court 1. Der erste Wurf ist deshalb
+  // immer ein gemischter.
+  let best=null,bestC=Infinity;
+  for(let a=0;a<starts;a++){
+    const s=[...items];
+    bl.forEach(([lo,hi])=>{const part=shuffle(s.slice(lo,hi));for(let i=lo;i<hi;i++)s[i]=part[i-lo];});
+    let cur=total(s);
+    for(let pass=0;pass<passes&&cur>0;pass++){
       let moved=false;
-      for(let i=0;i<s.length-1;i++){
-        for(let j=i+1;j<s.length;j++){
-          [s[i],s[j]]=[s[j],s[i]];
-          const c=seatCost(s);
-          if(c<cur){cur=c;moved=true;}
-          else [s[i],s[j]]=[s[j],s[i]];
-        }
-      }
+      for(const [lo,hi] of bl)
+        for(let i=lo;i<hi-1;i++)
+          for(let j=i+1;j<hi;j++){
+            const ci=owner[i],cj=owner[j];
+            if(ci<0&&cj<0) continue;          // Platz ohne Court — Tausch aendert nichts
+            const one=cj<0||cj===ci;
+            const before=(ci<0?0:cc[ci])+(one?0:cc[cj]);
+            [s[i],s[j]]=[s[j],s[i]];
+            const nci=ci<0?0:cellCost(s,cells[ci]);
+            const ncj=one?0:cellCost(s,cells[cj]);
+            if(nci+ncj<before-1e-9){
+              if(ci>=0)cc[ci]=nci;
+              if(!one)cc[cj]=ncj;
+              cur+=nci+ncj-before;moved=true;
+            }else [s[i],s[j]]=[s[j],s[i]];
+          }
       if(!moved) break;
     }
-    return cur;
-  };
-
-  // Mehrere Zufallsstarts, der beste gewinnt. Frueher nahm der
-  // Generator den ERSTEN Wurf ohne Partner-Wiederholung und fiel nach
-  // 60 Fehlversuchen auf reinen Zufall zurueck — genau in den spaeten
-  // Runden, wo Struktur am meisten zaehlt. Jetzt gibt es keinen
-  // Absturz mehr: schlimmstenfalls die am wenigsten schlechte Lösung.
-  let best=null,bestCost=Infinity;
-  for(let attempt=0;attempt<24;attempt++){
-    const s=shuffle(playing);
-    const c=improve(s);
-    if(c<bestCost){bestCost=c;best=s;}
-    if(bestCost===0) break;
+    if(cur<bestC){bestC=cur;best=s;}
+    if(bestC<=0) break;
   }
+  return best||[...items];
+}
 
+/* ── SITZORDNUNG → COURTS ─────────────────────────────────────────
+   Eine Sitzordnung wird der Reihe nach in die Courts gefuellt
+   (cap 2 ⇒ 1v1, cap 4 ⇒ 2v2). split sagt, wie die Vier auf die
+   Netzseiten geht — beim Americano die ersten zwei gegen die letzten
+   zwei, beim Mexicano 1+4 gegen 2+3. */
+const SPLIT_FREE=g=>[[g[0],g[1]],[g[2],g[3]]];
+const SPLIT_RANK=g=>[[g[0],g[3]],[g[1],g[2]]];
+
+const seatsToCourts=(seats,caps,split)=>{
   const courts=[];let p=0;
   caps.forEach((cap,ci)=>{
     if(cap===2){
-      courts.push({id:`c${ci}`,t1:[best[p]],t2:[best[p+1]],s1:null,s2:null,done:false,single:true});
+      courts.push({id:`c${ci}`,t1:[seats[p]],t2:[seats[p+1]],s1:null,s2:null,done:false,single:true});
       p+=2;
     }else{
-      courts.push({id:`c${ci}`,t1:[best[p],best[p+1]],t2:[best[p+2],best[p+3]],
-        s1:null,s2:null,done:false});
+      const [t1,t2]=split(seats.slice(p,p+4));
+      courts.push({id:`c${ci}`,t1,t2,s1:null,s2:null,done:false});
       p+=4;
     }
   });
-  return {courts,sitOut};
+  return courts;
+};
+
+/* Platzgruppen: je Court die Plaetze, die darauf stehen. */
+const seatCells=caps=>{const out=[];let p=0;
+  caps.forEach(cap=>{out.push(Array.from({length:cap},(_,k)=>p+k));p+=cap;});return out;};
+
+const seatCellCost=(split,mc)=>(s,cell)=>{
+  if(cell.length===2) return mc.opp(s[cell[0]],s[cell[1]]);
+  const [t1,t2]=split(cell.map(k=>s[k]));
+  let c=mc.partner(t1[0],t1[1])+mc.partner(t2[0],t2[1]);
+  t1.forEach(a=>t2.forEach(b=>{c+=mc.opp(a,b);}));
+  return c;
+};
+
+/* Faire Pause: wer am wenigsten pausiert hat, pausiert als Naechstes.
+   Gleichstand entscheidet der Zufall — das ist die Stelle, an der
+   zwei Turniere mit demselben Feld auseinanderlaufen duerfen. */
+const sitCount=(history,id)=>history.filter(r=>r.sitOut?.includes(id)).length;
+const pickSitOut=(ids,history,numSit)=>numSit>0
+  ? ids.map(id=>({id,c:sitCount(history,id),r:Math.random()}))
+       .sort((a,b)=>a.c-b.c||a.r-b.r).slice(0,numSit).map(x=>x.id)
+  : [];
+
+export function genAmericanoRound(playerIds,history=[],maxCourts=null,singles=[],prior=null){
+  const mc=meetCost(history,prior,playerIds);
+  const caps=planCourts(playerIds.length,maxCourts,singles);
+  const numSit=playerIds.length-caps.reduce((a,b)=>a+b,0);
+  const sitOut=pickSitOut(playerIds,history,numSit);
+  const playing=playerIds.filter(id=>!sitOut.includes(id));
+  const seats=anneal(playing,seatCells(caps),seatCellCost(SPLIT_FREE,mc));
+  return {courts:seatsToCourts(seats,caps,SPLIT_FREE),sitOut};
 }
 
-export function genMexicanoRound(playerIds,leaderboard,maxCourts=null,history=[],singles=[]){
-  const caps=planCourts(playerIds.length,maxCourts,singles);
-  const playingCount=caps.reduce((a,b)=>a+b,0);
-  const numSit=playerIds.length-playingCount;
+/* ── MEXICANO ─────────────────────────────────────────────────────
+   Die Tabelle bestimmt die Paarung: je vier Nachbarn bilden einen
+   Court, 1+4 gegen 2+3. Das ist das Format und bleibt unangetastet.
 
-  // Fair sit-out (same as americano)
-  const sitOut=numSit>0
-    ? playerIds
-        .map(id=>({id,c:history.filter(r=>r.sitOut?.includes(id)).length,r:Math.random()}))
-        .sort((a,b)=>a.c-b.c||a.r-b.r)
-        .slice(0,numSit)
-        .map(x=>x.id)
-    : [];
+   Frei ist nur eines: die Reihenfolge unter Punktgleichen. Die war
+   bisher die Listenreihenfolge — in Runde 1 steht die ganze Tabelle
+   auf null, und damit spielte Court 1 jedes Mal 1+4 gegen 2+3 der
+   Anmeldeliste. Jetzt entscheidet unter Gleichstand die Historie:
+   dieselbe Tabelle, aber die Begegnungen, die es noch nicht gab. */
+export function genMexicanoRound(playerIds,leaderboard,maxCourts=null,history=[],singles=[],prior=null){
+  const mc=meetCost(history,prior,playerIds);
+  const caps=planCourts(playerIds.length,maxCourts,singles);
+  const numSit=playerIds.length-caps.reduce((a,b)=>a+b,0);
+  const sitOut=pickSitOut(playerIds,history,numSit);
   const playing=playerIds.filter(id=>!sitOut.includes(id));
 
-  // Among playing players: sort by leaderboard for 1+4 vs 2+3 pairing
-  const sorted=playing.sort((a,b)=>{
-    const la=leaderboard.find(x=>x.id===a),lb=leaderboard.find(x=>x.id===b);
-    return (lb?.pts??0)-(la?.pts??0);
-  });
-  // Courts in Index-Reihenfolge nach Tabellenstand füllen:
-  // 2v2 → nächste 4 als 1+4 vs 2+3, 1v1 → nächste 2 als 1 vs 2.
-  const courts=[];let p=0;
-  caps.forEach((cap,ci)=>{
-    if(cap===2){
-      courts.push({id:`c${ci}`,t1:[sorted[p]],t2:[sorted[p+1]],s1:null,s2:null,done:false,single:true});
-      p+=2;
-    }else{
-      const g=sorted.slice(p,p+4);
-      courts.push({id:`c${ci}`,t1:[g[0],g[3]],t2:[g[1],g[2]],s1:null,s2:null,done:false});
-      p+=4;
-    }
-  });
-  return {courts,sitOut};
+  // Rang = Position in der (vom Aufrufer sortierten) Tabelle. Ueber
+  // pts zu sortieren wuerde Pausen-Boni und Host-Korrekturen
+  // uebergehen, die dort laengst eingerechnet sind.
+  const lb=new Map((leaderboard||[]).map((x,i)=>[x.id,i]));
+  const val=id=>{const x=(leaderboard||[])[lb.get(id)];
+    return x?`${x.totalPts??x.pts??0}/${x.totalWins??x.wins??0}`:'-';};
+  const ranked=[...playing].sort((a,b)=>(lb.get(a)??1e9)-(lb.get(b)??1e9));
+
+  // Gleichstands-Bloecke: nur innerhalb dieser Bloecke darf getauscht
+  // werden, die Tabellenordnung bleibt damit exakt erhalten.
+  const blocks=[];let lo=0;
+  for(let i=1;i<=ranked.length;i++){
+    if(i===ranked.length||val(ranked[i])!==val(ranked[lo])){ if(i-lo>1) blocks.push([lo,i]); lo=i; }
+  }
+  const seats=blocks.length
+    ? anneal(ranked,seatCells(caps),seatCellCost(SPLIT_RANK,mc),{blocks})
+    : ranked;
+  return {courts:seatsToCourts(seats,caps,SPLIT_RANK),sitOut};
 }
+
 
 /* ═══════════════════════════════════════════════════════════════
    FORMAT-KATALOG + 5 weitere klassische Modi.
@@ -230,20 +389,20 @@ export const FORMATS={
 export const FORMAT_RULES={
   americano:[
     ['Prinzip','Doppel mit wechselnden Partnern — jede Runde werden neu gemischt.'],
-    ['Paarung','Zufällig, dabei werden bereits gespielte Partner so lange wie möglich vermieden.'],
+    ['Paarung','Jede Runde wird so gelost, dass möglichst neue Partner UND neue Gegner entstehen.'],
     ['Wertung','Individuell: jede:r sammelt eigene Punkte, unabhängig vom Partner.'],
     ['Passt für','Gemischte Spielstärken — jede:r spielt mit jedem.'],
   ],
   mexicano:[
     ['Prinzip','Americano mit Leistungsprinzip: die Tabelle bestimmt, wer gegen wen spielt.'],
-    ['Paarung','Je vier Nachbarn der Tabelle bilden einen Court — 1+4 gegen 2+3.'],
+    ['Paarung','Je vier Nachbarn der Tabelle bilden einen Court — 1+4 gegen 2+3. Bei Punktgleichstand entscheidet, wer noch nicht gegeneinander gespielt hat.'],
     ['Wertung','Individuell. Nach jeder Runde wird die Tabelle neu sortiert.'],
     ['Passt für','Ausgeglichene Matches — die Spitze spielt gegen die Spitze.'],
   ],
   teamamericano:[
     ['Prinzip','Feste Paare über das ganze Turnier, nur die Gegner rotieren.'],
     ['Teams','Nach Listen-Reihenfolge: 1+2, 3+4, … — dafür braucht es eine gerade Spielerzahl.'],
-    ['Paarung','Zufällig, Wiederholungen derselben Begegnung werden vermieden.'],
+    ['Paarung','So gelost, dass jedes Team gegen jedes andere spielt, bevor sich eine Begegnung wiederholt.'],
     ['Wertung','Beide Team-Mitglieder bekommen dieselben Punkte.'],
   ],
   teammexicano:[
@@ -255,7 +414,7 @@ export const FORMAT_RULES={
   mixicano:[
     ['Prinzip','Mixed-Format: jedes Team besteht aus einer Person aus Gruppe A und einer aus Gruppe B.'],
     ['Gruppen','Zuweisung über den A/B-Knopf neben den Namen — mindestens zwei pro Gruppe.'],
-    ['Paarung','Partner wechseln jede Runde, die Gruppen-Mischung bleibt erhalten.'],
+    ['Paarung','Partner und Gegner wechseln jede Runde, die Gruppen-Mischung bleibt erhalten.'],
     ['Wertung','Individuell wie beim Americano.'],
   ],
   kingofcourt:[
@@ -276,87 +435,111 @@ export const FORMAT_RULES={
 // Feste Teams aus der Listen-Reihenfolge: (1,2)(3,4)… = Setzliste.
 export const fixedTeams=ids=>{const t=[];for(let i=0;i+1<ids.length;i+=2)t.push([ids[i],ids[i+1]]);return t;};
 const teamKey=t=>`${Math.min(t[0],t[1])}_${Math.max(t[0],t[1])}`;
+// Platzgruppen bei Team-Formaten: je Begegnung zwei Plaetze.
+const duelCells=n=>{const out=[];for(let i=0;i+1<n;i+=2)out.push([i,i+1]);return out;};
 const matchKey=(a,b)=>[teamKey(a),teamKey(b)].sort().join('|');
-const sitCount=(history,id)=>history.filter(r=>r.sitOut?.includes(id)).length;
 // Sieger/Verlierer eines Courts. Gleichstand → t1 (dokumentiert:
 // K.-o./King brauchen einen Sieger — Golden Point spielen).
 const winnerOf=m=>(m.s2??0)>(m.s1??0)?m.t2:m.t1;
 const loserOf =m=>(m.s2??0)>(m.s1??0)?m.t1:m.t2;
 
 /* ── TEAM-AMERICANO ───────────────────────────────────────────────
-   Feste Paare (Setzliste), Gegner rotieren zufällig. Wie beim
-   Americano: bis zu 60 Versuche ohne Matchup-Wiederholung, dann
-   Fallback. Faire Team-Pausen (wenigste bisherige Pausen zuerst). */
-export function genTeamAmericanoRound(playerIds,history=[],maxCourts=null){
+   Feste Paare (Setzliste), nur die Gegner rotieren. Das Versprechen
+   des Formats ist „jedes Team gegen jedes andere" — bisher wurde es
+   per Zufall angenaehert: bis zu 60 Wuerfe ohne Wiederholung, danach
+   reiner Zufall. Bei sechs Teams und neun Runden lief das zuverlaessig
+   auf Begegnungen hinaus, die es dreimal gab, waehrend andere nie
+   stattfanden.
+
+   Jetzt sucht derselbe Optimierer wie beim Americano die Runde mit
+   den wenigsten Wiederholungen. Kosten je Begegnung: das Matchup
+   selbst (W_MATCH) plus die vier Spieler-Begegnungen darin — so
+   zaehlt auch, wer sich ueber Turniere hinweg schon oft gegenueber
+   stand, selbst wenn die Teams damals anders geschnitten waren. */
+export function genTeamAmericanoRound(playerIds,history=[],maxCourts=null,prior=null){
+  const mc=meetCost(history,prior,playerIds);
   const teams=fixedTeams(playerIds);
   const cap=Math.floor(teams.length/2);
   const numCourts=Math.max(1,maxCourts?Math.min(maxCourts,cap):cap);
-  const playing=numCourts*2;
-  const numSit=teams.length-playing;
-  const played=new Set(history.flatMap(r=>r.courts.map(m=>matchKey(m.t1,m.t2))));
-  // Team-Pause zählt über Mitglied 0 (Teams pausieren als Einheit).
-  const bySit=teams
-    .map(t=>({t,c:sitCount(history,t[0]),r:Math.random()}))
+  const numSit=teams.length-numCourts*2;
+  const played=new Map();
+  history.forEach(r=>(r.courts||[]).forEach(m=>{
+    const k=matchKey(m.t1,m.t2);played.set(k,(played.get(k)||0)+1);}));
+  // Team-Pause zaehlt ueber Mitglied 0 (Teams pausieren als Einheit).
+  const bySit=teams.map(t=>({t,c:sitCount(history,t[0]),r:Math.random()}))
     .sort((a,b)=>a.c-b.c||a.r-b.r);
   const sitTeams=numSit>0?bySit.slice(0,numSit).map(x=>x.t):[];
   const sitKeys=new Set(sitTeams.map(teamKey));
   const active=teams.filter(t=>!sitKeys.has(teamKey(t)));
-  const mk=list=>list.length?{courts:list.map((p,i)=>({id:`c${i}`,t1:p[0],t2:p[1],s1:null,s2:null,done:false})),
-    sitOut:sitTeams.flat()}:null;
-  for(let attempt=0;attempt<60;attempt++){
-    const s=shuffle(active);const pairs=[];let ok=true;
-    for(let i=0;i+1<s.length;i+=2){
-      if(played.has(matchKey(s[i],s[i+1]))){ok=false;break;}
-      pairs.push([s[i],s[i+1]]);
-    }
-    if(ok) return mk(pairs);
-  }
-  const s=shuffle(active);const pairs=[];
-  for(let i=0;i+1<s.length;i+=2)pairs.push([s[i],s[i+1]]);
-  return mk(pairs);
+  const duel=(a,b)=>W_MATCH*(played.get(matchKey(a,b))||0)
+    +a.reduce((s,x)=>s+b.reduce((t,y)=>t+mc.opp(x,y),0),0);
+  const cells=duelCells(active.length);
+  const order=anneal(active,cells,(s,c)=>duel(s[c[0]],s[c[1]]));
+  const courts=[];
+  for(let i=0;i+1<order.length;i+=2)
+    courts.push({id:`c${i/2}`,t1:order[i],t2:order[i+1],s1:null,s2:null,done:false});
+  return {courts,sitOut:sitTeams.flat()};
 }
 
 /* ── TEAM-MEXICANO ────────────────────────────────────────────────
    Feste Paare, Gegner nach Tabellenstand: Team-Rang = Summe der
    Ranglisten-Positionen beider Mitglieder (aufsteigend = besser).
-   1. vs 2. auf Court 1, 3. vs 4. auf Court 2 usw. Runde 1 (leere
-   Tabelle) = Setzlisten-Reihenfolge. Pausen fair rotiert. */
-export function genTeamMexicanoRound(playerIds,leaderboard,maxCourts=null,history=[]){
+   1. vs 2. auf Court 1, 3. vs 4. auf Court 2 usw. Pausen fair
+   rotiert. Wie beim Mexicano ist nur der Gleichstand frei — und
+   Runde 1 ist ein einziger Gleichstand, weshalb dort frueher immer
+   die Setzliste gegen sich selbst antrat. */
+export function genTeamMexicanoRound(playerIds,leaderboard,maxCourts=null,history=[],prior=null){
+  const mc=meetCost(history,prior,playerIds);
   const teams=fixedTeams(playerIds);
   const cap=Math.floor(teams.length/2);
   const numCourts=Math.max(1,maxCourts?Math.min(maxCourts,cap):cap);
-  const playing=numCourts*2;
-  const numSit=teams.length-playing;
+  const numSit=teams.length-numCourts*2;
   const rankOf=id=>{const i=leaderboard.findIndex(x=>x.id===id);return i<0?leaderboard.length:i;};
-  const bySit=teams
-    .map(t=>({t,c:sitCount(history,t[0]),r:Math.random()}))
+  const bySit=teams.map(t=>({t,c:sitCount(history,t[0]),r:Math.random()}))
     .sort((a,b)=>a.c-b.c||a.r-b.r);
   const sitTeams=numSit>0?bySit.slice(0,numSit).map(x=>x.t):[];
   const sitKeys=new Set(sitTeams.map(teamKey));
-  const ranked=teams.filter(t=>!sitKeys.has(teamKey(t)))
+  const scored=teams.filter(t=>!sitKeys.has(teamKey(t)))
     .map(t=>({t,score:rankOf(t[0])+rankOf(t[1])}))
-    .sort((a,b)=>a.score-b.score)
-    .map(x=>x.t);
-  const courts=[];
-  for(let i=0;i+1<ranked.length;i+=2){
-    courts.push({id:`c${i/2}`,t1:ranked[i],t2:ranked[i+1],s1:null,s2:null,done:false});
+    .sort((a,b)=>a.score-b.score);
+  const ranked=scored.map(x=>x.t);
+  const played=new Map();
+  history.forEach(r=>(r.courts||[]).forEach(m=>{
+    const k=matchKey(m.t1,m.t2);played.set(k,(played.get(k)||0)+1);}));
+  const duel=(a,b)=>W_MATCH*(played.get(matchKey(a,b))||0)
+    +a.reduce((s,x)=>s+b.reduce((t,y)=>t+mc.opp(x,y),0),0);
+  const blocks=[];let lo=0;
+  for(let i=1;i<=scored.length;i++){
+    if(i===scored.length||scored[i].score!==scored[lo].score){ if(i-lo>1) blocks.push([lo,i]); lo=i; }
   }
+  const order=blocks.length
+    ?anneal(ranked,duelCells(ranked.length),(s,c)=>duel(s[c[0]],s[c[1]]),{blocks})
+    :ranked;
+  const courts=[];
+  for(let i=0;i+1<order.length;i+=2)
+    courts.push({id:`c${i/2}`,t1:order[i],t2:order[i+1],s1:null,s2:null,done:false});
   return {courts,sitOut:sitTeams.flat()};
 }
 
 /* ── MIXICANO ─────────────────────────────────────────────────────
    Mixed-Americano: jedes Team = 1 Spieler aus Gruppe A + 1 aus
    Gruppe B (z. B. Damen/Herren). Pro Court 2+2. Pausen werden je
-   Gruppe getrennt fair rotiert; Partner-Wiederholungen werden wie
-   beim Americano 60 Versuche lang vermieden. players = Objekte
-   mit {id, group:'A'|'B'} (fehlende group ⇒ 'A'). */
-export function genMixicanoRound(players,history=[],maxCourts=null){
+   Gruppe getrennt fair rotiert. players = Objekte mit
+   {id, group:'A'|'B'} (fehlende group ⇒ 'A').
+
+   Die Suche lief frueher nur auf die Partner-Frage (A_i mit B_i) und
+   nahm den ersten Wurf ohne Wiederholung — wer gegen wen spielt, fiel
+   dabei woertlich vom Mischen ab. Jetzt optimiert derselbe Bergabstieg
+   beide Seiten; getauscht wird nur innerhalb einer Gruppe, damit die
+   Mischung erhalten bleibt. */
+export function genMixicanoRound(players,history=[],maxCourts=null,prior=null){
+  const mc=meetCost(history,prior,players.map(p=>p.id));
   const A=players.filter(p=>(p.group||'A')!=='B').map(p=>p.id);
   const B=players.filter(p=>(p.group||'A')==='B').map(p=>p.id);
   const cap=Math.floor(Math.min(A.length,B.length)/2);
   const numCourts=Math.max(1,maxCourts?Math.min(maxCourts,cap):cap);
   const perGroup=numCourts*2;
-  const pick=(ids)=>{
+  const pick=ids=>{
     const numSit=ids.length-perGroup;
     if(numSit<=0) return {act:ids,sit:[]};
     const ranked=ids.map(id=>({id,c:sitCount(history,id),r:Math.random()}))
@@ -365,23 +548,25 @@ export function genMixicanoRound(players,history=[],maxCourts=null){
   };
   const pa=pick(A),pb=pick(B);
   const sitOut=[...pa.sit,...pb.sit];
-  const used=new Set(history.flatMap(r=>r.courts.flatMap(m=>[
-    `${Math.min(...m.t1)}_${Math.max(...m.t1)}`,
-    `${Math.min(...m.t2)}_${Math.max(...m.t2)}`])));
-  const build=(sa,sb)=>{
-    const teams=sa.map((a,i)=>[a,sb[i]]);
-    const courts=[];
-    for(let i=0;i+1<teams.length;i+=2){
-      courts.push({id:`c${i/2}`,t1:teams[i],t2:teams[i+1],s1:null,s2:null,done:false});
-    }
-    return courts;
+  const m=Math.min(pa.act.length,pb.act.length);
+  // Sitzordnung = erst alle A, dann alle B. Team i = (A_i, B_i),
+  // Court j = Team 2j gegen Team 2j+1.
+  const seats=[...pa.act.slice(0,m),...pb.act.slice(0,m)];
+  const teamAt=(s,i)=>[s[i],s[m+i]];
+  // Ein Court traegt vier Plaetze: zwei aus A, zwei aus B.
+  const cells=[];
+  for(let i=0;i+1<m;i+=2) cells.push([i,i+1,m+i,m+i+1]);
+  const cellCost=(s,c)=>{
+    const t1=[s[c[0]],s[c[2]]],t2=[s[c[1]],s[c[3]]];
+    let v=mc.partner(t1[0],t1[1])+mc.partner(t2[0],t2[1]);
+    t1.forEach(a=>t2.forEach(b=>{v+=mc.opp(a,b);}));
+    return v;
   };
-  for(let attempt=0;attempt<60;attempt++){
-    const sa=shuffle(pa.act),sb=shuffle(pb.act);
-    const clean=sa.every((a,i)=>!used.has(`${Math.min(a,sb[i])}_${Math.max(a,sb[i])}`));
-    if(clean) return {courts:build(sa,sb),sitOut};
-  }
-  return {courts:build(shuffle(pa.act),shuffle(pb.act)),sitOut};
+  const best=anneal(seats,cells,cellCost,{blocks:[[0,m],[m,2*m]]});
+  const courts=[];
+  for(let i=0;i+1<m;i+=2)
+    courts.push({id:`c${i/2}`,t1:teamAt(best,i),t2:teamAt(best,i+1),s1:null,s2:null,done:false});
+  return {courts,sitOut};
 }
 
 /* ── KING OF THE COURT ────────────────────────────────────────────
@@ -396,27 +581,22 @@ export function genMixicanoRound(players,history=[],maxCourts=null){
    Court 2 = Verlierer C1 + Sieger C3 usw. Pausierende steigen unten
    ein (Fair-Rotation: wenigste Pausen sitzen als Nächste).
    Gleichstand ⇒ t1 gilt als Sieger. */
-export function genKingOfCourtRound(playerIds,history=[],maxCourts=null){
+export function genKingOfCourtRound(playerIds,history=[],maxCourts=null,prior=null){
   const maxByPlayers=Math.floor(playerIds.length/4);
   const numCourts=Math.max(1,maxCourts?Math.min(maxCourts,maxByPlayers):maxByPlayers);
   const playingCount=numCourts*4;
   const numSit=playerIds.length-playingCount;
-  const sitOut=numSit>0
-    ? playerIds
-        .map(id=>({id,c:sitCount(history,id),r:Math.random()}))
-        .sort((a,b)=>a.c-b.c||a.r-b.r)
-        .slice(0,numSit)
-        .map(x=>x.id)
-    : [];
+  const sitOut=pickSitOut(playerIds,history,numSit);
   const playing=playerIds.filter(id=>!sitOut.includes(id));
   const last=history[history.length-1];
   if(!last||!last.courts?.length){
-    // Runde 1: zufällige Verteilung (wie Americano, ohne Historie).
-    const s=shuffle(playing);const courts=[];
-    for(let i=0;i<s.length-3;i+=4){
-      courts.push({id:`c${i/4}`,t1:[s[i],s[i+1]],t2:[s[i+2],s[i+3]],s1:null,s2:null,done:false});
-    }
-    return {courts,sitOut};
+    // Runde 1: es gibt noch keine Leiter. Statt reinem Zufall die
+    // Verteilung, die mit den Turnieren davor am wenigsten
+    // wiederholt — dieselbe Startaufstellung ist das, was eine
+    // Stammgruppe als Erstes auffaellt.
+    const caps=Array.from({length:numCourts},()=>4);
+    const seats=anneal(playing,seatCells(caps),seatCellCost(SPLIT_FREE,meetCost(history,prior,playerIds)));
+    return {courts:seatsToCourts(seats,caps,SPLIT_FREE),sitOut};
   }
   // Leiter-Position aus der letzten Runde: Sieger vor Verlierern,
   // Court-Index zählt; wer pausierte, reiht sich unten ein.
@@ -427,8 +607,12 @@ export function genKingOfCourtRound(playerIds,history=[],maxCourts=null){
   });
   // Wer letzte Runde pausierte, reiht sich ganz unten ein.
   const BOTTOM=2*numCourts+4;
+  // Tiebreak einmal auswuerfeln, nicht im Vergleicher: Math.random()
+  // dort macht die Ordnung inkonsistent (a<b und b<a zugleich) und
+  // damit das Ergebnis der Sortierung undefiniert.
+  const jitter=new Map(playing.map(id=>[id,Math.random()]));
   const ladder=[...playing].sort((a,b)=>
-    (pos[a]??BOTTOM)-(pos[b]??BOTTOM)||Math.random()-0.5);
+    (pos[a]??BOTTOM)-(pos[b]??BOTTOM)||jitter.get(a)-jitter.get(b));
   const courts=[];
   for(let i=0;i<ladder.length-3;i+=4){
     const g=ladder.slice(i,i+4);
@@ -499,17 +683,21 @@ export function genKnockoutRound(playerIds,history=[],maxCourts=null){
    Gibt null zurück, wenn der Modus fertig ist (nur K.-o.).
    singles (Einzel-Courts) gilt nur für Americano/Mexicano — Team-,
    Gruppen- und Leiter-Formate brauchen zwingend 4er-Courts. */
-export function genRound(format,players,{history=[],leaderboard=[],maxCourts=null,singles=[]}={}){
+export function genRound(format,players,{history=[],leaderboard=[],maxCourts=null,singles=[],meetLog=null}={}){
   const objs=players.map(p=>(typeof p==='object'&&p!==null)?p:{id:p});
   const ids=objs.map(p=>p.id);
+  // Gedaechtnis der letzten Turniere — nur ein Tiebreaker, siehe
+  // meetCost. Fehlt es (Online-Gast, erstes Turnier), aendert sich
+  // nichts am Verhalten.
+  const prior=meetLog?priorFromLog(objs,meetLog):null;
   switch(format){
-    case 'mexicano':      return genMexicanoRound(ids,leaderboard,maxCourts,history,singles);
-    case 'teamamericano': return genTeamAmericanoRound(ids,history,maxCourts);
-    case 'teammexicano':  return genTeamMexicanoRound(ids,leaderboard,maxCourts,history);
-    case 'mixicano':      return genMixicanoRound(objs,history,maxCourts);
-    case 'kingofcourt':   return genKingOfCourtRound(ids,history,maxCourts);
+    case 'mexicano':      return genMexicanoRound(ids,leaderboard,maxCourts,history,singles,prior);
+    case 'teamamericano': return genTeamAmericanoRound(ids,history,maxCourts,prior);
+    case 'teammexicano':  return genTeamMexicanoRound(ids,leaderboard,maxCourts,history,prior);
+    case 'mixicano':      return genMixicanoRound(objs,history,maxCourts,prior);
+    case 'kingofcourt':   return genKingOfCourtRound(ids,history,maxCourts,prior);
     case 'knockout':      return genKnockoutRound(ids,history,maxCourts);
-    default:              return genAmericanoRound(ids,history,maxCourts,singles);
+    default:              return genAmericanoRound(ids,history,maxCourts,singles,prior);
   }
 }
 

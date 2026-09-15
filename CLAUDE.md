@@ -221,7 +221,17 @@ standen dauerhaft über dem Turnier, das man ständig ansieht.
   230 px + Schalter + Weiter + Home = 376 von 342). Im Fluss müsste
   etwas schrumpfen; *über* der Leiste darf es einfach liegen.
 - Animiert wird **`max-width`, nicht `width`** — von `width:auto` auf 0
-  gibt es keinen Übergang.
+  gibt es keinen Übergang. Der Wert ist **exakt die Inhaltsbreite**
+  (`n*48 + (n-1)*8 + 14`), nicht großzügig geschätzt: mit einem zu
+  weiten Wert läuft der erste Teil des Übergangs ins Leere, und das
+  Einfahren wirkt erst verzögert und dann abrupt.
+- Die Knöpfe im Fach blenden **gestaffelt** (35 ms je Position) und in
+  beide Richtungen von innen nach außen: beim Ausfahren erscheint der
+  am Schalter zuerst, beim Einfahren verschwindet der äußerste zuerst.
+  Die Reihe bewegt sich dadurch wie eine Kette und nicht wie ein Block.
+  Der Staffel-Style liegt auf `btn.fx`, das in `MatchBar` **ganz
+  zuletzt** gemergt wird — es muss auch die `opacity` überschreiben
+  dürfen, die `fab` für den Disabled-Zustand setzt.
 - Solange das Fach offen ist, blendet **Home** aus (`homeHidden`): das
   Fach wächst über ihn hinweg, und ein halb verdeckter Knopf sieht
   kaputt aus.

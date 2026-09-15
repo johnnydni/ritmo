@@ -3294,6 +3294,9 @@ function MatchBar({onHome,rightIcon,onRight,rightButtons,homeLabel='Zurück zur 
         opacity:btn.disabled?.5:1,
         transition:'opacity .22s,transform .22s,width .22s,margin .22s',
         ...(btn.hidden?hide:{}),
+        /* fx liegt ganz zuletzt: es muss auch die opacity oben
+           ueberschreiben duerfen (Fach-Knoepfe blenden sich weg). */
+        ...(btn.fx||{}),
       }}
       onPointerDown={e=>!btn.disabled&&(e.currentTarget.style.opacity='.7')}
       onPointerUp={e=>e.currentTarget.style.opacity=btn.disabled?.5:1}
@@ -3314,7 +3317,11 @@ function MatchBar({onHome,rightIcon,onRight,rightButtons,homeLabel='Zurück zur 
 
      Animiert wird max-width, nicht width: von width:auto auf 0 gibt
      es keinen Uebergang. */
-  const tray=(btn,key)=>(
+  const tray=(btn,key)=>{
+  const items=(btn.items||[]).filter(Boolean);
+  const n=items.length;
+  const trayW=n*48+(n-1)*8+14;   // Knoepfe + Luecken + Polsterung
+  return(
     <div key={key} style={{position:'relative',display:'flex',
       alignItems:'center',flexShrink:0}}>
       <div className="glass-bar" style={{
@@ -3323,16 +3330,29 @@ function MatchBar({onHome,rightIcon,onRight,rightButtons,homeLabel='Zurück zur 
         display:'flex',alignItems:'center',gap:8,
         borderRadius:999,
         padding:btn.open?'5px 7px':'5px 0',
-        maxWidth:btn.open?320:0,
+        /* Genau die Breite des Inhalts, nicht grosszuegig geschaetzt:
+           mit einem zu weiten Wert laeuft der erste Teil des
+           Uebergangs ins Leere, und das Einfahren wirkt erst
+           verzoegert und dann abrupt. */
+        maxWidth:btn.open?trayW:0,
         opacity:btn.open?1:0,
         pointerEvents:btn.open?'auto':'none',
         overflow:'hidden',
-        transition:'max-width .3s cubic-bezier(.2,.8,.2,1),opacity .18s,padding .3s'}}>
-        {(btn.items||[]).filter(Boolean).map((it,j)=>fab(it,j))}
+        transition:'max-width .32s cubic-bezier(.2,.8,.2,1),opacity .22s,padding .32s'}}>
+        {items.map((it,j)=>fab({...it,fx:{
+          opacity:btn.open?1:0,
+          transform:btn.open?'scale(1)':'scale(.5)',
+          /* Gestaffelt, und in beide Richtungen von innen nach aussen
+             gedacht: beim Ausfahren erscheint der Knopf am Schalter
+             zuerst, beim Einfahren verschwindet der aeusserste
+             zuerst. Die Reihe bewegt sich dadurch wie eine Kette und
+             nicht wie ein Block. */
+          transitionDelay:`${(btn.open?(n-1-j):j)*35}ms`,
+        }},j))}
       </div>
       {fab(btn,'toggle',{'aria-expanded':!!btn.open})}
     </div>
-  );
+  );};
 
   return(
     <div style={{position:'absolute',

@@ -1092,3 +1092,19 @@ export function CourtsIcon({size=24,color='currentColor'}){
     <path d="M2.6 12h4M17.4 12h4" opacity=".55"/>
   </svg>);
 }
+
+/* Turnier-Tools — vier Kacheln im Quadrat. Steht in der Knopfleiste
+   des laufenden Turniers und faehrt die Werkzeuge aus, die sonst
+   dauerhaft daneben lagen. Vier Kacheln, weil vier Werkzeuge darin
+   liegen: das Zeichen zaehlt, was es oeffnet. Geschlossene, gefuellte
+   Formen — eine Kontur zerfaellt bei 20 px in acht Striche. */
+export function ToolsIcon({size=22,color='currentColor'}){
+  const r=2.2,s=8.2,g=1.9;
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill={color}
+    aria-hidden="true">
+    <rect x={12-g/2-s} y={12-g/2-s} width={s} height={s} rx={r}/>
+    <rect x={12+g/2}   y={12-g/2-s} width={s} height={s} rx={r}/>
+    <rect x={12-g/2-s} y={12+g/2}   width={s} height={s} rx={r}/>
+    <rect x={12+g/2}   y={12+g/2}   width={s} height={s} rx={r}/>
+  </svg>);
+}

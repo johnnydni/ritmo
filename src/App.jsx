@@ -52,7 +52,7 @@ import {
   SteeringWheelIcon, PaletteIcon, EyeIcon, BellIcon, LockIcon, DoorOutIcon,
   SpeakerIcon, ChatBubbleIcon,
   ChevronRightIcon, AirPlayIcon, CoffeeCupIcon,
-  ArchetypeGlyph, PauseIcon, TournamentModeIcon, ClockIcon, CourtsIcon,
+  ArchetypeGlyph, PauseIcon, TournamentModeIcon, ClockIcon, CourtsIcon, ToolsIcon,
   // Emoji-Ersatz-Glyphen
   HeartIcon, MedalIcon, PhoneIcon, KeyboardIcon, RingIcon, WatchIcon, FlicIcon,
   MoonIcon, LeafIcon, TargetIcon, ScrollIcon, StopwatchIcon, MaskIcon,
@@ -3257,7 +3257,11 @@ function TabBar({active,onTab}){
 /* ═══════════════════════════════════════════════════════════════
    IN-MATCH BOTTOM BAR (Home + Search separat)
 ═══════════════════════════════════════════════════════════════ */
-function MatchBar({onHome,rightIcon,onRight,rightButtons,homeLabel='Zurück zur Startseite'}){
+function MatchBar({onHome,rightIcon,onRight,rightButtons,homeLabel='Zurück zur Startseite',
+  /* Waehrend das Werkzeug-Fach offen ist, gehoert die Leiste den
+     Werkzeugen: das Fach waechst nach links ueber den Home-Knopf
+     hinweg, und ein halb verdeckter Knopf sieht kaputt aus. */
+  homeHidden=false}){
   // Liquid-Glass-FABs: Material kommt aus der .glass-bar-Klasse
   // (Backdrop-Blur + Tönung); eigene btn.style-Overrides (z. B. der
   // grüne Start-Button) gewinnen als Inline-Styles weiterhin.
@@ -3276,6 +3280,60 @@ function MatchBar({onHome,rightIcon,onRight,rightButtons,homeLabel='Zurück zur 
      erste der Gruppe sind — davor gibt es keine Luecke zu schlucken. */
   const hide={opacity:0,transform:'scale(.55)',pointerEvents:'none',
     width:0,minWidth:0,marginLeft:-10,padding:0,border:'none',overflow:'hidden'};
+
+  const fab=(btn,key,extra)=>(
+    <button key={key} onClick={btn.onClick} disabled={btn.disabled}
+      className="glass-bar"
+      aria-label={btn.label||btn.title||undefined}
+      title={btn.label||btn.title||undefined}
+      {...extra}
+      style={{
+        ...baseStyle,
+        ...(btn.style||{}),
+        cursor:btn.disabled?'not-allowed':'pointer',
+        opacity:btn.disabled?.5:1,
+        transition:'opacity .22s,transform .22s,width .22s,margin .22s',
+        ...(btn.hidden?hide:{}),
+      }}
+      onPointerDown={e=>!btn.disabled&&(e.currentTarget.style.opacity='.7')}
+      onPointerUp={e=>e.currentTarget.style.opacity=btn.disabled?.5:1}
+      onPointerLeave={e=>e.currentTarget.style.opacity=btn.disabled?.5:1}>
+      {btn.icon}
+    </button>
+  );
+
+  /* Ein Eintrag mit items ist ein FACH: seine Knoepfe liegen nicht in
+     der Reihe, sondern in einer eigenen Kapsel LINKS neben dem
+     Schalter — absolut gesetzt und rechts verankert, damit sie nach
+     links waechst.
+
+     Absolut, weil sechs runde Knoepfe bei 390 px nicht in eine Reihe
+     passen: vier Werkzeuge (230) plus Schalter, Weiter und Home
+     braeuchten 376 von 342 verfuegbaren Pixeln. Im Fluss muesste
+     also etwas schrumpfen; ueber der Leiste darf es einfach liegen.
+
+     Animiert wird max-width, nicht width: von width:auto auf 0 gibt
+     es keinen Uebergang. */
+  const tray=(btn,key)=>(
+    <div key={key} style={{position:'relative',display:'flex',
+      alignItems:'center',flexShrink:0}}>
+      <div className="glass-bar" style={{
+        position:'absolute',right:'calc(100% + 10px)',top:'50%',
+        transform:'translateY(-50%)',
+        display:'flex',alignItems:'center',gap:8,
+        borderRadius:999,
+        padding:btn.open?'5px 7px':'5px 0',
+        maxWidth:btn.open?320:0,
+        opacity:btn.open?1:0,
+        pointerEvents:btn.open?'auto':'none',
+        overflow:'hidden',
+        transition:'max-width .3s cubic-bezier(.2,.8,.2,1),opacity .18s,padding .3s'}}>
+        {(btn.items||[]).filter(Boolean).map((it,j)=>fab(it,j))}
+      </div>
+      {fab(btn,'toggle',{'aria-expanded':!!btn.open})}
+    </div>
+  );
+
   return(
     <div style={{position:'absolute',
       // Auf Navbar-Hoehe: gleicher Bottom-Anchor wie die TabBar
@@ -3286,30 +3344,15 @@ function MatchBar({onHome,rightIcon,onRight,rightButtons,homeLabel='Zurück zur 
       left:0,right:0,display:'flex',alignItems:'center',justifyContent:'space-between',
       padding:'0 24px',pointerEvents:'none',zIndex:5}}>
       <button onClick={onHome} className="glass-bar"
-        aria-label={homeLabel} title={homeLabel}
-        style={{...baseStyle,cursor:'pointer'}}>
+        aria-label={homeLabel} title={homeLabel} aria-hidden={homeHidden||undefined}
+        tabIndex={homeHidden?-1:undefined}
+        style={{...baseStyle,cursor:'pointer',
+          transition:'opacity .2s',
+          ...(homeHidden?{opacity:0,pointerEvents:'none'}:{})}}>
         <HomeIcon size={20}/>
       </button>
       <div style={{display:'flex',gap:10,alignItems:'center',pointerEvents:'auto'}}>
-        {buttons.map((btn,i)=>(
-          <button key={i} onClick={btn.onClick} disabled={btn.disabled}
-            className="glass-bar"
-            aria-label={btn.label||btn.title||undefined}
-            title={btn.label||btn.title||undefined}
-            style={{
-              ...baseStyle,
-              ...(btn.style||{}),
-              cursor:btn.disabled?'not-allowed':'pointer',
-              opacity:btn.disabled?.5:1,
-              transition:'opacity .22s,transform .22s,width .22s,margin .22s',
-              ...(btn.hidden?hide:{}),
-            }}
-            onPointerDown={e=>!btn.disabled&&(e.currentTarget.style.opacity='.7')}
-            onPointerUp={e=>e.currentTarget.style.opacity=btn.disabled?.5:1}
-            onPointerLeave={e=>e.currentTarget.style.opacity=btn.disabled?.5:1}>
-            {btn.icon}
-          </button>
-        ))}
+        {buttons.map((btn,i)=>btn.items?tray(btn,i):fab(btn,i))}
       </div>
     </div>
   );
@@ -12758,7 +12801,23 @@ function EndReviewSheet({tourney,onClose,onHistory,onConfirm}){
           </div>
         </div>
 
-        {step===0?(<>
+        {/* Beide Schritte liegen in DERSELBEN Rasterzelle. Die Zelle
+            ist so hoch wie der hoehere von beiden (Schritt 2 mit der
+            Tabelle), und damit ist das Sheet in beiden Schritten
+            gleich hoch: der Knopfrand springt beim "Weiter" nicht mehr
+            um ~200 px nach unten.
+
+            Warum nicht einfach eine feste Hoehe: Schritt 2 misst je
+            nach Feld und offenen Ergebnissen 580 bis 660 px — eine
+            Zahl waere fuer den einen Fall zu knapp und fuer den
+            anderen zu weit. Das Raster misst selbst.
+
+            visibility (nicht display:none) laesst den inaktiven
+            Schritt mitmessen, nimmt ihn aber aus Tab-Reihenfolge und
+            Vorlesereihenfolge. */}
+        <div style={{display:'grid',flex:1,minHeight:0}}>
+        <div style={{gridArea:'1 / 1',display:'flex',flexDirection:'column',minWidth:0,
+          visibility:step===0?'visible':'hidden'}} aria-hidden={step!==0}>
           <div className="txt" style={{color:T.t3,fontSize:13.5,fontStyle:'italic',
             lineHeight:1.5,margin:'8px 0 14px'}}>
             Nach dem Beenden lässt sich nichts mehr nachtragen.
@@ -12827,13 +12886,15 @@ function EndReviewSheet({tourney,onClose,onHistory,onConfirm}){
           </div>
 
           <div style={{display:'flex',alignItems:'flex-start',gap:10,
-            marginTop:14,marginBottom:2}}>
+            marginTop:'auto',paddingTop:14,marginBottom:2}}>
             {act(T.yellow,'#000','←','Zurück',onClose)}
             {act(T.blue,'#fff',<HistoryIcon size={26} color="#fff"/>,'Review',
               ()=>{buzz(6);onHistory();})}
             {act(T.o,'#000','→','Weiter',()=>{buzz(6);setStep(1);})}
           </div>
-        </>):(<>
+        </div>
+        <div style={{gridArea:'1 / 1',display:'flex',flexDirection:'column',minWidth:0,
+          visibility:step===1?'visible':'hidden'}} aria-hidden={step!==1}>
           <div className="txt" style={{color:T.t3,fontSize:13.5,fontStyle:'italic',
             lineHeight:1.5,margin:'8px 0 14px'}}>
             So steht es, wenn du jetzt beendest.
@@ -12890,12 +12951,13 @@ function EndReviewSheet({tourney,onClose,onHistory,onConfirm}){
               Kreisen liegen ueber 60 px, und "beenden" ist
               unwiderruflich. */}
           <div style={{display:'flex',alignItems:'flex-start',gap:10,
-            marginTop:14,marginBottom:2}}>
+            marginTop:'auto',paddingTop:14,marginBottom:2}}>
             {act(T.yellow,'#000','←','Zurück',()=>{buzz(6);setStep(0);})}
             {act(T.r,'#fff','■','Turnier beenden',()=>{buzz(14);onConfirm();})}
             <div style={{flex:1,minWidth:0}} aria-hidden/>
           </div>
-        </>)}
+        </div>
+        </div>
       </div>
     </div>
   );
@@ -13213,6 +13275,16 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
   const scrollRef=useRef(null);
   const nextBtnRef=useRef(null);
   const[nextInView,setNextInView]=useState(true);
+  /* Werkzeug-Fach. Faehrt nach ein paar Sekunden von allein wieder
+     ein: wer es aufmacht und dann doch aufs Turnier schaut, soll es
+     nicht wegklicken muessen. Jeder Griff hinein schliesst es
+     ohnehin — die Entscheidung ist getroffen. */
+  const[toolsOpen,setToolsOpen]=useState(false);
+  useEffect(()=>{
+    if(!toolsOpen) return;
+    const t=setTimeout(()=>setToolsOpen(false),4500);
+    return ()=>clearTimeout(t);
+  },[toolsOpen]);
   const[layoutEdit,setLayoutEdit]=useState(false);
   const[layoutSel,setLayoutSel]=useState(null);
   // Defensive: korrupte/unvollständige persistierte Turniere (z. B.
@@ -13380,7 +13452,14 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
     setTourney(t=>{
       const newRounds=[...t.rounds];
       newRounds[t.current]={...newRounds[t.current],
-        courts:newRounds[t.current].courts.map(c=>c.id!==courtId?c:{...c,done:!c.done})
+        /* Beim Bestaetigen wird die 0 festgeschrieben. Ein frischer
+           Court traegt s1/s2 = null ("noch nichts eingetragen"), das
+           Rad zeigt aber schon die 0 — wer bestaetigt, ohne zu
+           wischen, meinte diese 0. Blieb sie null, stand in der
+           Rundenhistorie und in der Teilnehmeransicht woertlich
+           "null : null". */
+        courts:newRounds[t.current].courts.map(c=>c.id!==courtId?c
+          :{...c,done:!c.done,...(c.done?{}:{s1:c.s1??0,s2:c.s2??0})})
       };
       return {...t,rounds:newRounds};
     });
@@ -13737,10 +13816,14 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
                    diese eine Court-Karte darunter. */
                 sub={i=>{
                   const c=round.courts[i];
+                  /* Nur der Zustand, kein Spielstand. Auf 80 px steht
+                     "16:8" so klein, dass man es eher errät als liest,
+                     und es steht ohnehin gross auf der Court-Karte
+                     darunter. Die Karte beantwortet "wo wird gespielt
+                     und ist der Platz durch", nicht "wie steht es". */
                   return(
-                    <div style={{color:c?(c.done?T.o:T.t4):T.t4,fontSize:9.5,fontWeight:800,
-                      fontVariantNumeric:'tabular-nums'}}>
-                      {!c?'frei':c.done?`${c.s1}:${c.s2}`:'läuft'}
+                    <div style={{color:c?(c.done?T.o:T.t4):T.t4,fontSize:9.5,fontWeight:800}}>
+                      {!c?'frei':c.done?'fertig':'läuft'}
                     </div>
                   );
                 }}/>
@@ -13869,51 +13952,73 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
         <div style={{height:100,flexShrink:0}}/>
       </div>
 
-      <MatchBar onHome={onHome} rightButtons={[
+      {/* Werkzeuge liegen im Fach, nicht dauerhaft in der Leiste.
+          Vier Knoepfe, die man pro Runde vielleicht einmal anfasst,
+          standen ueber dem Turnier, das man staendig ansieht. */}
+      <MatchBar onHome={onHome} homeHidden={toolsOpen} rightButtons={[
         {
-          icon:'■',
-          onClick:()=>setConfirmEnd(true),
-          label:'Turnier beenden',
-          style:{
-            background:'rgba(232,69,69,0.12)',
-            border:`1px solid rgba(232,69,69,0.5)`,
-            color:T.r,
-            fontSize:18,
-            fontWeight:800,
-          }
-        },
-        /* Live teilen — stand bis hierher oben neben Timer und
-           Historie. Dort ist die Reihe fuer das, was die laufende Runde
-           steuert; Teilen ist eine Aktion am Turnier und gehoert damit
-           zu Beenden, Ansagen und Bearbeiten. */
-        {
+          items:[
+            {
+              icon:'■',
+              onClick:()=>{setToolsOpen(false);setConfirmEnd(true);},
+              label:'Turnier beenden',
+              style:{
+                background:'rgba(232,69,69,0.12)',
+                border:`1px solid rgba(232,69,69,0.5)`,
+                color:T.r,
+                fontSize:18,
+                fontWeight:800,
+              }
+            },
+            /* Live teilen — stand bis hierher oben neben Timer und
+               Historie. Dort ist die Reihe fuer das, was die laufende
+               Runde steuert; Teilen ist eine Aktion am Turnier. */
+            {
+              icon:(<>
+                <svg width="21" height="21" viewBox="0 0 24 24" fill="none"
+                  stroke={T.o} strokeWidth="1.9" strokeLinecap="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="1.8" fill={T.o} stroke="none"/>
+                  <path d="M8.5 15.5a5 5 0 0 1 0-7M15.5 8.5a5 5 0 0 1 0 7"/>
+                  <path d="M6 18a8.5 8.5 0 0 1 0-12M18 6a8.5 8.5 0 0 1 0 12"/>
+                </svg>
+                {tourney.onlinePin&&(
+                  <span className="court-live-dot" style={{position:'absolute',top:4,right:4,
+                    width:7,height:7,borderRadius:'50%',background:T.r,
+                    boxShadow:`0 0 6px ${T.r}aa`}}/>
+                )}
+              </>),
+              onClick:()=>{setToolsOpen(false);openLiveShare();},
+              label:'Live teilen',
+              style:{position:'relative',
+                ...(tourney.onlinePin?{background:T.oSoft,border:`1px solid ${T.o}`}:{})},
+            },
+            {
+              icon:<SpeakerIcon size={20} color={T.o}/>,
+              onClick:()=>{buzz(6);setToolsOpen(false);setCueSheet(true);},
+              label:'Platz-Ansagen',
+            },
+            {
+              icon:<EditIcon size={20} color={T.o}/>,
+              onClick:()=>{setToolsOpen(false);onEdit();},
+              label:'Turnier bearbeiten',
+            },
+          ],
+          open:toolsOpen,
+          /* Der Live-Punkt wandert auf den Schalter, solange das Fach
+             zu ist: dass gerade gespiegelt wird, darf nicht hinter
+             einem Knopf verschwinden. */
           icon:(<>
-            <svg width="21" height="21" viewBox="0 0 24 24" fill="none"
-              stroke={T.o} strokeWidth="1.9" strokeLinecap="round" aria-hidden="true">
-              <circle cx="12" cy="12" r="1.8" fill={T.o} stroke="none"/>
-              <path d="M8.5 15.5a5 5 0 0 1 0-7M15.5 8.5a5 5 0 0 1 0 7"/>
-              <path d="M6 18a8.5 8.5 0 0 1 0-12M18 6a8.5 8.5 0 0 1 0 12"/>
-            </svg>
-            {tourney.onlinePin&&(
+            <ToolsIcon size={21} color={T.o}/>
+            {tourney.onlinePin&&!toolsOpen&&(
               <span className="court-live-dot" style={{position:'absolute',top:4,right:4,
                 width:7,height:7,borderRadius:'50%',background:T.r,
                 boxShadow:`0 0 6px ${T.r}aa`}}/>
             )}
           </>),
-          onClick:openLiveShare,
-          label:'Live teilen',
+          onClick:()=>{buzz(6);setToolsOpen(o=>!o);},
+          label:toolsOpen?'Turnier-Tools schließen':'Turnier-Tools',
           style:{position:'relative',
-            ...(tourney.onlinePin?{background:T.oSoft,border:`1px solid ${T.o}`}:{})},
-        },
-        {
-          icon:<SpeakerIcon size={20} color={T.o}/>,
-          onClick:()=>{buzz(6);setCueSheet(true);},
-          label:'Platz-Ansagen',
-        },
-        {
-          icon:<EditIcon size={20} color={T.o}/>,
-          onClick:onEdit,
-          label:'Turnier bearbeiten',
+            ...(toolsOpen?{background:T.oSoft,border:`1px solid ${T.o}`}:{})},
         },
         /* Derselbe Knopf wie der breite unten in der Liste, nur solange
            der nicht im Bild ist. Steht als Letztes, damit er da

@@ -172,19 +172,44 @@ ihn ändern:
   Kartenrand nicht mehr — nur noch den zum Tier-Chip, falls einer da
   ist (`marginBottom: tier ? 14 : 0`).
 
+Auf den Kacheln der Platzkarte steht **kein Spielstand**, nur der
+Zustand („frei" / „läuft" / „fertig"). Auf 80 px liest man „16:8"
+eher raten als lesen, und es steht ohnehin groß auf der Court-Karte
+darunter: die Karte beantwortet „wo wird gespielt und ist der Platz
+durch", nicht „wie steht es".
+
 Die Platzkarte darüber trägt denselben Stift in denselben Maßen
 (30 px, `borderRadius: 9`): es ist dieselbe Geste — antippen, ändern,
 wieder antippen. Dass man drin ist, sagen der gefüllte Knopf und das
 Ressort („ANORDNUNG ANPASSEN"), nicht ein zweites Wort auf dem Knopf.
 
-### `MatchBar` im laufenden Turnier — eine Leiste für alles
+### `MatchBar` im laufenden Turnier — das Werkzeug-Fach
 
-Die Knopfleiste unten trägt jetzt alles, was am Turnier hängt:
-Beenden, **Live teilen**, Ansagen, Bearbeiten — und, wenn die Runde
-fertig ist, **Nächste Runde** als runder Pfeil.
+Die Leiste zeigt im Ruhezustand nur **Home**, den **Werkzeug-Schalter**
+(`ToolsIcon`, vier Kacheln) und — wenn die Runde fertig ist —
+**Nächste Runde**. Beenden, Live teilen, Ansagen und Bearbeiten liegen
+im Fach: vier Knöpfe, die man pro Runde vielleicht einmal anfasst,
+standen dauerhaft über dem Turnier, das man ständig ansieht.
 
-- **Live teilen stand oben** neben Timer, Ansicht und Historie. Diese
-  Reihe steuert die *laufende Runde*; Teilen ist eine Aktion am
+- Ein `rightButtons`-Eintrag mit **`items`** ist ein Fach. Seine Knöpfe
+  liegen **absolut** links neben dem Schalter (`right: calc(100% + 10px)`)
+  und wachsen nach links — nicht im Fluss. Grund ist Arithmetik: sechs
+  runde Knöpfe passen bei 390 px nicht nebeneinander (vier Werkzeuge
+  230 px + Schalter + Weiter + Home = 376 von 342). Im Fluss müsste
+  etwas schrumpfen; *über* der Leiste darf es einfach liegen.
+- Animiert wird **`max-width`, nicht `width`** — von `width:auto` auf 0
+  gibt es keinen Übergang.
+- Solange das Fach offen ist, blendet **Home** aus (`homeHidden`): das
+  Fach wächst über ihn hinweg, und ein halb verdeckter Knopf sieht
+  kaputt aus.
+- Das Fach fährt nach **4,5 s** von allein ein, und jeder Griff hinein
+  schließt es — die Entscheidung ist getroffen. Timer und Zustand
+  liegen in `TournamentPlay`, `MatchBar` bleibt ein reiner Renderer.
+- Der **Live-Punkt wandert auf den Schalter**, solange das Fach zu ist.
+  Dass gerade gespiegelt wird, darf nicht hinter einem Knopf
+  verschwinden.
+- **Live teilen stand davor oben** neben Timer, Ansicht und Historie.
+  Diese Reihe steuert die *laufende Runde*; Teilen ist eine Aktion am
   Turnier. Der Timer bekommt dadurch die Breite zurück, die der
   vierte 58-px-Knopf gekostet hat.
 - **Der breite „Nächste Runde"-Knopf steht am Ende der Liste** — wer
@@ -449,6 +474,15 @@ ein farbiger Kreis allein ist ein Raten. Die Tinte im Kreis ist
 `'#000'` bzw. `'#fff'`, nicht `T.bg`/`T.t1`: sie richtet sich nach der
 Füllung, nicht nach dem Theme (gleiches Muster wie der orange
 Weiter-Knopf, der seit jeher `'#000'` trägt).
+
+**Beide Schritte liegen in derselben Rasterzelle** (`display:grid`,
+beide auf `gridArea:'1 / 1'`, der inaktive auf `visibility:hidden`).
+Die Zelle ist so hoch wie der höhere von beiden, und damit ist das
+Sheet in beiden Schritten gleich hoch — der Knopfrand springt beim
+„Weiter" nicht mehr um ~200 px nach unten. Keine feste Zahl: Schritt 2
+misst je nach Feld und offenen Ergebnissen 580 bis 660 px, das Raster
+misst selbst. Die Knopfreihe trägt `marginTop:'auto'`, damit sie in
+beiden Schritten auf derselben Höhe sitzt.
 
 **Schritt 2 trägt dieselbe Reihe** — `← Zurück` (gelb) und
 `■ Turnier beenden` (rot) — und bewusst **dasselbe

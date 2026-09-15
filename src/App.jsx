@@ -3263,7 +3263,14 @@ function MatchBar({onHome,rightIcon,onRight,rightButtons,homeLabel='Zurück zur 
     flexShrink:0,
   };
   // Legacy single-button mode → wrap into array
-  const buttons=rightButtons||(rightIcon?[{icon:rightIcon,onClick:onRight}]:[]);
+  const buttons=(rightButtons||(rightIcon?[{icon:rightIcon,onClick:onRight}]:[])).filter(Boolean);
+  /* btn.hidden blendet einen Knopf weg, statt ihn aus der Reihe zu
+     nehmen: er faellt auf Breite 0 zusammen und zieht die Luecke vor
+     sich mit ein (marginLeft gegen das flex-gap), damit die Reihe
+     buendig am rechten Rand bleibt. Nur fuer Knoepfe, die nicht der
+     erste der Gruppe sind — davor gibt es keine Luecke zu schlucken. */
+  const hide={opacity:0,transform:'scale(.55)',pointerEvents:'none',
+    width:0,minWidth:0,marginLeft:-10,padding:0,border:'none',overflow:'hidden'};
   return(
     <div style={{position:'absolute',
       // Auf Navbar-Hoehe: gleicher Bottom-Anchor wie die TabBar
@@ -3289,7 +3296,8 @@ function MatchBar({onHome,rightIcon,onRight,rightButtons,homeLabel='Zurück zur 
               ...(btn.style||{}),
               cursor:btn.disabled?'not-allowed':'pointer',
               opacity:btn.disabled?.5:1,
-              transition:'opacity .15s',
+              transition:'opacity .22s,transform .22s,width .22s,margin .22s',
+              ...(btn.hidden?hide:{}),
             }}
             onPointerDown={e=>!btn.disabled&&(e.currentTarget.style.opacity='.7')}
             onPointerUp={e=>e.currentTarget.style.opacity=btn.disabled?.5:1}
@@ -8507,12 +8515,24 @@ function TournamentWizard({onClose,onFinish,canStart,
   // Zusammenfassungs-Zeilen (Schritt 6) — [Label, Wert, Ziel-Schritt].
   const fmtLabel=meta.name;
   const wmLabel=winMode==='wins'?'Siege':'Punkte';
+  /* Spanne des Zeitfensters — die Uhrzeiten allein sagen nicht, wie
+     lange der Abend ist, und genau danach fragt man hier. Ueber
+     Mitternacht wird gewrappt wie in windowMin. */
+  const wSpan=(()=>{
+    const hm=t=>{const m=/^(\d{1,2}):(\d{2})$/.exec((t||'').trim());
+      if(!m)return null;const h=+m[1],mi=+m[2];return h>23||mi>59?null:h*60+mi;};
+    const a=hm(startTime),b=hm(endTime);
+    if(a==null||b==null) return null;
+    let d=b-a; if(d<=0) d+=1440;
+    const h=d/60;
+    return `${Number.isInteger(h)?h:h.toFixed(1).replace('.',',')} Std`;
+  })();
   const rows=[
     ['Format',fmtLabel,0],
-    ['Spieler',`${players.length} — ${players.slice(0,4).map(p=>(p.name||'').trim().split(/\s+/)[0]).join(', ')}${players.length>4?' …':''}`,1],
+    ['Spieler',String(players.length),1],
     ['Courts',String(numCourts),2],
-    ['Zeit',startTime&&endTime?`${startTime}–${endTime}`:'offen',3],
-    ['Runden',`${roundDur} Min, ${roundPrio==='variety'?'jeder mit jedem':'längere Runden'}`,4],
+    ['Zeit',startTime&&endTime?`${startTime}–${endTime}${wSpan?`  ·  ${wSpan}`:''}`:'offen',3],
+    ['Runden',`${roundDur} Min`,4],
     ['Pausen',pauseMode==='none'?'ohne Ausgleich'
       :pauseMode==='fixed'?`${pausePts} Punkt${pausePts===1?'':'e'} je Pause`
       :'mit Ausgleich',4],
@@ -8783,7 +8803,7 @@ function TournamentWizard({onClose,onFinish,canStart,
               {labelRow(<CourtIcon size={13}/>,'Anordnung auf der Anlage')}
               <div style={{color:T.t3,fontSize:12,lineHeight:1.55,marginBottom:12}}>
                 Legt die Plätze so, wie sie bei euch liegen — im laufenden Turnier
-                sieht dann jeder auf einen Blick, wo gespielt wird.
+                kannst du die Platzkarte zum Filtern nutzen.
               </div>
               <CourtMap layout={layout} names={i=>courtLabel(courtNames,i)}
                 singles={wCanSingles?courtSingles:[]} editable
@@ -9789,7 +9809,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
               </div>
               <div style={{color:T.t3,fontSize:11.5,lineHeight:1.5,marginBottom:12}}>
                 Legt die Plätze so, wie sie bei euch liegen — im laufenden Turnier
-                sieht dann jeder auf einen Blick, wo gespielt wird.
+                kannst du die Platzkarte zum Filtern nutzen.
               </div>
               <CourtMap layout={layout} names={i=>courtLabel(courtNames,i)}
                 singles={singles} editable
@@ -13201,6 +13221,16 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
      Stell-Modus, mit dem der Host die Anordnung vor Ort noch gerade
      rueckt — geplant wird am Kuechentisch, gespielt auf der Anlage. */
   const[courtFilter,setCourtFilter]=useState(null);
+  /* "Naechste Runde" steht als breiter Knopf am ENDE der Liste — wer
+     oben steht, sieht ihn nicht und weiss nicht, dass die Runde fertig
+     ist. Deshalb wandert er als runder Pfeil in die Knopfleiste, solange
+     er selbst nicht im Bild ist, und verschwindet dort wieder, sobald
+     man unten ankommt. Gemessen wird per IntersectionObserver am Knopf
+     selbst statt an einer Scroll-Position: die Frage ist "sieht man
+     ihn?", und nur die beantwortet das ohne Schwellenwert-Raten. */
+  const scrollRef=useRef(null);
+  const nextBtnRef=useRef(null);
+  const[nextInView,setNextInView]=useState(true);
   const[layoutEdit,setLayoutEdit]=useState(false);
   const[layoutSel,setLayoutSel]=useState(null);
   // Defensive: korrupte/unvollständige persistierte Turniere (z. B.
@@ -13528,6 +13558,20 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
   };
 
   const allDone=round.courts.every(c=>c.done);
+
+  /* Beobachtet den breiten "Naechste Runde"-Knopf im Scroll-Container.
+     threshold 0.9: erst wenn er fast ganz da ist, gilt er als sichtbar —
+     sonst tauschen die beiden Knoepfe genau dann, wenn vom breiten ein
+     Streifen am unteren Rand haengt, und es flackert. */
+  useEffect(()=>{
+    const el=nextBtnRef.current,root=scrollRef.current;
+    if(!allDone||tab!=='round'||!el||!root){ setNextInView(true); return; }
+    if(typeof IntersectionObserver!=='function'){ setNextInView(true); return; }
+    const io=new IntersectionObserver(es=>setNextInView(es[0].isIntersecting),
+      {root,threshold:0.9});
+    io.observe(el);
+    return ()=>io.disconnect();
+  },[allDone,tab,tourney.current]);
   // Leaderboard nur aus BESTÄTIGTEN Runden (vor der laufenden) — er
   // aktualisiert sich erst beim Rundenwechsel ("Nächste Runde"), nicht
   // schon beim Bestätigen einzelner Courts in der aktuellen Runde.
@@ -13619,29 +13663,10 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
           <HistoryIcon size={25} color={T.o}/>
         </button>
 
-        {/* Live teilen — QR/PIN für Spieler vor Ort (Mirror-Session). */}
-        <button onClick={openLiveShare}
-          title="Live teilen" aria-label="Live teilen"
-          style={{width:58,flexShrink:0,position:'relative',
-            background:tourney.onlinePin?T.oSoft:T.bg,
-            border:`2px solid ${T.o}`,borderRadius:16,cursor:'pointer',
-            display:'flex',alignItems:'center',justifyContent:'center'}}>
-          {/* Broadcast-Glyph: Punkt mit Funkwellen */}
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-            stroke={T.o} strokeWidth="1.9" strokeLinecap="round" aria-hidden="true">
-            <circle cx="12" cy="12" r="1.8" fill={T.o} stroke="none"/>
-            <path d="M8.5 15.5a5 5 0 0 1 0-7M15.5 8.5a5 5 0 0 1 0 7"/>
-            <path d="M6 18a8.5 8.5 0 0 1 0-12M18 6a8.5 8.5 0 0 1 0 12"/>
-          </svg>
-          {tourney.onlinePin&&(
-            <span className="court-live-dot" style={{position:'absolute',top:6,right:6,
-              width:7,height:7,borderRadius:'50%',background:T.r,
-              boxShadow:`0 0 6px ${T.r}aa`}}/>
-          )}
-        </button>
       </div>
 
-      <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:12,overflowY:'auto'}}>
+      <div ref={scrollRef}
+        style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:12,overflowY:'auto'}}>
 
         {tab==='round'&&(<>
           {/* Online: Pending Score-Submissions (Host approved/rejected) */}
@@ -13798,10 +13823,10 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
           {/* Next round (when allDone) — öffnet erst das Transparenz-
               Popup zum Pausen-Ausgleich (wenn jemand pausiert hat). */}
           {allDone&&(
-            <button onClick={requestNextRound}
+            <button ref={nextBtnRef} onClick={requestNextRound}
               style={{padding:'14px',borderRadius:16,border:'none',
                 background:T.o,color:T.bg,fontSize:15,fontWeight:800,cursor:'pointer',
-                marginTop:6}}>
+                marginTop:6,flexShrink:0}}>
               Nächste Runde →
             </button>
           )}
@@ -13866,6 +13891,29 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
             fontWeight:800,
           }
         },
+        /* Live teilen — stand bis hierher oben neben Timer und
+           Historie. Dort ist die Reihe fuer das, was die laufende Runde
+           steuert; Teilen ist eine Aktion am Turnier und gehoert damit
+           zu Beenden, Ansagen und Bearbeiten. */
+        {
+          icon:(<>
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none"
+              stroke={T.o} strokeWidth="1.9" strokeLinecap="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="1.8" fill={T.o} stroke="none"/>
+              <path d="M8.5 15.5a5 5 0 0 1 0-7M15.5 8.5a5 5 0 0 1 0 7"/>
+              <path d="M6 18a8.5 8.5 0 0 1 0-12M18 6a8.5 8.5 0 0 1 0 12"/>
+            </svg>
+            {tourney.onlinePin&&(
+              <span className="court-live-dot" style={{position:'absolute',top:4,right:4,
+                width:7,height:7,borderRadius:'50%',background:T.r,
+                boxShadow:`0 0 6px ${T.r}aa`}}/>
+            )}
+          </>),
+          onClick:openLiveShare,
+          label:'Live teilen',
+          style:{position:'relative',
+            ...(tourney.onlinePin?{background:T.oSoft,border:`1px solid ${T.o}`}:{})},
+        },
         {
           icon:<SpeakerIcon size={20} color={T.o}/>,
           onClick:()=>{buzz(6);setCueSheet(true);},
@@ -13875,7 +13923,17 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
           icon:<EditIcon size={20} color={T.o}/>,
           onClick:onEdit,
           label:'Turnier bearbeiten',
-        }
+        },
+        /* Derselbe Knopf wie der breite unten in der Liste, nur solange
+           der nicht im Bild ist. Steht als Letztes, damit er da
+           auftaucht, wo der Daumen schon liegt. */
+        {
+          icon:<span style={{fontSize:21,fontWeight:800,lineHeight:1}}>→</span>,
+          onClick:requestNextRound,
+          label:'Nächste Runde',
+          hidden:!(allDone&&tab==='round'&&!nextInView),
+          style:{background:T.o,border:'none',color:T.bg},
+        },
       ]}/>
 
       {cueSheet&&<SoundCueSheet onClose={()=>setCueSheet(false)}/>}

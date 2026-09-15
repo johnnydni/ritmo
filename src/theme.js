@@ -777,6 +777,17 @@ input[type="time"]::-webkit-datetime-edit{padding:0;text-align:center;}
 .court-live-border{animation:courtBorderPulse 2s ease-in-out infinite;}
 .court-vs{animation:vsPulse 2.6s ease-in-out infinite;}
 .court-score-pop{animation:scorePop .35s cubic-bezier(.22,.95,.34,1) both;}
+/* Das VS auf dem Netz wird zum Bestaetigen-Knopf, sobald beide
+   Punktestaende stehen — und wieder zurueck, wenn eines fehlt. Der
+   Wechsel dreht und federt, damit man ihn im Augenwinkel bemerkt:
+   der Knopf taucht mitten im Bild auf, wo eben noch eine Plakette
+   stand. */
+.court-net-pop{animation:netPop .42s cubic-bezier(.22,1.2,.36,1) both;}
+@keyframes netPop{
+  0%   {transform:scale(.35) rotate(-120deg); opacity:0;}
+  55%  {transform:scale(1.18) rotate(8deg);   opacity:1;}
+  100% {transform:scale(1) rotate(0);         opacity:1;}
+}
 
 /* ═══════════════════════════════════════════════════════════════
    GLOBAL MICRO-INTERACTIONS

@@ -147,6 +147,37 @@ The grid is five columns — `players | innerA | net | innerB | players` — and
 - Both score cells carry the same fixed width, otherwise a one-digit score sits closer to the net than a two-digit one.
 - Open courts show a `ScoreWheel` (its row height is the `h` prop — 28 in the grid, the default 34 elsewhere), confirmed courts a large number with the winner in the accent color.
 
+### `MatchBar` im laufenden Turnier — eine Leiste für alles
+
+Die Knopfleiste unten trägt jetzt alles, was am Turnier hängt:
+Beenden, **Live teilen**, Ansagen, Bearbeiten — und, wenn die Runde
+fertig ist, **Nächste Runde** als runder Pfeil.
+
+- **Live teilen stand oben** neben Timer, Ansicht und Historie. Diese
+  Reihe steuert die *laufende Runde*; Teilen ist eine Aktion am
+  Turnier. Der Timer bekommt dadurch die Breite zurück, die der
+  vierte 58-px-Knopf gekostet hat.
+- **Der breite „Nächste Runde"-Knopf steht am Ende der Liste** — wer
+  oben steht, sieht ihn nicht und weiß nicht, dass die Runde fertig
+  ist. Er wandert deshalb als Pfeil in die Leiste, solange er selbst
+  nicht im Bild ist, und verschwindet dort wieder, sobald man unten
+  ankommt. Es ist derselbe Knopf, nicht ein zweiter Weg.
+- Gemessen wird per `IntersectionObserver` **am Knopf selbst**, mit
+  dem Scroll-Container als `root` und `threshold: 0.9`. Nicht über
+  eine Scroll-Position: die Frage ist „sieht man ihn?", und nur die
+  beantwortet das ohne geratenen Schwellenwert. Die 0.9 verhindert das
+  Flackern, wenn vom breiten Knopf nur ein Streifen am unteren Rand
+  hängt.
+- `btn.hidden` in `MatchBar` blendet einen Knopf weg, statt ihn aus
+  dem Array zu nehmen: Breite 0 plus `marginLeft:-10` gegen das
+  `gap` der Reihe. Ein Knopf, der einfach verschwindet, lässt die
+  Reihe springen und vom rechten Rand abrücken. Gilt nur für Knöpfe,
+  die nicht die ersten der Gruppe sind — davor gibt es keine Lücke zu
+  schlucken.
+- Fünf Knöpfe plus Home sind bei 390 px die Obergrenze: 48 px je
+  Knopf, 10 px Lücke, 24 px Rand — 328 von 342 px. Ein sechster passt
+  nicht.
+
 ### `TournamentModeIcon` — die sieben Modus-Glyphen
 
 Steht in [src/icons.jsx](src/icons.jsx) und rechts auf den Format-Karten

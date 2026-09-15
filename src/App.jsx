@@ -22457,6 +22457,76 @@ export default function App(){
     return ()=>sub?.subscription?.unsubscribe();
   },[]);
 
+  /* ── TASTATUR: DAS FELD ROLLT MIT ──────────────────────────────
+     Wer unten in einem langen Formular in ein Feld tippt, bekommt vom
+     Browser einen Sprung: die Tastatur faehrt hoch, das Feld liegt
+     dahinter, und die Seite springt hart nach oben, bis es wieder zu
+     sehen ist. Der Sprung kommt ohne Uebergang und ohne Bezug zu dem,
+     was man gerade gemacht hat.
+
+     Hier rollt das Feld stattdessen weich in den sichtbaren Bereich —
+     in derselben Zeit, in der die Tastatur aufgeht.
+
+     Drei Dinge, auf die es dabei ankommt:
+
+     - Gerechnet wird gegen das VISUAL VIEWPORT, nicht gegen
+       window.innerHeight. Auf iOS schrumpft das Layout-Viewport beim
+       Oeffnen der Tastatur gar nicht; nur visualViewport weiss, wo
+       der sichtbare Bereich aufhoert. scrollIntoView({block:'center'})
+       zentriert im LAYOUT-Viewport und laesst das Feld deshalb
+       trotzdem hinter der Tastatur stehen.
+     - Gerollt wird der naechste scrollende Vorfahre, nicht das
+       Fenster: die Screens hier sind 100dvh hoch, gescrollt wird
+       immer eine Box darin (auch in den Sheets).
+     - Bewegt wird nur, was noetig ist. Ein Feld, das schon bequem
+       im Bild steht, bleibt stehen — sonst wandert bei jedem
+       Feldwechsel das halbe Formular.
+
+     Kein globales scroll-behavior:smooth: das wuerde auch das
+     ScoreWheel und den MinuteRuler betreffen, die ihre Startposition
+     per scrollTop setzen — die wuerden beim Aufbau sichtbar
+     dorthin fahren statt schon dort zu stehen. */
+  useEffect(()=>{
+    const KB_MARGIN=26;
+    const field=el=>!!el&&(el.tagName==='INPUT'||el.tagName==='TEXTAREA'||el.isContentEditable);
+    const scroller=el=>{
+      for(let p=el.parentElement;p;p=p.parentElement){
+        const oy=getComputedStyle(p).overflowY;
+        if((oy==='auto'||oy==='scroll')&&p.scrollHeight>p.clientHeight+4) return p;
+      }
+      return null;
+    };
+    let timer=0,raf=0;
+    const bring=()=>{
+      const el=document.activeElement;
+      if(!field(el)) return;
+      const vv=window.visualViewport;
+      const top=vv?vv.offsetTop:0, h=vv?vv.height:window.innerHeight;
+      const r=el.getBoundingClientRect();
+      let d=0;
+      if(r.bottom>top+h-KB_MARGIN) d=r.bottom-(top+h-KB_MARGIN);
+      else if(r.top<top+KB_MARGIN) d=r.top-(top+KB_MARGIN);
+      if(Math.abs(d)<6) return;
+      const soft=!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+      const opt={top:d,behavior:soft?'smooth':'auto'};
+      const sp=scroller(el);
+      if(sp) sp.scrollBy(opt); else window.scrollBy(opt);
+    };
+    const later=ms=>{clearTimeout(timer);timer=setTimeout(bring,ms);};
+    // Beim Fokus weiss noch niemand, wie hoch die Tastatur wird —
+    // erst die Groessenaenderung des visualViewport sagt es. Der
+    // Fokus-Anlauf ist der Fallback fuer Browser ohne visualViewport.
+    const onFocus=e=>{ if(field(e.target)) later(window.visualViewport?320:180); };
+    const onVV=()=>{ cancelAnimationFrame(raf); raf=requestAnimationFrame(()=>later(60)); };
+    document.addEventListener('focusin',onFocus);
+    window.visualViewport?.addEventListener('resize',onVV);
+    return ()=>{
+      document.removeEventListener('focusin',onFocus);
+      window.visualViewport?.removeEventListener('resize',onVV);
+      clearTimeout(timer); cancelAnimationFrame(raf);
+    };
+  },[]);
+
   // Persist
   useEffect(()=>lsSet('ritmo_cfg',cfg),[cfg]);
   useEffect(()=>lsSet('ritmo_bo3',bo3),[bo3]);

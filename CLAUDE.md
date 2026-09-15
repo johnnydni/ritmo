@@ -428,6 +428,24 @@ Themes are defined as CSS variable sets in the `CSS` template literal in [`src/t
 
 When adding a styled element: use the `T.*` tokens. Never hardcode hex colors in components — the theme switch will break.
 
+**Vier Rollen, vier Farben** — jede Farbe hat eine Aufgabe, und ein
+Knopfstapel soll sich daran ablesen lassen:
+
+| Token | Rolle | Beispiel |
+|---|---|---|
+| `T.o` | die Marke, „weiter" | `Weiter →` |
+| `T.r` | Abbruch / Endgültiges | `Turnier jetzt beenden` |
+| `T.blue` | nachsehen, Nebenhandlung | `Alle Runden durchsehen`, `PauseBonusChip` |
+| `T.yellow` | der Weg zurück | `Zurück zum Turnier`, `← Zurück zur Prüfung` |
+
+`--yellow` / `--yellowSoft` stehen wie `--homeHeaderGrad` als
+*abgeleitete* Tokens unter den Theme-Sätzen, nicht in jedem einzeln:
+die Farbe gehört zu keiner Palette. Die hellen Sätze bekommen ein
+dunkleres Amber — `#FFC93C` verschwindet auf Weiß. Vor dieser Rolle
+trugen „zurück" und „nachsehen" beide die graue Standardkontur; in
+einem Stapel aus drei Knöpfen sah der Ausweg aus wie die Nebensache
+daneben.
+
 ### Fonts
 
 Three families, exposed as theme-independent tokens (`--font-sans`, `--font-text`,
@@ -456,9 +474,13 @@ like a sports magazine, not like a settings dialog):
 Two shared components carry the pattern; prefer extending them over
 re-inventing a header:
 
-- `ScreenHeader({kicker,title,subtitle,rule})` — ressort → headline →
-  orange hairline → italic standfirst. `rule={false}` drops the hairline
-  where vertical space is tight (the running-tournament screen).
+- `ScreenHeader({kicker,title,subtitle,rule,subtitleItalic})` — ressort →
+  headline → orange hairline → italic standfirst. `rule={false}` drops the
+  hairline where vertical space is tight (the running-tournament screen).
+  `subtitleItalic={false}` drops the italic where the subline is not a
+  standfirst but a **status row** — the running tournament's
+  `Americano | Runde 4 | Bis 21:00 Uhr`. Italic belongs to prose; those
+  are three separate readings with rules between them, not a sentence.
 - `SectionRule({children,trailing})` — section label plus a full-width
   hairline underneath. The hairline sits *below* the row on purpose: inline
   it collapsed to a stub whenever the label was long and a trailing action

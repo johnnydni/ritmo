@@ -29,6 +29,8 @@ export const T = {
   blue:     'var(--blue)',
   blueSoft: 'var(--blueSoft)',
   blueGlow: 'var(--blueGlow)',
+  yellow:     'var(--yellow)',      // der Weg zurueck (siehe CSS unten)
+  yellowSoft: 'var(--yellowSoft)',
   gold:     'var(--gold)',
   /* Schriften — siehe --font-* in CSS unten. */
   fontSans:    'var(--font-sans)',     // Inter — UI-Grundschrift
@@ -291,6 +293,31 @@ export const CSS = `
 :root, :root[data-theme="dark"]{
   --homeHeaderGrad: linear-gradient(160deg,
     #FF7A1A 0%, #8A3D0B 30%, #1E1208 64%, var(--bg) 100%);
+}
+
+/* ── GELB — der Weg zurueck ───────────────────────────────────────
+   Die dritte Rolle neben Orange (die Marke, "weiter") und Rot
+   (Abbruch, "beenden"): der Knopf, der einen Schritt zurueckgeht.
+   Vorher trug der dieselbe graue Kontur wie jeder andere
+   Nebenknopf — in einem Stapel aus drei Knoepfen sah der Ausweg aus
+   wie die Nebensache daneben.
+
+   Steht wie --homeHeaderGrad als abgeleiteter Token hier unten statt
+   in jedem Theme-Satz einzeln: es gehoert zu keiner Palette. Die
+   hellen Saetze bekommen ein dunkleres Amber — #FFC93C verschwindet
+   auf Weiss. (Die Attribut-Selektoren gewinnen ueber das nackte
+   :root, die Reihenfolge ist also egal.) */
+:root[data-theme="light"],
+:root[data-theme="glass-light"],
+:root[data-theme="padel"],
+:root[data-theme="wimbledon"],
+:root[data-theme="funky"]{
+  --yellow: #9A6B00;
+  --yellowSoft: rgba(154,107,0,0.10);
+}
+:root, :root[data-theme="dark"]{
+  --yellow: #FFC93C;
+  --yellowSoft: rgba(255,201,60,0.12);
 }
 
 /* ════ Funky Globals — Body, Headings, Cards ════════════════════
@@ -1239,6 +1266,8 @@ export function buildThemePalette({bg,text,highlight,secondary,font}){
     oFlash:rgba(highlight,0.18),
     g:'#34C759', r:'#E84545',
     blue:secondary, blueSoft:rgba(secondary,0.20), blueGlow:rgba(secondary,0.50),
+    yellow:bgIsLight?'#9A6B00':'#FFC93C',
+    yellowSoft:bgIsLight?'rgba(154,107,0,0.10)':'rgba(255,201,60,0.12)',
     gold:highlight,
     font,
   };

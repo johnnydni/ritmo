@@ -7887,64 +7887,6 @@ function ScanGlyph({size=18,color}){
   );
 }
 
-/* Court-Emoji — kleiner Marker neben dem Court-Namen in der Turnier-
-   Übersicht. Rein kosmetisch, hilft aber beim Zurufen über die Anlage
-   ("der Court mit der Rakete"). Auswahl als Popover direkt an der
-   Karte statt als Sheet: es ist eine Ein-Tipp-Entscheidung. */
-const COURT_EMOJIS=['🎾','🔥','⚡','🚀','⭐','💥','🏆','🐐','🦈','🐉',
-  '🌊','🌴','❄️','☀️','🎯','💎','👑','🎸','🍀','🧊'];
-
-function CourtEmojiPicker({value,onPick}){
-  const[open,setOpen]=useState(false);
-  return(
-    <div style={{position:'relative',flexShrink:0}}>
-      <button onClick={()=>{buzz(6);setOpen(o=>!o);}}
-        aria-label={value?'Court-Emoji ändern':'Court-Emoji wählen'}
-        aria-expanded={open}
-        style={{width:26,height:26,borderRadius:8,cursor:'pointer',padding:0,
-          display:'flex',alignItems:'center',justifyContent:'center',
-          background:value?'transparent':T.card2,
-          border:`1px solid ${value?'transparent':T.border}`,
-          fontSize:value?16:11,lineHeight:1,color:T.t3}}>
-        {value||'+'}
-      </button>
-      {open&&(
-        <>
-          {/* Klick daneben schließt — ohne den Rest der Karte zu blockieren. */}
-          <div onClick={()=>setOpen(false)}
-            style={{position:'fixed',inset:0,zIndex:40}}/>
-          <div className="fi" style={{position:'absolute',top:32,left:0,zIndex:41,
-            width:214,padding:8,borderRadius:14,
-            background:'color-mix(in srgb, var(--card2) 94%, transparent)',
-            border:`1px solid ${T.border}`,
-            WebkitBackdropFilter:'blur(14px) saturate(160%)',
-            backdropFilter:'blur(14px) saturate(160%)',
-            boxShadow:'0 12px 28px rgba(0,0,0,.45)',
-            display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:4}}>
-            {COURT_EMOJIS.map(e=>(
-              <button key={e} onClick={()=>{buzz(6);onPick(e===value?null:e);setOpen(false);}}
-                aria-label={`Emoji ${e}`}
-                style={{height:34,borderRadius:9,cursor:'pointer',fontSize:17,padding:0,
-                  background:e===value?T.oSoft:'transparent',
-                  border:`1px solid ${e===value?T.o:'transparent'}`}}>
-                {e}
-              </button>
-            ))}
-            {value&&(
-              <button onClick={()=>{buzz(5);onPick(null);setOpen(false);}}
-                style={{gridColumn:'1 / -1',marginTop:2,height:30,borderRadius:9,
-                  cursor:'pointer',background:'transparent',
-                  border:`1px solid ${T.border}`,color:T.t3,
-                  fontSize:11.5,fontWeight:700}}>
-                Emoji entfernen
-              </button>
-            )}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
 
 /* ═══════════════════════════════════════════════════════════════
    TURNIER-TABELLE
@@ -12220,7 +12162,7 @@ function ScoreWheel({value,onChange,max=40,color=T.o,w=52,h=34}){
   );
 }
 
-function TournamentCourtCard({court,courtIndex,courtName,emoji,onPickEmoji,playerById,onScoreChange,onConfirm,onEditLineup,scoreMax=40}){
+function TournamentCourtCard({court,courtIndex,courtName,playerById,onScoreChange,onConfirm,onEditLineup,scoreMax=40}){
   // Score-Werte aus dem Court ziehen. null/undefined = noch nicht
   // eingegeben → Input rendert leer, damit Tippen "5" auch wirklich
   // "5" wird und nicht "05". Beim Abschluss zählt 0 als gültiger
@@ -12312,7 +12254,6 @@ function TournamentCourtCard({court,courtIndex,courtName,emoji,onPickEmoji,playe
             textTransform:'uppercase'}}>
             {courtName||`Court ${courtIndex+1}`}
           </div>
-          {onPickEmoji&&<CourtEmojiPicker value={emoji} onPick={onPickEmoji}/>}
           {court.single&&(
             <div style={{padding:'4px 8px',borderRadius:8,background:T.card2,
               border:`1px solid ${T.border}`,color:T.t2,fontSize:10,
@@ -12331,15 +12272,27 @@ function TournamentCourtCard({court,courtIndex,courtName,emoji,onPickEmoji,playe
               <span style={{fontSize:11,lineHeight:1}}>✓</span>
               Fertig
             </div>
-          ):(
-            <div style={{display:'flex',alignItems:'center',gap:7}}>
-              <div className="court-live-dot"
-                style={{width:8,height:8,borderRadius:'50%',background:T.r,
-                  boxShadow:`0 0 8px ${T.r}aa`}}/>
-              <span style={{color:T.r,fontSize:10,fontWeight:900,letterSpacing:1.3,
-                textTransform:'uppercase'}}>Live</span>
-            </div>
-          )}
+          ):null}
+          {/* Ergebnis bestaetigen — stand als breiter Knopf unter der
+              Karte. Dort kostete er bei sechs Courts sechsmal eine
+              Zeile, obwohl er ein Haken ist. Oben rechts liegt er
+              neben dem Zustand, den er setzt.
+
+              Bestaetigt traegt er KEINEN Stift, sondern das Zeichen
+              fuers Zuruecknehmen: daneben steht schon der Stift fuer
+              die Aufstellung, und zwei gleiche Glyphen in einer Reihe
+              sind ein Ratespiel. */}
+          <button onClick={onConfirm}
+            title={done?'Ergebnis wieder öffnen':'Ergebnis bestätigen'}
+            aria-label={done?'Ergebnis wieder öffnen':'Ergebnis bestätigen'}
+            style={{width:30,height:30,borderRadius:9,flexShrink:0,cursor:'pointer',
+              background:done?T.card2:T.o,
+              border:done?`1px solid ${T.border}`:'none',
+              color:done?T.t2:T.bg,fontSize:done?15:16,fontWeight:900,lineHeight:1,
+              display:'flex',alignItems:'center',justifyContent:'center',
+              transition:'background .2s,color .2s'}}>
+            {done?'↺':'✓'}
+          </button>
           {onEditLineup&&(
             <button onClick={onEditLineup}
               title="Aufstellung bearbeiten" aria-label="Aufstellung bearbeiten"
@@ -12362,7 +12315,9 @@ function TournamentCourtCard({court,courtIndex,courtName,emoji,onPickEmoji,playe
           Feldern in EINER Zeile blieb pro Name kaum Platz, und wer
           mit wem spielt, musste man sich aus der Reihenfolge
           zusammenreimen. */}
-      <div style={{position:'relative',marginBottom:14}}>
+      {/* Ohne den Knopf darunter traegt das Raster den Abstand zum
+          Kartenrand nicht mehr — nur noch den zum Tier-Chip. */}
+      <div style={{position:'relative',marginBottom:tier?14:0}}>
         <MatchSlotGrid
           court={court}
           playerById={playerById}
@@ -12387,7 +12342,7 @@ function TournamentCourtCard({court,courtIndex,courtName,emoji,onPickEmoji,playe
       {/* Match-Tier-Rating (RITMO DNA) — Stil-Chemie beider Teams */}
       {tier&&(
         <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8,
-          marginBottom:12,padding:'7px 12px',borderRadius:13,
+          padding:'7px 12px',borderRadius:13,
           background:`${tier.color}14`,border:`1px solid ${tier.color}55`}}>
           <span style={{color:tier.color,fontSize:12,fontWeight:900,letterSpacing:.6}}>{tier.label}</span>
           <span style={{color:T.t2,fontSize:11,fontWeight:600}}>{tier.sub}</span>
@@ -12397,16 +12352,6 @@ function TournamentCourtCard({court,courtIndex,courtName,emoji,onPickEmoji,playe
         </div>
       )}
 
-      {/* Confirm / Edit Button */}
-      <button onClick={onConfirm}
-        style={{width:'100%',padding:'11px 14px',borderRadius:13,
-          background:done?T.card2:T.o,
-          color:done?T.t2:'#000',fontSize:13,fontWeight:800,letterSpacing:.3,
-          cursor:'pointer',
-          border:done?`1px solid ${T.border}`:'none',
-          transition:'background .2s,color .2s'}}>
-        {done?'✎ Bearbeiten':'✓ Ergebnis bestätigen'}
-      </button>
     </div>
   );
 }
@@ -13705,7 +13650,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
               <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}>
                 <div style={{flex:1,minWidth:0,fontFamily:T.fontDisplay,color:T.t3,
                   fontSize:10,letterSpacing:1.6}}>
-                  {layoutEdit?'ANORDNUNG STELLEN':'PLATZKARTE'}
+                  {layoutEdit?'ANORDNUNG ANPASSEN':'PLATZKARTE'}
                 </div>
                 {courtFilter!=null&&!layoutEdit&&(
                   <button onClick={()=>{buzz(6);setCourtFilter(null);}}
@@ -13715,14 +13660,21 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
                     Filter aus
                   </button>
                 )}
+                {/* Derselbe Stift wie auf der Court-Karte, gleiche
+                    Masse: es ist dieselbe Geste — antippen, aendern,
+                    wieder antippen. Dass man drin ist, sagt der
+                    gefuellte Knopf und das Ressort darueber
+                    ("ANORDNUNG ANPASSEN"), nicht ein zweites Wort. */}
                 <button onClick={()=>{buzz(6);setLayoutEdit(v=>!v);setLayoutSel(null);}}
-                  title={layoutEdit?'Fertig':'Anordnung ändern'}
-                  aria-label={layoutEdit?'Anordnung fertig stellen':'Anordnung ändern'}
-                  style={{padding:'5px 10px',borderRadius:999,flexShrink:0,cursor:'pointer',
+                  title={layoutEdit?'Fertig':'Anordnung anpassen'}
+                  aria-label={layoutEdit?'Anordnung fertig anpassen':'Anordnung anpassen'}
+                  aria-pressed={layoutEdit}
+                  style={{width:30,height:30,borderRadius:9,flexShrink:0,cursor:'pointer',
                     background:layoutEdit?T.o:T.card2,
                     border:`1px solid ${layoutEdit?T.o:T.border}`,
-                    color:layoutEdit?T.bg:T.t2,fontSize:11,fontWeight:700}}>
-                  {layoutEdit?'Fertig':'Stellen'}
+                    display:'flex',alignItems:'center',justifyContent:'center',
+                    transition:'background .2s'}}>
+                  <EditIcon size={15} color={layoutEdit?T.bg:T.t2}/>
                 </button>
               </div>
               <CourtMap layout={tLayout} names={i=>courtLabel(tourney.courtNames,i)}
@@ -13754,12 +13706,6 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
             <TournamentCourtCard key={court.id}
               court={court} courtIndex={ci}
               courtName={courtLabel(tourney.courtNames,ci)}
-              emoji={tourney.courtEmojis?.[ci]||null}
-              onPickEmoji={(e)=>setTourney(t=>{
-                const arr=[...(t.courtEmojis||[])];
-                arr[ci]=e;
-                return {...t,courtEmojis:arr};
-              })}
               playerById={playerById}
               onScoreChange={(field,val)=>updateScore(court.id,field,val)}
               onConfirm={()=>confirmCourt(court.id)}

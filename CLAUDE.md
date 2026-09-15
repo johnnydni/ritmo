@@ -147,6 +147,36 @@ The grid is five columns — `players | innerA | net | innerB | players` — and
 - Both score cells carry the same fixed width, otherwise a one-digit score sits closer to the net than a two-digit one.
 - Open courts show a `ScoreWheel` (its row height is the `h` prop — 28 in the grid, the default 34 elsewhere), confirmed courts a large number with the winner in the accent color.
 
+### Der Kopf der Court-Karte — alles, was man am Court tut
+
+`COURT 1 · 1V1` links, rechts der Zustand und die zwei Knöpfe, die
+ihn ändern:
+
+`[✓ FERTIG]  [✓ / ↺ Ergebnis]  [✎ Aufstellung]`
+
+- **„Ergebnis bestätigen" war ein breiter Knopf unter der Karte.** Bei
+  sechs Courts kostete er sechsmal eine Zeile, obwohl er ein Haken
+  ist. Oben rechts liegt er neben dem Zustand, den er setzt, und die
+  Karte wird um eine Knopfzeile kürzer.
+- **Bestätigt trägt er `↺`, keinen Stift.** Daneben steht schon der
+  Stift für die Aufstellung; zwei gleiche Glyphen nebeneinander sind
+  ein Ratespiel, und „zurücknehmen" ist ohnehin genauer als
+  „bearbeiten" — der Knopf schaltet `court.done` um.
+- **Kein „• LIVE" mehr.** Der Status stand doppelt da: die grüne
+  „Fertig"-Plakette sagt fertig, ihr Fehlen sagt läuft. Ein rotes
+  Blinklicht daneben sagt nur nochmal dasselbe.
+- **Kein Court-Emoji.** Der Picker (`CourtEmojiPicker`) ist raus; alte
+  Turniere tragen `courtEmojis` noch im Datensatz, es liest sie nur
+  niemand mehr.
+- Ohne den Knopf darunter trägt das `MatchSlotGrid` den Abstand zum
+  Kartenrand nicht mehr — nur noch den zum Tier-Chip, falls einer da
+  ist (`marginBottom: tier ? 14 : 0`).
+
+Die Platzkarte darüber trägt denselben Stift in denselben Maßen
+(30 px, `borderRadius: 9`): es ist dieselbe Geste — antippen, ändern,
+wieder antippen. Dass man drin ist, sagen der gefüllte Knopf und das
+Ressort („ANORDNUNG ANPASSEN"), nicht ein zweites Wort auf dem Knopf.
+
 ### `MatchBar` im laufenden Turnier — eine Leiste für alles
 
 Die Knopfleiste unten trägt jetzt alles, was am Turnier hängt:
@@ -229,8 +259,8 @@ Dieselbe Karte steht an drei Stellen und tut dort zwei Dinge:
   braucht man in Lesegroesse, und die passt auf 80 px nicht; wer sie
   sehen will, tippt den Platz an. Der Filter faellt beim Rundenwechsel weg —
   sonst steht der Host vor einer leeren Liste und sucht den Schalter.
-  "Stellen" schaltet dieselbe Karte in den Editiermodus, damit sich die
-  Anordnung vor Ort noch gerade ruecken laesst.
+  Der Stift oben rechts schaltet dieselbe Karte in den Editiermodus,
+  damit sich die Anordnung vor Ort noch gerade ruecken laesst.
 
 - `normLayout` laeuft **bei jeder Benutzung**, nie nur beim Speichern:
   so ueberleben Turniere von vor dieser Funktion, geaenderte

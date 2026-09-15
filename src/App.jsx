@@ -13537,7 +13537,15 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
 
       <ScreenHeader pad={14} ellipsis rule={false}
         title={tourney.name||(FORMATS[tourney.format]||FORMATS.americano).name}
-        subtitle={`${(FORMATS[tourney.format]||FORMATS.americano).name}, Runde ${tourney.current+1}${round.koPhase?`, ${round.koPhase}`:''}${tourney.endTime?`, bis ${tourney.endTime}`:''}`}
+        /* Format, Runde, K.-o.-Phase, Endzeit — mit Trennstrichen statt
+           Kommas: das sind vier gleichrangige Angaben und kein Satz,
+           und der Strich laesst jede fuer sich stehen. */
+        subtitle={[
+          (FORMATS[tourney.format]||FORMATS.americano).name,
+          `Runde ${tourney.current+1}`,
+          round.koPhase||null,
+          tourney.endTime?`Bis ${tourney.endTime} Uhr`:null,
+        ].filter(Boolean).join(' | ')}
         icon={
           // Pokal → Button (Liquid Glass): springt zum Live-Screen.
           <button onClick={()=>{buzz(6);onLive&&onLive();}} aria-label="Zum Live-Screen"

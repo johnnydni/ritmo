@@ -8752,10 +8752,10 @@ function TournamentWizard({onClose,onFinish,canStart,
           </>)}
 
           {step===2&&(<>
-            <div style={stepTitle}>Wie viele Courts habt ihr?</div>
-            <div style={stepSub}>4 Spieler pro Court — mehr Courts bedeuten weniger Pausen.
-              {wCanSingles&&' Per Flip wird ein Court zum Einzel-Court (1v1, 2 Spieler).'}</div>
-            <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:20,margin:'6px 0 14px'}}>
+            {/* Ohne Unterzeile traegt die Ueberschrift deren Abstand mit —
+                sonst klebt der Zaehler am Titel. */}
+            <div style={{...stepTitle,marginBottom:18}}>Wie viele Courts?</div>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:20,margin:'6px 0 22px'}}>
               <button onClick={()=>setNumCourts(Math.max(1,numCourts-1))}
                 style={{...stepBtn,width:52,height:52,borderRadius:16,fontSize:24}}>−</button>
               <div style={{textAlign:'center',minWidth:84}}>
@@ -8765,9 +8765,6 @@ function TournamentWizard({onClose,onFinish,canStart,
               </div>
               <button onClick={()=>setNumCourts(Math.min(maxCourts,numCourts+1))}
                 style={{...stepBtn,width:52,height:52,borderRadius:16,fontSize:24}}>+</button>
-            </div>
-            <div style={{color:T.t3,fontSize:12,textAlign:'center',marginBottom:18}}>
-              Frei wählbar — pro Court spielen 4, überzählige Courts bleiben frei.
             </div>
             {labelRow(<CourtIcon size={13}/>,'Court-Namen (optional)')}
             {Array.from({length:numCourts}).map((_,i)=>(

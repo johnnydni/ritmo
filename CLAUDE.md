@@ -356,6 +356,34 @@ Zwei Dinge, die beim Umbau aufgeflogen sind:
   Falle wie beim Netz in `MatchSlotGrid` und beim Rand des
   `MinuteRuler`. Die klebende Fusszeile traegt denselben Grund.
 
+### Tastatur: das Feld rollt mit
+
+Wer unten in einem langen Formular in ein Feld tippt, bekommt vom
+Browser einen Sprung: die Tastatur fährt hoch, das Feld liegt
+dahinter, und die Seite springt hart nach oben. Ein App-weiter Effekt
+in `App()` rollt es stattdessen weich in den sichtbaren Bereich, in
+derselben Zeit, in der die Tastatur aufgeht.
+
+- Gerechnet wird gegen das **`visualViewport`**, nicht gegen
+  `window.innerHeight`. Auf iOS schrumpft das Layout-Viewport beim
+  Öffnen der Tastatur gar nicht — nur `visualViewport` weiß, wo der
+  sichtbare Bereich aufhört. Aus demselben Grund reicht
+  `scrollIntoView({block:'center'})` nicht: es zentriert im
+  *Layout*-Viewport und lässt das Feld trotzdem hinter der Tastatur.
+- Gerollt wird der **nächste scrollende Vorfahre**, nicht das Fenster:
+  die Screens sind `100dvh` hoch, gescrollt wird immer eine Box darin
+  (auch in den Sheets).
+- Bewegt wird **nur, was nötig ist** (Band von 26 px an beiden
+  Rändern). Ein Feld, das schon bequem im Bild steht, bleibt stehen —
+  sonst wandert bei jedem Feldwechsel das halbe Formular.
+- Ausgelöst von `focusin` **und** `visualViewport.resize`: beim Fokus
+  weiß noch niemand, wie hoch die Tastatur wird. Der Fokus-Anlauf ist
+  der Fallback für Browser ohne `visualViewport`.
+- **Kein globales `scroll-behavior: smooth`.** Das würde auch
+  `ScoreWheel` und `MinuteRuler` treffen, die ihre Startposition per
+  `scrollTop` setzen — die würden beim Aufbau sichtbar dorthin fahren
+  statt schon dort zu stehen.
+
 ### Bottom-Sheets (`useSheetDrag`)
 
 Nach unten wischen schliesst ein Sheet. Ob eine Geste das darf,

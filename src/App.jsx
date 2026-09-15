@@ -12880,14 +12880,21 @@ function EndReviewSheet({tourney,onClose,onHistory,onConfirm}){
             </div>
           )}
 
-          <button onClick={()=>{buzz(14);onConfirm();}}
-            style={{...btn('rgba(232,69,69,0.16)',T.r,'rgba(232,69,69,0.55)'),
-              marginBottom:9}}>
-            Turnier jetzt beenden
-          </button>
-          <button onClick={()=>{buzz(6);setStep(0);}} style={btn('none',T.yellow,T.yellow)}>
-            ← Zurück zur Prüfung
-          </button>
+          {/* Dieselbe Reihe wie in Schritt 1, und bewusst dasselbe
+              Drei-Spalten-Raster: so steht "Zurueck" in beiden
+              Schritten an genau derselben Stelle und wandert nicht,
+              wenn man zwischen ihnen hin und her geht. Die dritte
+              Spalte bleibt leer — hier gibt es kein "Weiter" mehr.
+
+              Der Abstand ist zugleich der Schutz: zwischen den beiden
+              Kreisen liegen ueber 60 px, und "beenden" ist
+              unwiderruflich. */}
+          <div style={{display:'flex',alignItems:'flex-start',gap:10,
+            marginTop:14,marginBottom:2}}>
+            {act(T.yellow,'#000','←','Zurück',()=>{buzz(6);setStep(0);})}
+            {act(T.r,'#fff','■','Turnier beenden',()=>{buzz(14);onConfirm();})}
+            <div style={{flex:1,minWidth:0}} aria-hidden/>
+          </div>
         </>)}
       </div>
     </div>

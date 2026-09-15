@@ -9463,9 +9463,6 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
             placeholder="z. B. Sunset Americano, Fr"
             style={{width:'100%',height:46,borderRadius:13,background:T.card2,border:`1px solid ${T.border}`,
               color:T.t1,fontSize:16,fontWeight:600,padding:'0 14px',outline:'none',boxSizing:'border-box'}}/>
-          <div style={{color:T.t3,fontSize:11,fontWeight:500,marginTop:8,lineHeight:1.5}}>
-            Jedes Turnier wird einzeln gespeichert — laufende werden nicht mehr überschrieben.
-          </div>
         </div>
 
         {/* Modus: Lokal vs Online */}
@@ -9634,10 +9631,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
         {/* Zeitfenster (nur lokal) — Start/End-Uhrzeit → Rundenzeit-Vorschlag. */}
         {mode==='lokal'&&(
           <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,padding:'14px 18px 16px'}}>
-            <div style={{color:T.t1,fontSize:15,fontWeight:600}}>Zeitfenster</div>
-            <div style={{color:T.t3,fontSize:11,fontWeight:500,marginBottom:6}}>
-              Zeiger ziehen — Hell = Start, Orange = Ende
-            </div>
+            <div style={{color:T.t1,fontSize:15,fontWeight:600,marginBottom:6}}>Zeitfenster</div>
             {/* Immer sichtbare Drag-Uhr — schreibt direkt in startTime/endTime. */}
             <TimeDial start={startTime} end={endTime}
               onChange={(s,e)=>{setStartTime(s);setEndTime(e);}}/>
@@ -9645,9 +9639,6 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
             {/* Priorität: Längere Runden ⇄ Jeder gegen Jeden — steuert
                 Ziel-/Min-/Max-Rundenzeit des Vorschlags. */}
             <div style={{marginTop:16}}>
-              <div style={{color:T.t3,fontSize:11,fontWeight:600,marginBottom:7}}>
-                Priorität: Längere Runden oder Jeder gegen Jeden?
-              </div>
               <div style={{display:'flex',background:T.card2,borderRadius:30,padding:4,gap:4,
                 border:`1px solid ${T.border}`}}>
                 {[{v:'length',l:'Längere Runden'},{v:'variety',l:'Jeder gegen Jeden'}].map(o=>(
@@ -9659,11 +9650,6 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
                     {o.l}
                   </button>
                 ))}
-              </div>
-              <div style={{color:T.t4,fontSize:10.5,fontWeight:500,marginTop:6,lineHeight:1.55}}>
-                {roundPrio==='length'
-                  ?'Längere, ruhigere Runden — dafür spielt nicht jeder gegen jeden.'
-                  :'Mehr Runden, jeder gegen möglichst jeden — dafür kürzere Runden.'}
               </div>
             </div>
             {/* „Empfehlung" — rechnet den Vorschlag erst auf Knopfdruck
@@ -9728,9 +9714,6 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
           padding:'14px 18px 16px'}}>
           <div style={{marginBottom:10}}>
             <div style={{color:T.t1,fontSize:15,fontWeight:600}}>Rundendauer{appliedSuggest?', Empfehlung übernommen':''}</div>
-            <div style={{color:T.t3,fontSize:11,fontWeight:500,marginTop:1}}>
-              Timer pro Runde — wische zur gewünschten Minute
-            </div>
           </div>
           <MinuteRuler value={roundDur} onChange={setRoundDur}/>
         </div>
@@ -9740,9 +9723,6 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
           padding:'14px 18px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
           <div>
             <div style={{color:T.t1,fontSize:15,fontWeight:600}}>Anzahl Courts</div>
-            <div style={{color:T.t3,fontSize:11,fontWeight:500,marginTop:1}}>
-              frei wählbar, 4 Spieler pro Court
-            </div>
           </div>
           <div style={{display:'flex',alignItems:'center',gap:14}}>
             <button onClick={()=>setNumCourts(c=>Math.max(1,c-1))}
@@ -9804,11 +9784,6 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
               )}
             </div>
           ))}
-          {canSingles&&(
-            <div style={{color:T.t3,fontSize:11,lineHeight:1.5,padding:'8px 0 10px'}}>
-              Tippe auf 2v2, um einen Court auf Einzel (1v1) zu flippen — dort spielen nur 2 Spieler.
-            </div>
-          )}
           {/* Anordnung — dieselbe Karte wie im Assistenten. */}
           {numCourts>1&&(
             <div style={{borderTop:`1px solid ${T.sep}`,marginTop:6,paddingTop:14,paddingBottom:12}}>
@@ -9987,14 +9962,6 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
               existing={players.map(p=>p.name).filter(n=>n&&!/^Spieler\s*\d+$/i.test(n.trim()))}
               onAdd={addScannedPlayers}
               onClose={closeScan}/>
-          )}
-          {canStart&&format!=='knockout'&&pauseStats&&pauseStats.sitOut>0&&(
-            <div style={{color:T.t3,fontSize:11,marginTop:10,paddingBottom:6,fontWeight:500,lineHeight:1.55}}>
-              {pauseStats.sitOut} {pauseStats.sitOut===1?'Spieler rotiert':'Spieler rotieren'} pro Runde durch den Pausen-Pool.
-              {pauseStats.pauses!=null
-                ?<> Bei {roundDur}-Min-Runden: <span style={{color:T.o,fontWeight:800}}>≈ {pauseStats.pauses} Pause{pauseStats.pauses===1?'':'n'} pro Spieler</span> ({pauseStats.rounds} Runden, alle ±1 gleich oft).</>
-                :<> <span style={{color:T.t2}}>Setze ein Zeitfenster, um die Pausen pro Spieler zu sehen.</span></>}
-            </div>
           )}
         </div>
         ):(

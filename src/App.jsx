@@ -12692,6 +12692,37 @@ function EndReviewSheet({tourney,onClose,onHistory,onConfirm}){
     background:bg,border:line?`1px solid ${line}`:'none',color:fg,
     fontSize:14.5,fontWeight:800,cursor:'pointer'});
 
+  /* Die drei Wege aus Schritt 1 als Reihe statt als Stapel: zurueck,
+     nachsehen, weiter. Drei volle Knopfzeilen untereinander waren ein
+     Drittel des Sheets fuer drei Woerter — und drei gleich breite
+     Balken sagen nicht, welcher der Hauptweg ist.
+
+     Die Farbe traegt die Rolle (gelb zurueck, blau nachsehen, orange
+     weiter, siehe Theming in CLAUDE.md), die weisse Zeile darunter das
+     Wort. Ein farbiger Kreis allein ist ein Raten — das Label steht
+     deshalb nicht im Knopf, wo es die Farbe zerschneiden wuerde,
+     sondern darunter.
+
+     Die Tinte im Kreis ist Schwarz bzw. Weiss, nicht T.bg/T.t1: sie
+     richtet sich nach der Fuellung, nicht nach dem Theme. Gleiches
+     Muster wie der orange "Weiter"-Knopf, der seit jeher '#000'
+     traegt. */
+  const act=(bg,ink,glyph,label,onClick)=>(
+    <button onClick={onClick} aria-label={label} title={label}
+      style={{flex:1,minWidth:0,background:'none',border:'none',padding:0,
+        cursor:'pointer',display:'flex',flexDirection:'column',
+        alignItems:'center',gap:8}}>
+      <span style={{width:58,height:58,borderRadius:'50%',flexShrink:0,
+        background:bg,color:ink,display:'flex',alignItems:'center',
+        justifyContent:'center',fontSize:26,fontWeight:800,lineHeight:1}}>
+        {glyph}
+      </span>
+      <span style={{color:T.t1,fontSize:12.5,fontWeight:700,letterSpacing:.2}}>
+        {label}
+      </span>
+    </button>
+  );
+
   return(
     <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:300,
       background:'rgba(0,0,0,.7)',backdropFilter:'blur(4px)',display:'flex',
@@ -12795,24 +12826,13 @@ function EndReviewSheet({tourney,onClose,onHistory,onConfirm}){
             </div>
           </div>
 
-          {/* Drei Knoepfe untereinander, drei Rollen: nachsehen (blau),
-              weiter (orange, die Marke), zurueck (gelb). Vorher trugen
-              der erste und der letzte dieselbe graue Kontur — zwei
-              gleich aussehende Knoepfe um den einen herum, auf den es
-              ankommt. */}
-          <button onClick={()=>{buzz(6);onHistory();}}
-            style={{...btn(T.blueSoft,T.blue,T.blue),marginTop:5,marginBottom:9,
-              display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
-            <HistoryIcon size={16} color="currentColor"/>
-            Alle Runden durchsehen
-          </button>
-          <button onClick={()=>{buzz(6);setStep(1);}}
-            style={{...btn(T.o,'#000'),marginBottom:9}}>
-            Weiter →
-          </button>
-          <button onClick={onClose} style={btn('none',T.yellow,T.yellow)}>
-            Zurück zum Turnier
-          </button>
+          <div style={{display:'flex',alignItems:'flex-start',gap:10,
+            marginTop:14,marginBottom:2}}>
+            {act(T.yellow,'#000','←','Zurück',onClose)}
+            {act(T.blue,'#fff',<HistoryIcon size={26} color="#fff"/>,'Review',
+              ()=>{buzz(6);onHistory();})}
+            {act(T.o,'#000','→','Weiter',()=>{buzz(6);setStep(1);})}
+          </div>
         </>):(<>
           <div className="txt" style={{color:T.t3,fontSize:13.5,fontStyle:'italic',
             lineHeight:1.5,margin:'8px 0 14px'}}>

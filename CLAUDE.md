@@ -450,9 +450,13 @@ ein farbiger Kreis allein ist ein Raten. Die Tinte im Kreis ist
 Füllung, nicht nach dem Theme (gleiches Muster wie der orange
 Weiter-Knopf, der seit jeher `'#000'` trägt).
 
-**Schritt 2 behält seine breiten Knöpfe.** „Turnier jetzt beenden" ist
-unwiderruflich und verdient die volle Breite als Ziel — ein 58-px-Kreis
-14 px neben „Zurück" ist der falsche Ort dafür.
+**Schritt 2 trägt dieselbe Reihe** — `← Zurück` (gelb) und
+`■ Turnier beenden` (rot) — und bewusst **dasselbe
+Drei-Spalten-Raster** mit leerer dritter Spalte, obwohl dort nur zwei
+Knöpfe stehen. So bleibt „Zurück" in beiden Schritten auf demselben
+Pixel (x = 18 bei 390 px) statt zu wandern, wenn man hin und her geht.
+Der Abstand ist zugleich der Schutz: zwischen den beiden Kreisen liegen
+über 60 px, und „beenden" ist unwiderruflich.
 
 `--yellow` / `--yellowSoft` stehen wie `--homeHeaderGrad` als
 *abgeleitete* Tokens unter den Theme-Sätzen, nicht in jedem einzeln:

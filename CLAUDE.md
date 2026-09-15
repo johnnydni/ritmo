@@ -435,8 +435,24 @@ Knopfstapel soll sich daran ablesen lassen:
 |---|---|---|
 | `T.o` | die Marke, „weiter" | `Weiter →` |
 | `T.r` | Abbruch / Endgültiges | `Turnier jetzt beenden` |
-| `T.blue` | nachsehen, Nebenhandlung | `Alle Runden durchsehen`, `PauseBonusChip` |
-| `T.yellow` | der Weg zurück | `Zurück zum Turnier`, `← Zurück zur Prüfung` |
+| `T.blue` | nachsehen, Nebenhandlung | `Review` im Beenden-Sheet, `PauseBonusChip` |
+| `T.yellow` | der Weg zurück | `Zurück`, `← Zurück zur Prüfung` |
+
+Im Beenden-Sheet (`EndReviewSheet`) tragen die drei Wege aus Schritt 1
+diese Farben als **Kreise nebeneinander** statt als drei Knopfzeilen
+untereinander: `← Zurück` (gelb), `Review` (blau), `→ Weiter`
+(orange), jeder mit weißer Beschriftung darunter. Drei volle Zeilen
+für drei Wörter waren ein Drittel des Sheets, und drei gleich breite
+Balken sagen nicht, welcher der Hauptweg ist. Das Wort steht *unter*
+dem Kreis, nicht darin — im Kreis würde es die Farbe zerschneiden, und
+ein farbiger Kreis allein ist ein Raten. Die Tinte im Kreis ist
+`'#000'` bzw. `'#fff'`, nicht `T.bg`/`T.t1`: sie richtet sich nach der
+Füllung, nicht nach dem Theme (gleiches Muster wie der orange
+Weiter-Knopf, der seit jeher `'#000'` trägt).
+
+**Schritt 2 behält seine breiten Knöpfe.** „Turnier jetzt beenden" ist
+unwiderruflich und verdient die volle Breite als Ziel — ein 58-px-Kreis
+14 px neben „Zurück" ist der falsche Ort dafür.
 
 `--yellow` / `--yellowSoft` stehen wie `--homeHeaderGrad` als
 *abgeleitete* Tokens unter den Theme-Sätzen, nicht in jedem einzeln:

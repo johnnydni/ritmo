@@ -2763,7 +2763,12 @@ function ExitGlyph({size=18}){
                           bearbeiten" auf 390 px)
      subtitle  Times    — kursiv, die ruhige Lifestyle-Stimme
    kicker ist optional; ohne ihn sieht der Kopf aus wie vorher. */
-function ScreenHeader({title,subtitle,icon,right,pad=22,ellipsis=false,kicker,rule=true}){
+function ScreenHeader({title,subtitle,icon,right,pad=22,ellipsis=false,kicker,rule=true,
+  /* Die Unterzeile ist normalerweise ein Standfirst — ein Satz, und
+     der steht kursiv. Wo sie stattdessen eine Statuszeile ist
+     (Format | Runde | Endzeit), ist Kursiv falsch: das sind Angaben,
+     kein Satz. */
+  subtitleItalic=true}){
   return(
     <div className="fi" style={{padding:`0 9px ${pad}px`,flexShrink:0}}>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
@@ -2791,7 +2796,7 @@ function ScreenHeader({title,subtitle,icon,right,pad=22,ellipsis=false,kicker,ru
             background:`linear-gradient(90deg,${T.o},transparent)`}}/>
         )}
         <div className="txt" style={{color:T.t3,fontSize:15,marginTop:rule?9:5,
-          marginLeft:10,fontStyle:'italic',lineHeight:1.45}}>
+          marginLeft:10,fontStyle:subtitleItalic?'italic':'normal',lineHeight:1.45}}>
           {subtitle}
         </div>
       </>)}
@@ -12790,8 +12795,13 @@ function EndReviewSheet({tourney,onClose,onHistory,onConfirm}){
             </div>
           </div>
 
+          {/* Drei Knoepfe untereinander, drei Rollen: nachsehen (blau),
+              weiter (orange, die Marke), zurueck (gelb). Vorher trugen
+              der erste und der letzte dieselbe graue Kontur — zwei
+              gleich aussehende Knoepfe um den einen herum, auf den es
+              ankommt. */}
           <button onClick={()=>{buzz(6);onHistory();}}
-            style={{...btn('none',T.t1,T.border),marginTop:5,marginBottom:9,
+            style={{...btn(T.blueSoft,T.blue,T.blue),marginTop:5,marginBottom:9,
               display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
             <HistoryIcon size={16} color="currentColor"/>
             Alle Runden durchsehen
@@ -12800,7 +12810,7 @@ function EndReviewSheet({tourney,onClose,onHistory,onConfirm}){
             style={{...btn(T.o,'#000'),marginBottom:9}}>
             Weiter →
           </button>
-          <button onClick={onClose} style={btn('none',T.t3,T.border)}>
+          <button onClick={onClose} style={btn('none',T.yellow,T.yellow)}>
             Zurück zum Turnier
           </button>
         </>):(<>
@@ -12842,7 +12852,7 @@ function EndReviewSheet({tourney,onClose,onHistory,onConfirm}){
             <div style={{...row,border:'1px solid rgba(232,69,69,.5)',
               background:'rgba(232,69,69,.08)'}}>
               <span style={{color:T.r,flexShrink:0,fontSize:15,lineHeight:1.3}}>!</span>
-              <div style={{flex:1,minWidth:0,color:T.t2,fontSize:12.5,lineHeight:1.55}}>
+              <div style={{flex:1,minWidth:0,color:T.r,fontSize:12.5,lineHeight:1.55}}>
                 {open.length} unbestätigte{open.length===1?'s':''} Ergebnis
                 {open.length===1?'':'se'} {open.length===1?'ist':'sind'} hier nicht
                 eingerechnet.
@@ -12855,7 +12865,7 @@ function EndReviewSheet({tourney,onClose,onHistory,onConfirm}){
               marginBottom:9}}>
             Turnier jetzt beenden
           </button>
-          <button onClick={()=>{buzz(6);setStep(0);}} style={btn('none',T.t3,T.border)}>
+          <button onClick={()=>{buzz(6);setStep(0);}} style={btn('none',T.yellow,T.yellow)}>
             ← Zurück zur Prüfung
           </button>
         </>)}
@@ -13535,7 +13545,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
 
-      <ScreenHeader pad={14} ellipsis rule={false}
+      <ScreenHeader pad={14} ellipsis rule={false} subtitleItalic={false}
         title={tourney.name||(FORMATS[tourney.format]||FORMATS.americano).name}
         /* Format, Runde, K.-o.-Phase, Endzeit — mit Trennstrichen statt
            Kommas: das sind vier gleichrangige Angaben und kein Satz,

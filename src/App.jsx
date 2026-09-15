@@ -11245,7 +11245,11 @@ function PadelCourtBlue({t1=[],t2=[],playerById,meName,single=false}){
    Die Netzspalte kann Inhalt tragen (`net`): in der Turnieruebersicht
    haengen dort die beiden Punktestaende, in der Spieleransicht bleibt
    sie eine blosse Linie. `meName` hebt den eigenen Platz hervor. */
-function MatchSlotGrid({court,playerById,meName,net=null,avatar=52,innerA=null,innerB=null}){
+function MatchSlotGrid({court,playerById,meName,net=null,avatar=52,innerA=null,innerB=null,
+  /* Breite der Netzspalte. 32 reicht fuer eine Plakette; der
+     Bestaetigen-Knopf im laufenden Turnier braucht mehr, weil man
+     ihn trifft und nicht nur liest. */
+  netW=32}){
   const nm=id=>playerById?.(id)?.name||'?';
   const col=id=>playerById?.(id)?.color||T.border;
   const isMe=id=>meName&&nm(id).toLowerCase()===meName.toLowerCase();
@@ -11298,16 +11302,21 @@ function MatchSlotGrid({court,playerById,meName,net=null,avatar=52,innerA=null,i
   // Steht ueber der Spieler-Spalte, nicht ueber der ganzen Haelfte:
   // sonst zieht das Punktefeld die Beschriftung nach innen und sie
   // sitzt nicht mehr ueber den Kreisen.
+  /* nowrap: "Team A" ist ein Wort-Paar und darf nicht zu "TEAM" /
+     "A" brechen. Centauri sperrt stark (letterSpacing 2.2), da reicht
+     eine etwas schmalere Spielerspalte schon zum Umbruch — und die
+     wurde schmaler, als die Netzspalte den Bestaetigen-Knopf bekam. */
   const head=(txt,gc)=>(
     <div style={{gridColumn:gc,gridRow:1,fontFamily:T.fontDisplay,color:T.t3,
-      fontSize:9,letterSpacing:2.2,textAlign:'center',padding:'9px 4px 0'}}>{txt}</div>
+      fontSize:9,letterSpacing:2.2,textAlign:'center',padding:'9px 4px 0',
+      whiteSpace:'nowrap',overflow:'hidden'}}>{txt}</div>
   );
   // 5 Spalten: Spieler | Punkte A | Netz | Punkte B | Spieler. Ohne
   // Punkte fallen die beiden inneren Spalten auf 0 zusammen. Die
   // Netzspalte ist nur der Strich — ausser sie traegt etwas (das VS),
   // dann braucht sie dessen Breite, sonst ragt der Kreis in die
   // Punktefelder.
-  const nw=netItems.length?32:2;
+  const nw=netItems.length?netW:2;
   return(
     <div style={{display:'grid',
       gridTemplateColumns:`1fr ${innerA?'auto':'0'} ${nw}px ${innerB?'auto':'0'} 1fr`,
@@ -12179,13 +12188,20 @@ function ScoreWheel({value,onChange,max=40,color=T.o,w=52,h=34}){
   // h steuert die Zeilenhoehe: im Court-Raster stehen zwei Wheels
   // uebereinander auf dem Netz, da waeren 3x34 px zu hoch.
   const ITEM_H=h, VISIBLE=3, HEIGHT=ITEM_H*VISIBLE, PAD=(HEIGHT-ITEM_H)/2;
-  const opts=Array.from({length:max+1},(_,i)=>i);
-  const v=value==null?0:value;
+  /* Ganz oben steht ein Strich, erst darunter die 0. Der Strich ist
+     der Zustand "noch nichts eingetragen" (value === null) — vorher
+     stand dort die 0, und eine 0 sieht aus wie ein Ergebnis. Erst
+     wenn beide Raeder von ihm weg sind, gibt es ueberhaupt etwas zu
+     bestaetigen (siehe TournamentCourtCard). */
+  const opts=Array.from({length:max+2},(_,i)=>i===0?null:i-1);
+  const idxOf=x=>x==null?0:Math.max(0,Math.min(max,x))+1;
+  const cur=idxOf(value);
   const init=useRef(false), toRef=useRef(null);
-  useEffect(()=>{ if(ref.current&&!init.current){ ref.current.scrollTop=v*ITEM_H; init.current=true; } },[v]);
+  useEffect(()=>{ if(ref.current&&!init.current){ ref.current.scrollTop=cur*ITEM_H; init.current=true; } },[cur]);
   const onScroll=e=>{ const el=e.target; if(toRef.current)clearTimeout(toRef.current);
-    toRef.current=setTimeout(()=>{ const idx=Math.max(0,Math.min(max,Math.round(el.scrollTop/ITEM_H)));
-      if(idx!==value) onChange(idx); },90); };
+    toRef.current=setTimeout(()=>{ const k=Math.max(0,Math.min(max+1,Math.round(el.scrollTop/ITEM_H)));
+      const nv=k===0?null:k-1;
+      if(nv!==value) onChange(nv); },90); };
   // Nachbarwerte per CSS-Maske auf dem Scroll-Container ausblenden —
   // NICHT per Overlay in Card-Farbe: --card ist in manchen Themes
   // halbtransparentes Weiß, das Overlay malte dann sichtbare graue
@@ -12200,10 +12216,11 @@ function ScoreWheel({value,onChange,max=40,color=T.o,w=52,h=34}){
           scrollPaddingTop:`${PAD}px`,WebkitOverflowScrolling:'touch',scrollbarWidth:'none',
           maskImage:fade,WebkitMaskImage:fade}}>
         <div style={{height:PAD}}/>
-        {opts.map(o=>{ const active=o===v;
-          return <div key={o} style={{height:ITEM_H,display:'flex',alignItems:'center',justifyContent:'center',
+        {opts.map((o,j)=>{ const active=j===cur;
+          return <div key={j} style={{height:ITEM_H,display:'flex',alignItems:'center',justifyContent:'center',
             scrollSnapAlign:'start',fontSize:active?ITEM_H*.7:ITEM_H*.44,fontWeight:active?900:600,
-            color:active?T.t1:T.t3,transition:'color .15s,font-size .15s'}}>{o}</div>; })}
+            color:active?(o==null?T.t3:T.t1):T.t3,transition:'color .15s,font-size .15s'}}>
+            {o==null?'–':o}</div>; })}
         <div style={{height:PAD}}/>
       </div>
     </div>
@@ -12231,6 +12248,15 @@ function TournamentCourtCard({court,courtIndex,courtName,playerById,onScoreChang
 
   // Gewinnerseite ermitteln (für goldenen Glow auf der Karte).
   const winnerTeam=done?(s1>s2?'A':s2>s1?'B':null):null;
+
+  /* Bestaetigen gibt es erst, wenn BEIDE Raeder vom Strich weg sind.
+     Solange eines auf "–" steht, ist gar kein Ergebnis eingetragen —
+     und ein Knopf, der dann 0:0 festschreibt, waere eine Falle. */
+  const ready=s1Raw!=null&&s2Raw!=null;
+  const netState=done?'done':ready?'ready':'vs';
+  const netLabel=netState==='done'?'Ergebnis wieder öffnen'
+    :netState==='ready'?'Ergebnis bestätigen'
+    :'Erst beide Punktestände eintragen';
 
   // Ein Punktestand auf dem Netz: Buchstabe der Mannschaft plus
   // Wert. Solange der Court offen ist, ist das ein Scrollrad; ist er
@@ -12321,26 +12347,6 @@ function TournamentCourtCard({court,courtIndex,courtName,playerById,onScoreChang
               Fertig
             </div>
           ):null}
-          {/* Ergebnis bestaetigen — stand als breiter Knopf unter der
-              Karte. Dort kostete er bei sechs Courts sechsmal eine
-              Zeile, obwohl er ein Haken ist. Oben rechts liegt er
-              neben dem Zustand, den er setzt.
-
-              Bestaetigt traegt er KEINEN Stift, sondern das Zeichen
-              fuers Zuruecknehmen: daneben steht schon der Stift fuer
-              die Aufstellung, und zwei gleiche Glyphen in einer Reihe
-              sind ein Ratespiel. */}
-          <button onClick={onConfirm}
-            title={done?'Ergebnis wieder öffnen':'Ergebnis bestätigen'}
-            aria-label={done?'Ergebnis wieder öffnen':'Ergebnis bestätigen'}
-            style={{width:30,height:30,borderRadius:9,flexShrink:0,cursor:'pointer',
-              background:done?T.card2:T.o,
-              border:done?`1px solid ${T.border}`:'none',
-              color:done?T.t2:T.bg,fontSize:done?15:16,fontWeight:900,lineHeight:1,
-              display:'flex',alignItems:'center',justifyContent:'center',
-              transition:'background .2s,color .2s'}}>
-            {done?'↺':'✓'}
-          </button>
           {onEditLineup&&(
             <button onClick={onEditLineup}
               title="Aufstellung bearbeiten" aria-label="Aufstellung bearbeiten"
@@ -12372,18 +12378,40 @@ function TournamentCourtCard({court,courtIndex,courtName,playerById,onScoreChang
           avatar={44}
           innerA={scoreSlot('A',s1,s1Raw,v=>onScoreChange('s1',v))}
           innerB={scoreSlot('B',s2,s2Raw,v=>onScoreChange('s2',v))}
+          netW={44}
           net={[
-            /* VS sitzt genau auf der Kreuzung von Netz und
-               Reihentrenner. */
-            <div key="vs" className={done?'':'court-vs'}
-              style={{width:26,height:26,borderRadius:'50%',flexShrink:0,
-                background:done?(winnerTeam?`${T.o}33`:T.card2):`${T.r}22`,
-                border:`1.5px solid ${done?(winnerTeam?T.o:T.border):T.r}`,
-                color:done?(winnerTeam?T.o:T.t3):T.r,
+            /* Auf der Kreuzung von Netz und Reihentrenner sitzt der
+               Zustand des Matches — und zugleich der Knopf, der ihn
+               weiterschaltet:
+
+                 VS  noch kein Ergebnis (mindestens ein Rad auf "–")
+                 ✓   beide Staende stehen → antippen bestaetigt
+                 ↺   bestaetigt → antippen oeffnet wieder
+
+               Vorher lag der Knopf oben rechts in der Kartenzeile.
+               Dort war er weit weg von dem, was man gerade tut: man
+               stellt zwei Raeder in der Mitte und soll dann in die
+               Ecke greifen. Jetzt steht er zwischen den beiden
+               Zahlen, die er bestaetigt.
+
+               Der Schluessel erzwingt beim Zustandswechsel einen
+               Neuaufbau — nur so laeuft netPop erneut. */
+            <button key={`net-${netState}`}
+              className={netState==='vs'?'court-vs':'court-net-pop'}
+              onClick={netState==='vs'?undefined:onConfirm}
+              disabled={netState==='vs'}
+              title={netLabel} aria-label={netLabel}
+              style={{width:38,height:38,borderRadius:'50%',flexShrink:0,padding:0,
+                background:netState==='ready'?T.o:netState==='done'?T.card2:`${T.r}22`,
+                border:`1.5px solid ${netState==='vs'?T.r:netState==='ready'?T.o:T.border}`,
+                color:netState==='ready'?T.bg:netState==='done'?T.t2:T.r,
+                cursor:netState==='vs'?'default':'pointer',
                 display:'flex',alignItems:'center',justifyContent:'center',
-                fontSize:9,fontWeight:900,letterSpacing:.4}}>
-              VS
-            </div>,
+                fontSize:netState==='vs'?9:18,fontWeight:900,
+                letterSpacing:netState==='vs'?.4:0,lineHeight:1,
+                transition:'background .25s,color .25s,border-color .25s'}}>
+              {netState==='vs'?'VS':netState==='ready'?'✓':'↺'}
+            </button>,
           ]}/>
       </div>
 

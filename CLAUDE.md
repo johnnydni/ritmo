@@ -147,28 +147,51 @@ The grid is five columns — `players | innerA | net | innerB | players` — and
 - Both score cells carry the same fixed width, otherwise a one-digit score sits closer to the net than a two-digit one.
 - Open courts show a `ScoreWheel` (its row height is the `h` prop — 28 in the grid, the default 34 elsewhere), confirmed courts a large number with the winner in the accent color.
 
-### Der Kopf der Court-Karte — alles, was man am Court tut
+### Die Court-Karte — der Zustand sitzt auf dem Netz
 
-`COURT 1 · 1V1` links, rechts der Zustand und die zwei Knöpfe, die
-ihn ändern:
+Der Kopf trägt links `COURT 1 · 1V1`, rechts die `✓ FERTIG`-Plakette
+und den Stift für die **Aufstellung**. Sonst nichts.
 
-`[✓ FERTIG]  [✓ / ↺ Ergebnis]  [✎ Aufstellung]`
+Der Zustand des Matches — und der Knopf, der ihn weiterschaltet —
+sitzt **auf dem Netz**, auf der Kreuzung mit dem Reihentrenner,
+zwischen den beiden Zahlen, um die es geht:
 
-- **„Ergebnis bestätigen" war ein breiter Knopf unter der Karte.** Bei
-  sechs Courts kostete er sechsmal eine Zeile, obwohl er ein Haken
-  ist. Oben rechts liegt er neben dem Zustand, den er setzt, und die
-  Karte wird um eine Knopfzeile kürzer.
-- **Bestätigt trägt er `↺`, keinen Stift.** Daneben steht schon der
-  Stift für die Aufstellung; zwei gleiche Glyphen nebeneinander sind
-  ein Ratespiel, und „zurücknehmen" ist ohnehin genauer als
-  „bearbeiten" — der Knopf schaltet `court.done` um.
+| Netz | Bedeutung | Tippen |
+|---|---|---|
+| `VS` rot, inert | mindestens ein Rad steht auf `–` | — |
+| `✓` orange | beide Stände stehen | bestätigt |
+| `↺` gedämpft | bestätigt | öffnet wieder |
+
+- **Der Knopf lag vorher oben rechts in der Kartenzeile** (und davor
+  als breiter Knopf unter der Karte). Oben rechts war er weit weg von
+  dem, was man gerade tut: man stellt zwei Räder in der Mitte und
+  soll dann in die Ecke greifen.
+- **`ready` verlangt beide Räder.** Solange eines auf `–` steht, ist
+  gar kein Ergebnis eingetragen — ein Knopf, der dann 0:0
+  festschreibt, wäre eine Falle.
+- Der **Schlüssel** (`key={\`net-${netState}\`}`) erzwingt beim
+  Zustandswechsel einen Neuaufbau; nur so läuft `netPop` erneut. Im
+  `vs`-Zustand trägt der Kreis stattdessen `court-vs` (Dauerpuls) als
+  Hinweis, dass dort noch etwas fehlt.
+- `MatchSlotGrid` bekommt dafür **`netW`** (Vorgabe 32, hier 44): den
+  Knopf trifft man, die Plakette las man nur. Die Spielerspalten
+  werden dadurch schmaler — deshalb trägt die `Team A`/`Team B`-Zeile
+  jetzt `whiteSpace:'nowrap'`, sonst bricht sie in Centauri zu
+  `TEAM` / `A`.
+
+Im **`ScoreWheel`** steht ganz oben ein **Strich**, erst darunter die
+0: der Strich ist `value === null`, „noch nichts eingetragen". Vorher
+stand dort die 0 — und eine 0 sieht aus wie ein Ergebnis.
+
+Weiteres am Kopf:
+
 - **Kein „• LIVE" mehr.** Der Status stand doppelt da: die grüne
   „Fertig"-Plakette sagt fertig, ihr Fehlen sagt läuft. Ein rotes
   Blinklicht daneben sagt nur nochmal dasselbe.
 - **Kein Court-Emoji.** Der Picker (`CourtEmojiPicker`) ist raus; alte
   Turniere tragen `courtEmojis` noch im Datensatz, es liest sie nur
   niemand mehr.
-- Ohne den Knopf darunter trägt das `MatchSlotGrid` den Abstand zum
+- Ohne Knopf unter der Karte trägt das `MatchSlotGrid` den Abstand zum
   Kartenrand nicht mehr — nur noch den zum Tier-Chip, falls einer da
   ist (`marginBottom: tier ? 14 : 0`).
 

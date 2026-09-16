@@ -29,7 +29,7 @@ Pure / side-effect-free modules have been extracted from the original mega-file.
 | [src/main.jsx](src/main.jsx) | Entry point. Dynamically imports `@supabase/supabase-js` and attaches a client to `window.supabase`. Injects `window.__BASE__`. | The `auth` module reads `window.supabase` at call time, not import time. |
 | [src/App.jsx](src/App.jsx) | All screens, modal components, the `<App/>` root that wires routing/state. | ~8500 lines. Adding a new screen → add it here. |
 | [src/theme.js](src/theme.js) | `T` token mirror, `CSS` template literal with the theme variable sets + font tokens, palette helpers (`hexToRgb`, `rgba`, `luminance`, `shiftColor`, `buildThemePalette`). | Source of truth for visual constants. |
-| [src/utils.js](src/utils.js) | `lsGet` / `lsSet` (safe localStorage), `getAssetBase`, `getInitials`, `readImageAsDataUrl`, `resizeImage`. | Pure JS; no React. |
+| [src/utils.js](src/utils.js) | `lsGet` / `lsSet` (safe localStorage), `getAssetBase`, `getInitials`, `readImageAsDataUrl`, `resizeImage` + der Papierkorb (`purgeTrash`, `trashDaysLeft`, `TRASH_DAYS`). | Pure JS; no React. |
 | [src/levels.js](src/levels.js) | `getLevelLabel` / `getLevelTier` / `getLevelColor` (L1..L7 mapping) and `estimateLevel(profile)` for the RITMO questionnaire. | Pure functions; safe to import anywhere. |
 | [src/game.js](src/game.js) | `bo3R` / `amR` reducers + initial states `B0` / `A0` + helpers `ptD`, `wG`. | Pure; UI-agnostic. |
 | [src/tournament.js](src/tournament.js) | `genAmericanoRound`, `genMexicanoRound`, `calcLeaderboard`, `PCOLS`, `shuffle`. | Pure round-generation + standings. |
@@ -205,6 +205,34 @@ Die Platzkarte darüber trägt denselben Stift in denselben Maßen
 (30 px, `borderRadius: 9`): es ist dieselbe Geste — antippen, ändern,
 wieder antippen. Dass man drin ist, sagen der gefüllte Knopf und das
 Ressort („ANORDNUNG ANPASSEN"), nicht ein zweites Wort auf dem Knopf.
+
+### Papierkorb (`ritmo_trash`)
+
+Ein gelöschtes Turnier ist nicht weg: es liegt **`TRASH_DAYS` (7) Tage**
+im Papierkorb und räumt sich danach selbst ab. Ein Turnier ist ein
+Abend Arbeit — Namen, Runden, Ergebnisse —, und ein Wisch nach links
+ist schnell gemacht.
+
+- Der **Undo-Toast bleibt trotzdem**: er deckt die nächsten Sekunden
+  ab („falsch gewischt"), der Papierkorb den nächsten Morgen. Beide
+  Wege führen über `restoreTrash`, es gibt also nur eine Rückholung.
+- **Aufgeräumt wird bei jeder Benutzung, nicht per Timer**
+  (`purgeTrash` beim Laden und bei jedem Schreiben). Ein Timer läuft
+  nur, solange die App offen ist — und genau dann ist auch niemand
+  sieben Tage weg. `purgeTrash` überlebt dabei auch Einträge ohne
+  `deletedAt`.
+- `TRASH_MAX` (30) deckelt gegen die localStorage-Quote: ein Turnier
+  trägt alle Runden mit sich.
+- **„Alle löschen" löscht auch nicht mehr endgültig** — es schiebt in
+  den Papierkorb. Der einzige endgültige Weg ist der rote Knopf im
+  Papierkorb selbst (bzw. „Papierkorb leeren").
+- Der Einstieg ist eine **Zeile am Ende der Live-Liste**, kein Knopf im
+  Kopf: der Papierkorb ist kein Werkzeug, das man sucht, sondern ein
+  Ort, an dem etwas liegt. Er erscheint nur, wenn etwas drin ist.
+- Im Sheet stehen die beiden Knöpfe nebeneinander und tragen
+  Gegenteil-Farben: **gelb zurück** (wie überall, siehe Theming), **rot
+  endgültig**. Kein Wischen dort — im Papierkorb ist ein Fehlwisch
+  nicht mehr rückgängig zu machen.
 
 ### `MatchBar` im laufenden Turnier — das Werkzeug-Fach
 

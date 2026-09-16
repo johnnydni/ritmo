@@ -1108,3 +1108,16 @@ export function ToolsIcon({size=22,color='currentColor'}){
     <rect x={12+g/2}   y={12+g/2}   width={s} height={s} rx={r}/>
   </svg>);
 }
+
+/* Papierkorb — Deckel, Griff, Korpus mit zwei Rillen. Die Rillen
+   sind das, was ihn von einem Becher unterscheidet; ohne sie liest
+   sich der Glyph bei 20 px als Glas. */
+export function TrashIcon({size=20,color='currentColor'}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke={color} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"
+    aria-hidden="true">
+    <path d="M4 7h16M9 7V5h6v2"/>
+    <path d="M7 7l1 13h8l1-13"/>
+    <path d="M10.5 11v5.5M13.5 11v5.5" opacity=".6"/>
+  </svg>);
+}

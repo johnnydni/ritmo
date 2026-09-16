@@ -28,7 +28,7 @@ import { LIGA_PHASES, LIGA_GROUPS, initialLigaState, ligaAddParticipant,
    Components, screens and routing remain colocated here for now;
    only side-effect-free units are split out. See CLAUDE.md. */
 import { T, CSS, rgba } from "./theme.js";
-import { lsGet, lsSet, getAssetBase, getInitials, processImageUpload, safeImageSrc, buzz } from "./utils.js";
+import { lsGet, lsSet, getAssetBase, getInitials, processImageUpload, safeImageSrc, buzz, purgeTrash, trashDaysLeft, TRASH_DAYS } from "./utils.js";
 import { getLevelLabel, getLevelTier, getLevelColor, estimateLevel } from "./levels.js";
 import { B0, A0, PL, ptD, wG, bo3R, amR, DEFCFG } from "./game.js";
 import { PCOLS, shuffle, genAmericanoRound, genMexicanoRound, calcLeaderboard, FORMATS, FORMAT_RULES, genRound,
@@ -51,7 +51,7 @@ import {
   // Settings + RITMO Post line-art icons
   SteeringWheelIcon, PaletteIcon, EyeIcon, BellIcon, LockIcon, DoorOutIcon,
   SpeakerIcon, ChatBubbleIcon,
-  ChevronRightIcon, AirPlayIcon, CoffeeCupIcon,
+  ChevronRightIcon, AirPlayIcon, CoffeeCupIcon, TrashIcon,
   ArchetypeGlyph, PauseIcon, TournamentModeIcon, ClockIcon, CourtsIcon, ToolsIcon,
   // Emoji-Ersatz-Glyphen
   HeartIcon, MedalIcon, PhoneIcon, KeyboardIcon, RingIcon, WatchIcon, FlicIcon,
@@ -14268,9 +14268,110 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
 /* ═══════════════════════════════════════════════════════════════
    LIVE SCREEN
 ═══════════════════════════════════════════════════════════════ */
+/* ── PAPIERKORB-SHEET ─────────────────────────────────────────────
+   Eine Zeile je geloeschtem Turnier: was es war, wann es geloescht
+   wurde, wie lange es noch liegt — und zwei Knoepfe.
+
+   Die beiden Knoepfe stehen nebeneinander und tragen verschiedene
+   Farben, weil sie Gegenteile sind: gelb zurueck (wie ueberall in der
+   App, siehe Theming), rot endgueltig. Kein Wischen hier: im
+   Papierkorb ist ein Fehlwisch nicht mehr rueckgaengig zu machen. */
+function TrashSheet({items=[],onClose,onRestore,onPurge,onEmpty}){
+  const sheet=useSheetDrag(onClose);
+  const[askEmpty,setAskEmpty]=useState(false);
+  return(
+    <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:300,
+      background:'rgba(0,0,0,.7)',backdropFilter:'blur(4px)',display:'flex',
+      alignItems:'flex-end',justifyContent:'center',animation:'fadeIn .15s ease'}}>
+      <div onClick={e=>e.stopPropagation()} className="slide-up"
+        ref={sheet.ref} {...sheet.handlers}
+        /* Zweilagig wie die anderen Sheets: --card allein ist
+           halbtransparent, der Live-Screen schiene sonst durch. */
+        style={{background:`linear-gradient(0deg, ${T.card}, ${T.card}), ${T.bg}`,
+          borderTopLeftRadius:20,borderTopRightRadius:20,
+          borderTop:`1px solid ${T.border}`,width:'100%',maxWidth:480,
+          padding:'16px 18px calc(env(safe-area-inset-bottom,0px) + 18px)',
+          maxHeight:'82vh',overflowY:'auto',WebkitOverflowScrolling:'touch',
+          ...sheet.style}}>
+        <div style={{width:36,height:4,borderRadius:2,background:T.border,margin:'0 auto 14px'}}/>
+
+        <div style={{fontFamily:T.fontDisplay,color:T.o,fontSize:10.5,
+          letterSpacing:2.6,lineHeight:1}}>PAPIERKORB</div>
+        <div style={{color:T.t1,fontSize:17,fontWeight:800,marginTop:5}}>
+          {items.length} {items.length===1?'Turnier':'Turniere'}
+        </div>
+        <div className="txt" style={{color:T.t3,fontSize:13.5,fontStyle:'italic',
+          lineHeight:1.5,margin:'6px 0 14px'}}>
+          Nach {TRASH_DAYS} Tagen räumt sich der Papierkorb selbst auf.
+        </div>
+
+        {items.map(t=>{
+          const left=trashDaysLeft(t.deletedAt);
+          const fmt=(FORMATS[t.format]||FORMATS.americano).name;
+          return(
+            <div key={t.id} style={{display:'flex',alignItems:'center',gap:12,
+              padding:'12px 14px',borderRadius:15,marginBottom:9,
+              background:T.card2,border:`1px solid ${T.border}`}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{color:T.t1,fontSize:14.5,fontWeight:700,
+                  overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                  {t.name||'Turnier'}
+                </div>
+                <div style={{color:T.t3,fontSize:11.5,fontWeight:500,marginTop:3}}>
+                  {fmt} · {(t.players||[]).length} Spieler
+                  {t.draft?' · Entwurf':t.finished?' · beendet':''}
+                </div>
+                <div style={{color:left<=1?T.r:T.t4,fontSize:11,fontWeight:700,marginTop:3}}>
+                  {left<=0?'Wird gleich gelöscht':`Noch ${left} ${left===1?'Tag':'Tage'}`}
+                </div>
+              </div>
+              <button onClick={()=>onRestore?.(t)}
+                title="Wiederherstellen" aria-label={`${t.name||'Turnier'} wiederherstellen`}
+                style={{width:38,height:38,borderRadius:'50%',flexShrink:0,cursor:'pointer',
+                  background:'none',border:`1.5px solid ${T.yellow}`,color:T.yellow,
+                  fontSize:17,fontWeight:900,lineHeight:1,padding:0,
+                  display:'flex',alignItems:'center',justifyContent:'center'}}>
+                ↺
+              </button>
+              <button onClick={()=>onPurge?.(t.id)}
+                title="Endgültig löschen" aria-label={`${t.name||'Turnier'} endgültig löschen`}
+                style={{width:38,height:38,borderRadius:'50%',flexShrink:0,cursor:'pointer',
+                  background:'none',border:`1.5px solid ${T.r}`,padding:0,
+                  display:'flex',alignItems:'center',justifyContent:'center'}}>
+                <TrashIcon size={17} color={T.r}/>
+              </button>
+            </div>
+          );
+        })}
+
+        {items.length>1&&(
+          <button onClick={()=>setAskEmpty(true)}
+            style={{width:'100%',marginTop:5,padding:'13px 16px',borderRadius:15,
+              background:'none',border:`1px solid ${T.border}`,color:T.t3,
+              fontSize:13.5,fontWeight:700,cursor:'pointer'}}>
+            Papierkorb leeren
+          </button>
+        )}
+
+        {askEmpty&&(
+          <ResetModal
+            title="Papierkorb leeren"
+            description={`${items.length} Turniere werden endgültig gelöscht. Das lässt sich nur direkt danach noch rückgängig machen.`}
+            question="Wirklich endgültig löschen?"
+            confirmLabel="Endgültig löschen"
+            onCancel={()=>setAskEmpty(false)}
+            onConfirm={()=>{setAskEmpty(false);onEmpty?.();}}/>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
-  onDeleteMatch,onDeleteTourney,onOpenTourney,joinedSession,onLeaveJoined,onDeleteAll}){
+  onDeleteMatch,onDeleteTourney,onOpenTourney,joinedSession,onLeaveJoined,onDeleteAll,
+  trash=[],onRestoreTrash,onPurgeTrash,onEmptyTrash}){
   const[moreItem,setMoreItem]=useState(null); // Item fürs "… mehr"-Sheet
+  const[trashOpen,setTrashOpen]=useState(false);
   const[confirmAll,setConfirmAll]=useState(false); // "Alle löschen"-Popup
   const[pdfFor,setPdfFor]=useState(null); // Turnier-ID, für die gerade ein PDF baut
   const makePdf=async(t)=>{
@@ -14473,17 +14574,47 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
             </SwipeableCard>
           </div>
         ))}
+
+        {/* Papierkorb — nur da, wenn etwas drin ist. Als letzte Zeile
+            und nicht als Knopf im Kopf: er ist kein Werkzeug, das man
+            sucht, sondern ein Ort, an dem etwas liegt. Wer ihn
+            braucht, hat gerade etwas geloescht und scrollt ohnehin
+            durch die Liste. */}
+        {trash.length>0&&(
+          <button onClick={()=>{buzz(6);setTrashOpen(true);}}
+            style={{width:'100%',marginTop:4,background:'none',
+              border:`1px dashed ${T.border}`,borderRadius:18,
+              padding:'14px 18px',display:'flex',alignItems:'center',gap:14,
+              cursor:'pointer',color:T.t2,textAlign:'left'}}>
+            <TrashIcon size={20} color={T.t3}/>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{color:T.t2,fontSize:14,fontWeight:700}}>Papierkorb</div>
+              <div style={{color:T.t4,fontSize:11.5,fontWeight:500,marginTop:2}}>
+                {trash.length} {trash.length===1?'Turnier':'Turniere'} · {TRASH_DAYS} Tage
+              </div>
+            </div>
+            <ChevronRightIcon size={16} color={T.t4}/>
+          </button>
+        )}
       </div>
 
       <div style={{height:120}}/>
       <BottomFade/>
       <TabBar active={activeTab} onTab={setActiveTab}/>
 
+      {trashOpen&&(
+        <TrashSheet items={trash}
+          onClose={()=>setTrashOpen(false)}
+          onRestore={t=>{buzz(8);onRestoreTrash?.(t);if(trash.length<=1)setTrashOpen(false);}}
+          onPurge={id=>{buzz(10);onPurgeTrash?.(id);if(trash.length<=1)setTrashOpen(false);}}
+          onEmpty={()=>{buzz(18);onEmptyTrash?.();setTrashOpen(false);}}/>
+      )}
+
       {/* "Alle löschen" bestätigen */}
       {confirmAll&&(
         <ResetModal
           title="Alles löschen"
-          description="Laufendes Match und alle Turniere samt Entwürfen werden aus dem Live-Screen entfernt."
+          description={`Laufendes Match und alle Turniere samt Entwürfen werden aus dem Live-Screen entfernt. Die Turniere liegen danach ${TRASH_DAYS} Tage im Papierkorb.`}
           question="Wirklich alle Spiele & Turniere löschen?"
           confirmLabel="Alle löschen"
           onCancel={()=>setConfirmAll(false)}
@@ -22273,6 +22404,11 @@ export default function App(){
     if(old) return [{...old,id:old.id||('t-'+Date.now()),name:old.name||'Turnier',createdAt:old.createdAt||Date.now()}];
     return [];
   });
+  /* Papierkorb: geloeschte Turniere, sieben Tage lang (siehe
+     purgeTrash in utils.js). Aufgeraeumt wird beim Laden und bei
+     jedem Schreiben — nicht per Timer, denn ein Timer laeuft nur,
+     solange die App offen ist. */
+  const[trash,setTrash]=useState(()=>purgeTrash(lsGet('ritmo_trash',[])));
   const[currentTourneyId,setCurrentTourneyId]=useState(null);
   const tourney=tourneys.find(t=>t.id===currentTourneyId)||null;
   const setTourney=useCallback(updater=>{
@@ -22536,6 +22672,10 @@ export default function App(){
     else lsSet('ritmo_tourneys',tourneys);
     try{localStorage.removeItem('ritmo_tourney');}catch(e){} // alter Einzel-Key
   },[tourneys]);
+  useEffect(()=>{
+    if(!trash.length){try{localStorage.removeItem('ritmo_trash');}catch(e){}}
+    else lsSet('ritmo_trash',trash);
+  },[trash]);
   useEffect(()=>lsSet('ritmo_ring',ringId),[ringId]);
   useEffect(()=>lsSet('ritmo_input',inputMode),[inputMode]);
   useEffect(()=>lsSet('ritmo_voice',voiceOn),[voiceOn]);
@@ -22701,14 +22841,35 @@ export default function App(){
     try{await dbDeleteMyMatches();}catch(e){}
     setProfile(p=>({...p,matchesPlayed:0,winsCount:0,statsResetAt:Date.now()}));
   };
+  /* Ein Turnier wandert in den Papierkorb, statt zu verschwinden.
+     Der Undo-Toast bleibt trotzdem: er deckt die naechsten Sekunden
+     ab ("falsch gewischt"), der Papierkorb den naechsten Morgen. */
+  const toTrash=(t)=>setTrash(list=>purgeTrash([{...t,deletedAt:Date.now()},
+    ...list.filter(x=>x.id!==t.id)]));
+  const restoreTrash=(entry)=>{
+    if(!entry) return;
+    const {deletedAt,...t}=entry;
+    setTourneys(cur=>[t,...cur.filter(c=>c.id!==t.id)]);
+    setTrash(list=>list.filter(x=>x.id!==t.id));
+    return t;
+  };
+  const purgeOne=(id)=>setTrash(list=>list.filter(x=>x.id!==id));
+  const emptyTrash=()=>{
+    const snap=trash;
+    setTrash([]);
+    if(snap.length) offerUndo('Papierkorb geleert',()=>setTrash(purgeTrash(snap)));
+  };
+
   const deleteTourney=(id)=>{
     const target=id||currentTourneyId;
     const removed=tourneys.find(t=>t.id===target);
     const wasCurrent=target===currentTourneyId;
     setTourneys(list=>list.filter(t=>t.id!==target));
     if(wasCurrent) setCurrentTourneyId(null);
-    if(removed) offerUndo(removed.draft?'Entwurf gelöscht':'Turnier gelöscht',()=>{
-      setTourneys(list=>[removed,...list.filter(t=>t.id!==removed.id)]);
+    if(!removed) return;
+    toTrash(removed);
+    offerUndo(removed.draft?'Entwurf in den Papierkorb':'Turnier in den Papierkorb',()=>{
+      restoreTrash({...removed,deletedAt:Date.now()});
       if(wasCurrent) setCurrentTourneyId(removed.id);
     });
   };
@@ -22717,15 +22878,22 @@ export default function App(){
   // Turniere/Entwürfe in einem Schritt, mit gemeinsamem Undo-Toast.
   // Die Online-Session bleibt bewusst unangetastet (verlassen ≠ löschen).
   const deleteAllLive=()=>{
-    const snap={bo3,am,tourneys,currentTourneyId};
+    const snap={bo3,am,tourneys,currentTourneyId,trash};
+    const now=Date.now();
     dBo3({type:'RESET'});
     dAm({type:'RESET',limit:cfg.amLimit??21});
+    // Auch hier: in den Papierkorb, nicht ins Nichts.
+    setTrash(list=>purgeTrash([
+      ...tourneys.map(t=>({...t,deletedAt:now})),
+      ...list.filter(x=>!tourneys.some(t=>t.id===x.id)),
+    ]));
     setTourneys([]);
     setCurrentTourneyId(null);
-    offerUndo('Alle Spiele & Turniere gelöscht',()=>{
+    offerUndo('Spiele & Turniere in den Papierkorb',()=>{
       dBo3({type:'_R',s:snap.bo3});
       dAm({type:'_R',s:snap.am});
       setTourneys(snap.tourneys);
+      setTrash(snap.trash);
       setCurrentTourneyId(snap.currentTourneyId);
     });
   };
@@ -22933,6 +23101,8 @@ export default function App(){
       activeTab={activeTab} setActiveTab={handleTab}
       onDeleteMatch={deleteMatch} onDeleteTourney={deleteTourney} onOpenTourney={openTourney}
       onDeleteAll={deleteAllLive}
+      trash={trash} onRestoreTrash={restoreTrash}
+      onPurgeTrash={purgeOne} onEmptyTrash={emptyTrash}
       joinedSession={joinedSession}
       onLeaveJoined={()=>{
         // Auch serverseitig aus der Teilnehmerliste austragen — nicht

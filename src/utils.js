@@ -150,3 +150,33 @@ export function resizeImage(dataUrl,maxDim){
     img.src=dataUrl;
   });
 }
+
+/* ── PAPIERKORB ───────────────────────────────────────────────────
+   Geloeschte Turniere sind nicht sofort weg: sie liegen sieben Tage
+   im Papierkorb und raeumen sich danach selbst ab. Ein Turnier ist
+   ein Abend Arbeit — Namen, Runden, Ergebnisse —, und ein Wisch nach
+   links ist schnell gemacht. Der Undo-Toast deckt nur die naechsten
+   Sekunden ab; der Papierkorb deckt den naechsten Morgen ab.
+
+   Reine Funktionen: das Aufraeumen passiert bei JEDER Benutzung, nicht
+   per Timer. Ein Timer laeuft nur, solange die App offen ist — und
+   genau dann ist auch niemand sieben Tage weg. */
+export const TRASH_DAYS=7;
+export const TRASH_MAX=30;          // Deckel gegen die localStorage-Quote
+
+/* Abgelaufene raus, neueste zuerst, gedeckelt. Laeuft auch ueber
+   kaputte Datensaetze (kein deletedAt) sauber hinweg. */
+export function purgeTrash(list){
+  const cut=Date.now()-TRASH_DAYS*86400000;
+  return (Array.isArray(list)?list:[])
+    .filter(t=>t&&t.id!=null&&typeof t.deletedAt==='number'&&t.deletedAt>cut)
+    .sort((a,b)=>b.deletedAt-a.deletedAt)
+    .slice(0,TRASH_MAX);
+}
+
+/* Verbleibende Tage, aufgerundet: am Loeschtag steht "noch 7 Tage",
+   in der letzten Stunde "noch 1 Tag" — nie "noch 0 Tage". */
+export function trashDaysLeft(deletedAt){
+  const ms=(deletedAt||0)+TRASH_DAYS*86400000-Date.now();
+  return Math.max(0,Math.ceil(ms/86400000));
+}

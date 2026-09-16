@@ -13333,6 +13333,14 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
     const t=setTimeout(()=>setToolsOpen(false),4500);
     return ()=>clearTimeout(t);
   },[toolsOpen]);
+  /* Dropdown auf die naechste Runde. Die Timer-Karte traegt es: die
+     Auslosung steht bei historie-basierten Formaten ohnehin schon
+     (nextPreview) — bisher sah sie nur die Teilnehmeransicht, der Host
+     musste raten, wer als naechstes gegeneinander spielt. Aufgeklappt
+     tritt die Uhr beiseite; sie laeuft weiter. */
+  const[nextOpen,setNextOpen]=useState(false);
+  const nextPanelRef=useRef(null);
+  const[nextPanelH,setNextPanelH]=useState(0);
   const[layoutEdit,setLayoutEdit]=useState(false);
   const[layoutSel,setLayoutSel]=useState(null);
   // Defensive: korrupte/unvollständige persistierte Turniere (z. B.
@@ -13343,11 +13351,12 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
   const round=rawRound||{courts:[],sitOut:[]};
   useEffect(()=>{ if(!rawRound) onHome&&onHome(); },[rawRound]);  // eslint-disable-line react-hooks/exhaustive-deps
   const playerById=id=>tourney.players.find(p=>p.id===id);
+  const teamNames=ids=>(ids||[]).map(id=>playerById(id)?.name||'?').join(' + ');
   const tLayout=useMemo(()=>compactLayout(normLayout(tourney.courtLayout,tourney.numCourts||1)),
     [tourney.courtLayout,tourney.numCourts]);
   /* Ein Filter ueberlebt den Rundenwechsel nicht — sonst steht der
      Host vor einer leeren Liste und sucht den Schalter. */
-  useEffect(()=>{setCourtFilter(null);},[tourney.current]);
+  useEffect(()=>{setCourtFilter(null);setNextOpen(false);},[tourney.current]);
   const setLayout=l=>setTourney(t=>({...t,courtLayout:compactLayout(l)}));
 
   // ── Online-Sync (nur wenn dieses Turnier eine Online-Session hat) ──
@@ -13620,6 +13629,19 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
     setTourney(t=>({...t,nextPreview:pv?{forRound:t.current,round:pv}:null}));
   },[previewable,tourney.current,tourney.rounds.length,tourney.finished,rawRound]);  // eslint-disable-line react-hooks/exhaustive-deps
 
+  /* Die Auslosung, die das Dropdown zeigt — dieselbe, die nextRound()
+     spaeter einloest. Steht keine da, wird nichts erfunden: bei
+     Mexicano, K.-o. und King of the Court haengen die Paarungen an
+     den Ergebnissen dieser Runde. */
+  const nextPv=tourney.nextPreview?.forRound===tourney.current?tourney.nextPreview.round:null;
+  /* Die Hoehe wird gemessen, nicht geschaetzt: eine Runde hat mal
+     einen Court und mal sechs. Gedeckelt, damit das Turnier darunter
+     nicht ganz verschwindet — der Rest scrollt im Fach selbst. */
+  useLayoutEffect(()=>{
+    const el=nextPanelRef.current;
+    if(el) setNextPanelH(el.offsetHeight+10);
+  },[nextPv,previewable,tourney.current,nextOpen]);
+
   const nextRound=()=>{
     // Außerhalb von setTourney generieren: bei K.-o. kann null kommen
     // (Finale entschieden) → Turnier direkt sauber beenden.
@@ -13725,7 +13747,8 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
         }/>
 
       {/* Timer + Leaderboard Toggle */}
-      <div style={{display:'flex',gap:10,padding:'0 22px 14px'}}>
+      <div style={{padding:'0 22px 14px'}}>
+      <div style={{display:'flex',gap:10}}>
         {/* Timer Card */}
         <div style={{flex:1,minWidth:0,
           background:T.bg,
@@ -13733,28 +13756,65 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
           borderRadius:16,padding:'10px 14px',
           display:'flex',alignItems:'center',gap:10,
           position:'relative',overflow:'hidden'}}>
-          {/* Progress fill */}
-          <div style={{position:'absolute',left:0,top:0,bottom:0,
-            width:`${progress*100}%`,
-            background:tourney.timerFinished?'rgba(232,69,69,0.12)':'var(--oSoft)',
-            transition:'width 1s linear'}}/>
-          <div style={{flex:1,fontSize:30,fontWeight:800,
-            color:tourney.timerFinished?T.r:T.o,
-            fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',letterSpacing:1.5,
-            position:'relative',zIndex:1}}>
-            {fmtT(tourney.timerSecsLeft||0)}
-          </div>
-          <button onClick={toggleTimer}
-            aria-label={tourney.timerFinished?'Rundenzeit neu starten'
+          {/* Progress fill — nur solange die Uhr auch zu sehen ist:
+              ein halb gefuellter Balken hinter "Runde 2" misst nichts,
+              was dort steht. */}
+          {!nextOpen&&(
+            <div style={{position:'absolute',left:0,top:0,bottom:0,
+              width:`${progress*100}%`,
+              background:tourney.timerFinished?'rgba(232,69,69,0.12)':'var(--oSoft)',
+              transition:'width 1s linear'}}/>
+          )}
+          {/* Die Karte ist zugleich der Aufklapper: tippen tauscht die
+              Uhr gegen die naechste Auslosung. Der Caret ist die Zusage,
+              dass da noch etwas liegt. */}
+          <button onClick={()=>{buzz(6);setNextOpen(o=>!o);}}
+            aria-expanded={nextOpen}
+            aria-label={nextOpen?'Rundenzeit anzeigen':'Nächste Runde anzeigen'}
+            title={nextOpen?'Rundenzeit anzeigen':'Nächste Runde anzeigen'}
+            style={{flex:1,minWidth:0,display:'flex',alignItems:'center',gap:8,
+              background:'none',border:'none',padding:0,margin:0,textAlign:'left',
+              cursor:'pointer',color:'inherit',position:'relative',zIndex:1}}>
+            {nextOpen?(
+              <div style={{flex:1,minWidth:0}}>
+                <div className="display" style={{fontSize:10,letterSpacing:2,
+                  color:T.t3,textTransform:'uppercase',lineHeight:1.3}}>Danach</div>
+                <div style={{color:T.o,fontSize:19,fontWeight:800,
+                  whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
+                  Runde {tourney.current+2}
+                </div>
+              </div>
+            ):(
+              <div style={{flex:1,minWidth:0,fontSize:30,fontWeight:800,
+                color:tourney.timerFinished?T.r:T.o,
+                fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace',letterSpacing:1.5}}>
+                {fmtT(tourney.timerSecsLeft||0)}
+              </div>
+            )}
+            <span style={{flexShrink:0,display:'flex',
+              transform:nextOpen?'rotate(-90deg)':'rotate(90deg)',
+              transition:'transform .28s cubic-bezier(.2,.8,.2,1)'}}>
+              <ChevronRightIcon size={15} color={T.t3}/>
+            </span>
+          </button>
+          {/* Aufgeklappt tritt die Uhr beiseite — und mit ihr ihr Knopf:
+              Start/Pause ohne sichtbare Zeit steuert man blind. Der
+              Platz traegt dann den Weg zurueck. */}
+          <button onClick={nextOpen?()=>{buzz(6);setNextOpen(false);}:toggleTimer}
+            aria-label={nextOpen?'Rundenzeit anzeigen'
+              :tourney.timerFinished?'Rundenzeit neu starten'
               :tourney.timerRunning?'Rundenzeit pausieren':'Rundenzeit starten'}
-            title={tourney.timerFinished?'Rundenzeit neu starten'
+            title={nextOpen?'Rundenzeit anzeigen'
+              :tourney.timerFinished?'Rundenzeit neu starten'
               :tourney.timerRunning?'Rundenzeit pausieren':'Rundenzeit starten'}
             style={{width:40,height:40,borderRadius:'50%',
-              background:tourney.timerFinished?T.r:T.o,border:'none',
+              background:!nextOpen&&tourney.timerFinished?T.r:T.o,border:'none',
               color:T.bg,fontSize:16,fontWeight:800,
               cursor:'pointer',position:'relative',zIndex:1,
               display:'flex',alignItems:'center',justifyContent:'center'}}>
-            {tourney.timerFinished?'↺':tourney.timerRunning?<PauseGlyph size={15} color={T.bg}/>:<PlayGlyph size={15} color={T.bg}/>}
+            {nextOpen?<StopwatchIcon size={18} color={T.bg}/>
+              :tourney.timerFinished?'↺'
+              :tourney.timerRunning?<PauseGlyph size={15} color={T.bg}/>:<PlayGlyph size={15} color={T.bg}/>}
           </button>
         </div>
 
@@ -13780,6 +13840,65 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
           <HistoryIcon size={25} color={T.o}/>
         </button>
 
+      </div>
+
+      {/* Das Fach mit der naechsten Auslosung. Es schiebt das Turnier
+          nach unten, statt sich darueberzulegen: was hier steht, liest
+          man im Vergleich mit dem, was gerade laeuft. */}
+      <div style={{maxHeight:nextOpen?nextPanelH:0,opacity:nextOpen?1:0,
+        overflow:'hidden',
+        transition:'max-height .32s cubic-bezier(.2,.8,.2,1),opacity .22s'}}>
+        {/* Zweilagig: --card ist im Glass-Theme halbtransparent, und
+            darunter liegt die Kopfzeile. */}
+        <div ref={nextPanelRef} style={{marginTop:10,padding:'4px 14px',
+          borderRadius:16,maxHeight:320,overflowY:'auto',
+          background:`linear-gradient(0deg, ${T.card}, ${T.card}), ${T.bg}`,
+          border:`1px solid ${T.border}`}}>
+          {nextPv?(<>
+            {(nextPv.courts||[]).map((c,ci)=>(
+              <div key={c.id??ci} style={{padding:'10px 0',
+                borderTop:ci?`1px solid ${T.border}`:'none'}}>
+                <div style={{color:T.o,fontSize:10,fontWeight:900,letterSpacing:1.3,
+                  textTransform:'uppercase',marginBottom:5,
+                  whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
+                  {courtLabel(tourney.courtNames,ci)}{c.single?' — 1v1':''}
+                </div>
+                <div style={{display:'flex',alignItems:'center',gap:8}}>
+                  <div style={{flex:1,minWidth:0,color:T.t1,fontSize:13,fontWeight:700,
+                    whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
+                    {teamNames(c.t1)}
+                  </div>
+                  <div style={{flexShrink:0,color:T.t3,fontSize:10,fontWeight:900,
+                    letterSpacing:1}}>VS</div>
+                  <div style={{flex:1,minWidth:0,color:T.t1,fontSize:13,fontWeight:700,
+                    textAlign:'right',
+                    whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
+                    {teamNames(c.t2)}
+                  </div>
+                </div>
+              </div>
+            ))}
+            {(nextPv.sitOut||[]).length>0&&(
+              <div style={{padding:'10px 0',borderTop:`1px solid ${T.border}`,
+                display:'flex',alignItems:'baseline',gap:8}}>
+                <div style={{flexShrink:0,color:T.t3,fontSize:10,fontWeight:900,
+                  letterSpacing:1.3,textTransform:'uppercase'}}>Pause</div>
+                <div style={{flex:1,minWidth:0,color:T.t2,fontSize:13,fontWeight:600,
+                  whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
+                  {teamNames(nextPv.sitOut).replace(/ \+ /g,', ')}
+                </div>
+              </div>
+            )}
+          </>):(
+            <div className="txt" style={{padding:'10px 0',color:T.t3,fontSize:13,
+              lineHeight:1.5}}>
+              {previewable
+                ?'Die nächste Runde wird ausgelost, sobald diese hier abgerechnet ist.'
+                :'In diesem Format hängen die Paarungen an den Ergebnissen dieser Runde — sie stehen erst am Rundenende fest.'}
+            </div>
+          )}
+        </div>
+      </div>
       </div>
 
       <div ref={scrollRef}

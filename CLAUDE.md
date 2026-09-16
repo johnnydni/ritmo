@@ -80,7 +80,7 @@ When changing scoring rules, edit the reducer — the `Match` screen is a thin s
 - **Team-Americano**: fixed pairs, so the promise is "every team against every other". Optimized on matchup repeats (`W_MATCH`) plus the player-level opponent costs inside them. Measured over 20 simulated tournaments at 12 players / 3 courts / 9 rounds: matchup coverage 96 % → 100 %, most-repeated matchup 3.4× → 2.05× (2.0 is the arithmetic floor).
 - **Cross-tournament memory**: `meetLogFor()` in App.jsx reads the *stored tournaments themselves* — there is no second store to drift out of sync, and nothing to clean up when a tournament is deleted. The last `MEET_LOG_MAX` (6) tournaments count, matched **by name** (a player's `id` is only their list position and means nothing across tournaments). In the generator it is a tiebreaker and not a law: `W_PRIOR` × `PRIOR_CAP` stays below every one of the three cost levels, so it can decide a tie but never buy a repeat in the running tournament.
 - **Sit-out compensation**: controlled by the tournament's `pauseMode` (wizard step "Runden & Regeln", or the Sieger-Modus card in the classic form). `'mean'` (default, and the fallback for tournaments saved before the setting existed) credits sit-outs the rounded per-round mean as `bonusPts` in `points` mode, or `+1 win per sit-out` for lower-half players in `wins` mode. `'fixed'` credits a flat `pausePts` per sit-out as `bonusPts` (also in `wins` mode, where points act as the tiebreak) — unlike `'mean'` it needs no confirmed results in the round. `'none'` credits nothing — sit-outs are still counted for the P column, just not compensated. Bonuses are kept on separate fields (`bonusPts`/`bonusWins`) and only folded into `totalPts`/`totalWins` at the end.
-- **Next-round preview**: while a round runs, `TournamentPlay` already draws the *following* round and keeps it on `tourney.nextPreview = {forRound, round}`; `nextRound()` then plays exactly that draw instead of generating a fresh one. This is what feeds the "Danach" page in the live participant view. It only happens for formats in `PREVIEWABLE_FORMATS` (`americano`, `teamamericano`, `mixicano`) whose pairings depend on the *history* of who played with/against whom. Mexicano and Team-Mexicano draw from the leaderboard, King of the Court and Knockout from the current round's winners — previewing those would fix the pairings before the results exist and stop them being the format the host picked, so they show an honest "steht noch nicht fest" instead.
+- **Next-round preview**: while a round runs, `TournamentPlay` already draws the *following* round and keeps it on `tourney.nextPreview = {forRound, round}`; `nextRound()` then plays exactly that draw instead of generating a fresh one. This is what feeds the "Danach" page in the live participant view *and* the Danach-Fach der Timer-Karte beim Host. It only happens for formats in `PREVIEWABLE_FORMATS` (`americano`, `teamamericano`, `mixicano`) whose pairings depend on the *history* of who played with/against whom. Mexicano and Team-Mexicano draw from the leaderboard, King of the Court and Knockout from the current round's winners — previewing those would fix the pairings before the results exist and stop them being the format the host picked, so they show an honest "steht noch nicht fest" instead.
 
 ### Turnier-PDF (`src/tourneyPdf.js`)
 
@@ -233,6 +233,38 @@ ist schnell gemacht.
   Gegenteil-Farben: **gelb zurück** (wie überall, siehe Theming), **rot
   endgültig**. Kein Wischen dort — im Papierkorb ist ein Fehlwisch
   nicht mehr rückgängig zu machen.
+
+### Die Timer-Karte — und was danach kommt
+
+Die Karte links in der Kopfzeile des laufenden Turniers zeigt die
+Rundenzeit **und** ist der Aufklapper fuer die naechste Auslosung.
+Tippen tauscht die Uhr gegen `DANACH / Runde N`; darunter faehrt ein
+Fach aus mit einer Zeile je Court (Court-Name, beide Paare, `VS`) und
+einer Pausen-Zeile. Der Host sah die Vorschau bisher nirgends — sie
+stand nur in der Teilnehmeransicht, obwohl er derjenige ist, der die
+Leute ruft.
+
+- Gezeigt wird **genau** `tourney.nextPreview` — dieselbe Auslosung,
+  die `nextRound()` spaeter einloest. Nichts wird fuer die Anzeige
+  neu gewuerfelt, sonst waere das Fach eine andere Runde als die,
+  die dann gespielt wird.
+- Formate ohne Vorschau (Mexicano, Team-Mexicano, K.-o., King of the
+  Court) bekommen denselben ehrlichen Satz wie die Teilnehmeransicht,
+  statt einer erfundenen Paarung.
+- **Aufgeklappt tritt die Uhr ganz beiseite**, mitsamt ihrem
+  Start/Pause-Knopf und dem Fortschrittsbalken: eine Uhr steuern, die
+  man nicht sieht, ist Blindflug, und ein halb gefuellter Balken
+  hinter „Runde 2" misst nichts, was dort steht. Der runde Knopf
+  traegt dann die Stoppuhr und fuehrt zurueck.
+- Die **Hoehe wird gemessen** (`offsetHeight` des Inhalts), nicht
+  geschaetzt — eine Runde hat mal einen Court und mal sechs. Gleiche
+  Regel wie beim Werkzeug-Fach: mit einem zu grossen Wert laeuft der
+  erste Teil des Uebergangs ins Leere. Ab 320 px scrollt das Fach in
+  sich, damit das Turnier darunter nicht verschwindet.
+- Das Fach **schiebt**, statt sich darueberzulegen: was darin steht,
+  liest man im Vergleich mit dem, was gerade laeuft.
+- Der Rundenwechsel schliesst es (derselbe Effekt, der den
+  Court-Filter zuruecksetzt) — danach ist „danach" etwas anderes.
 
 ### `MatchBar` im laufenden Turnier — das Werkzeug-Fach
 

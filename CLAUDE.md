@@ -267,6 +267,38 @@ Leute ruft.
 - Der Rundenwechsel schliesst es (derselbe Effekt, der den
   Court-Filter zuruecksetzt) — danach ist „danach" etwas anderes.
 
+### Der Turnier-Start-Vorhang und sein Orb (`TennisOrb`)
+
+Zwischen „Start" und der ersten Runde liegt ein kurzer Vorhang
+(`TournamentStartSplash`): ein Ball dreht sich, holt aus und schiesst
+auf den Betrachter zu. Der Screenwechsel passiert dabei **sofort** —
+der Vorhang deckt ihn nur zu, statt die App künstlich langsamer zu
+machen.
+
+Der Ball ist seit dem Orb kein Aufkleber mehr, der sich im Kreis
+dreht, sondern eine echte Kugel aus Punkten:
+
+- Die Punkte sitzen per **Fibonacci-Gitter** auf der Kugel, werden je
+  Bild gedreht, perspektivisch projiziert und von hinten nach vorn
+  gezeichnet. Rund wird der Ball dadurch von selbst: vorn gross und
+  hell, hinten klein und matt. Ein CSS-Spin um die Z-Achse kann das
+  nicht, weil er nichts über die dritte Achse weiss.
+- Die Naht ist die **echte Tennisball-Kurve**
+  (`x = a·cos t + b·cos 3t`, `y = a·sin t − b·sin 3t`, `z = c·sin 2t`).
+  Sie liegt genau dann auf der Einheitskugel, wenn **a + b = 1** und
+  **c = 2·√(ab)** — deshalb stehen dort 0,7 / 0,3 / 0,9165 und keine
+  „schön gerundeten" Zahlen.
+- Die Naht ist eine **eigene, dichte Punktreihe**, und das Feld lässt
+  ihr Platz (Punkte näher als 0,085 fallen raus). Ohne beides franst
+  die Linie aus, und aus der S-Kurve wird ein oranger Fleck.
+- **Canvas, nicht SVG**: 1200 Punkte je Bild als DOM-Knoten zu bewegen
+  kostet mehr, als der ganze Vorhang dauert.
+- **Canvas kennt keine CSS-Variablen.** `T.o` ist `var(--o)` und
+  landet als solcher String im `fillStyle` — also unsichtbar. Die
+  Farben werden im Effekt einmal per `getComputedStyle` aufgelöst.
+- Bei `prefers-reduced-motion` wird **ein** Bild gezeichnet und keine
+  Schleife gestartet.
+
 ### `MatchBar` im laufenden Turnier — das Werkzeug-Fach
 
 Die Leiste zeigt im Ruhezustand nur **Home**, den **Werkzeug-Schalter**

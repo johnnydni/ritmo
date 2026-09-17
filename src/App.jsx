@@ -3271,14 +3271,20 @@ function MatchBar({onHome,rightIcon,onRight,rightButtons,homeLabel='Zurück zur 
   const hide={opacity:0,transform:'scale(.55)',pointerEvents:'none',
     width:0,minWidth:0,marginLeft:-10,padding:0,border:'none',overflow:'hidden'};
 
+  /* btn.plain = ohne eigenes Glas. Im Fach ist die Kapsel die
+     Oberflaeche; Glas auf Glas traegt doppelt auf und macht aus dem
+     Morph zwei Materialien, die sich ineinander schieben. */
   const fab=(btn,key,extra)=>(
     <button key={key} onClick={btn.onClick} disabled={btn.disabled}
-      className="glass-bar"
+      className={btn.plain?undefined:'glass-bar'}
       aria-label={btn.label||btn.title||undefined}
       title={btn.label||btn.title||undefined}
       {...extra}
       style={{
         ...baseStyle,
+        /* Ohne Glas-Klasse braucht der Knopf ausdruecklich KEINEN
+           Grund: sonst malt der Browser seinen eigenen (weiss). */
+        ...(btn.plain?{background:'transparent',border:'none',boxShadow:'none'}:{}),
         ...(btn.style||{}),
         cursor:btn.disabled?'not-allowed':'pointer',
         opacity:btn.disabled?.5:1,
@@ -3307,40 +3313,64 @@ function MatchBar({onHome,rightIcon,onRight,rightButtons,homeLabel='Zurück zur 
 
      Animiert wird max-width, nicht width: von width:auto auf 0 gibt
      es keinen Uebergang. */
+  /* Ein Eintrag mit items ist ein FACH — und das Fach ist KEINE
+     zweite Leiste neben dem Schalter, sondern derselbe Knopf, der
+     sich streckt: eine Kapsel, die geschlossen exakt der 48er-Kreis
+     des Schalters ist und offen bis ueber die vier Werkzeuge reicht.
+     Der Schalter liegt mit drin, ganz rechts.
+
+     Vorher lag die Kapsel NEBEN dem Schalter und wuchs aus dem
+     Nichts (max-width 0 + opacity). Das sah aus wie eine zweite
+     Leiste, die eingeblendet wird — jetzt ist es eine Flaeche, die
+     sich verformt.
+
+     Absolut gesetzt und rechts verankert, weil sechs runde Knoepfe
+     bei 390 px nicht in eine Reihe passen: vier Werkzeuge (230) plus
+     Schalter, Weiter und Home braeuchten 376 von 342 Pixeln. Im
+     Fluss muesste also etwas schrumpfen; ueber der Leiste darf es
+     einfach liegen. Der 48er-Platzhalter darunter haelt der Reihe
+     den Platz frei. */
   const tray=(btn,key)=>{
   const items=(btn.items||[]).filter(Boolean);
   const n=items.length;
-  const trayW=n*48+(n-1)*8+14;   // Knoepfe + Luecken + Polsterung
+  const PAD=6, GAP=8;
+  const openW=48+GAP+n*48+(n-1)*GAP+PAD;   // Schalter + Werkzeuge + Polster
   return(
-    <div key={key} style={{position:'relative',display:'flex',
-      alignItems:'center',flexShrink:0}}>
+    <div key={key} style={{position:'relative',width:48,height:48,flexShrink:0}}>
       <div className="glass-bar" style={{
-        position:'absolute',right:'calc(100% + 10px)',top:'50%',
-        transform:'translateY(-50%)',
-        display:'flex',alignItems:'center',gap:8,
-        borderRadius:999,
-        padding:btn.open?'5px 7px':'5px 0',
-        /* Genau die Breite des Inhalts, nicht grosszuegig geschaetzt:
-           mit einem zu weiten Wert laeuft der erste Teil des
-           Uebergangs ins Leere, und das Einfahren wirkt erst
-           verzoegert und dann abrupt. */
-        maxWidth:btn.open?trayW:0,
-        opacity:btn.open?1:0,
-        pointerEvents:btn.open?'auto':'none',
-        overflow:'hidden',
-        transition:'max-width .32s cubic-bezier(.2,.8,.2,1),opacity .22s,padding .32s'}}>
-        {items.map((it,j)=>fab({...it,fx:{
+        position:'absolute',right:0,top:0,height:48,
+        /* Die Breite IST die Animation. Aufgehen mit einem Hauch
+           Ueberschwingen, Zugehen kurz und ohne — beim Schliessen
+           will niemand noch einmal nachfedern. */
+        width:btn.open?openW:48,
+        borderRadius:999,overflow:'hidden',
+        display:'flex',alignItems:'center',justifyContent:'flex-end',
+        gap:GAP,paddingLeft:btn.open?PAD:0,
+        pointerEvents:'auto',
+        transition:btn.open
+          ?'width .44s cubic-bezier(.22,1.08,.36,1),padding-left .44s cubic-bezier(.22,1.08,.36,1)'
+          :'width .28s cubic-bezier(.4,0,.2,1),padding-left .28s cubic-bezier(.4,0,.2,1)'}}>
+        {items.map((it,j)=>fab({...it,plain:true,fx:{
           opacity:btn.open?1:0,
-          transform:btn.open?'scale(1)':'scale(.5)',
-          /* Gestaffelt, und in beide Richtungen von innen nach aussen
+          /* Sie kommen unter dem Schalter hervor und verschwinden
+             wieder darunter — deshalb der Versatz nach rechts. */
+          transform:btn.open?'translateX(0) scale(1)':'translateX(14px) scale(.6)',
+          pointerEvents:btn.open?'auto':'none',
+          transition:'opacity .24s,transform .34s cubic-bezier(.22,1.08,.36,1)',
+          /* Gestaffelt und in beide Richtungen von innen nach aussen
              gedacht: beim Ausfahren erscheint der Knopf am Schalter
              zuerst, beim Einfahren verschwindet der aeusserste
-             zuerst. Die Reihe bewegt sich dadurch wie eine Kette und
-             nicht wie ein Block. */
-          transitionDelay:`${(btn.open?(n-1-j):j)*35}ms`,
+             zuerst. Die Reihe bewegt sich wie eine Kette und nicht
+             wie ein Block. */
+          transitionDelay:`${(btn.open?(n-1-j):j)*38}ms`,
         }},j))}
+        {/* Der Schalter selbst: ohne eigenes Glas (die Kapsel ist das
+            Material) und mit gedrehtem Glyph, solange offen ist. */}
+        {fab({...btn,plain:true,fx:{
+          transform:btn.open?'rotate(45deg)':'rotate(0deg)',
+          transition:'transform .44s cubic-bezier(.22,1.08,.36,1)',
+        }},'toggle',{'aria-expanded':!!btn.open})}
       </div>
-      {fab(btn,'toggle',{'aria-expanded':!!btn.open})}
     </div>
   );};
 

@@ -13262,35 +13262,88 @@ function pcBall(n){
   }
   return out;
 }
-/* Pokal: Kelch als Rotationsflaeche, zwei Henkel in der xy-Ebene,
-   Stiel und Fuss. Die Anteile sind so gewaehlt, dass der Kelch die
-   Form traegt und Fuss/Henkel sie nur lesbar machen. */
+/* Pokal: der Wimbledon-Pokal. Der Koerper ist eine Rotationsflaeche
+   ueber PC_CUP (Wertepaare y/r von unten nach oben): Fuss, Stiel mit
+   Knauf, Kelch, der vorstehende Rand und darauf die Deckelkuppel.
+   Oben sitzt die Ananas, seitlich zwei Henkel.
+
+   Drei Dinge, ohne die es ein anderer Pokal wird:
+   - Das Verhaeltnis. Das Original ist rund doppelt so hoch wie breit
+     (47 cm bei 19 cm Durchmesser). Mit einer Hoehe in Randbreite
+     wurde daraus ein Kelch, ein Kreisel oder eine Linse — je nach
+     Versuch, aber nie der Pokal.
+   - Der RAND muss vorstehen (der kurze Sprung auf r 0.54). Ohne ihn
+     laufen Kelch und Deckel zu einer Kugel zusammen und der Pokal
+     hat keinen Deckel mehr, sondern eine Haube.
+   - Die Punkte werden nach MANTELFLAECHE verteilt (r x Segmentlaenge),
+     sonst bekommt der breite Deckel alles und der duenne Stiel nichts
+     — der Fuss stand dann als eigene Scheibe darunter. Die additive
+     Konstante ist genau dafuer da. */
+const PC_CUP=[
+  [0.000,0.000],[0.000,0.330],[0.030,0.335],[0.062,0.300],
+  [0.100,0.230],[0.145,0.160],[0.190,0.120],[0.250,0.098],
+  [0.320,0.090],[0.380,0.136],[0.430,0.100],[0.470,0.085],
+  [0.510,0.106],[0.545,0.160],[0.590,0.240],[0.645,0.320],
+  [0.710,0.395],[0.790,0.452],[0.880,0.484],[0.962,0.500],
+  [0.972,0.540],[0.998,0.542],[1.012,0.506],
+  [1.040,0.500],[1.062,0.496],[1.130,0.492],[1.210,0.482],
+  [1.290,0.470],[1.364,0.440],[1.433,0.398],[1.495,0.340],
+  [1.546,0.272],[1.586,0.200],[1.615,0.125],[1.632,0.060],
+];
+const PC_HB=[[0.480,0.985],[0.880,0.812],[0.286,0.598]];
+function pcRevolve(n,prof){
+  const segs=[];let tot=0;
+  for(let i=1;i<prof.length;i++){
+    const [y0,r0]=prof[i-1],[y1,r1]=prof[i];
+    const w=Math.hypot(y1-y0,r1-r0)*((r0+r1)/2+0.055);
+    segs.push({y0,r0,y1,r1,w}); tot+=w;
+  }
+  const out=[];let k=0;
+  for(const s of segs){
+    const m=Math.max(1,Math.round(n*s.w/tot));
+    for(let i=0;i<m;i++){
+      const t=(i+0.5)/m, a=(k++)*PC_GA;
+      const y=s.y0+(s.y1-s.y0)*t, r=s.r0+(s.r1-s.r0)*t;
+      out.push({x:Math.cos(a)*r,y,z:Math.sin(a)*r,c:1});
+    }
+  }
+  /* Auf n genau bringen: die Rundung je Segment laesst die Summe
+     driften, und alle drei Formen brauchen dieselbe Punktzahl. */
+  while(out.length>n) out.splice(out.length>>1,1);
+  while(out.length<n) out.push({...out[out.length>>1]});
+  return out;
+}
 function pcTrophy(n){
-  const out=[];
-  const cupN=Math.round(n*0.46), hN=Math.round(n*0.09), stemN=Math.round(n*0.10);
-  const baseN=n-cupN-2*hN-stemN;
-  for(let i=0;i<cupN;i++){
-    const t=(i+0.5)/cupN, a=i*PC_GA;
-    /* Der Kelch flaert unten schnell und oben kaum — mit einem
-       Exponenten nahe 1 wird daraus ein Trichter. */
-    const y=-0.02+t*0.66, r=0.14+0.36*Math.pow(t,0.55);
-    out.push({x:Math.cos(a)*r,y:y,z:Math.sin(a)*r,c:1});
+  const pine=Math.round(n*0.10), hand=Math.round(n*0.17);
+  const out=pcRevolve(n-pine-hand,PC_CUP);
+  const body=Math.round(pine*0.66), y0=1.632;
+  for(let i=0;i<body;i++){
+    const t=(i+0.5)/body, a=i*PC_GA;
+    const r=0.086*Math.sin(Math.PI*(0.16+0.78*t))+0.008;
+    out.push({x:Math.cos(a)*r,y:y0+t*0.190,z:Math.sin(a)*r,c:1});
   }
-  for(const sgn of [-1,1]) for(let i=0;i<hN;i++){
-    const t=(i+0.5)/hN;
-    out.push({x:sgn*(0.34+0.24*Math.sin(Math.PI*t)),y:0.56-0.30*t,
-      z:0.05*Math.sin(PC_TAU*t),c:1});
+  const leaf=pine-body, L=6;          // sechs kurze Blaetter, kein Busch
+  for(let i=0;i<leaf;i++){
+    const t=(Math.floor(i/L)+0.5)/Math.ceil(leaf/L), a=i%L/L*PC_TAU+0.35;
+    const r=0.030+0.075*Math.sin(Math.PI*0.62*t);
+    out.push({x:Math.cos(a)*r,y:y0+0.190+t*0.092,z:Math.sin(a)*r,c:1});
   }
-  for(let i=0;i<stemN;i++){
-    const t=(i+0.5)/stemN, a=i*PC_GA*3;
-    out.push({x:Math.cos(a)*0.055,y:-0.30+t*0.28,z:Math.sin(a)*0.055,c:1});
-  }
-  for(let i=0;i<baseN;i++){
-    const t=(i+0.5)/baseN, a=i*PC_GA, r=0.10+0.18*Math.sqrt(t);
-    out.push({x:Math.cos(a)*r,y:-0.34+0.04*t,z:Math.sin(a)*r,c:0});
+  /* Henkel: eine quadratische Bezier vom Rand nach aussen und zurueck
+     an den Kelch, als duenner Schlauch abgetastet. */
+  for(const sg of [-1,1]){
+    const m=sg<0?hand>>1:hand-(hand>>1);
+    for(let i=0;i<m;i++){
+      const t=(i+0.5)/m, u=1-t, a=i*PC_GA*2;
+      const x=u*u*PC_HB[0][0]+2*u*t*PC_HB[1][0]+t*t*PC_HB[2][0];
+      const y=u*u*PC_HB[0][1]+2*u*t*PC_HB[1][1]+t*t*PC_HB[2][1];
+      const rr=0.024*(0.55+0.45*Math.sin(Math.PI*t));
+      out.push({x:sg*(x+Math.cos(a)*rr),y:y+Math.sin(a)*rr*0.9,
+        z:Math.cos(a*1.7)*rr,c:1});
+    }
   }
   // auf die Mitte ziehen, damit alle drei Formen dieselbe Achse haben
-  return out.map(p=>({...p,y:p.y-0.12}));
+  const ys=out.map(p=>p.y), yc=(Math.min(...ys)+Math.max(...ys))/2;
+  return out.map(p=>({...p,y:p.y-yc}));
 }
 /* Schlaeger: flach in der xy-Ebene (ein Schlaeger IST flach — beim
    Drehen sieht man ihn deshalb auch von der Kante). Rahmen, gelochte
@@ -13358,8 +13411,13 @@ function WinnerParticles({size=152,hold=2300,morph=950}){
     const N=1200;
     /* Drei Formen: Pokal, Ball, Konfetti. Der Schlaeger ist raus — er
        steht als Icon schon in der Tab-Bar und in den Listen. */
-    const forms=[pcTrophy(N),pcBall(N),pcConfetti(N,[acc,gold,blue,green,ink])]
-      .map(f=>pcFitView(f,3.4,Math.cos(0.30),Math.sin(0.30),0.78));
+    /* Der Pokal ist hoch und schmal, der Ball fuellt das Quadrat: mit
+       demselben Mass stuende er als Streichholz in der Karte. Er
+       bekommt deshalb mehr Rand — begrenzt wird er von der Hoehe, an
+       der Breite ist Luft. */
+    const forms=[[pcTrophy(N),0.94],[pcBall(N),0.78],
+      [pcConfetti(N,[acc,gold,blue,green,ink]),0.78]]
+      .map(([f,m])=>pcFitView(f,3.4,Math.cos(0.30),Math.sin(0.30),m));
     /* Die Farbe haengt an der FORM, nicht am Punkt: im Pokal ist
        Gold richtig, im Ball das Orange der Naht. Konfetti bringt
        seine Farben selbst mit (p.col) und ueberstimmt beides. */

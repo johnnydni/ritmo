@@ -735,6 +735,19 @@ gezeichnet.
   ist damit ein Überblenden Punkt für Punkt und nicht das Ein- und
   Ausblenden zweier Bilder. Ein kleiner Versatz je Punkt
   (`(i % 40)`) lässt die Wolke fließen, statt als Block umzuspringen.
+- Die Szene **füllt die Karte in voller Breite**: sie misst ihren
+  Container selbst (und nach einem Dreh erneut), statt eine feste
+  Kantenlänge zu bekommen; im Endstand heben negative Ränder die
+  Polsterung der Karte auf, die runden Ecken schneidet die Karte
+  (`overflow:hidden`).
+- `pcFit` zieht alle drei Wolken auf **dieselbe Ausdehnung**. Ohne das
+  wäre der Pokal (knapp 1,0 Einheiten hoch) sichtbar kleiner als Ball
+  und Schläger (1,6) — die Szene würde bei jedem Formwechsel die
+  Größe wechseln.
+- **Punktzahl folgt der Fläche**: mit 820 Punkten klaffte bei voller
+  Kartenbreite Luft zwischen den Punkten und aus dem Pokal wurde eine
+  Spirale. 2800 sind gemessen (60 fps) und nicht geraten — wer die
+  Szene vergrößert, zählt nach.
 - **Jede Form dreht sich um ihre eigene Achse.** Pokal und Ball um
   die Hochachse, der Schläger in seiner eigenen Ebene: ein flacher
   Schläger, der sich um die Hochachse dreht, steht die halbe Zeit auf

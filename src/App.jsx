@@ -13272,7 +13272,9 @@ function pcTrophy(n){
   const baseN=n-cupN-2*hN-stemN;
   for(let i=0;i<cupN;i++){
     const t=(i+0.5)/cupN, a=i*PC_GA;
-    const y=-0.02+t*0.66, r=0.15+0.35*Math.pow(t,0.8);
+    /* Der Kelch flaert unten schnell und oben kaum — mit einem
+       Exponenten nahe 1 wird daraus ein Trichter. */
+    const y=-0.02+t*0.66, r=0.14+0.36*Math.pow(t,0.55);
     out.push({x:Math.cos(a)*r,y:y,z:Math.sin(a)*r,c:1});
   }
   for(const sgn of [-1,1]) for(let i=0;i<hN;i++){
@@ -13341,8 +13343,12 @@ function pcRacket(n){
   }catch(e){}
   let got=0;
   for(let i=0;got<faceN&&i<faceN*6;i++){
-    const t=(i+0.5)/(faceN*1.25), a=i*PC_GA, r=7.0*Math.sqrt(Math.min(1,t));
+    const t=(i+0.5)/(faceN*1.25), a=i*PC_GA, r=6.7*Math.sqrt(Math.min(1,t));
     const x=CX+Math.cos(a)*r, y=9+Math.sin(a)*r;
+    /* Nur oberhalb der Herz-Oberkante (y ~ 14,8): weiter unten ist
+       kein Schlagbild mehr, sondern Rahmen — orange Punkte dort
+       sehen aus, als quelle die Flaeche aus dem Kopf heraus. */
+    if(y>14.2) continue;
     if(inside&&!inside(x,y)) continue;
     out.push(conv(x,y,1)); got++;
   }
@@ -13352,25 +13358,55 @@ function pcRacket(n){
   while(out.length<n) out.push(conv(CX,9,1));
   return out.slice(0,n);
 }
-function WinnerParticles({size=150,hold=2300,morph=950}){
+/* Alle drei Wolken auf dieselbe Ausdehnung ziehen. Ohne das waere
+   der Pokal (knapp 1,0 Einheiten hoch) sichtbar kleiner als Ball und
+   Schlaeger (1,6) — die Szene wuerde bei jedem Formwechsel die
+   Groesse wechseln, und "die Karte fuellen" koennte nur eine der
+   drei. */
+function pcFit(pts,target=0.78){
+  let m=0;
+  for(const p of pts) m=Math.max(m,Math.abs(p.x),Math.abs(p.y));
+  const k=m>0?target/m:1;
+  return pts.map(p=>({...p,x:p.x*k,y:p.y*k,z:p.z*k}));
+}
+/* Die Szene fuellt die Sieger-Karte in voller Breite: sie misst ihren
+   Container selbst (und nach einem Dreh erneut), statt eine feste
+   Kantenlaenge zu bekommen. */
+function WinnerParticles({height=250,hold=2300,morph=950}){
   const ref=useRef(null);
+  const[W,setW]=useState(0);
+  useEffect(()=>{
+    const measure=()=>{
+      const el=ref.current&&ref.current.parentElement;
+      if(el) setW(Math.max(1,Math.round(el.getBoundingClientRect().width)));
+    };
+    measure();
+    window.addEventListener('resize',measure);
+    return()=>window.removeEventListener('resize',measure);
+  },[]);
   useEffect(()=>{
     const cv=ref.current;
-    if(!cv||!cv.getContext) return;
+    if(!cv||!cv.getContext||!W) return;
     const ctx=cv.getContext('2d');
     if(!ctx) return;
     const dpr=Math.min(3,window.devicePixelRatio||1);
-    cv.width=Math.round(size*dpr); cv.height=Math.round(size*dpr);
+    cv.width=Math.round(W*dpr); cv.height=Math.round(height*dpr);
     const css=getComputedStyle(document.documentElement);
     const ink=(css.getPropertyValue('--t1')||'').trim()||'#fff';
     const acc=(css.getPropertyValue('--o')||'').trim()||'#FF7A1A';
     const gold=(css.getPropertyValue('--gold')||'').trim()||'#FFD60A';
-    const N=820;
-    const forms=[pcTrophy(N),pcBall(N),pcRacket(N)];
+    /* Mehr Punkte, weil die Szene jetzt die ganze Kartenbreite
+       fuellt: mit 820 klaffte zwischen den Punkten sichtbar Luft und
+       aus dem Pokal wurde eine Spirale. */
+    const N=2800;
+    const forms=[pcTrophy(N),pcBall(N),pcRacket(N)].map(f=>pcFit(f));
     /* Die Farbe haengt an der FORM, nicht am Punkt: im Pokal ist
        Gold richtig, im Ball das Orange der Naht. */
     const tint=[[gold,ink],[acc,ink],[acc,ink]];
-    const R=size*dpr*0.40, cx=cv.width/2, cy=cv.height/2, D=3.4;
+    /* 0,56 der kuerzeren Kante: die Form reicht damit bis dicht an
+       den Rand, ohne dass der vorderste Punkt durch die Perspektive
+       hinauslaeuft. */
+    const R=Math.min(cv.width,cv.height)*0.56, cx=cv.width/2, cy=cv.height/2, D=3.4;
     const TILT=0.30, ct=Math.cos(TILT), st=Math.sin(TILT);
     const ease=t=>t<=0?0:t>=1?1:t*t*(3-2*t);
     const draw=(ms)=>{
@@ -13411,7 +13447,7 @@ function WinnerParticles({size=150,hold=2300,morph=950}){
         const to=p.c>0.5?tint[nxt][0]:tint[nxt][1];
         ctx.fillStyle=p.t>0.5?to:from;
         ctx.beginPath();
-        ctx.arc(cx+p.x*R*k,cy-p.y*R*k,Math.max(0.5,1.15*dpr*k*(size/150)),0,6.2832);
+        ctx.arc(cx+p.x*R*k,cy-p.y*R*k,Math.max(0.5,1.0*dpr*k*(height/190)),0,6.2832);
         ctx.fill();
       }
       ctx.globalAlpha=1;
@@ -13422,9 +13458,9 @@ function WinnerParticles({size=150,hold=2300,morph=950}){
     const tick=ts=>{ if(t0===null)t0=ts; draw(ts-t0); raf=requestAnimationFrame(tick); };
     raf=requestAnimationFrame(tick);
     return()=>cancelAnimationFrame(raf);
-  },[size,hold,morph]);
+  },[W,height,hold,morph]);
   return <canvas ref={ref} aria-hidden="true"
-    style={{width:size,height:size,display:'block'}}/>;
+    style={{width:'100%',height,display:'block'}}/>;
 }
 
 /* ── Konfetti ─────────────────────────────────────────────────────
@@ -15112,8 +15148,11 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
           padding:'20px 22px 24px',textAlign:'center',position:'relative',
           overflow:'hidden',flexShrink:0}}>
           <div style={{position:'relative',zIndex:1}}>
-          <div style={{display:'flex',justifyContent:'center',marginBottom:2}}>
-            <WinnerParticles size={152}/>
+          {/* Randlos: die negativen Raender heben die Polsterung der
+              Karte auf, die runden Ecken schneidet die Karte selbst
+              (overflow:hidden). */}
+          <div style={{margin:'-20px -22px 0'}}>
+            <WinnerParticles height={250}/>
           </div>
           <div style={{fontSize:24,fontWeight:800,color:T.t1,letterSpacing:-.3}}>{winner?.name}</div>
           <div style={{fontSize:16,color:T.o,fontWeight:700,marginTop:4}}>

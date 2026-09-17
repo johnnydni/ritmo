@@ -41,7 +41,7 @@ import { auth } from "./auth.js";
 import { readNamesFromImage, releaseOcr } from "./ocr.js";
 import { LEGAL_SECTIONS, STAND } from "./legal.js";
 import {
-  RitmoWordmark, RitmoSplashLogo, CourtIcon, RacketMini, TrophyIcon, JoinIcon,
+  RitmoWordmark, RitmoSplashLogo, CourtIcon, RacketMini, PadelRacketIcon, TrophyIcon, JoinIcon,
   SingleMatchIcon, BestOfThreeIcon,
   HomeIcon, LiveIcon, GearIcon, SearchIcon, Hl, DNAIcon, FullscreenIcon, EditIcon,
   ExitFullscreenIcon, KiwiIcon, PineappleIcon, CoconutIcon, TennisBallIcon, ParrotIcon,
@@ -2689,24 +2689,12 @@ function BibelTabIcon({active,size=22}){
       strokeLinejoin="round" fill={active?T.t1:'none'}/>
   </svg>);
 }
-/* Live-Tab: Padel-Schläger als SVG (das PNG-LiveIcon kann nicht
-   „filled" — andere Verwendungen behalten es). Aktiv = gefüllter
-   Schlägerkopf mit ausgestanzten Löchern (evenodd). */
+/* Live-Tab: der Schläger aus icons.jsx. Vorher stand hier ein
+   eigener, zweiter Schläger — ein Kreis mit drei Punkten und einem
+   Strich dran —, während die Bibel und die Match-Zeilen einen dritten
+   trugen. Es gibt jetzt genau einen. */
 function LiveTabIcon({active,size=22}){
-  const head="M12 2.6 C16.6 2.6 19.2 5.7 19.2 9.6 C19.2 13.6 16.1 16.1 12 16.1 C7.9 16.1 4.8 13.6 4.8 9.6 C4.8 5.7 7.4 2.6 12 2.6 Z";
-  const holes="M8.7 8.5 a1 1 0 1 0 2 0 a1 1 0 1 0 -2 0 Z M13.3 8.5 a1 1 0 1 0 2 0 a1 1 0 1 0 -2 0 Z M11 12.1 a1 1 0 1 0 2 0 a1 1 0 1 0 -2 0 Z";
-  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    {active
-      ?<path d={`${head} ${holes}`} fill={T.t1} fillRule="evenodd"/>
-      :<>
-        <path d={head} stroke={T.t1} strokeWidth="1.7" strokeLinejoin="round"/>
-        <circle cx="9.7" cy="8.5" r="0.95" fill={T.t1}/>
-        <circle cx="14.3" cy="8.5" r="0.95" fill={T.t1}/>
-        <circle cx="12" cy="12.1" r="0.95" fill={T.t1}/>
-      </>}
-    <line x1="12" y1="16.6" x2="12" y2="21" stroke={T.t1}
-      strokeWidth={active?3:2.6} strokeLinecap="round"/>
-  </svg>);
+  return <PadelRacketIcon size={size} color={T.t1} active={active}/>;
 }
 
 /* Fade-out-Blur am unteren Rand — ersetzt die früheren Fußzeilen.
@@ -14368,7 +14356,11 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
         {/* Winner Hero — der Pokal swoosht von rechts hinter die
             Schriften, dazu regnet kurz Konfetti (einmalig beim Mount). */}
         <div style={{background:T.card,border:`1px solid ${T.o}`,borderRadius:20,
-          padding:'24px 22px',textAlign:'center',position:'relative',overflow:'hidden'}}>
+          /* flexShrink:0 — in der scrollenden Flex-Spalte schrumpfen
+             Kinder sonst: ohne die Tabelle als flex:1 wurde aus dem
+             Sieger-Block ein 48-px-Streifen Konfetti. */
+          padding:'24px 22px',textAlign:'center',position:'relative',
+          overflow:'hidden',flexShrink:0}}>
           <div aria-hidden="true" style={{position:'absolute',right:-6,top:'50%',
             marginTop:-58,opacity:.22,pointerEvents:'none'}}>
             <div style={{animation:'trophySwoosh .8s cubic-bezier(.2,.9,.3,1.12) .25s both'}}>
@@ -14419,11 +14411,17 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
           </div>
         </div>
 
-        {/* Full Leaderboard */}
+        {/* Endstand — die GANZE Liste.
+            Vorher war die Karte `flex:1` mit eigenem Scrollbereich
+            darin: der Sieger-Block nahm den Bildschirm, und die
+            Tabelle bekam ein Fenster von zwei, drei Zeilen, in dem man
+            zusaetzlich scrollen musste — verschachteltes Scrollen in
+            einer ohnehin scrollenden Seite. Jetzt waechst die Karte
+            auf ihre volle Hoehe und die Seite scrollt. */}
         <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
-          overflow:'hidden',flex:1,minHeight:120,display:'flex',flexDirection:'column'}}>
+          overflow:'hidden',flexShrink:0}}>
           <LbHead trail={tourney.winMode==='wins'?'SIEGE':'PKT'}/>
-          <div style={{overflowY:'auto',WebkitOverflowScrolling:'touch'}}>
+          <div>
             {sortedLb.map((p,i)=>(
               <LbRow key={p.id} rank={i+1} color={p.color} name={p.name}
                 played={p.played} wins={p.wins} losses={p.losses} pauses={p.sitOut}

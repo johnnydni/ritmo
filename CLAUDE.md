@@ -326,6 +326,41 @@ standen dauerhaft über dem Turnier, das man ständig ansieht.
   Knopf, 10 px Lücke, 24 px Rand — 328 von 342 px. Ein sechster passt
   nicht.
 
+### Der Padel-Schläger (`PadelRacketIcon`)
+
+Ein Schläger für die ganze App: Live-Tab, die Eyebrow über den
+Matches, das Schläger-Kapitel der Bibel. Vorher waren es drei — ein
+Kreis mit drei Punkten und einem Strich im Tab, eine **Ellipse mit
+Saitenkreuz** (`RacketMini`, also ein Tennisschläger) in den Listen,
+dazu zwei PNGs.
+
+- **Die Kontur ist gerechnet, nicht gemalt.** Der Kopf ist ein Kreis
+  (r 8 um 9/9); die beiden Streben sind die Parallelkurven *einer*
+  Bézier-Mittellinie im Abstand 1,7, und aus denselben Kurven entsteht
+  das Herz — der Durchbruch zwischen Kopf und Griff. Deshalb ist die
+  Strebe oben so dick wie unten und das Herz sitzt zwangsläufig mittig.
+  Die 40-Punkt-Polylinien der Werkbank sind anschliessend je Kante auf
+  **eine** Kubische gefittet (max. Abweichung 0,025 von 28, also
+  unsichtbar); im Repo stehen nur die zwei fertigen Pfade.
+- **Das Herz ist unten spitz, nicht oben.** Ein Dreieck mit der Spitze
+  nach oben liest sich als Bleistift, und eine nach unten
+  durchhängende Oberkante als Mund mit Zunge. Beides ist passiert.
+- **Hochkant, 18:28.** `size` ist immer die HÖHE. Mit quadratischer
+  Box wird der Griff zum Stummel und der ganze Glyph zur Glühbirne —
+  das war der erste Entwurf, zweimal.
+- **Drei Lochbilder statt eines**: 3/4/3 ab 30 px, 2/3/2 ab 20 px,
+  darunter fünf im Würfelbild. Sieben Löcher bei 15 px sind ein
+  Grauschleier.
+- Gefüllt (`active`) werden die Löcher per `evenodd` **ausgestanzt**,
+  nicht in `--bg` übermalt: `--bg` ist im Glass-Theme ein Verlauf,
+  übermalte Löcher wären Flecken. Gleiche Falle wie beim Netz in
+  `MatchSlotGrid`.
+- `RacketMini` ist nur noch der alte Name auf dieselbe Zeichnung, damit
+  die sechs Aufrufer bleiben können.
+
+Wer die Form ändert, rechnet sie neu und prüft sie **im Satz**: bei
+22 px in der Tab-Bar und bei 150 px nebeneinander.
+
 ### `TournamentModeIcon` — die sieben Modus-Glyphen
 
 Steht in [src/icons.jsx](src/icons.jsx) und rechts auf den Format-Karten
@@ -583,6 +618,14 @@ links nach rechts:
 - **`LbStats`** zieht SP/S/N/P als echte Spalten mit Haarlinie davor
   (`rules`). Die Ligatabelle auf dem Home-Screen schaltet sie mit
   `rules={false}` ab — sie ist eine randlose Liste ohne Wertungsspalte.
+- Der **Endstand** rollt als *eine* Seite: die Tabellenkarte wächst
+  auf ihre volle Höhe, gescrollt wird der Screen. Vorher war sie
+  `flex:1` mit eigenem Scrollbereich darin — der Sieger-Block nahm den
+  Bildschirm, die Tabelle bekam ein Fenster von zwei Zeilen, und man
+  scrollte in einer scrollenden Seite. Achtung beim Ändern: in der
+  scrollenden Flex-Spalte schrumpfen Kinder von selbst, der
+  Sieger-Block braucht `flexShrink:0` (ohne ihn blieb ein 48-px-Streifen
+  Konfetti übrig).
 - Die **Wertungsspalte** (`LB_PKT_W`, dunkleres Panel) nimmt die
   Wertung als `children`: im laufenden Turnier ein Knopf über die volle
   Zellenhöhe (Punkte anpassen — der Stift allein war ein 12-px-Ziel),

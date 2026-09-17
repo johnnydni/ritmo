@@ -725,49 +725,44 @@ Bedienungen sein.
 
 ### Endstand: die Partikel-Szene und das Konfetti
 
-Über dem Siegernamen steht eine Punktwolke, die ihre Form wechselt:
-**Pokal → Tennisball → Schläger → Pokal**. Darunter dieselbe Technik
-wie beim `TennisOrb` des Turnier-Vorhangs — Punkte auf einer Fläche,
-je Bild gedreht, perspektivisch projiziert, von hinten nach vorn
-gezeichnet.
+Die Sieger-Karte hat **drei Lagen**: ganz hinten eine Punktwolke, die
+zwischen **Pokal und Tennisball** wechselt und die Karte füllt,
+darüber ein dunkler Schleier (`rgba(18,18,20,0.15)`), darauf Name,
+Wertung und Knöpfe. Ohne den Schleier läuft der Name durch ein
+Punktefeld und ist je nach Drehung mal lesbar und mal nicht; 15 % sind
+genug — die Szene soll gedämpft werden, nicht verschwinden.
 
-- Alle drei Wolken haben **genau dieselbe Punktzahl**. Der Übergang
+Dahinter dieselbe Technik wie beim `TennisOrb` des Turnier-Vorhangs —
+Punkte auf einer Fläche, je Bild gedreht, perspektivisch projiziert,
+von hinten nach vorn gezeichnet.
+
+- Beide Wolken haben **genau dieselbe Punktzahl**. Der Übergang
   ist damit ein Überblenden Punkt für Punkt und nicht das Ein- und
   Ausblenden zweier Bilder. Ein kleiner Versatz je Punkt
   (`(i % 40)`) lässt die Wolke fließen, statt als Block umzuspringen.
-- Die Szene **füllt die Karte in voller Breite**: sie misst ihren
-  Container selbst (und nach einem Dreh erneut), statt eine feste
-  Kantenlänge zu bekommen; im Endstand heben negative Ränder die
-  Polsterung der Karte auf, die runden Ecken schneidet die Karte
+- Die Szene liegt **absolut in der Karte** und misst ihren Container
+  per `ResizeObserver` (die Karte wächst mit ihrem Inhalt: langer
+  Siegername, umbrechende Knopfreihe) — sie richtet sich nach der
+  Karte, nicht umgekehrt. Die runden Ecken schneidet die Karte
   (`overflow:hidden`).
-- `pcFit` zieht alle drei Wolken auf **dieselbe Ausdehnung**. Ohne das
-  wäre der Pokal (knapp 1,0 Einheiten hoch) sichtbar kleiner als Ball
-  und Schläger (1,6) — die Szene würde bei jedem Formwechsel die
-  Größe wechseln.
+- `pcFitView` normiert auf die **projizierte** Ausdehnung, über eine
+  ganze Umdrehung gemessen, nicht auf die Rohkoordinaten. Der
+  Kelchrand steht weit außen *und* weit vorn; die Perspektive
+  (`k = D/(D−z)`, bis 1,4) schob ihn dadurch über den Kartenrand,
+  während der Ball bequem Platz hatte. Gerechnet wird einmal je Form.
+- **Kein Schläger mehr** in der Szene: er steht als Icon schon in der
+  Tab-Bar und in den Listen. Damit ist auch die Sonderregel weg, dass
+  sich jede Form um ihre eigene Achse dreht (der flache Schläger
+  stand um die Hochachse gedreht die halbe Zeit auf der Kante).
 - **Punktzahl folgt der Fläche**: mit 820 Punkten klaffte bei voller
   Kartenbreite Luft zwischen den Punkten und aus dem Pokal wurde eine
   Spirale. 2800 sind gemessen (60 fps) und nicht geraten — wer die
   Szene vergrößert, zählt nach.
-- **Jede Form dreht sich um ihre eigene Achse.** Pokal und Ball um
-  die Hochachse, der Schläger in seiner eigenen Ebene: ein flacher
-  Schläger, der sich um die Hochachse dreht, steht die halbe Zeit auf
-  der Kante und ist dann ein Strich. Gedreht wird deshalb *vor* dem
-  Überblenden — der Punkt wandert zwischen zwei bereits gedrehten
-  Formen.
+- Gedreht wird **vor** dem Überblenden: der Punkt wandert zwischen
+  zwei bereits gedrehten Formen, und die Wolke bleibt auch im
+  Übergang in Bewegung.
 - Die Farbe hängt an der **Form**, nicht am Punkt: im Pokal ist Gold
   richtig, im Ball das Orange der Naht.
-- Der Schläger ist **derselbe wie das Icon**: seine Punkte werden aus
-  den beiden Pfaden von `PadelRacketIcon` abgetastet
-  (`getPointAtLength` für Kontur und Herz, `isPointInPath` mit
-  `evenodd` für die gelochte Schlagfläche), nicht ein zweites Mal
-  nachgebaut. Zwei Schläger mit leicht verschiedener Kontur in einer
-  App sind ein Fehler, den niemand benennen kann, den aber jeder
-  sieht. Der erste Entwurf war eine eigene Parametrik — mit Streben,
-  die wie zwei lose Striche neben dem Kopf standen.
-- Gemessen wird an einem `<path>`, der kurz im Body hängt: Safari
-  misst nur, was im Dokument steht. Schlägt das Messen fehl, wird die
-  Wolke trotzdem auf die volle Punktzahl aufgefüllt — **alle Formen
-  müssen gleich lang sein**, sonst bricht das Überblenden.
 
 Das **Konfetti** (`ConfettiBurst`) fliegt aus der Mitte statt von oben
 zu fallen: Schwerkraft, Luftwiderstand, Drall — und jedes Stück kippt

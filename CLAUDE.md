@@ -743,9 +743,18 @@ gezeichnet.
   Formen.
 - Die Farbe hängt an der **Form**, nicht am Punkt: im Pokal ist Gold
   richtig, im Ball das Orange der Naht.
-- Die Streben des Schlägers setzen an der Kopfunterkante an (mit
-  Lücke sähen sie aus wie zwei lose Striche), und der Griff ist ein
-  Balken aus drei Spalten, kein Paar Stangen.
+- Der Schläger ist **derselbe wie das Icon**: seine Punkte werden aus
+  den beiden Pfaden von `PadelRacketIcon` abgetastet
+  (`getPointAtLength` für Kontur und Herz, `isPointInPath` mit
+  `evenodd` für die gelochte Schlagfläche), nicht ein zweites Mal
+  nachgebaut. Zwei Schläger mit leicht verschiedener Kontur in einer
+  App sind ein Fehler, den niemand benennen kann, den aber jeder
+  sieht. Der erste Entwurf war eine eigene Parametrik — mit Streben,
+  die wie zwei lose Striche neben dem Kopf standen.
+- Gemessen wird an einem `<path>`, der kurz im Body hängt: Safari
+  misst nur, was im Dokument steht. Schlägt das Messen fehl, wird die
+  Wolke trotzdem auf die volle Punktzahl aufgefüllt — **alle Formen
+  müssen gleich lang sein**, sonst bricht das Überblenden.
 
 Das **Konfetti** (`ConfettiBurst`) fliegt aus der Mitte statt von oben
 zu fallen: Schwerkraft, Luftwiderstand, Drall — und jedes Stück kippt

@@ -725,39 +725,40 @@ Bedienungen sein.
 
 ### Endstand: die Partikel-Szene und das Konfetti
 
-Die Sieger-Karte hat **drei Lagen**: ganz hinten eine Punktwolke, die
-zwischen **Pokal und Tennisball** wechselt und die Karte füllt,
-darüber ein dunkler Schleier (`rgba(18,18,20,0.15)`), darauf Name,
-Wertung und Knöpfe. Ohne den Schleier läuft der Name durch ein
-Punktefeld und ist je nach Drehung mal lesbar und mal nicht; 15 % sind
-genug — die Szene soll gedämpft werden, nicht verschwinden.
+Über dem Siegernamen steht eine Punktwolke (152 px), die ihre Form
+wechselt: **Pokal → Tennisball → Konfetti → Pokal**. Dieselbe Technik
+wie beim `TennisOrb` des Turnier-Vorhangs — Punkte auf einer Fläche,
+je Bild gedreht, perspektivisch projiziert, von hinten nach vorn
+gezeichnet.
 
-Dahinter dieselbe Technik wie beim `TennisOrb` des Turnier-Vorhangs —
-Punkte auf einer Fläche, je Bild gedreht, perspektivisch projiziert,
-von hinten nach vorn gezeichnet.
+Die Szene stand zwischendurch als Hintergrund hinter Name und
+Knöpfen, mit einem 15-%-Schleier dazwischen. Sie steht wieder **über**
+dem Namen und damit ohne Schleier: eine 15-%-Fläche auf einem 152er
+Quadrat ist kein Schleier mehr, sondern ein sichtbarer grauer Kasten
+um die Wolke.
 
 - Beide Wolken haben **genau dieselbe Punktzahl**. Der Übergang
   ist damit ein Überblenden Punkt für Punkt und nicht das Ein- und
   Ausblenden zweier Bilder. Ein kleiner Versatz je Punkt
   (`(i % 40)`) lässt die Wolke fließen, statt als Block umzuspringen.
-- Die Szene liegt **absolut in der Karte** und misst ihren Container
-  per `ResizeObserver` (die Karte wächst mit ihrem Inhalt: langer
-  Siegername, umbrechende Knopfreihe) — sie richtet sich nach der
-  Karte, nicht umgekehrt. Die runden Ecken schneidet die Karte
-  (`overflow:hidden`).
+- **Konfetti ist kein Körper, sondern ein Schwarm** (`pcConfetti`):
+  die Punkte liegen frei im Raum und tragen ihre **eigene** Farbe.
+  Die anderen beiden färben nach Form — deshalb überstimmt `p.col`
+  den Form-Tint. Der Ball zerfällt dadurch sichtbar in bunte
+  Schnipsel und setzt sich danach wieder zum Pokal zusammen.
 - `pcFitView` normiert auf die **projizierte** Ausdehnung, über eine
   ganze Umdrehung gemessen, nicht auf die Rohkoordinaten. Der
   Kelchrand steht weit außen *und* weit vorn; die Perspektive
-  (`k = D/(D−z)`, bis 1,4) schob ihn dadurch über den Kartenrand,
-  während der Ball bequem Platz hatte. Gerechnet wird einmal je Form.
-- **Kein Schläger mehr** in der Szene: er steht als Icon schon in der
+  (`k = D/(D−z)`, bis 1,4) schob ihn dadurch über den Rand, während
+  der Ball bequem Platz hatte. Gerechnet wird einmal je Form.
+- **Kein Schläger** in der Szene: er steht als Icon schon in der
   Tab-Bar und in den Listen. Damit ist auch die Sonderregel weg, dass
   sich jede Form um ihre eigene Achse dreht (der flache Schläger
   stand um die Hochachse gedreht die halbe Zeit auf der Kante).
-- **Punktzahl folgt der Fläche**: mit 820 Punkten klaffte bei voller
-  Kartenbreite Luft zwischen den Punkten und aus dem Pokal wurde eine
-  Spirale. 2800 sind gemessen (60 fps) und nicht geraten — wer die
-  Szene vergrößert, zählt nach.
+- **Punktzahl folgt der Fläche**: bei voller Kartenbreite brauchte
+  die Szene 2800 Punkte, sonst klaffte Luft dazwischen und aus dem
+  Pokal wurde eine Spirale. Auf 152 px reichen 1200 — wer die Szene
+  vergrößert, zählt nach und misst die Bildrate.
 - Gedreht wird **vor** dem Überblenden: der Punkt wandert zwischen
   zwei bereits gedrehten Formen, und die Wolke bleibt auch im
   Übergang in Bewegung.

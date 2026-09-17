@@ -13301,7 +13301,7 @@ function pcTrophy(n){
    aussen UND weit vorn, die Perspektive (k = D/(D−z), bis 1,4) schob
    ihn dadurch ueber den Kartenrand, waehrend der Ball bequem Platz
    hatte. Gerechnet wird einmal je Form, nicht je Bild. */
-function pcFitView(pts,D,ct,st,margin=0.92){
+function pcFitView(pts,D,ct,st,margin=0.78){
   let m=0;
   for(let i=0;i<24;i++){
     const a=i/24*PC_TAU, ca=Math.cos(a), sa=Math.sin(a);
@@ -13320,55 +13320,51 @@ function pcFitView(pts,D,ct,st,margin=0.92){
    eine feste Kantenlaenge zu bekommen. Darueber liegt ein dunkler
    Schleier und darauf der Text — die Szene richtet sich also nach der
    Karte und nicht umgekehrt. */
-function WinnerParticles({hold=2300,morph=950}){
+/* Die dritte Form: Konfetti. Kein Koerper, sondern ein Schwarm —
+   die Punkte liegen frei im Raum und tragen ihre EIGENE Farbe (die
+   anderen beiden faerben nach Form). Dadurch zerfaellt der Ball
+   sichtbar in bunte Schnipsel und setzt sich danach wieder zum Pokal
+   zusammen. Etwas dichter in der Mitte, damit es ein Schwarm bleibt
+   und keine gleichmaessige Tapete. */
+function pcConfetti(n,cols){
+  const out=[];
+  for(let i=0;i<n;i++){
+    const r=Math.pow(Math.random(),0.62);
+    const a=Math.random()*PC_TAU, b=Math.acos(2*Math.random()-1);
+    out.push({
+      x:Math.sin(b)*Math.cos(a)*r*1.05,
+      y:Math.cos(b)*r*0.95,
+      z:Math.sin(b)*Math.sin(a)*r*0.85,
+      c:0, col:cols[(Math.random()*cols.length)|0],
+    });
+  }
+  return out;
+}
+function WinnerParticles({size=152,hold=2300,morph=950}){
   const ref=useRef(null);
-  const[box,setBox]=useState({w:0,h:0});
-  useEffect(()=>{
-    const measure=()=>{
-      const el=ref.current&&ref.current.parentElement;
-      if(!el) return;
-      const r=el.getBoundingClientRect();
-      const w=Math.max(1,Math.round(r.width)), h=Math.max(1,Math.round(r.height));
-      setBox(b=>(b.w===w&&b.h===h)?b:{w,h});
-    };
-    measure();
-    /* ResizeObserver statt nur window.resize: die Karte waechst mit
-       ihrem Inhalt (langer Siegername, umbrechende Knopfreihe). */
-    let ro;
-    if(typeof ResizeObserver!=='undefined'&&ref.current&&ref.current.parentElement){
-      ro=new ResizeObserver(measure); ro.observe(ref.current.parentElement);
-    }
-    window.addEventListener('resize',measure);
-    return()=>{ if(ro) ro.disconnect(); window.removeEventListener('resize',measure); };
-  },[]);
   useEffect(()=>{
     const cv=ref.current;
-    const W=box.w, height=box.h;
-    if(!cv||!cv.getContext||!W||!height) return;
+    if(!cv||!cv.getContext) return;
     const ctx=cv.getContext('2d');
     if(!ctx) return;
     const dpr=Math.min(3,window.devicePixelRatio||1);
-    cv.width=Math.round(W*dpr); cv.height=Math.round(height*dpr);
+    cv.width=Math.round(size*dpr); cv.height=Math.round(size*dpr);
     const css=getComputedStyle(document.documentElement);
     const ink=(css.getPropertyValue('--t1')||'').trim()||'#fff';
     const acc=(css.getPropertyValue('--o')||'').trim()||'#FF7A1A';
     const gold=(css.getPropertyValue('--gold')||'').trim()||'#FFD60A';
-    /* Mehr Punkte, weil die Szene jetzt die ganze Kartenbreite
-       fuellt: mit 820 klaffte zwischen den Punkten sichtbar Luft und
-       aus dem Pokal wurde eine Spirale. */
-    const N=2800;
-    /* Zwei Formen, nicht drei: der Schlaeger steht als Icon schon in
-       der Tab-Bar und in den Listen — im Endstand geht es um Pokal
-       und Ball. */
-    const forms=[pcTrophy(N),pcBall(N)]
-      .map(f=>pcFitView(f,3.4,Math.cos(0.30),Math.sin(0.30)));
+    const blue=(css.getPropertyValue('--blue')||'').trim()||'#0A84FF';
+    const green=(css.getPropertyValue('--g')||'').trim()||'#32D74B';
+    const N=1200;
+    /* Drei Formen: Pokal, Ball, Konfetti. Der Schlaeger ist raus — er
+       steht als Icon schon in der Tab-Bar und in den Listen. */
+    const forms=[pcTrophy(N),pcBall(N),pcConfetti(N,[acc,gold,blue,green,ink])]
+      .map(f=>pcFitView(f,3.4,Math.cos(0.30),Math.sin(0.30),0.78));
     /* Die Farbe haengt an der FORM, nicht am Punkt: im Pokal ist
-       Gold richtig, im Ball das Orange der Naht. */
-    const tint=[[gold,ink],[acc,ink]];
-    /* 0,56 der kuerzeren Kante: die Form reicht damit bis dicht an
-       den Rand, ohne dass der vorderste Punkt durch die Perspektive
-       hinauslaeuft. */
-    const R=Math.min(cv.width,cv.height)*0.5, cx=cv.width/2, cy=cv.height/2, D=3.4;
+       Gold richtig, im Ball das Orange der Naht. Konfetti bringt
+       seine Farben selbst mit (p.col) und ueberstimmt beides. */
+    const tint=[[gold,ink],[acc,ink],[acc,ink]];
+    const R=size*dpr*0.40, cx=cv.width/2, cy=cv.height/2, D=3.4;
     const TILT=0.30, ct=Math.cos(TILT), st=Math.sin(TILT);
     const ease=t=>t<=0?0:t>=1?1:t*t*(3-2*t);
     const draw=(ms)=>{
@@ -13376,7 +13372,7 @@ function WinnerParticles({hold=2300,morph=950}){
       const idx=Math.floor(ms/cycle)%forms.length;
       const nxt=(idx+1)%forms.length;
       const local=(ms%cycle-hold)/morph;      // <0 = halten
-      const a=ms/1000*0.55;
+      const a=ms/1000*0.5225;   // 5 % langsamer als zuvor (0,55)
       const ca=Math.cos(a), sa=Math.sin(a);
       const A=forms[idx], B=forms[nxt];
       /* Gedreht wird VOR dem Ueberblenden: der Punkt wandert dadurch
@@ -13390,7 +13386,8 @@ function WinnerParticles({hold=2300,morph=950}){
         const p0=spin(A[i]), p1=spin(B[i]);
         const x=p0.x+(p1.x-p0.x)*w, y=p0.y+(p1.y-p0.y)*w, z=p0.z+(p1.z-p0.z)*w;
         const y2=y*ct-z*st, z2=y*st+z*ct;
-        q.push({x:x,y:y2,z:z2,c:A[i].c+(B[i].c-A[i].c)*w,t:w});
+        q.push({x:x,y:y2,z:z2,c:A[i].c+(B[i].c-A[i].c)*w,t:w,
+          ca:A[i].col,cb:B[i].col});
       }
       q.sort((m,o)=>m.z-o.z);
       ctx.clearRect(0,0,cv.width,cv.height);
@@ -13399,11 +13396,11 @@ function WinnerParticles({hold=2300,morph=950}){
         ctx.globalAlpha=0.18+0.82*depth*depth;
         /* Waehrend des Uebergangs leuchtet der Punkt in der Farbe,
            auf die er zulaeuft. */
-        const from=p.c>0.5?tint[idx][0]:tint[idx][1];
-        const to=p.c>0.5?tint[nxt][0]:tint[nxt][1];
+        const from=p.ca||(p.c>0.5?tint[idx][0]:tint[idx][1]);
+        const to=p.cb||(p.c>0.5?tint[nxt][0]:tint[nxt][1]);
         ctx.fillStyle=p.t>0.5?to:from;
         ctx.beginPath();
-        ctx.arc(cx+p.x*R*k,cy-p.y*R*k,Math.max(0.5,1.0*dpr*k*(height/190)),0,6.2832);
+        ctx.arc(cx+p.x*R*k,cy-p.y*R*k,Math.max(0.5,1.15*dpr*k*(size/150)),0,6.2832);
         ctx.fill();
       }
       ctx.globalAlpha=1;
@@ -13414,9 +13411,9 @@ function WinnerParticles({hold=2300,morph=950}){
     const tick=ts=>{ if(t0===null)t0=ts; draw(ts-t0); raf=requestAnimationFrame(tick); };
     raf=requestAnimationFrame(tick);
     return()=>cancelAnimationFrame(raf);
-  },[box,hold,morph]);
+  },[size,hold,morph]);
   return <canvas ref={ref} aria-hidden="true"
-    style={{position:'absolute',inset:0,width:'100%',height:'100%',display:'block'}}/>;
+    style={{width:size,height:size,display:'block'}}/>;
 }
 
 /* ── Konfetti ─────────────────────────────────────────────────────
@@ -15097,22 +15094,20 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
             Screen (nicht nur ueber die Karte: die hat overflow:hidden,
             und Konfetti, das an einer Kante endet, ist keins). */}
         <ConfettiBurst/>
-        {/* Drei Lagen: die Szene fuellt die Karte, darueber ein
-            dunkler Schleier, darauf Name, Wertung und Knoepfe. Ohne
-            den Schleier laeuft der Name durch ein Punktefeld und ist
-            je nach Drehung mal lesbar und mal nicht. 15 % sind genug:
-            die Szene soll gedaempft werden, nicht verschwinden. */}
         <div style={{background:T.card,border:`1px solid ${T.o}`,borderRadius:20,
           /* flexShrink:0 — in der scrollenden Flex-Spalte schrumpfen
              Kinder sonst: ohne die Tabelle als flex:1 wurde aus dem
              Sieger-Block ein 48-px-Streifen Konfetti. */
-          padding:'22px 22px 24px',textAlign:'center',position:'relative',
-          overflow:'hidden',flexShrink:0,minHeight:330,
-          display:'flex',flexDirection:'column',justifyContent:'flex-end'}}>
-          <WinnerParticles/>
-          <div aria-hidden="true" style={{position:'absolute',inset:0,zIndex:1,
-            background:'rgba(18,18,20,0.15)',pointerEvents:'none'}}/>
-          <div style={{position:'relative',zIndex:2}}>
+          padding:'20px 22px 24px',textAlign:'center',position:'relative',
+          overflow:'hidden',flexShrink:0}}>
+          <div style={{position:'relative',zIndex:1}}>
+          {/* Die Szene steht wieder UEBER dem Namen, nicht hinter ihm
+              — und damit ohne Schleier: eine 15-%-Flaeche auf einem
+              152er Quadrat ist kein Schleier mehr, sondern ein
+              sichtbarer grauer Kasten um die Wolke. */}
+          <div style={{display:'flex',justifyContent:'center',marginBottom:6}}>
+            <WinnerParticles size={152}/>
+          </div>
           <div style={{fontSize:24,fontWeight:800,color:T.t1,letterSpacing:-.3}}>{winner?.name}</div>
           <div style={{fontSize:16,color:T.o,fontWeight:700,marginTop:4}}>
             {tourney.winMode==='wins'?`${winner?.totalWins} Siege`:`${winner?.totalPts} Punkte`}

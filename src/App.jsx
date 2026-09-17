@@ -32,7 +32,8 @@ import { lsGet, lsSet, getAssetBase, getInitials, processImageUpload, safeImageS
 import { getLevelLabel, getLevelTier, getLevelColor, estimateLevel } from "./levels.js";
 import { B0, A0, PL, ptD, wG, bo3R, amR, DEFCFG } from "./game.js";
 import { PCOLS, shuffle, genAmericanoRound, genMexicanoRound, calcLeaderboard, FORMATS, FORMAT_RULES, genRound,
-  QUICK_STARTS, quickStartPreset, roundMeanBreakdown, roundMeanBonus, meetLogEntry, MEET_LOG_MAX } from "./tournament.js";
+  DEFAULT_QUICK_STARTS, QS_MAX, normQuickStart, normQuickStarts, quickStartSub, quickStartPreset,
+  roundMeanBreakdown, roundMeanBonus, meetLogEntry, MEET_LOG_MAX } from "./tournament.js";
 import { RINGS, CUES, playRing, playCue, unlockAudio } from "./audio.js";
 import { CL_COLS, CL_ROWS, defaultLayout, normLayout, layoutBounds, moveTo,
   rotateCourt, compactLayout } from "./courtLayout.js";
@@ -4523,7 +4524,166 @@ const HOME_CARD_GLASS={
    klare Sektionen mit einheitlichem Rhythmus. Glas gibt es nur noch
    dort, wo iOS es einsetzt: in der Top-Bar beim Scrollen und in der
    Tab-Pill — der Content liegt auf soliden Material-Flächen. */
-function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onQuickStart}){
+/* ── Schnellstart anlegen/ändern ──────────────────────────────────
+   Ein wiederkehrendes Format ist immer dasselbe: wie es heisst, was
+   gespielt wird, mit wie vielen auf wie vielen Plaetzen, wie lange
+   eine Runde dauert und wer gewinnt. Genau diese sechs Dinge stehen
+   hier — Namen, Court-Namen und Platzkarte bleiben im Konfigurator,
+   das ist die Arbeit des Abends und nicht die der Vorlage.
+
+   Der Bau folgt dem `QuickSheet` (Portal am Body, zweilagiger Grund,
+   klebende Fusszeile); nur die Fusszeile traegt hier zwei Wege statt
+   einem. */
+function QuickStartSheet({value,onSave,onDelete,onClose}){
+  const isNew=!value;
+  const v=normQuickStart(value||{format:'americano',players:8,courts:2,
+    roundDurationMin:12,winMode:'points',label:''});
+  const[label,setLabel]=useState(value?v.label:'');
+  const[format,setFormat]=useState(v.format);
+  const[players,setPlayers]=useState(v.players);
+  const[courts,setCourts]=useState(v.courts);
+  const[winMode,setWinMode]=useState(v.winMode);
+  const[dur,setDur]=useState(v.roundDurationMin);
+  const[askDelete,setAskDelete]=useState(false);
+  const sheet=useSheetDrag(onClose);
+  /* Die Formatreihe scrollt waagerecht; bei einem K.-o.-Schnellstart
+     stuende die gewaehlte Kachel ausserhalb des Bildes, und das Sheet
+     saehe aus, als haette es nichts gemerkt. */
+  const fmtRef=useRef(null);
+  useLayoutEffect(()=>{
+    const el=fmtRef.current?.querySelector('[aria-pressed="true"]');
+    if(el&&el.offsetLeft+el.offsetWidth>fmtRef.current.clientWidth)
+      fmtRef.current.scrollLeft=el.offsetLeft-12;
+  },[]);  // eslint-disable-line react-hooks/exhaustive-deps
+  /* Mehr Courts als Viererfelder gibt es nicht — beim Verkleinern der
+     Spielerzahl wandert die Zahl deshalb mit, statt ungueltig zu
+     werden. */
+  const maxCourts=Math.max(1,Math.floor(players/4));
+  const setPl=n=>{const p=Math.max(4,Math.min(32,n));setPlayers(p);
+    setCourts(c=>Math.max(1,Math.min(Math.floor(p/4),c)));};
+  const preview=normQuickStart({label:label.trim()||FORMATS[format].name,
+    format,players,courts,winMode,roundDurationMin:dur});
+
+  const step=(lab,val,dec,inc)=>(
+    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',
+      padding:'11px 0',borderTop:`1px solid ${T.sep}`}}>
+      <div style={{color:T.t2,fontSize:13.5,fontWeight:600}}>{lab}</div>
+      <div style={{display:'flex',alignItems:'center',gap:12}}>
+        {[['−',dec,'weniger'],[val,null],['+',inc,'mehr']].map(([txt,fn,aria],i)=>fn!==null?(
+          <button key={i} onClick={fn?()=>{buzz(6);fn();}:undefined} disabled={!fn}
+            aria-label={`${lab} ${aria}`}
+            style={{width:38,height:38,borderRadius:12,flexShrink:0,background:T.card2,
+              border:`1px solid ${T.border}`,color:T.t1,fontSize:20,fontWeight:800,
+              cursor:fn?'pointer':'not-allowed',opacity:fn?1:.35,
+              display:'flex',alignItems:'center',justifyContent:'center'}}>{txt}</button>
+        ):(
+          <div key={i} style={{minWidth:34,textAlign:'center',color:T.t1,fontSize:22,
+            fontWeight:800,fontVariantNumeric:'tabular-nums'}}>{txt}</div>
+        ))}
+      </div>
+    </div>
+  );
+  const chip=(on,txt,onClick,key)=>(
+    <button key={key} onClick={()=>{buzz(6);onClick();}} aria-pressed={on}
+      style={{flexShrink:0,padding:'9px 13px',borderRadius:12,cursor:'pointer',
+        background:on?T.oSoft:T.card2,border:`1px solid ${on?T.o:T.border}`,
+        color:on?T.o:T.t2,fontSize:12.5,fontWeight:700,
+        display:'inline-flex',alignItems:'center',gap:7}}>{txt}</button>
+  );
+  return createPortal(
+    <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:300,
+      background:'rgba(0,0,0,.7)',backdropFilter:'blur(4px)',display:'flex',
+      alignItems:'flex-end',justifyContent:'center',animation:'fadeIn .15s ease'}}>
+      <div onClick={e=>e.stopPropagation()} className="slide-up"
+        ref={sheet.ref} {...sheet.handlers}
+        style={{background:`linear-gradient(0deg, ${T.card}, ${T.card}), ${T.bg}`,
+          borderTopLeftRadius:20,borderTopRightRadius:20,
+          borderTop:`1px solid ${T.border}`,width:'100%',maxWidth:480,
+          padding:'16px 18px 0',maxHeight:'90vh',overflowY:'auto',...sheet.style}}>
+        <div style={{width:36,height:4,borderRadius:2,background:T.border,margin:'0 auto 16px'}}/>
+        <div style={{fontFamily:T.fontDisplay,color:T.o,fontSize:10,letterSpacing:1.8}}>
+          {isNew?'NEUER SCHNELLSTART':'SCHNELLSTART'}
+        </div>
+        <div style={{height:1,background:T.o,opacity:.5,marginTop:9,marginBottom:14}}/>
+
+        <input value={label} onChange={e=>setLabel(e.target.value.slice(0,24))}
+          placeholder={FORMATS[format].name} aria-label="Name des Schnellstarts"
+          style={{width:'100%',padding:'12px 14px',borderRadius:13,background:T.card2,
+            border:`1px solid ${T.border}`,color:T.t1,fontSize:16,fontWeight:700,
+            outline:'none'}}/>
+        <div className="txt" style={{color:T.t3,fontSize:12,fontStyle:'italic',
+          margin:'8px 2px 14px'}}>{quickStartSub(preview)}</div>
+
+        <div style={{fontFamily:T.fontDisplay,color:T.t3,fontSize:9.5,letterSpacing:1.8,
+          marginBottom:8}}>FORMAT</div>
+        <div className="hscroll" ref={fmtRef} style={{display:'flex',gap:8,overflowX:'auto',
+          margin:'0 -18px',padding:'0 18px 2px'}}>
+          {Object.entries(FORMATS).map(([id,f])=>chip(format===id,
+            <><TournamentModeIcon mode={id} size={18} active={format===id}/>{f.name}</>,
+            ()=>setFormat(id),id))}
+        </div>
+
+        <div style={{marginTop:16}}>
+          {step('Spieler',players,players>4?()=>setPl(players-1):null,
+            players<32?()=>setPl(players+1):null)}
+          {step('Courts',courts,courts>1?()=>setCourts(courts-1):null,
+            courts<maxCourts?()=>setCourts(courts+1):null)}
+        </div>
+
+        <div style={{marginTop:16,fontFamily:T.fontDisplay,color:T.t3,fontSize:9.5,
+          letterSpacing:1.8,marginBottom:8}}>RUNDENDAUER</div>
+        <MinuteRuler value={dur} onChange={setDur}/>
+
+        <div style={{marginTop:14,fontFamily:T.fontDisplay,color:T.t3,fontSize:9.5,
+          letterSpacing:1.8,marginBottom:8}}>WERTUNG</div>
+        <div style={{display:'flex',gap:8}}>
+          {chip(winMode==='points','Punkte',()=>setWinMode('points'),'p')}
+          {chip(winMode==='wins','Siege',()=>setWinMode('wins'),'w')}
+        </div>
+
+        <div style={{position:'sticky',bottom:0,zIndex:1,
+          margin:'18px -18px 0',padding:'12px 18px calc(env(safe-area-inset-bottom,0px) + 18px)',
+          borderTop:`1px solid ${T.sep}`,display:'flex',gap:10,
+          background:`linear-gradient(0deg, ${T.card}, ${T.card}), ${T.bg}`}}>
+          {!isNew&&(
+            <button onClick={()=>{buzz(8);setAskDelete(true);}} aria-label="Schnellstart löschen"
+              style={{width:48,flexShrink:0,borderRadius:13,cursor:'pointer',
+                background:'none',border:`1.5px solid ${T.r}`,color:T.r,
+                display:'flex',alignItems:'center',justifyContent:'center'}}>
+              <TrashIcon size={18} color="currentColor"/>
+            </button>
+          )}
+          <button onClick={()=>{buzz(8);onSave(preview);}}
+            style={{flex:1,padding:'13px',border:'none',borderRadius:13,
+              background:T.o,color:'#000',fontSize:14.5,fontWeight:800,cursor:'pointer'}}>
+            Sichern
+          </button>
+        </div>
+      </div>
+      {/* Der Wrapper faengt den Klick ab: die Rueckfrage liegt IM
+          Sheet-Overlay, und dessen onClick schliesst das Sheet —
+          ein Tipp auf "Behalten" haette sonst beides zugemacht. */}
+      {askDelete&&(
+        <div onClick={e=>e.stopPropagation()}>
+        <ResetModal
+          title="Schnellstart löschen"
+          description="Die Karte verschwindet vom Home-Screen. Turniere, die du damit gestartet hast, bleiben."
+          question={`„${v.label}" löschen?`}
+          confirmLabel="Löschen"
+          cancelLabel="Behalten"
+          onCancel={()=>setAskDelete(false)}
+          onConfirm={()=>{setAskDelete(false);onDelete();}}/>
+        </div>
+      )}
+    </div>,
+    document.body
+  );
+}
+
+function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onQuickStart,
+  quickStarts=[],onSaveQuickStart,onDeleteQuickStart}){
+  /* null = zu, 'neu' = neue Karte, sonst der zu aendernde Schnellstart. */
+  const[qsEdit,setQsEdit]=useState(null);
   const needsOnboarding=!onboarded;
   const hasUnread=(unread||0)>0;
 
@@ -4646,26 +4806,60 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onQuickStart}
               </div>
             </div>
           </button>
-          {QUICK_STARTS.map((q,i)=>(
-            <button key={q.id} onClick={()=>{buzz(6);onQuickStart&&onQuickStart(q);}}
-              className="fu" data-lift
-              style={{...playCard,background:T.oSoft,border:`1px solid ${T.o}55`,
-                animationDelay:`${.08+i*.03}s`}}>
-              <span style={{color:T.o,display:'inline-flex'}}>
-                {q.format==='mexicano'?<MedalIcon size={34} rank={1}/>
-                  :q.format==='mixicano'?<PeopleIcon size={34} color="currentColor"/>
-                  :<TennisBallIcon size={34}/>}
-              </span>
-              <div style={{maxWidth:'100%',minWidth:0}}>
-                <div style={playKicker}>Sofort</div>
-                <div style={{color:T.t1,fontSize:16,fontWeight:700,letterSpacing:-.3}}>
-                  {q.label}
+          {/* Die Schnellstarts gehoeren dem Host: er legt seine
+              wiederkehrenden Formate selbst an. Die Karte startet,
+              der Stift oben rechts aendert — dieselbe Geste wie auf
+              der Court-Karte. Ein Knopf im Knopf ist kein gueltiges
+              HTML, deshalb liegt der Stift als Geschwister daneben
+              und die Karte darunter. */}
+          {quickStarts.map((q,i)=>(
+            <div key={q.id} style={{position:'relative',flexShrink:0,
+              scrollSnapAlign:'start'}}>
+              <button onClick={()=>{buzz(6);onQuickStart&&onQuickStart(q);}}
+                className="fu" data-lift
+                style={{...playCard,scrollSnapAlign:'none',
+                  background:T.oSoft,border:`1px solid ${T.o}55`,
+                  animationDelay:`${.08+i*.03}s`}}>
+                <span style={{color:T.o,display:'inline-flex'}}>
+                  <TournamentModeIcon mode={q.format} size={34} active/>
+                </span>
+                <div style={{maxWidth:'100%',minWidth:0,width:'100%'}}>
+                  <div style={playKicker}>Sofort</div>
+                  <div style={{color:T.t1,fontSize:16,fontWeight:700,letterSpacing:-.3,
+                    whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
+                    {q.label}
+                  </div>
+                  <div className="txt" style={{color:T.t3,fontSize:12.5,fontStyle:'italic',
+                    marginTop:4,lineHeight:1.4}}>{quickStartSub(q,true)}</div>
                 </div>
-                <div className="txt" style={{color:T.t3,fontSize:12.5,fontStyle:'italic',
-                  marginTop:4,lineHeight:1.4}}>{q.sub}</div>
-              </div>
-            </button>
+              </button>
+              <button onClick={()=>{buzz(6);setQsEdit(q);}}
+                aria-label={`${q.label} anpassen`} title="Schnellstart anpassen"
+                style={{position:'absolute',top:9,right:9,width:30,height:30,
+                  borderRadius:9,cursor:'pointer',background:T.card2,
+                  border:`1px solid ${T.border}`,color:T.t2,
+                  display:'flex',alignItems:'center',justifyContent:'center'}}>
+                <EditIcon size={15} color="currentColor"/>
+              </button>
+            </div>
           ))}
+          {/* Gestrichelt, weil hier noch nichts ist — dieselbe Sprache
+              wie die Papierkorb-Zeile in der Live-Liste. */}
+          {quickStarts.length<QS_MAX&&(
+            <button onClick={()=>{buzz(6);setQsEdit('neu');}} className="fu"
+              aria-label="Schnellstart anlegen"
+              style={{...playCard,width:132,background:'none',
+                border:`1.5px dashed ${T.border}`,justifyContent:'center',
+                alignItems:'center',textAlign:'center',
+                animationDelay:`${.08+quickStarts.length*.03}s`}}>
+              <div style={{color:T.t3,fontSize:30,fontWeight:300,lineHeight:1}}>+</div>
+              <div style={{color:T.t2,fontSize:13.5,fontWeight:700,marginTop:10}}>
+                Schnellstart
+              </div>
+              <div className="txt" style={{color:T.t3,fontSize:11.5,fontStyle:'italic',
+                marginTop:3,lineHeight:1.4}}>Eigenes Format</div>
+            </button>
+          )}
         </div>
 
         {/* RITMO DNA Liga — große Karte. AUSGEBLENDET bis zum Launch
@@ -4933,6 +5127,14 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onQuickStart}
 
       <BottomFade/>
       <TabBar active={activeTab} onTab={onTabLocal}/>
+
+      {qsEdit&&(
+        <QuickStartSheet
+          value={qsEdit==='neu'?null:qsEdit}
+          onClose={()=>setQsEdit(null)}
+          onSave={(q)=>{onSaveQuickStart&&onSaveQuickStart(qsEdit==='neu'?null:qsEdit,q);setQsEdit(null);}}
+          onDelete={()=>{onDeleteQuickStart&&onDeleteQuickStart(qsEdit);setQsEdit(null);}}/>
+      )}
     </div>
   );
 }
@@ -9138,7 +9340,10 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
   const[winMode,setWinMode]=useState(seed?.winMode||'points');
   const[numCourts,setNumCourts]=useState(seed?.numCourts||1);
   const[roundDur,setRoundDur]=useState(seed?.roundDurationMin||10);
-  const[name,setName]=useState(saved?.name||'');
+  /* Der Name kommt auch aus der Vorlage: ein wiederkehrendes Format
+     heisst jeden Dienstag gleich. `saved` hat Vorrang — ein
+     bestehendes Turnier behaelt seinen Namen. */
+  const[name,setName]=useState(saved?.name||preset?.name||'');
   const[startTime,setStartTime]=useState(seed?.startTime||'');
   const[endTime,setEndTime]=useState(seed?.endTime||'');
   // Priorität für den Rundenzeit-Vorschlag: 'length' = längere Runden
@@ -22527,6 +22732,16 @@ export default function App(){
   // Konfigurator. Wird beim Verlassen des Setups wieder geleert,
   // damit ein spaeteres „Turnier starten" wieder leer beginnt.
   const[setupPreset,setSetupPreset]=useState(null);
+  /* Die Schnellstart-Karten auf Home. Sie gehoeren dem Host: er legt
+     seine wiederkehrenden Formate selbst an. Die vier mitgelieferten
+     sind nur die Startaufstellung — wer sie loescht, ist sie los.
+     `normQuickStarts` laeuft beim Laden UND beim Schreiben, damit
+     halb kaputte Datensaetze keinen Sonderfall brauchen. */
+  const[quickStarts,setQuickStarts]=useState(()=>normQuickStarts(lsGet('ritmo_quickstarts',null)));
+  const saveQuickStart=(old,next)=>setQuickStarts(list=>normQuickStarts(
+    old?list.map(q=>q.id===old.id?{...next,id:old.id}:q)
+       :[...list,next].slice(0,QS_MAX)));
+  const deleteQuickStart=(q)=>setQuickStarts(list=>list.filter(x=>x.id!==q.id));
   // Die Vorbelegung lebt genau so lange wie der Konfigurator. Sobald
   // man ihn verlaesst, ist sie weg — sonst begaenne ein spaeteres
   // „Turnier starten" ueberraschend mit 12 Spielern.
@@ -22874,6 +23089,10 @@ export default function App(){
     if(!trash.length){try{localStorage.removeItem('ritmo_trash');}catch(e){}}
     else lsSet('ritmo_trash',trash);
   },[trash]);
+  /* Auch eine LEERE Liste wird geschrieben: sie bedeutet "ich will
+     keine Schnellstarts", und der Schluessel zu loeschen wuerde beim
+     naechsten Start die vier Standardkarten zurueckholen. */
+  useEffect(()=>lsSet('ritmo_quickstarts',quickStarts),[quickStarts]);
   useEffect(()=>lsSet('ritmo_ring',ringId),[ringId]);
   useEffect(()=>lsSet('ritmo_input',inputMode),[inputMode]);
   useEffect(()=>lsSet('ritmo_voice',voiceOn),[voiceOn]);
@@ -23187,6 +23406,9 @@ export default function App(){
       onComplete={()=>{setOnboarded(true);nav('home');}}/>}
     {scr==='home'&&<Home nav={nav} activeTab={activeTab} setActiveTab={handleTab}
       profile={profile} onboarded={onboarded} unread={unreadTotal}
+      quickStarts={quickStarts}
+      onSaveQuickStart={saveQuickStart}
+      onDeleteQuickStart={deleteQuickStart}
       onQuickStart={q=>{
         // Frischer Konfigurator mit Vorbelegung — kein laufendes
         // Turnier anfassen, deshalb erst currentTourneyId loesen.

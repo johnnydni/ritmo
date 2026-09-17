@@ -508,6 +508,35 @@ Beide Wege zeigen dieselbe Spielerliste (Nummernkreis, Ressort, Name
 auf einer Linie) und dieselben Bausteine (`MinuteRuler`, `CourtMap`,
 Screenshot-Scan). Wer einen davon aendert, aendert beide.
 
+**Davor laeuft `PadelIntro`** — eine knapp zwei Sekunden kurze
+Sequenz („Ping Pong? Tennis? Pickleball? Meh." → „Padel? Hell
+yeah."). Sie ist keine Deko, sondern deckt eine Uebergabe ab: der
+Assistent liegt als Overlay ueber dem Formular und blendete mit `.fi`
+ein, und in diesen 250 ms sah man das Formular, das in diesem Moment
+niemand sehen soll.
+
+- Die Sequenz ist **ab dem ersten Frame deckend** (kein Einblenden,
+  nur ein Ausblenden). Gemessen: vom Klick bis zur Uebergabe liegt
+  kein Frame offen.
+- Der Assistent bekommt beim automatischen Aufgehen **`entrance=false`**
+  und damit gar keine Blende mehr — er steht hinter der Sequenz schon
+  fertig da. Wer ihn spaeter aus dem Formular wieder aufmacht,
+  bekommt sie zurueck: da kommt er ja von irgendwo.
+- **Tippen ueberspringt.** Wer das zum zwanzigsten Mal sieht, will
+  spielen.
+- Die Taktung liegt als `animation-delay` an den Zeilen, nicht in
+  einer Kette von React-Timern: so laeuft sie auch dann sauber, wenn
+  der Assistent dahinter gerade seine sieben Schritte aufbaut.
+- Bei **`prefers-reduced-motion`** faellt sie ganz aus. Der globale
+  Killswitch in `theme.js` kuerzt jede Animation auf 0,01 ms — die
+  Sequenz stuende sonst fast zwei Sekunden lang fertig da.
+- Sie laeuft nur beim **frischen** Turnier, unter derselben Bedingung
+  wie das Aufgehen des Assistenten (`!isEdit && !seed`): ein
+  Schnellstart-Preset geht direkt ins Formular.
+- „Padel?" steht in Centauri bei **38 px / `letterSpacing` 2,5** —
+  gemessen, nicht gewaehlt. Bei 46 px lief die Zeile 372 px breit in
+  330 px Platz und das Fragezeichen fiel aus dem Bild.
+
 ### `MinuteRuler` — die Rundendauer
 
 Eine waagerechte Skala mit Schnappraster, darunter Zeiger und Dauer als

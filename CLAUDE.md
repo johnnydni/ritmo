@@ -524,6 +524,43 @@ abkuerzen.
 - Am Body und zweilagiger Grund wie beim `PlayerScanSheet`, aus
   denselben zwei Gruenden.
 
+### Schnellstarts auf Home (`ritmo_quickstarts`)
+
+Die „Sofort"-Karten im Spielen-Streifen sind **keine feste Liste
+mehr**. Wer jeden Dienstag dieselbe Runde spielt, legt sie einmal an —
+Name, Format, Spieler, Courts, Rundendauer, Wertung — und tippt sie
+danach nur noch an. Die vier mitgelieferten (`DEFAULT_QUICK_STARTS`)
+sind die Startaufstellung, nicht das Gesetz: wer sie löscht, ist sie
+los.
+
+- Gespeichert wird **auch die leere Liste**. Den Schlüssel zu löschen
+  würde beim nächsten Start die vier Standardkarten zurückholen —
+  „ich will keine Schnellstarts" ist aber eine Entscheidung.
+- `normQuickStarts` läuft beim Laden **und** bei jedem Schreiben
+  (gleiche Regel wie `normLayout`): Formate, die es nicht mehr gibt,
+  Spielerzahlen jenseits von 4–32 und mehr Courts als Viererfelder
+  werden eingefangen, statt später im Konfigurator zu knallen.
+- Die **Unterzeile wird gerechnet** (`quickStartSub`), nie getippt.
+  Sonst steht auf der Karte „8 Spieler", während zehn drin sind. Auf
+  der Karte ohne Rundendauer (`short`) — drei Angaben brechen dort in
+  die dritte Zeile.
+- Die Karte **startet**, der Stift oben rechts **ändert** — dieselbe
+  Geste wie auf der Court-Karte. Ein Knopf im Knopf ist kein gültiges
+  HTML, deshalb liegt der Stift als Geschwister daneben und die Karte
+  darunter, beide in einem `position:relative`-Rahmen.
+- Am Ende des Streifens steht die gestrichelte „+"-Karte (dieselbe
+  Sprache wie die Papierkorb-Zeile in der Live-Liste). Ab `QS_MAX`
+  (12) verschwindet sie.
+- Der Schnellstart setzt jetzt auch den **Turniernamen** vor
+  (`quickStartPreset` → `name`, im Konfigurator hinter `saved?.name`):
+  ein wiederkehrendes Format heisst jeden Dienstag gleich.
+- Gruppen (Mixicano) hängen am **Format**, nicht an einem zweiten
+  Schalter im Datensatz — ein `groups:true`, das nicht zum Format
+  passt, kann es damit nicht geben.
+- Die Rückfrage vors Löschen liegt **im** Sheet-Overlay, dessen
+  `onClick` schliesst. Sie braucht deshalb einen Wrapper, der den
+  Klick abfängt, sonst macht „Behalten" beides zu.
+
 ### Turnier-Setup: Assistent zuerst
 
 "Turnier starten" oeffnet den **Assistenten** (`TournamentWizard`) —

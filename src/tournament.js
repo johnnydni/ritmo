@@ -800,30 +800,71 @@ export function calcLeaderboard(players,rounds,winMode='points',pauseMode='mean'
    Die Werte sind bewusst die haeufigen Faelle aus der Halle: ein
    volles Feld Americano, eine gemischte Runde, eine Runde nach
    Tabellenstand. Wer etwas anderes will, hat den Assistenten. */
-export const QUICK_STARTS=[
-  {id:'americano12', label:'Americano',  sub:'12 Spieler, 3 Courts',
+/* ── Schnellstarts ────────────────────────────────────────────────
+   Die Karten im "Spielen"-Streifen auf Home. Sie sind KEINE feste
+   Liste mehr: der Host legt seine wiederkehrenden Formate selbst an
+   (Dienstagsrunde, Firmenturnier, Feierabend zu viert) und die App
+   bringt nur eine Startaufstellung mit. Gespeichert wird unter
+   `ritmo_quickstarts`; ist dort nichts, gelten diese vier. */
+export const DEFAULT_QUICK_STARTS=[
+  {id:'americano12', label:'Americano',
    format:'americano', players:12, courts:3, winMode:'points', roundDurationMin:12},
-  {id:'mixicano8',   label:'Mixicano',   sub:'8 Spieler, gemischt',
-   format:'mixicano',  players:8,  courts:2, winMode:'points', roundDurationMin:12,
-   groups:true},
-  {id:'wettkampf8',  label:'Wettkampf',  sub:'8 Spieler, Mexicano',
+  {id:'mixicano8',   label:'Mixicano',
+   format:'mixicano',  players:8,  courts:2, winMode:'points', roundDurationMin:12},
+  {id:'wettkampf8',  label:'Wettkampf',
    format:'mexicano',  players:8,  courts:2, winMode:'wins',   roundDurationMin:14},
-  {id:'feierabend4', label:'Feierabend', sub:'4 Spieler, ein Court',
+  {id:'feierabend4', label:'Feierabend',
    format:'americano', players:4,  courts:1, winMode:'points', roundDurationMin:15},
 ];
+export const QS_MAX=12;
+
+/* Die Unterzeile wird GERECHNET, nicht getippt. Sonst steht auf einer
+   Karte "8 Spieler", während zehn drin sind — und der Host merkt es
+   erst im Konfigurator. */
+export function quickStartSub(q,short=false){
+  if(!q) return '';
+  const base=`${q.players} Spieler · ${q.courts} Court${q.courts===1?'':'s'}`;
+  /* Auf der Karte ohne Rundendauer: drei Angaben brechen dort in die
+     dritte Zeile, und die Minute ist die unwichtigste von ihnen. */
+  return short?base:`${base} · ${q.roundDurationMin} min`;
+}
+
+/* Laeuft bei JEDER Benutzung, nicht nur beim Speichern: so ueberleben
+   halb kaputte Datensaetze, geaenderte Formatnamen und Listen von
+   vor dieser Funktion — gleiche Regel wie normLayout. */
+export function normQuickStart(q,i=0){
+  const fmt=FORMATS[q?.format]?q.format:'americano';
+  const players=Math.max(4,Math.min(32,Math.round(Number(q?.players)||8)));
+  const maxC=Math.max(1,Math.floor(players/4));
+  return {
+    id:q?.id||`qs-${Date.now().toString(36)}-${i}`,
+    label:String(q?.label||FORMATS[fmt].name).slice(0,24),
+    format:fmt,
+    players,
+    courts:Math.max(1,Math.min(maxC,Math.round(Number(q?.courts)||1))),
+    winMode:q?.winMode==='wins'?'wins':'points',
+    roundDurationMin:Math.max(1,Math.min(60,Math.round(Number(q?.roundDurationMin)||12))),
+  };
+}
+export function normQuickStarts(list){
+  if(!Array.isArray(list)) return DEFAULT_QUICK_STARTS.map(normQuickStart);
+  return list.filter(Boolean).slice(0,QS_MAX).map(normQuickStart);
+}
 
 /* Baut aus einem Schnellstart die Vorbelegung fuer TournamentSetup —
    dieselbe Form, die auch ein gespeichertes Turnier hat, nur ohne
-   id/rounds. Mixicano braucht zwei Gruppen, deshalb wechseln sich
-   A und B ab. */
+   id/rounds. Gruppen haengen am Format (Mixicano braucht A/B) und
+   nicht an einem zweiten Schalter im Datensatz. */
 export function quickStartPreset(q){
   if(!q) return null;
+  const n=normQuickStart(q);
+  const groups=!!FORMATS[n.format]?.groups;
   return {
-    format:q.format, winMode:q.winMode, numCourts:q.courts,
-    roundDurationMin:q.roundDurationMin,
-    players:Array.from({length:q.players},(_,i)=>({
+    name:n.label, format:n.format, winMode:n.winMode, numCourts:n.courts,
+    roundDurationMin:n.roundDurationMin,
+    players:Array.from({length:n.players},(_,i)=>({
       id:i, name:`Spieler ${i+1}`, color:PCOLS[i%PCOLS.length],
-      ...(q.groups?{group:i%2?'B':'A'}:{}),
+      ...(groups?{group:i%2?'B':'A'}:{}),
     })),
   };
 }

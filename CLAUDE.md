@@ -42,6 +42,7 @@ Pure / side-effect-free modules have been extracted from the original mega-file.
 | [src/legal.js](src/legal.js) | Impressum, Datenschutzerklärung, Nutzungsbedingungen, Haftung und Lizenzhinweise als Datenblöcke; `OPERATOR` / `PROCESSORS` halten die vor dem Launch auszufüllenden Betreiberangaben. | Rendered by `SettingsRechtliches`. Keep in sync when data processing changes. |
 | [src/tourneyPdf.js](src/tourneyPdf.js) | Turnier-Export als A4-PDF (Endstand, Sieger, Rundenverlauf) und `exportTourneyPdf` (Share-Sheet bzw. Download). | jsPDF wird per `import()` nachgeladen; eigene Schriften unter [src/fonts/pdf/](src/fonts/pdf/). |
 | [src/courtLayout.js](src/courtLayout.js) | Raeumliche Anordnung der Courts: `defaultLayout`, `normLayout`, `layoutBounds`, `moveTo`, `rotateCourt`, `compactLayout`. | Reines Raster (4 x 5), keine React-Abhaengigkeit. Gezeichnet wird in `CourtMap` (App.jsx). |
+| [src/whatsNew.js](src/whatsNew.js) | `RELEASES` (die Ausgaben des Update-Newsletters) + `unseenRelease(seen)`. | Inhalt/Daten; die Regeln fuer neue Ausgaben stehen im Dateikopf. |
 | [src/skillDescriptions.js](src/skillDescriptions.js) | `SKILL_DESCRIPTIONS` — text for the RITMO DNA Skill tier card. | Translation-ready content. |
 | [src/supabase.js](src/supabase.js) | Older standalone tournament-sharing helper (legacy). | Currently unused by the active flow. |
 
@@ -523,6 +524,46 @@ abkuerzen.
   gibt es beides im Formular auch nicht (Spieler joinen per PIN).
 - Am Body und zweilagiger Grund wie beim `PlayerScanSheet`, aus
   denselben zwei Gruenden.
+
+### Update-Newsletter („Was ist neu", `ritmo_whatsnew`)
+
+Nach einem Update laeuft beim ersten Start **einmal** ein Newsletter:
+ein Bild je Neuerung, ein Satz dazu, und im Bild sitzt eine orange
+Marke auf der Stelle, um die es geht. Danach ist die Ausgabe abgehakt
+und kommt nicht wieder.
+
+**Eine neue Ausgabe veroeffentlichen** — drei Schritte:
+
+1. Ausschnitte der **echten App** aufnehmen (keine Montagen) und als
+   JPEG unter `public/assets/whatsnew/` ablegen. Ein Bild bleibt
+   deutlich unter 100 kB; zusammen sollten sie 200 kB nicht reissen —
+   sie liegen im Startbundle-Pfad und jeder laedt sie genau einmal.
+2. Einen Eintrag in `RELEASES` (src/whatsNew.js) anhaengen: neue `id`,
+   `kicker`, `title` und die `slides`. Jede Folie traegt `img`,
+   `ratio` (das Seitenverhaeltnis DES AUSSCHNITTS, z. B. `'366 / 248'`),
+   `title`, `text` und optional `spots`.
+3. Fertig — die neue `id` steht in keinem Merker, also geht sie beim
+   naechsten Start auf.
+
+Was dabei leicht schiefgeht:
+
+- **`ratio` muss zum Bild passen.** Die Marken sind Prozentangaben
+  auf dem Bild; stimmt das Verhaeltnis nicht, sitzen sie daneben.
+  Deshalb bringt jede Folie ihr eigenes mit, statt dass alle in ein
+  3:4-Korsett gezwungen werden.
+- **Die Marke sitzt auf der Sache, nicht auf ihrer Beschriftung.**
+  Ein Schildchen, das genau das Wort zudeckt, um das es geht, ist
+  schlimmer als gar keins. Hoechstens zwei Marken pro Bild.
+- **Der Text ist fuer Nutzer, nicht fuer Entwickler.** „Leg deine
+  festen Formate als Karte an" — nicht „neue Persistenzschicht fuer
+  Schnellstarts". Keine Versionsnummern, keine Dateinamen, keine
+  Schalter, die im Bild nicht vorkommen.
+- **Beim allerersten Start wird alles still abgehakt** (erkannt am
+  fehlenden Profil): wer die App gerade installiert hat, kennt nichts
+  Altes und braucht keine Neuigkeiten.
+- Gezeigt wird **nur auf Home** — waehrend Splash, Login, Onboarding
+  oder einem laufenden Turnier hat niemand darauf gewartet.
+- Abgehakt wird auch beim `×`: wer ihn drueckt, hat entschieden.
 
 ### Schnellstarts auf Home (`ritmo_quickstarts`)
 

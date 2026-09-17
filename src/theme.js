@@ -784,6 +784,14 @@ input[type="time"]::-webkit-datetime-edit{padding:0;text-align:center;}
    stand. */
 .court-net-pop{animation:netPop .42s cubic-bezier(.22,1.2,.36,1) both;}
 
+/* Marke im "Was ist neu"-Bild: sie pulst, weil sie auf einem
+   Standbild sitzt und sonst mit der Oberflaeche darunter verschmilzt. */
+@keyframes wnSpot{
+  0%,100%{box-shadow:0 0 0 0 rgba(255,122,26,.42);}
+  60%    {box-shadow:0 0 0 9px rgba(255,122,26,0);}
+}
+.wn-spot{animation:wnSpot 2s ease-out infinite;}
+
 /* Zwischensequenz vor dem Turnier-Assistenten. Die drei abgelehnten
    Sportarten fahren von unten ein und bekommen ihren Strich, die
    Pointe federt. Dauer und Reihenfolge stehen als animation-delay

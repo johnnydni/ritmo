@@ -101,16 +101,73 @@ export function CourtIcon({size=36}){
   );
 }
 
-/* ─── Padel-Schläger mini ─────────────────────────────────────── */
-export function RacketMini({size=24,color=T.t1}){
+/* ─── Padel-Schläger ──────────────────────────────────────────────
+   EIN Schläger für die ganze App: Live-Tab, Match-Eyebrows, das
+   Schläger-Kapitel der Bibel. Der Vorgänger war eine Ellipse mit
+   Saitenkreuz — das ist ein Tennisschläger. Ein Padel-Schläger hat
+   keine Saiten, sondern eine gelochte Fläche, und er ist kurz.
+
+   Die Kontur ist gerechnet, nicht gemalt: Kopf = Kreis (r 8 um
+   9/9), die beiden Streben sind die Parallelkurven EINER Bézier-
+   Mittellinie im Abstand 1,7 — deshalb ist die Strebe oben so dick
+   wie unten. Aus denselben Kurven entsteht das Herz (der Durchbruch
+   zwischen Kopf und Griff), das dadurch automatisch mittig sitzt.
+   Handgesetzte Kurven ergaben an dieser Stelle zuverlässig eine
+   Glühbirne oder einen Bleistift. Die Werkbank dazu steht nicht im
+   Repo; wer die Form ändert, rechnet sie neu und prüft sie bei 22 px
+   UND bei 150 px.
+
+   Das Seitenverhältnis ist 18:28 — ein Schläger ist hochkant. `size`
+   ist immer die HÖHE, die Breite folgt daraus. */
+const RACKET_OUTLINE='M2.812 15.106A8 8 0 1 1 15.188 15.106C14.518 18.141 11.971 19.633 11.886 20.954L11.05 25.6Q11.05 26.8 9.85 26.8L8.15 26.8Q6.95 26.8 6.95 25.6L6.114 20.954C6.029 19.633 3.482 18.141 2.812 15.106Z';
+const RACKET_HEART='M4.482 14.785C4.812 16.949 7.171 18.167 7.786 20.646L10.214 20.646C10.829 18.167 13.188 16.949 13.518 14.785Q9 15.385 4.482 14.785Z';
+/* Lochbild in drei Stufen — 3/4/3, 2/3/2 und 2/1/2 (Wuerfelbild). */
+const RACKET_HOLE_ROWS={
+  fein:  {rows:[[5.2,3],[8.4,4],[11.6,3]], gap:3.05, r:0.78},   // ab 30 px
+  mittel:{rows:[[5.9,2],[9,3],[11.8,2]],   gap:3.3,  r:0.76},   // 20–29 px
+  /* Unter 20 px wird aus sieben Loechern ein Grauschleier. Fuenf im
+     Wuerfelbild bleiben Loecher. */
+  klein: {rows:[[6.5,2],[9.4,1],[12.3,2]], gap:4.0,  r:0.95},
+};
+const racketLod=(size)=>size>=30?'fein':size>=20?'mittel':'klein';
+const racketHoles=(lod)=>{
+  const {rows,gap,r}=RACKET_HOLE_ROWS[lod]; const out=[];
+  rows.forEach(([y,n],ri)=>{
+    for(let i=0;i<n;i++) out.push(
+      <circle key={`${ri}-${i}`} cx={(9-(n-1)*gap/2+i*gap).toFixed(2)} cy={y} r={r}/>);
+  });
+  return out;
+};
+/* Dieselben Loecher als Pfad — fuer den gefuellten Zustand, wo sie
+   ausgestanzt statt gezeichnet werden. */
+const racketHolePath=(lod)=>{
+  const {rows,gap,r}=RACKET_HOLE_ROWS[lod];
+  return rows.map(([y,n])=>{
+    let d='';
+    for(let i=0;i<n;i++){
+      const cx=9-(n-1)*gap/2+i*gap;
+      d+=`M${(cx-r).toFixed(2)} ${y}a${r} ${r} 0 1 0 ${2*r} 0a${r} ${r} 0 1 0 ${-2*r} 0Z`;
+    }
+    return d;
+  }).join('');
+};
+export function PadelRacketIcon({size=24,color=T.t1,active=false}){
+  const lod=racketLod(size);
+  /* Gefuellt werden die Loecher per evenodd AUSGESTANZT und nicht in
+     Hintergrundfarbe uebermalt: --bg ist im Glass-Theme ein Verlauf,
+     uebermalte Loecher waeren Flecken. */
   return(
-    <svg width={size} height={size} viewBox="0 0 28 28" fill="none">
-      <ellipse cx="14" cy="11" rx="8.5" ry="9" fill="none" stroke={color} strokeWidth="1.7"/>
-      {[10,14,18].map(x=><line key={x} x1={x} y1="4" x2={x} y2="18" stroke={color} strokeWidth=".5" opacity=".5"/>)}
-      {[7,11,15].map(y=><line key={y} x1="6.5" y1={y} x2="21.5" y2={y} stroke={color} strokeWidth=".5" opacity=".5"/>)}
-      <line x1="14" y1="20" x2="14" y2="26" stroke={color} strokeWidth="2" strokeLinecap="round"/>
+    <svg width={Math.round(size*18/28)} height={size} viewBox="0 0 18 28" fill="none">
+      <path d={`${RACKET_OUTLINE} ${RACKET_HEART}${active?' '+racketHolePath(lod):''}`}
+        fillRule="evenodd" fill={active?color:'none'} stroke={color}
+        strokeWidth={active?0:1.4} strokeLinejoin="round"/>
+      {!active&&<g fill={color}>{racketHoles(lod)}</g>}
     </svg>
   );
+}
+/* Alter Name, gleiche Zeichnung — die Aufrufer heissen weiter so. */
+export function RacketMini({size=24,color=T.t1}){
+  return <PadelRacketIcon size={size} color={color}/>;
 }
 
 /* ─── Single-Match-Logo (PNG, theme-aware: schwarz auf hellem Theme,

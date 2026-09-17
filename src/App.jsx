@@ -38,6 +38,7 @@ import { RINGS, CUES, playRing, playCue, unlockAudio } from "./audio.js";
 import { CL_COLS, CL_ROWS, defaultLayout, normLayout, layoutBounds, moveTo,
   rotateCourt, compactLayout } from "./courtLayout.js";
 import { exportTourneyPdf } from "./tourneyPdf.js";
+import { RELEASES, unseenRelease } from "./whatsNew.js";
 import { auth } from "./auth.js";
 import { readNamesFromImage, releaseOcr } from "./ocr.js";
 import { LEGAL_SECTIONS, STAND } from "./legal.js";
@@ -4675,6 +4676,128 @@ function QuickStartSheet({value,onSave,onDelete,onClose}){
           onConfirm={()=>{setAskDelete(false);onDelete();}}/>
         </div>
       )}
+    </div>,
+    document.body
+  );
+}
+
+/* ── „Was ist neu" ────────────────────────────────────────────────
+   Nach einem Update laeuft der Newsletter EINMAL: ein Bild je
+   Neuerung, ein Satz dazu, und im Bild sitzt die Marke auf der
+   Stelle, um die es geht. Danach ist die Ausgabe abgehakt und kommt
+   nicht wieder.
+
+   Warum Bilder und nicht eine Liste aus Punkten: wer die App
+   aufmacht, sucht den Knopf, nicht die Beschreibung. Ein Ausschnitt
+   der echten Oberflaeche mit einem Ring drauf beantwortet "wo ist
+   das?" in einer Sekunde.
+
+   Der Streifen ist derselbe Mechanismus wie die Spielen-Karten auf
+   Home: waagerecht, Scroll-Snap, Punkte darunter. Kein Karussell mit
+   Timer — niemand soll lesen gegen die Uhr. */
+function WhatsNewSheet({release,onClose}){
+  const slides=release.slides||[];
+  const[i,setI]=useState(0);
+  const ref=useRef(null);
+  const last=i>=slides.length-1;
+  const go=n=>{
+    const el=ref.current;
+    if(el) el.scrollTo({left:el.clientWidth*n,behavior:'smooth'});
+  };
+  /* Der Index kommt aus der Scroll-Position, nicht aus dem Knopf:
+     wer wischt, soll dieselben Punkte sehen wie der, der tippt. */
+  const onScroll=e=>{
+    const el=e.currentTarget;
+    const n=Math.max(0,Math.min(slides.length-1,
+      Math.round(el.scrollLeft/Math.max(1,el.clientWidth))));
+    if(n!==i) setI(n);
+  };
+  const spot=(sp,k)=>(
+    <div key={k} style={{position:'absolute',left:`${sp.x}%`,top:`${sp.y}%`,
+      width:0,height:0}}>
+      <span className="wn-spot" style={{position:'absolute',left:-14,top:-14,
+        width:28,height:28,borderRadius:'50%',
+        border:`2px solid ${T.o}`,background:'rgba(255,122,26,.18)'}}/>
+      {sp.label&&(
+        <span style={{position:'absolute',top:-13,whiteSpace:'nowrap',
+          ...(sp.side==='left'?{right:22}:{left:22}),
+          padding:'5px 9px',borderRadius:9,background:T.o,color:'#000',
+          fontSize:11.5,fontWeight:800,letterSpacing:.2,
+          boxShadow:'0 6px 18px rgba(0,0,0,.45)'}}>{sp.label}</span>
+      )}
+    </div>
+  );
+  return createPortal(
+    <div style={{position:'fixed',inset:0,zIndex:350,
+      background:T.bg,backgroundImage:'var(--bgGrad)',
+      display:'flex',flexDirection:'column',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 22px)',
+      animation:'fadeIn .2s ease'}}>
+
+      <div style={{padding:'0 22px 14px',flexShrink:0,display:'flex',
+        alignItems:'flex-start',justifyContent:'space-between',gap:12}}>
+        <div style={{minWidth:0}}>
+          <div className="display" style={{color:T.o,fontSize:10,letterSpacing:2.2,
+            textTransform:'uppercase'}}>{release.kicker||'Neu in RITMO'}</div>
+          <div style={{color:T.t1,fontSize:26,fontWeight:800,letterSpacing:-.5,
+            marginTop:6,lineHeight:1.15}}>{release.title}</div>
+        </div>
+        <button onClick={onClose} aria-label="Schließen"
+          style={{flexShrink:0,width:34,height:34,borderRadius:'50%',background:T.card2,
+            border:`1px solid ${T.border}`,color:T.t2,fontSize:16,fontWeight:700,
+            cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',
+            lineHeight:1}}>×</button>
+      </div>
+
+      <div ref={ref} onScroll={onScroll} className="hscroll"
+        style={{flex:1,minHeight:0,display:'flex',overflowX:'auto',overflowY:'hidden',
+          scrollSnapType:'x mandatory',WebkitOverflowScrolling:'touch'}}>
+        {slides.map((sl,n)=>(
+          /* Mittig, nicht oben angeschlagen: die Bilder sind
+             unterschiedlich hoch, und ein Text, der je nach Folie
+             woanders anfaengt, liest sich wie ein Sprung. */
+          <div key={n} style={{flex:'0 0 100%',width:'100%',scrollSnapAlign:'start',
+            display:'flex',flexDirection:'column',alignItems:'center',
+            justifyContent:'center',padding:'0 22px',minHeight:0}}>
+            {/* Das Bild traegt sein Seitenverhaeltnis selbst (alle
+                Ausschnitte sind 3:4), damit die Marken in Prozent
+                auch wirklich auf dem Pixel sitzen, den sie meinen. */}
+            <div style={{position:'relative',width:'100%',maxWidth:340,
+              /* Jedes Bild bringt sein eigenes Seitenverhaeltnis mit —
+                 ein Streifen ist breit, ein Sheet ist hoch. Nur so
+                 sitzen die Marken (Prozent) auf dem Pixel, den sie
+                 meinen. */
+              aspectRatio:sl.ratio||'3 / 4',flexShrink:1,minHeight:0,
+              borderRadius:18,overflow:'hidden',border:`1px solid ${T.border}`,
+              background:T.card2}}>
+              <img src={`${getAssetBase()}assets/${sl.img}`} alt=""
+                style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>
+              {(sl.spots||[]).map(spot)}
+            </div>
+            <div style={{marginTop:18,textAlign:'center',maxWidth:340}}>
+              <div style={{color:T.t1,fontSize:20,fontWeight:800,letterSpacing:-.3}}>
+                {sl.title}
+              </div>
+              <div className="txt" style={{color:T.t2,fontSize:14,lineHeight:1.55,
+                marginTop:7}}>{sl.text}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{flexShrink:0,padding:'14px 22px calc(env(safe-area-inset-bottom,0px) + 18px)'}}>
+        <div style={{display:'flex',gap:7,justifyContent:'center',marginBottom:14}}>
+          {slides.map((_,n)=>(
+            <span key={n} style={{width:n===i?18:7,height:7,borderRadius:4,
+              background:n===i?T.o:T.border,transition:'width .25s,background .25s'}}/>
+          ))}
+        </div>
+        <button onClick={()=>{buzz(8);last?onClose():go(i+1);}}
+          style={{width:'100%',padding:'15px',border:'none',borderRadius:16,
+            background:T.o,color:'#000',fontSize:16,fontWeight:800,cursor:'pointer'}}>
+          {last?'Los geht\u2019s':'Weiter'}
+        </button>
+      </div>
     </div>,
     document.body
   );
@@ -22738,6 +22861,16 @@ export default function App(){
      `normQuickStarts` laeuft beim Laden UND beim Schreiben, damit
      halb kaputte Datensaetze keinen Sonderfall brauchen. */
   const[quickStarts,setQuickStarts]=useState(()=>normQuickStarts(lsGet('ritmo_quickstarts',null)));
+  /* „Was ist neu": abgehakte Ausgaben. Beim ALLERERSTEN Start wird
+     alles still abgehakt — wer die App gerade installiert hat, kennt
+     nichts Altes und braucht keine Neuigkeiten. Erkannt am fehlenden
+     Profil, nicht an einer Versionsnummer: die haette nach einem
+     Reinstall dasselbe Problem. */
+  const[wnSeen,setWnSeen]=useState(()=>{
+    const stored=lsGet('ritmo_whatsnew',null);
+    if(Array.isArray(stored)) return stored;
+    return lsGet('ritmo_profile',null)?[]:RELEASES.map(r=>r.id);
+  });
   const saveQuickStart=(old,next)=>setQuickStarts(list=>normQuickStarts(
     old?list.map(q=>q.id===old.id?{...next,id:old.id}:q)
        :[...list,next].slice(0,QS_MAX)));
@@ -23093,6 +23226,7 @@ export default function App(){
      keine Schnellstarts", und der Schluessel zu loeschen wuerde beim
      naechsten Start die vier Standardkarten zurueckholen. */
   useEffect(()=>lsSet('ritmo_quickstarts',quickStarts),[quickStarts]);
+  useEffect(()=>lsSet('ritmo_whatsnew',wnSeen),[wnSeen]);
   useEffect(()=>lsSet('ritmo_ring',ringId),[ringId]);
   useEffect(()=>lsSet('ritmo_input',inputMode),[inputMode]);
   useEffect(()=>lsSet('ritmo_voice',voiceOn),[voiceOn]);
@@ -23349,6 +23483,14 @@ export default function App(){
         verdecken, bis der User „Tippe zum Starten" wegtippt. Wer
         gerade auf einen Link in seiner Mail getippt hat, hat seine
         Absicht schon bekundet. */}
+    {/* Der Newsletter steht NUR auf Home: waehrend Splash, Login,
+        Onboarding oder einem laufenden Turnier hat niemand darauf
+        gewartet. */}
+    {scr==='home'&&(()=>{
+      const rel=unseenRelease(wnSeen);
+      return rel?<WhatsNewSheet release={rel}
+        onClose={()=>setWnSeen(s=>[...(Array.isArray(s)?s:[]),rel.id])}/>:null;
+    })()}
     {scr==='splash'&&!verifyLanding&&<Splash onDone={()=>{
       // ?join=PIN aus QR-Scan: direkt zur Turnier-Join-Maske, auch
       // ohne Login (Auth-Pflicht wäre Reibung für den eingeladenen

@@ -55,6 +55,7 @@ import {
   SpeakerIcon, ChatBubbleIcon,
   ChevronRightIcon, AirPlayIcon, CoffeeCupIcon, TrashIcon,
   ArchetypeGlyph, PauseIcon, TournamentModeIcon, ClockIcon, CourtsIcon, ToolsIcon,
+  RACKET_OUTLINE, RACKET_HEART,
   // Emoji-Ersatz-Glyphen
   HeartIcon, MedalIcon, PhoneIcon, KeyboardIcon, RingIcon, WatchIcon, FlicIcon,
   MoonIcon, LeafIcon, TargetIcon, ScrollIcon, StopwatchIcon, MaskIcon,
@@ -13293,37 +13294,63 @@ function pcTrophy(n){
 /* Schlaeger: flach in der xy-Ebene (ein Schlaeger IST flach — beim
    Drehen sieht man ihn deshalb auch von der Kante). Rahmen, gelochte
    Flaeche, zwei Streben, Griff. */
-function pcRacket(n){
+/* Der Schlaeger der Partikel-Szene ist DERSELBE wie das Icon: die
+   Punkte werden aus den beiden Pfaden von `PadelRacketIcon`
+   abgetastet, nicht ein zweites Mal nachgebaut. Zwei Schlaeger mit
+   leicht verschiedener Kontur in einer App sind ein Fehler, den
+   niemand benennen kann, den aber jeder sieht.
+
+   Kontur und Herz kommen per `getPointAtLength` von einem kurz in
+   den Body gehaengten <path> (Safari misst nur, was im Dokument
+   steht); die gelochte Schlagflaeche entsteht aus Punkten im
+   goldenen Winkel, die per `isPointInPath` (evenodd) gegen dieselben
+   Pfade geprueft werden — das Herz ist dadurch automatisch frei. */
+function pathPoints(d,count){
+  if(typeof document==='undefined') return [];
+  const NS='http://www.w3.org/2000/svg';
+  const svg=document.createElementNS(NS,'svg');
+  svg.setAttribute('width','0'); svg.setAttribute('height','0');
+  svg.style.cssText='position:absolute;left:-9999px;top:0;opacity:0';
+  const el=document.createElementNS(NS,'path');
+  el.setAttribute('d',d);
+  svg.appendChild(el); document.body.appendChild(svg);
   const out=[];
-  const CY=0.34, RX=0.44, RY=0.47;               // Kopf (Ellipse)
-  const jz=()=>(Math.random()-0.5)*0.05;         // Hauch Dicke
-  const ringN=Math.round(n*0.22), faceN=Math.round(n*0.40),
-        strutN=Math.round(n*0.06);
-  const gripN=n-ringN-faceN-2*strutN;
-  for(let i=0;i<ringN;i++){
-    const a=i/ringN*PC_TAU;
-    out.push({x:Math.cos(a)*RX,y:CY+Math.sin(a)*RY,z:jz(),c:0});
+  try{
+    const L=el.getTotalLength();
+    for(let i=0;i<count;i++){
+      const p=el.getPointAtLength(L*i/count);
+      out.push([p.x,p.y]);
+    }
+  }catch(e){}
+  svg.remove();
+  return out;
+}
+function pcRacket(n){
+  const S=0.062, CX=9, CY=13.9;             // Icon-Koordinaten → Wolke
+  const conv=(x,y,c)=>({x:(x-CX)*S,y:(CY-y)*S,z:(Math.random()-0.5)*0.05,c});
+  const ringN=Math.round(n*0.34), heartN=Math.round(n*0.10);
+  const faceN=n-ringN-heartN;
+  const out=[];
+  for(const [x,y] of pathPoints(RACKET_OUTLINE,ringN)) out.push(conv(x,y,0));
+  for(const [x,y] of pathPoints(RACKET_HEART,heartN)) out.push(conv(x,y,0));
+  let inside=null;
+  try{
+    const c2=document.createElement('canvas').getContext('2d');
+    const p2=new Path2D(`${RACKET_OUTLINE} ${RACKET_HEART}`);
+    inside=(x,y)=>c2.isPointInPath(p2,x,y,'evenodd');
+  }catch(e){}
+  let got=0;
+  for(let i=0;got<faceN&&i<faceN*6;i++){
+    const t=(i+0.5)/(faceN*1.25), a=i*PC_GA, r=7.0*Math.sqrt(Math.min(1,t));
+    const x=CX+Math.cos(a)*r, y=9+Math.sin(a)*r;
+    if(inside&&!inside(x,y)) continue;
+    out.push(conv(x,y,1)); got++;
   }
-  for(let i=0;i<faceN;i++){
-    const t=(i+0.5)/faceN, a=i*PC_GA, r=Math.sqrt(t)*0.80;
-    out.push({x:Math.cos(a)*r*RX,y:CY+Math.sin(a)*r*RY,z:jz(),c:1});
-  }
-  /* Die Streben setzen an der Kopfunterkante an und laufen zum Griff
-     — mit Luecke dazwischen saehen sie aus wie zwei lose Striche. */
-  const Y0=CY-RY+0.02, Y1=CY-RY-0.20;
-  for(const sg of [-1,1]) for(let i=0;i<strutN;i++){
-    const t=(i+0.5)/strutN;
-    out.push({x:sg*(0.20-0.115*t*t),y:Y0+(Y1-Y0)*t,z:jz(),c:0});
-  }
-  /* Der Griff ist ein Balken, kein Paar Stangen: drei Spalten. */
-  const GW=0.078, GY1=Y1-0.46;
-  for(let i=0;i<gripN;i++){
-    const t=(i+0.5)/gripN;
-    out.push({x:((i%3)-1)*GW+(Math.random()-0.5)*0.03,
-      y:Y1+(GY1-Y1)*t,z:jz(),c:0});
-  }
-  const yc=(CY+RY+GY1)/2;
-  return out.map(p=>({...p,y:p.y-yc}));
+  /* Falls das Messen scheitert (kein DOM): lieber ein paar Punkte zu
+     wenig als eine Wolke mit falscher Punktzahl — die Formen muessen
+     gleich lang sein, sonst bricht das Ueberblenden. */
+  while(out.length<n) out.push(conv(CX,9,1));
+  return out.slice(0,n);
 }
 function WinnerParticles({size=150,hold=2300,morph=950}){
   const ref=useRef(null);

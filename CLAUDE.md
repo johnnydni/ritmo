@@ -307,24 +307,40 @@ Die Leiste zeigt im Ruhezustand nur **Home**, den **Werkzeug-Schalter**
 im Fach: vier Knöpfe, die man pro Runde vielleicht einmal anfasst,
 standen dauerhaft über dem Turnier, das man ständig ansieht.
 
-- Ein `rightButtons`-Eintrag mit **`items`** ist ein Fach. Seine Knöpfe
-  liegen **absolut** links neben dem Schalter (`right: calc(100% + 10px)`)
-  und wachsen nach links — nicht im Fluss. Grund ist Arithmetik: sechs
-  runde Knöpfe passen bei 390 px nicht nebeneinander (vier Werkzeuge
-  230 px + Schalter + Weiter + Home = 376 von 342). Im Fluss müsste
-  etwas schrumpfen; *über* der Leiste darf es einfach liegen.
-- Animiert wird **`max-width`, nicht `width`** — von `width:auto` auf 0
-  gibt es keinen Übergang. Der Wert ist **exakt die Inhaltsbreite**
-  (`n*48 + (n-1)*8 + 14`), nicht großzügig geschätzt: mit einem zu
-  weiten Wert läuft der erste Teil des Übergangs ins Leere, und das
-  Einfahren wirkt erst verzögert und dann abrupt.
+- Ein `rightButtons`-Eintrag mit **`items`** ist ein Fach — und das Fach
+  ist **keine zweite Leiste neben dem Schalter, sondern derselbe Knopf,
+  der sich streckt**: eine Kapsel, die geschlossen exakt der 48er-Kreis
+  des Schalters ist und offen bis über die vier Werkzeuge reicht. Der
+  Schalter liegt mit drin, ganz rechts. Vorher lag die Kapsel *neben*
+  dem Schalter und wuchs per `max-width` aus dem Nichts — das sah aus
+  wie eine zweite Leiste, die eingeblendet wird, nicht wie eine Fläche,
+  die sich verformt.
+- Die Kapsel liegt **absolut** und ist rechts verankert, ein
+  48-px-Platzhalter hält der Reihe den Platz frei. Grund ist Arithmetik:
+  sechs runde Knöpfe passen bei 390 px nicht nebeneinander (vier
+  Werkzeuge 230 px + Schalter + Weiter + Home = 376 von 342). Im Fluss
+  müsste etwas schrumpfen; *über* der Leiste darf es einfach liegen.
+- **Die Breite IST die Animation** (48 → `48 + gap + n*48 + (n-1)*gap + pad`,
+  bei vier Werkzeugen 278). Aufgehen mit einem Hauch Überschwingen
+  (`cubic-bezier(.22,1.08,.36,1)`, 440 ms), Zugehen kurz und ohne
+  (280 ms): beim Schließen will niemand noch einmal nachfedern.
+- **Kein Glas auf Glas.** Im Fach tragen die Knöpfe `btn.plain` — die
+  Kapsel ist das Material, die Werkzeuge sind nur noch Glyphen darauf.
+  `plain` muss dabei ausdrücklich `background:'transparent'` setzen,
+  sonst malt der Browser seinen eigenen (weißen) Knopfgrund.
+- Der Schalter-Glyph **dreht sich 45°**, solange offen ist: aus vier
+  Kacheln wird eine Raute. Das ist der einzige Zustand, den der Knopf
+  selbst noch trägt.
 - Die Knöpfe im Fach blenden **gestaffelt** (35 ms je Position) und in
   beide Richtungen von innen nach außen: beim Ausfahren erscheint der
   am Schalter zuerst, beim Einfahren verschwindet der äußerste zuerst.
   Die Reihe bewegt sich dadurch wie eine Kette und nicht wie ein Block.
   Der Staffel-Style liegt auf `btn.fx`, das in `MatchBar` **ganz
   zuletzt** gemergt wird — es muss auch die `opacity` überschreiben
-  dürfen, die `fab` für den Disabled-Zustand setzt.
+  dürfen, die `fab` für den Disabled-Zustand setzt. Die Knöpfe kommen
+  dabei **unter dem Schalter hervor** (`translateX(14px) scale(.6)`)
+  und verschwinden wieder darunter; die Kapsel schneidet sie ab
+  (`overflow:hidden`).
 - Solange das Fach offen ist, blendet **Home** aus (`homeHidden`): das
   Fach wächst über ihn hinweg, und ein halb verdeckter Knopf sieht
   kaputt aus.

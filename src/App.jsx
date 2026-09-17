@@ -55,7 +55,6 @@ import {
   SpeakerIcon, ChatBubbleIcon,
   ChevronRightIcon, AirPlayIcon, CoffeeCupIcon, TrashIcon,
   ArchetypeGlyph, PauseIcon, TournamentModeIcon, ClockIcon, CourtsIcon, ToolsIcon,
-  RACKET_OUTLINE, RACKET_HEART,
   // Emoji-Ersatz-Glyphen
   HeartIcon, MedalIcon, PhoneIcon, KeyboardIcon, RingIcon, WatchIcon, FlicIcon,
   MoonIcon, LeafIcon, TargetIcon, ScrollIcon, StopwatchIcon, MaskIcon,
@@ -13296,97 +13295,56 @@ function pcTrophy(n){
 /* Schlaeger: flach in der xy-Ebene (ein Schlaeger IST flach — beim
    Drehen sieht man ihn deshalb auch von der Kante). Rahmen, gelochte
    Flaeche, zwei Streben, Griff. */
-/* Der Schlaeger der Partikel-Szene ist DERSELBE wie das Icon: die
-   Punkte werden aus den beiden Pfaden von `PadelRacketIcon`
-   abgetastet, nicht ein zweites Mal nachgebaut. Zwei Schlaeger mit
-   leicht verschiedener Kontur in einer App sind ein Fehler, den
-   niemand benennen kann, den aber jeder sieht.
-
-   Kontur und Herz kommen per `getPointAtLength` von einem kurz in
-   den Body gehaengten <path> (Safari misst nur, was im Dokument
-   steht); die gelochte Schlagflaeche entsteht aus Punkten im
-   goldenen Winkel, die per `isPointInPath` (evenodd) gegen dieselben
-   Pfade geprueft werden — das Herz ist dadurch automatisch frei. */
-function pathPoints(d,count){
-  if(typeof document==='undefined') return [];
-  const NS='http://www.w3.org/2000/svg';
-  const svg=document.createElementNS(NS,'svg');
-  svg.setAttribute('width','0'); svg.setAttribute('height','0');
-  svg.style.cssText='position:absolute;left:-9999px;top:0;opacity:0';
-  const el=document.createElementNS(NS,'path');
-  el.setAttribute('d',d);
-  svg.appendChild(el); document.body.appendChild(svg);
-  const out=[];
-  try{
-    const L=el.getTotalLength();
-    for(let i=0;i<count;i++){
-      const p=el.getPointAtLength(L*i/count);
-      out.push([p.x,p.y]);
-    }
-  }catch(e){}
-  svg.remove();
-  return out;
-}
-function pcRacket(n){
-  const S=0.062, CX=9, CY=13.9;             // Icon-Koordinaten → Wolke
-  const conv=(x,y,c)=>({x:(x-CX)*S,y:(CY-y)*S,z:(Math.random()-0.5)*0.05,c});
-  const ringN=Math.round(n*0.34), heartN=Math.round(n*0.10);
-  const faceN=n-ringN-heartN;
-  const out=[];
-  for(const [x,y] of pathPoints(RACKET_OUTLINE,ringN)) out.push(conv(x,y,0));
-  for(const [x,y] of pathPoints(RACKET_HEART,heartN)) out.push(conv(x,y,0));
-  let inside=null;
-  try{
-    const c2=document.createElement('canvas').getContext('2d');
-    const p2=new Path2D(`${RACKET_OUTLINE} ${RACKET_HEART}`);
-    inside=(x,y)=>c2.isPointInPath(p2,x,y,'evenodd');
-  }catch(e){}
-  let got=0;
-  for(let i=0;got<faceN&&i<faceN*6;i++){
-    const t=(i+0.5)/(faceN*1.25), a=i*PC_GA, r=6.7*Math.sqrt(Math.min(1,t));
-    const x=CX+Math.cos(a)*r, y=9+Math.sin(a)*r;
-    /* Nur oberhalb der Herz-Oberkante (y ~ 14,8): weiter unten ist
-       kein Schlagbild mehr, sondern Rahmen — orange Punkte dort
-       sehen aus, als quelle die Flaeche aus dem Kopf heraus. */
-    if(y>14.2) continue;
-    if(inside&&!inside(x,y)) continue;
-    out.push(conv(x,y,1)); got++;
-  }
-  /* Falls das Messen scheitert (kein DOM): lieber ein paar Punkte zu
-     wenig als eine Wolke mit falscher Punktzahl — die Formen muessen
-     gleich lang sein, sonst bricht das Ueberblenden. */
-  while(out.length<n) out.push(conv(CX,9,1));
-  return out.slice(0,n);
-}
-/* Alle drei Wolken auf dieselbe Ausdehnung ziehen. Ohne das waere
-   der Pokal (knapp 1,0 Einheiten hoch) sichtbar kleiner als Ball und
-   Schlaeger (1,6) — die Szene wuerde bei jedem Formwechsel die
-   Groesse wechseln, und "die Karte fuellen" koennte nur eine der
-   drei. */
-function pcFit(pts,target=0.78){
+/* Beide Wolken auf dieselbe Ausdehnung ziehen — und zwar auf die
+   PROJIZIERTE, ueber eine ganze Umdrehung gemessen. Nach den
+   Rohkoordinaten zu normieren reicht nicht: der Kelchrand steht weit
+   aussen UND weit vorn, die Perspektive (k = D/(D−z), bis 1,4) schob
+   ihn dadurch ueber den Kartenrand, waehrend der Ball bequem Platz
+   hatte. Gerechnet wird einmal je Form, nicht je Bild. */
+function pcFitView(pts,D,ct,st,margin=0.92){
   let m=0;
-  for(const p of pts) m=Math.max(m,Math.abs(p.x),Math.abs(p.y));
-  const k=m>0?target/m:1;
+  for(let i=0;i<24;i++){
+    const a=i/24*PC_TAU, ca=Math.cos(a), sa=Math.sin(a);
+    for(const p of pts){
+      const x1=p.x*ca+p.z*sa, z1=-p.x*sa+p.z*ca;
+      const y2=p.y*ct-z1*st, z2=p.y*st+z1*ct;
+      const k=D/(D-z2);
+      m=Math.max(m,Math.abs(x1*k),Math.abs(y2*k));
+    }
+  }
+  const k=m>0?margin/m:1;
   return pts.map(p=>({...p,x:p.x*k,y:p.y*k,z:p.z*k}));
 }
-/* Die Szene fuellt die Sieger-Karte in voller Breite: sie misst ihren
-   Container selbst (und nach einem Dreh erneut), statt eine feste
-   Kantenlaenge zu bekommen. */
-function WinnerParticles({height=250,hold=2300,morph=950}){
+/* Die Szene liegt als HINTERGRUND in der Sieger-Karte und fuellt sie
+   ganz: sie misst ihren Container (und nach einem Dreh erneut), statt
+   eine feste Kantenlaenge zu bekommen. Darueber liegt ein dunkler
+   Schleier und darauf der Text — die Szene richtet sich also nach der
+   Karte und nicht umgekehrt. */
+function WinnerParticles({hold=2300,morph=950}){
   const ref=useRef(null);
-  const[W,setW]=useState(0);
+  const[box,setBox]=useState({w:0,h:0});
   useEffect(()=>{
     const measure=()=>{
       const el=ref.current&&ref.current.parentElement;
-      if(el) setW(Math.max(1,Math.round(el.getBoundingClientRect().width)));
+      if(!el) return;
+      const r=el.getBoundingClientRect();
+      const w=Math.max(1,Math.round(r.width)), h=Math.max(1,Math.round(r.height));
+      setBox(b=>(b.w===w&&b.h===h)?b:{w,h});
     };
     measure();
+    /* ResizeObserver statt nur window.resize: die Karte waechst mit
+       ihrem Inhalt (langer Siegername, umbrechende Knopfreihe). */
+    let ro;
+    if(typeof ResizeObserver!=='undefined'&&ref.current&&ref.current.parentElement){
+      ro=new ResizeObserver(measure); ro.observe(ref.current.parentElement);
+    }
     window.addEventListener('resize',measure);
-    return()=>window.removeEventListener('resize',measure);
+    return()=>{ if(ro) ro.disconnect(); window.removeEventListener('resize',measure); };
   },[]);
   useEffect(()=>{
     const cv=ref.current;
-    if(!cv||!cv.getContext||!W) return;
+    const W=box.w, height=box.h;
+    if(!cv||!cv.getContext||!W||!height) return;
     const ctx=cv.getContext('2d');
     if(!ctx) return;
     const dpr=Math.min(3,window.devicePixelRatio||1);
@@ -13399,14 +13357,18 @@ function WinnerParticles({height=250,hold=2300,morph=950}){
        fuellt: mit 820 klaffte zwischen den Punkten sichtbar Luft und
        aus dem Pokal wurde eine Spirale. */
     const N=2800;
-    const forms=[pcTrophy(N),pcBall(N),pcRacket(N)].map(f=>pcFit(f));
+    /* Zwei Formen, nicht drei: der Schlaeger steht als Icon schon in
+       der Tab-Bar und in den Listen — im Endstand geht es um Pokal
+       und Ball. */
+    const forms=[pcTrophy(N),pcBall(N)]
+      .map(f=>pcFitView(f,3.4,Math.cos(0.30),Math.sin(0.30)));
     /* Die Farbe haengt an der FORM, nicht am Punkt: im Pokal ist
        Gold richtig, im Ball das Orange der Naht. */
-    const tint=[[gold,ink],[acc,ink],[acc,ink]];
+    const tint=[[gold,ink],[acc,ink]];
     /* 0,56 der kuerzeren Kante: die Form reicht damit bis dicht an
        den Rand, ohne dass der vorderste Punkt durch die Perspektive
        hinauslaeuft. */
-    const R=Math.min(cv.width,cv.height)*0.56, cx=cv.width/2, cy=cv.height/2, D=3.4;
+    const R=Math.min(cv.width,cv.height)*0.5, cx=cv.width/2, cy=cv.height/2, D=3.4;
     const TILT=0.30, ct=Math.cos(TILT), st=Math.sin(TILT);
     const ease=t=>t<=0?0:t>=1?1:t*t*(3-2*t);
     const draw=(ms)=>{
@@ -13417,21 +13379,15 @@ function WinnerParticles({height=250,hold=2300,morph=950}){
       const a=ms/1000*0.55;
       const ca=Math.cos(a), sa=Math.sin(a);
       const A=forms[idx], B=forms[nxt];
-      /* Jede Form dreht sich um IHRE Achse: Pokal und Ball um die
-         Hochachse, der Schlaeger in seiner eigenen Ebene. Ein flacher
-         Schlaeger, der sich um die Hochachse dreht, steht die halbe
-         Zeit auf der Kante und ist dann ein Strich. Gedreht wird
-         deshalb VOR dem Ueberblenden — der Punkt wandert dadurch
-         zwischen zwei bereits gedrehten Formen und die Wolke bleibt
-         in Bewegung. */
-      const spin=(p,form)=>form===2
-        ?{x:p.x*ca-p.y*sa, y:p.x*sa+p.y*ca, z:p.z}
-        :{x:p.x*ca+p.z*sa, y:p.y, z:-p.x*sa+p.z*ca};
+      /* Gedreht wird VOR dem Ueberblenden: der Punkt wandert dadurch
+         zwischen zwei bereits gedrehten Formen, und die Wolke bleibt
+         auch im Uebergang in Bewegung. */
+      const spin=p=>({x:p.x*ca+p.z*sa, y:p.y, z:-p.x*sa+p.z*ca});
       const q=[];
       for(let i=0;i<N;i++){
         /* Versatz je Punkt: die Wolke flieszt, statt umzuspringen. */
         const w=ease((local-(i%40)/40*0.35)/0.65);
-        const p0=spin(A[i],idx), p1=spin(B[i],nxt);
+        const p0=spin(A[i]), p1=spin(B[i]);
         const x=p0.x+(p1.x-p0.x)*w, y=p0.y+(p1.y-p0.y)*w, z=p0.z+(p1.z-p0.z)*w;
         const y2=y*ct-z*st, z2=y*st+z*ct;
         q.push({x:x,y:y2,z:z2,c:A[i].c+(B[i].c-A[i].c)*w,t:w});
@@ -13458,9 +13414,9 @@ function WinnerParticles({height=250,hold=2300,morph=950}){
     const tick=ts=>{ if(t0===null)t0=ts; draw(ts-t0); raf=requestAnimationFrame(tick); };
     raf=requestAnimationFrame(tick);
     return()=>cancelAnimationFrame(raf);
-  },[W,height,hold,morph]);
+  },[box,hold,morph]);
   return <canvas ref={ref} aria-hidden="true"
-    style={{width:'100%',height,display:'block'}}/>;
+    style={{position:'absolute',inset:0,width:'100%',height:'100%',display:'block'}}/>;
 }
 
 /* ── Konfetti ─────────────────────────────────────────────────────
@@ -15141,19 +15097,22 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
             Screen (nicht nur ueber die Karte: die hat overflow:hidden,
             und Konfetti, das an einer Kante endet, ist keins). */}
         <ConfettiBurst/>
+        {/* Drei Lagen: die Szene fuellt die Karte, darueber ein
+            dunkler Schleier, darauf Name, Wertung und Knoepfe. Ohne
+            den Schleier laeuft der Name durch ein Punktefeld und ist
+            je nach Drehung mal lesbar und mal nicht. 15 % sind genug:
+            die Szene soll gedaempft werden, nicht verschwinden. */}
         <div style={{background:T.card,border:`1px solid ${T.o}`,borderRadius:20,
           /* flexShrink:0 — in der scrollenden Flex-Spalte schrumpfen
              Kinder sonst: ohne die Tabelle als flex:1 wurde aus dem
              Sieger-Block ein 48-px-Streifen Konfetti. */
-          padding:'20px 22px 24px',textAlign:'center',position:'relative',
-          overflow:'hidden',flexShrink:0}}>
-          <div style={{position:'relative',zIndex:1}}>
-          {/* Randlos: die negativen Raender heben die Polsterung der
-              Karte auf, die runden Ecken schneidet die Karte selbst
-              (overflow:hidden). */}
-          <div style={{margin:'-20px -22px 0'}}>
-            <WinnerParticles height={250}/>
-          </div>
+          padding:'22px 22px 24px',textAlign:'center',position:'relative',
+          overflow:'hidden',flexShrink:0,minHeight:330,
+          display:'flex',flexDirection:'column',justifyContent:'flex-end'}}>
+          <WinnerParticles/>
+          <div aria-hidden="true" style={{position:'absolute',inset:0,zIndex:1,
+            background:'rgba(18,18,20,0.15)',pointerEvents:'none'}}/>
+          <div style={{position:'relative',zIndex:2}}>
           <div style={{fontSize:24,fontWeight:800,color:T.t1,letterSpacing:-.3}}>{winner?.name}</div>
           <div style={{fontSize:16,color:T.o,fontWeight:700,marginTop:4}}>
             {tourney.winMode==='wins'?`${winner?.totalWins} Siege`:`${winner?.totalPts} Punkte`}

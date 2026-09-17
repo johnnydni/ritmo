@@ -737,6 +737,27 @@ dem Namen und damit ohne Schleier: eine 15-%-Fläche auf einem 152er
 Quadrat ist kein Schleier mehr, sondern ein sichtbarer grauer Kasten
 um die Wolke.
 
+**Der Pokal ist der Wimbledon-Pokal** (`PC_CUP`, eine Profillinie
+aus y/r-Paaren, die `pcRevolve` um die Hochachse dreht: Fuss, Stiel
+mit Knauf, Kelch, Rand, Deckelkuppel; dazu Ananas und zwei Henkel).
+Drei Dinge entscheiden, ob er als dieser Pokal gelesen wird:
+
+- **Das Verhältnis.** Das Original ist rund doppelt so hoch wie breit
+  (47 cm bei 19 cm). Mit einer Höhe in Randbreite wurde daraus ein
+  Kelch, ein Kreisel oder eine Linse — je nach Versuch, aber nie der
+  Pokal.
+- **Der Rand steht vor** (der kurze Sprung auf r 0,54). Ohne ihn
+  laufen Kelch und Deckel zu einer Kugel zusammen, und der Pokal hat
+  keinen Deckel mehr, sondern eine Haube.
+- **Verteilt wird nach Mantelfläche** (r × Segmentlänge). Ohne die
+  additive Konstante darin bekommt der breite Deckel alle Punkte und
+  der dünne Stiel keinen — der Fuss stand dann als eigene Scheibe
+  darunter.
+
+Er bekommt als einzige Form **mehr Rand** (`pcFitView`-Mass 0,94
+statt 0,78): begrenzt wird er von der Höhe, an der Breite ist Luft.
+Mit dem Mass des Balls stünde er als Streichholz in der Karte.
+
 - Beide Wolken haben **genau dieselbe Punktzahl**. Der Übergang
   ist damit ein Überblenden Punkt für Punkt und nicht das Ein- und
   Ausblenden zweier Bilder. Ein kleiner Versatz je Punkt

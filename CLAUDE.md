@@ -723,6 +723,44 @@ Bedienungen sein.
   des Assistenten. Zwei Zeitangaben im selben Assistenten sollen nicht
   aus zwei Uhren stammen — wer die Größe ändert, ändert beide.
 
+### Endstand: die Partikel-Szene und das Konfetti
+
+Über dem Siegernamen steht eine Punktwolke, die ihre Form wechselt:
+**Pokal → Tennisball → Schläger → Pokal**. Darunter dieselbe Technik
+wie beim `TennisOrb` des Turnier-Vorhangs — Punkte auf einer Fläche,
+je Bild gedreht, perspektivisch projiziert, von hinten nach vorn
+gezeichnet.
+
+- Alle drei Wolken haben **genau dieselbe Punktzahl**. Der Übergang
+  ist damit ein Überblenden Punkt für Punkt und nicht das Ein- und
+  Ausblenden zweier Bilder. Ein kleiner Versatz je Punkt
+  (`(i % 40)`) lässt die Wolke fließen, statt als Block umzuspringen.
+- **Jede Form dreht sich um ihre eigene Achse.** Pokal und Ball um
+  die Hochachse, der Schläger in seiner eigenen Ebene: ein flacher
+  Schläger, der sich um die Hochachse dreht, steht die halbe Zeit auf
+  der Kante und ist dann ein Strich. Gedreht wird deshalb *vor* dem
+  Überblenden — der Punkt wandert zwischen zwei bereits gedrehten
+  Formen.
+- Die Farbe hängt an der **Form**, nicht am Punkt: im Pokal ist Gold
+  richtig, im Ball das Orange der Naht.
+- Die Streben des Schlägers setzen an der Kopfunterkante an (mit
+  Lücke sähen sie aus wie zwei lose Striche), und der Griff ist ein
+  Balken aus drei Spalten, kein Paar Stangen.
+
+Das **Konfetti** (`ConfettiBurst`) fliegt aus der Mitte statt von oben
+zu fallen: Schwerkraft, Luftwiderstand, Drall — und jedes Stück kippt
+um seine eigene Achse (`scaleX` über einen Kosinus). Genau dieses
+Kippen ist der Unterschied zwischen „Rechtecke fallen" und Konfetti.
+
+- Es hängt per Portal **am Body**, nicht in der Sieger-Karte: die hat
+  `overflow:hidden` für ihre runden Ecken, und Konfetti, das an einer
+  Kante endet, ist keins.
+- Die Stücke starten **versetzt** (bis 520 ms). Alles auf einmal ist
+  ein Knall, der vorbei ist, bevor man hinsieht.
+- Es läuft **einmal** und hält dann an — eine Endlosschleife am
+  Endstand wäre Kirmes. Bei `prefers-reduced-motion` startet es gar
+  nicht.
+
 ### `LbRow` — die Turniertabelle
 
 Eine Zeile, vier Aufrufer: die Tabelle im laufenden Turnier (Tab

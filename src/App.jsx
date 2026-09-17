@@ -3350,7 +3350,14 @@ function MatchBar({onHome,rightIcon,onRight,rightButtons,homeLabel='Zurück zur 
         transition:btn.open
           ?'width .44s cubic-bezier(.22,1.08,.36,1),padding-left .44s cubic-bezier(.22,1.08,.36,1)'
           :'width .28s cubic-bezier(.4,0,.2,1),padding-left .28s cubic-bezier(.4,0,.2,1)'}}>
-        {items.map((it,j)=>fab({...it,plain:true,fx:{
+        {/* Im Fach traegt kein Knopf mehr seinen eigenen Kreis: eine
+            48er Scheibe in einer 48er Kapsel stoesst oben und unten an
+            deren Rand, und die beiden Konturen laufen ineinander — das
+            sieht aus wie ein Fehler, nicht wie ein Knopf. Die Farbe
+            bleibt (rot ist rot), der Grund geht. */}
+        {items.map((it,j)=>fab({...it,plain:true,
+          style:{...(it.style||{}),background:'transparent',border:'none',boxShadow:'none'},
+          fx:{
           opacity:btn.open?1:0,
           /* Sie kommen unter dem Schalter hervor und verschwinden
              wieder darunter — deshalb der Versatz nach rechts. */
@@ -3366,7 +3373,10 @@ function MatchBar({onHome,rightIcon,onRight,rightButtons,homeLabel='Zurück zur 
         }},j))}
         {/* Der Schalter selbst: ohne eigenes Glas (die Kapsel ist das
             Material) und mit gedrehtem Glyph, solange offen ist. */}
-        {fab({...btn,plain:true,fx:{
+        {fab({...btn,plain:true,
+          style:{...(btn.style||{}),
+            ...(btn.open?{background:'transparent',border:'none',boxShadow:'none'}:{})},
+          fx:{
           transform:btn.open?'rotate(45deg)':'rotate(0deg)',
           transition:'transform .44s cubic-bezier(.22,1.08,.36,1)',
         }},'toggle',{'aria-expanded':!!btn.open})}
@@ -13228,6 +13238,245 @@ function TennisOrb({size=120,dots=1100,speed=0.9,style}){
     style={{width:size,height:size,display:'block',...style}}/>;
 }
 
+/* ── Endstand: die Partikel-Szene ─────────────────────────────────
+   Derselbe Gedanke wie beim Orb, nur mit drei Formen: aus dem Pokal
+   wird ein Tennisball, daraus ein Schlaeger, dann wieder der Pokal.
+   Jede Form ist eine Punktwolke mit GENAU derselben Punktzahl —
+   dadurch ist der Uebergang ein einfaches Ueberblenden Punkt fuer
+   Punkt und nicht das Ein-/Ausblenden zweier Bilder.
+
+   Die Punkte wechseln leicht versetzt (Index-Verzoegerung): die Wolke
+   flieszt dann von einer Form in die andere, statt als Block
+   umzuspringen. */
+const PC_GA=Math.PI*(3-Math.sqrt(5));
+const PC_TAU=Math.PI*2;
+function pcBall(n){
+  const out=[], seamN=Math.round(n*0.17), rest=n-seamN;
+  for(let i=0;i<seamN;i++){
+    const p=orbSeamPoint(i/seamN*PC_TAU);
+    out.push({x:p[0]*0.78,y:p[1]*0.78,z:p[2]*0.78,c:1});
+  }
+  for(let i=0;i<rest;i++){
+    const y=1-2*(i+0.5)/rest, r=Math.sqrt(Math.max(0,1-y*y)), th=i*PC_GA;
+    out.push({x:Math.cos(th)*r*0.78,y:y*0.78,z:Math.sin(th)*r*0.78,c:0});
+  }
+  return out;
+}
+/* Pokal: Kelch als Rotationsflaeche, zwei Henkel in der xy-Ebene,
+   Stiel und Fuss. Die Anteile sind so gewaehlt, dass der Kelch die
+   Form traegt und Fuss/Henkel sie nur lesbar machen. */
+function pcTrophy(n){
+  const out=[];
+  const cupN=Math.round(n*0.46), hN=Math.round(n*0.09), stemN=Math.round(n*0.10);
+  const baseN=n-cupN-2*hN-stemN;
+  for(let i=0;i<cupN;i++){
+    const t=(i+0.5)/cupN, a=i*PC_GA;
+    const y=-0.02+t*0.66, r=0.15+0.35*Math.pow(t,0.8);
+    out.push({x:Math.cos(a)*r,y:y,z:Math.sin(a)*r,c:1});
+  }
+  for(const sgn of [-1,1]) for(let i=0;i<hN;i++){
+    const t=(i+0.5)/hN;
+    out.push({x:sgn*(0.34+0.24*Math.sin(Math.PI*t)),y:0.56-0.30*t,
+      z:0.05*Math.sin(PC_TAU*t),c:1});
+  }
+  for(let i=0;i<stemN;i++){
+    const t=(i+0.5)/stemN, a=i*PC_GA*3;
+    out.push({x:Math.cos(a)*0.055,y:-0.30+t*0.28,z:Math.sin(a)*0.055,c:1});
+  }
+  for(let i=0;i<baseN;i++){
+    const t=(i+0.5)/baseN, a=i*PC_GA, r=0.10+0.18*Math.sqrt(t);
+    out.push({x:Math.cos(a)*r,y:-0.34+0.04*t,z:Math.sin(a)*r,c:0});
+  }
+  // auf die Mitte ziehen, damit alle drei Formen dieselbe Achse haben
+  return out.map(p=>({...p,y:p.y-0.12}));
+}
+/* Schlaeger: flach in der xy-Ebene (ein Schlaeger IST flach — beim
+   Drehen sieht man ihn deshalb auch von der Kante). Rahmen, gelochte
+   Flaeche, zwei Streben, Griff. */
+function pcRacket(n){
+  const out=[];
+  const CY=0.34, RX=0.44, RY=0.47;               // Kopf (Ellipse)
+  const jz=()=>(Math.random()-0.5)*0.05;         // Hauch Dicke
+  const ringN=Math.round(n*0.22), faceN=Math.round(n*0.40),
+        strutN=Math.round(n*0.06);
+  const gripN=n-ringN-faceN-2*strutN;
+  for(let i=0;i<ringN;i++){
+    const a=i/ringN*PC_TAU;
+    out.push({x:Math.cos(a)*RX,y:CY+Math.sin(a)*RY,z:jz(),c:0});
+  }
+  for(let i=0;i<faceN;i++){
+    const t=(i+0.5)/faceN, a=i*PC_GA, r=Math.sqrt(t)*0.80;
+    out.push({x:Math.cos(a)*r*RX,y:CY+Math.sin(a)*r*RY,z:jz(),c:1});
+  }
+  /* Die Streben setzen an der Kopfunterkante an und laufen zum Griff
+     — mit Luecke dazwischen saehen sie aus wie zwei lose Striche. */
+  const Y0=CY-RY+0.02, Y1=CY-RY-0.20;
+  for(const sg of [-1,1]) for(let i=0;i<strutN;i++){
+    const t=(i+0.5)/strutN;
+    out.push({x:sg*(0.20-0.115*t*t),y:Y0+(Y1-Y0)*t,z:jz(),c:0});
+  }
+  /* Der Griff ist ein Balken, kein Paar Stangen: drei Spalten. */
+  const GW=0.078, GY1=Y1-0.46;
+  for(let i=0;i<gripN;i++){
+    const t=(i+0.5)/gripN;
+    out.push({x:((i%3)-1)*GW+(Math.random()-0.5)*0.03,
+      y:Y1+(GY1-Y1)*t,z:jz(),c:0});
+  }
+  const yc=(CY+RY+GY1)/2;
+  return out.map(p=>({...p,y:p.y-yc}));
+}
+function WinnerParticles({size=150,hold=2300,morph=950}){
+  const ref=useRef(null);
+  useEffect(()=>{
+    const cv=ref.current;
+    if(!cv||!cv.getContext) return;
+    const ctx=cv.getContext('2d');
+    if(!ctx) return;
+    const dpr=Math.min(3,window.devicePixelRatio||1);
+    cv.width=Math.round(size*dpr); cv.height=Math.round(size*dpr);
+    const css=getComputedStyle(document.documentElement);
+    const ink=(css.getPropertyValue('--t1')||'').trim()||'#fff';
+    const acc=(css.getPropertyValue('--o')||'').trim()||'#FF7A1A';
+    const gold=(css.getPropertyValue('--gold')||'').trim()||'#FFD60A';
+    const N=820;
+    const forms=[pcTrophy(N),pcBall(N),pcRacket(N)];
+    /* Die Farbe haengt an der FORM, nicht am Punkt: im Pokal ist
+       Gold richtig, im Ball das Orange der Naht. */
+    const tint=[[gold,ink],[acc,ink],[acc,ink]];
+    const R=size*dpr*0.40, cx=cv.width/2, cy=cv.height/2, D=3.4;
+    const TILT=0.30, ct=Math.cos(TILT), st=Math.sin(TILT);
+    const ease=t=>t<=0?0:t>=1?1:t*t*(3-2*t);
+    const draw=(ms)=>{
+      const cycle=hold+morph;
+      const idx=Math.floor(ms/cycle)%forms.length;
+      const nxt=(idx+1)%forms.length;
+      const local=(ms%cycle-hold)/morph;      // <0 = halten
+      const a=ms/1000*0.55;
+      const ca=Math.cos(a), sa=Math.sin(a);
+      const A=forms[idx], B=forms[nxt];
+      /* Jede Form dreht sich um IHRE Achse: Pokal und Ball um die
+         Hochachse, der Schlaeger in seiner eigenen Ebene. Ein flacher
+         Schlaeger, der sich um die Hochachse dreht, steht die halbe
+         Zeit auf der Kante und ist dann ein Strich. Gedreht wird
+         deshalb VOR dem Ueberblenden — der Punkt wandert dadurch
+         zwischen zwei bereits gedrehten Formen und die Wolke bleibt
+         in Bewegung. */
+      const spin=(p,form)=>form===2
+        ?{x:p.x*ca-p.y*sa, y:p.x*sa+p.y*ca, z:p.z}
+        :{x:p.x*ca+p.z*sa, y:p.y, z:-p.x*sa+p.z*ca};
+      const q=[];
+      for(let i=0;i<N;i++){
+        /* Versatz je Punkt: die Wolke flieszt, statt umzuspringen. */
+        const w=ease((local-(i%40)/40*0.35)/0.65);
+        const p0=spin(A[i],idx), p1=spin(B[i],nxt);
+        const x=p0.x+(p1.x-p0.x)*w, y=p0.y+(p1.y-p0.y)*w, z=p0.z+(p1.z-p0.z)*w;
+        const y2=y*ct-z*st, z2=y*st+z*ct;
+        q.push({x:x,y:y2,z:z2,c:A[i].c+(B[i].c-A[i].c)*w,t:w});
+      }
+      q.sort((m,o)=>m.z-o.z);
+      ctx.clearRect(0,0,cv.width,cv.height);
+      for(const p of q){
+        const k=D/(D-p.z), depth=(p.z+1)/2;
+        ctx.globalAlpha=0.18+0.82*depth*depth;
+        /* Waehrend des Uebergangs leuchtet der Punkt in der Farbe,
+           auf die er zulaeuft. */
+        const from=p.c>0.5?tint[idx][0]:tint[idx][1];
+        const to=p.c>0.5?tint[nxt][0]:tint[nxt][1];
+        ctx.fillStyle=p.t>0.5?to:from;
+        ctx.beginPath();
+        ctx.arc(cx+p.x*R*k,cy-p.y*R*k,Math.max(0.5,1.15*dpr*k*(size/150)),0,6.2832);
+        ctx.fill();
+      }
+      ctx.globalAlpha=1;
+    };
+    const reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if(reduce){ draw(0); return; }
+    let raf,t0=null;
+    const tick=ts=>{ if(t0===null)t0=ts; draw(ts-t0); raf=requestAnimationFrame(tick); };
+    raf=requestAnimationFrame(tick);
+    return()=>cancelAnimationFrame(raf);
+  },[size,hold,morph]);
+  return <canvas ref={ref} aria-hidden="true"
+    style={{width:size,height:size,display:'block'}}/>;
+}
+
+/* ── Konfetti ─────────────────────────────────────────────────────
+   Vorher waren es 16 CSS-Schnipsel, die von oben durchs Bild fielen.
+   Jetzt fliegt es aus der Mitte: Schwerkraft, Luftwiderstand, Drall
+   — und jedes Stueck kippt um seine eigene Achse (scaleX ueber einen
+   Kosinus), wodurch es sich dreht statt zu rutschen. Genau dieses
+   Kippen ist der Unterschied zwischen "Rechtecke fallen" und
+   "Konfetti".
+
+   Es laeuft EINMAL und haelt danach an: eine Endlosschleife am
+   Endstand waere Kirmes. */
+function ConfettiBurst({pieces=140,duration=4600,originY=0.38}){
+  const ref=useRef(null);
+  useEffect(()=>{
+    const cv=ref.current;
+    if(!cv||!cv.getContext) return;
+    if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const ctx=cv.getContext('2d');
+    if(!ctx) return;
+    const dpr=Math.min(2.5,window.devicePixelRatio||1);
+    const box=cv.getBoundingClientRect();
+    const W=Math.max(1,Math.round(box.width)), H=Math.max(1,Math.round(box.height));
+    cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr);
+    const css=getComputedStyle(document.documentElement);
+    const pick=['--o','--gold','--blue','--g','--t1']
+      .map(v=>(css.getPropertyValue(v)||'').trim()).filter(Boolean);
+    const cols=pick.length?pick:['#FF7A1A','#FFD60A','#0A84FF','#32D74B','#fff'];
+    const P=[];
+    for(let i=0;i<pieces;i++){
+      const ang=-Math.PI/2+(Math.random()-0.5)*2.1;      // nach oben, breit gestreut
+      const sp=(0.22+Math.random()*0.42)*H/100;
+      P.push({x:W*0.5+(Math.random()-0.5)*W*0.25, y:H*originY,
+        vx:Math.cos(ang)*sp*(1+Math.random()*0.6), vy:Math.sin(ang)*sp,
+        w:3+Math.random()*4, h:6+Math.random()*7,
+        rot:Math.random()*6.28, vr:(Math.random()-0.5)*0.22,
+        fl:Math.random()*6.28, vf:0.09+Math.random()*0.12,
+        /* Versetzter Start: alles auf einmal ist ein Knall, der
+           vorbei ist, bevor man hinsieht. Ueber eine halbe Sekunde
+           verteilt wird daraus ein Regen. */
+        t0:Math.random()*520,
+        col:cols[(Math.random()*cols.length)|0]});
+    }
+    let raf,t0=null,last=null;
+    const tick=ts=>{
+      if(t0===null){t0=ts;last=ts;}
+      const ms=ts-t0, dt=Math.min(34,ts-last); last=ts;
+      const f=dt/16.7;
+      ctx.clearRect(0,0,cv.width,cv.height);
+      const fade=ms>duration-900?Math.max(0,(duration-ms)/900):1;
+      for(const p of P){
+        if(ms<p.t0) continue;
+        p.vy+=0.13*f; p.vx*=Math.pow(0.992,f); p.vy*=Math.pow(0.994,f);
+        p.x+=p.vx*f; p.y+=p.vy*f; p.rot+=p.vr*f; p.fl+=p.vf*f;
+        ctx.save();
+        ctx.globalAlpha=fade;
+        ctx.translate(p.x*dpr,p.y*dpr);
+        ctx.rotate(p.rot);
+        ctx.scale(1,Math.cos(p.fl));           // das Kippen
+        ctx.fillStyle=p.col;
+        ctx.fillRect(-p.w/2*dpr,-p.h/2*dpr,p.w*dpr,p.h*dpr);
+        ctx.restore();
+      }
+      if(ms<duration) raf=requestAnimationFrame(tick);
+      else ctx.clearRect(0,0,cv.width,cv.height);
+    };
+    raf=requestAnimationFrame(tick);
+    return()=>cancelAnimationFrame(raf);
+  },[pieces,duration]);
+  /* Am Body, nicht in der Karte: die Karte hat overflow:hidden fuer
+     ihre runden Ecken, und Konfetti, das an einer Kante endet, ist
+     kein Konfetti. */
+  return createPortal(
+    <canvas ref={ref} aria-hidden="true"
+      style={{position:'fixed',inset:0,width:'100%',height:'100%',
+        pointerEvents:'none',zIndex:150}}/>,
+    document.body);
+}
+
 const SPLASH_SPIN=820;   // Ball dreht sich
 const SPLASH_FLY=560;    // Ball schießt heraus
 function TournamentStartSplash({name,onDone}){
@@ -14823,29 +15072,22 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
 
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
 
-        {/* Winner Hero — der Pokal swoosht von rechts hinter die
-            Schriften, dazu regnet kurz Konfetti (einmalig beim Mount). */}
+        {/* Winner Hero — die Partikelwolke traegt ihn: aus dem Pokal
+            wird ein Tennisball, daraus ein Schlaeger, dann wieder der
+            Pokal. Dazu steigt einmalig Konfetti ueber den ganzen
+            Screen (nicht nur ueber die Karte: die hat overflow:hidden,
+            und Konfetti, das an einer Kante endet, ist keins). */}
+        <ConfettiBurst/>
         <div style={{background:T.card,border:`1px solid ${T.o}`,borderRadius:20,
           /* flexShrink:0 — in der scrollenden Flex-Spalte schrumpfen
              Kinder sonst: ohne die Tabelle als flex:1 wurde aus dem
              Sieger-Block ein 48-px-Streifen Konfetti. */
-          padding:'24px 22px',textAlign:'center',position:'relative',
+          padding:'20px 22px 24px',textAlign:'center',position:'relative',
           overflow:'hidden',flexShrink:0}}>
-          <div aria-hidden="true" style={{position:'absolute',right:-6,top:'50%',
-            marginTop:-58,opacity:.22,pointerEvents:'none'}}>
-            <div style={{animation:'trophySwoosh .8s cubic-bezier(.2,.9,.3,1.12) .25s both'}}>
-              <TrophyIcon size={118}/>
-            </div>
-          </div>
-          {Array.from({length:16}).map((_,i)=>{
-            const cols=[T.o,T.gold,T.blue,T.g];
-            return <span key={i} aria-hidden="true" style={{position:'absolute',
-              left:`${6+((i*37)%88)}%`,top:8,width:6,height:11,borderRadius:2,
-              background:cols[i%4],pointerEvents:'none',zIndex:2,
-              animation:`confettiFall ${1.15+((i*29)%60)/100}s ease-in ${(0.7+((i*53)%45)/100)}s both`}}/>;
-          })}
           <div style={{position:'relative',zIndex:1}}>
-          <div style={{marginBottom:8,display:'flex',justifyContent:'center'}}><MedalIcon size={50} rank={1}/></div>
+          <div style={{display:'flex',justifyContent:'center',marginBottom:2}}>
+            <WinnerParticles size={152}/>
+          </div>
           <div style={{fontSize:24,fontWeight:800,color:T.t1,letterSpacing:-.3}}>{winner?.name}</div>
           <div style={{fontSize:16,color:T.o,fontWeight:700,marginTop:4}}>
             {tourney.winMode==='wins'?`${winner?.totalWins} Siege`:`${winner?.totalPts} Punkte`}

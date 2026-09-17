@@ -13085,6 +13085,119 @@ function RoundEndModal({roundNo,breakdown,names,winMode,pauseMode='mean',pausePt
    Vorhang deckt ihn nur zu. Sonst würde die Animation die App
    künstlich langsamer machen, statt eine ohnehin nötige Pause zu
    füllen. */
+/* ── Der Orb: ein Tennisball aus Punkten, der sich wirklich dreht ──
+   Vorher lag hier das flache Ball-Icon und wurde per CSS um die
+   Z-Achse gedreht — das ist ein Aufkleber, der sich im Kreis bewegt,
+   kein Ball. Hier rotiert eine echte Kugel: die Punkte sitzen auf
+   der Kugeloberflaeche, werden je Bild gedreht, perspektivisch
+   projiziert und nach Tiefe gezeichnet. Der Ball wird dadurch von
+   selbst rund — vorne gross und hell, hinten klein und matt.
+
+   Die Naht ist die echte Tennisball-Kurve:
+     x = a·cos t + b·cos 3t
+     y = a·sin t − b·sin 3t
+     z = c·sin 2t
+   Sie liegt genau dann auf der Einheitskugel, wenn a + b = 1 und
+   c = 2·sqrt(ab) — deshalb stehen die Zahlen so und nicht "schoen
+   gerundet". Punkte nahe der Kurve werden orange, der Rest bleibt
+   hell: das ergibt die S-Kurve, an der man einen Tennisball erkennt,
+   ohne dass man eine Textur braucht.
+
+   Canvas statt SVG: 500 Punkte je Bild als DOM-Knoten zu bewegen
+   kostet mehr, als der ganze Vorhang dauert. */
+const ORB_A=0.7, ORB_B=0.3, ORB_C=2*Math.sqrt(ORB_A*ORB_B);
+const orbSeamPoint=t=>[
+  ORB_A*Math.cos(t)+ORB_B*Math.cos(3*t),
+  ORB_A*Math.sin(t)-ORB_B*Math.sin(3*t),
+  ORB_C*Math.sin(2*t),
+];
+/* Punkte gleichmaessig auf der Kugel (Fibonacci-Gitter) plus die
+   Entfernung zur Naht. Beides haengt nur an der Punktzahl, wird also
+   einmal gerechnet und nicht je Bild. */
+function buildOrb(n){
+  const seam=[];
+  for(let i=0;i<300;i++) seam.push(orbSeamPoint(i/300*Math.PI*2));
+  const near=(x,y,z)=>{
+    let d2=9;
+    for(const s of seam){
+      const dx=x-s[0],dy=y-s[1],dz=z-s[2];
+      const q=dx*dx+dy*dy+dz*dz;
+      if(q<d2) d2=q;
+    }
+    return Math.sqrt(d2);
+  };
+  const GA=Math.PI*(3-Math.sqrt(5));
+  const pts=[];
+  /* Das Feld laesst der Naht Platz: Punkte, die ihr zu nahe kommen,
+     fallen raus. Sonst franst die Linie aus und aus der S-Kurve wird
+     ein orangefarbener Fleck. */
+  for(let i=0;i<n;i++){
+    const y=1-2*(i+0.5)/n, r=Math.sqrt(Math.max(0,1-y*y)), th=i*GA;
+    const x=Math.cos(th)*r, z=Math.sin(th)*r;
+    if(near(x,y,z)<0.085) continue;
+    pts.push({x,y,z,seam:0});
+  }
+  /* Die Naht selbst ist eine eigene, dichte Punktreihe — so bleibt
+     sie auch dort eine Linie, wo das Feld duenn wird. */
+  for(let i=0;i<240;i++){
+    const p=orbSeamPoint(i/240*Math.PI*2);
+    pts.push({x:p[0],y:p[1],z:p[2],seam:1});
+  }
+  return pts;
+}
+function TennisOrb({size=120,dots=1100,speed=0.9,style}){
+  const ref=useRef(null);
+  useEffect(()=>{
+    const cv=ref.current;
+    if(!cv||!cv.getContext) return;
+    const ctx=cv.getContext('2d');
+    if(!ctx) return;
+    const dpr=Math.min(3,window.devicePixelRatio||1);
+    cv.width=Math.round(size*dpr); cv.height=Math.round(size*dpr);
+    const css=getComputedStyle(document.documentElement);
+    const ink=(css.getPropertyValue('--t1')||'').trim()||'#fff';
+    const acc=(css.getPropertyValue('--o')||'').trim()||'#FF7A1A';
+    const pts=buildOrb(dots);
+    const R=size*dpr*0.40, cx=cv.width/2, cy=cv.height/2, D=3.1;
+    const TILT=0.42, ct=Math.cos(TILT), st=Math.sin(TILT);
+    const draw=a=>{
+      const ca=Math.cos(a), sa=Math.sin(a);
+      const q=[];
+      for(const p of pts){
+        // um die (gekippte) Hochachse drehen, dann kippen
+        const x1=p.x*ca+p.z*sa, z1=-p.x*sa+p.z*ca;
+        const y2=p.y*ct-z1*st,  z2=p.y*st+z1*ct;
+        q.push({x:x1,y:y2,z:z2,seam:p.seam});
+      }
+      q.sort((m,n2)=>m.z-n2.z);
+      ctx.clearRect(0,0,cv.width,cv.height);
+      for(const p of q){
+        const k=D/(D-p.z);                 // Perspektive
+        const depth=(p.z+1)/2;             // 0 hinten … 1 vorne
+        const r=Math.max(0.4,(p.seam?0.64:0.5)*(1+1.15*depth)*dpr*k*(size/120));
+        ctx.globalAlpha=(p.seam?0.22:0.13)+(p.seam?0.78:0.72)*depth*depth;
+        ctx.fillStyle=p.seam?acc:ink;
+        ctx.beginPath();
+        ctx.arc(cx+p.x*R*k,cy+p.y*R*k,r,0,6.2832);
+        ctx.fill();
+      }
+      ctx.globalAlpha=1;
+    };
+    const reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if(reduce){ draw(0.9); return; }
+    let raf, t0=null;
+    const tick=ts=>{
+      if(t0===null) t0=ts;
+      draw(0.9+((ts-t0)/1000)*speed);
+      raf=requestAnimationFrame(tick);
+    };
+    raf=requestAnimationFrame(tick);
+    return()=>cancelAnimationFrame(raf);
+  },[size,dots,speed]);
+  return <canvas ref={ref} aria-hidden="true"
+    style={{width:size,height:size,display:'block',...style}}/>;
+}
+
 const SPLASH_SPIN=820;   // Ball dreht sich
 const SPLASH_FLY=560;    // Ball schießt heraus
 function TournamentStartSplash({name,onDone}){
@@ -13116,10 +13229,9 @@ function TournamentStartSplash({name,onDone}){
             weil ein transform beides nicht gleichzeitig kann. */}
         <div className={flying?'ball-launch':undefined}
           style={{animation:flying?`ballLaunch ${SPLASH_FLY}ms cubic-bezier(.55,0,.85,.3) both`:'none'}}>
-          <div className="ball-spin"
-            style={{display:'flex',animation:`ballSpin ${flying?400:900}ms linear infinite`}}>
-            <TennisBallIcon size={82}/>
-          </div>
+          {/* Der Orb dreht sich selbst — kein CSS-Spin mehr darum
+              herum. Beim Abschuss dreht er schneller. */}
+          <TennisOrb size={104} speed={flying?3.4:0.9}/>
         </div>
       </div>
 

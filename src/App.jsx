@@ -6,13 +6,6 @@ import { loadProfile as dbLoadProfile, saveProfile as dbSaveProfile, logMatch as
   publishTournamentState, submitScore, approveScore, rejectScore, sendReadyCheck, confirmReady, clearReadyCheck,
   checkBetaKey, redeemBetaKey, deleteMyMatches as dbDeleteMyMatches,
   logMatchLocal, loadMatchStatsLocal as dbLoadMatchStatsLocal, clearMatchLog,
-  // Social layer
-  fetchPublicProfile, searchPlayers, followUser, unfollowUser, followCounts, isFollowing,
-  listFollowers, listFollowing,
-  listClubs, fetchClub, createClub, joinClub, leaveClub, clubMembers, isClubMember,
-  clubMemberCount, updateClub, myOwnedClubId,
-  listClubMessages, sendClubMessage, markChatRead, listMyChats, totalUnreadCount,
-  subscribeClubMessages,
   // DNA Cup Cloud-Sync
   createCupSync, fetchCupSync, pushCupSync, subscribeCupSync,
   // DNA Liga
@@ -52,8 +45,8 @@ import {
   HeroRulesVisual, HeroJourneyVisual,
   // Settings + RITMO Post line-art icons
   SteeringWheelIcon, PaletteIcon, EyeIcon, BellIcon, LockIcon, DoorOutIcon,
-  SpeakerIcon, ChatBubbleIcon,
-  ChevronRightIcon, AirPlayIcon, CoffeeCupIcon, TrashIcon,
+  SpeakerIcon,
+  ChevronRightIcon, AirPlayIcon, TrashIcon,
   ArchetypeGlyph, PauseIcon, TournamentModeIcon, ClockIcon, CourtsIcon, ToolsIcon,
   // Emoji-Ersatz-Glyphen
   HeartIcon, MedalIcon, PhoneIcon, KeyboardIcon, RingIcon, WatchIcon, FlicIcon,
@@ -3539,21 +3532,12 @@ function CountUp({value,dur=750,suffix=''}){
    Aktivität=Grün, Community=Blau) — Content auf soliden Karten,
    Glas nur in der Top-Bar beim Scrollen. */
 function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRitmoDNA,
-  currentUid,onOpenFollowers,onOpenFollowing,onTab,onOpenSettings,onOpenEdit,onResetStats}){
+  currentUid,onTab,onOpenSettings,onOpenEdit,onResetStats}){
   const handLabels={right:'Rechts',left:'Links'};
   const sideLabels={left:'Links (Ad)',right:'Rechts (Deuce)',any:'Beide Seiten'};
 
   const[editingLevel,setEditingLevel]=useState(false);
   const[confirmReset,setConfirmReset]=useState(false);
-  // Follower-Counts bei jedem Mount frisch — nach Follow/Unfollow im
-  // anderen Screen stimmt die Anzeige so wieder.
-  const[counts,setCounts]=useState({followers:0,following:0});
-  useEffect(()=>{
-    if(!currentUid) return;
-    let cancelled=false;
-    followCounts(currentUid).then(c=>{ if(!cancelled) setCounts(c); });
-    return()=>{cancelled=true;};
-  },[currentUid]);
 
   // Statistiken (ritmo_matches): Supabase zuerst, sonst lokales Log.
   const STATS_EMPTY={matches:0,wins:0,losses:0,winRate:0,formTrend:[],
@@ -3889,31 +3873,6 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
               </div>
             </div>
           )}
-
-          {/* ── COMMUNITY — Follower / Folgt. */}
-          <SecTitle>Community</SecTitle>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-            <button onClick={()=>onOpenFollowers&&onOpenFollowers()} className="fu" data-lift
-              style={{...card,padding:'13px 14px 12px',textAlign:'left',cursor:'pointer',
-                color:T.t1,animationDelay:'.2s'}}>
-              <Eyebrow color={T.blue} icon={<PeopleIcon size={14}/>} chev>Follower</Eyebrow>
-              <div style={{fontSize:26,fontWeight:800,letterSpacing:-1,lineHeight:1,
-                fontVariantNumeric:'tabular-nums'}}>
-                <CountUp value={counts.followers}/>
-              </div>
-              <div style={{...capSty,marginTop:6}}>folgen dir</div>
-            </button>
-            <button onClick={()=>onOpenFollowing&&onOpenFollowing()} className="fu" data-lift
-              style={{...card,padding:'13px 14px 12px',textAlign:'left',cursor:'pointer',
-                color:T.t1,animationDelay:'.24s'}}>
-              <Eyebrow color={T.blue} icon={<PeopleIcon size={14}/>} chev>Folgt</Eyebrow>
-              <div style={{fontSize:26,fontWeight:800,letterSpacing:-1,lineHeight:1,
-                fontVariantNumeric:'tabular-nums'}}>
-                <CountUp value={counts.following}/>
-              </div>
-              <div style={{...capSty,marginTop:6}}>folgst du</div>
-            </button>
-          </div>
 
           {/* ── ÜBER DICH — Bio-Karte mit Inline-Editor. */}
           <SecTitle>Über dich</SecTitle>
@@ -4304,21 +4263,10 @@ function DiscoverSection({nav}){
    Karten, Mehrfachauswahl), Spielort sowie Tage + Uhrzeit. Persistiert
    in profile.matchPrefs (läuft den normalen Profil-Sync mit). */
 function MatchPrefs({profile,setProfile,currentUid,onHome}){
+  /* players bleibt im Datensatz: die Karte "Bevorzugte Spieler" hing
+     an der Follower-Liste und ist mit ihr raus, gespeicherte Namen
+     sollen ein spaeteres Remake aber wiederfinden. */
   const DEFAULTS={styles:[],players:[],location:'',days:[],from:'18:00',to:'20:00'};
-  // Bevorzugte Spieler: ausschliesslich die Nutzer, denen man folgt.
-  const[following,setFollowing]=useState([]);
-  useEffect(()=>{
-    if(!currentUid) return;
-    let alive=true;
-    listFollowing(currentUid,{limit:50})
-      .then(r=>{if(alive)setFollowing(r||[]);})
-      .catch(()=>{});
-    return()=>{alive=false;};
-  },[currentUid]);
-  const playerChoices=following.map(f=>{
-    const p=f.profile||{};
-    return p.display_name||p.data?.name||p.data?.nickname||'Spieler:in';
-  });
   const prefs={...DEFAULTS,...(profile.matchPrefs||{})};
   // Patches IMMER aus dem aktuellen State ableiten (nicht aus dem
   // Render-Closure) — sonst überschreiben sich schnelle Taps in einem
@@ -4332,7 +4280,6 @@ function MatchPrefs({profile,setProfile,currentUid,onHome}){
     return {...p,matchPrefs:{...cur,[key]:next}};
   });
   const toggleStyle=id=>toggleIn('styles',id);
-  const togglePlayer=n=>toggleIn('players',n);
   const toggleDay=d=>toggleIn('days',d);
   const DAYS=['Mo','Di','Mi','Do','Fr','Sa','So'];
   const lbl={color:T.t1,fontSize:17,fontWeight:700,marginBottom:4};
@@ -4378,47 +4325,6 @@ function MatchPrefs({profile,setProfile,currentUid,onHome}){
               );
             })}
           </div>
-        </div>
-
-        {/* Bevorzugte Spieler */}
-        <div className="fu" style={{animationDelay:'.04s',background:T.card,
-          border:`1px solid ${T.border}`,borderRadius:16,padding:'16px 18px'}}>
-          <div style={lbl}>Bevorzugte Spieler</div>
-          <div style={sub}>Mit wem willst du am liebsten auf dem Court stehen?</div>
-          {playerChoices.length===0?(
-            <div style={{color:T.t3,fontSize:12,fontWeight:500,lineHeight:1.5,
-              padding:'6px 0 2px'}}>
-              Du folgst noch niemandem. Folge Spielern (Suche → Spieler),
-              dann erscheinen sie hier zur Auswahl.
-            </div>
-          ):(
-          <div className="hscroll" style={{display:'flex',gap:10,overflowX:'auto',
-            margin:'0 -18px',padding:'4px 18px 6px',
-            scrollSnapType:'x mandatory',scrollPaddingLeft:18,
-            WebkitOverflowScrolling:'touch'}}>
-            {playerChoices.map(n=>{
-              const sel=prefs.players.includes(n);
-              return(
-                <button key={n} onClick={()=>togglePlayer(n)} aria-pressed={sel}
-                  style={{flexShrink:0,width:74,borderRadius:16,padding:'10px 6px 9px',
-                    scrollSnapAlign:'start',cursor:'pointer',textAlign:'center',
-                    background:sel?T.oSoft:T.card2,
-                    border:`1.5px solid ${sel?T.o:T.border}`,
-                    color:T.t1,transition:'all .2s var(--ease-out-expo)'}}>
-                  <span style={{width:40,height:40,borderRadius:'50%',margin:'0 auto 6px',
-                    background:sel?T.o:T.card,display:'flex',alignItems:'center',
-                    justifyContent:'center',color:sel?'#000':T.o,fontSize:16,
-                    fontWeight:800,border:`1.5px solid ${sel?T.o:T.border}`,
-                    transition:'all .2s var(--ease-out-expo)'}}>
-                    {getInitials(n)||'?'}
-                  </span>
-                  <span style={{display:'block',fontSize:10,fontWeight:700,
-                    whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{n}</span>
-                </button>
-              );
-            })}
-          </div>
-          )}
         </div>
 
         {/* Spielort — RITMO-Map mit Clubs in der Nähe */}
@@ -4843,12 +4749,11 @@ function WhatsNewSheet({release,onClose}){
   );
 }
 
-function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onQuickStart,
+function Home({nav,activeTab,setActiveTab,profile,onboarded,onQuickStart,
   quickStarts=[],onSaveQuickStart,onDeleteQuickStart}){
   /* null = zu, 'neu' = neue Karte, sonst der zu aendernde Schnellstart. */
   const[qsEdit,setQsEdit]=useState(null);
   const needsOnboarding=!onboarded;
-  const hasUnread=(unread||0)>0;
 
   // Events-Leiste: startet IMMER am heutigen Tag, läuft bis Monatsende.
   // Event-Tage kommen aus HOME_EVENTS ('Monat-Tag', 1-basiert).
@@ -5264,13 +5169,6 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onQuickStart,
               <GlassSurface {...HOME_CARD_GLASS} borderRadius={999}/>
               <span style={{position:'relative',zIndex:1,display:'inline-flex'}}>
                 <BellIcon size={23}/>
-                {hasUnread&&(
-                  <span aria-label="Ungelesene Nachrichten"
-                    style={{position:'absolute',top:-2,right:-2,
-                      width:9,height:9,borderRadius:'50%',
-                      background:T.r,
-                      boxShadow:`0 0 0 2px ${T.bg}`}}/>
-                )}
               </span>
             </button>
             <button onClick={()=>nav('settings')}
@@ -5303,7 +5201,14 @@ function Home({nav,activeTab,setActiveTab,profile,onboarded,unread,onQuickStart,
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   SUCHE-HUB — eigener Tab: Spieler, Clubs, Buchungsassistent.
+   SUCHE-HUB — eigener Tab.
+
+   Hier standen Spielersuche, Clubs und der Buchungsassistent. Spieler
+   und Clubs sind raus (siehe CLAUDE.md, "Die soziale Schicht ist
+   ausgebaut"), und ein Hub mit einer einzigen Karte ist kein Hub —
+   deshalb steht hier vorerst nur der Satz, was hier einmal stehen
+   wird. Der Buchungsassistent bleibt ueber die Discover-Karten auf
+   Home erreichbar.
 ═══════════════════════════════════════════════════════════════ */
 function SearchHub({nav,onTab}){
   return(
@@ -5311,26 +5216,19 @@ function SearchHub({nav,onTab}){
       position:'relative',overflow:'hidden',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
       <ScreenHeader title="Suche" kicker="Entdecken"
-        subtitle="Finde Spieler, Clubs und Courts."
         icon={<SearchIcon size={34}/>}/>
 
       <div style={{flex:1,padding:'0 22px 140px',overflowY:'auto',
-        WebkitOverflowScrolling:'touch',display:'flex',flexDirection:'column',gap:14}}>
-        <HubBigCard
-          icon={<PersonGlyph size={28}/>}
-          title="Spieler"
-          desc="Suchen, folgen, Profile entdecken."
-          onClick={()=>nav('player-search')} delay=".02s"/>
-        <HubBigCard
-          icon={<CoffeeCupIcon size={28} color={T.o}/>}
-          title="Clubs"
-          desc="Beitreten, gründen, Club-Chat."
-          onClick={()=>nav('clubs')} delay=".06s"/>
-        <HubBigCard
-          icon={<AirPlayIcon size={28} color={T.o}/>}
-          title="Buchungsassistent"
-          desc="Freie Courts finden & direkt buchen — bald."
-          onClick={()=>nav('booking-assist')} delay=".1s"/>
+        WebkitOverflowScrolling:'touch'}}>
+        <div className="fi" style={{background:T.card,border:`1px solid ${T.border}`,
+          borderRadius:16,padding:'40px 28px',textAlign:'center'}}>
+          <div style={{display:'flex',justifyContent:'center',marginBottom:14,color:T.o}}>
+            <SearchIcon size={28}/>
+          </div>
+          <div style={{color:T.t2,fontSize:15,lineHeight:1.6,maxWidth:'30ch',margin:'0 auto'}}>
+            Hier findest du bald einen Marketplace, Communities und Clubs.
+          </div>
+        </div>
       </div>
 
       <BottomFade/>
@@ -5396,7 +5294,7 @@ const APP_FAQ=[
   {q:'Wie verbinde ich einen Smart Ring oder Presenter?',
    a:'Gerät per Bluetooth mit dem Smartphone koppeln, dann Einstellungen → Steuerung → Score-Gerät wählen. Der Eingabe-Tester zeigt live, welche Tasten ankommen.'},
   {q:'Funktioniert RITMO ohne Internet?',
-   a:'Lokale Matches und Turniere laufen komplett offline auf deinem Gerät. Online-Turniere, Profile-Sync und Clubs brauchen eine Verbindung.'},
+   a:'Lokale Matches und Turniere laufen komplett offline auf deinem Gerät. Online-Turniere und der Profil-Sync brauchen eine Verbindung.'},
   {q:'Wie treten andere meinem Online-Turnier bei?',
    a:'Beim Erstellen „Online" wählen — du bekommst PIN + QR-Code in der Lobby. Mitspieler scannen den Code oder geben den PIN unter Turnier beitreten ein.'},
   {q:'Wer sieht mein Profil und meine Statistiken?',
@@ -16350,13 +16248,11 @@ function SettingsFlash({kind,text}){
   );
 }
 
-/* ─── Privatsphäre — Wer sieht was vom Profil ──────────────────
-   Spiegelt profile.private (Public-Profile-Toggle) und führt drei
-   neue Hide-Flags ein (hideStats / hideDna / hideMatches), die im
-   Profile-Blob persistiert werden. Public-Profile-Konsumenten
-   (PublicProfile, PlayerSearch) können diese Flags respektieren —
-   default ist "alles teilen", damit Bestands-User keine
-   versteckten Profile bekommen.
+/* ─── Privatsphäre — DSGVO-Export und Konto-Löschung ───────────
+   Das Ressort "Sichtbarkeit" (private / hideStats / hideDna /
+   hideMatches) ist mit der Spielersuche und den fremden Profilen
+   raus — es gibt niemanden mehr, vor dem sich etwas verbergen
+   liesse. Die Flags bleiben im Profile-Blob stehen.
 ═══════════════════════════════════════════════════════════════ */
 /* ── Rechtliches — Impressum, Datenschutz, Nutzungsbedingungen.
    Die Texte liegen als Daten in src/legal.js; hier wird nur gerendert.
@@ -16441,11 +16337,8 @@ function SettingsRechtliches({onBack,onHome}){
   );
 }
 
-function SettingsPrivatsphaere({onBack,onHome,profile,setProfile,onOpenDelete}){
+function SettingsPrivatsphaere({onBack,onHome,profile,onOpenDelete}){
   const[flash,setFlash]=useState(null);
-  const isPublic=!profile.private;
-  const togglePublic =()=>setProfile(p=>({...p,private:!p.private}));
-  const toggleHide   =(k)=>setProfile(p=>({...p,[k]:!p[k]}));
 
   /* DSGVO — User darf eine vollständige Kopie seiner Daten als JSON
      herunterladen. Wir sammeln das Profil + alle ritmo_*-Keys aus
@@ -16481,36 +16374,18 @@ function SettingsPrivatsphaere({onBack,onHome,profile,setProfile,onOpenDelete}){
 
   return(
     <SettingsSubLayout title="Privatsphäre"
-      desc="Wer dich findet, wer deine Stats sieht."
+      desc="Deine Daten — Export und Löschung."
       icon={<EyeIcon size={22} color="currentColor"/>}
       onBack={onBack} onHome={onHome}>
 
       {flash&&<SettingsFlash kind={flash.kind} text={flash.text}/>}
 
-      {/* Sichtbarkeit */}
-      <SettingsSection eyebrow="Sichtbarkeit">
-        <SettingsToggleRow first
-          title={isPublic?'Profil öffentlich':'Profil privat'}
-          desc={isPublic
-            ?'Andere können dich in der Spielersuche finden und dir folgen.'
-            :'Niemand findet dich — nur du siehst dein Profil.'}
-          on={isPublic} onToggle={togglePublic}/>
-        <SettingsToggleRow
-          title="RITMO DNA teilen"
-          desc="Spielstil-Karte (z. B. Motor, Architekt) im öffentlichen Profil."
-          on={!profile.hideDna} onToggle={()=>toggleHide('hideDna')}
-          disabled={!isPublic}/>
-        <SettingsToggleRow
-          title="Stats teilen"
-          desc="Level, Siegquote und Match-Count auf deinem öffentlichen Profil."
-          on={!profile.hideStats} onToggle={()=>toggleHide('hideStats')}
-          disabled={!isPublic}/>
-        <SettingsToggleRow
-          title="Match-Historie teilen"
-          desc="Deine letzten Matches sind für Follower sichtbar."
-          on={!profile.hideMatches} onToggle={()=>toggleHide('hideMatches')}
-          disabled={!isPublic}/>
-      </SettingsSection>
+      {/* Das Ressort "Sichtbarkeit" (Profil öffentlich, DNA/Stats/
+          Historie teilen) ist mit der Spielersuche raus: es gibt
+          niemanden mehr, der etwas sehen koennte, und ein Schalter,
+          der auf eine geloeschte Suche zeigt, ist eine Luege. Die
+          Flags (private, hideDna, hideStats, hideMatches) bleiben im
+          Profil stehen und ueberleben so bis zum Remake. */}
 
       {/* DSGVO */}
       <SettingsSection eyebrow="Deine Daten (DSGVO)">
@@ -16653,16 +16528,6 @@ function SettingsBenachrichtigungen({onBack,onHome,notify,setNotify}){
           title="Turnier-Updates"
           desc="Ready-Check, neue Runde, Score-Approval."
           on={notify.tournamentAlerts} onToggle={()=>tog('tournamentAlerts')}
-          disabled={!pushOn}/>
-        <SettingsToggleRow
-          title="Chat-Mitteilungen"
-          desc="Neue Nachrichten in deinen Club-Chats."
-          on={notify.chatMessages} onToggle={()=>tog('chatMessages')}
-          disabled={!pushOn}/>
-        <SettingsToggleRow
-          title="Follower & Soziales"
-          desc="Wenn dir jemand folgt oder dich erwähnt."
-          on={notify.social} onToggle={()=>tog('social')}
           disabled={!pushOn}/>
       </SettingsSection>
 
@@ -17011,38 +16876,16 @@ function PostEventCard({ev,i=0}){
   );
 }
 
-function RitmoPost({onHome,profile,onOpenChat,unread=0}){
+function RitmoPost({onHome,profile}){
   const[tab,setTab]=useState('notify');
-  const[chats,setChats]=useState([]);
-  const[chatsBusy,setChatsBusy]=useState(false);
-  // Lade die Chats-Liste sobald der Chats-Tab aktiv wird. Nicht eager,
-  // damit beim Tab-Wechsel die letzten Unread-Counts frisch sind.
-  useEffect(()=>{
-    if(tab!=='chats') return;
-    let cancelled=false;
-    setChatsBusy(true);
-    listMyChats().then(c=>{ if(!cancelled){ setChats(c); setChatsBusy(false); } });
-    return()=>{cancelled=true;};
-  },[tab]);
-  // Pro-Tab-Notification-Counts. Aktuell hat nur "chats" einen echten
-  // Wert (vom App-Level totalUnreadCount). updates/events bleiben 0
-  // bis es dort echte Events gibt.
-  const notifByTab={ notify: 0, chats: unread, events: 0 };
+  // Pro-Tab-Notification-Counts. Beide stehen auf 0, bis es echte
+  // Events gibt — der einzige echte Wert kam vom Club-Chat, und der
+  // ist raus.
+  const notifByTab={ notify: 0, events: 0 };
   const tabs=[
     {id:'notify',label:'Benachrichtigungen',short:'Updates'},
-    {id:'chats', label:'Chats',short:'Chats'},
     {id:'events',label:'Events',short:'Events'},
   ];
-  const fmtAgo=(iso)=>{
-    if(!iso) return '';
-    const d=new Date(iso);
-    const now=Date.now();
-    const diff=Math.floor((now-d.getTime())/1000);
-    if(diff<60) return 'jetzt';
-    if(diff<3600) return Math.floor(diff/60)+' Min';
-    if(diff<86400) return Math.floor(diff/3600)+' h';
-    return d.toLocaleDateString('de-DE',{day:'2-digit',month:'short'});
-  };
 
   return(
     <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
@@ -17067,7 +16910,7 @@ function RitmoPost({onHome,profile,onOpenChat,unread=0}){
           </div>
         </div>
         <div style={{color:T.t3,fontSize:13,lineHeight:1.5,marginTop:6}}>
-          Updates, Chats und Events an einem Ort.
+          Updates und Events an einem Ort.
         </div>
       </div>
 
@@ -17078,8 +16921,7 @@ function RitmoPost({onHome,profile,onOpenChat,unread=0}){
           Black-on-Black mehr.
 
           Pro Tab kann ein roter Notification-Dot oben rechts gerendert
-          werden (notifByTab); aktuell nur "chats" bekommt einen, wenn
-          unread > 0. */}
+          werden (notifByTab); aktuell bekommt keiner einen. */}
       <div style={{display:'flex',gap:8,padding:'0 22px 16px',flexShrink:0}}>
         {tabs.map(t=>{
           const active=tab===t.id;
@@ -17115,67 +16957,6 @@ function RitmoPost({onHome,profile,onOpenChat,unread=0}){
             icon={<BellIcon size={28} color="currentColor"/>}
             title="Noch keine Benachrichtigungen"
             desc="Match-Reminder, Turnier-Alerts und Updates landen hier, sobald sie für dich relevant sind."/>
-        )}
-
-        {tab==='chats'&&(
-          chatsBusy?(
-            <div style={{color:T.t3,fontSize:13,padding:'24px 0',textAlign:'center'}}>Lädt …</div>
-          ):chats.length===0?(
-            <RitmoPostEmpty
-              icon={<BellIcon size={28} color="currentColor"/>}
-              title="Noch keine Chats"
-              desc="Sobald du einem Club beitrittst, erscheint sein Chat hier."/>
-          ):(
-            <div style={{display:'flex',flexDirection:'column',gap:10}}>
-              {chats.map((c,i)=>(
-                <button key={c.club.id} onClick={()=>onOpenChat&&onOpenChat(c.club.id)}
-                  className="fu" style={{
-                    background:T.card,border:`1px solid ${c.unread>0?T.o:T.border}`,borderRadius:16,
-                    padding:'14px 16px',display:'flex',alignItems:'center',gap:12,
-                    cursor:'pointer',color:T.t1,textAlign:'left',
-                    animationDelay:`${i*0.03}s`}}>
-                  {/* Mini-Cover */}
-                  {(()=>{const safe=safeImageSrc(c.club.cover);return safe?(
-                    <img src={safe} alt={c.club.name}
-                      style={{width:42,height:42,borderRadius:13,objectFit:'cover',
-                        flexShrink:0,border:`1px solid ${T.border}`}}/>
-                  ):(
-                    <div style={{flexShrink:0,width:42,height:42,borderRadius:13,
-                      background:T.card2,border:`1px solid ${T.border}`,color:T.o,
-                      display:'flex',alignItems:'center',justifyContent:'center'}}>
-                      <TrophyIcon size={20}/>
-                    </div>
-                  );})()}
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{display:'flex',alignItems:'baseline',gap:8}}>
-                      <div style={{color:T.t1,fontSize:16,fontWeight:c.unread>0?800:700,
-                        letterSpacing:-.1,
-                        whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',flex:1}}>
-                        {c.club.name}
-                      </div>
-                      {c.lastMessage&&(
-                        <div style={{color:T.t3,fontSize:10,fontWeight:600,flexShrink:0}}>
-                          {fmtAgo(c.lastMessage.created_at)}
-                        </div>
-                      )}
-                    </div>
-                    <div style={{color:T.t2,fontSize:12,marginTop:2,
-                      whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',
-                      fontWeight:c.unread>0?600:400}}>
-                      {c.lastMessage?.body||'Noch keine Nachrichten.'}
-                    </div>
-                  </div>
-                  {c.unread>0&&(
-                    <div style={{flexShrink:0,minWidth:22,height:22,borderRadius:13,
-                      background:T.o,color:'#000',fontSize:11,fontWeight:900,
-                      padding:'0 7px',display:'flex',alignItems:'center',justifyContent:'center'}}>
-                      {c.unread>99?'99+':c.unread}
-                    </div>
-                  )}
-                </button>
-              ))}
-            </div>
-          )
         )}
 
         {tab==='events'&&(
@@ -17227,1107 +17008,18 @@ function RitmoPostEmpty({icon,title,desc,cta}){
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   SOCIAL LAYER — Phase 1 Screens
+   DIE SOZIALE SCHICHT IST AUSGEBAUT
 
-   PublicProfile, PlayerSearch, Clubs, ClubDetail, Bookings,
-   BookingDetail, BookingCreate, Invites.
+   Hier standen PlayerListItem, SocialScreen, PlayerSearch,
+   PublicProfile, Clubs, ClubCreate, ClubDetail, ClubChat und
+   FollowList — Spielersuche, fremde Profile, Clubs samt Chat und die
+   Follower-Listen. Sie sind komplett raus, mitsamt ihren Helpern in
+   db.js; die Tabellen in Supabase bleiben unangetastet.
 
-   Alle screens nutzen das gleiche SocialHeader-Layout (RITMO Eyebrow,
-   großer Titel, optionale Beschreibung) und einen floating Home-FAB
-   unten-links. Datenzugriffe gehen über die social-helpers in db.js.
-
-   Animationen: .fi/.fu CSS-Klassen (siehe theme.js) liefern die
-   stagger-fade-ins; einzelne Listen-Items bekommen animationDelay
-   über inline style.
+   Was bleibt: das EIGENE Profil. Wer die Schicht neu baut, baut sie
+   neu — es steht hier absichtlich kein toter Code herum, an dem sich
+   ein Remake orientieren muesste.
 ═══════════════════════════════════════════════════════════════ */
-
-/* ── Helper: Spieler-Listen-Item (Avatar + Name + Level + Style-Tag) */
-function PlayerListItem({profile,onClick,trailing}){
-  const data=profile?.data||{};
-  const name=profile?.display_name||data.name||'Spieler';
-  const lvl=data.playtomicLevel??data.estimatedLevel;
-  const styleType=data.styleType;
-  const style=styleType?PADEL_STYLES[styleType]:null;
-  return(
-    <button onClick={onClick}
-      style={{width:'100%',background:T.card,border:`1px solid ${T.border}`,borderRadius:15,
-        padding:'14px 16px',display:'flex',alignItems:'center',gap:12,
-        color:T.t1,textAlign:'left',cursor:'pointer',transition:'background .15s'}}
-      onPointerDown={e=>e.currentTarget.style.background=T.card2}
-      onPointerUp={e=>e.currentTarget.style.background=T.card}
-      onPointerLeave={e=>e.currentTarget.style.background=T.card}>
-      <ProfileAvatar name={name} avatar={data.avatar} size={42}/>
-      <div style={{flex:1,minWidth:0}}>
-        <div style={{color:T.t1,fontSize:16,fontWeight:700,letterSpacing:-.1,
-          whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{name}</div>
-        <div style={{display:'flex',alignItems:'center',gap:6,marginTop:3,flexWrap:'wrap'}}>
-          {lvl!=null&&(
-            <span style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:.3}}>
-              Lv {lvl.toFixed(2)}
-            </span>
-          )}
-          {style&&(
-            <span style={{padding:'1px 6px',background:`${style.accent}22`,
-              border:`1px solid ${style.accent}`,borderRadius:5,
-              color:style.accent,fontSize:9,fontWeight:800,letterSpacing:.4,
-              textTransform:'uppercase'}}>
-              {style.name}
-            </span>
-          )}
-        </div>
-      </div>
-      {trailing}
-    </button>
-  );
-}
-
-/* ── Generischer Screen-Wrapper (Header + Home-FAB)
-   Optional onBack rendert eine kleine Zurück-Pille oben links — etwa
-   um vom PublicProfile zurück zur Player-Suche zu kommen. Home-FAB
-   bleibt erhalten, damit ein User immer auch direkt nach Hause kann. */
-function SocialScreen({eyebrow,title,desc,icon,onHome,onBack,backLabel='Zurück',children}){
-  return(
-    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
-      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',
-      position:'relative',overflow:'hidden'}}>
-      <div className="fi" style={{padding:'0 22px 14px'}}>
-        {onBack&&(
-          <button onClick={onBack}
-            style={{display:'inline-flex',alignItems:'center',gap:6,
-              background:'transparent',border:`1px solid ${T.border}`,
-              borderRadius:999,padding:'5px 12px 5px 8px',color:T.t2,
-              fontSize:12,fontWeight:700,letterSpacing:.3,cursor:'pointer',
-              marginBottom:12,maxWidth:'fit-content'}}>
-            <span style={{transform:'rotate(180deg)',display:'inline-flex'}}>
-              <ChevronRightIcon size={14} color="currentColor"/>
-            </span>
-            {backLabel}
-          </button>
-        )}
-        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
-          {icon&&(
-            <div style={{flexShrink:0,color:T.o,
-              width:36,height:36,background:T.card2,
-              border:`1px solid ${T.border}`,borderRadius:13,
-              display:'flex',alignItems:'center',justifyContent:'center'}}>{icon}</div>
-          )}
-          <div style={{flex:1,minWidth:0}}>
-            {eyebrow&&(
-              <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.5,
-                textTransform:'uppercase'}}>{eyebrow}</div>
-            )}
-            <div style={{color:T.t1,fontSize:24,fontWeight:800,letterSpacing:-.3,marginTop:2}}>
-              {title}
-            </div>
-          </div>
-        </div>
-        {desc&&<div style={{color:T.t3,fontSize:13,lineHeight:1.5,marginTop:6}}>{desc}</div>}
-      </div>
-      <div style={{flex:1,padding:'0 22px 140px',overflowY:'auto',
-        WebkitOverflowScrolling:'touch'}}>{children}</div>
-      <button onClick={onHome} aria-label="Zurück zur Startseite"
-        className="glass-bar" style={{...FAB_BASE,left:22}}>
-        <HomeIcon size={22}/>
-      </button>
-    </div>
-  );
-}
-
-/* ═══ PlayerSearch — Suche nach öffentlichen Profilen ═══ */
-function PlayerSearch({onHome,onOpenPlayer}){
-  const[q,setQ]=useState('');
-  const[results,setResults]=useState([]);
-  const[busy,setBusy]=useState(false);
-  // Debounced Search — 250 ms nach letztem Tastendruck
-  useEffect(()=>{
-    const tq=q.trim();
-    if(!tq){setResults([]);return;}
-    const t=setTimeout(async()=>{
-      setBusy(true);
-      try{ setResults(await searchPlayers(tq,{limit:30})); }
-      finally{ setBusy(false); }
-    },250);
-    return()=>clearTimeout(t);
-  },[q]);
-  return(
-    <SocialScreen eyebrow="Community" title="Spieler suchen"
-      desc="Find Mitspieler — nach Name."
-      icon={<SearchIcon size={22}/>} onHome={onHome}>
-      <div className="fu" style={{marginBottom:14,position:'relative'}}>
-        <input value={q} onChange={e=>setQ(e.target.value)}
-          autoCapitalize="off" autoCorrect="off" spellCheck={false}
-          enterKeyHint="search" placeholder="Name eingeben …"
-          style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-            borderRadius:15,padding:'14px 46px 14px 16px',color:T.t1,fontSize:16,fontWeight:500,
-            outline:'none',boxSizing:'border-box'}}/>
-        {q!==''&&(
-          <button onClick={()=>setQ('')} aria-label="Suche löschen"
-            style={{position:'absolute',right:9,top:'calc(50% - 14px)',width:28,height:28,
-              borderRadius:'50%',background:T.card,border:`1px solid ${T.border}`,
-              color:T.t3,fontSize:15,fontWeight:700,cursor:'pointer',lineHeight:1,
-              display:'flex',alignItems:'center',justifyContent:'center'}}>×</button>
-        )}
-      </div>
-      {q.trim()===''?(
-        <RitmoPostEmpty icon={<SearchIcon size={28}/>}
-          title="Tipp einen Namen"
-          desc="Mindestens ein Buchstabe — du siehst sofort, wer öffentlich verfügbar ist."/>
-      ):busy?(
-        <div style={{color:T.t3,fontSize:13,padding:'24px 0',textAlign:'center'}}>Suche …</div>
-      ):results.length===0?(
-        <RitmoPostEmpty icon={<PersonGlyph size={28}/>}
-          title="Niemand gefunden"
-          desc="Kein öffentliches Profil entspricht der Suche."/>
-      ):(
-        <div style={{display:'flex',flexDirection:'column',gap:10}}>
-          {results.map((p,i)=>(
-            <div key={p.user_id} className="fu" style={{animationDelay:`${i*0.03}s`}}>
-              <PlayerListItem profile={p}
-                onClick={()=>onOpenPlayer(p.user_id)}
-                trailing={<ChevronRightIcon size={16} color={T.t3}/>}/>
-            </div>
-          ))}
-        </div>
-      )}
-    </SocialScreen>
-  );
-}
-
-/* ═══ PublicProfile — Profil eines anderen Spielers ═══ */
-function PublicProfile({userId,currentUid,onHome,onBack,backLabel}){
-  const[prof,setProf]=useState(null);
-  const[counts,setCounts]=useState({followers:0,following:0});
-  const[following,setFollowing]=useState(false);
-  const[busy,setBusy]=useState(false);
-  const isSelf=userId===currentUid;
-
-  const refresh=useCallback(async()=>{
-    const [p,c,f]=await Promise.all([
-      fetchPublicProfile(userId),
-      followCounts(userId),
-      isSelf?false:isFollowing(userId),
-    ]);
-    setProf(p); setCounts(c); setFollowing(f);
-  },[userId,isSelf]);
-
-  useEffect(()=>{ refresh(); },[refresh]);
-
-  const toggle=async()=>{
-    if(busy||isSelf) return;
-    setBusy(true);
-    try{
-      const ok=await (following?unfollowUser(userId):followUser(userId));
-      if(ok){
-        setFollowing(!following);
-        setCounts(c=>({...c,followers:Math.max(0,c.followers+(following?-1:1))}));
-      }
-    }finally{ setBusy(false); }
-  };
-
-  const data=prof?.data||{};
-  const name=prof?.display_name||data.nickname||data.name||'Spieler';
-  const bio=(data.bio||'').trim();
-  const lvl=data.playtomicLevel??data.estimatedLevel;
-  const styleType=data.styleType;
-  const style=styleType?PADEL_STYLES[styleType]:null;
-  // Sichtbarkeit: öffentliche Profile zeigen alles inkl. Statistik;
-  // private nur Spielstil (DNA) + Bio.
-  const isPriv=prof?(data.private===true||prof.is_public===false):false;
-  const pMatches=parseInt(data.matchesPlayed||'0',10)||0;
-  const pWins=parseInt(data.winsCount||'0',10)||0;
-  const pLosses=Math.max(0,pMatches-pWins);
-  const pWinRate=pMatches>0?Math.round(pWins/pMatches*100):0;
-
-  return(
-    <SocialScreen eyebrow="Profil" title={name}
-      icon={<PersonGlyph size={22}/>} onHome={onHome}
-      onBack={onBack} backLabel={backLabel||'Zurück'}>
-      {!prof?(
-        <RitmoPostEmpty icon={<EyeIcon size={28}/>}
-          title="Profil nicht verfügbar"
-          desc="Dieses Profil ist entweder privat oder existiert nicht."
-          cta={{label:'Zurück',onClick:onBack}}/>
-      ):(
-        <Fragment>
-          {/* Hero */}
-          <div className="fu" style={{background:T.card,border:`1px solid ${T.border}`,
-            borderRadius:20,padding:'24px 22px',marginBottom:12,
-            display:'flex',alignItems:'center',gap:16}}>
-            <ProfileAvatar name={name} avatar={data.avatar} size={72}/>
-            <div style={{flex:1,minWidth:0}}>
-              {!isPriv&&lvl!=null&&(
-                <Fragment>
-                  <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.3,
-                    textTransform:'uppercase',marginBottom:2}}>
-                    {data.playtomicLevel!=null?'Playtomic Level':'RITMO Level'}
-                  </div>
-                  <div style={{color:T.o,fontSize:34,fontWeight:900,letterSpacing:-.6,lineHeight:1}}>
-                    {lvl.toFixed(2)}
-                  </div>
-                  <div style={{display:'flex',alignItems:'center',gap:8,marginTop:4}}>
-                    <span style={{color:T.o,fontSize:12,fontWeight:700}}>{getLevelLabel(lvl)}</span>
-                    <span style={{padding:'1px 6px',background:getLevelColor(lvl),color:'#fff',
-                      borderRadius:4,fontSize:9,fontWeight:900,letterSpacing:.5}}>
-                      {getLevelTier(lvl)}
-                    </span>
-                  </div>
-                </Fragment>
-              )}
-              {isPriv&&(
-                <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:.3,
-                  display:'inline-flex',alignItems:'center',gap:6}}>
-                  <LockIcon size={13}/> Privates Profil
-                </div>
-              )}
-              {style&&(
-                <div style={{marginTop:8}}>
-                  <span style={{padding:'3px 8px',background:`${style.accent}22`,
-                    border:`1px solid ${style.accent}`,borderRadius:6,
-                    color:style.accent,fontSize:10,fontWeight:800,letterSpacing:.3,
-                    textTransform:'uppercase'}}>
-                    {style.name}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Bio — Spruch des Spielers (read-only) */}
-          {bio&&(
-            <div className="fu" style={{background:T.card,border:`1px solid ${T.border}`,
-              borderRadius:15,padding:'14px 16px',marginBottom:12,animationDelay:'.03s'}}>
-              <div style={{color:T.t2,fontSize:16,fontStyle:'italic',lineHeight:1.55,
-                fontWeight:500}}>„{bio}"</div>
-            </div>
-          )}
-
-          {/* Follower / Following — nur öffentlich */}
-          {!isPriv&&(
-          <div className="fu" style={{display:'flex',gap:10,marginBottom:12,animationDelay:'.04s'}}>
-            <div style={{flex:1,background:T.card,border:`1px solid ${T.border}`,borderRadius:15,
-              padding:'14px 12px',textAlign:'center'}}>
-              <div style={{color:T.t1,fontSize:22,fontWeight:900,letterSpacing:-.3}}>{counts.followers}</div>
-              <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.3,
-                textTransform:'uppercase',marginTop:2}}>Follower</div>
-            </div>
-            <div style={{flex:1,background:T.card,border:`1px solid ${T.border}`,borderRadius:15,
-              padding:'14px 12px',textAlign:'center'}}>
-              <div style={{color:T.t1,fontSize:22,fontWeight:900,letterSpacing:-.3}}>{counts.following}</div>
-              <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.3,
-                textTransform:'uppercase',marginTop:2}}>Folgt</div>
-            </div>
-          </div>
-          )}
-
-          {/* Follow button */}
-          {!isSelf&&(
-            <button onClick={toggle} disabled={busy} className="fu"
-              style={{width:'100%',marginBottom:12,padding:'14px 16px',
-                background:following?T.card:T.o,
-                border:following?`1px solid ${T.border}`:'none',borderRadius:15,
-                color:following?T.t1:'#000',fontSize:16,fontWeight:800,letterSpacing:.3,
-                cursor:busy?'not-allowed':'pointer',opacity:busy?.6:1,
-                animationDelay:'.08s'}}>
-              {following?'Du folgst':'Folgen'}
-            </button>
-          )}
-
-          {/* Statistik — nur bei öffentlichem Profil (komplettes Profil). */}
-          {!isPriv&&(
-            <div className="fu" style={{background:T.card,border:`1px solid ${T.border}`,
-              borderRadius:15,padding:'16px 16px 14px',marginBottom:12,animationDelay:'.1s'}}>
-              <div style={{color:T.o,fontSize:10,fontWeight:800,letterSpacing:1.8,
-                textTransform:'uppercase',marginBottom:12}}>Statistik</div>
-              <div style={{display:'flex',alignItems:'stretch'}}>
-                {[
-                  {l:'Matches',v:`${pMatches}`},
-                  {l:'Siege',v:`${pWins}`},
-                  {l:'Niederl.',v:`${pLosses}`},
-                  {l:'Win-Rate',v:`${pWinRate}%`,o:true},
-                ].map((s,i)=>(
-                  <div key={s.l} style={{flex:1,minWidth:0,textAlign:'center',
-                    borderRight:i<3?`1px solid ${T.sep}`:'none'}}>
-                    <div style={{color:T.t3,fontSize:9,fontWeight:700,letterSpacing:1,
-                      textTransform:'uppercase'}}>{s.l}</div>
-                    <div style={{color:s.o?T.o:T.t1,fontSize:22,fontWeight:900,
-                      letterSpacing:-.5,marginTop:7}}>{s.v}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* RITMO DNA Card (wenn vorhanden) */}
-          {style&&(
-            <div className="fu" style={{
-              background:'linear-gradient(135deg,#1A1A1A 0%,#000 100%)',
-              border:`1px solid ${style.accent}40`,borderRadius:20,
-              padding:'18px 20px',animationDelay:'.12s'}}>
-              <div style={{display:'flex',alignItems:'center',gap:14}}>
-                <div style={{width:48,height:48,borderRadius:'50%',flexShrink:0,
-                  background:`${style.accent}22`,
-                  border:`1.5px solid ${style.accent}`,
-                  display:'flex',alignItems:'center',justifyContent:'center',color:style.accent}}>
-                  <DNAIcon size={26} color="currentColor"/>
-                </div>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{color:'#fff',fontSize:16,fontWeight:900,letterSpacing:-.3}}>
-                    RITMO <span style={{color:style.accent}}>DNA</span>
-                  </div>
-                  <div style={{color:'rgba(255,255,255,0.55)',fontSize:11,marginTop:3}}>
-                    {style.subtitle}, {style.tagline}
-                  </div>
-                </div>
-              </div>
-              <div style={{color:'rgba(255,255,255,0.75)',fontSize:12,lineHeight:1.6,marginTop:14}}>
-                {style.desc}
-              </div>
-            </div>
-          )}
-        </Fragment>
-      )}
-    </SocialScreen>
-  );
-}
-
-/* ═══ Clubs — List + Create entry ═══ */
-function Clubs({onHome,onOpenClub,onCreateClub}){
-  const[q,setQ]=useState('');
-  const[clubs,setClubs]=useState([]);
-  const[busy,setBusy]=useState(false);
-  // Hat der User schon einen Club? Dann darf er keinen weiteren anlegen.
-  const[ownedId,setOwnedId]=useState(null);
-  useEffect(()=>{
-    let cancelled=false;
-    myOwnedClubId().then(id=>{ if(!cancelled) setOwnedId(id); });
-    return()=>{cancelled=true;};
-  },[]);
-  const load=useCallback(async()=>{
-    setBusy(true);
-    try{ setClubs(await listClubs({query:q,limit:50})); }
-    finally{ setBusy(false); }
-  },[q]);
-  useEffect(()=>{
-    const t=setTimeout(load,200);
-    return()=>clearTimeout(t);
-  },[load]);
-
-  return(
-    <SocialScreen eyebrow="Community" title="Clubs"
-      desc={ownedId?'Du bist Inhaber:in eines Clubs.':'Find oder gründe deinen Club.'}
-      icon={<CoffeeCupIcon size={22}/>} onHome={onHome}>
-      <div className="fu" style={{display:'flex',gap:8,marginBottom:14}}>
-        <div style={{flex:1,position:'relative',minWidth:0}}>
-          <input value={q} onChange={e=>setQ(e.target.value)}
-            enterKeyHint="search" placeholder="Name oder Stadt …"
-            style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-              borderRadius:13,padding:'14px 42px 14px 16px',color:T.t1,fontSize:16,fontWeight:500,
-              outline:'none',boxSizing:'border-box'}}/>
-          {q!==''&&(
-            <button onClick={()=>setQ('')} aria-label="Suche löschen"
-              style={{position:'absolute',right:8,top:'calc(50% - 13px)',width:26,height:26,
-                borderRadius:'50%',background:T.card,border:`1px solid ${T.border}`,
-                color:T.t3,fontSize:14,fontWeight:700,cursor:'pointer',lineHeight:1,
-                display:'flex',alignItems:'center',justifyContent:'center'}}>×</button>
-          )}
-        </div>
-        <button onClick={onCreateClub} disabled={!!ownedId}
-          title={ownedId?'Du hast bereits einen Club.':'Neuen Club gründen'}
-          style={{padding:'14px 16px',
-            background:ownedId?T.card2:T.o,
-            border:ownedId?`1px solid ${T.border}`:'none',borderRadius:13,
-            color:ownedId?T.t3:'#000',fontSize:13,fontWeight:800,letterSpacing:.3,
-            cursor:ownedId?'not-allowed':'pointer',flexShrink:0,
-            opacity:ownedId?.55:1}}>
-          + Neu
-        </button>
-      </div>
-
-      {/* Mein Club als gepinnte Karte ganz oben */}
-      {ownedId&&clubs.some(c=>c.id===ownedId)&&(()=>{
-        const mine=clubs.find(c=>c.id===ownedId);
-        return(
-          <div className="fu" style={{marginBottom:14,animationDelay:'.02s'}}>
-            <div style={{color:T.o,fontSize:10,fontWeight:800,letterSpacing:2,
-              textTransform:'uppercase',marginBottom:6,marginLeft:4}}>Dein Club</div>
-            <button onClick={()=>onOpenClub(mine.id)}
-              style={{width:'100%',background:T.card,
-                border:`1px solid ${T.o}`,borderRadius:15,
-                padding:'14px 16px',display:'flex',alignItems:'center',gap:12,
-                color:T.t1,textAlign:'left',cursor:'pointer'}}>
-              {(()=>{const safe=safeImageSrc(mine.cover);return safe?(
-                <img src={safe} alt={mine.name}
-                  style={{width:40,height:40,borderRadius:13,objectFit:'cover',
-                    flexShrink:0,border:`1px solid ${T.border}`}}/>
-              ):(
-                <div style={{flexShrink:0,width:40,height:40,borderRadius:13,
-                  background:T.card2,border:`1px solid ${T.border}`,color:T.o,
-                  display:'flex',alignItems:'center',justifyContent:'center'}}>
-                  <TrophyIcon size={20}/>
-                </div>
-              );})()}
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{color:T.t1,fontSize:16,fontWeight:700,letterSpacing:-.1}}>{mine.name}</div>
-                {mine.city&&<div style={{color:T.t3,fontSize:11,marginTop:2}}>{mine.city}</div>}
-              </div>
-              <span style={{padding:'2px 8px',background:T.oSoft,color:T.o,borderRadius:5,
-                fontSize:9,fontWeight:800,letterSpacing:.8,textTransform:'uppercase'}}>
-                Inhaber
-              </span>
-            </button>
-          </div>
-        );
-      })()}
-
-      {busy?(
-        <div style={{color:T.t3,fontSize:13,padding:'24px 0',textAlign:'center'}}>Lädt …</div>
-      ):clubs.length===0?(
-        <RitmoPostEmpty icon={<TrophyIcon size={28}/>}
-          title="Noch keine Clubs"
-          desc={ownedId?'Andere Clubs werden hier aufgelistet.':'Sei der/die Erste und gründe einen Club.'}
-          cta={ownedId?null:{label:'Club gründen',onClick:onCreateClub}}/>
-      ):(
-        (()=>{
-          // Eigenen Club aus der Haupt-Liste rausfiltern — er wird oben
-          // als gepinnte "Dein Club"-Karte separat gerendert.
-          const rest=clubs.filter(c=>c.id!==ownedId);
-          if(rest.length===0) return(
-            <div style={{color:T.t3,fontSize:13,padding:'18px 0',textAlign:'center'}}>
-              Keine weiteren Clubs gefunden.
-            </div>
-          );
-          return(
-            <div style={{display:'flex',flexDirection:'column',gap:10}}>
-              {ownedId&&(
-                <div style={{color:T.t3,fontSize:10,fontWeight:800,letterSpacing:2,
-                  textTransform:'uppercase',marginLeft:4,marginBottom:0}}>Andere Clubs</div>
-              )}
-              {rest.map((c,i)=>(
-                <button key={c.id} onClick={()=>onOpenClub(c.id)} className="fu"
-                  style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:15,
-                    padding:'14px 16px',display:'flex',alignItems:'center',gap:12,
-                    color:T.t1,textAlign:'left',cursor:'pointer',animationDelay:`${i*0.03}s`}}>
-                  {(()=>{const safe=safeImageSrc(c.cover);return safe?(
-                    <img src={safe} alt={c.name}
-                      style={{width:40,height:40,borderRadius:13,objectFit:'cover',
-                        flexShrink:0,border:`1px solid ${T.border}`}}/>
-                  ):(
-                    <div style={{flexShrink:0,width:40,height:40,borderRadius:13,
-                      background:T.card2,border:`1px solid ${T.border}`,color:T.o,
-                      display:'flex',alignItems:'center',justifyContent:'center'}}>
-                      <TrophyIcon size={20}/>
-                    </div>
-                  );})()}
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{color:T.t1,fontSize:16,fontWeight:700,letterSpacing:-.1}}>{c.name}</div>
-                    {c.city&&<div style={{color:T.t3,fontSize:11,marginTop:2}}>{c.city}</div>}
-                  </div>
-                  <ChevronRightIcon size={16} color={T.t3}/>
-                </button>
-              ))}
-            </div>
-          );
-        })()
-      )}
-    </SocialScreen>
-  );
-}
-
-/* ═══ ClubCreate — Formular ═══ */
-function ClubCreate({onHome,onDone,onCancel,initial}){
-  // Doppel-funktion: ohne `initial` ist es Anlage, mit `initial` wird
-  // dieselbe Maske als Edit-Formular vom Owner benutzt.
-  const editMode=!!initial;
-  const[name,setName]=useState(initial?.name||'');
-  const[city,setCity]=useState(initial?.city||'');
-  const[desc,setDesc]=useState(initial?.description||'');
-  const[cover,setCover]=useState(initial?.cover||null);
-  const[busy,setBusy]=useState(false);
-  const[err,setErr]=useState('');
-  const coverInput=useRef(null);
-  const pickCover=async(e)=>{
-    const f=e.target.files?.[0];
-    e.target.value='';
-    if(!f) return;
-    try{
-      // Re-encoded JPEG ≤ 1200 px Kante hält die Cover unter ~200 KB;
-      // processImageUpload prüft davor Magic Bytes + Limits.
-      const resized=await processImageUpload(f,1200);
-      setCover(resized);
-    }catch(e){ console.warn('[club cover]',e); setErr(e?.message||'Bild konnte nicht geladen werden.'); }
-  };
-  const save=async()=>{
-    setErr(''); setBusy(true);
-    try{
-      if(editMode){
-        const c=await updateClub(initial.id,{name,city,description:desc,cover});
-        onDone(c);
-      } else {
-        // Cover wird direkt mit createClub atomar gespeichert — kein
-        // separater updateClub-Call mehr, der bei Fehler den Cover
-        // verschluckt hätte.
-        const c=await createClub({name,city,description:desc,cover});
-        onDone(c);
-      }
-    }catch(e){ setErr(e.message||'Fehler.'); }
-    finally{ setBusy(false); }
-  };
-  return(
-    <SocialScreen eyebrow="Clubs" title={editMode?'Club bearbeiten':'Neuer Club'}
-      desc={editMode?'Aktualisiere Cover, Name oder Beschreibung.':'Leg den Namen fest — der Rest folgt.'}
-      icon={<TrophyIcon size={22}/>} onHome={onHome}
-      onBack={onCancel} backLabel={editMode?'Club':'Clubs'}>
-      <div className="fu" style={{display:'flex',flexDirection:'column',gap:12}}>
-
-        {/* Cover-Upload */}
-        <div>
-          <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
-            textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Cover</div>
-          <button onClick={()=>coverInput.current?.click()}
-            aria-label="Cover-Bild wählen" title="Cover-Bild wählen"
-            style={{width:'100%',position:'relative',aspectRatio:'16/9',
-              background:T.card2,border:`1px dashed ${T.border}`,borderRadius:15,
-              overflow:'hidden',cursor:'pointer',color:T.t2,padding:0}}>
-            {(()=>{const safe=safeImageSrc(cover);return safe?(
-              <img src={safe} alt="Cover"
-                style={{position:'absolute',inset:0,width:'100%',height:'100%',
-                  objectFit:'cover',display:'block'}}/>
-            ):(
-              <div style={{position:'absolute',inset:0,display:'flex',flexDirection:'column',
-                alignItems:'center',justifyContent:'center',gap:6,color:T.t3}}>
-                <TrophyIcon size={28}/>
-                <div style={{fontSize:12,fontWeight:600,letterSpacing:.3}}>Cover-Bild wählen</div>
-              </div>
-            );})()}
-            {cover&&(
-              <div style={{position:'absolute',right:10,top:10,
-                padding:'4px 10px',background:'rgba(0,0,0,.55)',color:'#fff',
-                fontSize:10,fontWeight:800,letterSpacing:1,borderRadius:6,
-                textTransform:'uppercase'}}>Ändern</div>
-            )}
-          </button>
-          <input ref={coverInput} type="file" accept="image/png,image/jpeg,image/webp"
-            onChange={pickCover} style={{display:'none'}}/>
-        </div>
-
-        <div>
-          <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
-            textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Name *</div>
-          <input value={name} onChange={e=>setName(e.target.value)}
-            placeholder="z.B. Padelhaus München"
-            style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-              borderRadius:13,padding:'14px 16px',color:T.t1,fontSize:16,fontWeight:600,
-              outline:'none',boxSizing:'border-box'}}/>
-        </div>
-        <div>
-          <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
-            textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Stadt</div>
-          <input value={city} onChange={e=>setCity(e.target.value)}
-            placeholder="z.B. München"
-            style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-              borderRadius:13,padding:'14px 16px',color:T.t1,fontSize:16,fontWeight:600,
-              outline:'none',boxSizing:'border-box'}}/>
-        </div>
-        <div>
-          <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
-            textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Beschreibung</div>
-          <textarea value={desc} onChange={e=>setDesc(e.target.value)} rows={4}
-            placeholder="Was zeichnet euch aus? Wann trefft ihr euch? Welche Levels seid ihr?"
-            style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-              borderRadius:13,padding:'14px 16px',color:T.t1,fontSize:16,fontWeight:500,
-              outline:'none',boxSizing:'border-box',resize:'vertical',lineHeight:1.55}}/>
-        </div>
-        {err&&(
-          <div style={{background:'rgba(232,69,69,.12)',border:'1px solid rgba(232,69,69,.4)',
-            borderRadius:8,padding:'9px 12px',color:'#FF6B6B',fontSize:12,fontWeight:600}}>
-            {err}
-          </div>
-        )}
-        <button onClick={save} disabled={busy||!name.trim()}
-          style={{padding:'14px 16px',background:T.o,border:'none',borderRadius:15,
-            color:'#000',fontSize:16,fontWeight:800,letterSpacing:.3,
-            cursor:(busy||!name.trim())?'not-allowed':'pointer',
-            opacity:(busy||!name.trim())?.55:1,marginTop:6}}>
-          {busy?'…':editMode?'Änderungen speichern':'Club gründen'}
-        </button>
-        <button onClick={onCancel}
-          style={{padding:'12px 16px',background:'transparent',border:`1px solid ${T.border}`,
-            borderRadius:15,color:T.t2,fontSize:13,fontWeight:700,cursor:'pointer'}}>
-          Abbrechen
-        </button>
-      </div>
-    </SocialScreen>
-  );
-}
-
-/* ═══ ClubDetail ═══ */
-function ClubDetail({clubId,currentUid,onHome,onBack,onOpenPlayer,onOpenChat,onEdit}){
-  const[club,setClub]=useState(null);
-  const[members,setMembers]=useState([]);
-  const[memberCount,setMemberCount]=useState(0);
-  const[joined,setJoined]=useState(false);
-  const[busy,setBusy]=useState(false);
-
-  const refresh=useCallback(async()=>{
-    // Vier parallele Reads. memberCount nutzt eine eigene head:true-Query
-    // damit auch nicht-Mitglieder die Größe sehen können, falls RLS später
-    // strenger wird.
-    const [c,m,n,j]=await Promise.all([
-      fetchClub(clubId),
-      clubMembers(clubId,{limit:50}),
-      clubMemberCount(clubId),
-      isClubMember(clubId),
-    ]);
-    setClub(c); setMembers(m); setMemberCount(n); setJoined(j);
-  },[clubId]);
-  useEffect(()=>{ refresh(); },[refresh]);
-
-  const toggle=async()=>{
-    if(busy) return;
-    setBusy(true);
-    try{
-      const ok=await (joined?leaveClub(clubId):joinClub(clubId));
-      if(ok) await refresh();
-    }finally{ setBusy(false); }
-  };
-
-  const isOwner=club?.owner_id===currentUid;
-  const cover=club?.cover;
-
-  return(
-    <SocialScreen eyebrow="Club" title={club?.name||'Lädt …'}
-      desc={club?.city||''}
-      icon={<TrophyIcon size={22}/>} onHome={onHome}
-      onBack={onBack} backLabel="Clubs">
-      {!club?null:(
-        <Fragment>
-          {/* Hero-Image (Cover) — mit Bauhaus-Fallback wenn null */}
-          <div className="fu" style={{position:'relative',width:'100%',aspectRatio:'16/9',
-            borderRadius:16,overflow:'hidden',marginBottom:12,
-            background:T.card2,border:`1px solid ${T.border}`}}>
-            {(()=>{const safe=safeImageSrc(cover);return safe?(
-              <img src={safe} alt={club.name}
-                style={{position:'absolute',inset:0,width:'100%',height:'100%',
-                  objectFit:'cover',display:'block'}}/>
-            ):(
-              /* Bauhaus-Komposition als Default-Cover */
-              <svg viewBox="0 0 400 225" preserveAspectRatio="xMidYMid slice"
-                style={{position:'absolute',inset:0,width:'100%',height:'100%'}}>
-                <rect width="400" height="225" fill="#0A0A0A"/>
-                <circle cx="90" cy="80" r="60" fill="#FFD60A"/>
-                <rect x="170" y="40" width="100" height="100" fill="#0A84FF"/>
-                <polygon points="60,180 260,180 160,80" fill="#E84545" opacity=".85"/>
-                <rect x="20" y="195" width="360" height="6" fill="#FF7A1A"/>
-              </svg>
-            );})()}
-            {/* Untere Verdunkelung für Lesbarkeit des Titel-Overlays */}
-            <div style={{position:'absolute',left:0,right:0,bottom:0,height:'55%',
-              background:'linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,.72) 100%)',
-              pointerEvents:'none'}}/>
-            {/* Titel + Stadt im Hero — über dem Cover */}
-            <div style={{position:'absolute',left:16,right:16,bottom:14,
-              color:'#FFFFFF'}}>
-              <div style={{fontSize:24,fontWeight:900,letterSpacing:-.3,
-                textShadow:'0 2px 8px rgba(0,0,0,.6)'}}>{club.name}</div>
-              {club.city&&(
-                <div style={{fontSize:12,fontWeight:600,letterSpacing:.4,opacity:.85,marginTop:2,
-                  textShadow:'0 1px 4px rgba(0,0,0,.6)'}}>{club.city}</div>
-              )}
-            </div>
-          </div>
-
-          {/* Description-Card (Hero-Text) — falls vorhanden */}
-          {club.description&&(
-            <div className="fu" style={{background:T.card,border:`1px solid ${T.border}`,
-              borderRadius:16,padding:'16px 18px',marginBottom:12,
-              color:T.t2,fontSize:16,lineHeight:1.6,animationDelay:'.03s',whiteSpace:'pre-wrap'}}>
-              {club.description}
-            </div>
-          )}
-
-          {/* Member-Count + Chat-Button als Status-Tiles */}
-          <div className="fu" style={{display:'flex',gap:10,marginBottom:12,animationDelay:'.05s'}}>
-            <div style={{flex:1,background:T.card,border:`1px solid ${T.border}`,borderRadius:15,
-              padding:'14px 16px',textAlign:'center'}}>
-              <div style={{color:T.t1,fontSize:20,fontWeight:900,letterSpacing:-.3}}>{memberCount}</div>
-              <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.3,
-                textTransform:'uppercase',marginTop:2}}>Mitglieder</div>
-            </div>
-            {joined&&(
-              <button onClick={()=>onOpenChat&&onOpenChat(clubId)}
-                style={{flex:1,background:T.oSoft,border:`1px solid ${T.o}`,borderRadius:15,
-                  padding:'14px 16px',textAlign:'center',cursor:'pointer',color:T.o}}>
-                <ChatBubbleIcon size={20} color="currentColor"/>
-                <div style={{color:T.o,fontSize:10,fontWeight:800,letterSpacing:1.3,
-                  textTransform:'uppercase',marginTop:4}}>Chat öffnen</div>
-              </button>
-            )}
-          </div>
-
-          {!isOwner&&(
-            <button onClick={toggle} disabled={busy} className="fu"
-              style={{width:'100%',marginBottom:14,padding:'14px 16px',
-                background:joined?T.card:T.o,
-                border:joined?`1px solid ${T.border}`:'none',borderRadius:15,
-                color:joined?T.t1:'#000',fontSize:16,fontWeight:800,letterSpacing:.3,
-                cursor:busy?'not-allowed':'pointer',opacity:busy?.6:1,
-                animationDelay:'.07s'}}>
-              {joined?'Mitglied, Austreten':'Club beitreten'}
-            </button>
-          )}
-          {isOwner&&(
-            <div className="fu" style={{display:'flex',gap:10,marginBottom:14,
-              animationDelay:'.07s'}}>
-              <div style={{flex:1,padding:'10px 14px',
-                background:T.oSoft,border:`1px solid ${T.o}`,borderRadius:13,
-                color:T.o,fontSize:11,fontWeight:800,letterSpacing:1.5,
-                textTransform:'uppercase',textAlign:'center'}}>
-                Du bist Inhaber:in
-              </div>
-              {onEdit&&(
-                <button onClick={()=>onEdit(club)}
-                  style={{padding:'10px 14px',background:T.card,border:`1px solid ${T.border}`,
-                    borderRadius:13,color:T.t1,fontSize:11,fontWeight:800,letterSpacing:.5,
-                    cursor:'pointer'}}>
-                  Bearbeiten
-                </button>
-              )}
-            </div>
-          )}
-
-          <div className="fu" style={{color:T.o,fontSize:11,fontWeight:700,letterSpacing:1.5,
-            textTransform:'uppercase',marginBottom:8,marginLeft:4,animationDelay:'.09s'}}>
-            Mitgliederliste
-          </div>
-          {members.length===0?(
-            <div style={{color:T.t3,fontSize:13,padding:14,textAlign:'center'}}>
-              Noch keine Mitglieder.
-            </div>
-          ):(
-            <div style={{display:'flex',flexDirection:'column',gap:10}}>
-              {members.map((m,i)=>(
-                <div key={m.user_id} className="fu" style={{animationDelay:`${0.1+i*0.03}s`}}>
-                  <PlayerListItem profile={m.profile||{user_id:m.user_id}}
-                    onClick={()=>onOpenPlayer(m.user_id)}
-                    trailing={m.role==='admin'?(
-                      <span style={{padding:'2px 6px',background:T.oSoft,color:T.o,borderRadius:4,
-                        fontSize:9,fontWeight:800,letterSpacing:.8,textTransform:'uppercase'}}>
-                        Admin
-                      </span>
-                    ):null}/>
-                </div>
-              ))}
-            </div>
-          )}
-        </Fragment>
-      )}
-    </SocialScreen>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   CLUB CHAT — Realtime-Messages für Club-Mitglieder
-═══════════════════════════════════════════════════════════════ */
-function ClubChat({clubId,currentUid,onHome,onBack}){
-  const[club,setClub]=useState(null);
-  const[msgs,setMsgs]=useState([]);
-  const[text,setText]=useState('');
-  const[busy,setBusy]=useState(false);
-  // Defensive Membership-Gate: RLS verbietet das Lesen / Posten in
-  // Chats von Clubs in denen man nicht Mitglied ist — aber wenn jemand
-  // direkt zum Screen navigiert, zeigen wir lieber einen "kein Zugriff"-
-  // Zustand statt einer leeren Liste. State 'pending' | 'ok' | 'denied'.
-  const[access,setAccess]=useState('pending');
-  const scrollRef=useRef(null);
-  const scrollToBottom=()=>{
-    requestAnimationFrame(()=>{
-      const el=scrollRef.current;
-      if(el) el.scrollTop=el.scrollHeight;
-    });
-  };
-  // Initial load + Subscribe auf Realtime-Inserts
-  useEffect(()=>{
-    let cancelled=false;
-    let unsub=()=>{};
-    (async()=>{
-      // Erst Membership prüfen, dann erst Daten + Realtime-Subscribe.
-      const member=await isClubMember(clubId);
-      if(cancelled) return;
-      if(!member){ setAccess('denied'); return; }
-      setAccess('ok');
-      const [c,ms]=await Promise.all([fetchClub(clubId),listClubMessages(clubId,{limit:100})]);
-      if(cancelled) return;
-      setClub(c); setMsgs(ms);
-      scrollToBottom();
-      markChatRead(clubId);
-      unsub=subscribeClubMessages(clubId, async(row)=>{
-        setMsgs(prev=>{
-          if(prev.some(m=>m.id===row.id)) return prev;
-          return [...prev,{...row,profile:null}];
-        });
-        scrollToBottom();
-        markChatRead(clubId);
-      });
-    })();
-    return()=>{ cancelled=true; unsub(); };
-  },[clubId]);
-
-  // Kein Zugriff → freundliche Sperr-Karte mit Zurück-Button.
-  if(access==='denied'){
-    return(
-      <SocialScreen eyebrow="Chat" title="Kein Zugriff"
-        icon={<LockIcon size={22}/>} onHome={onHome}
-        onBack={onBack} backLabel="Zurück">
-        <RitmoPostEmpty icon={<LockIcon size={28}/>}
-          title="Nur für Mitglieder"
-          desc="Tritt dem Club bei, um den Chat zu sehen und mitzuschreiben."/>
-      </SocialScreen>
-    );
-  }
-
-  const send=async()=>{
-    // Harte 500-Zeichen-Grenze (zusätzlich zu maxLength am Input).
-    const body=text.trim().slice(0,500);
-    if(!body||busy) return;
-    setBusy(true);
-    try{
-      const row=await sendClubMessage(clubId,body);
-      setText('');
-      setMsgs(prev=>prev.some(m=>m.id===row.id)?prev:[...prev,row]);
-      scrollToBottom();
-    }catch(e){ alert(e.message); }
-    finally{ setBusy(false); }
-  };
-
-  const fmtTime=(iso)=>{
-    try{ return new Date(iso).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}); }
-    catch{ return ''; }
-  };
-  const fmtDay=(iso)=>{
-    try{
-      const d=new Date(iso), now=new Date();
-      const same=(a,b)=>a.toDateString()===b.toDateString();
-      if(same(d,now)) return 'Heute';
-      const y=new Date(now); y.setDate(now.getDate()-1);
-      if(same(d,y)) return 'Gestern';
-      return d.toLocaleDateString('de-DE',{day:'2-digit',month:'long'});
-    }catch{ return ''; }
-  };
-
-  return(
-    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
-      paddingTop:'calc(env(safe-area-inset-top,0px) + 40px)',
-      position:'relative',overflow:'hidden'}}>
-
-      {/* Compact Chat-Header: Cover-Mini + Club-Name + Back-Pill */}
-      <div className="fi" style={{padding:'0 22px 12px',display:'flex',alignItems:'center',gap:12}}>
-        <button onClick={onBack} aria-label="Zurück"
-          style={{flexShrink:0,width:38,height:38,borderRadius:13,
-            background:T.card2,border:`1px solid ${T.border}`,color:T.t1,
-            display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>
-          <span style={{transform:'rotate(180deg)',display:'inline-flex'}}>
-            <ChevronRightIcon size={16} color="currentColor"/>
-          </span>
-        </button>
-        {(()=>{const safe=safeImageSrc(club?.cover);return safe?(
-          <img src={safe} alt={club.name}
-            style={{width:38,height:38,borderRadius:13,objectFit:'cover',flexShrink:0,
-              border:`1px solid ${T.border}`}}/>
-        ):(
-          <div style={{flexShrink:0,width:38,height:38,background:T.card2,
-            border:`1px solid ${T.border}`,borderRadius:13,color:T.o,
-            display:'flex',alignItems:'center',justifyContent:'center'}}>
-            <TrophyIcon size={20}/>
-          </div>
-        );})()}
-        <div style={{flex:1,minWidth:0}}>
-          <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.3,
-            textTransform:'uppercase'}}>Club Chat</div>
-          <div style={{color:T.t1,fontSize:17,fontWeight:800,letterSpacing:-.2,marginTop:1,
-            whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
-            {club?.name||'Lädt …'}
-          </div>
-        </div>
-      </div>
-
-      {/* Message-Stream */}
-      <div ref={scrollRef} style={{flex:1,overflowY:'auto',padding:'4px 18px 96px',
-        display:'flex',flexDirection:'column',gap:7,WebkitOverflowScrolling:'touch'}}>
-        {msgs.length===0?(
-          <div className="fi" style={{margin:'auto',textAlign:'center',padding:'24px',
-            display:'flex',flexDirection:'column',alignItems:'center',gap:14,maxWidth:260}}>
-            <div style={{width:60,height:60,borderRadius:'50%',background:T.card,
-              border:`1px solid ${T.border}`,display:'flex',alignItems:'center',
-              justifyContent:'center',color:T.o}}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
-              </svg>
-            </div>
-            <div>
-              <div style={{color:T.t1,fontSize:15,fontWeight:800,letterSpacing:-.2,marginBottom:4}}>
-                Noch keine Nachrichten
-              </div>
-              <div style={{color:T.t3,fontSize:12.5,lineHeight:1.55}}>
-                Schreib die erste Nachricht im Club-Chat.
-              </div>
-            </div>
-          </div>
-        ):msgs.map((m,i)=>{
-          const mine=m.user_id===currentUid;
-          const name=m.profile?.display_name||m.profile?.data?.name||'Spieler';
-          const prev=msgs[i-1];
-          const showHeader=!prev||prev.user_id!==m.user_id;
-          const showDay=!prev||(()=>{try{return new Date(prev.created_at).toDateString()!==new Date(m.created_at).toDateString();}catch{return false;}})();
-          return(
-            <Fragment key={m.id}>
-              {showDay&&(
-                <div style={{alignSelf:'center',margin:'10px 0 6px',padding:'4px 12px',
-                  borderRadius:999,background:T.card2,border:`1px solid ${T.border}`,
-                  color:T.t3,fontSize:10.5,fontWeight:800,letterSpacing:.8,
-                  textTransform:'uppercase'}}>
-                  {fmtDay(m.created_at)}
-                </div>
-              )}
-              <div className="fi" style={{display:'flex',gap:8,alignItems:'flex-end',
-                marginTop:showHeader?5:0,
-                flexDirection:mine?'row-reverse':'row'}}>
-                {/* Avatar-Spalte nur bei FREMDEN Nachrichten (Platzhalter
-                    richtet Folge-Bubbles unterm Avatar aus). Bei eigenen
-                    schob der Platzhalter die Bubble durch row-reverse 36px
-                    von der rechten Kante weg Richtung Mitte. */}
-                {!mine&&(showHeader?(
-                  <ProfileAvatar name={name} avatar={m.profile?.data?.avatar} size={28}/>
-                ):(<div style={{width:28,flexShrink:0}}/>))}
-                <div style={{maxWidth:'76%',display:'flex',flexDirection:'column',
-                  alignItems:mine?'flex-end':'flex-start',gap:3}}>
-                  {!mine&&showHeader&&(
-                    <div style={{color:T.o,fontSize:10.5,fontWeight:800,letterSpacing:.4,
-                      paddingLeft:6}}>{name}</div>
-                  )}
-                  <div style={{padding:'9px 13px',
-                    background:mine?T.o:T.card,
-                    border:mine?'none':`1px solid ${T.border}`,
-                    color:mine?'#000':T.t1,fontSize:16,lineHeight:1.55,
-                    whiteSpace:'pre-wrap',wordBreak:'break-word',
-                    borderRadius:18,
-                    borderBottomRightRadius:mine?5:18,
-                    borderBottomLeftRadius:mine?18:5,
-                    boxShadow:mine?'0 2px 10px var(--oGlow)':'0 1px 4px rgba(0,0,0,.18)'}}>
-                    {m.body}
-                  </div>
-                  <div style={{color:T.t3,fontSize:9.5,fontWeight:600,
-                    paddingLeft:mine?0:6,paddingRight:mine?6:0}}>
-                    {fmtTime(m.created_at)}
-                  </div>
-                </div>
-              </div>
-            </Fragment>
-          );
-        })}
-      </div>
-
-      {/* Composer — RITMO-Pille mit 500-Zeichen-Limit + Rund-Send */}
-      <div style={{position:'absolute',left:0,right:0,
-        bottom:'calc(env(safe-area-inset-bottom,0px) + 14px)',
-        padding:'0 18px',zIndex:5}}>
-        {text.length>=440&&(
-          <div style={{textAlign:'right',padding:'0 10px 5px',
-            color:text.length>=500?T.r:T.t3,fontSize:10.5,fontWeight:800,
-            fontVariantNumeric:'tabular-nums'}}>
-            {text.length}/500
-          </div>
-        )}
-        <div style={{display:'flex',alignItems:'flex-end',gap:9,background:T.card,
-          border:`1px solid ${T.border}`,borderRadius:20,padding:'6px 6px 6px 16px',
-          boxShadow:'0 10px 30px rgba(0,0,0,.45)'}}>
-          <input value={text}
-            onChange={e=>setText(e.target.value.slice(0,500))}
-            onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}}}
-            maxLength={500}
-            placeholder="Nachricht …"
-            style={{flex:1,background:'transparent',border:'none',color:T.t1,
-              fontSize:16,fontWeight:500,outline:'none',minWidth:0,padding:'9px 0'}}/>
-          <button onClick={send} disabled={busy||!text.trim()} aria-label="Senden"
-            style={{flexShrink:0,width:40,height:40,borderRadius:'50%',background:T.o,
-              border:'none',display:'flex',alignItems:'center',justifyContent:'center',
-              cursor:(busy||!text.trim())?'not-allowed':'pointer',
-              opacity:(busy||!text.trim())?.45:1,
-              transition:'opacity .15s, transform .12s'}}
-            onPointerDown={e=>{if(!(busy||!text.trim()))e.currentTarget.style.transform='scale(.88)';}}
-            onPointerUp={e=>e.currentTarget.style.transform='scale(1)'}
-            onPointerLeave={e=>e.currentTarget.style.transform='scale(1)'}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000"
-              strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   FOLLOW LIST — Tab Folgt / Follower
-═══════════════════════════════════════════════════════════════ */
-function FollowList({userId,initial='followers',onHome,onBack,onOpenPlayer}){
-  const[tab,setTab]=useState(initial);
-  const[rows,setRows]=useState([]);
-  const[busy,setBusy]=useState(true);
-  useEffect(()=>{
-    let cancelled=false;
-    setBusy(true);
-    (async()=>{
-      const data=tab==='followers'
-        ? await listFollowers(userId,{limit:200})
-        : await listFollowing(userId,{limit:200});
-      if(!cancelled){ setRows(data); setBusy(false); }
-    })();
-    return()=>{cancelled=true;};
-  },[userId,tab]);
-  const keyOf=(r)=>tab==='followers'?r.follower_id:r.followee_id;
-  return(
-    <SocialScreen eyebrow="Community"
-      title={tab==='followers'?'Follower':'Folgt'}
-      icon={<PersonGlyph size={22}/>} onHome={onHome}
-      onBack={onBack} backLabel="Profil">
-      <div className="fu" style={{display:'flex',gap:8,marginBottom:14}}>
-        {[{id:'followers',label:'Follower'},{id:'following',label:'Folgt'}].map(t=>{
-          const active=tab===t.id;
-          return(
-            <button key={t.id} onClick={()=>setTab(t.id)}
-              style={{flex:1,padding:'10px 8px',
-                background:active?T.t1:'transparent',color:active?T.bg:T.t2,
-                border:`1px solid ${active?T.t1:T.border}`,borderRadius:13,
-                fontSize:12,fontWeight:active?800:600,letterSpacing:.3,cursor:'pointer'}}>
-              {t.label}
-            </button>
-          );
-        })}
-      </div>
-      {busy?(
-        <div style={{color:T.t3,fontSize:13,padding:'24px 0',textAlign:'center'}}>Lädt …</div>
-      ):rows.length===0?(
-        <RitmoPostEmpty icon={<PersonGlyph size={28}/>}
-          title={tab==='followers'?'Noch keine Follower':'Folgst noch niemandem'}
-          desc={tab==='followers'
-            ?'Sobald jemand dir folgt, taucht das hier auf.'
-            :'Such nach Spielern und folge ihnen, um ihre Aktivität zu sehen.'}/>
-      ):(
-        <div style={{display:'flex',flexDirection:'column',gap:10}}>
-          {rows.map((r,i)=>(
-            <div key={keyOf(r)} className="fu" style={{animationDelay:`${i*0.03}s`}}>
-              <PlayerListItem profile={r.profile||{user_id:keyOf(r)}}
-                onClick={()=>onOpenPlayer(keyOf(r))}
-                trailing={<ChevronRightIcon size={16} color={T.t3}/>}/>
-            </div>
-          ))}
-        </div>
-      )}
-    </SocialScreen>
-  );
-}
 
 /* ═══════════════════════════════════════════════════════════════
    RITMO DNA CUP — Event-Modul (18.07.2026, RITMO × Padel Haus).
@@ -23347,40 +22039,8 @@ export default function App(){
     else{try{localStorage.removeItem('ritmo_pending_email');}catch{}}
   },[pendingEmail]);
   // Aktuelle Supabase User-ID — wird vom Auth-Listener gesetzt und
-  // an Social-Screens (PublicProfile, BookingDetail, …) durchgereicht.
+  // an die Screens durchgereicht, die am eigenen Profil haengen.
   const[currentUid,setCurrentUid]=useState(null);
-  // Social-Navigation-State: welcher Player/Club/Match wird gerade
-  // angezeigt? Wird beim setScr nicht zurückgesetzt — die jeweiligen
-  // Screens prüfen ihre IDs vor dem Mount.
-  const[viewPlayerId,setViewPlayerId]=useState(null);
-  // playerBackTo: wohin der Zurück-Pfeil auf dem PublicProfile geht
-  // ('player-search' | 'club-detail' | null).
-  const[playerBackTo,setPlayerBackTo]=useState(null);
-  const[viewClubId,setViewClubId]=useState(null);
-  // followListInitial steuert, ob FollowList mit 'followers' oder
-  // 'following' tab öffnet.
-  const[followListInitial,setFollowListInitial]=useState('followers');
-  // editClub: vorgefüllter Club beim Sprung in ClubCreate-Edit-Mode.
-  const[editClub,setEditClub]=useState(null);
-  // chatBackTo: woher der User in den Club-Chat gekommen ist. Default
-  // 'club-detail'; wenn er aus RITMO Post Chats kam, setzen wir
-  // 'ritmopost'. Wird beim Schließen des Chats ausgewertet.
-  const[chatBackTo,setChatBackTo]=useState('club-detail');
-  // Aggregierter Unread-Count für den Home-Post-Dot. Wird alle 30 s
-  // refreshed plus beim Verlassen eines Chat-Screens. State auf App-Ebene
-  // damit der Dot nicht erst beim Re-Mount aktualisiert.
-  const[unreadTotal,setUnreadTotal]=useState(0);
-  useEffect(()=>{
-    if(!currentUid) return;
-    let cancelled=false;
-    const tick=async()=>{
-      const n=await totalUnreadCount();
-      if(!cancelled) setUnreadTotal(n);
-    };
-    tick();
-    const id=setInterval(tick,30000);
-    return()=>{ cancelled=true; clearInterval(id); };
-  },[currentUid,scr]);
   const[profile,setProfile]=useState(()=>lsGet('ritmo_profile',{
     name:'',
     playtomicLevel:null,
@@ -23444,8 +22104,6 @@ export default function App(){
   const[notify,setNotify]=useState(()=>lsGet('ritmo_notify',{
     matchReminder:true,
     tournamentAlerts:true,
-    chatMessages:true,
-    social:true,
     sound:true,
     vibration:true,
     redDot:true,
@@ -23587,8 +22245,7 @@ export default function App(){
     }).catch(()=>{});
     // Live-Updates (SIGNED_IN nach Verify-Klick im selben Tab)
     const {data:sub}=window.supabase.auth.onAuthStateChange((event,session)=>{
-      // currentUid spiegelt die aktuelle Session — wird von Social-Screens
-      // benutzt (PublicProfile.isSelf, BookingDetail.mySlot, …).
+      // currentUid spiegelt die aktuelle Session.
       setCurrentUid(session?.user?.id||null);
       if(event==='PASSWORD_RECOVERY'){
         // Supabase hat temporäre Recovery-Session gesetzt → User zum
@@ -24009,7 +22666,7 @@ export default function App(){
       profile={profile} setProfile={setProfile}
       onComplete={()=>{setOnboarded(true);nav('home');}}/>}
     {scr==='home'&&<Home nav={nav} activeTab={activeTab} setActiveTab={handleTab}
-      profile={profile} onboarded={onboarded} unread={unreadTotal}
+      profile={profile} onboarded={onboarded}
       quickStarts={quickStarts}
       onSaveQuickStart={saveQuickStart}
       onDeleteQuickStart={deleteQuickStart}
@@ -24027,8 +22684,6 @@ export default function App(){
       onOpenEdit={()=>setScr('profile-edit')}
       onResetStats={resetStats}
       onOpenRitmoDNA={()=>setScr('profile-ritmodna')}
-      onOpenFollowers={()=>{ if(currentUid){ setViewPlayerId(currentUid); setFollowListInitial('followers'); setScr('follow-list'); } }}
-      onOpenFollowing={()=>{ if(currentUid){ setViewPlayerId(currentUid); setFollowListInitial('following'); setScr('follow-list'); } }}
       onResetOnboarding={()=>{setOnboarded(false);nav('welcome');}}
       onLogout={async()=>{
         try{await auth.signOut();}catch(e){}
@@ -24155,7 +22810,7 @@ export default function App(){
       tabletMode={tabletMode} setTabletMode={setTabletMode}/>}
     {scr==='settings-privatsphaere'&&<SettingsPrivatsphaere
       onBack={()=>setScr('settings')} onHome={goHome}
-      profile={profile} setProfile={setProfile}
+      profile={profile}
       onOpenDelete={()=>setScr('settings-konto')}/>}
     {scr==='settings-benachrichtigungen'&&<SettingsBenachrichtigungen
       onBack={()=>setScr('settings')} onHome={goHome}
@@ -24172,36 +22827,8 @@ export default function App(){
         lsSet('ritmo_skip_intro',false); // Abmeldung → Intro-Video läuft wieder
         nav('login');
       }}/>}
-    {scr==='ritmopost'&&<RitmoPost onHome={goHome} profile={profile}
-      unread={unreadTotal}
-      onOpenChat={(id)=>{ setViewClubId(id); setChatBackTo('ritmopost'); setScr('club-chat'); }}/>}
+    {scr==='ritmopost'&&<RitmoPost onHome={goHome} profile={profile}/>}
 
-    {/* ─── Social Layer Screens ──────────────────────────────────── */}
-    {scr==='player-search'&&<PlayerSearch onHome={goHome}
-      onOpenPlayer={(uid)=>{ setViewPlayerId(uid); setPlayerBackTo('player-search'); setScr('public-profile'); }}/>}
-    {scr==='public-profile'&&viewPlayerId&&<PublicProfile
-      userId={viewPlayerId} currentUid={currentUid}
-      onHome={goHome}
-      onBack={playerBackTo?()=>setScr(playerBackTo):null}
-      backLabel={playerBackTo==='club-detail'?'Club':'Suche'}/>}
-    {scr==='follow-list'&&viewPlayerId&&<FollowList userId={viewPlayerId}
-      initial={followListInitial} onHome={goHome}
-      onBack={()=>setScr('profile')}
-      onOpenPlayer={(uid)=>{ setViewPlayerId(uid); setPlayerBackTo('follow-list'); setScr('public-profile'); }}/>}
-    {scr==='clubs'&&<Clubs onHome={goHome}
-      onOpenClub={(id)=>{ setViewClubId(id); setScr('club-detail'); }}
-      onCreateClub={()=>{ setEditClub(null); setScr('club-create'); }}/>}
-    {scr==='club-create'&&<ClubCreate onHome={goHome} initial={editClub}
-      onDone={(club)=>{ setEditClub(null); setViewClubId(club.id); setScr('club-detail'); }}
-      onCancel={()=>{ setEditClub(null); setScr(editClub?'club-detail':'clubs'); }}/>}
-    {scr==='club-detail'&&viewClubId&&<ClubDetail clubId={viewClubId}
-      currentUid={currentUid} onHome={goHome} onBack={()=>setScr('clubs')}
-      onOpenPlayer={(uid)=>{ setViewPlayerId(uid); setPlayerBackTo('club-detail'); setScr('public-profile'); }}
-      onOpenChat={(id)=>{ setViewClubId(id); setChatBackTo('club-detail'); setScr('club-chat'); }}
-      onEdit={(club)=>{ setEditClub(club); setScr('club-create'); }}/>}
-    {scr==='club-chat'&&viewClubId&&<ClubChat clubId={viewClubId}
-      currentUid={currentUid} onHome={goHome}
-      onBack={()=>setScr(chatBackTo||'club-detail')}/>}
     {scr==='single-setup'&&<SingleSetup nav={nav} onHome={goHome} cfg={cfg} setCfg={setCfg} profile={profile} currentUid={currentUid}/>}
     {scr==='match'&&<Match cfg={cfg} setCfg={setCfg} bo3={bo3} dBo3={dBo3} am={am} dAm={dAm}
       onHome={goHome} inputMode={inputMode} ringId={ringId}

@@ -936,6 +936,47 @@ re-inventing a header:
   it collapsed to a stub whenever the label was long and a trailing action
   was present.
 
+### Die soziale Schicht ist ausgebaut
+
+Spielersuche, fremde Profile, Clubs samt Club-Chat und die
+Follower-Listen sind **raus**. Was bleibt, ist das eigene Profil. Der
+Grund war der Club-Chat: er lud beim Öffnen die ganze Liste plus
+Unread-Zähler nach, und ein App-weiter Timer fragte alle 30 s
+`totalUnreadCount()` — für einen Bereich, in dem nichts steht. Der
+Rest hing daran: ohne fremde Profile gibt es niemanden zu folgen, und
+ohne Folgen keine Follower-Zahl.
+
+Entfernt wurden:
+
+| Weg | Was dort war |
+|---|---|
+| Suche-Tab | Spieler, Clubs, Buchungsassistent — jetzt **nur** der Satz „Hier findest du bald einen Marketplace, Communities und Clubs." |
+| RITMO Post | der Tab „Chats" (Club-Chat-Liste) samt Unread-Punkt auf der Home-Glocke |
+| Profil | das Ressort „Community" (Follower / Folgt) |
+| Match-Präferenzen | die Karte „Bevorzugte Spieler" — sie zog ihre Auswahl aus der Follower-Liste |
+| Einstellungen | „Chat-Mitteilungen" und „Follower & Soziales" (Benachrichtigungen), das Ressort „Sichtbarkeit" (Privatsphäre) |
+| [src/App.jsx](src/App.jsx) | `PlayerListItem`, `SocialScreen`, `PlayerSearch`, `PublicProfile`, `Clubs`, `ClubCreate`, `ClubDetail`, `ClubChat`, `FollowList` |
+| [src/db.js](src/db.js) | der gesamte Social-Block (Suche, Follower, Clubs, Chat) — die Datei endet jetzt nach den Beta-Keys |
+
+Vier Regeln, falls das jemand neu baut:
+
+- **Kein toter Code als Vorlage.** Die Screens sind gelöscht, nicht
+  auskommentiert oder hinter ein `false&&` gestellt. „Sauberes Remake"
+  heißt neu bauen; ein Skelett, an dem man sich entlanghangelt, ist
+  genau das, was hier nicht stehen soll.
+- **Die Daten bleiben.** Die Tabellen in Supabase sind unangetastet,
+  und die Flags im Profil (`private`, `hideDna`, `hideStats`,
+  `hideMatches`) und in den Match-Präferenzen (`players`) stehen
+  weiter im Datensatz. Es liest sie nur niemand mehr.
+- **Was auf eine gelöschte Sache zeigt, ist eine Lüge.** Ein Schalter
+  „Andere können dich in der Spielersuche finden" ohne Spielersuche,
+  ein Benachrichtigungs-Schalter für Club-Chats ohne Club-Chat, ein
+  roter Punkt, der nie rot wird — deshalb gingen die mit raus und
+  nicht erst beim Aufräumen.
+- **Die Padel-Clubs in den Match-Präferenzen sind etwas anderes.** Das
+  sind Spielorte auf einer Karte (`NEARBY_CLUBS`), kein Community-
+  Feature, und sie bleiben.
+
 ### Auth — Supabase only
 
 The `auth` object in [`src/auth.js`](src/auth.js) reads `window.supabase` (set up in `main.jsx`). If the client is missing, every method throws `SUPA_MISSING` immediately — there is no localStorage mock fallback. The single non-Supabase code path is the dev bypass: signing in as `ritmo` / `padelhaus` returns a synthetic test user without calling Supabase.

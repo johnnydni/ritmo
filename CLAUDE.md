@@ -964,10 +964,20 @@ Vier Regeln, falls das jemand neu baut:
   auskommentiert oder hinter ein `false&&` gestellt. „Sauberes Remake"
   heißt neu bauen; ein Skelett, an dem man sich entlanghangelt, ist
   genau das, was hier nicht stehen soll.
-- **Die Daten bleiben.** Die Tabellen in Supabase sind unangetastet,
-  und die Flags im Profil (`private`, `hideDna`, `hideStats`,
-  `hideMatches`) und in den Match-Präferenzen (`players`) stehen
-  weiter im Datensatz. Es liest sie nur niemand mehr.
+- **Die Daten bleiben.** Die Flags im Profil (`private`, `hideDna`,
+  `hideStats`, `hideMatches`) und in den Match-Präferenzen
+  (`players`) stehen weiter im Datensatz. Es liest sie nur niemand
+  mehr.
+- **In der Datenbank fehlt noch der Nachzug.**
+  [supabase/social-teardown.sql](supabase/social-teardown.sql) ist
+  das Gegenstück zu `social-migration.sql` und wird von Hand im
+  Supabase SQL Editor ausgeführt. Teil 1 (Policies) **eilt**: der
+  anon-Key steht im ausgelieferten Bundle, und `public profile read`
+  (`USING (is_public = TRUE)`) gibt den kompletten `data`-JSONB jedes
+  nicht-privaten Profils an jeden heraus — solange es die
+  Spielersuche gab, war das der Preis dafür, jetzt steht es nur noch
+  offen. Teil 2 (`DROP TABLE`) steht auskommentiert da, weil er
+  unwiderruflich ist.
 - **Was auf eine gelöschte Sache zeigt, ist eine Lüge.** Ein Schalter
   „Andere können dich in der Spielersuche finden" ohne Spielersuche,
   ein Benachrichtigungs-Schalter für Club-Chats ohne Club-Chat, ein

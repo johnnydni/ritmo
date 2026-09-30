@@ -993,6 +993,66 @@ The `auth` object in [`src/auth.js`](src/auth.js) reads `window.supabase` (set u
 
 The tournament-sharing helpers in [src/db.js](src/db.js) target tables defined in [supabase/schema.sql](supabase/schema.sql) (`ritmo_sessions`, `ritmo_submissions`, `ritmo_profiles`, `ritmo_matches`). Row Level Security is enabled on the user-owned tables (`ritmo_profiles`, `ritmo_matches`) with `auth.uid() = user_id` policies; `ritmo_sessions` and `ritmo_submissions` are public on purpose (PIN-protected, no PII).
 
+### Konto löschen — und wirklich aussperren
+
+Drei Schichten, und nur eine davon liegt in Supabase.
+
+**1. Löschen** (`supabase/functions/delete-account/index.ts`).
+`auth.admin.deleteUser()` verlangt den Secret-Key (früher
+`service_role`), und der darf nicht ins Bundle — also läuft der
+Aufruf in einer Edge Function (`supabase functions deploy
+delete-account`). **Die User-ID kommt nie aus dem Request**: die
+Funktion liest sie aus dem JWT des Aufrufers (`getUser()` gegen den
+Auth-Server, nicht nur dekodiert), sonst wäre ein Body mit fremder ID
+eine Fernsteuerung für fremde Konten. Deshalb nimmt sie gar keinen
+Body an. `ritmo_matches` und `ritmo_profiles` werden **vorher
+ausdrücklich** gelöscht, obwohl sie per Fremdschlüssel an
+`auth.users` hängen: ob dort `ON DELETE CASCADE` steht, weiß die
+Funktion nicht, und ohne Cascade scheitert das Delete am
+Fremdschlüssel.
+
+**2. Aussperren geht nur halb.** Ein Supabase-Access-Token ist ein
+stateless JWT und **lässt sich nicht widerrufen**. Das Löschen nimmt
+dem Konto die Refresh-Tokens (die Session-Zeilen hängen per Cascade
+an `auth.users`), neue Tokens gibt es also nicht mehr — das bereits
+ausgestellte bleibt aber bis zu seinem `exp` gültig, per Default eine
+Stunde. Der einzige Hebel ist die Ablaufzeit: Dashboard →
+Authentication → Sessions → JWT expiry. Dasselbe gilt für
+`auth.signOut()`, das in supabase-js v2 ohnehin im Default-Scope
+`global` läuft (widerruft die Refresh-Tokens auf allen Geräten).
+
+**3. Die App selbst war das eigentliche Loch.** `loggedIn` kommt aus
+`ritmo_logged_in` in localStorage, der Splash fragt genau dieses
+Flag, und beim Kaltstart hatte `getSession()` nur einen Zweig für
+„Session da". Ein gelöschtes Konto benutzte die App also weiter, bis
+der Client von sich aus einen Refresh versuchte — und ein von Hand
+gesetztes Flag reichte ganz ohne Konto. Jetzt hat der Aufruf einen
+else-Zweig, mit drei Bedingungen, damit niemand fälschlich
+rausfliegt:
+
+- **Nur online.** Offline lässt sich keine Session prüfen, und die
+  App verspricht in der FAQ ausdrücklich, dass lokale Matches und
+  Turniere ohne Netz laufen. Der Check holt das beim nächsten Start
+  mit Netz nach.
+- **Nur ohne Fehler.** Ein fehlgeschlagener Refresh (Funkloch mit
+  `navigator.onLine === true`) liefert einen `error` — das ist kein
+  Beweis, dass es die Session nicht mehr gibt.
+- **Nur ohne Dev-Marker.** Der Test-User (`ritmo` / `padelhaus`) hat
+  keine Supabase-Session und flöge sonst bei jedem Reload raus. Der
+  Marker `ritmo_dev_user` wird **und** wird gelesen nur unter
+  `import.meta.env.DEV` — in Production fällt beides beim Bundling
+  weg, ein von Hand gesetzter Schlüssel nützt dort also nichts
+  (nachgemessen: der Name steht in keinem dist-Chunk).
+
+**Das Gerät wird mitgelöscht** (`wipeLocalData()` in utils.js, löscht
+über den Präfix `ritmo_`, nicht über eine Liste — eine Liste vergisst
+man beim nächsten neuen Schlüssel). RITMO ist local-first: Profil,
+Turniere und Papierkorb liegen in localStorage, und auf dem Knopf
+steht „alles wird unwiderruflich gelöscht". Danach ein harter Reload
+statt einer Kette von Settern: in diesem Moment hängen zwei Dutzend
+States an Daten, die es nicht mehr gibt, und jeder Persistenz-Effekt
+würde seinen Schlüssel sofort neu schreiben.
+
 ### Input modes & ring/voice
 
 `inputMode` (`smartphone` | `ring` | `presenter`) changes the `Match` screen's input. For `ring`/`presenter`, a single app-level `KeyCapture` component lives in `App()` and forwards keys via a ref (`matchKeyRef`) — this is deliberate: the capture must not unmount when `Match` re-renders (e.g. on `bigScreen` toggle), otherwise focus is lost mid-game.

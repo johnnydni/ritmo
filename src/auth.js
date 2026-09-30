@@ -106,6 +106,35 @@ export const auth={
     try{await sb().auth.signOut();}catch(e){}
   },
 
+  /* Konto endgueltig loeschen.
+
+     Die Loeschung selbst passiert in der Edge Function
+     supabase/functions/delete-account — auth.admin.deleteUser()
+     verlangt den Secret-Key, und der gehoert nicht ins Bundle. Die
+     Funktion liest die User-ID aus dem JWT des Aufrufers; hier wird
+     also bewusst KEINE ID mitgeschickt.
+
+     Danach signOut(): das nimmt die Refresh-Tokens auf allen Geraeten
+     (Default-Scope ist global). Das laufende Access-Token bleibt bis
+     zu seinem exp gueltig — ein JWT laesst sich nicht widerrufen. Wer
+     das Fenster kurz haben will, kuerzt die JWT-Ablaufzeit im
+     Supabase-Dashboard (Authentication -> Sessions). */
+  async deleteAccount(){
+    const {data,error}=await sb().functions.invoke('delete-account',{method:'POST'});
+    if(error){
+      // FunctionsHttpError traegt die Antwort im context; ohne sie
+      // stuende hier nur "Edge Function returned a non-2xx status".
+      let detail='';
+      try{ detail=(await error.context?.json?.())?.error||''; }catch(e){}
+      throw new Error(detail==='invalid_token'
+        ?'Deine Sitzung ist abgelaufen. Bitte neu anmelden und erneut versuchen.'
+        :'Konto konnte nicht gelöscht werden. Bitte später erneut versuchen.');
+    }
+    if(!data?.ok) throw new Error('Konto konnte nicht gelöscht werden.');
+    try{await sb().auth.signOut();}catch(e){}
+    return true;
+  },
+
   async requestPasswordReset(email){
     const e=(email||'').trim().toLowerCase();
     if(!e||!EMAIL_RE.test(e)) throw new Error('Bitte gültige E-Mail eingeben');

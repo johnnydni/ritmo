@@ -26,6 +26,30 @@ export const lsSet=(k,v)=>{
   try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}
 };
 
+/* Alles loeschen, was diese App auf dem Geraet abgelegt hat.
+
+   Gebraucht bei der Konto-Loeschung: RITMO ist local-first, Profil,
+   Turniere, Papierkorb und Einstellungen liegen in localStorage. Nur
+   die Serverzeilen zu loeschen und das Geraet vollgeschrieben zu
+   lassen, waere ein gebrochenes Versprechen — auf dem Knopf steht
+   "alles wird unwiderruflich geloescht".
+
+   Geloescht wird ueber den PRAEFIX, nicht ueber eine Liste: eine
+   Liste vergisst man beim naechsten neuen Schluessel, und dann bleibt
+   ausgerechnet der uebrig. Fremde Schluessel (auch die von Supabase,
+   'sb-...') bleiben unangetastet — die raeumt der signOut auf. */
+export function wipeLocalData(){
+  try{
+    const keys=[];
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);
+      if(k&&k.startsWith('ritmo_')) keys.push(k);
+    }
+    keys.forEach(k=>{try{localStorage.removeItem(k);}catch(e){}});
+    return keys.length;
+  }catch(e){ return 0; }
+}
+
 /* ── Asset path ───────────────────────────────────────────────── */
 // Vite setzt window.__BASE__ über index.html-Injection. Im
 // Artifact-Preview oder lokal fällt es auf '/' zurück. Wir

@@ -21,7 +21,7 @@ import { LIGA_PHASES, LIGA_GROUPS, initialLigaState, ligaAddParticipant,
    Components, screens and routing remain colocated here for now;
    only side-effect-free units are split out. See CLAUDE.md. */
 import { T, CSS, rgba } from "./theme.js";
-import { lsGet, lsSet, getAssetBase, getInitials, processImageUpload, safeImageSrc, buzz, purgeTrash, trashDaysLeft, TRASH_DAYS } from "./utils.js";
+import { lsGet, lsSet, wipeLocalData, getAssetBase, getInitials, processImageUpload, safeImageSrc, buzz, purgeTrash, trashDaysLeft, TRASH_DAYS } from "./utils.js";
 import { getLevelLabel, getLevelTier, getLevelColor, estimateLevel } from "./levels.js";
 import { B0, A0, PL, ptD, wG, bo3R, amR, DEFCFG } from "./game.js";
 import { PCOLS, shuffle, genAmericanoRound, genMexicanoRound, calcLeaderboard, FORMATS, FORMAT_RULES, genRound,
@@ -16724,9 +16724,22 @@ function SettingsSicherheit({onBack,onHome}){
 }
 
 /* ─── Konto löschen — Destructive sub-screen ────────────────────── */
-function SettingsKonto({onBack,onHome,onLogout}){
+function SettingsKonto({onBack,onHome,onDeleted}){
   const[confirmText,setConfirmText]=useState('');
-  const ready=confirmText.trim().toUpperCase()==='LÖSCHEN';
+  const[busy,setBusy]=useState(false);
+  const[err,setErr]=useState('');
+  const ready=confirmText.trim().toUpperCase()==='LÖSCHEN'&&!busy;
+  const run=async()=>{
+    if(!ready) return;
+    setBusy(true); setErr('');
+    try{
+      await auth.deleteAccount();
+      onDeleted&&onDeleted();
+    }catch(e){
+      setErr(e?.message||'Konto konnte nicht gelöscht werden.');
+      setBusy(false);
+    }
+  };
   return(
     <SettingsSubLayout title="Konto und Daten löschen"
       desc="Endgültig, ohne Wiederherstellung."
@@ -16760,14 +16773,7 @@ function SettingsKonto({onBack,onHome,onLogout}){
             borderRadius:13,padding:'14px 16px',color:T.t1,fontSize:16,fontWeight:700,
             letterSpacing:1,outline:'none',boxSizing:'border-box',
             fontFamily:'-apple-system,SFMono-Regular,Menlo,monospace'}}/>
-        <button disabled={!ready}
-          onClick={()=>{
-            // Phase 1: nur Abmelden + Hinweis. Echte Konto-Löschung
-            // braucht eine Server-Route (Supabase admin.deleteUser via
-            // Edge Function); wird in einer separaten PR nachgereicht.
-            alert('Konto-Löschung steht serverseitig noch aus. Du wirst stattdessen abgemeldet — bitte melde dich beim Team RITMO, falls die endgültige Löschung gewünscht ist.');
-            if(onLogout) onLogout();
-          }}
+        <button disabled={!ready} onClick={run}
           style={{width:'100%',marginTop:12,padding:'14px 16px',
             background:ready?'#E84545':'rgba(232,69,69,0.25)',
             border:'none',borderRadius:15,
@@ -16775,8 +16781,12 @@ function SettingsKonto({onBack,onHome,onLogout}){
             fontSize:16,fontWeight:800,letterSpacing:.3,
             cursor:ready?'pointer':'not-allowed',
             transition:'background .15s'}}>
-          Konto endgültig löschen
+          {busy?'Wird gelöscht …':'Konto endgültig löschen'}
         </button>
+        {err&&(
+          <div style={{marginTop:10,color:'#FF6B6B',fontSize:12,lineHeight:1.5,
+            fontWeight:600}}>{err}</div>
+        )}
       </div>
 
       <button onClick={onBack}
@@ -22236,12 +22246,41 @@ export default function App(){
       });
     };
     enterRef.current=enter;
-    // Initiale Session (Verify-Link auf Cold-Load) prüfen
-    window.supabase.auth.getSession().then(({data})=>{
+    /* Initiale Session (Verify-Link auf Cold-Load) prüfen — und der
+       else-Zweig, der lange fehlte.
+
+       `loggedIn` kommt aus localStorage (`ritmo_logged_in`), und der
+       Splash fragt genau dieses Flag. Ohne Gegenprobe heisst das: ein
+       geloeschtes oder gesperrtes Konto benutzt die App weiter, bis
+       der Client von sich aus ein Token erneuern will — und wer das
+       Flag von Hand setzt, braucht ueberhaupt kein Konto.
+
+       Drei Bedingungen, damit niemand faelschlich rausfliegt:
+
+       - NUR ONLINE. Offline kann man keine Session pruefen, und die
+         App verspricht ausdruecklich, dass lokale Matches und
+         Turniere ohne Netz laufen. Der Check holt das beim naechsten
+         Start mit Netz nach.
+       - NUR OHNE FEHLER. Ein fehlgeschlagener Refresh (Funkloch mit
+         `navigator.onLine === true`, Supabase kurz weg) liefert einen
+         error — das ist kein Beweis, dass es die Session nicht mehr
+         gibt.
+       - NUR WENN loggedIn UEBERHAUPT GESETZT IST: sonst schreibt der
+         Effekt bei jedem Kaltstart eines ausgeloggten Geraets
+         sinnlos in den Speicher. */
+    window.supabase.auth.getSession().then(({data,error})=>{
       if(data?.session){
         setCurrentUid(data.session.user?.id||null);
         enter();
+        return;
       }
+      if(error) return;
+      if(typeof navigator!=='undefined'&&navigator.onLine===false) return;
+      if(import.meta.env.DEV&&lsGet('ritmo_dev_user',false)) return;
+      setLoggedIn(prev=>{
+        if(prev) console.info('[RITMO] Keine gültige Sitzung — zurück zur Anmeldung.');
+        return false;
+      });
     }).catch(()=>{});
     // Live-Updates (SIGNED_IN nach Verify-Klick im selben Tab)
     const {data:sub}=window.supabase.auth.onAuthStateChange((event,session)=>{
@@ -22631,6 +22670,13 @@ export default function App(){
         // Test-User-Bypass: kein SIGNED_IN-Event vom Supabase-Listener,
         // also setzen wir onboarded selbst und routen direkt nach home.
         if(result?.user?.provider==='test'){
+          /* Der Test-User hat keine Supabase-Session. Ohne diesen
+             Merker wuerde ihn der Session-Check beim naechsten
+             Kaltstart wieder ausloggen. Geschrieben UND gelesen wird
+             er nur im Dev-Build (import.meta.env.DEV) — in
+             Production faellt beides beim Bundling weg, ein von Hand
+             gesetzter Schluessel nuetzt dort also nichts. */
+          if(import.meta.env.DEV) lsSet('ritmo_dev_user',true);
           setOnboarded(true);
           return nav('home');
         }
@@ -22821,11 +22867,19 @@ export default function App(){
       onBack={()=>setScr('settings')} onHome={goHome}/>}
     {scr==='settings-konto'&&<SettingsKonto
       onBack={()=>setScr('settings')} onHome={goHome}
-      onLogout={async()=>{
-        try{await auth.signOut();}catch(e){}
-        setLoggedIn(false);
-        lsSet('ritmo_skip_intro',false); // Abmeldung → Intro-Video läuft wieder
-        nav('login');
+      onDeleted={()=>{
+        /* Konto ist in Supabase weg, die Session auch. Jetzt noch das
+           Geraet: RITMO ist local-first, Profil, Turniere und
+           Papierkorb liegen in localStorage — "alles wird
+           unwiderruflich geloescht" muss auch hier stimmen.
+
+           Danach ein harter Reload statt einer Kette von Settern: in
+           diesem Moment haengen zwei Dutzend States an Daten, die es
+           nicht mehr gibt, und jeder Persistenz-Effekt wuerde seinen
+           Schluessel sofort neu schreiben. Der Reload startet die App
+           so, wie sie ein frisch installiertes Geraet vorfindet. */
+        wipeLocalData();
+        window.location.replace((window.__BASE__)||'/');
       }}/>}
     {scr==='ritmopost'&&<RitmoPost onHome={goHome} profile={profile}/>}
 

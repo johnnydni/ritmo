@@ -347,6 +347,22 @@ function BetaLanding({onLogin,onRegister}){
 /* ═══════════════════════════════════════════════════════════════
    SPLASH SCREEN
 ═══════════════════════════════════════════════════════════════ */
+
+/* ── Der Morph: aus dem R des Schriftzugs wird die Wortbildmarke ──
+   Beide Endpunkte sind VERMESSEN, nicht geschaetzt — nur deshalb
+   geht die Uebergabe ans Video unsichtbar durch.
+
+   ritmo-lettering.png ist 720 x 120. Das R belegt dort x 12..163
+   und y 12..104; zwischen R und I liegt eine Luecke (x 163..180),
+   in deren Mitte die beiden Haelften geteilt werden. */
+const SPL_R={cx:87.5/720, cy:58/120, w:152/720, split:171.5/720};
+/* Erster Frame von logomotion720p.mp4 (720 x 1280): die Marke steht
+   bei x 306..404, y 589..646 — also NICHT in der Bildmitte, sondern
+   gut 2 % der Hoehe darueber und einen Hauch links davon. Genau
+   dorthin muss der Morph landen, sonst springt die Marke beim
+   Crossfade. */
+const SPL_MARK={cx:355/720, cy:617.5/1280, w:99/720};
+
 function Splash({onDone}){
   // Primär läuft das Logomotion-Video (~9 s, einmal durch — Ende
   // öffnet die App, Tap überspringt sofort). Zwei Wege zum BRAND-
@@ -373,12 +389,22 @@ function Splash({onDone}){
   // startet. Das Video ist währenddessen unsichtbar gemountet
   // (preload läuft) und wird erst nach dem Intro per play() gestartet
   // (muted → auch ohne Nutzer-Geste erlaubt).
-  const INTRO_MS=2000;
+  const INTRO_MS=2200;
   const[intro,setIntro]=useState(true);
+  /* Der Morph startet, wenn der Slide STEHT (0,45 s Verzoegerung +
+     0,85 s Lauf = 1,3 s) — die 100 ms Pause dazwischen sind Absicht:
+     laufen Slide und Morph ineinander, wandert das R diagonal und
+     der Wechsel wird zu einer zweiten Bewegung statt zu einem
+     Moment. Der Morph hat 0,7 s und ist bei 2,1 s fertig, 100 ms
+     bevor der Vorhang aufgeht — die Marke steht also schon, wenn das
+     Video sie uebernimmt. */
+  const MORPH_AT=1400;
+  const[morph,setMorph]=useState(false);
   useEffect(()=>{
     if(skipVideo) return;
+    const a=setTimeout(()=>setMorph(true),MORPH_AT);
     const t=setTimeout(()=>setIntro(false),INTRO_MS);
-    return()=>clearTimeout(t);
+    return()=>{clearTimeout(a);clearTimeout(t);};
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[]);
   useEffect(()=>{
@@ -453,6 +479,12 @@ function Splash({onDone}){
     raf=requestAnimationFrame(loop);
     return()=>cancelAnimationFrame(raf);
   },[brand]);
+  /* Morph-Geometrie: wohin das R wandern und wie weit es wachsen
+     muss. Faellt im selben Effekt an wie die Video-Groesse, weil sie
+     aus denselben zwei Zahlen folgt — das Video steht im Cover und
+     die Marke sitzt an einer festen Stelle IN ihm, nicht auf dem
+     Schirm. Deshalb kann das hier nicht in CSS stehen. */
+  const[geo,setGeo]=useState(null);
   useEffect(()=>{
     if(brand) return;
     const AR=720/1280; // logomotion720p ist 720×1280 (9:16)
@@ -471,6 +503,17 @@ function Splash({onDone}){
       if(w<vw){ w=vw; h=vw/AR; }
       el.style.width=`${Math.ceil(w)}px`;
       el.style.height=`${Math.ceil(h)}px`;
+      /* Alles relativ zur SCHIRMMITTE gerechnet (dort liegen beide
+         Elemente per left/top 50 %). letW spiegelt das width des
+         Schriftzugs — wer das dort aendert, aendert es hier mit. */
+      const letW=Math.min(vw*0.56,260), letH=letW/6;
+      const rW=SPL_R.w*letW;                      // Breite des R am Schirm
+      const rY=(SPL_R.cy-0.5)*letH;               // R-Mitte vs. Bildmitte
+      const markW=SPL_MARK.w*w;
+      setGeo({markW,rW,rY,
+        mx:(SPL_MARK.cx-0.5)*w,
+        my:(SPL_MARK.cy-0.5)*h,
+        s:markW/rW});
     };
     fitRef.current=fit;
     fit();
@@ -521,17 +564,71 @@ function Splash({onDone}){
             width:'72vmin',height:'72vmin',borderRadius:'50%',
             background:'radial-gradient(circle, rgba(255,122,26,.30) 0%, rgba(255,122,26,.10) 42%, transparent 68%)',
             animation:'splashPulse 1.9s ease-in-out infinite'}}/>
-          {/* RITMO-Schriftzug (weiß, transparentes PNG) über dem Glow —
-              startet ZENTRIERT und slidet dann smooth nach rechts, bis
-              die R-Mitte auf der Bildschirmmitte sitzt (12,2% der
-              Bildbreite, aus dem PNG vermessen) — deckungsgleich mit
-              dem R-Logo im anschließenden Video. Timing: 0,7 s ruhig
-              mittig, 1 s Slide, endet kurz vor dem Video-Crossfade. */}
-          <img src={`${getAssetBase()}assets/ritmo-lettering.png`} alt="RITMO"
-            style={{position:'absolute',left:'50%',top:'50%',
-              transform:'translate(-50%,-50%)',width:'min(56vw, 260px)',
-              animation:'splashSlideR 1s cubic-bezier(.65,0,.35,1) .7s both',
-              height:'auto',pointerEvents:'none'}}/>
+          {/* ── Schriftzug → Marke.
+
+              Der Schriftzug startet zentriert und slidet nach rechts,
+              bis die R-Mitte auf der Bildschirmmitte sitzt (12,2 %
+              der Bildbreite, aus dem PNG vermessen). Dann der Morph:
+              ITMO zieht nach rechts ab, und das R blendet in die
+              Wortbildmarke ueber, die auf ihren Platz IM VIDEO
+              waechst.
+
+              Warum das als Morph liest und nicht als Ueberblendung:
+              beide Formen stehen waehrend des Wechsels DECKUNGS-
+              GLEICH uebereinander — gleiche Mitte, gleiche Groesse,
+              gleicher Weg. Sie wachsen gemeinsam auf die Zielgroesse,
+              waehrend das eine aus- und das andere einblendet. Ein
+              Crossfade zweier verschieden grosser Bilder an
+              verschiedenen Stellen sieht dagegen genau danach aus.
+
+              Die SLIDE-GRUPPE traegt die Bewegung, die Kinder tragen
+              den Morph — zwei verschachtelte Transforms. In EINEM
+              Element ginge es nicht: die Keyframe-Animation haelt per
+              `both` ihren Endwert und wuerde ein inline gesetztes
+              transform ueberschreiben. */}
+          <div style={{position:'absolute',left:'50%',top:'50%',
+            width:'min(56vw, 260px)',pointerEvents:'none',
+            animation:'splashSlideR .85s cubic-bezier(.65,0,.35,1) .45s both'}}>
+            {/* ITMO — zieht beim Morph nach rechts ab. */}
+            <img src={`${getAssetBase()}assets/ritmo-lettering.png`} alt=""
+              style={{width:'100%',height:'auto',display:'block',
+                clipPath:`inset(0 0 0 ${SPL_R.split*100}%)`,
+                transform:morph?'translateX(16px)':'none',
+                opacity:morph?0:1,
+                transition:'opacity .34s ease, transform .6s cubic-bezier(.4,0,1,1)'}}/>
+            {/* Das R — dasselbe PNG, nur andersherum beschnitten, und
+                deckungsgleich darueber. Der Drehpunkt ist die R-Mitte
+                im Bild, nicht die Bildmitte: sonst wandert das R beim
+                Skalieren aus dem Bild. */}
+            <img src={`${getAssetBase()}assets/ritmo-lettering.png`} alt="RITMO"
+              style={{position:'absolute',inset:0,width:'100%',height:'auto',
+                clipPath:`inset(0 ${(1-SPL_R.split)*100}% 0 0)`,
+                transformOrigin:`${SPL_R.cx*100}% ${SPL_R.cy*100}%`,
+                transform:morph&&geo
+                  ?`translate(${geo.mx}px,${geo.my-geo.rY}px) scale(${geo.s})`
+                  :'none',
+                opacity:morph?0:1,
+                /* Das duenne R geht FRUEHER als die Marke kommt und
+                   verliert dabei die Kante: sonst stehen 200 ms lang
+                   zwei scharfe R uebereinander, und daraus wird eine
+                   Doppelbelichtung statt einer Verwandlung. */
+                filter:morph?'blur(2.5px)':'blur(0px)',
+                transition:'opacity .36s ease, filter .36s ease, transform .7s cubic-bezier(.5,0,.2,1)'}}/>
+          </div>
+          {/* Die Marke steht in SCHIRM-Koordinaten, nicht in der
+              Slide-Gruppe — ihr Ziel haengt am Video, nicht am
+              Schriftzug. Sie startet exakt auf dem R (Groesse und
+              Mitte) und faehrt mit ihm auf die Zielposition. */}
+          {geo&&(
+            <img src={`${getAssetBase()}assets/ritmo-logo-r.png`} alt=""
+              style={{position:'absolute',left:'50%',top:'50%',
+                width:geo.markW,height:'auto',pointerEvents:'none',
+                transform:morph
+                  ?`translate(-50%,-50%) translate(${geo.mx}px,${geo.my}px)`
+                  :`translate(-50%,-50%) translate(0px,${geo.rY}px) scale(${geo.rW/geo.markW})`,
+                opacity:morph?1:0,
+                transition:'opacity .44s ease .1s, transform .7s cubic-bezier(.5,0,.2,1)'}}/>
+          )}
         </div>
         {/* Simpler weißer Ladebalken — leicht unter dem Zentrum:
             erscheint erst NACH dem Pulse-Intro (blendet mit dem Video

@@ -42,3 +42,23 @@ der weiße Schriftzug verschwand dadurch komplett.
 `icon-maskable-512.png` sitzt enger, weil Android das Icon in eine
 frei wählbare Form schneidet und nur der innere 80-%-Kreis garantiert
 sichtbar ist.
+
+# `ritmo-logo-r.png` — die Marke für den Splash-Morph
+
+Ein enger Beschnitt der Wortbildmarke (Speedlines + Racket-R + Ball)
+aus `ritmowide.png`, **in Weiß**. Sie ist das Ziel des Morphs im
+Splash: das R des Schriftzugs wird zu ihr, und sie steht danach
+pixelgenau dort, wo das Logomotion-Video seine eigene Marke trägt.
+
+Wer sie neu erzeugen muss — der Beschnitt ist der Alphabereich der
+Marke in `ritmowide.png` (x 135, y 151, 210 × 123):
+
+```bash
+ffmpeg -i ritmowide.png \
+  -vf "crop=210:123:135:151,format=rgba,lutrgb=r=255:g=255:b=255" \
+  ritmo-logo-r.png
+```
+
+Das `lutrgb` färbt alles Deckende weiß und lässt den Alphakanal in
+Ruhe — im Video sind Speedlines und Ball weiß, nicht gold, und der
+Übergang soll nicht an einem Farbsprung auffallen.

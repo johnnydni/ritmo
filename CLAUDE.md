@@ -267,6 +267,65 @@ Leute ruft.
 - Der Rundenwechsel schliesst es (derselbe Effekt, der den
   Court-Filter zuruecksetzt) — danach ist „danach" etwas anderes.
 
+### Der Splash: aus dem R wird die Marke
+
+Der Ladebildschirm hält zwei Sekunden auf Schwarz, bevor das
+Logomotion-Video startet. In dieser Zeit läuft eine Kette: **RITMO
+steht mittig → slidet nach rechts, bis das R auf der Bildschirmmitte
+sitzt → ITMO zieht ab, das R wird zur Wortbildmarke → Vorhang auf,
+das Video trägt dieselbe Marke an derselben Stelle weiter.**
+
+Der Übergang ist der ganze Punkt. Er funktioniert nur, weil beide
+Endpunkte **vermessen** sind und nicht geschätzt:
+
+- `SPL_R` — das R in `ritmo-lettering.png` (720 × 120): x 12..163,
+  y 12..104. Daraus die Mitte (12,15 % / 48,3 %) und die Breite
+  (21,1 %). Zwischen R und I liegt eine Lücke (x 163..180); in ihrer
+  Mitte wird der Schriftzug per `clip-path` in zwei Hälften geteilt —
+  dasselbe PNG zweimal, einmal links, einmal rechts beschnitten.
+- `SPL_MARK` — die Marke im **ersten Videoframe** (720 × 1280):
+  x 306..404, y 589..646. Sie steht **nicht** in der Bildmitte,
+  sondern gut 2 % der Höhe darüber und einen Hauch links davon. Wer
+  stattdessen auf die Mitte morpht, bekommt beim Crossfade einen
+  sichtbaren Sprung von ~15 px.
+
+Fünf Dinge, an denen das sonst scheitert:
+
+- **Die Zielposition lässt sich nicht in CSS ausdrücken.** Das Video
+  liegt im Cover (eigenes 9:16-Element, zentriert, überstehend
+  beschnitten), die Marke sitzt an einer festen Stelle *in ihm*. Ihre
+  Lage auf dem Schirm hängt also an der Video-Geometrie, nicht am
+  Viewport. Gerechnet wird sie deshalb in `fit()` — derselben
+  Funktion, die das Video einpasst, aus denselben zwei Zahlen.
+- **Slide und Morph brauchen zwei Elemente.** Die Keyframe-Animation
+  hält per `both` ihren Endwert und würde ein inline gesetztes
+  `transform` überschreiben. Deshalb trägt eine äußere Gruppe den
+  Slide und die Kinder den Morph — zwei verschachtelte Transforms.
+- **Der Drehpunkt des R ist die R-Mitte im Bild** (`transformOrigin:
+  12,15 % 48,3 %`), nicht die Bildmitte: skaliert man das PNG um
+  seine eigene Mitte, wandert das R dabei aus dem Bild.
+- **Deckungsgleich, sonst ist es ein Crossfade.** Die Marke startet
+  exakt auf dem R — gleiche Mitte, gleiche Breite (`scale(rW/markW)`)
+  — und beide fahren denselben Weg auf die Zielgröße. Zwei
+  verschieden große Bilder an verschiedenen Stellen übereinander zu
+  blenden sieht genau danach aus.
+- **Das dünne R geht früher, als die Marke kommt, und verliert dabei
+  die Kante** (`blur(2,5px)`). Sonst stehen 200 ms lang zwei scharfe
+  R übereinander — eine Doppelbelichtung statt einer Verwandlung.
+
+Die Taktung: Slide 0,45 s + 0,85 s = 1,3 s, dann **100 ms Pause**
+(laufen Slide und Morph ineinander, wandert das R diagonal und der
+Wechsel wird zu einer zweiten Bewegung statt zu einem Moment), Morph
+1,4 → 2,1 s, Vorhang ab 2,2 s. Bei `prefers-reduced-motion` greift
+der Killswitch aus theme.js — er kürzt auch Transitions, die Marke
+steht also sofort an ihrem Platz, statt zu wandern.
+
+Die Marke liegt als eigenes Asset bei (`ritmo-logo-r.png`, weiß
+eingefärbter Beschnitt aus `ritmowide.png`, Rezept in
+[public/assets/README.md](public/assets/README.md)). Weiß, weil die
+Marke im Video weiß ist und nicht gold — der Übergang soll nicht an
+einem Farbsprung auffallen.
+
 ### Der Turnier-Start-Vorhang und sein Orb (`TennisOrb`)
 
 Zwischen „Start" und der ersten Runde liegt ein kurzer Vorhang

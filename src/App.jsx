@@ -21,6 +21,7 @@ import { LIGA_PHASES, LIGA_GROUPS, initialLigaState, ligaAddParticipant,
    Components, screens and routing remain colocated here for now;
    only side-effect-free units are split out. See CLAUDE.md. */
 import { T, CSS, rgba } from "./theme.js";
+import { sdfFromAlpha, drawMorph } from "./shapeMorph.js";
 import { lsGet, lsSet, wipeLocalData, getAssetBase, getInitials, processImageUpload, safeImageSrc, buzz, purgeTrash, trashDaysLeft, TRASH_DAYS } from "./utils.js";
 import { getLevelLabel, getLevelTier, getLevelColor, estimateLevel } from "./levels.js";
 import { B0, A0, PL, ptD, wG, bo3R, amR, DEFCFG } from "./game.js";
@@ -363,6 +364,90 @@ const SPL_R={cx:87.5/720, cy:58/120, w:152/720, split:171.5/720};
    Crossfade. */
 const SPL_MARK={cx:355/720, cy:617.5/1280, w:99/720};
 
+/* ── Der Formen-Morph (src/shapeMorph.js): woran die beiden R
+   aneinander ausgerichtet sind. Auch das ist gemessen, nicht gewaehlt.
+
+   Ausgerichtet wird NICHT Mitte auf Mitte, sondern Stamm auf Stamm
+   und Bogen auf Bogen — mit Mitte auf Mitte lag der Logo-Stamm 65 px
+   (bei 200 px Hoehe) neben dem des Schriftzugs, und mitten im Morph
+   riss der Stamm ab, weil dort keine der beiden Formen stand.
+
+   - Schriftzug-R (ritmo-lettering.png): Anker (88 | 58,5), Hoehe 93.
+     Stamm-Mitte x 20, Bogen-Aussenkante x 161.
+   - Logo (ritmo-logo-r.png, 210 x 123): der R-Koerper ohne Speedlines
+     und Ball steht bei y 0..121, Hoehe 122. Sein Stamm lehnt sich mit
+     0,47 nach rechts (Kante x 85 bei y 50 → x 52 bei y 120);
+     zurueckgeneigt steht er in allen drei Messzeilen bei x 88,3, die
+     Bogen-Aussenkante bei x 196,3.
+   - Aus Stamm und Bogenkante beider Formen folgen zwei Gleichungen
+     und daraus Anker x 140,4 und Stauchung 0,584: so breit ist das
+     Logo-R zwischen Stamm und Bogen, gemessen am Schriftzug-R. */
+const SPL_MORPH={ax:88, ay:58.5, ah:93,  bx:140.4, by:61, bh:122,
+  lean:0.47, narrow:0.584, fuse:0.25, swell:0.006, ripple:0.008, ms:900};
+
+/* Ein Alpharaster aus einem PNG schneiden, gepolstert — das Feld muss
+   bis dorthin reichen, wo die andere Form im Morph steht. `maxU`
+   schneidet rechts ab: aus dem Schriftzug darf nur das R ins Feld,
+   nicht das I daneben. */
+function splAlphaGrid(img,x0,y0,x1,y1,P,maxU){
+  const c=document.createElement('canvas');
+  c.width=img.naturalWidth; c.height=img.naturalHeight;
+  const g=c.getContext('2d',{willReadFrequently:true});
+  g.drawImage(img,0,0);
+  const src=g.getImageData(0,0,c.width,c.height).data;
+  const w=(x1-x0)+2*P, h=(y1-y0)+2*P, a=new Uint8Array(w*h);
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++){
+    const u=x0-P+x, v=y0-P+y;
+    if(u<0||v<0||u>=c.width||v>=c.height||u>=maxU) continue;
+    a[y*w+x]=src[(v*c.width+u)*4+3];
+  }
+  return {f:sdfFromAlpha(a,w,h), gx:x0-P, gy:y0-P};
+}
+function splBuildFields(L,M){
+  const M_=SPL_MORPH;
+  const RA=splAlphaGrid(L,12,12,164,105,40,171), RB=splAlphaGrid(M,0,0,210,123,48,1e9);
+  return {
+    A:{f:RA.f, ax:M_.ax-RA.gx-0.5, ay:M_.ay-RA.gy-0.5, hs:M_.ah},
+    B:{f:RB.f, ax:M_.bx-RB.gx-0.5, ay:M_.by-RB.gy-0.5, hs:M_.bh},
+  };
+}
+/* Wo der gemeinsame Anker zum Zeitpunkt m steht und wie hoch der
+   Koerper ist — Schirm-px relativ zur Mitte. Start: das R, wie es nach
+   dem Slide steht (Bild bei translate(-12,2 %, -50 %), also exakt die
+   Werte aus splashSlideR). Ende: der Anker im Logo, wie es im Video
+   steht. Bei m = 0 und m = 1 kommen damit pixelgenau die beiden Bilder
+   heraus, gegen die getauscht wird. */
+function splMorphFrame(g,m){
+  const M_=SPL_MORPH, sA=g.letW/720, k=g.markW/210;
+  const x0=-0.122*g.letW+M_.ax*sA, y0=-g.letH/2+M_.ay*sA, h0=M_.ah*sA;
+  const x1=g.mx+(M_.bx-105)*k, y1=g.my+(M_.by-61.5)*k, h1=M_.bh*k;
+  return {cx:x0+(x1-x0)*m, cy:y0+(y1-y0)*m, h:h0+(h1-h0)*m};
+}
+/* Die Zeichenflaeche: Huelle beider Formen ueber den ganzen Weg. Das
+   Logo zaehlt erst ab e = 0,55 — vorher kann es nur dort sichtbar
+   werden, wo das R ohnehin steht, und seine Speedlines stuenden in
+   der aufgerichteten Startpose weit links und wuerden die Flaeche
+   unnoetig verdoppeln. */
+function splMorphBox(g){
+  const M_=SPL_MORPH;
+  let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+  const add=(fr,e,p,q)=>{
+    const sig=M_.lean*e, kap=1+(M_.narrow-1)*e;
+    const X=fr.cx+(kap*p-sig*q)*fr.h, Y=fr.cy+q*fr.h;
+    if(X<x0)x0=X; if(X>x1)x1=X; if(Y<y0)y0=Y; if(Y>y1)y1=Y;
+  };
+  for(let i=0;i<=10;i++){
+    const e=i/10, fr=splMorphFrame(g,e);
+    for(const [u,v] of [[12,12],[164,12],[12,105],[164,105]])
+      add(fr,e,(u-M_.ax)/M_.ah,(v-M_.ay)/M_.ah);
+    if(e>=0.55) for(const [u,v] of [[0,0],[210,0],[0,123],[210,123]]){
+      const pB=(u-M_.bx)/M_.bh, qB=(v-M_.by)/M_.bh;
+      add(fr,e,(pB+M_.lean*qB)/M_.narrow,qB);
+    }
+  }
+  return {x0:Math.floor(x0-4),y0:Math.floor(y0-4),x1:Math.ceil(x1+4),y1:Math.ceil(y1+4)};
+}
+
 function Splash({onDone}){
   // Primär läuft das Logomotion-Video (~9 s, einmal durch — Ende
   // öffnet die App, Tap überspringt sofort). Zwei Wege zum BRAND-
@@ -389,20 +474,41 @@ function Splash({onDone}){
   // startet. Das Video ist währenddessen unsichtbar gemountet
   // (preload läuft) und wird erst nach dem Intro per play() gestartet
   // (muted → auch ohne Nutzer-Geste erlaubt).
-  const INTRO_MS=2200;
+  const INTRO_MS=2400;
   const[intro,setIntro]=useState(true);
   /* Der Morph startet, wenn der Slide STEHT (0,45 s Verzoegerung +
      0,85 s Lauf = 1,3 s) — die 100 ms Pause dazwischen sind Absicht:
      laufen Slide und Morph ineinander, wandert das R diagonal und
      der Wechsel wird zu einer zweiten Bewegung statt zu einem
-     Moment. Der Morph hat 0,7 s und ist bei 2,1 s fertig, 100 ms
+     Moment. Der Morph hat 0,9 s und ist bei 2,3 s fertig, 100 ms
      bevor der Vorhang aufgeht — die Marke steht also schon, wenn das
-     Video sie uebernimmt. */
+     Video sie uebernimmt.
+
+     Zwei Wege:
+     - 'sdf': die Form fliesst (Distanzfelder, src/shapeMorph.js). Ein
+       Canvas uebernimmt in dem Bild, in dem das R verschwindet, und
+       gibt an die Marke ab, sobald er sie zeichnet — Anfang und Ende
+       sind bildgleich, der Tausch ist unsichtbar.
+     - 'fade': das R blendet deckungsgleich in die Marke ueber. Der
+       Rueckweg, falls die Felder bis 1,4 s nicht stehen (Bilder nicht
+       geladen, Canvas nicht lesbar), und bei prefers-reduced-motion:
+       der Killswitch aus theme.js kuerzt die Transitions auf 0, die
+       Marke steht dann sofort da. Eine rAF-Schleife wuerde er nicht
+       anhalten. */
   const MORPH_AT=1400;
   const[morph,setMorph]=useState(false);
+  const[mode,setMode]=useState(null);           // 'sdf' | 'fade'
+  const[morphDone,setMorphDone]=useState(false);
+  const sdfRef=useRef(null);
+  const geoRef=useRef(null);
+  const morphCvRef=useRef(null);
   useEffect(()=>{
     if(skipVideo) return;
-    const a=setTimeout(()=>setMorph(true),MORPH_AT);
+    const a=setTimeout(()=>{
+      const reduce=!!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      setMode(sdfRef.current&&geoRef.current&&!reduce?'sdf':'fade');
+      setMorph(true);
+    },MORPH_AT);
     const t=setTimeout(()=>setIntro(false),INTRO_MS);
     return()=>{clearTimeout(a);clearTimeout(t);};
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -510,10 +616,12 @@ function Splash({onDone}){
       const rW=SPL_R.w*letW;                      // Breite des R am Schirm
       const rY=(SPL_R.cy-0.5)*letH;               // R-Mitte vs. Bildmitte
       const markW=SPL_MARK.w*w;
-      setGeo({markW,rW,rY,
+      const g={markW,rW,rY,letW,letH,
         mx:(SPL_MARK.cx-0.5)*w,
         my:(SPL_MARK.cy-0.5)*h,
-        s:markW/rW});
+        s:markW/rW};
+      geoRef.current=g;
+      setGeo(g);
     };
     fitRef.current=fit;
     fit();
@@ -529,6 +637,64 @@ function Splash({onDone}){
       window.visualViewport?.removeEventListener('resize',fit);
     };
   },[brand]);
+  /* Die Distanzfelder entstehen im Intro, lange bevor sie gebraucht
+     werden: ~60 ms Rechenzeit auf dem Rechner, auf dem Telefon das
+     Doppelte bis Dreifache. Der Slide laeuft als CSS-Transform auf dem
+     Compositor weiter, den stoert das nicht. 60 ms Verzoegerung, damit
+     das erste Bild nicht darauf wartet. */
+  useEffect(()=>{
+    if(brand) return;
+    let dead=false;
+    const t=setTimeout(async()=>{
+      try{
+        const load=src=>new Promise((res,rej)=>{
+          const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=src;
+        });
+        const [L,M]=await Promise.all([
+          load(`${getAssetBase()}assets/ritmo-lettering.png`),
+          load(`${getAssetBase()}assets/ritmo-logo-r.png`)]);
+        if(!dead) sdfRef.current=splBuildFields(L,M);
+      }catch(e){ sdfRef.current=null; }
+    },60);
+    return()=>{dead=true;clearTimeout(t);};
+  },[brand]);
+  /* Die Morph-Schleife. Layout-Effekt, damit das erste Bild VOR dem
+     Paint steht: im selben Commit wird das R unsichtbar — ohne das
+     gaebe es einen Frame ohne beides.
+
+     Gezeichnet wird mit hoechstens doppelter Pixeldichte: die Form
+     bewegt sich die ganze Zeit, und eine dritte Dichte kostet mehr
+     als die Haelfte der Rechenzeit, ohne dass man sie saehe. Das
+     ruhende Endbild ist ohnehin das PNG. */
+  useLayoutEffect(()=>{
+    if(mode!=='sdf') return;
+    const cv=morphCvRef.current, F=sdfRef.current, g=geoRef.current;
+    if(!cv||!F||!g){ setMode('fade'); return; }
+    const box=splMorphBox(g), rs=Math.min(window.devicePixelRatio||1,2);
+    const W=Math.ceil((box.x1-box.x0)*rs), H=Math.ceil((box.y1-box.y0)*rs);
+    cv.width=W; cv.height=H;
+    cv.style.width=`${W/rs}px`; cv.style.height=`${H/rs}px`;
+    cv.style.transform=`translate(${box.x0}px,${box.y0}px)`;
+    const ctx=cv.getContext('2d'), img=ctx.createImageData(W,H);
+    const M_=SPL_MORPH;
+    const ease=x=>x<=0?0:x>=1?1:x*x*x*(x*(x*6-15)+10);
+    const draw=k=>{
+      const e=ease(k), fr=splMorphFrame(g,e);
+      drawMorph(img.data,W,H,rs,F.A,F.B,{cx:fr.cx-box.x0,cy:fr.cy-box.y0,h:fr.h},e,
+        {lean:M_.lean,narrow:M_.narrow,fuse:M_.fuse,swell:M_.swell,ripple:M_.ripple,
+         t:k*M_.ms/1000});
+      ctx.putImageData(img,0,0);
+    };
+    draw(0);
+    let raf; const t0=performance.now();
+    const tick=now=>{
+      const k=(now-t0)/M_.ms;
+      if(k>=1){ setMorphDone(true); return; }
+      draw(k); raf=requestAnimationFrame(tick);
+    };
+    raf=requestAnimationFrame(tick);
+    return()=>cancelAnimationFrame(raf);
+  },[mode]);
   return(
     <div onClick={finish} style={{position:'fixed',inset:0,zIndex:1000,
       /* Ladebildschirm IMMER schwarz — bewusst hartkodiert (#000),
@@ -569,17 +735,12 @@ function Splash({onDone}){
               Der Schriftzug startet zentriert und slidet nach rechts,
               bis die R-Mitte auf der Bildschirmmitte sitzt (12,2 %
               der Bildbreite, aus dem PNG vermessen). Dann der Morph:
-              ITMO zieht nach rechts ab, und das R blendet in die
-              Wortbildmarke ueber, die auf ihren Platz IM VIDEO
-              waechst.
-
-              Warum das als Morph liest und nicht als Ueberblendung:
-              beide Formen stehen waehrend des Wechsels DECKUNGS-
-              GLEICH uebereinander — gleiche Mitte, gleiche Groesse,
-              gleicher Weg. Sie wachsen gemeinsam auf die Zielgroesse,
-              waehrend das eine aus- und das andere einblendet. Ein
-              Crossfade zweier verschieden grosser Bilder an
-              verschiedenen Stellen sieht dagegen genau danach aus.
+              ITMO zieht nach rechts ab, und das R FLIESST in die
+              Wortbildmarke, die dabei auf ihren Platz IM VIDEO
+              waechst — gezeichnet vom Canvas weiter unten (Weg
+              'sdf'). Die beiden Bilder hier sind Anfang und Ende
+              davon und der Rueckweg ('fade'): dort blenden sie
+              deckungsgleich ineinander.
 
               Die SLIDE-GRUPPE traegt die Bewegung, die Kinder tragen
               den Morph — zwei verschachtelte Transforms. In EINEM
@@ -604,31 +765,47 @@ function Splash({onDone}){
               style={{position:'absolute',inset:0,width:'100%',height:'auto',
                 clipPath:`inset(0 ${(1-SPL_R.split)*100}% 0 0)`,
                 transformOrigin:`${SPL_R.cx*100}% ${SPL_R.cy*100}%`,
-                transform:morph&&geo
+                transform:morph&&mode==='fade'&&geo
                   ?`translate(${geo.mx}px,${geo.my-geo.rY}px) scale(${geo.s})`
                   :'none',
                 opacity:morph?0:1,
-                /* Das duenne R geht FRUEHER als die Marke kommt und
-                   verliert dabei die Kante: sonst stehen 200 ms lang
-                   zwei scharfe R uebereinander, und daraus wird eine
-                   Doppelbelichtung statt einer Verwandlung. */
-                filter:morph?'blur(2.5px)':'blur(0px)',
-                transition:'opacity .36s ease, filter .36s ease, transform .7s cubic-bezier(.5,0,.2,1)'}}/>
+                /* Nur im 'fade'-Weg: das duenne R geht FRUEHER als die
+                   Marke kommt und verliert dabei die Kante — sonst
+                   stehen 200 ms lang zwei scharfe R uebereinander.
+                   Im 'sdf'-Weg verschwindet es ohne Uebergang: in
+                   genau diesem Bild zeichnet der Canvas es. */
+                filter:morph&&mode==='fade'?'blur(2.5px)':'blur(0px)',
+                transition:mode==='sdf'?'none'
+                  :'opacity .36s ease, filter .36s ease, transform .7s cubic-bezier(.5,0,.2,1)'}}/>
           </div>
           {/* Die Marke steht in SCHIRM-Koordinaten, nicht in der
               Slide-Gruppe — ihr Ziel haengt am Video, nicht am
               Schriftzug. Sie startet exakt auf dem R (Groesse und
               Mitte) und faehrt mit ihm auf die Zielposition. */}
-          {geo&&(
-            <img src={`${getAssetBase()}assets/ritmo-logo-r.png`} alt=""
-              style={{position:'absolute',left:'50%',top:'50%',
-                width:geo.markW,height:'auto',pointerEvents:'none',
-                transform:morph
-                  ?`translate(-50%,-50%) translate(${geo.mx}px,${geo.my}px)`
-                  :`translate(-50%,-50%) translate(0px,${geo.rY}px) scale(${geo.rW/geo.markW})`,
-                opacity:morph?1:0,
-                transition:'opacity .44s ease .1s, transform .7s cubic-bezier(.5,0,.2,1)'}}/>
-          )}
+          {/* Der fliessende Teil: ein Canvas, der vom R zur Marke
+              zeichnet. Groesse und Lage setzt die Morph-Schleife;
+              left/top 50 % machen die Schirmmitte zum Ursprung, wie
+              bei allem anderen hier. */}
+          <canvas ref={morphCvRef} aria-hidden="true"
+            style={{position:'absolute',left:'50%',top:'50%',pointerEvents:'none',
+              display:mode==='sdf'&&!morphDone?'block':'none'}}/>
+          {geo&&(()=>{
+            /* Die Marke: im 'fade'-Weg blendet sie ueber, im
+               'sdf'-Weg erscheint sie in dem Bild, in dem der Canvas
+               sie fertig gezeichnet hat — ohne Uebergang. */
+            const shown=(morph&&mode==='fade')||morphDone;
+            return(
+              <img src={`${getAssetBase()}assets/ritmo-logo-r.png`} alt=""
+                style={{position:'absolute',left:'50%',top:'50%',
+                  width:geo.markW,height:'auto',pointerEvents:'none',
+                  transform:shown
+                    ?`translate(-50%,-50%) translate(${geo.mx}px,${geo.my}px)`
+                    :`translate(-50%,-50%) translate(0px,${geo.rY}px) scale(${geo.rW/geo.markW})`,
+                  opacity:shown?1:0,
+                  transition:mode==='sdf'?'none'
+                    :'opacity .44s ease .1s, transform .7s cubic-bezier(.5,0,.2,1)'}}/>
+            );
+          })()}
         </div>
         {/* Simpler weißer Ladebalken — leicht unter dem Zentrum:
             erscheint erst NACH dem Pulse-Intro (blendet mit dem Video

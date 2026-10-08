@@ -41,6 +41,7 @@ Pure / side-effect-free modules have been extracted from the original mega-file.
 | [src/ocr.js](src/ocr.js) | On-device OCR (tesseract.js, lazy-loaded) plus the name-extraction heuristic (`lineToName`, `namesFromText`) behind "Aus Screenshot übernehmen" in the tournament setup. | Worker, WASM core and language data are all same-origin — the CDN defaults would fail the CSP. Der Dateidialog geht im **Aufrufer** auf (Assistent bzw. Formular), nicht im `PlayerScanSheet`: ein programmatischer Klick auf ein `file`-Input braucht die Nutzergeste, und die ist nach Mount + Effekt nicht mehr sicher da. Das Sheet bekommt die Auswahl als `initialFiles` und startet direkt in `work`. |
 | [src/legal.js](src/legal.js) | Impressum, Datenschutzerklärung, Nutzungsbedingungen, Haftung und Lizenzhinweise als Datenblöcke; `OPERATOR` / `PROCESSORS` halten die vor dem Launch auszufüllenden Betreiberangaben. | Rendered by `SettingsRechtliches`. Keep in sync when data processing changes. |
 | [src/tourneyPdf.js](src/tourneyPdf.js) | Turnier-Export als A4-PDF (Endstand, Sieger, Rundenverlauf) und `exportTourneyPdf` (Share-Sheet bzw. Download). | jsPDF wird per `import()` nachgeladen; eigene Schriften unter [src/fonts/pdf/](src/fonts/pdf/). |
+| [src/shapeMorph.js](src/shapeMorph.js) | Formen-Morph über Distanzfelder: `sdfFromAlpha` (exakte EDT nach Felzenszwalb, Kanten aus der Teildeckung auf Subpixel), `sampleSdf`, `drawMorph`. | Pure JS; die Bilddaten liefert der Aufrufer. Gebraucht vom Splash (siehe dort). |
 | [src/courtLayout.js](src/courtLayout.js) | Raeumliche Anordnung der Courts: `defaultLayout`, `normLayout`, `layoutBounds`, `moveTo`, `rotateCourt`, `compactLayout`. | Reines Raster (4 x 5), keine React-Abhaengigkeit. Gezeichnet wird in `CourtMap` (App.jsx). |
 | [src/whatsNew.js](src/whatsNew.js) | `RELEASES` (die Ausgaben des Update-Newsletters) + `unseenRelease(seen)`. | Inhalt/Daten; die Regeln fuer neue Ausgaben stehen im Dateikopf. |
 | [src/skillDescriptions.js](src/skillDescriptions.js) | `SKILL_DESCRIPTIONS` — text for the RITMO DNA Skill tier card. | Translation-ready content. |
@@ -269,62 +270,83 @@ Leute ruft.
 
 ### Der Splash: aus dem R wird die Marke
 
-Der Ladebildschirm hält zwei Sekunden auf Schwarz, bevor das
+Der Ladebildschirm hält gut zwei Sekunden auf Schwarz, bevor das
 Logomotion-Video startet. In dieser Zeit läuft eine Kette: **RITMO
 steht mittig → slidet nach rechts, bis das R auf der Bildschirmmitte
-sitzt → ITMO zieht ab, das R wird zur Wortbildmarke → Vorhang auf,
-das Video trägt dieselbe Marke an derselben Stelle weiter.**
+sitzt → ITMO zieht ab, das R fließt in die Wortbildmarke → Vorhang
+auf, das Video trägt dieselbe Marke an derselben Stelle weiter.**
 
-Der Übergang ist der ganze Punkt. Er funktioniert nur, weil beide
-Endpunkte **vermessen** sind und nicht geschätzt:
+**Das R wird nicht überblendet, es verformt sich**
+([src/shapeMorph.js](src/shapeMorph.js)). Jede Form wird zu einem
+Distanzfeld — je Pixel der Abstand zum nächsten Rand, innen negativ —,
+und die Nulllinie einer Mischung zweier Felder IST die Zwischenform.
+Daraus folgt das Verhalten, das man sieht: was nur das Logo hat,
+*wächst* aus dem R heraus (Speedlines aus dem Stamm, der Ball aus dem
+Bein), und der Lochkranz im Schlägerkopf wird nicht gestanzt — er lag
+im Innenraum des R-Bogens und *bleibt übrig*, während der Bogen
+zuläuft.
 
-- `SPL_R` — das R in `ritmo-lettering.png` (720 × 120): x 12..163,
-  y 12..104. Daraus die Mitte (12,15 % / 48,3 %) und die Breite
-  (21,1 %). Zwischen R und I liegt eine Lücke (x 163..180); in ihrer
-  Mitte wird der Schriftzug per `clip-path` in zwei Hälften geteilt —
-  dasselbe PNG zweimal, einmal links, einmal rechts beschnitten.
-- `SPL_MARK` — die Marke im **ersten Videoframe** (720 × 1280):
-  x 306..404, y 589..646. Sie steht **nicht** in der Bildmitte,
-  sondern gut 2 % der Höhe darüber und einen Hauch links davon. Wer
-  stattdessen auf die Mitte morpht, bekommt beim Crossfade einen
-  sichtbaren Sprung von ~15 px.
+Die Felder entstehen im Intro aus den beiden PNGs (~60 ms auf dem
+Rechner, auf dem Telefon das Doppelte bis Dreifache — der Slide läuft
+als CSS-Transform auf dem Compositor und merkt davon nichts). Ein
+Canvas übernimmt in genau dem Bild, in dem das R unsichtbar wird
+(Layout-Effekt, vor dem Paint), und gibt an die PNG-Marke ab, sobald
+er sie fertig gezeichnet hat. Anfang und Ende des Canvas sind
+**gemessen bildgleich** mit den PNGs: im Mittel 3 % Alpha-Abweichung
+an den Kanten, kein Pixel über die Hälfte — Kantenglättung, kein
+Versatz. Der Tausch ist dadurch unsichtbar.
 
-Fünf Dinge, an denen das sonst scheitert:
+Was daran nicht offensichtlich ist — jeder Punkt ist einmal schiefgegangen:
 
+- **Mitte auf Mitte reißt.** Zwischen zwei Formen, die sich nicht
+  überdecken, sind beide Felder positiv und ihr Mittel auch: der Stamm
+  verschwand mitten im Morph. Ausgerichtet wird deshalb **Stamm auf
+  Stamm und Bogen auf Bogen** (`SPL_MORPH`, aus den Kanten beider PNGs
+  gerechnet: Anker x 140,4, Stauchung 0,584). Mit Mitte auf Mitte lag
+  der Logo-Stamm 65 px (bei 200 px Höhe) neben dem des R.
+- **Gemeinsame Pose.** Das Logo-R lehnt sich mit 0,47 nach rechts
+  (zurückgeneigt steht der Stamm in drei Messzeilen bei x 88,3 — die
+  Zahl bestätigt sich selbst). Beide Formen stehen in jedem Moment in
+  derselben Neigung und Breite: das R wird geneigt und gestaucht, das
+  Logo startet aufgerichtet und läuft in seine Pose. So liegen die
+  Stämme die ganze Zeit aufeinander.
+- **Drei Zugaben in der Mitte des Wegs** (`4e(1−e)`, also null an
+  beiden Enden): `fuse` zieht zur weichen Vereinigung beider Formen —
+  das hält sie zusammen, wo das Bein des R und das des Logos
+  verschieden gebaut sind; `swell` und `ripple` machen aus der
+  linearen Mischung etwas, das fließt. Mit `fuse` 0,55 wurde die Mitte
+  ein Tintenklecks, ohne ein Gerippe.
 - **Die Zielposition lässt sich nicht in CSS ausdrücken.** Das Video
-  liegt im Cover (eigenes 9:16-Element, zentriert, überstehend
-  beschnitten), die Marke sitzt an einer festen Stelle *in ihm*. Ihre
-  Lage auf dem Schirm hängt also an der Video-Geometrie, nicht am
-  Viewport. Gerechnet wird sie deshalb in `fit()` — derselben
-  Funktion, die das Video einpasst, aus denselben zwei Zahlen.
+  liegt im Cover, die Marke sitzt fest *in ihm* (`SPL_MARK`: x 306..404,
+  y 589..646 im ersten Frame — gut 2 % der Höhe *über* der Mitte;
+  auf die Mitte zu morphen kostete ~15 px Sprung). Gerechnet wird in
+  `fit()`, derselben Funktion, die das Video einpasst.
+- **Höchstens doppelte Pixeldichte im Canvas.** Die Form bewegt sich
+  die ganze Zeit; eine dritte Dichte kostet mehr als die Hälfte der
+  Rechenzeit, ohne dass man sie sähe. Das ruhende Endbild ist das PNG.
 - **Slide und Morph brauchen zwei Elemente.** Die Keyframe-Animation
   hält per `both` ihren Endwert und würde ein inline gesetztes
-  `transform` überschreiben. Deshalb trägt eine äußere Gruppe den
-  Slide und die Kinder den Morph — zwei verschachtelte Transforms.
-- **Der Drehpunkt des R ist die R-Mitte im Bild** (`transformOrigin:
-  12,15 % 48,3 %`), nicht die Bildmitte: skaliert man das PNG um
-  seine eigene Mitte, wandert das R dabei aus dem Bild.
-- **Deckungsgleich, sonst ist es ein Crossfade.** Die Marke startet
-  exakt auf dem R — gleiche Mitte, gleiche Breite (`scale(rW/markW)`)
-  — und beide fahren denselben Weg auf die Zielgröße. Zwei
-  verschieden große Bilder an verschiedenen Stellen übereinander zu
-  blenden sieht genau danach aus.
-- **Das dünne R geht früher, als die Marke kommt, und verliert dabei
-  die Kante** (`blur(2,5px)`). Sonst stehen 200 ms lang zwei scharfe
-  R übereinander — eine Doppelbelichtung statt einer Verwandlung.
+  `transform` überschreiben — außen die Slide-Gruppe, innen das R.
+
+Gemessen im Browser (390 × 844): 57 Bilder im Morph, gleichmäßig
+16,7 ms, kein Frame ohne Form.
+
+**Rückweg `'fade'`**: stehen die Felder bei 1,4 s nicht (Bilder nicht
+geladen, Canvas nicht lesbar) oder ist `prefers-reduced-motion` an,
+blendet das R deckungsgleich in die Marke über. Bei reduzierter
+Bewegung kürzt der Killswitch aus theme.js die Transitions auf null,
+die Marke steht dann sofort an ihrem Platz — eine rAF-Schleife würde
+er nicht anhalten, deshalb entscheidet der Splash das selbst.
 
 Die Taktung: Slide 0,45 s + 0,85 s = 1,3 s, dann **100 ms Pause**
 (laufen Slide und Morph ineinander, wandert das R diagonal und der
 Wechsel wird zu einer zweiten Bewegung statt zu einem Moment), Morph
-1,4 → 2,1 s, Vorhang ab 2,2 s. Bei `prefers-reduced-motion` greift
-der Killswitch aus theme.js — er kürzt auch Transitions, die Marke
-steht also sofort an ihrem Platz, statt zu wandern.
+1,4 → 2,3 s, Vorhang ab 2,4 s.
 
 Die Marke liegt als eigenes Asset bei (`ritmo-logo-r.png`, weiß
 eingefärbter Beschnitt aus `ritmowide.png`, Rezept in
 [public/assets/README.md](public/assets/README.md)). Weiß, weil die
-Marke im Video weiß ist und nicht gold — der Übergang soll nicht an
-einem Farbsprung auffallen.
+Marke im Video weiß ist und nicht gold.
 
 ### Der Turnier-Start-Vorhang und sein Orb (`TennisOrb`)
 

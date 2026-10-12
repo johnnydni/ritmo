@@ -247,6 +247,15 @@ export function clearMatchLog() {
    joinen via PIN/QR → Host approved → Tournament läuft.
 ═══════════════════════════════════════════════════════════════ */
 
+/* Ein PIN, wie genPin ihn baut (Laenge grosszuegig fuer alte Sessions),
+   oder null. Alles, was von aussen kommt — ?join= aus der URL, ein
+   gescannter QR-Code —, laeuft hier durch, bevor es in einen
+   Realtime-Filter ('pin=eq.' + p) oder Kanalnamen gekettet wird. */
+export function normPin(s) {
+  const p = String(s ?? '').trim().toLowerCase();
+  return /^[a-z0-9]{4,12}$/.test(p) ? p : null;
+}
+
 function genPin() {
   // 6-stelliger Pin, easy zu tippen wenn QR nicht klappt.
   // Buchstaben/Ziffern ohne 0/o/1/l für Lesbarkeit.
@@ -385,8 +394,8 @@ export async function leaveOnlineTournament(pin, participantId) {
  */
 export function subscribeToTournament(pin, onChange) {
   const c = sb();
-  if (!c || !pin) return () => {};
-  const p = pin.toLowerCase();
+  const p = normPin(pin);
+  if (!c || !p) return () => {};
   try {
     const channel = c
       .channel('ritmo-session-' + p)

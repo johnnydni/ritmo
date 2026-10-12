@@ -9,7 +9,8 @@ import { loadProfile as dbLoadProfile, saveProfile as dbSaveProfile, logMatch as
   // DNA Cup Cloud-Sync
   createCupSync, fetchCupSync, pushCupSync, subscribeCupSync,
   // DNA Liga
-  createLigaSync, fetchLigaSync, pushLigaSync, subscribeLigaSync
+  createLigaSync, fetchLigaSync, pushLigaSync, subscribeLigaSync,
+  normPin
   } from "./db.js";
 import { LIGA_PHASES, LIGA_GROUPS, initialLigaState, ligaAddParticipant,
   ligaFormTeams, ligaAssignGroups, genGroupMatches, ligaGroupTable, ligaDnaBoard,
@@ -11598,11 +11599,9 @@ function extractPinFromScan(text){
   try{
     const u=new URL(text);
     const p=u.searchParams.get('join');
-    if(p) return p.trim().toLowerCase();
+    if(p) return normPin(p);
   }catch{}
-  const clean=String(text).trim().toLowerCase();
-  if(/^[a-z0-9]{4,12}$/.test(clean)) return clean;
-  return null;
+  return normPin(text);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -22274,8 +22273,7 @@ export default function App(){
   const[joinPinFromUrl,setJoinPinFromUrl]=useState(()=>{
     if(typeof window==='undefined') return null;
     try{
-      const p=new URLSearchParams(window.location.search).get('join');
-      return p?p.trim().toLowerCase():null;
+      return normPin(new URLSearchParams(window.location.search).get('join'));
     }catch{return null;}
   });
   useEffect(()=>{

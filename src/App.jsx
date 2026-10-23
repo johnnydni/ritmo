@@ -223,6 +223,54 @@ function ServiceIndicator({servingTeam,isDeuce}){
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   BETA-PAUSE — die App ist zu, nach dem Splash steht nur noch der Dank.
+
+   APP_PAUSED schaltet sie fuer ALLE: eingeloggt oder nicht, mit
+   ?join=-Link oder ohne, auch die Verified-Landing aus der
+   Bestaetigungsmail. App() rendert dann nur noch Splash und diese
+   Seite — kein Login, kein Home, kein Turnier.
+
+   Wieder aufmachen: APP_PAUSED auf false und deployen.
+   Lokal entwickeln: VITE_APP_PAUSED=0 in .env.local (wirkt nur im
+   Dev-Build; Production ist pausiert, egal was im Build-Env steht).
+
+   Die Daten auf dem Geraet bleiben unangetastet: Profil, Turniere und
+   Papierkorb liegen weiter in localStorage und sind wieder da, sobald
+   die Sperre faellt.
+═══════════════════════════════════════════════════════════════ */
+const APP_PAUSED=!(import.meta.env.DEV&&import.meta.env.VITE_APP_PAUSED==='0');
+
+function BetaPause(){
+  return(
+    <div style={{minHeight:'100dvh',background:T.bgGrad,color:T.t1,
+      display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 40px)',
+      paddingBottom:'calc(env(safe-area-inset-bottom,0px) + 40px)',
+      paddingLeft:24,paddingRight:24,textAlign:'center'}}>
+      <div className="fi" style={{display:'flex',flexDirection:'column',alignItems:'center',
+        maxWidth:340,width:'100%'}}>
+        <RitmoSplashLogo size={150}/>
+        <div style={{fontFamily:T.fontDisplay,color:T.o,fontSize:11,letterSpacing:3,
+          lineHeight:1,marginTop:30}}>Beta-Programm</div>
+        <div style={{color:T.t1,fontSize:34,fontWeight:700,letterSpacing:-.6,
+          lineHeight:1.12,marginTop:9}}>Danke!</div>
+        <div style={{height:1,width:34,marginTop:13,borderRadius:1,
+          background:`linear-gradient(90deg,transparent,${T.o},transparent)`}}/>
+        <div className="txt fu" style={{color:T.t2,fontSize:16,lineHeight:1.55,marginTop:16,
+          display:'flex',flexDirection:'column',gap:14,animationDelay:'.1s'}}>
+          <div>Danke an alle, die beim RITMO Beta-Programm dabei waren – für jedes
+            Match, jedes Turnier und für euer Feedback. Ihr habt RITMO mitgebaut.</div>
+          <div>Die App wird gerade weiterentwickelt und befindet sich auf dem Weg in
+            ihre nächste Phase. Bis dahin ist sie pausiert.</div>
+        </div>
+        <div className="fu" style={{color:T.t1,fontSize:16,fontWeight:700,marginTop:26,
+          animationDelay:'.18s'}}>Dein RITMO Team</div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
    BETA LANDING — Pre-Auth Marketing Screen
 
    Wird nach dem Splash gezeigt, solange der User nicht eingeloggt ist.
@@ -22249,6 +22297,7 @@ export default function App(){
   // VerifiedLanding: aktiv wenn der Supabase-Mail-Link uns mit
   // ?verified=1 zurückgeschickt hat. Blockiert das Auto-Routing
   // des Auth-Listeners, damit der User die Info-Seite zuerst sieht.
+  const[pauseShown,setPauseShown]=useState(false);
   const[verifyLanding,setVerifyLanding]=useState(()=>{
     if(typeof window==='undefined') return false;
     try{return new URLSearchParams(window.location.search).get('verified')==='1';}
@@ -22892,6 +22941,15 @@ export default function App(){
       return {...p,matchesPlayed:String(matches),winsCount:String(wins)};
     });
   },[]);
+
+  /* Beta-Pause (siehe BetaPause): nach dem Splash nur noch der Dank.
+     Eigener Merker statt scr: ein Effekt (Auth-Listener, Join-Link)
+     darf scr umstellen, ohne den Splash abzuwuergen oder die Sperre
+     zu umgehen. */
+  if(APP_PAUSED) return(<>
+    <style>{CSS}</style>
+    {pauseShown?<BetaPause/>:<Splash onDone={()=>setPauseShown(true)}/>}
+  </>);
 
   return(<>
     <style>{CSS}</style>

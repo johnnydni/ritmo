@@ -268,6 +268,26 @@ Leute ruft.
 - Der Rundenwechsel schliesst es (derselbe Effekt, der den
   Court-Filter zuruecksetzt) — danach ist „danach" etwas anderes.
 
+### Beta-Pause (`APP_PAUSED`)
+
+**Die App ist gerade fuer alle zu.** Nach dem Splash steht nur noch
+`BetaPause`: ein Dank an die Beta-Tester und der Hinweis, dass RITMO
+weiterentwickelt wird. `App()` rendert in diesem Zustand per frueher
+Rueckgabe nur Splash und diese Seite — kein Login, kein Home, kein
+`?join=`, keine Verified-Landing.
+
+- **Wieder aufmachen:** `APP_PAUSED` in App.jsx auf `false`, deployen.
+- **Lokal entwickeln:** `VITE_APP_PAUSED=0` in `.env.local`. Das wirkt
+  nur im Dev-Build; Production ist pausiert, egal was im Build-Env steht.
+- Nach dem Splash schaltet ein **eigener Merker** (`pauseShown`), nicht
+  `scr`: Effekte wie der Auth-Listener stellen `scr` um und duerfen
+  weder den Splash abwuergen noch die Sperre umgehen.
+- **Die Geraetedaten bleiben**: Profil, Turniere und Papierkorb liegen
+  weiter in localStorage und sind beim Wiederaufmachen da.
+- Ankommen tut die Sperre beim naechsten Start mit Netz: der Service
+  Worker laedt `index.html` network-first. Wer offline startet, bekommt
+  bis dahin die zuletzt gecachte Version.
+
 ### Der Splash: aus dem R wird die Marke
 
 Der Ladebildschirm hält gut zwei Sekunden auf Schwarz, bevor das

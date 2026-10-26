@@ -284,9 +284,23 @@ Rueckgabe nur Splash und diese Seite — kein Login, kein Home, kein
   weder den Splash abwuergen noch die Sperre umgehen.
 - **Die Geraetedaten bleiben**: Profil, Turniere und Papierkorb liegen
   weiter in localStorage und sind beim Wiederaufmachen da.
-- Ankommen tut die Sperre beim naechsten Start mit Netz: der Service
-  Worker laedt `index.html` network-first. Wer offline startet, bekommt
-  bis dahin die zuletzt gecachte Version.
+- **Der Cache darf die alte App nicht weiterreichen.** Mit `ritmo-v1`
+  lief sie offline aus dem Service-Worker-Cache einfach weiter. Seit
+  `ritmo-v2` loescht `activate` jeden fremden Cache, laedt offene
+  Fenster einmal neu, und Navigationen gehen mit `cache:'no-cache'`
+  raus (GitHub Pages erlaubt `index.html` sonst 10 Minuten im
+  HTTP-Cache). `main.jsx` registriert mit `updateViaCache:'none'` und
+  fragt beim Zurueckholen der PWA aus dem Hintergrund selbst nach
+  einem neuen Worker.
+- **Das Neuladen in `activate` wird angestossen, nicht abgewartet.**
+  Die Navigation laeuft durch den neuen Worker und wartet auf
+  `activated` — verkettet in `waitUntil` hing er fuer immer in
+  `activating`.
+- Gemessen mit echtem Service Worker (alte App gecacht, dann Deploy):
+  spaetestens beim zweiten Start mit Netz steht die Pause, danach
+  auch offline. **Wer nie wieder online geht, behaelt die alte
+  App** — der Code liegt auf seinem Geraet, dagegen hilft kein
+  Server.
 
 ### Der Splash: aus dem R wird die Marke
 

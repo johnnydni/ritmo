@@ -59,7 +59,17 @@ bootstrap();
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register(`${import.meta.env.BASE_URL}sw.js`)
+      // updateViaCache:'none' — sw.js nie aus dem HTTP-Cache: ein neuer
+      // Worker (z. B. die Beta-Pause) soll sofort ankommen.
+      .register(`${import.meta.env.BASE_URL}sw.js`, { updateViaCache: "none" })
+      .then((reg) => {
+        // Eine installierte PWA wird oft nur aus dem Hintergrund
+        // zurueckgeholt, ohne Navigation — dann fragt der Browser nie
+        // nach einem neuen Worker. Beim Zurueckkommen selbst nachfragen.
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "visible") reg.update().catch(() => {});
+        });
+      })
       .catch((e) => console.warn("[RITMO] SW-Registrierung fehlgeschlagen:", e));
   });
 }

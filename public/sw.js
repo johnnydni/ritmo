@@ -14,8 +14,20 @@
 
    Update-Mechanik: CACHE-Namen bumpen → activate räumt alte Caches
    weg; skipWaiting/clients.claim aktivieren den neuen Worker sofort.
+
+   Ein Bump muss die alte App WIRKLICH verdraengen (gebraucht fuer die
+   Beta-Pause, siehe CLAUDE.md). Drei Luecken, die v1 offen liess:
+   - Offline lieferte der Cache die alte Shell samt alter Bundles.
+     → activate loescht JEDEN fremden Cache, nicht nur ritmo-*.
+   - Eine offene App laedt nicht von selbst neu, nur weil ein neuer
+     Worker da ist — sie liefe mit dem alten Bundle weiter.
+     → activate laedt alle Fenster einmal neu (activate feuert je
+       Worker genau einmal, eine Schleife entsteht nicht).
+   - GitHub Pages schickt index.html mit max-age=600: bis zu zehn
+     Minuten kam auch "online" noch die alte Shell aus dem HTTP-Cache.
+     → Navigationen gehen mit cache:'no-cache' raus (Revalidierung).
 ═══════════════════════════════════════════════════════════════ */
-const CACHE = 'ritmo-v1';
+const CACHE = 'ritmo-v2';
 
 self.addEventListener('install', () => { self.skipWaiting(); });
 
@@ -24,6 +36,12 @@ self.addEventListener('activate', (e) => {
     caches.keys()
       .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
+      // NICHT auf das Neuladen warten: dessen Navigation geht durch
+      // diesen Worker und wartet auf 'activated' — und das kaeme erst,
+      // wenn waitUntil durch ist. Verkettet haengt der Worker fuer
+      // immer in 'activating' (gemessen).
+      .then(() => { self.clients.matchAll({ type: 'window' })
+        .then(cs => cs.forEach(c => c.navigate(c.url).catch(() => {}))); })
   );
 });
 
@@ -35,7 +53,7 @@ self.addEventListener('fetch', (e) => {
 
   if (req.mode === 'navigate') {
     e.respondWith(
-      fetch(req)
+      fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' })
         .then(res => {
           if (res.status === 200) {
             const copy = res.clone();

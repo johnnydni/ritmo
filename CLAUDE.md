@@ -1286,19 +1286,17 @@ like a sports magazine, not like a settings dialog):
 | **Centauri** (`T.fontDisplay`) | Kickers/ressorts above a title, section labels (`SectionRule`), table column heads, long-form headings. Short words, generously letter-spaced (`letterSpacing` 1.6–3). | **Numbers** — the `0` is an empty rectangle and the `2` is barely distinguishable from a `Z`. Also anything longer than ~16 characters: at 15 px a line runs ~19 px per character, so it stops fitting 390 px screens. |
 | **SF Pro** (`T.fontText`, `.txt`) | Subtitles under a screen title, card descriptions, legal/long-form body copy. Italic for sublines, upright for body. | Labels, buttons, anything functional. |
 | **Inter** (`T.fontSans`) | Everything else — titles, body, buttons, all figures (with `fontVariantNumeric:'tabular-nums'`). | — |
-| **Libre Caslon, kursiv** (`T.fontSerif`) | **Headlines in the Home language** — screen titles (`ScreenHeader`), section heads (`SectionRule`, via `HEAD_SERIF`), card titles, the tournament name on the Live card. Bundled from [src/fonts/caslon.css](src/fonts/caslon.css) (OFL). | Body copy, labels, buttons, figures — those stay Inter / SF Pro. |
+| **Times** (`T.fontSerif`) | **Headlines in the Home language** — italic bold for screen titles (`ScreenHeader`) and section heads (`SectionRule`, via `HEAD_SERIF`), upright bold for card titles. A system font (Times New Roman / Liberation Serif), never bundled. | Body copy, labels, buttons, figures — those stay Inter / SF Pro. |
 
-**Libre Caslon hat nur einen Schnitt, die Kursive 400 — und der deckt
-alles ab.** `caslon.css` meldet ihn fuer `font-style` normal *und* italic
-und fuer die Gewichte 100–900. Im Code stehen an den Titeln noch
-`fontWeight:700` und teils kein `fontStyle`; ohne diese Spannweite
-rechnete der Browser daraus eine Fett-Attrappe bzw. eine
-schraeggestellte Aufrechte — beides sieht billig aus. Wer eine
-aufrechte Antiqua will, braucht einen eigenen Schnitt, kein
-`fontStyle:'normal'`. Vorher stand hier Times (System, nicht
-gebuendelt).
+**Libre Caslon (kursiv) steht an genau einer Stelle: dem
+Turniernamen auf der Live-Karte** (`T.fontCard`, gebuendelt aus
+[src/fonts/caslon.css](src/fonts/caslon.css), OFL). Sie lief kurz
+app-weit als Antiqua und ging wieder zurueck auf Times — sie ist eine
+Auszeichnung fuer den Namen, keine Hausschrift. Es gibt nur den einen
+Schnitt (Kursive 400), gemeldet fuer die Gewichte 100–900: ein
+`fontWeight:700` wuerde sonst eine Fett-Attrappe erzeugen.
 
-Die **Live-Karte eines Turniers traegt nur den Namen** (21 px, bis zu
+Die Live-Karte eines Turniers traegt **nur den Namen** (21 px, bis zu
 zwei Zeilen). Format, Runde und Spielerzahl stehen im Turnier selbst,
 der Zustand rechts in der Pille. Match und Online-Turnier behalten
 ihre Unterzeile — dort sagt sie etwas, das nirgends sonst steht.

@@ -270,15 +270,18 @@ Leute ruft.
 
 ### Beta-Pause (`APP_PAUSED`)
 
-**Die App ist gerade fuer alle zu.** Nach dem Splash steht nur noch
-`BetaPause`: ein Dank an die Beta-Tester und der Hinweis, dass RITMO
+**Derzeit offen** (`APP_PAUSED=false`). Der Schalter bleibt fuer den
+naechsten Bedarf: auf `true`, und nach dem Splash steht nur noch
+`BetaPause` — ein Dank an die Beta-Tester und der Hinweis, dass RITMO
 weiterentwickelt wird. `App()` rendert in diesem Zustand per frueher
 Rueckgabe nur Splash und diese Seite — kein Login, kein Home, kein
 `?join=`, keine Verified-Landing.
 
-- **Wieder aufmachen:** `APP_PAUSED` in App.jsx auf `false`, deployen.
-- **Lokal entwickeln:** `VITE_APP_PAUSED=0` in `.env.local`. Das wirkt
-  nur im Dev-Build; Production ist pausiert, egal was im Build-Env steht.
+- **Zu- und aufmachen:** `APP_PAUSED` in App.jsx umstellen, deployen.
+  Dazu den Cache-Namen in `public/sw.js` hochzaehlen (beim Aufmachen
+  `ritmo-v3`): erst der neue Worker laedt offene Fenster und aus dem
+  Hintergrund geholte PWAs neu, sonst stuende dort die alte Seite, bis
+  jemand die App selbst neu startet.
 - Nach dem Splash schaltet ein **eigener Merker** (`pauseShown`), nicht
   `scr`: Effekte wie der Auth-Listener stellen `scr` um und duerfen
   weder den Splash abwuergen noch die Sperre umgehen.
@@ -296,9 +299,14 @@ Rueckgabe nur Splash und diese Seite — kein Login, kein Home, kein
   Die Navigation laeuft durch den neuen Worker und wartet auf
   `activated` — verkettet in `waitUntil` hing er fuer immer in
   `activating`.
-- Gemessen mit echtem Service Worker (alte App gecacht, dann Deploy):
-  spaetestens beim zweiten Start mit Netz steht die Pause, danach
-  auch offline. **Wer nie wieder online geht, behaelt die alte
+- Gemessen mit echtem Service Worker (alte Version gecacht, dann
+  Deploy): ab `ritmo-v2` steht der neue Stand schon beim ersten Start
+  mit Netz, danach auch offline (Aufmachen v2 → v3 so nachgemessen).
+  Von `ritmo-v1` aus konnte es einen Start laenger dauern — v1 holte
+  `index.html` noch durch den HTTP-Cache. Beim Testen nach
+  `setOffline(false)` kurz warten: sofort danach scheitert der
+  Netzabruf noch, und der Cache liefert die alte Seite — das sieht aus
+  wie ein Fehler im Worker und ist keiner. **Wer nie wieder online geht, behaelt die alte
   App** — der Code liegt auf seinem Geraet, dagegen hilft kein
   Server.
 

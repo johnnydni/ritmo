@@ -273,6 +273,42 @@ Die Bausteine stehen in App.jsx direkt vor `ScreenHeader`:
   Bald-Seiten; Setup-Strecken; laufendes Match/Turnier/Endstand (mit
   `dim`); Login/Registrierung/Onboarding.
 
+### Single Match: Aufstellung und Scoreboard
+
+**Setup (`SingleSetup`)** ist eine Aufstellung, kein Formular: die vier
+Namen stehen auf einem Court von oben, Team 2 oben, Team 1 (du) unten,
+das Netz dazwischen. Darunter zwei Modus-Karten mit Klartext und NUR
+die Optionen des gewaehlten Modus (Golden Point bzw. Spielziel), am
+Ende ein grosser „Match starten“-Knopf mit einer Zusammenfassung.
+
+- Die Namensfelder sind eine **Render-Funktion** (`seat(idx)`), keine
+  innen definierte Komponente — die wuerde bei jedem Tastendruck neu
+  gemountet, und das Feld verloere den Fokus.
+- Team A ist immer das Team des Nutzers (`user_team:'A'` beim
+  Loggen). Deshalb gibt es keinen „Seiten tauschen“-Knopf.
+
+**Anzeige (`Match`, Hochformat)** ist ein Scoreboard: zwei grosse
+Glasflaechen, die GANZE Flaeche ist der Punkt-Knopf. Team B oben,
+Team A unten — wie im Setup.
+
+- **Rueckgaengig in Daumenhoehe** zwischen den Flaechen. Vorher gab es
+  auf dem Telefon gar keins (nur per Ring/Presenter); ein Vertipper
+  kostete den ganzen Spielstand.
+- **„Aufschlag rechts/links“** auf der Flaeche des aufschlagenden
+  Teams (`servingTeam`/`isDeuce`, dieselbe Rechnung wie die
+  `ServiceIndicator`-Skizze im Vollbild).
+- Einstand/Vorteil/Golden Point stehen als **Wort in der Antiqua**.
+  Beim Vorteil der Gegenseite bleibt die Stelle leer — ein Strich in
+  104 px stand als grauer Balken da.
+- **Americano „Split 21“ endet, wenn BEIDE zusammen 21 Punkte haben**
+  (`amR`: `pA+pB>=lim`), nicht bei 21 fuer ein Team. Der Status zaehlt
+  deshalb die offenen Punkte herunter („Noch 16 von 21 Punkten“); das
+  Setup sagt „21 gesamt“ und nennt ein Beispiel (18:3).
+- **Sieg als Karte** (Ergebnis, „Neues Match“, „Letzter Punkt zurück“,
+  „Startseite“) statt eines Banners am Seitenende.
+- Vollbild (`bigScreen`) behaelt sein Layout; es bekommt nur das Foto
+  mit `dim .62` — dort zaehlen auf dem Fernseher nur die Zahlen.
+
 ### Die Bibel: Regelwerk, Journey, App-FAQ
 
 Neu gebaut als Magazin, nicht nur umgefaerbt.

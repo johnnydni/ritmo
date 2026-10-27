@@ -5659,198 +5659,163 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
   // Anzeige-Namen fuer die Match-Screen (Team A & Team B).
   const teamA=[players[0]||'Spieler 1',players[1]||'Spieler 2'].join(' & ');
   const teamB=[players[2]||'Spieler 3',players[3]||'Spieler 4'].join(' & ');
+  const start=()=>{
+    buzz(10);
+    setCfg({players,nameA:teamA,nameB:teamB,format:fmt,amLimit:amLim,goldenPointAfter:gpAfter});
+    nav('match');
+  };
+  const GP_OPTS=[{v:null,l:'Aus'},{v:0,l:'Sofort'},{v:1,l:'2. Einstand'},{v:2,l:'3. Einstand'}];
+  const summary=fmt==='bo3'
+    ?`Best of 3 · ${gpAfter===null?'mit Vorteil':gpAfter===0?'Golden Point':`Golden Point ab ${gpAfter+1}. Einstand`}`
+    :`Americano · ${amLim>0?`${amLim} Punkte gesamt`:'ohne Limit'}`;
 
+  /* Ein Spieler auf dem Court: Initialen im Glaskreis, darunter der
+     Name als Feld. Render-Funktion, KEINE Komponente — eine innen
+     definierte Komponente wuerde bei jedem Tastendruck neu gemountet
+     und das Feld verloere den Fokus. */
+  const seat=(idx)=>{
+    const nm=players[idx]||'';
+    const ini=(nm.trim().split(/\s+/).map(w=>w[0]).join('').slice(0,2)||String(idx+1)).toUpperCase();
+    return(
+      <label key={idx} style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',
+        alignItems:'center',gap:7,cursor:'text'}}>
+        <span style={{width:46,height:46,borderRadius:'50%',background:T.glassHi,
+          border:`1px solid ${idx===0?T.o:T.glassLine}`,color:T.t1,fontSize:15,fontWeight:800,
+          display:'flex',alignItems:'center',justifyContent:'center',letterSpacing:.3}}>{ini}</span>
+        <input value={nm} onChange={e=>setPlayer(idx,e.target.value)}
+          placeholder={idx===0?'Dein Name':`Spieler ${idx+1}`}
+          aria-label={`Spieler ${idx+1}`}
+          autoCapitalize="words" autoCorrect="off" spellCheck={false}
+          onFocus={e=>e.target.select()}
+          style={{width:'100%',textAlign:'center',background:'transparent',border:'none',
+            borderBottom:`1px solid ${T.glassLine}`,outline:'none',color:T.t1,
+            fontSize:15,fontWeight:700,padding:'3px 2px 5px'}}/>
+        {idx===0&&<span style={{color:T.o,fontSize:11,fontWeight:700,marginTop:-2}}>Du</span>}
+      </label>
+    );
+  };
+  const seg=(opts,val,onPick)=>(
+    <div style={{display:'flex',gap:4,padding:4,borderRadius:999,background:T.glassHi,
+      border:`1px solid ${T.glassLine}`}}>
+      {opts.map(o=>{
+        const on=val===o.v;
+        return(
+          <button key={String(o.v)} onClick={()=>{buzz(5);onPick(o.v);}} aria-pressed={on}
+            style={{flex:1,padding:'9px 4px',borderRadius:999,border:'none',cursor:'pointer',
+              background:on?T.t1:'transparent',color:on?'#000':T.t1,
+              fontSize:12.5,fontWeight:on?800:600,whiteSpace:'nowrap',
+              transition:'background .2s, color .2s'}}>{o.l}</button>
+        );
+      })}
+    </div>
+  );
+  const modeCard=(id,icon,title,desc)=>{
+    const on=fmt===id;
+    return(
+      <button onClick={()=>{buzz(6);setFmt(id);}} aria-pressed={on}
+        style={{flex:1,minWidth:0,...GLASS,borderRadius:20,padding:'16px 14px',
+          border:`1.5px solid ${on?T.o:T.glassLine}`,cursor:'pointer',color:T.t1,
+          textAlign:'left',display:'flex',flexDirection:'column',gap:10,
+          boxShadow:on?'0 0 22px var(--oGlow)':'none',transition:'border-color .2s, box-shadow .2s'}}>
+        <span style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+          <span style={{width:40,height:40,borderRadius:'50%',background:T.glassHi,
+            border:`1px solid ${T.glassLine}`,display:'inline-flex',alignItems:'center',
+            justifyContent:'center'}}>{icon}</span>
+          <span aria-hidden="true" style={{width:18,height:18,borderRadius:'50%',
+            border:`1.5px solid ${on?T.o:T.glassLine}`,background:on?T.o:'transparent',
+            boxShadow:on?`inset 0 0 0 3px ${T.bg}`:'none'}}/>
+        </span>
+        <span style={{fontFamily:T.fontSerif,fontSize:21,fontWeight:700,lineHeight:1.1}}>{title}</span>
+        <span className="txt" style={{color:T.t2,fontSize:12.5,fontStyle:'italic',lineHeight:1.35}}>{desc}</span>
+      </button>
+    );
+  };
+
+  /* SINGLE MATCH — die Aufstellung, nicht ein Formular.
+     Die vier Namen stehen dort, wo die Spieler stehen: auf einem Court
+     von oben, Team 1 unten (du), Team 2 oben, das Netz dazwischen. Die
+     Modi sind zwei Karten mit Klartext statt zweier Icons ohne
+     Beschriftung, und darunter stehen NUR die Optionen des gewaehlten
+     Modus. Gestartet wird ueber einen grossen Knopf am Ende — der
+     kleine gruene „Start“-Kreis unten rechts war leicht zu uebersehen. */
   return(
-    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
+      <PhotoBackdrop/>
 
-      <ScreenHeader title="Single Match" kicker="Match"
-        subtitle="Best of 3 oder Americano — ihr vier, ein Court."
-        icon={<SingleMatchIcon size={40}/>}/>
+      <ScreenHeader title="Single Match" kicker="Spielen"
+        subtitle="Vier Namen, ein Modus — los geht’s."
+        icon={<SingleMatchIcon size={36}/>}/>
 
-      <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
+      <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',overflowY:'auto'}}>
 
-        <SetupHero
-          icon={<SingleMatchIcon size={36}/>}
-          title="Schnelles Match"
-          desc="Du, dein Partner, zwei Gegner. Waehle Best-of-3 oder Americano (Freestyle) und leg los."/>
-
-        {/* Team 1 */}
-        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16}}>
-          <div style={{padding:'14px 18px 6px',color:T.o,fontSize:11,fontWeight:700,
-            letterSpacing:1.3,textTransform:'uppercase'}}>
-            Team 1
+        <SectionRule top={4}>Aufstellung</SectionRule>
+        <div className="fu" style={{...GLASS,borderRadius:24,padding:14}}>
+          {/* Court von oben: Aussenlinie, Netz, T-Linien. */}
+          <div style={{position:'relative',borderRadius:14,border:`1.5px solid ${T.glassLine}`,
+            padding:'14px 10px'}}>
+            <span aria-hidden="true" style={{position:'absolute',left:'50%',top:'22%',bottom:'22%',
+              width:1,background:T.glassSep}}/>
+            <span aria-hidden="true" style={{position:'absolute',left:0,right:0,top:'22%',
+              height:1,background:T.glassSep}}/>
+            <span aria-hidden="true" style={{position:'absolute',left:0,right:0,bottom:'22%',
+              height:1,background:T.glassSep}}/>
+            <div style={{fontFamily:T.fontDisplay,color:T.t2,fontSize:10,letterSpacing:2.4,
+              marginBottom:10,position:'relative'}}>Team zwei</div>
+            <div style={{display:'flex',gap:18,position:'relative'}}>{seat(2)}{seat(3)}</div>
+            {/* Das Netz — die einzige kraeftige Linie. */}
+            <div style={{position:'relative',margin:'18px -10px',height:3,borderRadius:2,
+              background:'rgba(255,255,255,.75)',boxShadow:'0 0 12px rgba(255,255,255,.25)'}}>
+              <span style={{position:'absolute',left:'50%',top:'50%',transform:'translate(-50%,-50%)',
+                fontFamily:T.fontDisplay,fontSize:9,letterSpacing:2.4,color:T.t1,
+                background:'rgba(20,20,24,.85)',border:`1px solid ${T.glassLine}`,
+                borderRadius:999,padding:'4px 10px'}}>Netz</span>
+            </div>
+            <div style={{display:'flex',gap:18,position:'relative'}}>{seat(0)}{seat(1)}</div>
+            <div style={{fontFamily:T.fontDisplay,color:T.o,fontSize:10,letterSpacing:2.4,
+              marginTop:12,position:'relative'}}>Team eins</div>
           </div>
-          {[0,1].map(idx=>{
-            const isUser=idx===0;
-            return(
-              <div key={idx} style={{display:'flex',alignItems:'center',
-                padding:'14px 18px',borderTop:`1px solid ${T.sep}`,gap:12}}>
-                {/* Kein festes width mehr: seit 16px-Schrift passte
-                    "Spieler 1" nicht mehr in 94px und die Ziffer brach
-                    um. nowrap + Eigenbreite hält das Label einzeilig. */}
-                <span style={{color:T.t1,fontSize:16,fontWeight:600,whiteSpace:'nowrap',
-                  flexShrink:0,display:'flex',alignItems:'center',gap:5}}>
-                  Spieler {idx+1}
-                  {isUser&&<span style={{color:T.o,fontWeight:700}}>(Du)</span>}
-                </span>
-                <input value={players[idx]}
-                  onChange={e=>setPlayer(idx,e.target.value)}
-                  placeholder={isUser?'Dein Name':`Spieler ${idx+1}`}
-                  autoCapitalize="words" autoCorrect="off" spellCheck={false}
-                  style={{flex:1,fontSize:16,color:T.t2,fontWeight:500,textAlign:'right',
-                    background:'transparent',border:'none',outline:'none'}}/>
-                <button onClick={()=>setPlayer(idx,'')}
-                  aria-label="Namen löschen" title="Namen löschen"
-                  style={{width:20,height:20,borderRadius:'50%',background:T.t4,border:'none',
-                    color:T.t1,fontSize:12,cursor:'pointer',display:'flex',alignItems:'center',
-                    justifyContent:'center',fontWeight:700,flexShrink:0}}>{'×'}</button>
-              </div>
-            );
-          })}
         </div>
 
-        {/* Team 2 */}
-        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16}}>
-          <div style={{padding:'14px 18px 6px',color:T.o,fontSize:11,fontWeight:700,
-            letterSpacing:1.3,textTransform:'uppercase'}}>
-            Team 2
-          </div>
-          {[2,3].map(idx=>(
-            <div key={idx} style={{display:'flex',alignItems:'center',
-              padding:'14px 18px',borderTop:`1px solid ${T.sep}`,gap:12}}>
-              <span style={{color:T.t1,fontSize:16,fontWeight:600,
-                whiteSpace:'nowrap',flexShrink:0}}>
-                Spieler {idx+1}
-              </span>
-              <input value={players[idx]}
-                onChange={e=>setPlayer(idx,e.target.value)}
-                placeholder={`Spieler ${idx+1}`}
-                autoCapitalize="words" autoCorrect="off" spellCheck={false}
-                style={{flex:1,fontSize:16,color:T.t2,fontWeight:500,textAlign:'right',
-                  background:'transparent',border:'none',outline:'none'}}/>
-              <button onClick={()=>setPlayer(idx,'')}
-                aria-label="Namen löschen" title="Namen löschen"
-                style={{width:20,height:20,borderRadius:'50%',background:T.t4,border:'none',
-                  color:T.t1,fontSize:12,cursor:'pointer',display:'flex',alignItems:'center',
-                  justifyContent:'center',fontWeight:700,flexShrink:0}}>{'×'}</button>
-            </div>
-          ))}
+        <SectionRule>Modus</SectionRule>
+        <div className="fu" style={{display:'flex',gap:12,animationDelay:'.05s'}}>
+          {modeCard('bo3',<BestOfThreeIcon size={22}/>,'Best of 3','Sätze, 15 · 30 · 40, Einstand')}
+          {modeCard('americano',<RacketMini size={20}/>,'Americano','Jeder Ballwechsel ein Punkt, mit Timer')}
         </div>
 
-        {/* Spielmodus */}
-        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
-          padding:'18px 18px 20px'}}>
-          <div style={{color:T.o,fontSize:21,fontWeight:800,marginBottom:14}}>Spielmodus</div>
-
-          <div style={{display:'flex',background:T.card2,borderRadius:30,padding:4,gap:4,
-            border:`1px solid ${T.border}`,marginBottom:14}}>
-            <button onClick={()=>setFmt('bo3')}
-              aria-label="Best of 3" title="Best of 3" aria-pressed={fmt==='bo3'}
-              style={{flex:1,padding:'10px',borderRadius:20,border:'none',cursor:'pointer',
-                background:fmt==='bo3'?T.t4:'transparent',
-                display:'flex',alignItems:'center',justifyContent:'center',
-                transition:'background .2s'}}>
-              <BestOfThreeIcon size={22}/>
-            </button>
-            <button onClick={()=>setFmt('americano')}
-              aria-label="Americano" title="Americano" aria-pressed={fmt==='americano'}
-              style={{flex:1,padding:'10px',borderRadius:20,border:'none',cursor:'pointer',
-                background:fmt==='americano'?T.t4:'transparent',
-                display:'flex',alignItems:'center',justifyContent:'center',
-                transition:'background .2s'}}>
-              <RacketMini size={20}/>
-            </button>
-          </div>
-
-          {fmt==='bo3'&&(
-            <div>
-              <div style={{color:T.t1,fontSize:15,fontWeight:700,marginBottom:6}}>Best of Three</div>
-              <div style={{marginBottom:6}}><BestOfThreeIcon size={20}/></div>
-              <div style={{color:T.t3,fontSize:12,lineHeight:1.6,fontWeight:500,marginBottom:14}}>
-                Klassisches Scoring:<br/>
-                15 - 30 - 40 | Einstand - Vorteil<br/>
-                2 Saetze zum Sieg
-              </div>
-              <div style={{borderTop:`1px solid ${T.sep}`,paddingTop:10}}>
-                <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
-                  textTransform:'uppercase',marginBottom:6}}>Golden Point</div>
-                <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
-                  {[
-                    {v:null,l:'Aus'},
-                    {v:0,l:'Sofort'},
-                    {v:1,l:'nach 1×'},
-                    {v:2,l:'nach 2×'},
-                  ].map(opt=>(
-                    <button key={String(opt.v)} onClick={()=>setGpAfter(opt.v)}
-                      style={{padding:'5px 11px',borderRadius:16,cursor:'pointer',
-                        background:gpAfter===opt.v?T.oSoft:'transparent',
-                        border:`1px solid ${gpAfter===opt.v?T.o:T.border}`,
-                        color:gpAfter===opt.v?T.o:T.t2,
-                        fontSize:11,fontWeight:600,transition:'all .15s'}}>
-                      {opt.l}
-                    </button>
-                  ))}
-                </div>
-                <div style={{color:T.t3,fontSize:10,marginTop:6,lineHeight:1.4}}>
-                  {gpAfter===null?'Traditionell: Vorteil → 2 Punkte Vorsprung'
-                    :gpAfter===0?'Beim 1. Einstand entscheidet der naechste Punkt'
-                    :`Ab dem ${gpAfter+1}. Einstand entscheidet der naechste Punkt`}
-                </div>
-              </div>
+        {/* Nur die Optionen des gewaehlten Modus. */}
+        <div className="fu" style={{...GLASS,borderRadius:20,padding:'16px 16px 14px',marginTop:12,
+          animationDelay:'.1s'}}>
+          {fmt==='bo3'?(<>
+            <div style={{fontFamily:T.fontSerif,fontSize:19,fontWeight:700,marginBottom:10}}>Golden Point</div>
+            {seg(GP_OPTS,gpAfter,setGpAfter)}
+            <div className="txt" style={{color:T.t2,fontSize:12.5,fontStyle:'italic',marginTop:10,lineHeight:1.45}}>
+              {gpAfter===null?'Klassisch: nach Einstand braucht es zwei Punkte Vorsprung.'
+                :gpAfter===0?'Beim ersten Einstand entscheidet der nächste Punkt.'
+                :`Ab dem ${gpAfter+1}. Einstand entscheidet der nächste Punkt.`}
             </div>
-          )}
-
-          {fmt==='americano'&&(
-            <div>
-              <div style={{color:T.t1,fontSize:15,fontWeight:700,marginBottom:4}}>
-                Americano <span style={{color:T.t3,fontWeight:600}}>(Freestyle)</span>
-              </div>
-              <div style={{marginBottom:6}}><RacketMini size={18}/></div>
-              <div style={{color:T.t3,fontSize:12,lineHeight:1.6,fontWeight:500,marginBottom:14}}>
-                Punkte zaehlen pro Team. Optional mit Timer.
-              </div>
-              <div style={{display:'flex',justifyContent:'flex-end'}}>
-                <div style={{display:'flex',background:T.card2,borderRadius:20,padding:3,
-                  border:`1px solid ${T.border}`}}>
-                  <button onClick={()=>setAmLim(21)}
-                    style={{padding:'5px 14px',borderRadius:25,border:'none',cursor:'pointer',
-                      background:amLim===21?T.t4:'transparent',
-                      color:T.t1,fontSize:12,fontWeight:600,transition:'background .2s'}}>
-                    Split 21
-                  </button>
-                  <button onClick={()=>setAmLim(0)}
-                    aria-label="Ohne Punktelimit" title="Ohne Punktelimit"
-                    aria-pressed={amLim===0}
-                    style={{padding:'5px 14px',borderRadius:25,border:'none',cursor:'pointer',
-                      background:amLim===0?T.t4:'transparent',
-                      color:T.t1,fontSize:16,fontWeight:600,transition:'background .2s',
-                      display:'flex',alignItems:'center'}}>
-                    {'∞'}
-                  </button>
-                </div>
-              </div>
+          </>):(<>
+            <div style={{fontFamily:T.fontSerif,fontSize:19,fontWeight:700,marginBottom:10}}>Spielziel</div>
+            {seg([{v:21,l:'21 gesamt'},{v:0,l:'Ohne Limit'}],amLim,setAmLim)}
+            <div className="txt" style={{color:T.t2,fontSize:12.5,fontStyle:'italic',marginTop:10,lineHeight:1.45}}>
+              {amLim>0?'Gespielt wird, bis 21 Punkte vergeben sind — etwa 18:3 oder 11:10. Den Timer stellst du im Match ein.'
+                :'Gespielt wird auf Zeit — den Timer stellst du im Match ein.'}
             </div>
-          )}
+          </>)}
         </div>
-        <div style={{height:100,flexShrink:0}}/>
+
+        <button onClick={start} className="fu"
+          style={{marginTop:24,padding:'17px',borderRadius:999,border:'none',cursor:'pointer',
+            background:T.o,color:'#000',fontSize:17,fontWeight:800,animationDelay:'.15s',
+            boxShadow:'0 10px 30px var(--oGlow)'}}>
+          Match starten ›
+        </button>
+        <div className="txt" style={{color:T.t2,fontSize:12.5,fontStyle:'italic',textAlign:'center',
+          marginTop:10}}>{summary}</div>
+        <div style={{height:120,flexShrink:0}}/>
       </div>
 
-      <MatchBar onHome={onHome} rightButtons={[{
-        icon:'Start',
-        label:'Match starten',
-        onClick:()=>{
-          setCfg({players,nameA:teamA,nameB:teamB,format:fmt,amLimit:amLim,goldenPointAfter:gpAfter});
-          nav('match');
-        },
-        style:{
-          width:56,height:56,
-          background:T.g,
-          border:'1px solid rgba(255,255,255,0.18)',
-          color:T.t1,
-          fontSize:13,fontWeight:800,
-        }
-      }]}/>
+      <MatchBar onHome={onHome}/>
     </div>
   );
 }
@@ -6221,8 +6186,11 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
     // seitlich an Geschwister-Spalten anstoßen.
     const sidePad=Math.max(10,Math.round(28/Math.max(1,m)));
     return(
-      <div style={{height:'100dvh',width:'100vw',background:T.bgGrad,
+      <div style={{height:'100dvh',width:'100vw',...PHOTO_ROOT,
         display:'flex',flexDirection:'column',animation:'fadeIn .2s ease',position:'relative'}}>
+        {/* Anzeigetafel: dasselbe Foto, aber kraeftig abgedunkelt —
+            auf dem Fernseher am Court zaehlen nur die Zahlen. */}
+        <PhotoBackdrop dim={.62}/>
 
         {/* Progress bar (Americano with active timer) */}
         {!isB&&hasStarted&&(
@@ -6502,204 +6470,188 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
     );
   }
 
-  // ═══ NORMAL VERTICAL ═══
-  // Tablet-Modus: Content wird auf maxWidth ~720px zentriert, alle
-  // Größen werden um Faktor `tm` skaliert. Phone-Modus rendert wie
-  // gewohnt (tm=1).
+  // ═══ NORMAL VERTICAL — das Scoreboard ═══
+  /* Zwei grosse Glasflaechen, eine je Team; die GANZE Flaeche ist der
+     Punkt-Knopf (am Court trifft man nichts Kleines). Dazwischen, in
+     Daumenhoehe, der Rueckgaengig-Knopf — vorher gab es auf dem
+     Telefon gar keinen, Undo ging nur per Ring oder Presenter, und ein
+     Vertipper kostete den ganzen Spielstand.
+     Wer aufschlaegt (und von welcher Seite), steht auf der Flaeche des
+     Teams — die haeufigste Frage am Court stand bisher nur im Vollbild.
+     Einstand und Vorteil sind Woerter, keine Zahlen: sie stehen in der
+     Antiqua statt im Ziffernsatz. Tablet-Modus: alles mal tm, Inhalt
+     zentriert auf 720 px. */
   const contentMaxWidth=tabletMode?720:'100%';
-  return(
-    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
-      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
+  const hist=isB?bo3.hist:am.hist;
+  const canUndo=!!(hist&&hist.length);
+  const lim=cfg.amLimit??21;
+  const setNo=(sets?.length||0)+1;
+  const status=isB
+    ?(win?'Match beendet':tb?`Satz ${setNo} · Tiebreak`:`Satz ${setNo} · Spiel ${gA+gB+1}`)
+    /* Americano „Split 21“: Schluss ist, wenn BEIDE zusammen 21 Punkte
+       haben (amR: pA+pB>=lim) — nicht, wenn ein Team 21 erreicht.
+       Deshalb zaehlt der Status die offenen Punkte herunter. */
+    :(win?'Match beendet':lim>0?`Noch ${Math.max(0,lim-am.pA-am.pB)} von ${lim} Punkten`:'Ohne Punktelimit');
+  const S=(n)=>Math.round(n*tm);
 
-      <div style={{padding:`0 ${Math.round(9*tm)}px ${Math.round(22*tm)}px`,
-        maxWidth:contentMaxWidth,width:'100%',margin:'0 auto',boxSizing:'border-box'}}>
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-          <RitmoWordmark size={Math.round(52*tm)} style={{marginLeft:-3}}/>
-          <div style={{display:'flex',alignItems:'center',gap:10}}>
-            {isB
-              ?<BestOfThreeIcon size={Math.round(33*tm)}/>
-              :<RacketMini size={Math.round(31*tm)}/>}
+  const panel=(team)=>{
+    const isA=team==='A';
+    const fl=isA?flA:flB;
+    const isW=win===team;
+    const nm=isA?cfg.nameA:cfg.nameB;
+    const big=isB?(isA?dA:dB):(isA?am.pA:am.pB);
+    const word=isB&&(big==='Vorteil'||big==='Einstand'||big==='Golden Point');
+    const dash=isB&&big==='—';
+    const serving=isB&&!win&&servingTeam===team;
+    return(
+      <button key={team} onClick={()=>{if(!win)punkt(team);}} className={fl?'flash':''}
+        aria-label={`Punkt für ${nm}`}
+        style={{...GLASS,flex:1,minHeight:S(150),borderRadius:S(28),
+          border:`1.5px solid ${isW?T.o:T.glassLine}`,
+          padding:`${S(16)}px ${S(20)}px`,display:'flex',flexDirection:'column',
+          justifyContent:'space-between',gap:S(10),cursor:win?'default':'pointer',
+          color:T.t1,textAlign:'left',position:'relative',overflow:'hidden',
+          boxShadow:isW?'0 0 30px var(--oGlow)':'none',transition:'border-color .25s, box-shadow .25s'}}>
+        {/* Kopf: Name, darunter der Aufschlag */}
+        <div style={{display:'flex',alignItems:'flex-start',gap:S(10),minWidth:0}}>
+          <span aria-hidden="true" style={{width:S(10),height:S(10),borderRadius:'50%',marginTop:S(9),
+            flexShrink:0,background:isA?T.o:T.t1}}/>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontFamily:T.fontSerif,fontSize:S(23),fontWeight:700,lineHeight:1.15,
+              overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{nm}</div>
+            {serving&&(
+              <div style={{display:'inline-flex',alignItems:'center',gap:6,marginTop:S(6),
+                padding:`${S(3)}px ${S(10)}px`,borderRadius:999,background:T.glassHi,
+                border:`1px solid ${T.glassLine}`,fontSize:S(11.5),fontWeight:700}}>
+                <span aria-hidden="true" style={{width:S(8),height:S(8),borderRadius:'50%',background:'#E8FF3D'}}/>
+                Aufschlag {isDeuce?'rechts':'links'}
+              </div>
+            )}
           </div>
         </div>
-        <div style={{color:T.t1,fontSize:Math.round(40*tm),marginTop:4,marginLeft:10,fontWeight:900}}>
-          {isB?'Best of Three':'Americano (Freestyle)'}
+        {/* Fuss: links Saetze & Spiele (bzw. Ziel), rechts der Stand */}
+        <div style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',gap:S(12)}}>
+          <div style={{flexShrink:0}}>
+            {isB?(<>
+              <div style={{display:'flex',gap:S(5),marginBottom:S(8)}}>
+                {[0,1,2].map(i=>{
+                  const rec=bo3.sets&&bo3.sets[i];
+                  const won=rec&&rec.w===team;
+                  return(
+                    <span key={i} style={{width:S(22),height:S(22),borderRadius:'50%',
+                      boxSizing:'border-box',display:'inline-flex',alignItems:'center',justifyContent:'center',
+                      background:rec?(won?T.o:T.glassHi):'transparent',
+                      border:`1.5px solid ${rec?(won?T.o:T.glassLine):T.glassLine}`,
+                      color:won?'#000':T.t2,fontSize:S(11),fontWeight:800,
+                      fontVariantNumeric:'tabular-nums'}}>{rec?(isA?rec.gA:rec.gB):''}</span>
+                  );
+                })}
+              </div>
+              <div className="txt" style={{color:T.t2,fontSize:S(12.5),fontStyle:'italic'}}>
+                Spiele <span style={{color:T.t1,fontStyle:'normal',fontWeight:800,fontSize:S(17),
+                  fontVariantNumeric:'tabular-nums',marginLeft:4}}>{isA?gA:gB}</span>
+              </div>
+            </>):(
+              <div className="txt" style={{color:T.t2,fontSize:S(13),fontStyle:'italic'}}>Punkte</div>
+            )}
+          </div>
+          {word?(
+            <div style={{fontFamily:T.fontSerif,fontStyle:'italic',fontWeight:700,
+              fontSize:S(big==='Golden Point'?34:42),lineHeight:1,whiteSpace:'nowrap',
+              color:big==='Vorteil'?T.o:T.t1}}>{big}</div>
+          ):(
+            /* Beim Vorteil der Gegenseite bleibt die Stelle leer: ein
+               Strich in 104 px stand als grauer Balken da, und das
+               „Vorteil“ drueben sagt schon alles. */
+            <div style={{fontSize:S(104),fontWeight:800,lineHeight:.82,letterSpacing:S(-4),
+              fontVariantNumeric:'tabular-nums',whiteSpace:'nowrap',
+              minHeight:S(85),color:T.t1}}>{dash?'':big}</div>
+          )}
         </div>
+      </button>
+    );
+  };
+
+  return(
+    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 54px)',position:'relative',overflow:'hidden'}}>
+      <PhotoBackdrop dim={.32}/>
+
+      {/* Kopf: Modus in der Antiqua, darunter wo man steht. */}
+      <div style={{padding:`0 22px ${S(14)}px`,maxWidth:contentMaxWidth,width:'100%',
+        margin:'0 auto',boxSizing:'border-box',display:'flex',alignItems:'flex-end',gap:12}}>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontFamily:T.fontDisplay,color:T.o,fontSize:11,letterSpacing:3,lineHeight:1}}>Match</div>
+          <div style={{...HEAD_SERIF,fontSize:S(34),lineHeight:1.05,marginTop:S(8)}}>
+            {isB?'Best of Three':'Americano'}
+          </div>
+          <div className="txt" style={{color:T.t2,fontSize:S(14),fontStyle:'italic',marginTop:S(6),
+            fontVariantNumeric:'tabular-nums'}}>{status}</div>
+        </div>
+        <GlassCircle size={44} label="Anzeigetafel im Vollbild" onClick={()=>setBigScreen(true)}>
+          <FullscreenIcon size={18}/>
+        </GlassCircle>
       </div>
 
-      <div style={{flex:1,padding:`0 ${Math.round(22*tm)}px`,display:'flex',flexDirection:'column',
-        gap:Math.round(14*tm),overflowY:'auto',
-        maxWidth:contentMaxWidth,width:'100%',margin:'0 auto',boxSizing:'border-box'}}>
+      <div style={{flex:1,minHeight:0,padding:'0 22px',display:'flex',flexDirection:'column',
+        overflowY:'auto',maxWidth:contentMaxWidth,width:'100%',margin:'0 auto',boxSizing:'border-box'}}>
 
-        {['A','B'].map(team=>{
-          const isA=team==='A';
-          const fl=isA?flA:flB;
-          const isW=win===team;
-          const nm=isA?cfg.nameA:cfg.nameB;
-          const big=isB?(isA?dA:dB):(isA?am.pA:am.pB);
-          const setsCount=isA?sA:sB;
-          const gamesCount=isA?gA:gB;
-          const isAdv = isB && big==='Vorteil';
-          const isDeuce = isB && (big==='Einstand'||big==='Golden Point');
-          const isDash = isB && big==='—';
-          const isSpecial = isAdv || isDeuce || isDash;
-          return(
-            <button key={team} onClick={()=>punkt(team)} className={fl?'flash':''}
-              style={{background:T.card,border:`1px solid ${isW?T.o:T.border}`,
-                borderRadius:Math.round(14*tm),
-                padding:`${Math.round(18*tm)}px ${Math.round(22*tm)}px`,
-                display:'flex',alignItems:'center',
-                cursor:win?'default':'pointer',color:T.t1,textAlign:'left',
-                transition:'border-color .25s',minHeight:Math.round(120*tm)}}>
-
-              <div style={{flex:1,display:'flex',flexDirection:'column',gap:Math.round(14*tm),minWidth:0}}>
-                <div style={{display:'flex',alignItems:'center',gap:Math.round(9*tm),minWidth:0}}>
-                  <div style={{width:Math.round(12*tm),height:Math.round(12*tm),borderRadius:'50%',
-                    background:isA?T.o:T.blue,flexShrink:0,
-                    boxShadow:`0 0 8px ${isA?T.oGlow:T.blueGlow}`}}/>
-                  <div style={{color:T.t1,fontSize:Math.round(24*tm),fontWeight:800,letterSpacing:-.3,
-                    overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{nm}</div>
-                </div>
-                {isB&&(
-                  <div style={{display:'flex',alignItems:'center',gap:Math.round(12*tm)}}>
-                    <div style={{display:'flex',gap:Math.round(6*tm),alignItems:'center'}}>
-                      {/* Pro Satz ein Marker: gefüllter Kreis mit der
-                          Games-Anzahl für DIESES Team in jenem Satz.
-                          Farbe: orange = Satz gewonnen, gedämpft grau =
-                          verloren, leerer outline-Kreis = noch nicht
-                          gespielt. So sieht man den Satz-Verlauf auf
-                          einen Blick (z. B. 6–2, 3–6, im 3. Satz). */}
-                      {[0,1,2].map(i=>{
-                        const setRec=bo3.sets&&bo3.sets[i];
-                        const played=!!setRec;
-                        const won=played&&setRec.w===team;
-                        const games=played?(team==='A'?setRec.gA:setRec.gB):null;
-                        const dotSize=Math.round(20*tm);
-                        return(
-                          <div key={i} style={{
-                            width:dotSize,height:dotSize,borderRadius:'50%',
-                            background:played?(won?T.o:T.card2):'transparent',
-                            border:`1.5px solid ${played?(won?T.o:T.border):T.o}`,
-                            boxSizing:'border-box',
-                            display:'flex',alignItems:'center',justifyContent:'center',
-                            color:played?(won?'#000':T.t2):'transparent',
-                            fontSize:Math.round(11*tm),fontWeight:900,lineHeight:1,
-                          }}>
-                            {played?games:''}
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <div style={{color:T.o,fontSize:Math.round(32*tm),fontWeight:900,
-                      letterSpacing:-1,lineHeight:1}}>
-                      {gamesCount}
-                    </div>
-                  </div>
-                )}
-                {!isB&&(
-                  <div style={{color:T.o,fontSize:Math.round(14*tm),fontWeight:600}}>
-                    {(cfg.amLimit??21)>0?`${big} / ${cfg.amLimit??21}`:'∞'}
-                  </div>
-                )}
-              </div>
-
-              {isSpecial ? (
-                <div style={{display:'flex',flexDirection:'column',alignItems:'center',
-                  flexShrink:0,gap:Math.round(6*tm),maxWidth:'55%'}}>
-                  <div style={{
-                    width:Math.round(48*tm),height:Math.round(48*tm),borderRadius:'50%',
-                    background:isAdv?T.o:T.t1,
-                    boxShadow:isAdv
-                      ?'0 0 14px var(--oGlow), inset 0 -4px 10px rgba(0,0,0,.18)'
-                      :'0 0 10px rgba(255,255,255,.18), inset 0 -4px 10px rgba(0,0,0,.10)'
-                  }}/>
-                  <div style={{color:T.t1,fontSize:Math.round(18*tm),fontWeight:800,letterSpacing:-.3,
-                    whiteSpace:'nowrap',lineHeight:1}}>
-                    {big}
-                  </div>
-                </div>
-              ) : (
-                <div style={{
-                  fontSize:Math.round(96*tm),fontWeight:900,color:T.t1,
-                  lineHeight:.85,letterSpacing:-5,
-                  textAlign:'right',whiteSpace:'nowrap',
-                  flexShrink:0,maxWidth:'55%'}}>
-                  {big}
-                </div>
-              )}
+        {/* Die beiden Flaechen fuellen den Platz; dazwischen Undo. */}
+        <div style={{flex:1,minHeight:S(380),display:'flex',flexDirection:'column'}}>
+          {panel('B')}
+          <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:12,
+            margin:`${S(-10)}px 0`,position:'relative',zIndex:2}}>
+            <button onClick={()=>{if(canUndo)undo();}} disabled={!canUndo}
+              aria-label="Letzten Punkt rückgängig" title="Letzten Punkt rückgängig"
+              style={{width:S(52),height:S(52),borderRadius:'50%',cursor:canUndo?'pointer':'default',
+                background:'rgba(20,20,24,.9)',border:`1px solid ${T.glassLine}`,
+                color:canUndo?T.t1:T.t4,display:'flex',alignItems:'center',justifyContent:'center',
+                boxShadow:'0 6px 20px rgba(0,0,0,.45)',transition:'color .2s'}}>
+              <svg width={S(22)} height={S(22)} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>
+              </svg>
             </button>
-          );
-        })}
+          </div>
+          {panel('A')}
+        </div>
 
-        {/* Punkte-Verlauf */}
-        {(() => {
-          const hist=isB?bo3.hist:am.hist;
-          if(!hist||hist.length===0) return null;
-          const recent=hist.slice(-18);
-          return(
-            <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:15,
-              padding:'10px 14px',display:'flex',alignItems:'center',gap:10,
-              overflowX:'auto'}}>
-              <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1,
-                textTransform:'uppercase',flexShrink:0}}>Verlauf</div>
-              <div style={{display:'flex',gap:4,flex:1,justifyContent:'flex-end'}}>
-                {recent.map((entry,i)=>(
-                  <div key={i} title={entry._t==='A'?cfg.nameA:cfg.nameB}
-                    style={{
-                      width:14,height:14,borderRadius:4,
-                      background:entry._t==='A'?T.o:T.blue,
-                      flexShrink:0,
-                      opacity:0.4+0.6*((i+1)/recent.length),
-                    }}/>
-                ))}
-              </div>
+        {/* Verlauf — die letzten Punkte als Perlen, A orange, B weiss. */}
+        {canUndo&&(
+          <div style={{display:'flex',alignItems:'center',gap:10,marginTop:S(14),
+            padding:`${S(10)}px ${S(14)}px`,borderRadius:999,...GLASS}}>
+            <span className="txt" style={{color:T.t2,fontSize:12,fontStyle:'italic',flexShrink:0}}>Verlauf</span>
+            <div style={{flex:1,display:'flex',gap:5,justifyContent:'flex-end',overflow:'hidden'}}>
+              {hist.slice(-20).map((h,i,arr)=>(
+                <span key={i} title={h._t==='A'?cfg.nameA:cfg.nameB}
+                  style={{width:8,height:8,borderRadius:'50%',flexShrink:0,
+                    background:h._t==='A'?T.o:T.t1,opacity:.35+.65*((i+1)/arr.length)}}/>
+              ))}
             </div>
-          );
-        })()}
+          </div>
+        )}
 
-        {/* Anzeigetafel verbinden — öffnet ein Sheet mit AirPlay / Cast /
-            Miracast-Anleitung, weil Browser keinen direkten Mirror-API-
-            Aufruf erlauben. Die Card bleibt zwischen Verlauf und Timer
-            sichtbar; tap → CastSheet. */}
+        {/* Timer (nur Americano) */}
+        {!isB&&(
+          <div style={{marginTop:S(12)}}>
+            <TimerCard
+              minutes={timerMin} setMinutes={setTimerMin}
+              running={running} secsLeft={secsLeft} finished={timerFinished}
+              hasStarted={hasStarted} theme={theme}
+              onStart={startTimer} onPause={pauseTimer} onReset={resetTimer}/>
+          </div>
+        )}
+
+        {/* Anzeigetafel — leise Zeile, kein Werbeblock. */}
         <button onClick={()=>setCastSheet(true)}
-          style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:15,
-            padding:'14px 16px',display:'flex',alignItems:'center',gap:12,
-            color:T.t1,textAlign:'left',cursor:'pointer',
-            transition:'background .15s'}}
-          onPointerDown={e=>e.currentTarget.style.background=T.card2}
-          onPointerUp={e=>e.currentTarget.style.background=T.card}
-          onPointerLeave={e=>e.currentTarget.style.background=T.card}>
-          <div style={{flexShrink:0,width:38,height:38,borderRadius:13,
-            background:T.card2,border:`1px solid ${T.border}`,color:T.o,
-            display:'flex',alignItems:'center',justifyContent:'center'}}>
-            <AirPlayIcon size={20} color="currentColor"/>
-          </div>
-          <div style={{flex:1,minWidth:0}}>
-            <div style={{color:T.t1,fontSize:16,fontWeight:700,letterSpacing:-.1,marginBottom:2}}>
-              Anzeigetafel verbinden
-            </div>
-            <div style={{color:T.t3,fontSize:11,fontWeight:500,lineHeight:1.55}}>
-              Score per AirPlay, Cast, Miracast auf einen großen Bildschirm spiegeln.
-            </div>
-          </div>
-          <ChevronRightIcon size={18} color={T.t3}/>
+          style={{marginTop:S(12),display:'flex',alignItems:'center',gap:12,padding:'12px 14px',
+            borderRadius:18,...GLASS,color:T.t1,textAlign:'left',cursor:'pointer'}}>
+          <AirPlayIcon size={18} color="currentColor"/>
+          <span style={{flex:1,minWidth:0,fontSize:14,fontWeight:700}}>Auf großen Bildschirm spiegeln</span>
+          <ChevronRightIcon size={16} color={T.t2}/>
         </button>
 
-        {/* Timer (Americano only) */}
-        {!isB&&(
-          <TimerCard
-            minutes={timerMin} setMinutes={setTimerMin}
-            running={running} secsLeft={secsLeft} finished={timerFinished}
-            hasStarted={hasStarted} theme={theme}
-            onStart={startTimer} onPause={pauseTimer} onReset={resetTimer}/>
-        )}
-
-        {win&&win!=='draw'&&(
-          <div style={{textAlign:'center',padding:14,background:T.oSoft,borderRadius:15,
-            border:`1px solid ${T.o}`,color:T.o,fontWeight:700}}>
-            <span style={{display:'inline-flex',alignItems:'center',gap:8}}><TrophyIcon size={20}/>{win==='A'?cfg.nameA:cfg.nameB} gewinnt!</span>
-          </div>
-        )}
-        <div style={{height:100,flexShrink:0}}/>
+        <div style={{height:110,flexShrink:0}}/>
       </div>
 
       <MatchBar
@@ -6707,13 +6659,50 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
         rightButtons={[
           {icon:<span style={{color:T.r,fontSize:20,lineHeight:1}}>↺</span>,
            onClick:()=>setConfReset(true),
-           label:'Spielstand zurücksetzen',
-           style:{background:'rgba(232,69,69,0.12)',
-                  border:`1px solid rgba(232,69,69,0.45)`}},
-          {icon:<FullscreenIcon size={18}/>,
-           onClick:()=>setBigScreen(true),
-           label:'Anzeigetafel im Vollbild'},
+           label:'Spielstand zurücksetzen'},
         ]}/>
+
+      {/* Sieg — eine Karte statt eines Banners am Seitenende, das man
+          erst suchen musste. Der letzte Punkt laesst sich hier noch
+          zuruecknehmen (Vertipper beim Matchball). */}
+      {win&&(
+        <div style={{position:'fixed',inset:0,zIndex:120,display:'flex',alignItems:'center',
+          justifyContent:'center',padding:24,background:'rgba(0,0,0,.55)',
+          WebkitBackdropFilter:'blur(6px)',backdropFilter:'blur(6px)',animation:'fadeIn .25s ease'}}>
+          <div className="fi" style={{...GLASS,background:'rgba(18,18,22,.82)',borderRadius:28,
+            padding:'28px 22px 20px',width:'100%',maxWidth:380,textAlign:'center'}}>
+            <div style={{display:'flex',justifyContent:'center',marginBottom:14}}>
+              <span style={{width:64,height:64,borderRadius:'50%',background:T.oSoft,
+                border:`1px solid ${T.o}`,display:'inline-flex',alignItems:'center',justifyContent:'center'}}>
+                <TrophyIcon size={34}/>
+              </span>
+            </div>
+            <div style={{fontFamily:T.fontDisplay,color:T.o,fontSize:11,letterSpacing:3}}>
+              {win==='draw'?'Remis':'Sieg'}
+            </div>
+            <div style={{...HEAD_SERIF,fontSize:32,lineHeight:1.1,marginTop:10}}>
+              {win==='draw'?'Unentschieden':(win==='A'?cfg.nameA:cfg.nameB)}
+            </div>
+            <div style={{color:T.t1,fontSize:20,fontWeight:800,marginTop:12,
+              fontVariantNumeric:'tabular-nums',letterSpacing:.5}}>
+              {isB?(sets||[]).map(s=>`${s.gA}:${s.gB}`).join('  ·  '):`${am.pA} : ${am.pB}`}
+            </div>
+            <button onClick={()=>{buzz(10);reset();}}
+              style={{width:'100%',marginTop:22,padding:'15px',borderRadius:999,border:'none',
+                background:T.o,color:'#000',fontSize:16,fontWeight:800,cursor:'pointer'}}>
+              Neues Match
+            </button>
+            <div style={{display:'flex',gap:10,marginTop:10}}>
+              <button onClick={undo}
+                style={{flex:1,padding:'12px',borderRadius:999,...GLASS,color:T.t1,
+                  fontSize:13.5,fontWeight:700,cursor:'pointer'}}>Letzter Punkt zurück</button>
+              <button onClick={onHome}
+                style={{flex:1,padding:'12px',borderRadius:999,...GLASS,color:T.t1,
+                  fontSize:13.5,fontWeight:700,cursor:'pointer'}}>Startseite</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {confReset&&<ResetModal onCancel={()=>setConfReset(false)} onConfirm={()=>{reset();setConfReset(false);}}/>}
       {castSheet&&<CastSheet onClose={()=>setCastSheet(false)} onEnterBigScreen={()=>{setCastSheet(false);setBigScreen(true);}}/>}
@@ -7715,20 +7704,21 @@ function TimerCard({minutes,setMinutes,running,secsLeft,finished,onStart,onPause
 
   // 3 states: idle (picker visible), running/paused (countdown), finished
   return(
-    <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
+    <div style={{...GLASS,borderRadius:22,
       padding:'14px 16px',transition:'border-color .25s'}}>
 
       {!hasStarted&&!finished&&(
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:14}}>
           <div style={{flexShrink:0}}>
-            <div style={{color:T.o,fontSize:16,fontWeight:800}}>Timer</div>
-            <div style={{color:T.t3,fontSize:11,fontWeight:500,marginTop:2}}>Minuten</div>
+            <div style={{fontFamily:T.fontSerif,color:T.t1,fontSize:20,fontWeight:700}}>Timer</div>
+            <div className="txt" style={{color:T.t2,fontSize:12,fontStyle:'italic',marginTop:2}}>Minuten</div>
           </div>
-          <ScrollPicker value={minutes} onChange={setMinutes} options={opts} bgColor={T.card}/>
+          {/* Durchsicht statt Kartenfarbe: der Picker blendet seine Raender
+              in bgColor aus, und auf Glas staenden da zwei Baender. */}
+          <ScrollPicker value={minutes} onChange={setMinutes} options={opts} bgColor="transparent"/>
           <button onClick={onStart}
-            style={{flexShrink:0,background:T.g,color:T.t1,
-              border:`1px solid rgba(255,255,255,0.18)`,
-              borderRadius:'50%',width:56,height:56,fontSize:13,fontWeight:700,
+            style={{flexShrink:0,background:T.o,color:'#000',border:'none',
+              borderRadius:'50%',width:56,height:56,fontSize:13,fontWeight:800,
               cursor:'pointer',transition:'opacity .15s'}}
             onPointerDown={e=>e.currentTarget.style.opacity='.7'}
             onPointerUp={e=>e.currentTarget.style.opacity='1'}
@@ -7763,10 +7753,10 @@ function TimerCard({minutes,setMinutes,running,secsLeft,finished,onStart,onPause
                   display:'flex',alignItems:'center',justifyContent:'center'}}>
                 {running?<PauseGlyph size={16} color={T.bg}/>:<PlayGlyph size={16} color={T.bg}/>}
               </button>
-              <button onClick={onReset}
+              <button onClick={onReset} aria-label="Timer zurücksetzen"
                 style={{width:42,height:42,borderRadius:'50%',
-                  border:`1px solid ${T.border}`,background:T.card2,
-                  color:T.t2,fontSize:16,cursor:'pointer'}}>
+                  border:`1px solid ${T.glassLine}`,background:T.glassHi,
+                  color:T.t1,fontSize:16,cursor:'pointer'}}>
                 ↺
               </button>
             </div>

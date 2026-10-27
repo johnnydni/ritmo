@@ -27,7 +27,7 @@
      Minuten kam auch "online" noch die alte Shell aus dem HTTP-Cache.
      → Navigationen gehen mit cache:'no-cache' raus (Revalidierung).
 ═══════════════════════════════════════════════════════════════ */
-const CACHE = 'ritmo-v3';
+const CACHE = 'ritmo-v4';
 
 self.addEventListener('install', () => { self.skipWaiting(); });
 

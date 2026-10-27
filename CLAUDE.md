@@ -264,6 +264,14 @@ Die Bausteine stehen in App.jsx direkt vor `ScreenHeader`:
   Lichtkante und Schatten genau an der gewaehlten Karte.
 - **Kein `BottomFade` auf Foto-Screens**: er verlaeuft in `--bg` und
   stuende als dunkler Balken ueber der Tab-Bar.
+- **Die Hoehe der installierten iPhone-App misst `main.jsx` selbst**
+  (`fitStandaloneHeight`). iOS meldet dort ein Fenster, das um etwa
+  die Statusleiste zu kurz ist (gemessene Luecke ~55 pt): html, `100%`,
+  `100dvh` und `position:fixed` endeten alle darueber, und unten stand
+  der schwarze html-Grund. `screen.*` kennt die echte Hoehe; gesetzt
+  wird sie inline auf html/body/#root, nur im Standalone-Modus und nur
+  bei einer plausiblen Luecke (unter 140 px). Gleichzeitig ist der
+  Cache auf `ritmo-v4` gestiegen, damit offene Apps den Stand neu laden.
 - **Screens sind `height:'100%'`, nie `100dvh`.** In der installierten
   iPhone-App (black-translucent) ist `100dvh` um den unteren Rand zu
   kurz: der Screen endete ueber der Unterkante, Tab-Leiste und

@@ -21,6 +21,36 @@ import "@fontsource/inter/900.css";
 import "./fonts/centauri.css";
 import App from "./App.jsx";
 
+/* iOS-Homescreen-App: die echte Hoehe selbst setzen.
+   Als installierte App (black-translucent) meldet iOS ein Fenster, das
+   um ungefaehr die Statusleiste zu kurz ist — der Inhalt beginnt oben
+   unter der Statusleiste, endet aber 50–60 pt ueber der Unterkante.
+   html, 100 %, 100dvh und position:fixed beziehen sich alle auf dieses
+   zu kurze Fenster; darunter blieb nur der schwarze html-Grund stehen.
+   screen.* kennt die echte Geraetehoehe. Gesetzt wird nur im
+   Standalone-Modus und nur, wenn die Luecke plausibel ist (unter
+   140 px) — im Browser-Tab oder bei offener Tastatur bleibt alles,
+   wie es ist. */
+function fitStandaloneHeight() {
+  const standalone = navigator.standalone === true ||
+    window.matchMedia?.("(display-mode: standalone)").matches;
+  if (!standalone) return;
+  const els = () => [document.documentElement, document.body, document.getElementById("root")];
+  const apply = () => {
+    const portrait = window.matchMedia?.("(orientation: portrait)").matches;
+    const sw = window.screen?.width || 0, sh = window.screen?.height || 0;
+    const full = portrait ? Math.max(sw, sh) : Math.min(sw, sh);
+    const gap = full - window.innerHeight;
+    const h = gap > 0 && gap < 140 ? `${full}px` : "";
+    els().forEach((el) => { if (el) el.style.height = h; });
+  };
+  apply();
+  window.addEventListener("resize", apply);
+  window.addEventListener("orientationchange", () => setTimeout(apply, 250));
+  // iOS settelt das Fenster beim Start erst nach dem ersten Paint.
+  setTimeout(apply, 300); setTimeout(apply, 1200);
+}
+
 // Initialize Supabase if env vars are configured
 async function bootstrap() {
   const url = import.meta.env.VITE_SUPABASE_URL;
@@ -44,6 +74,7 @@ async function bootstrap() {
     console.log("[RITMO] No Supabase env vars — using mock auth");
   }
 
+  fitStandaloneHeight();
   createRoot(document.getElementById("root")).render(
     <StrictMode>
       <App />

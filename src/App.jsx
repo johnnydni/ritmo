@@ -71,98 +71,62 @@ import GlassSurface from "./GlassSurface.jsx";
 
 
 /* ─── Landing pages ─────────────────────────────────────────── */
-function RulesLanding({onHome,onContinue,onMarkRead,alreadyRead}){
+/* Einstieg in Regelwerk bzw. Journey (nur, solange sie nicht als
+   gelesen markiert sind): Kopf wie jeder Screen, das Bild als
+   gerahmte Karte statt als Band von Rand zu Rand, darunter Schlagzeile
+   und Vorspann wie ein Aufmacher — und ein grosser Weiter-Knopf, statt
+   dass der Weg nur im kleinen Pfeil der Leiste steckt. */
+function WissenLanding({title,subtitle,hero,headline,text,cta,ctaLabel,
+  onHome,onContinue,onMarkRead,alreadyRead}){
   return(
-    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
-      position:'relative',overflow:'hidden'}}>
-      {/* Header */}
-      <div style={{paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',
-        padding:'calc(env(safe-area-inset-top,0px) + 60px) 22px 18px',
-        flexShrink:0,zIndex:2,background:T.bg}}>
-        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
-          <BookIcon size={32}/>
-          <div style={{flex:1,minWidth:0}}>
-            <div style={{color:T.t1,fontSize:26,fontWeight:800,letterSpacing:-.3}}>Regelwerk</div>
-            <div style={{color:T.t2,fontSize:16,marginTop:2,fontWeight:400}}>
-              Padel-Regeln, Formate, Begriffe.
-            </div>
-          </div>
-          <QuestionToggle filled={alreadyRead} onClick={onMarkRead}/>
+    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
+      <PhotoBackdrop/>
+      <ScreenHeader kicker="Bibel" title={title} subtitle={subtitle} pad={18}
+        right={<QuestionToggle filled={alreadyRead} onClick={onMarkRead}/>}/>
+      <div style={{flex:1,padding:'0 22px 140px',overflowY:'auto',WebkitOverflowScrolling:'touch'}}>
+        <div className="fi" style={{height:'clamp(200px,34vh,340px)',borderRadius:22,
+          overflow:'hidden',border:`1px solid ${T.glassLine}`,
+          boxShadow:'0 18px 40px rgba(0,0,0,.45)'}}>
+          {hero}
         </div>
+        <div className="fi" style={{...HEAD_SERIF,fontSize:46,lineHeight:1.02,
+          marginTop:26,animationDelay:'.05s'}}>{headline}</div>
+        <div style={{height:2,width:34,marginTop:14,borderRadius:1,
+          background:`linear-gradient(90deg,${T.o},transparent)`}}/>
+        <div className="fu" style={{color:T.t1,opacity:.86,fontSize:16,marginTop:14,
+          lineHeight:1.6,animationDelay:'.15s'}}>{text}</div>
+        <button onClick={()=>{buzz(6);onContinue();}} className="fu"
+          style={{width:'100%',marginTop:26,padding:'16px',borderRadius:999,border:'none',
+            background:T.o,color:'#000',fontSize:16,fontWeight:800,cursor:'pointer',
+            animationDelay:'.22s'}}>
+          {cta} ›
+        </button>
       </div>
-
-      {/* Hero */}
-      <div className="fi" style={{width:'100%',flexShrink:0,
-        height:'clamp(220px,42vh,420px)',overflow:'hidden',
-        borderTop:`1px solid ${T.sep}`,borderBottom:`1px solid ${T.sep}`}}>
-        <HeroRulesVisual/>
-      </div>
-
-      {/* Title + description */}
-      <div style={{flex:1,padding:'24px 22px 16px',overflowY:'auto',
-        display:'flex',flexDirection:'column'}}>
-        <div className="fi" style={{color:T.t1,fontSize:36,fontWeight:900,
-          letterSpacing:-.6,lineHeight:1,animationDelay:'.05s'}}>Padel Up</div>
-        <div className="fu" style={{color:T.t2,fontSize:15,marginTop:14,lineHeight:1.55,
-          fontWeight:400,animationDelay:'.15s'}}>
-          Die Regeln zu verstehen ist die Basis für jedes gute Spiel. Wer sie
-          verinnerlicht hat, spielt entspannter, fairer und kann sich auf das
-          Wesentliche konzentrieren — Strategie, Schlagwahl, Teamwork.
-        </div>
-      </div>
-
       <MatchBar onHome={onHome} rightButtons={[
-        {icon:<ArrowRightCircleIcon size={22}/>,onClick:onContinue,
-         label:'Weiter zum Regelwerk'}
+        {icon:<ArrowRightCircleIcon size={22}/>,onClick:onContinue,label:ctaLabel}
       ]}/>
     </div>
   );
 }
 
+function RulesLanding({onHome,onContinue,onMarkRead,alreadyRead}){
+  return(
+    <WissenLanding title="Regelwerk" subtitle="Padel-Regeln, Formate, Begriffe."
+      hero={<HeroRulesVisual/>} headline="Padel Up"
+      text="Die Regeln zu verstehen ist die Basis für jedes gute Spiel. Wer sie verinnerlicht hat, spielt entspannter, fairer und kann sich auf das Wesentliche konzentrieren — Strategie, Schlagwahl, Teamwork."
+      cta="Zum Regelwerk" ctaLabel="Weiter zum Regelwerk"
+      onHome={onHome} onContinue={onContinue} onMarkRead={onMarkRead} alreadyRead={alreadyRead}/>
+  );
+}
+
 function JourneyLanding({onHome,onContinue,onMarkRead,alreadyRead}){
   return(
-    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
-      position:'relative',overflow:'hidden'}}>
-      {/* Header */}
-      <div style={{padding:'calc(env(safe-area-inset-top,0px) + 60px) 22px 18px',
-        flexShrink:0,zIndex:2,background:T.bg}}>
-        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
-          <JourneyIcon size={32}/>
-          <div style={{flex:1,minWidth:0}}>
-            <div style={{color:T.t1,fontSize:26,fontWeight:800,letterSpacing:-.3}}>Journey</div>
-            <div style={{color:T.t2,fontSize:16,marginTop:2,fontWeight:400}}>
-              Tipps & Tricks für dein Padel-Spiel.
-            </div>
-          </div>
-          <QuestionToggle filled={alreadyRead} onClick={onMarkRead}/>
-        </div>
-      </div>
-
-      {/* Hero */}
-      <div className="fi" style={{width:'100%',flexShrink:0,
-        height:'clamp(220px,42vh,420px)',overflow:'hidden',
-        borderTop:`1px solid ${T.sep}`,borderBottom:`1px solid ${T.sep}`}}>
-        <HeroJourneyVisual/>
-      </div>
-
-      {/* Title + description */}
-      <div style={{flex:1,padding:'24px 22px 16px',overflowY:'auto',
-        display:'flex',flexDirection:'column'}}>
-        <div className="fi" style={{color:T.t1,fontSize:36,fontWeight:900,
-          letterSpacing:-.6,lineHeight:1,animationDelay:'.05s'}}>Spielsinn</div>
-        <div className="fu" style={{color:T.t2,fontSize:15,marginTop:14,lineHeight:1.55,
-          fontWeight:400,animationDelay:'.15s'}}>
-          Regeln sind die Pflicht, Spielsinn ist die Kür. Wer Schlagwahl,
-          Position und Material versteht, gewinnt nicht über Power, sondern über
-          Köpfchen — und genau dorthin führt diese Sektion.
-        </div>
-      </div>
-
-      <MatchBar onHome={onHome} rightButtons={[
-        {icon:<ArrowRightCircleIcon size={22}/>,onClick:onContinue,
-         label:'Weiter zur Journey'}
-      ]}/>
-    </div>
+    <WissenLanding title="Journey" subtitle="Tipps & Tricks für dein Padel-Spiel."
+      hero={<HeroJourneyVisual/>} headline="Spielsinn"
+      text="Regeln sind die Pflicht, Spielsinn ist die Kür. Wer Schlagwahl, Position und Material versteht, gewinnt nicht über Power, sondern über Köpfchen — und genau dorthin führt diese Sektion."
+      cta="Zur Journey" ctaLabel="Weiter zur Journey"
+      onHome={onHome} onContinue={onContinue} onMarkRead={onMarkRead} alreadyRead={alreadyRead}/>
   );
 }
 
@@ -2579,8 +2543,9 @@ function ProfileRitmoDNA({profile,onBack,onHome}){
     fantasma:'creative',individuoso:'creative'};
 
   return(
-    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden'}}>
+      <PhotoBackdrop/>
 
       {/* HEADER ZONE — colored with style accent */}
       <div style={{
@@ -2684,8 +2649,8 @@ function ProfileRitmoDNA({profile,onBack,onHome}){
             <RingChart value={(lvl/7)*100} size={90} color={accent}
               label={lvl.toFixed(2)} subLabel="Level"/>
             <div style={{flex:1,minWidth:0}}>
-              <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.3,
-                textTransform:'uppercase',marginBottom:3}}>Skill</div>
+              <div style={{...HEAD_SERIF,fontSize:21
+                ,marginBottom:3}}>Skill</div>
               <div style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:6}}>
                 <div style={{color:T.t1,fontSize:18,fontWeight:800,letterSpacing:-.3}}>
                   {getLevelLabel(lvl)}
@@ -2706,13 +2671,13 @@ function ProfileRitmoDNA({profile,onBack,onHome}){
         {style&&(
           <div className="fu" style={{animationDelay:'.3s',background:T.card,
             border:`1px solid ${T.border}`,borderRadius:16,padding:'16px 18px',marginBottom:14}}>
-            <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.3,
-              textTransform:'uppercase',marginBottom:10}}>Beste Partner-Chemie</div>
+            <div style={{...HEAD_SERIF,fontSize:21
+              ,marginBottom:10}}>Beste Partner-Chemie</div>
             {style.partners?.slice(0,2).map(p=>{
               const pStyle=PADEL_STYLES[p.id];
               return(
                 <div key={p.id} style={{display:'flex',alignItems:'center',gap:12,
-                  padding:'10px 0',borderTop:`1px solid ${T.sep}`}}>
+                  padding:'10px 0',borderTop:`1px solid ${T.glassSep}`}}>
                   <div style={{width:32,height:32,borderRadius:'50%',background:pStyle.accent,
                     display:'flex',alignItems:'center',justifyContent:'center',
                     color:'white',fontSize:16,fontWeight:800,flexShrink:0}}>
@@ -4396,17 +4361,18 @@ function ProfileEdit({profile,setProfile,onBack,onHome,onResetStats}){
     outline:'none',boxSizing:'border-box'};
   const fabBase=FAB_BASE;
   return(
-    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',
       position:'relative',overflow:'hidden'}}>
+      <PhotoBackdrop/>
       <div style={{padding:'0 22px 18px'}}>
         <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
           <div style={{flexShrink:0,color:T.o,width:36,height:36,background:T.card2,
             border:`1px solid ${T.border}`,borderRadius:13,display:'flex',
             alignItems:'center',justifyContent:'center'}}><EditIcon size={18}/></div>
           <div style={{flex:1,minWidth:0}}>
-            <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.5,
-              textTransform:'uppercase'}}>Profil</div>
+            <div style={{...HEAD_SERIF,fontSize:21
+              }}>Profil</div>
             <div style={{color:T.t1,fontSize:24,fontWeight:800,letterSpacing:-.3,marginTop:2}}>
               Bearbeiten
             </div>
@@ -4438,7 +4404,7 @@ function ProfileEdit({profile,setProfile,onBack,onHome,onResetStats}){
           {seg(SIDES,profile.courtSide,v=>set({courtSide:v}))}
         </div>
 
-        <div style={{marginTop:6,paddingTop:18,borderTop:`1px solid ${T.sep}`}}>
+        <div style={{marginTop:6,paddingTop:18,borderTop:`1px solid ${T.glassSep}`}}>
           <div style={lblSty}>Zurücksetzen</div>
           {!confirmReset?(
             <button onClick={()=>setConfirmReset(true)}
@@ -4470,7 +4436,6 @@ function ProfileEdit({profile,setProfile,onBack,onHome,onResetStats}){
         </div>
       </div>
 
-      <BottomFade/>
       {onHome&&(
         <button onClick={onHome} aria-label="Zurück zur Startseite"
           className="glass-bar" style={{...fabBase,left:22}}>
@@ -4636,8 +4601,9 @@ function MatchPrefs({profile,setProfile,currentUid,onHome}){
   const lbl={color:T.t1,fontSize:17,fontWeight:700,marginBottom:4};
   const sub={color:T.t3,fontSize:11,fontWeight:500,lineHeight:1.5,marginBottom:12};
   return(
-    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
+      <PhotoBackdrop/>
       <ScreenHeader title="Matches für dich" kicker="Entdecken"
         subtitle="Sag uns, wie du spielen willst — wir schlagen passende Matches vor."
         icon={<span style={{color:T.t1,display:'inline-flex'}}><HeartIcon size={30} filled/></span>}/>
@@ -4646,7 +4612,7 @@ function MatchPrefs({profile,setProfile,currentUid,onHome}){
         overflowY:'auto',WebkitOverflowScrolling:'touch'}}>
 
         {/* Spielstile — horizontale Karten, Mehrfachauswahl */}
-        <div className="fu" style={{background:T.card,border:`1px solid ${T.border}`,
+        <div className="fu" style={{...GLASS,
           borderRadius:16,padding:'16px 18px'}}>
           <div style={lbl}>Mit wem willst du spielen?</div>
           <div style={sub}>Spielstile, die dir liegen — Mehrfachauswahl.</div>
@@ -4801,7 +4767,6 @@ function MatchPrefs({profile,setProfile,currentUid,onHome}){
         <div style={{height:110,flexShrink:0}}/>
       </div>
 
-      <BottomFade/>
       <MatchBar onHome={onHome}/>
     </div>
   );
@@ -5487,30 +5452,28 @@ function SearchHub({nav,onTab}){
 ═══════════════════════════════════════════════════════════════ */
 function ComingSoon({icon,title,desc,bullets=[],onHome}){
   return(
-    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
+      <PhotoBackdrop/>
       <div style={{flex:1,padding:'0 22px 140px',overflowY:'auto',
         WebkitOverflowScrolling:'touch'}}>
-        <div className="fi" style={{
-          background:`linear-gradient(135deg, ${T.o}18 0%, ${T.card} 100%)`,
-          border:`1px solid ${T.o}55`,borderRadius:20,padding:'30px 24px',
+        <div className="fi" style={{...GLASS,borderRadius:20,padding:'30px 24px',
           textAlign:'center'}}>
           <div style={{display:'flex',justifyContent:'center',marginBottom:14}}>{icon}</div>
-          <div style={{color:T.t1,fontSize:26,fontWeight:900,letterSpacing:-.4}}>{title}</div>
+          <div style={{...HEAD_SERIF,fontSize:32,lineHeight:1.1}}>{title}</div>
           <div style={{display:'inline-block',marginTop:10,fontSize:10,fontWeight:800,
             letterSpacing:1.6,color:T.o,background:T.oSoft,border:`1px solid ${T.o}55`,
             borderRadius:9,padding:'4px 11px',textTransform:'uppercase'}}>Bald verfügbar</div>
           <div style={{color:T.t2,fontSize:16,lineHeight:1.6,marginTop:16}}>{desc}</div>
         </div>
         {bullets.length>0&&(
-          <div className="fu" style={{background:T.card,border:`1px solid ${T.border}`,
-            borderRadius:16,padding:'18px',marginTop:14,animationDelay:'.08s'}}>
-            <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.3,
-              textTransform:'uppercase',marginBottom:10}}>Was kommt</div>
+          <div className="fu" style={{...GLASS,
+            borderRadius:20,padding:'18px',marginTop:14,animationDelay:'.08s'}}>
+            <div style={{...HEAD_SERIF,fontSize:21,marginBottom:10}}>Was kommt</div>
             {bullets.map((b,i)=>(
               <div key={i} style={{display:'flex',gap:10,alignItems:'flex-start',
-                padding:'7px 0',borderTop:i>0?`1px solid ${T.sep}`:'none'}}>
+                padding:'7px 0',borderTop:i>0?`1px solid ${T.glassSep}`:'none'}}>
                 <span style={{color:T.o,fontWeight:800,lineHeight:1.55}}>–</span>
                 <span style={{color:T.t2,fontSize:13,lineHeight:1.55}}>{b}</span>
               </div>
@@ -5518,7 +5481,6 @@ function ComingSoon({icon,title,desc,bullets=[],onHome}){
           </div>
         )}
       </div>
-      <BottomFade/>
       <MatchBar onHome={onHome}/>
     </div>
   );
@@ -5527,68 +5489,122 @@ function ComingSoon({icon,title,desc,bullets=[],onHome}){
 /* ═══════════════════════════════════════════════════════════════
    APP-FAQ — häufige Fragen zur App (Teil der RITMO Bibel).
 ═══════════════════════════════════════════════════════════════ */
+/* Nach Themen gruppiert, nicht als eine lange Liste: wer eine Frage
+   hat, weiss meist, wozu — Turnier, Bedienung oder Konto. Antworten
+   nennen den Weg in der App so, wie er dort beschriftet ist; wer einen
+   Screen umbenennt, sucht hier mit. */
 const APP_FAQ=[
-  {q:'Was ist der Unterschied zwischen Americano und Mexicano?',
-   a:'Americano lost jede Runde zufällige Partner aus, Punkte zählen individuell. Mexicano paart ab Runde 2 nach Tabellenstand (1+4 gegen 2+3) — enger, fairer, spannender.'},
-  {q:'Wie funktioniert der Pausen-Bonus?',
-   a:'Wer aussetzen muss, bekommt den aufgerundeten Mittelwert aller Punkte dieser Runde gutgeschrieben. Niemand wird durch eine erzwungene Pause benachteiligt.'},
-  {q:'Kann ich ein Turnier als Entwurf speichern?',
-   a:'Ja — im Turnier-Setup auf das Lesezeichen-Symbol tippen. Der Entwurf erscheint unter Live → Entwürfe und lässt sich jederzeit weiterbearbeiten und starten.'},
-  {q:'Wie ändere ich den Timer-Klingelton?',
-   a:'Einstellungen → Steuerung → Timer-Klingelton. Der RITMO-Ton ist Standard; antippen zum Vorhören, auswählen zum Setzen — gilt für alle Timer in der App.'},
-  {q:'Wie verbinde ich einen Smart Ring oder Presenter?',
-   a:'Gerät per Bluetooth mit dem Smartphone koppeln, dann Einstellungen → Steuerung → Score-Gerät wählen. Der Eingabe-Tester zeigt live, welche Tasten ankommen.'},
-  {q:'Funktioniert RITMO ohne Internet?',
-   a:'Lokale Matches und Turniere laufen komplett offline auf deinem Gerät. Online-Turniere und der Profil-Sync brauchen eine Verbindung.'},
-  {q:'Wie treten andere meinem Online-Turnier bei?',
-   a:'Beim Erstellen „Online" wählen — du bekommst PIN + QR-Code in der Lobby. Mitspieler scannen den Code oder geben den PIN unter Turnier beitreten ein.'},
-  {q:'Wer sieht mein Profil und meine Statistiken?',
-   a:'Das steuerst du selbst: Profil → „Profil öffentlich" oder Einstellungen → Privatsphäre. Privat heißt: niemand findet dich, nur du siehst deine Daten.'},
-  {q:'Wie wechsle ich das Design?',
-   a:'Einstellungen → Anpassung → Theme. Fünf Looks von RITMO BAUHAUS Dark bis Funky — die ganze App färbt sich sofort um.'},
-  {q:'Wie lösche ich mein Konto?',
-   a:'Einstellungen → Privatsphäre → Konto und Daten löschen. Dort siehst du vorab, welche Daten entfernt werden (DSGVO-konform).'},
+  {group:'Turniere & Formate',items:[
+    {q:'Was ist der Unterschied zwischen Americano und Mexicano?',
+     a:'Americano lost jede Runde neue Partner aus, Punkte zählen für jeden einzeln. Mexicano paart ab Runde 2 nach Tabellenstand (1+4 gegen 2+3) — enger, fairer, spannender.'},
+    {q:'Was bekommt, wer eine Runde aussetzt?',
+     a:'Das legst du beim Turnier fest (Schritt „Runden & Regeln“): den gerundeten Mittelwert der Runde, eine feste Punktzahl oder gar nichts. Gezählt wird die Pause in der Tabelle in jedem Fall.'},
+    {q:'Was sind Schnellstarts?',
+     a:'Deine festen Formate als Karte — Name, Format, Spieler, Courts, Rundendauer. Du findest sie unter Turnier, antippen startet, der Stift ändert.'},
+    {q:'Kann ich ein Turnier als Entwurf speichern?',
+     a:'Ja — im Turnier-Setup auf das Lesezeichen-Symbol tippen. Der Entwurf erscheint unter Live → Entwürfe und lässt sich jederzeit weiterbearbeiten und starten.'},
+    {q:'Wie verfolgen Mitspieler das Turnier auf ihrem Handy?',
+     a:'Im laufenden Turnier das Werkzeug-Fach öffnen und „Live teilen“ wählen. Mitspieler scannen den QR-Code oder geben die PIN unter Turnier → Turnier beitreten ein und wählen ihren Namen.'},
+  ]},
+  {group:'Bedienung',items:[
+    {q:'Wie ändere ich den Timer-Klingelton?',
+     a:'Einstellungen → Steuerung → Timer-Klingelton. Antippen zum Vorhören, auswählen zum Setzen — gilt für alle Timer in der App.'},
+    {q:'Wie verbinde ich einen Smart Ring oder Presenter?',
+     a:'Gerät per Bluetooth mit dem Smartphone koppeln, dann Einstellungen → Steuerung → Score-Gerät wählen. Der Eingabe-Tester zeigt live, welche Tasten ankommen.'},
+    {q:'Funktioniert RITMO ohne Internet?',
+     a:'Matches und Turniere laufen komplett offline auf deinem Gerät. „Live teilen“ und der Profil-Sync brauchen eine Verbindung.'},
+    {q:'Kann ich das Design ändern?',
+     a:'RITMO hat ein Erscheinungsbild: Liquid Glass. Unter Einstellungen → Anpassung schaltest du den Tablet-Modus für große Bildschirme ein.'},
+  ]},
+  {group:'Konto & Daten',items:[
+    {q:'Wer sieht mein Profil und meine Statistiken?',
+     a:'In der App nur du. Spielersuche und fremde Profile gibt es derzeit nicht — sie kommen später neu.'},
+    {q:'Kann ich meine Daten herunterladen?',
+     a:'Ja: Einstellungen → Privatsphäre → Meine Daten exportieren. Du bekommst dein Profil und alle lokal gespeicherten Einstellungen als Datei.'},
+    {q:'Wie lösche ich mein Konto?',
+     a:'Einstellungen → Privatsphäre → Konto und Daten löschen. Dort siehst du vorab, welche Daten entfernt werden (DSGVO-konform).'},
+  ]},
 ];
 function AppFAQ({onBack,onHome}){
-  const[open,setOpen]=useState(null);
+  const[open,setOpen]=useState(null);   // 'g-i' der offenen Frage
+  const[query,setQuery]=useState('');
+  const q=query.trim().toLowerCase();
+  const groups=APP_FAQ.map(g=>({...g,items:g.items.map((f,i)=>({...f,key:`${g.group}-${i}`}))
+    .filter(f=>!q||f.q.toLowerCase().includes(q)||f.a.toLowerCase().includes(q))}))
+    .filter(g=>g.items.length);
   return(
-    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
-      <ScreenHeader pad={18} title="App FAQ" subtitle="Häufige Fragen, kurze Antworten."
-        icon={<BookIcon size={36}/>}/>
+      <PhotoBackdrop/>
+      <ScreenHeader pad={14} kicker="Bibel" title="App FAQ" subtitle="Häufige Fragen, kurze Antworten."
+        icon={<BookIcon size={34} color={T.t1}/>}/>
 
-      <div style={{flex:1,padding:'0 22px 140px',overflowY:'auto',
-        WebkitOverflowScrolling:'touch',display:'flex',flexDirection:'column',gap:10}}>
-        {APP_FAQ.map((f,i)=>{
-          const isOpen=open===i;
-          return(
-            <button key={i} onClick={()=>setOpen(isOpen?null:i)} className="fu"
-              style={{background:isOpen?T.card2:T.card,border:`1px solid ${isOpen?T.o:T.border}`,
-                borderRadius:16,padding:'15px 17px',textAlign:'left',cursor:'pointer',
-                color:T.t1,animationDelay:`${Math.min(i*0.04,0.3)}s`,
-                transition:'background var(--anim-base), border-color var(--anim-base)'}}>
-              <div style={{display:'flex',alignItems:'center',gap:10}}>
-                <div style={{flex:1,color:isOpen?T.o:T.t1,fontSize:16,fontWeight:700,
-                  lineHeight:1.5,transition:'color var(--anim-base)'}}>{f.q}</div>
-                <span style={{flexShrink:0,display:'inline-flex',
-                  transform:isOpen?'rotate(90deg)':'rotate(0deg)',
-                  transition:'transform var(--anim-spring)'}}>
-                  <ChevronRightIcon size={16} color={isOpen?T.o:T.t3}/>
-                </span>
-              </div>
-              <div style={{maxHeight:isOpen?220:0,opacity:isOpen?1:0,overflow:'hidden',
-                transition:'max-height var(--anim-slow), opacity .25s ease'}}>
-                <div style={{color:T.t2,fontSize:13,lineHeight:1.6,paddingTop:10}}>{f.a}</div>
-              </div>
-            </button>
-          );
-        })}
+      <div style={{flex:1,padding:'0 22px 140px',overflowY:'auto',WebkitOverflowScrolling:'touch'}}>
+        {/* Suche — durchsucht Fragen UND Antworten: wer „Klingelton“
+            tippt, soll die Frage finden, auch wenn sie anders heisst. */}
+        <div style={{display:'flex',alignItems:'center',gap:8,...GLASS,borderRadius:999,
+          padding:'10px 14px',marginBottom:4}}>
+          <SearchIcon size={16}/>
+          <input value={query} onChange={e=>setQuery(e.target.value)}
+            placeholder="Frage suchen…" autoCorrect="off" autoCapitalize="off" spellCheck={false}
+            style={{flex:1,minWidth:0,border:'none',background:'transparent',outline:'none',
+              color:T.t1,fontSize:16,fontWeight:500}}/>
+          {query&&(
+            <button onClick={()=>setQuery('')} aria-label="Suche löschen"
+              style={{width:22,height:22,borderRadius:'50%',background:T.glassHi,border:'none',
+                color:T.t1,fontSize:12,fontWeight:700,cursor:'pointer',flexShrink:0}}>×</button>
+          )}
+        </div>
+
+        {groups.length===0&&(
+          <div className="txt" style={{color:T.t2,fontSize:15,fontStyle:'italic',
+            textAlign:'center',marginTop:30}}>Dazu steht hier noch nichts.</div>
+        )}
+
+        {groups.map((g,gi)=>(
+          <div key={g.group} className="fu" style={{animationDelay:`${gi*.06}s`}}>
+            <SectionRule top={gi?24:18}>{g.group}</SectionRule>
+            <div style={{...GLASS,borderRadius:22,overflow:'hidden'}}>
+              {g.items.map((f,i)=>{
+                const isOpen=open===f.key||(!!q&&g.items.length+groups.length<=2);
+                return(
+                  <button key={f.key} onClick={()=>{buzz(5);setOpen(open===f.key?null:f.key);}}
+                    aria-expanded={isOpen}
+                    style={{width:'100%',display:'block',padding:'15px 18px',background:'none',
+                      border:'none',borderTop:i?`1px solid ${T.glassSep}`:'none',
+                      textAlign:'left',cursor:'pointer',color:T.t1}}>
+                    <div style={{display:'flex',alignItems:'flex-start',gap:12}}>
+                      <div style={{flex:1,fontSize:15.5,fontWeight:700,lineHeight:1.45}}>
+                        <Hl text={f.q} q={query.trim()}/>
+                      </div>
+                      {/* Plus, das zum Kreuz kippt: offen/zu ohne Worte. */}
+                      <span aria-hidden="true" style={{flexShrink:0,width:26,height:26,borderRadius:'50%',
+                        background:isOpen?T.o:T.glassHi,border:`1px solid ${isOpen?T.o:T.glassLine}`,
+                        color:isOpen?'#000':T.t1,display:'inline-flex',alignItems:'center',
+                        justifyContent:'center',fontSize:17,fontWeight:500,lineHeight:1,
+                        transform:isOpen?'rotate(45deg)':'none',
+                        transition:'transform var(--anim-spring), background .2s'}}>+</span>
+                    </div>
+                    <div style={{display:'grid',gridTemplateRows:isOpen?'1fr':'0fr',
+                      transition:'grid-template-rows var(--anim-slow)'}}>
+                      <div style={{overflow:'hidden'}}>
+                        <div style={{color:T.t1,opacity:.82,fontSize:14.5,lineHeight:1.6,
+                          paddingTop:9,paddingRight:38}}>
+                          <Hl text={f.a} q={query.trim()}/>
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </div>
 
-      <BottomFade/>
       <MatchBar onHome={onHome} rightButtons={[
-        {icon:<BookIcon size={22}/>,onClick:onBack,label:'Zurück zur Bibel'}
+        {icon:<BookIcon size={22} color={T.t1}/>,onClick:onBack,label:'Zurück zur Bibel'}
       ]}/>
     </div>
   );
@@ -5601,25 +5617,22 @@ function AppFAQ({onBack,onHome}){
    Großes Icon + Headline + 1-Satz Beschreibung. Optionales accent
    für die Border. */
 function SetupHero({icon,title,desc,accent}){
-  const c=accent||T.o;
   return(
-    <div className="fi" style={{
-      background:`linear-gradient(135deg, ${c}18 0%, ${T.card} 100%)`,
-      border:`1px solid ${c}55`,
-      borderRadius:20,padding:'20px 22px',
-      display:'flex',alignItems:'center',gap:18}}>
-      <div style={{flexShrink:0,width:64,height:64,borderRadius:'50%',
-        background:`${c}22`,border:`1.5px solid ${c}`,
+    <div className="fi" style={{...GLASS,
+      borderRadius:20,padding:'18px 18px',
+      display:'flex',alignItems:'center',gap:16}}>
+      <div style={{flexShrink:0,width:60,height:60,borderRadius:'50%',
+        background:T.glassHi,border:`1px solid ${accent||T.glassLine}`,
         display:'flex',alignItems:'center',justifyContent:'center'}}>
         {icon}
       </div>
       <div style={{flex:1,minWidth:0}}>
-        <div style={{color:T.t1,fontSize:17,fontWeight:700,letterSpacing:-.3,
-          marginBottom:desc?4:0}}>
+        <div style={{fontFamily:T.fontSerif,color:T.t1,fontSize:21,fontWeight:700,
+          lineHeight:1.15,marginBottom:desc?5:0}}>
           {title}
         </div>
         {desc&&(
-          <div style={{color:T.t3,fontSize:13,lineHeight:1.5}}>
+          <div className="txt" style={{color:T.t2,fontSize:13,lineHeight:1.5,fontStyle:'italic'}}>
             {desc}
           </div>
         )}
@@ -16019,29 +16032,29 @@ function QuestionToggle({filled,onClick}){
 
 function SettingsCard({icon,title,desc,onClick,destructive=false,q=''}){
   const color   = destructive ? '#FF6B6B' : T.t1;
-  const accent  = destructive ? '#FF6B6B' : T.o;
-  const border  = destructive ? 'rgba(232,69,69,0.35)' : T.border;
-  const bg      = destructive ? 'rgba(232,69,69,0.08)' : T.card;
+  const accent  = destructive ? '#FF6B6B' : T.t1;
+  const border  = destructive ? 'rgba(232,69,69,0.35)' : T.glassLine;
+  const bg      = destructive ? 'rgba(232,69,69,0.10)' : T.glass;
   return(
     <button onClick={onClick} data-lift
-      style={{width:'100%',background:bg,border:`1px solid ${border}`,borderRadius:16,
-        padding:'16px 18px',display:'flex',alignItems:'center',gap:16,
+      style={{width:'100%',...GLASS,background:bg,border:`1px solid ${border}`,borderRadius:20,
+        padding:'15px 16px',display:'flex',alignItems:'center',gap:15,
         color,textAlign:'left',cursor:'pointer'}}
-      onPointerDown={e=>e.currentTarget.style.background = destructive ? 'rgba(232,69,69,0.14)' : T.card2}
+      onPointerDown={e=>e.currentTarget.style.background = destructive ? 'rgba(232,69,69,0.16)' : T.glassHi}
       onPointerUp={e=>e.currentTarget.style.background = bg}
       onPointerLeave={e=>e.currentTarget.style.background = bg}>
       <div style={{flexShrink:0,color:accent,display:'flex',alignItems:'center',
-        justifyContent:'center',width:38,height:38,
-        background:destructive?'rgba(232,69,69,0.10)':T.card2,
-        border:`1px solid ${destructive?'rgba(232,69,69,0.25)':T.border}`,borderRadius:13}}>
+        justifyContent:'center',width:42,height:42,
+        background:destructive?'rgba(232,69,69,0.12)':T.glassHi,
+        border:`1px solid ${destructive?'rgba(232,69,69,0.3)':T.glassLine}`,borderRadius:'50%'}}>
         {icon}
       </div>
       <div style={{flex:1,minWidth:0}}>
-        <div style={{color,fontSize:15,fontWeight:700,letterSpacing:-.1,marginBottom:2}}>
+        <div style={{color,fontFamily:T.fontSerif,fontSize:19,fontWeight:700,marginBottom:2}}>
           <Hl text={title} q={q}/>
         </div>
-        <div style={{color:destructive?'rgba(255,107,107,0.7)':T.t3,fontSize:12,
-          fontWeight:500,lineHeight:1.55}}>
+        <div className="txt" style={{color:destructive?'rgba(255,107,107,0.75)':T.t2,fontSize:12.5,
+          fontStyle:'italic',lineHeight:1.5}}>
           <Hl text={desc} q={q}/>
         </div>
       </div>
@@ -16057,16 +16070,17 @@ function Settings({onHome,onBack,nav,onLogout}){
   const q=query;
 
   return(
-    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
+      <PhotoBackdrop/>
 
       <ScreenHeader pad={0} title={<Hl text="Einstellungen" q={q}/>}
         icon={<GearIcon size={34}/>}/>
       <div style={{padding:'0 9px 22px'}}>
         {/* iOS-style Suchfeld unter dem Large Title */}
         <div style={{margin:'14px 13px 0',display:'flex',alignItems:'center',gap:8,
-          background:T.card,border:`1px solid ${T.border}`,borderRadius:13,
-          padding:'9px 12px'}}>
+          ...GLASS,borderRadius:999,
+          padding:'10px 14px'}}>
           <SearchIcon size={16}/>
           <input value={query} onChange={e=>setQuery(e.target.value)}
             placeholder="Einstellungen durchsuchen…"
@@ -16103,13 +16117,13 @@ function Settings({onHome,onBack,nav,onLogout}){
         <SettingsCard q={q}
           icon={<EyeIcon size={22} color="currentColor"/>}
           title="Privatsphäre"
-          desc="Wer dich findet, wer deine Stats sieht."
+          desc="Deine Daten — Export und Löschung."
           onClick={()=>nav('settings-privatsphaere')}/>
 
         <SettingsCard q={q}
           icon={<BellIcon size={22} color="currentColor"/>}
           title="Benachrichtigungen"
-          desc="Match-Reminder, Turnier-Alerts, Chats."
+          desc="Match-Reminder und Turnier-Alerts."
           onClick={()=>nav('settings-benachrichtigungen')}/>
 
         <SettingsCard q={q}
@@ -16132,26 +16146,23 @@ function Settings({onHome,onBack,nav,onLogout}){
         {/* Abmelden — ganz unten in den Einstellungen (aus dem
             Home-Burger hierher verlegt). */}
         <button onClick={onLogout}
-          style={{width:'100%',marginTop:4,background:T.card,
-            border:`1px solid ${T.border}`,borderRadius:16,
-            padding:'16px 18px',display:'flex',alignItems:'center',gap:16,
-            color:T.o,fontWeight:800,fontSize:15,letterSpacing:-.1,
-            cursor:'pointer',textAlign:'left'}}
-          onPointerDown={e=>e.currentTarget.style.background=T.card2}
-          onPointerUp={e=>e.currentTarget.style.background=T.card}
-          onPointerLeave={e=>e.currentTarget.style.background=T.card}>
+          style={{width:'100%',marginTop:4,...GLASS,borderRadius:20,
+            padding:'15px 16px',display:'flex',alignItems:'center',gap:15,
+            color:T.o,cursor:'pointer',textAlign:'left'}}
+          onPointerDown={e=>e.currentTarget.style.background=T.glassHi}
+          onPointerUp={e=>e.currentTarget.style.background=T.glass}
+          onPointerLeave={e=>e.currentTarget.style.background=T.glass}>
           <div style={{flexShrink:0,color:T.o,display:'flex',alignItems:'center',
-            justifyContent:'center',width:38,height:38,background:T.card2,
-            border:`1px solid ${T.border}`,borderRadius:13}}>
+            justifyContent:'center',width:42,height:42,background:T.glassHi,
+            border:`1px solid ${T.glassLine}`,borderRadius:'50%'}}>
             <ExitGlyph size={20}/>
           </div>
-          <span style={{flex:1}}>Abmelden</span>
+          <span style={{flex:1,fontFamily:T.fontSerif,fontSize:19,fontWeight:700}}>Abmelden</span>
         </button>
 
         <div style={{height:120,flexShrink:0}}/>
       </div>
 
-      <BottomFade/>
       <MatchBar onHome={onHome}
         rightButtons={[{icon:<PersonGlyph size={20}/>,onClick:onBack,
           label:'Zurück zum Profil'}]}/>
@@ -16172,16 +16183,17 @@ function SettingsSubLayout({title,desc,icon,onBack,onHome,children}){
   // Liquid-Glass-FABs — Material liefert die .glass-bar-Klasse.
   const fabBase=FAB_BASE;
   return(
-    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',
       position:'relative',overflow:'hidden'}}>
+      <PhotoBackdrop/>
 
       <div style={{padding:'0 22px 18px'}}>
-        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
+        <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:4}}>
           {icon&&(
-            <div style={{flexShrink:0,color:T.o,
-              width:36,height:36,background:T.card2,
-              border:`1px solid ${T.border}`,borderRadius:13,
+            <div style={{flexShrink:0,color:T.t1,
+              width:46,height:46,background:T.glassHi,
+              border:`1px solid ${T.glassLine}`,borderRadius:'50%',
               display:'flex',alignItems:'center',justifyContent:'center'}}>
               {icon}
             </div>
@@ -16189,14 +16201,14 @@ function SettingsSubLayout({title,desc,icon,onBack,onHome,children}){
           <div style={{flex:1,minWidth:0}}>
             <div style={{fontFamily:T.fontDisplay,color:T.o,fontSize:11,letterSpacing:3,
               lineHeight:1}}>Einstellungen</div>
-            <div style={{color:T.t1,fontSize:24,fontWeight:800,letterSpacing:-.3,marginTop:2}}>
+            <div style={{...HEAD_SERIF,fontSize:34,lineHeight:1.08,marginTop:6,paddingBottom:2}}>
               {title}
             </div>
           </div>
         </div>
         {desc&&(
-          <div className="txt" style={{color:T.t3,fontSize:13.5,fontStyle:'italic',
-            lineHeight:1.45,marginTop:9}}>{desc}</div>
+          <div className="txt" style={{color:T.t2,fontSize:14,fontStyle:'italic',
+            lineHeight:1.45,marginTop:10}}>{desc}</div>
         )}
       </div>
 
@@ -16205,7 +16217,6 @@ function SettingsSubLayout({title,desc,icon,onBack,onHome,children}){
         {children}
       </div>
 
-      <BottomFade/>
 
       {/* Floating Home-FAB links → zur Startseite */}
       {onHome&&(
@@ -16242,10 +16253,10 @@ function SettingsSteuerung({onBack,onHome,inputMode,setInputMode,voiceOn,setVoic
       onBack={onBack} onHome={onHome}>
 
       {/* Score-Gerät */}
-      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
+      <div style={{...GLASS,borderRadius:16,
         padding:'18px 18px 6px',marginBottom:12}}>
-        <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.3,
-          textTransform:'uppercase',marginBottom:8}}>Score-Gerät</div>
+        <div style={{...HEAD_SERIF,fontSize:21,
+          marginBottom:8}}>Score-Gerät</div>
         {inputs.map((opt,i)=>{
           const isSel=inputMode===opt.id;
           const hasInfo=opt.id==='presenter'||opt.id==='ring';
@@ -16254,7 +16265,7 @@ function SettingsSteuerung({onBack,onHome,inputMode,setInputMode,voiceOn,setVoic
             <button key={opt.id} onClick={()=>!disabled&&setInputMode(opt.id)}
               disabled={disabled}
               style={{width:'100%',padding:'14px 0',background:'transparent',
-                border:'none',borderTop:i>0?`1px solid ${T.sep}`:'none',
+                border:'none',borderTop:i>0?`1px solid ${T.glassSep}`:'none',
                 display:'flex',alignItems:'center',gap:14,
                 cursor:disabled?'not-allowed':'pointer',
                 opacity:disabled?.45:1,textAlign:'left'}}>
@@ -16316,7 +16327,7 @@ function SettingsSteuerung({onBack,onHome,inputMode,setInputMode,voiceOn,setVoic
       </div>
 
       {/* Sprachansage */}
-      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
+      <div style={{...GLASS,borderRadius:16,
         padding:'14px 18px',marginBottom:12}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
           <div style={{flex:1,minWidth:0}}>
@@ -16339,17 +16350,17 @@ function SettingsSteuerung({onBack,onHome,inputMode,setInputMode,voiceOn,setVoic
       {/* Timer-Klingelton — globale Einstellung für ALLE Timer in
           der App (Americano + Turnier-Rundentimer). Wer die Glocke
           hier wechselt, hört sie überall. */}
-      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
+      <div style={{...GLASS,borderRadius:16,
         padding:'18px 18px 8px'}}>
-        <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.3,
-          textTransform:'uppercase',marginBottom:4}}>Timer-Klingelton</div>
+        <div style={{...HEAD_SERIF,fontSize:21,
+          marginBottom:4}}>Timer-Klingelton</div>
         <div style={{color:T.t3,fontSize:12,fontWeight:500,marginBottom:14,lineHeight:1.5}}>
           Globaler Ton — spielt beim Ablaufen aller Timer (Americano + Turnier-Runden).
         </div>
         {RINGS.map((r,i)=>(
           <div key={r.id} onClick={()=>setRingId(r.id)}
             style={{display:'flex',alignItems:'center',padding:'12px 0',
-              borderBottom:i<RINGS.length-1?`1px solid ${T.sep}`:'none',cursor:'pointer'}}>
+              borderBottom:i<RINGS.length-1?`1px solid ${T.glassSep}`:'none',cursor:'pointer'}}>
             <div style={{flex:1}}>
               <div style={{color:T.t1,fontSize:16,fontWeight:ringId===r.id?700:500}}>{r.label}</div>
               <div style={{color:T.t3,fontSize:11,marginTop:1}}>{r.desc}</div>
@@ -16389,14 +16400,14 @@ function SettingsAnpassung({onBack,onHome,theme,setTheme,tabletMode,setTabletMod
       desc="Wähle dein Erscheinungsbild."
       icon={<PaletteIcon size={22} color="currentColor"/>}
       onBack={onBack} onHome={onHome}>
-      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
+      <div style={{...GLASS,borderRadius:16,
         padding:'18px 18px 8px',marginBottom:12}}>
-        <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.3,
-          textTransform:'uppercase',marginBottom:8}}>Theme</div>
+        <div style={{...HEAD_SERIF,fontSize:21,
+          marginBottom:8}}>Theme</div>
         {themes.map((th,i)=>(
           <div key={th.id} onClick={()=>setTheme(th.id)}
             style={{display:'flex',alignItems:'center',padding:'12px 0',
-              borderBottom:i<themes.length-1?`1px solid ${T.sep}`:'none',cursor:'pointer'}}>
+              borderBottom:i<themes.length-1?`1px solid ${T.glassSep}`:'none',cursor:'pointer'}}>
             <div style={{marginRight:12,width:22,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>{th.icon}</div>
             <div style={{flex:1,minWidth:0}}>
               <div style={{color:T.t1,fontSize:16,fontWeight:theme===th.id?700:500}}>{th.label}</div>
@@ -16411,10 +16422,10 @@ function SettingsAnpassung({onBack,onHome,theme,setTheme,tabletMode,setTabletMod
       </div>
 
       {/* Tablet-Modus */}
-      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
+      <div style={{...GLASS,borderRadius:16,
         padding:'18px 18px',marginBottom:12}}>
-        <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.3,
-          textTransform:'uppercase',marginBottom:12}}>Anzeige</div>
+        <div style={{...HEAD_SERIF,fontSize:21,
+          marginBottom:12}}>Anzeige</div>
         <div style={{display:'flex',alignItems:'center',gap:14}}>
           <div style={{width:32,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,color:T.t1}}><PhoneIcon size={22}/></div>
           <div style={{flex:1,minWidth:0}}>
@@ -16456,7 +16467,7 @@ function SettingsToggle({on,onToggle,disabled=false}){
 function SettingsToggleRow({title,desc,on,onToggle,first=false,disabled=false}){
   return(
     <div style={{display:'flex',alignItems:'center',padding:'14px 0',gap:12,
-      borderTop:first?'none':`1px solid ${T.sep}`}}>
+      borderTop:first?'none':`1px solid ${T.glassSep}`}}>
       <div style={{flex:1,minWidth:0}}>
         <div style={{color:disabled?T.t3:T.t1,fontSize:16,fontWeight:600}}>{title}</div>
         {desc&&(
@@ -16470,11 +16481,10 @@ function SettingsToggleRow({title,desc,on,onToggle,first=false,disabled=false}){
 
 function SettingsSection({eyebrow,children,style}){
   return(
-    <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
+    <div style={{...GLASS,borderRadius:16,
       padding:'18px 18px 6px',marginBottom:12,...(style||{})}}>
       {eyebrow&&(
-        <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.3,
-          textTransform:'uppercase',marginBottom:8}}>{eyebrow}</div>
+        <div style={{...HEAD_SERIF,fontSize:21,marginBottom:8}}>{eyebrow}</div>
       )}
       {children}
     </div>
@@ -17008,7 +17018,7 @@ function SettingsKonto({onBack,onHome,onDeleted}){
         </div>
       </div>
 
-      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
+      <div style={{...GLASS,borderRadius:16,
         padding:'18px 22px',marginBottom:14}}>
         <div style={{color:T.t2,fontSize:12,lineHeight:1.6,marginBottom:10}}>
           Zur Bestätigung tippe das Wort <strong style={{color:T.t1}}>LÖSCHEN</strong> in
@@ -17063,7 +17073,7 @@ function PostEventCard({ev,i=0}){
   return(
     <a href={ev.url} target="_blank" rel="noopener noreferrer" data-lift
       className="fu" style={{display:'block',textDecoration:'none',color:'inherit',
-        background:T.card,border:`1px solid ${T.border}`,borderRadius:20,
+        ...GLASS,borderRadius:20,
         overflow:'hidden',animationDelay:`${i*0.05}s`}}>
       <div style={{display:'flex',height:6}} aria-hidden="true">
         {['#FF7A1A','#FFD60A','#0A84FF','#E84545','#FFFFFF'].map((c,j)=>(
@@ -17146,31 +17156,13 @@ function RitmoPost({onHome,profile}){
   ];
 
   return(
-    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',
       position:'relative',overflow:'hidden'}}>
+      <PhotoBackdrop/>
 
-      {/* Header */}
-      <div style={{padding:'0 22px 14px'}}>
-        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
-          <div style={{flexShrink:0,color:T.o,
-            width:38,height:38,background:T.card2,
-            border:`1px solid ${T.border}`,borderRadius:13,
-            display:'flex',alignItems:'center',justifyContent:'center'}}>
-            <BellIcon size={22} color="currentColor"/>
-          </div>
-          <div style={{flex:1,minWidth:0}}>
-            <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.5,
-              textTransform:'uppercase'}}>RITMO</div>
-            <div style={{color:T.t1,fontSize:24,fontWeight:800,letterSpacing:-.3,marginTop:2}}>
-              Post
-            </div>
-          </div>
-        </div>
-        <div style={{color:T.t3,fontSize:13,lineHeight:1.5,marginTop:6}}>
-          Updates und Events an einem Ort.
-        </div>
-      </div>
+      <ScreenHeader pad={16} kicker="RITMO" title="Post"
+        subtitle="Updates und Events an einem Ort." icon={<BellIcon size={30}/>}/>
 
       {/* Tab strip — active button invertiert in der Theme-Farbe.
           Text-Farbe nutzt T.bg, damit sie immer kontrastiert: in den
@@ -17242,7 +17234,7 @@ function RitmoPost({onHome,profile}){
 
 function RitmoPostEmpty({icon,title,desc,cta}){
   return(
-    <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
+    <div style={{...GLASS,borderRadius:16,
       padding:'40px 28px',textAlign:'center',color:T.t2}}>
       <div style={{display:'flex',justifyContent:'center',marginBottom:14,color:T.o}}>
         {icon}
@@ -20253,20 +20245,28 @@ function RitmoBibel({onHome,onRules,onJourney,onFaq,onTab}){
 /* ═══════════════════════════════════════════════════════════════
    REGELWERK (Rules) — Übersicht + Detail-Screens
 ═══════════════════════════════════════════════════════════════ */
+/* Die Bibel liest sich wie ein Magazin: Zwischenzeile in der Antiqua
+   mit kurzer oranger Haarlinie davor, Fliesstext in Lesegroesse
+   (15 px statt 13 — auf dem Foto und im Stehen am Court). */
 function RulesH({children}){
-  return <div style={{color:T.o,fontSize:11,fontWeight:700,letterSpacing:1.4,
-    textTransform:'uppercase',marginTop:18,marginBottom:6}}>{children}</div>;
+  return(
+    <div style={{display:'flex',alignItems:'center',gap:10,marginTop:28,marginBottom:10}}>
+      <span aria-hidden="true" style={{width:16,height:2,borderRadius:1,background:T.o,flexShrink:0}}/>
+      <span style={{...HEAD_SERIF,fontSize:24}}>{children}</span>
+    </div>
+  );
 }
 function RulesP({children}){
-  return <div style={{color:T.t2,fontSize:13,lineHeight:1.6,marginBottom:4}}>{children}</div>;
+  return <div style={{color:T.t1,opacity:.86,fontSize:15,lineHeight:1.65,marginBottom:6}}>{children}</div>;
 }
 function RulesUl({items}){
   return(
     <ul style={{margin:0,padding:0,listStyle:'none'}}>
       {items.map((item,i)=>(
-        <li key={i} style={{color:T.t2,fontSize:13,lineHeight:1.55,
-          paddingLeft:14,position:'relative',marginBottom:3}}>
-          <span style={{position:'absolute',left:0,color:T.o,fontWeight:700}}>–</span>
+        <li key={i} style={{color:T.t1,opacity:.86,fontSize:15,lineHeight:1.6,
+          paddingLeft:18,position:'relative',marginBottom:7}}>
+          <span aria-hidden="true" style={{position:'absolute',left:2,top:'.62em',width:6,height:6,
+            borderRadius:'50%',background:T.o}}/>
           {item}
         </li>
       ))}
@@ -20275,9 +20275,9 @@ function RulesUl({items}){
 }
 function RulesDef({term,children}){
   return(
-    <div style={{marginBottom:8}}>
-      <span style={{color:T.t1,fontSize:13,fontWeight:700}}>{term}</span>
-      <span style={{color:T.t2,fontSize:13,lineHeight:1.5}}> — {children}</span>
+    <div style={{marginBottom:12,paddingLeft:12,borderLeft:`2px solid ${T.glassLine}`}}>
+      <div style={{fontFamily:T.fontSerif,color:T.t1,fontSize:18,fontWeight:700,lineHeight:1.25}}>{term}</div>
+      <div style={{color:T.t1,opacity:.82,fontSize:14.5,lineHeight:1.55,marginTop:2}}>{children}</div>
     </div>
   );
 }
@@ -20336,25 +20336,38 @@ function RulesDetailLayout({icon,title,sub,visual,children,onBackToRules,onHome,
   };
 
   return(
-    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
-      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
+    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 54px)',position:'relative',overflow:'hidden'}}>
+      {/* Lesen braucht Ruhe hinter dem Text: dunkler als ein Hub. */}
+      <PhotoBackdrop dim={.38}/>
 
-      <div style={{padding:'0 22px 8px'}}>
-        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
-          <div style={{width:42,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>{icon}</div>
+      {/* Kopf: Kapitelzaehler, Titel in der Antiqua, Vorspann, darunter
+          ein Fortschrittsbalken aus Segmenten (ein Segment je Kapitel,
+          gelesene orange). Er ersetzt die Punkte: bei acht Kapiteln
+          waren das acht 6-px-Knoepfe, die keiner traf. */}
+      <div style={{padding:'0 22px 14px',flexShrink:0}}>
+        <div style={{display:'flex',alignItems:'center',gap:14}}>
           <div style={{flex:1,minWidth:0}}>
-            <div style={{color:T.t1,fontSize:22,fontWeight:800,letterSpacing:-.3}}>{title}</div>
-            <div style={{color:T.t3,fontSize:12,marginTop:2,fontWeight:500}}>{sub}</div>
+            {totalSections>1&&(
+              <div className="txt" style={{color:T.t2,fontSize:13,fontStyle:'italic',
+                fontVariantNumeric:'tabular-nums'}}>
+                Kapitel {currentIdx+1} von {totalSections}
+              </div>
+            )}
+            <div style={{...HEAD_SERIF,fontSize:34,lineHeight:1.08,marginTop:6,paddingBottom:2}}>{title}</div>
+            <div className="txt" style={{color:T.t2,fontSize:14,marginTop:6,fontStyle:'italic',
+              lineHeight:1.4}}>{sub}</div>
           </div>
+          <div style={{width:54,height:54,borderRadius:'50%',flexShrink:0,
+            background:T.glassHi,border:`1px solid ${T.glassLine}`,
+            display:'flex',alignItems:'center',justifyContent:'center'}}>{icon}</div>
         </div>
         {totalSections>1&&(
-          <div style={{display:'flex',gap:6,justifyContent:'center',
-            padding:'10px 0 4px',alignItems:'center'}}>
+          <div style={{display:'flex',gap:4,marginTop:16}} aria-hidden="true">
             {Array.from({length:totalSections}).map((_,i)=>(
-              <div key={i} style={{
-                width:i===currentIdx?18:6,height:6,borderRadius:3,
-                background:i===currentIdx?T.o:T.t4,
-                transition:'all .25s ease'}}/>
+              <div key={i} style={{flex:1,height:3,borderRadius:2,
+                background:i<=currentIdx?T.o:T.glassLine,
+                transition:'background .25s ease'}}/>
             ))}
           </div>
         )}
@@ -20371,8 +20384,8 @@ function RulesDetailLayout({icon,title,sub,visual,children,onBackToRules,onHome,
         onMouseUp={onTouchEnd}
         onMouseLeave={()=>dragRef.current.active&&onTouchEnd()}>
         {visual&&(
-          <div className="fi" style={{background:T.card,border:`1px solid ${T.border}`,
-            borderRadius:16,padding:16,marginBottom:18,
+          <div className="fi" style={{...GLASS,
+            borderRadius:22,padding:16,marginBottom:6,
             display:'flex',alignItems:'center',justifyContent:'center'}}>
             {visual}
           </div>
@@ -20380,6 +20393,29 @@ function RulesDetailLayout({icon,title,sub,visual,children,onBackToRules,onHome,
         <div className="fu" style={{animationDelay:'.1s'}}>
           {children}
         </div>
+
+        {/* Blaettern auch ohne Wischen — das Wischen kennt keiner, der es
+            nicht zufaellig ausprobiert. Weiter (orange, die Marke) rechts,
+            Zurueck (Glas) links; fehlt einer, haelt der andere seine Seite. */}
+        {(onPrev||onNext)&&(
+          <div style={{display:'flex',gap:10,marginTop:30}}>
+            {onPrev?(
+              <button onClick={()=>{buzz(6);onPrev();}}
+                style={{flex:1,padding:'14px 16px',borderRadius:999,...GLASS,
+                  color:T.t1,fontSize:15,fontWeight:700,cursor:'pointer'}}>
+                ‹ Zurück
+              </button>
+            ):<span style={{flex:1}}/>}
+            {onNext?(
+              <button onClick={()=>{buzz(6);onNext();}}
+                style={{flex:1,padding:'14px 16px',borderRadius:999,border:'none',
+                  background:T.o,color:'#000',fontSize:15,fontWeight:800,cursor:'pointer'}}>
+                Weiter ›
+              </button>
+            ):<span style={{flex:1}}/>}
+          </div>
+        )}
+        <div style={{height:130,flexShrink:0}}/>
       </div>
 
       <MatchBar onHome={onHome} rightButtons={[
@@ -20774,42 +20810,53 @@ function Rules({onHome,onSelect,alreadyRead,onToggleRead,onBibel}){
     {id:'glossar',   icon:<BookIcon size={24}/>,title:'Schlagarten',       sub:'Bandeja, Víbora, Smash & mehr'},
   ];
   return(
-    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
+    <WissenList title="Regelwerk" subtitle="Padel-Regeln, Formate, Begriffe."
+      icon={<BookIcon size={32} color={T.t1}/>} sections={sections} onSelect={onSelect}
+      alreadyRead={alreadyRead} onToggleRead={onToggleRead} onHome={onHome} onBibel={onBibel}/>
+  );
+}
+
+/* ───── Inhaltsverzeichnis der Bibel (Regelwerk, Journey) ─────
+   Eine Glaskarte, eine Zeile je Kapitel: grosse kursive Nummer,
+   Titel in der Antiqua, Vorspann. Wie ein Magazin-Inhalt, nicht wie
+   eine Einstellungsliste — die Nummer sagt zugleich, dass die Kapitel
+   eine Reihenfolge haben (und die Kapitelseiten zaehlen genauso).
+   Die Kapitel-Icons fallen hier weg; sie stehen gross auf der
+   Kapitelseite selbst. */
+function WissenList({title,subtitle,icon,sections,onSelect,alreadyRead,onToggleRead,onHome,onBibel}){
+  return(
+    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
-      <div style={{padding:'0 22px 22px'}}>
-        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
-          <BookIcon size={32}/>
-          <div style={{flex:1,minWidth:0}}>
-            <div style={{color:T.t1,fontSize:26,fontWeight:800,letterSpacing:-.3}}>Regelwerk</div>
-            <div style={{color:T.t2,fontSize:16,marginTop:2,fontWeight:400}}>
-              Padel-Regeln, Formate, Begriffe.
-            </div>
-          </div>
-          {onToggleRead&&<QuestionToggle filled={alreadyRead} onClick={onToggleRead}/>}
+      <PhotoBackdrop/>
+      <ScreenHeader kicker="Bibel" title={title} subtitle={subtitle}
+        right={onToggleRead?<QuestionToggle filled={alreadyRead} onClick={onToggleRead}/>:icon}/>
+      <div style={{flex:1,padding:'0 22px 140px',overflowY:'auto',WebkitOverflowScrolling:'touch'}}>
+        <div className="fu" style={{...GLASS,borderRadius:22,overflow:'hidden'}}>
+          {sections.map((s,i)=>(
+            <button key={s.id} onClick={()=>{buzz(6);onSelect(s.id);}}
+              style={{width:'100%',display:'flex',alignItems:'center',gap:16,
+                padding:'16px 18px',background:'none',border:'none',cursor:'pointer',
+                color:T.t1,textAlign:'left',transition:'background .15s',
+                borderTop:i?`1px solid ${T.glassSep}`:'none'}}
+              onPointerDown={e=>e.currentTarget.style.background=T.glassHi}
+              onPointerUp={e=>e.currentTarget.style.background='none'}
+              onPointerLeave={e=>e.currentTarget.style.background='none'}>
+              <span style={{fontFamily:T.fontSerif,fontStyle:'italic',fontWeight:700,
+                fontSize:30,lineHeight:1,color:T.o,width:38,flexShrink:0,
+                fontVariantNumeric:'tabular-nums'}}>{String(i+1).padStart(2,'0')}</span>
+              <span style={{flex:1,minWidth:0}}>
+                <span style={{display:'block',fontFamily:T.fontSerif,fontSize:20,fontWeight:700,
+                  lineHeight:1.2}}>{s.title}</span>
+                <span className="txt" style={{display:'block',color:T.t2,fontSize:13,
+                  fontStyle:'italic',lineHeight:1.4,marginTop:3}}>{s.sub}</span>
+              </span>
+              <ChevronRightIcon size={16} color={T.t2}/>
+            </button>
+          ))}
         </div>
       </div>
-      <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:10,
-        overflowY:'auto',WebkitOverflowScrolling:'touch'}}>
-        {sections.map((s,i)=>(
-          <button key={s.id} onClick={()=>onSelect(s.id)} className="fu"
-            style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
-              padding:'14px 16px',display:'flex',alignItems:'center',gap:14,
-              cursor:'pointer',color:T.t1,textAlign:'left',
-              animationDelay:`${i*40}ms`,transition:'background .15s, border-color .15s'}}
-            onPointerDown={e=>e.currentTarget.style.background=T.card2}
-            onPointerUp={e=>e.currentTarget.style.background=T.card}
-            onPointerLeave={e=>e.currentTarget.style.background=T.card}>
-            <div style={{width:32,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>{s.icon}</div>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{color:T.t1,fontSize:15,fontWeight:700,marginBottom:2}}>{s.title}</div>
-              <div style={{color:T.t3,fontSize:11,fontWeight:500}}>{s.sub}</div>
-            </div>
-            <div style={{color:T.t3,fontSize:18,fontWeight:600,width:16,textAlign:'center'}}>›</div>
-          </button>
-        ))}
-      </div>
       <MatchBar onHome={onHome}
-        rightButtons={onBibel?[{icon:<BookIcon size={20}/>,onClick:onBibel,
+        rightButtons={onBibel?[{icon:<BookIcon size={20} color={T.t1}/>,onClick:onBibel,
           label:'Zur Bibel'}]:[]}/>
     </div>
   );
@@ -20992,11 +21039,11 @@ function RulesGlossar({onBackToRules,onHome,onNext,onPrev,currentIdx,totalSectio
       <div style={{display:'flex',flexDirection:'column',gap:14}}>
         {shots.map((s,i)=>(
           <div key={s.id} className="fu"
-            style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
+            style={{...GLASS,borderRadius:16,
               padding:14,display:'flex',gap:14,animationDelay:`${i*60}ms`}}>
             <div style={{flexShrink:0,width:120,display:'flex',alignItems:'center',
               justifyContent:'center',background:T.card2,borderRadius:13,padding:6,
-              border:`1px solid ${T.sep}`}}>
+              border:`1px solid ${T.glassSep}`}}>
               <s.Fig/>
             </div>
             <div style={{flex:1,minWidth:0}}>
@@ -21248,44 +21295,9 @@ function Journey({onHome,onSelect,alreadyRead,onToggleRead,onBibel}){
     {id:'baelle',       icon:<TennisBallIcon size={24}/>,title:'Bälle',         sub:'Tennis vs Padel — die Unterschiede'},
   ];
   return(
-    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
-      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
-      <div style={{padding:'0 22px 22px'}}>
-        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
-          <JourneyIcon size={32}/>
-          <div style={{flex:1,minWidth:0}}>
-            <div style={{color:T.t1,fontSize:26,fontWeight:800,letterSpacing:-.3}}>Journey</div>
-            <div style={{color:T.t2,fontSize:16,marginTop:2,fontWeight:400}}>
-              Tipps & Tricks für dein Padel-Spiel.
-            </div>
-          </div>
-          {onToggleRead&&<QuestionToggle filled={alreadyRead} onClick={onToggleRead}/>}
-        </div>
-      </div>
-      <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:10,
-        overflowY:'auto',WebkitOverflowScrolling:'touch'}}>
-        {sections.map((s,i)=>(
-          <button key={s.id} onClick={()=>onSelect(s.id)} className="fu"
-            style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
-              padding:'14px 16px',display:'flex',alignItems:'center',gap:14,
-              cursor:'pointer',color:T.t1,textAlign:'left',
-              animationDelay:`${i*40}ms`,transition:'background .15s, border-color .15s'}}
-            onPointerDown={e=>e.currentTarget.style.background=T.card2}
-            onPointerUp={e=>e.currentTarget.style.background=T.card}
-            onPointerLeave={e=>e.currentTarget.style.background=T.card}>
-            <div style={{width:32,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>{s.icon}</div>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{color:T.t1,fontSize:15,fontWeight:700,marginBottom:2}}>{s.title}</div>
-              <div style={{color:T.t3,fontSize:11,fontWeight:500}}>{s.sub}</div>
-            </div>
-            <div style={{color:T.t3,fontSize:18,fontWeight:600,width:16,textAlign:'center'}}>›</div>
-          </button>
-        ))}
-      </div>
-      <MatchBar onHome={onHome}
-        rightButtons={onBibel?[{icon:<BookIcon size={20}/>,onClick:onBibel,
-          label:'Zur Bibel'}]:[]}/>
-    </div>
+    <WissenList title="Journey" subtitle="Tipps & Tricks für dein Padel-Spiel."
+      icon={<JourneyIcon size={32} color={T.t1}/>} sections={sections} onSelect={onSelect}
+      alreadyRead={alreadyRead} onToggleRead={onToggleRead} onHome={onHome} onBibel={onBibel}/>
   );
 }
 
@@ -21297,13 +21309,14 @@ function JourneySpielstileList({onBack,onHome,onSelect}){
   const[imgErr,setImgErr]=useState({});
 
   return(
-    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
+      <PhotoBackdrop/>
       <div style={{padding:'0 22px 8px'}}>
         <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
           <div style={{width:42,display:'flex',justifyContent:'center'}}><MaskIcon size={30} color={T.o}/></div>
           <div style={{flex:1,minWidth:0}}>
-            <div style={{color:T.t1,fontSize:22,fontWeight:800,letterSpacing:-.3}}>
+            <div style={{...HEAD_SERIF,fontSize:30,lineHeight:1.1,paddingBottom:2}}>
               Die 6 Spielstile
             </div>
             <div style={{color:T.t3,fontSize:12,marginTop:2,fontWeight:500}}>
@@ -21321,7 +21334,7 @@ function JourneySpielstileList({onBack,onHome,onSelect}){
           const fn=STYLE_IMAGES[id];
           return(
             <button key={id} onClick={()=>onSelect(id)} className="fu"
-              style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
+              style={{...GLASS,borderRadius:16,
                 padding:0,display:'flex',alignItems:'stretch',gap:0,
                 cursor:'pointer',color:T.t1,textAlign:'left',overflow:'hidden',
                 animationDelay:`${i*40}ms`,transition:'border-color .15s'}}
@@ -21602,7 +21615,7 @@ function JourneyRitmoDNA({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalS
         Wie funktioniert das Matching?
       </div>
       {MATCHING_LEVELS.map(m=>(
-        <div key={m.id} style={{background:T.card,border:`1px solid ${T.border}`,
+        <div key={m.id} style={{...GLASS,
           borderRadius:15,padding:'14px 16px',marginBottom:10,
           display:'flex',gap:14,alignItems:'flex-start'}}>
           <div style={{width:42,height:42,borderRadius:'50%',flexShrink:0,
@@ -21627,7 +21640,7 @@ function JourneyRitmoDNA({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalS
         Wie stark passt ihr zusammen?
       </div>
       {MATCH_TIERS.map(t=>(
-        <div key={t.id} style={{background:T.card,border:`1px solid ${T.border}`,
+        <div key={t.id} style={{...GLASS,
           borderRadius:15,padding:'12px 16px',marginBottom:8,
           display:'flex',alignItems:'center',gap:14}}>
           <div style={{width:36,height:36,borderRadius:'50%',flexShrink:0,
@@ -21657,11 +21670,11 @@ function JourneyRitmoDNA({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalS
       <div style={{color:T.t2,fontSize:13,marginBottom:14,lineHeight:1.5}}>
         Das Level entscheidet — gleiches Niveau, höherer Match-Tier.
       </div>
-      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:15,
+      <div style={{...GLASS,borderRadius:15,
         overflow:'hidden',marginBottom:14}}>
         {PLAYER_LEVELS.map((lv,i)=>(
           <div key={lv.id} style={{display:'flex',alignItems:'center',gap:12,
-            padding:'14px 16px',borderTop:i>0?`1px solid ${T.sep}`:'none'}}>
+            padding:'14px 16px',borderTop:i>0?`1px solid ${T.glassSep}`:'none'}}>
             <div style={{width:44,height:36,borderRadius:6,flexShrink:0,
               background:lv.color,color:'white',
               display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',
@@ -21692,8 +21705,8 @@ function JourneyRitmoDNA({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalS
           padding:'14px 16px'}}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',
             marginBottom:8}}>
-            <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.2,
-              textTransform:'uppercase'}}>Matching-Beispiel</div>
+            <div style={{...HEAD_SERIF,fontSize:21
+              }}>Matching-Beispiel</div>
             <div style={{color:'#1A8754',fontSize:12,fontWeight:900,letterSpacing:.5}}>S-TIER</div>
           </div>
           <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:8}}>
@@ -21713,8 +21726,8 @@ function JourneyRitmoDNA({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalS
           padding:'14px 16px'}}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',
             marginBottom:8}}>
-            <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.2,
-              textTransform:'uppercase'}}>Counter-Beispiel</div>
+            <div style={{...HEAD_SERIF,fontSize:21
+              }}>Counter-Beispiel</div>
             <div style={{color:'#3498DB',fontSize:12,fontWeight:900,letterSpacing:.5}}>A-TIER</div>
           </div>
           <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:8}}>
@@ -21734,8 +21747,8 @@ function JourneyRitmoDNA({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalS
           padding:'14px 16px'}}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',
             marginBottom:8}}>
-            <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.2,
-              textTransform:'uppercase'}}>Mirror-Beispiel</div>
+            <div style={{...HEAD_SERIF,fontSize:21
+              }}>Mirror-Beispiel</div>
             <div style={{color:'#F39C12',fontSize:12,fontWeight:900,letterSpacing:.5}}>B-TIER</div>
           </div>
           <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:8}}>

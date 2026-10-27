@@ -258,10 +258,46 @@ Die Bausteine stehen in App.jsx direkt vor `ScreenHeader`:
   nehmen dafuer `color`.
 - `SwipeableCard` hat keinen eigenen Grund mehr: die Aktionen dahinter
   sind ungewischt unsichtbar (Deckkraft 0), Glas darf also durchscheinen.
-- Stand: **Runde 1** (Profil, Live, Suche, Bibel, Turnier-Bereich)
-  umgestellt. Danach: Einstellungen; Regelwerk/Journey/FAQ/Post/
+- Umgestellt wird mit zwei Werkbank-Skripten (nicht im Repo): eines
+  macht aus `background:T.card,border:\`1px solid ${T.border}\`` ein
+  `...GLASS`, setzt Rahmen mit `T.bgGrad` auf Foto und streicht
+  `BottomFade`; das andere macht aus den grauen Versal-Zwischenzeilen
+  (`color:T.t3,fontSize:11,…,textTransform:'uppercase'`) die Antiqua
+  und aus `${T.sep}` ein `${T.glassSep}`. Beides immer nur fuer den
+  Zeilenbereich der Runde, danach Screenshot jedes Screens.
+- Stand: **Runde 1** (Profil, Live, Suche, Bibel, Turnier-Bereich),
+  **Runde 2** (Einstellungen samt Unterseiten: `SettingsCard`,
+  `SettingsSubLayout`, `SettingsSection`) und **Runde 3** (RITMO Post,
+  Bald-Seiten, Profil bearbeiten, Match-Praeferenzen, RITMO-DNA-Seite,
+  die Bibel — siehe unten) umgestellt. Danach: 
   Bald-Seiten; Setup-Strecken; laufendes Match/Turnier/Endstand (mit
   `dim`); Login/Registrierung/Onboarding.
+
+### Die Bibel: Regelwerk, Journey, App-FAQ
+
+Neu gebaut als Magazin, nicht nur umgefaerbt.
+
+- **`WissenList`** — das Inhaltsverzeichnis von Regelwerk und Journey:
+  eine Glaskarte, je Kapitel eine Zeile mit grosser kursiver Nummer
+  (`01`, orange), Titel in der Antiqua, Vorspann. Die Kapitel-Icons
+  stehen nur noch gross auf der Kapitelseite.
+- **`RulesDetailLayout`** — die Kapitelseite fuer ALLE Kapitel beider
+  Teile: „Kapitel n von N“, Titel, Vorspann, Icon im Glaskreis, ein
+  Fortschrittsbalken aus Segmenten (statt 6-px-Punkten). Foto mit
+  `dim .38` — hier wird gelesen. Am Ende „‹ Zurück“ / „Weiter ›“:
+  das Wischen zum Blaettern bleibt, aber es kennt keiner.
+- **Textbausteine** `RulesH` (Antiqua mit kurzer oranger Haarlinie),
+  `RulesP`/`RulesUl` (15 px statt 13, Punkte statt Striche),
+  `RulesDef` (Begriff in der Antiqua, Erklaerung darunter, Haarlinie
+  links). Wer ein Kapitel schreibt, nimmt diese vier — dann sieht es
+  von selbst aus wie die anderen.
+- **`WissenLanding`** — der Einstieg vor dem ersten Lesen: Kopf wie
+  ueberall, Bild als gerahmte Karte, Schlagzeile, grosser Weiter-Knopf.
+- **App-FAQ** ist nach Themen gruppiert (`APP_FAQ` = Gruppen mit
+  `items`), durchsuchbar (Fragen UND Antworten, Treffer markiert per
+  `Hl`), Akkordeon mit Plus, das zum Kreuz kippt. Die Antworten nennen
+  Wege in der App so, wie sie dort beschriftet sind — wer einen Screen
+  umbenennt, sucht hier mit.
 
 ### Papierkorb (`ritmo_trash`)
 

@@ -263,6 +263,17 @@ Die Bausteine stehen in App.jsx direkt vor `ScreenHeader`:
   Lichtkante und Schatten genau an der gewaehlten Karte.
 - **Kein `BottomFade` auf Foto-Screens**: er verlaeuft in `--bg` und
   stuende als dunkler Balken ueber der Tab-Bar.
+- **Screens sind `height:'100%'`, nie `100dvh`.** In der installierten
+  iPhone-App (black-translucent) ist `100dvh` um den unteren Rand zu
+  kurz: der Screen endete ueber der Unterkante, Tab-Leiste und
+  Knopfleiste schwebten, und darunter stand ein schwarzer Balken (der
+  Grund von `html`). `100%` ist die echte Hoehe — `index.html` sagt
+  dasselbe fuer html/body/#root. Die Screens haengen direkt an
+  `#root`, `100%` greift also.
+- **`BarBlur`** liegt unter Tab-Leiste und Knopfleiste (`.bar-blur`):
+  Unschaerfe mit Maskenverlauf plus ein Hauch Schwarz, bis unter den
+  Home-Indikator. Der Inhalt verschwimmt dort, statt hart an der
+  Leiste abzureissen.
 - **Glyphen weiss, nicht orange** (`T.t1`). Orange bleibt Status und
   Marke: Ressort, laufend, Akzent. `BookIcon`/`JourneyIcon`/`TrophyIcon`
   nehmen dafuer `color`.
@@ -767,7 +778,7 @@ derselben Zeit, in der die Tastatur aufgeht.
   `scrollIntoView({block:'center'})` nicht: es zentriert im
   *Layout*-Viewport und lässt das Feld trotzdem hinter der Tastatur.
 - Gerollt wird der **nächste scrollende Vorfahre**, nicht das Fenster:
-  die Screens sind `100dvh` hoch, gescrollt wird immer eine Box darin
+  die Screens sind `100%` hoch, gescrollt wird immer eine Box darin
   (auch in den Sheets).
 - Bewegt wird **nur, was nötig ist** (Band von 26 px an beiden
   Rändern). Ein Feld, das schon bequem im Bild steht, bleibt stehen —

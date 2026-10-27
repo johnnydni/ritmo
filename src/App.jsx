@@ -78,7 +78,7 @@ import GlassSurface from "./GlassSurface.jsx";
 function WissenLanding({title,subtitle,hero,headline,text,cta,ctaLabel,
   onHome,onContinue,onMarkRead,alreadyRead}){
   return(
-    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
+    <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
       <PhotoBackdrop/>
       <ScreenHeader kicker="Bibel" title={title} subtitle={subtitle} pad={18}
@@ -205,7 +205,7 @@ const APP_PAUSED=false;
 
 function BetaPause(){
   return(
-    <div style={{minHeight:'100dvh',...PHOTO_ROOT,position:'relative',color:T.t1,
+    <div style={{minHeight:'100%',...PHOTO_ROOT,position:'relative',color:T.t1,
       display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 40px)',
       paddingBottom:'calc(env(safe-area-inset-bottom,0px) + 40px)',
@@ -250,7 +250,7 @@ function BetaLanding({onLogin,onRegister}){
      Sprache der Startseite: Foto, Schriftzug, Antiqua, Glas. Oben die
      Ankuendigung, unten der Weg fuer Beta-Tester. */
   return(
-    <div style={{height:'100dvh',...PHOTO_ROOT,color:T.t1,
+    <div style={{height:'100%',...PHOTO_ROOT,color:T.t1,
       display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 40px)',
       paddingBottom:'calc(env(safe-area-inset-bottom,0px) + 32px)',
@@ -561,7 +561,7 @@ function FlagIcon({code,size=20}){
    ohne den Ueberlauf zu kappen. Genau daran hing der Registrier-
    Screen fest, sobald die Tastatur den Viewport verkleinerte. */
 const AUTH_SCREEN={
-  height:'100dvh',overflowY:'auto',WebkitOverflowScrolling:'touch',
+  height:'100%',overflowY:'auto',WebkitOverflowScrolling:'touch',
   display:'flex',flexDirection:'column',alignItems:'center',
   padding:'calc(env(safe-area-inset-top,0px) + 40px) 22px calc(env(safe-area-inset-bottom,0px) + 40px)',
 };
@@ -1468,7 +1468,7 @@ function VerifiedLanding({onContinue}){
 
   return(
     <div style={{position:'fixed',inset:0,zIndex:900,...PHOTO_ROOT,
-      height:'100dvh',overflowY:'auto',WebkitOverflowScrolling:'touch',
+      height:'100%',overflowY:'auto',WebkitOverflowScrolling:'touch',
       display:'flex',flexDirection:'column',alignItems:'center',
       padding:'calc(env(safe-area-inset-top,0px) + 40px) 22px calc(env(safe-area-inset-bottom,0px) + 40px)'}}>
       <PhotoBackdrop dim={.3}/>
@@ -2077,7 +2077,7 @@ function ProfileRitmoDNA({profile,onBack,onHome}){
     fantasma:'creative',individuoso:'creative'};
 
   return(
-    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
+    <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden'}}>
       <PhotoBackdrop/>
 
@@ -2405,7 +2405,7 @@ function Welcome({profile,setProfile,onComplete}){
   const goBack=()=>{ if(step>0) setStep(s=>s-1); };
 
   return(
-    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
+    <div style={{height:'100%',background:T.bgGrad,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 30px)',position:'relative',overflow:'hidden'}}>
 
       {/* Header: chapter counter + skip */}
@@ -2711,6 +2711,15 @@ const FAB_BASE={position:'absolute',
    nach dem Snap sitzt die Pill bereits unterm Finger. */
 let __navBlendArm=false;
 
+/* Unter Tab-Leiste und Knopfleiste: ein Band, in dem der Inhalt nach
+   unten hin weich verschwimmt (Unschaerfe mit Maskenverlauf, dazu ein
+   Hauch Schwarz). Kein Verlauf in --bg: der stuende auf dem Foto als
+   dunkler Balken — genau das, was hier weg sollte. Es reicht bis an die
+   Unterkante des Bildschirms, auch unter den Home-Indikator. */
+function BarBlur(){
+  return <div className="bar-blur" aria-hidden="true"/>;
+}
+
 function TabBar({active,onTab}){
   // Such-FAB + Navbar-Suchmodus sind entfernt (Einstellungen haben ein
   // eigenes Suchfeld im Screen). Die früheren searchable/rightAction-
@@ -2965,7 +2974,7 @@ function TabBar({active,onTab}){
 
   // Eingeklappt: kompakte Glass-Kugel (Home-Icon) unten LINKS —
   // ploppt per Spring-Kurve auf (nav-pop) und gibt die Bühne frei.
-  if(collapsed) return(
+  if(collapsed) return(<><BarBlur/>
     <div style={{position:'absolute',
       bottom:'calc(env(safe-area-inset-bottom, 0px) * 0.3 - 3px)',
       left:0,right:0,display:'flex',alignItems:'center',justifyContent:'flex-start',
@@ -2994,10 +3003,10 @@ function TabBar({active,onTab}){
           <HomeIcon size={24}/>
         </button>
       </div>
-    </div>
+    </div></>
   );
 
-  return(
+  return(<><BarBlur/>
     <div style={{position:'absolute',
       // Navbar tiefer ansetzen: nur ~30% des Bottom-Safe-Insets als Abstand
       // (vorher fast der volle Inset), zusätzlich 5px tiefer → die Bar
@@ -3112,7 +3121,7 @@ function TabBar({active,onTab}){
         })}
       </div>
       </div>
-    </div>
+    </div></>
   );
 }
 
@@ -3256,7 +3265,7 @@ function MatchBar({onHome,rightIcon,onRight,rightButtons,homeLabel='Zurück zur 
     </div>
   );};
 
-  return(
+  return(<><BarBlur/>
     <div style={{position:'absolute',
       // Auf Navbar-Hoehe: gleicher Bottom-Anchor wie die TabBar
       // (calc(...*0.3 - 3px)) + feste Hoehe = Navbar-Pillen-Hoehe (57px).
@@ -3276,7 +3285,7 @@ function MatchBar({onHome,rightIcon,onRight,rightButtons,homeLabel='Zurück zur 
       <div style={{display:'flex',gap:10,alignItems:'center',pointerEvents:'auto'}}>
         {buttons.map((btn,i)=>btn.items?tray(btn,i):fab(btn,i))}
       </div>
-    </div>
+    </div></>
   );
 }
 
@@ -3522,7 +3531,7 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
   };
 
   return(
-    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
+    <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden'}}>
       <PhotoBackdrop/>
 
@@ -3910,7 +3919,7 @@ function ProfileEdit({profile,setProfile,onBack,onHome,onResetStats}){
     outline:'none',boxSizing:'border-box'};
   const fabBase=FAB_BASE;
   return(
-    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
+    <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',
       position:'relative',overflow:'hidden'}}>
       <PhotoBackdrop/>
@@ -4150,7 +4159,7 @@ function MatchPrefs({profile,setProfile,currentUid,onHome}){
   const lbl={color:T.t1,fontSize:17,fontWeight:700,marginBottom:4};
   const sub={color:T.t3,fontSize:11,fontWeight:500,lineHeight:1.5,marginBottom:12};
   return(
-    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
+    <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
       <PhotoBackdrop/>
       <ScreenHeader title="Matches für dich" kicker="Entdecken"
@@ -4800,7 +4809,7 @@ function Home({nav,activeTab,setActiveTab,onboarded,
   );
 
   return(
-    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
+    <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden'}}>
 
       {/* Foto unter einem Verlauf: oben und unten dunkler, damit Kopf
@@ -4968,7 +4977,7 @@ function Home({nav,activeTab,setActiveTab,onboarded,
 ═══════════════════════════════════════════════════════════════ */
 function SearchHub({nav,onTab}){
   return(
-    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
+    <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
       <PhotoBackdrop/>
@@ -5001,7 +5010,7 @@ function SearchHub({nav,onTab}){
 ═══════════════════════════════════════════════════════════════ */
 function ComingSoon({icon,title,desc,bullets=[],onHome}){
   return(
-    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
+    <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
       <PhotoBackdrop/>
@@ -5082,7 +5091,7 @@ function AppFAQ({onBack,onHome}){
     .filter(f=>!q||f.q.toLowerCase().includes(q)||f.a.toLowerCase().includes(q))}))
     .filter(g=>g.items.length);
   return(
-    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
+    <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
       <PhotoBackdrop/>
@@ -5260,7 +5269,7 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
      Modus. Gestartet wird ueber einen grossen Knopf am Ende — der
      kleine gruene „Start“-Kreis unten rechts war leicht zu uebersehen. */
   return(
-    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
+    <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
       <PhotoBackdrop/>
 
@@ -5707,7 +5716,7 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
     // seitlich an Geschwister-Spalten anstoßen.
     const sidePad=Math.max(10,Math.round(28/Math.max(1,m)));
     return(
-      <div style={{height:'100dvh',width:'100vw',...PHOTO_ROOT,
+      <div style={{height:'100%',width:'100vw',...PHOTO_ROOT,
         display:'flex',flexDirection:'column',animation:'fadeIn .2s ease',position:'relative'}}>
         {/* Anzeigetafel: dasselbe Foto, aber kraeftig abgedunkelt —
             auf dem Fernseher am Court zaehlen nur die Zahlen. */}
@@ -6094,7 +6103,7 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
   };
 
   return(
-    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
+    <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 54px)',position:'relative',overflow:'hidden'}}>
       <PhotoBackdrop dim={.32}/>
 
@@ -9492,7 +9501,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
   };
 
   return(
-    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
+    <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
       <PhotoBackdrop/>
 
@@ -10414,7 +10423,7 @@ function OnlineTournamentLobby({pin,onHome,onStart,onCancel}){
 
   if(!session){
     return(
-      <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',
+      <div style={{height:'100%',...PHOTO_ROOT,display:'flex',
         alignItems:'center',justifyContent:'center'}}>
         <PhotoBackdrop/>
         <BallSpinner/>
@@ -10423,7 +10432,7 @@ function OnlineTournamentLobby({pin,onHome,onStart,onCancel}){
   }
 
   return(
-    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
+    <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
       <PhotoBackdrop/>
 
@@ -11759,7 +11768,7 @@ function JoinTournament({initialPin,profile,onHome,onJoin,onLeave,restored}){
   },[status,pin]);
 
   return(
-    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
+    <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
       <PhotoBackdrop dim={.25}/>
 
@@ -14255,7 +14264,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
   const progress=totalSecs?(tourney.timerSecsLeft||0)/totalSecs:0;
 
   return(
-    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
+    <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
       <PhotoBackdrop dim={.32}/>
 
@@ -14809,7 +14818,7 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
   const sortedLb=lb.sort((a,b)=>tourney.winMode==='points'?b.totalPts-a.totalPts||b.totalWins-a.totalWins:b.totalWins-a.totalWins||b.totalPts-a.totalPts);
   const winner=sortedLb[0];
   return(
-    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
+    <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
       <PhotoBackdrop dim={.2}/>
 
@@ -15129,7 +15138,7 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
     });
 
   return(
-    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
+    <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
       <PhotoBackdrop/>
 
@@ -15591,7 +15600,7 @@ function Settings({onHome,onBack,nav,onLogout}){
   const q=query;
 
   return(
-    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
+    <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
       <PhotoBackdrop/>
 
@@ -15704,7 +15713,7 @@ function SettingsSubLayout({title,desc,icon,onBack,onHome,children}){
   // Liquid-Glass-FABs — Material liefert die .glass-bar-Klasse.
   const fabBase=FAB_BASE;
   return(
-    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
+    <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',
       position:'relative',overflow:'hidden'}}>
       <PhotoBackdrop/>
@@ -16677,7 +16686,7 @@ function RitmoPost({onHome,profile}){
   ];
 
   return(
-    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
+    <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',
       position:'relative',overflow:'hidden'}}>
       <PhotoBackdrop/>
@@ -18831,7 +18840,7 @@ function DnaCupScreen({onExit}){
       onOk={()=>setUnlocked(true)} onCancel={onExit}/>;
   }
   return(
-    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
+    <div style={{height:'100%',background:T.bgGrad,display:'flex',flexDirection:'column',
       overflow:'hidden',position:'relative',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 26px)'}}>
       {/* Admin nur per PIN — Spieler an den Tablets kommen nicht rein. */}
@@ -19256,7 +19265,7 @@ function LigaScreen({profile,onHome}){
   };
 
   return(
-    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
+    <div style={{height:'100%',background:T.bgGrad,display:'flex',flexDirection:'column',
       overflow:'hidden',position:'relative',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 26px)'}}>
       <div style={{padding:'0 22px',flexShrink:0}}>
@@ -19634,7 +19643,7 @@ function TournamentHub({onHome,onStart,onJoin,onCup,
   const qsKicker={fontFamily:T.fontDisplay,color:T.o,fontSize:9.5,
     letterSpacing:2.2,lineHeight:1,marginBottom:6};
   return(
-    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
+    <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
       <PhotoBackdrop/>
@@ -19730,7 +19739,7 @@ function TournamentHub({onHome,onStart,onJoin,onCup,
 
 function RitmoBibel({onHome,onRules,onJourney,onFaq,onTab}){
   return(
-    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
+    <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
       <PhotoBackdrop/>
@@ -19857,7 +19866,7 @@ function RulesDetailLayout({icon,title,sub,visual,children,onBackToRules,onHome,
   };
 
   return(
-    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
+    <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 54px)',position:'relative',overflow:'hidden'}}>
       {/* Lesen braucht Ruhe hinter dem Text: dunkler als ein Hub. */}
       <PhotoBackdrop dim={.38}/>
@@ -20346,7 +20355,7 @@ function Rules({onHome,onSelect,alreadyRead,onToggleRead,onBibel}){
    Kapitelseite selbst. */
 function WissenList({title,subtitle,icon,sections,onSelect,alreadyRead,onToggleRead,onHome,onBibel}){
   return(
-    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
+    <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
       <PhotoBackdrop/>
       <ScreenHeader kicker="Bibel" title={title} subtitle={subtitle}
@@ -20830,7 +20839,7 @@ function JourneySpielstileList({onBack,onHome,onSelect}){
   const[imgErr,setImgErr]=useState({});
 
   return(
-    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
+    <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
       <PhotoBackdrop/>
       <div style={{padding:'0 22px 8px'}}>
@@ -22177,7 +22186,7 @@ export default function App(){
        zentriert im LAYOUT-Viewport und laesst das Feld deshalb
        trotzdem hinter der Tastatur stehen.
      - Gerollt wird der naechste scrollende Vorfahre, nicht das
-       Fenster: die Screens hier sind 100dvh hoch, gescrollt wird
+       Fenster: die Screens hier sind 100 % hoch, gescrollt wird
        immer eine Box darin (auch in den Sheets).
      - Bewegt wird nur, was noetig ist. Ein Feld, das schon bequem
        im Bild steht, bleibt stehen — sonst wandert bei jedem

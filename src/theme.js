@@ -1061,7 +1061,23 @@ button:disabled{cursor:not-allowed;opacity:.55;}
     0 4px 16px rgba(0,0,0,.18),
     0 8px 28px rgba(0,0,0,.14);
 }
+/* Rueckweg (Safari/iOS, Firefox): klares Glas wie GLASS in App.jsx —
+   kein Blur, keine Toenung, nur 6 % Weiss und der innere Lichtsaum.
+   Vorher stand hier Blur 24 + Aufhellung + Toenung. Auf dem iPhone
+   rechnet WebKit diese Unschaerfe erst, wenn das Einblenden der Seite
+   vorbei ist: die Karten kamen klar herein und wurden eine halbe
+   Sekunde spaeter grau. Gewollt war das klare Bild. */
 .glass-surface--fallback{
+  background:rgba(255,255,255,.06);
+  box-shadow:
+    inset 0 0 2px 1px rgba(255,255,255,.35),
+    inset 0 0 10px 4px rgba(255,255,255,.12),
+    0 4px 16px rgba(0,0,0,.18),
+    0 8px 28px rgba(0,0,0,.14);
+}
+/* Die Tab-Leiste behaelt ihr Milchglas: sie liegt ueber wechselndem
+   Inhalt und muss dort lesbar bleiben. */
+.nav-glass.glass-surface--fallback{
   background:color-mix(in srgb, var(--card) 46%, transparent);
   -webkit-backdrop-filter:blur(24px) saturate(180%) brightness(1.1);
   backdrop-filter:blur(24px) saturate(180%) brightness(1.1);
@@ -1308,6 +1324,15 @@ a:focus-visible{
 }
 :where(#root > div > :nth-child(3)){animation-delay:45ms;}
 :where(#root > div > :nth-child(n+4)){animation-delay:90ms;}
+/* Die gehaltenen Tab-Screens (KeepTab in App.jsx) liegen eine Ebene
+   tiefer, in .keep-tab. Sie blenden genau einmal ein — beim ersten
+   Besuch; danach werden sie nur noch sichtbar geschaltet, und
+   visibility startet keine Animation neu. */
+:where(#root > .keep-tab > div > :not([aria-hidden="true"])){
+  animation:screenIn .5s var(--ease-out-quint) backwards;
+}
+/* Bezugsrahmen fuer .keep-tab (position:absolute; inset:0). */
+#root{position:relative;}
 
 /* ── prefers-reduced-motion Killswitch ──
    Respektiert OS-/Browser-Setting; deaktiviert ALLE App-Animationen

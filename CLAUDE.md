@@ -259,6 +259,12 @@ Die Bausteine stehen in App.jsx direkt vor `ScreenHeader`:
   eine Toenung; auf dem Telefon stand das als grauer Fill neben den
   klaren Home-Karten. Ohne `backdrop-filter` kostet eine Glasflaeche
   beim Scrollen ausserdem nichts mehr.
+- **Der Rueckweg von `GlassSurface` (`.glass-surface--fallback`) ist
+  dasselbe klare Glas** — ausser in der Tab-Leiste (`.nav-glass`), die
+  ueber wechselndem Inhalt lesbar bleiben muss und ihr Milchglas
+  behaelt. Vorher Blur + Aufhellung + Toenung: WebKit rechnet die
+  Unschaerfe erst nach dem Einblenden der Seite, die Home-Karten kamen
+  klar herein und wurden eine halbe Sekunde spaeter grau.
 - Wer `boxShadow` auf einer `GLASS`-Flaeche setzt (Auswahl-Schein),
   haengt `GLASS.boxShadow` an, statt ihn zu ersetzen — sonst fehlen
   Lichtkante und Schatten genau an der gewaehlten Karte.
@@ -1172,6 +1178,28 @@ dunkleres Amber — `#FFC93C` verschwindet auf Weiß. Vor dieser Rolle
 trugen „zurück" und „nachsehen" beide die graue Standardkontur; in
 einem Stapel aus drei Knöpfen sah der Ausweg aus wie die Nebensache
 daneben.
+
+### Tabs bleiben stehen (`KeepTab`)
+
+Home, Profil, Live, Suche und Bibel werden nach dem ersten Besuch
+**nicht mehr abgebaut**: `KeepTab` haelt sie gemountet und schaltet nur
+`visibility`. Vorher wurde jeder Tab beim Verlassen weggeworfen — beim
+Zurueckkommen neu gebaut, Bilder neu dekodiert, Einblenden von vorn,
+Scrollposition weg. Das wirkte wie ein Neuladen bei jedem Tipp.
+
+- **`visibility`, nicht `display:none`**: ein Element, das aus
+  `display:none` zurueckkommt, startet seine CSS-Animationen neu
+  (`.fu` & Co.) — genau das Refresh-Gefuehl.
+- **Absolut im `#root`**, der dafuer `position:relative` traegt — nicht
+  `fixed`: das Fenster ist in der iPhone-App zu kurz.
+- Ein Tab wird erst beim ersten Besuch gebaut; beim Abmelden
+  (`alive={loggedIn}`) fallen alle weg.
+- Gehaltene Tabs blenden nur beim ersten Besuch ein (eigene
+  `screenIn`-Regel auf `.keep-tab`), danach steht der Wechsel sofort —
+  wie bei einer nativen Tab-Leiste.
+- Ein gehaltener Tab rendert mit, wenn sich `App`-State aendert. Wer
+  dort einen teuren Effekt oder Timer einbaut, denkt daran, dass er
+  auch laeuft, solange der Tab unsichtbar ist.
 
 ### Bewegung (theme.js)
 

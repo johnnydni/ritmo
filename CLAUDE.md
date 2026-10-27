@@ -43,6 +43,7 @@ Pure / side-effect-free modules have been extracted from the original mega-file.
 | [src/tourneyPdf.js](src/tourneyPdf.js) | Turnier-Export als A4-PDF (Endstand, Sieger, Rundenverlauf) und `exportTourneyPdf` (Share-Sheet bzw. Download). | jsPDF wird per `import()` nachgeladen; eigene Schriften unter [src/fonts/pdf/](src/fonts/pdf/). |
 | [src/shapeMorph.js](src/shapeMorph.js) | Formen-Morph über Distanzfelder: `sdfFromAlpha` (exakte EDT nach Felzenszwalb, Kanten aus der Teildeckung auf Subpixel), `sampleSdf`, `drawMorph`. | Pure JS; die Bilddaten liefert der Aufrufer. Gebraucht vom Splash (siehe dort). |
 | [src/courtLayout.js](src/courtLayout.js) | Raeumliche Anordnung der Courts: `defaultLayout`, `normLayout`, `layoutBounds`, `moveTo`, `rotateCourt`, `compactLayout`. | Reines Raster (4 x 5), keine React-Abhaengigkeit. Gezeichnet wird in `CourtMap` (App.jsx). |
+| [src/events.js](src/events.js) | `EVENTS` (die Termine der Startseite, von Hand gepflegt) + `upcomingEvents`, `eventLabel`, `eventIcs` (Kalenderdatei), `eventMapsUrl`. | Nur kommende Events werden gezeigt; neue Termine einfach anhaengen. |
 | [src/whatsNew.js](src/whatsNew.js) | `RELEASES` (die Ausgaben des Update-Newsletters) + `unseenRelease(seen)`. | Inhalt/Daten; die Regeln fuer neue Ausgaben stehen im Dateikopf. |
 | [src/skillDescriptions.js](src/skillDescriptions.js) | `SKILL_DESCRIPTIONS` — text for the RITMO DNA Skill tier card. | Translation-ready content. |
 | [src/supabase.js](src/supabase.js) | Older standalone tournament-sharing helper (legacy). | Currently unused by the active flow. |
@@ -134,7 +135,7 @@ einer Kuer haengen.
 - If the session already carries a roster (`tournamentState.players` — always the case for a mirror session), `RosterNamePicker` lists those names; names already claimed by another participant are disabled. Picking a name joins with it *verbatim*, which matters because `TournamentParticipantView` matches a participant to a player by `sessionParticipantId` or, failing that, by lowercased name — a typed "Chris" for a rostered "Christian" used to leave the player without a match.
 - Without a roster (lobby session, not yet started) the flow falls back to the free-text `name` step, also reachable via "Mein Name steht nicht dabei".
 
-The participant's match view is a two-page swipe (`MatchPager`, scroll-snap — same mechanism as the Home "Spielen" strip): **Jetzt** shows the running match as a 2×2 grid (`MatchSlotGrid`), **Danach** shows the next match on a blue padel court (`PadelCourtBlue`, real 20 m × 10 m proportions) plus a Mit/Gegen readout. The pager sits outside the score-submission card on purpose so players who are sitting out still see what is coming.
+The participant's match view is a two-page swipe (`MatchPager`, scroll-snap — same mechanism as the Schnellstart strip in the Turnier hub): **Jetzt** shows the running match as a 2×2 grid (`MatchSlotGrid`), **Danach** shows the next match on a blue padel court (`PadelCourtBlue`, real 20 m × 10 m proportions) plus a Mit/Gegen readout. The pager sits outside the score-submission card on purpose so players who are sitting out still see what is coming.
 
 ### `MatchSlotGrid` — the standard way a match is drawn
 
@@ -207,6 +208,32 @@ Die Platzkarte darüber trägt denselben Stift in denselben Maßen
 (30 px, `borderRadius: 9`): es ist dieselbe Geste — antippen, ändern,
 wieder antippen. Dass man drin ist, sagen der gefüllte Knopf und das
 Ressort („ANORDNUNG ANPASSEN"), nicht ein zweites Wort auf dem Knopf.
+
+### Die Startseite (`Home`)
+
+Foto (`assets/home-bg.jpg`, fest, mit dunklem Verlauf darueber), drei
+Antiqua-Ueberschriften und Glas darauf — nach einem Entwurf des
+Teams. Kopf: der reine Schriftzug (`ritmo-lettering.png`), Glocke und
+Menue als runde Glasknoepfe (`GlassCircle`).
+
+- **Spielen**: zwei runde Glasknoepfe, Match → `single-setup`,
+  Turnier → `tournament-hub`. Die Schnellstarts liegen seitdem im
+  Turnier-Bereich (siehe dort).
+- **Events**: eine Glaskarte je kommendem Event aus
+  [src/events.js](src/events.js), hoechstens drei; ohne Termin ein
+  kursiver Satz. Die Knoepfe: Kalenderdatei (`.ics`) und Route
+  (Google Maps).
+- **Deine Spiele**: laufendes Match plus die letzten Turniere
+  (laufende vor beendeten, keine Entwuerfe), bis zu drei; „Alle in
+  Live ›“, wenn es mehr gibt.
+- Hinter jeder Ueberschrift ein Zeichen in 30 % Weiss (`HomeDeco`).
+- **Zwei Hausregeln sind hier bewusst gebrochen**, weil der Entwurf
+  es so will: eine vierte Schrift (`T.fontSerif`, nur hier) und
+  Ziffern in Centauri auf der Event-Karte (Monat und Uhrzeit, ab
+  15 px gesetzt). Wer die Karte aendert, prueft die Zeile
+  „AUGUST 2026“ bei 390 px — bei 20 px lief sie aus der Karte.
+- Die Mock-Karten „Matches für dich“ und die Datumsleiste sind
+  entfallen, mit ihnen `MATCH_SLOTS` und `HOME_EVENTS`.
 
 ### Papierkorb (`ritmo_trash`)
 
@@ -736,9 +763,14 @@ Was dabei leicht schiefgeht:
   oder einem laufenden Turnier hat niemand darauf gewartet.
 - Abgehakt wird auch beim `×`: wer ihn drueckt, hat entschieden.
 
-### Schnellstarts auf Home (`ritmo_quickstarts`)
+### Schnellstarts im Turnier-Bereich (`ritmo_quickstarts`)
 
-Die „Sofort"-Karten im Spielen-Streifen sind **keine feste Liste
+Sie standen bis zur neuen Startseite im Spielen-Streifen auf Home und
+liegen jetzt in `TournamentHub`, unter „Turnier starten / beitreten“:
+wer einen Schnellstart will, will ein Turnier, und genau dorthin
+fuehrt der Turnier-Knopf auf Home.
+
+Die „Sofort"-Karten sind **keine feste Liste
 mehr**. Wer jeden Dienstag dieselbe Runde spielt, legt sie einmal an —
 Name, Format, Spieler, Courts, Rundendauer, Wertung — und tippt sie
 danach nur noch an. Die vier mitgelieferten (`DEFAULT_QUICK_STARTS`)
@@ -1043,6 +1075,7 @@ like a sports magazine, not like a settings dialog):
 | **Centauri** (`T.fontDisplay`) | Kickers/ressorts above a title, section labels (`SectionRule`), table column heads, long-form headings. Short words, generously letter-spaced (`letterSpacing` 1.6–3). | **Numbers** — the `0` is an empty rectangle and the `2` is barely distinguishable from a `Z`. Also anything longer than ~16 characters: at 15 px a line runs ~19 px per character, so it stops fitting 390 px screens. |
 | **SF Pro** (`T.fontText`, `.txt`) | Subtitles under a screen title, card descriptions, legal/long-form body copy. Italic for sublines, upright for body. | Labels, buttons, anything functional. |
 | **Inter** (`T.fontSans`) | Everything else — titles, body, buttons, all figures (with `fontVariantNumeric:'tabular-nums'`). | — |
+| **Times** (`T.fontSerif`) | **Only the Home screen** — the three italic section heads, the Match/Turnier labels, the event card's date and line. A system font (Times New Roman / Liberation Serif), never bundled. | Anywhere else. It is the Home screen's voice, not a fourth house font. |
 
 Two shared components carry the pattern; prefer extending them over
 re-inventing a header:

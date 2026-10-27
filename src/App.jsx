@@ -3060,15 +3060,50 @@ function ExitGlyph({size=18}){
   );
 }
 
-/* Screen-Kopf im Magazin-Aufbau: Ressort (kicker) → Schlagzeile →
-   Trennstrich → Vorspann. Die drei Schriften teilen sich die Arbeit
-   nach Funktion, nicht nach Laune:
-     kicker    Centauri — kurz, gesperrt, das sportliche Signal
-     title     Inter    — trägt beliebige Längen ohne Umbruch-Drama
-                          (Centauri ist zu breit für „Turnier
-                          bearbeiten" auf 390 px)
-     subtitle  Times    — kursiv, die ruhige Lifestyle-Stimme
-   kicker ist optional; ohne ihn sieht der Kopf aus wie vorher. */
+/* ═══════════════════════════════════════════════════════════════
+   DIE SPRACHE DER STARTSEITE — fuer alle Screens.
+
+   Foto (PhotoBackdrop), Antiqua-Ueberschriften (HEAD_SERIF), Glas
+   (GLASS) und runde Glasknoepfe (GlassCircle, bei Home). Eingefuehrt
+   mit der neuen Startseite, dann Screen fuer Screen uebernommen.
+
+   - PhotoBackdrop liegt mit zIndex -1 HINTER dem Inhalt. Damit das
+     geht, braucht der Screen-Rahmen einen eigenen Stapelkontext
+     (PHOTO_ROOT: isolation:isolate) — sonst rutscht das Foto hinter
+     den Grund des Rahmens, und kein Screen muesste seine Ebenen
+     umbauen.
+   - GLASS ist eine abgedunkelte, durchscheinende Flaeche mit
+     Unschaerfe, NICHT das GlassSurface-Material der Startseiten-
+     Karten: das rechnet je Karte einen SVG-Verzerrungsfilter, und auf
+     Listen mit zwanzig Zeilen kostet das mehr, als es bringt.
+   - BottomFade gehoert NICHT auf Foto-Screens: er verlaeuft in --bg
+     und stuende auf dem Foto als dunkler Balken ueber der Tab-Bar.
+   - dim dunkelt nach: Screens zum Arbeiten (Turnier, Match) brauchen
+     mehr Ruhe hinter dem Text als ein Hub.
+═══════════════════════════════════════════════════════════════ */
+const PHOTO_ROOT={background:T.bg,isolation:'isolate'};
+const GLASS={background:T.glass,border:`1px solid ${T.glassLine}`,
+  WebkitBackdropFilter:'blur(16px) saturate(140%)',backdropFilter:'blur(16px) saturate(140%)'};
+const HEAD_SERIF={fontFamily:T.fontSerif,fontStyle:'italic',fontWeight:700,
+  fontSize:40,letterSpacing:-.6,lineHeight:1,color:T.t1,position:'relative',
+  textShadow:'0 2px 14px rgba(0,0,0,.45)'};
+function PhotoBackdrop({dim=0}){
+  return(
+    <div aria-hidden="true" style={{position:'absolute',inset:0,zIndex:-1,overflow:'hidden',
+      pointerEvents:'none'}}>
+      <img src={`${getAssetBase()}assets/home-bg.jpg`} alt="" draggable={false}
+        style={{position:'absolute',inset:0,width:'100%',height:'100%',
+          objectFit:'cover',objectPosition:'50% 30%',userSelect:'none'}}/>
+      <div style={{position:'absolute',inset:0,
+        background:'linear-gradient(180deg,rgba(0,0,0,.42) 0%,rgba(0,0,0,.18) 34%,rgba(0,0,0,.28) 70%,rgba(0,0,0,.62) 100%)'}}/>
+      {dim>0&&<div style={{position:'absolute',inset:0,background:`rgba(0,0,0,${dim})`}}/>}
+    </div>
+  );
+}
+
+/* Screen-Kopf: Schriftzug (wie auf Home), Ressort (Centauri, orange),
+   Schlagzeile in der Antiqua der Startseite, Haarlinie, Vorspann.
+   kicker ist optional. */
 function ScreenHeader({title,subtitle,icon,right,pad=22,ellipsis=false,kicker,rule=true,
   /* Die Unterzeile ist normalerweise ein Standfirst — ein Satz, und
      der steht kursiv. Wo sie stattdessen eine Statuszeile ist
@@ -3077,21 +3112,24 @@ function ScreenHeader({title,subtitle,icon,right,pad=22,ellipsis=false,kicker,ru
   subtitleItalic=true}){
   return(
     <div className="fi" style={{padding:`0 9px ${pad}px`,flexShrink:0}}>
-      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-        <RitmoWordmark size={40} style={{marginLeft:-18}}/>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',
+        minHeight:40}}>
+        <img src={`${getAssetBase()}assets/ritmo-lettering.png`} alt="RITMO"
+          draggable={false} style={{width:150,height:'auto',display:'block',
+            marginLeft:2,userSelect:'none'}}/>
         {(right||icon)&&(
-          <span style={{marginRight:5,display:'inline-flex',alignItems:'center',opacity:.85}}>
+          <span style={{marginRight:5,display:'inline-flex',alignItems:'center',opacity:.9}}>
             {right||icon}
           </span>
         )}
       </div>
       {kicker&&(
         <div style={{fontFamily:T.fontDisplay,color:T.o,fontSize:11,letterSpacing:3,
-          lineHeight:1,marginTop:12,marginLeft:10}}>{kicker}</div>
+          lineHeight:1,marginTop:18,marginLeft:10}}>{kicker}</div>
       )}
       {title!=null&&(
-        <div style={{color:T.t1,fontSize:34,marginTop:kicker?7:10,marginLeft:10,fontWeight:700,
-          letterSpacing:-.6,lineHeight:1.12,
+        <div style={{...HEAD_SERIF,fontSize:38,marginTop:kicker?9:16,marginLeft:10,
+          lineHeight:1.08,paddingBottom:2,
           ...(ellipsis?{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}:{})}}>
           {title}
         </div>
@@ -3101,8 +3139,9 @@ function ScreenHeader({title,subtitle,icon,right,pad=22,ellipsis=false,kicker,ru
           <div style={{height:1,width:34,marginTop:11,marginLeft:10,borderRadius:1,
             background:`linear-gradient(90deg,${T.o},transparent)`}}/>
         )}
-        <div className="txt" style={{color:T.t3,fontSize:15,marginTop:rule?9:5,
-          marginLeft:10,fontStyle:subtitleItalic?'italic':'normal',lineHeight:1.45}}>
+        <div className="txt" style={{color:T.t2,fontSize:15,marginTop:rule?9:5,
+          marginLeft:10,fontStyle:subtitleItalic?'italic':'normal',lineHeight:1.45,
+          textShadow:'0 1px 8px rgba(0,0,0,.45)'}}>
           {subtitle}
         </div>
       </>)}
@@ -3120,16 +3159,19 @@ function ScreenHeader({title,subtitle,icon,right,pad=22,ellipsis=false,kicker,ru
    darunter sollen die Fläche tragen, die Zeile nur einordnen.
    Centauri passt hier, weil selbst „Matches für dich" auf 390 px
    noch in eine Zeile geht (gemessen: 287 px bei 15 px). */
+/* Seit der neuen Startseite traegt die Zeile deren Antiqua (kursiv,
+   fett) statt Centauri — dieselbe Stimme wie „Spielen“ / „Events“,
+   nur kleiner, weil hier ein Abschnitt beginnt und kein Screen. */
 function SectionRule({children,trailing,top=26,bottom=13,mx=0}){
   return(
     <div style={{margin:`${top}px ${mx}px ${bottom}px`}}>
-      <div style={{display:'flex',alignItems:'center',gap:12,minHeight:26}}>
-        <div style={{fontFamily:T.fontDisplay,color:T.t1,fontSize:15,letterSpacing:2.4,
-          lineHeight:1,flex:1,minWidth:0,whiteSpace:'nowrap',
+      <div style={{display:'flex',alignItems:'flex-end',gap:12,minHeight:28}}>
+        <div style={{...HEAD_SERIF,fontSize:25,letterSpacing:-.3,lineHeight:1.1,
+          flex:1,minWidth:0,whiteSpace:'nowrap',paddingBottom:1,
           overflow:'hidden',textOverflow:'ellipsis'}}>{children}</div>
         {trailing}
       </div>
-      <div style={{height:1,background:T.sep,marginTop:9}}/>
+      <div style={{height:1,background:T.glassSep,marginTop:8}}/>
     </div>
   );
 }
@@ -3917,8 +3959,8 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
 
   // Health-Bausteine.
   const tint=(c,p)=>`color-mix(in srgb, ${c} ${p}%, transparent)`;
-  const card={background:T.card,border:`1px solid ${T.border}`,borderRadius:16};
-  const capSty={color:T.t3,fontSize:11.5,fontWeight:500,lineHeight:1.4};
+  const card={...GLASS,borderRadius:20};
+  const capSty={color:T.t2,fontSize:11.5,fontWeight:500,lineHeight:1.4};
   const SecTitle=({children,top=26})=>(
     <SectionRule top={top} mx={2}>{children}</SectionRule>
   );
@@ -3950,7 +3992,7 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
   const Row=({chip,chipColor,label,value,trailing,onClick,top=false,danger=false})=>{
     const sty={width:'100%',display:'flex',alignItems:'center',gap:12,padding:'12px 0',
       background:'none',border:'none',textAlign:'left',color:T.t1,
-      borderTop:top?'none':`1px solid ${T.sep}`};
+      borderTop:top?'none':`1px solid ${T.glassSep}`};
     const inner=(<>
       <span style={{width:29,height:29,borderRadius:8,flexShrink:0,
         background:tint(chipColor,13),color:chipColor,
@@ -3966,8 +4008,9 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
   };
 
   return(
-    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden'}}>
+      <PhotoBackdrop/>
 
       <div ref={scrollRef} onScroll={()=>setScrollY(scrollRef.current?.scrollTop||0)}
         style={{position:'absolute',inset:0,zIndex:2,overflowY:'auto',
@@ -3983,8 +4026,8 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
           <div style={{minWidth:0,flex:1}}>
             <div style={{fontFamily:T.fontDisplay,color:T.o,fontSize:11,letterSpacing:3,
               lineHeight:1}}>Profil</div>
-            <div style={{color:T.t1,fontSize:34,fontWeight:700,letterSpacing:-.6,
-              lineHeight:1.1,marginTop:4,overflowWrap:'anywhere'}}>
+            <div style={{...HEAD_SERIF,fontSize:38,lineHeight:1.08,marginTop:8,
+              overflowWrap:'anywhere',paddingBottom:2}}>
               {displayName(profile)}
             </div>
           </div>
@@ -4125,7 +4168,7 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
           <SecTitle>RITMO DNA</SecTitle>
           <button onClick={hasStyle?()=>onOpenRitmoDNA&&onOpenRitmoDNA():onResetOnboarding}
             className="fu" data-lift
-            style={{...card,background:hasStyle?`${styleGrad(profile.styleType)}, ${T.card}`:T.card,
+            style={{...card,background:hasStyle?`${styleGrad(profile.styleType)}, ${T.glass}`:T.glass,
               padding:'14px 16px',textAlign:'left',cursor:'pointer',color:T.t1,
               animationDelay:'.12s',width:'100%'}}>
             <Eyebrow color={T.o} icon={<DNAIcon size={14} color="currentColor"/>} chev>
@@ -4316,7 +4359,6 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
         </div>
       </div>
 
-      <BottomFade/>
       {/* Profil ist ein Haupt-Tab → Navbar; Fallback MatchBar für
           alte Aufrufer ohne onTab. */}
       {onTab?<TabBar active="profil" onTab={onTab}/>:<MatchBar onHome={onHome}/>}
@@ -5077,9 +5119,6 @@ function WhatsNewSheet({release,onClose}){
      Hausregel "nie Zahlen in Centauri" ist hier bewusst gebrochen:
      gross genug gesetzt (20 px) bleibt die 2 als 2 lesbar.
 ═══════════════════════════════════════════════════════════════ */
-const HOME_HEAD={fontFamily:T.fontSerif,fontStyle:'italic',fontWeight:700,
-  fontSize:40,letterSpacing:-.6,lineHeight:1,color:T.t1,position:'relative',
-  textShadow:'0 2px 14px rgba(0,0,0,.45)'};
 
 function HomeDeco({kind}){
   const f='rgba(255,255,255,.30)';
@@ -5247,17 +5286,12 @@ function Home({nav,activeTab,setActiveTab,onboarded,
   );
 
   return(
-    <div style={{height:'100dvh',background:'#000',display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden'}}>
 
       {/* Foto unter einem Verlauf: oben und unten dunkler, damit Kopf
           und Tab-Bar auf jedem Bildausschnitt lesbar bleiben. */}
-      <img src={`${getAssetBase()}assets/home-bg.jpg`} alt="" aria-hidden="true"
-        draggable={false}
-        style={{position:'absolute',inset:0,width:'100%',height:'100%',
-          objectFit:'cover',objectPosition:'50% 30%',userSelect:'none',zIndex:0}}/>
-      <div aria-hidden="true" style={{position:'absolute',inset:0,zIndex:1,
-        background:'linear-gradient(180deg,rgba(0,0,0,.42) 0%,rgba(0,0,0,.18) 34%,rgba(0,0,0,.28) 70%,rgba(0,0,0,.62) 100%)'}}/>
+      <PhotoBackdrop/>
 
       <div ref={corpusRef} onScroll={onHomeScroll}
         style={{position:'absolute',inset:0,zIndex:2,overflowY:'auto',
@@ -5290,7 +5324,7 @@ function Home({nav,activeTab,setActiveTab,onboarded,
             minHeight:110}}>
             <div className="fu" style={{position:'relative',paddingTop:4}}>
               <HomeDeco kind="play"/>
-              <h2 style={{...HOME_HEAD,margin:0}}>Spielen<span style={{fontSize:16}}>.</span></h2>
+              <h2 style={{...HEAD_SERIF,margin:0}}>Spielen<span style={{fontSize:16}}>.</span></h2>
             </div>
             <div style={{display:'flex',gap:30,paddingRight:8}}>
               {playBtn('Match',<HomeBallGlyph/>,()=>nav('single-setup'),'.04s')}
@@ -5311,7 +5345,7 @@ function Home({nav,activeTab,setActiveTab,onboarded,
           <div className="fu" style={{position:'relative',marginTop:54,marginBottom:16,
             animationDelay:'.12s'}}>
             <HomeDeco kind="events"/>
-            <h2 style={{...HOME_HEAD,margin:0}}>Events</h2>
+            <h2 style={{...HEAD_SERIF,margin:0}}>Events</h2>
           </div>
           <div style={{display:'flex',flexDirection:'column',gap:12}}>
             {events.length?events.slice(0,3).map((ev,i)=>(
@@ -5328,7 +5362,7 @@ function Home({nav,activeTab,setActiveTab,onboarded,
           <div className="fu" style={{position:'relative',alignSelf:'flex-start',
             marginTop:58,marginBottom:16,animationDelay:'.18s'}}>
             <HomeDeco kind="games"/>
-            <h2 style={{...HOME_HEAD,margin:0}}>Deine Spiele</h2>
+            <h2 style={{...HEAD_SERIF,margin:0}}>Deine Spiele</h2>
           </div>
           {games.length?(
             <div className="fu" style={{position:'relative',borderRadius:20,overflow:'hidden',
@@ -5420,26 +5454,29 @@ function Home({nav,activeTab,setActiveTab,onboarded,
 ═══════════════════════════════════════════════════════════════ */
 function SearchHub({nav,onTab}){
   return(
-    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
+      <PhotoBackdrop/>
       <ScreenHeader title="Suche" kicker="Entdecken"
         icon={<SearchIcon size={34}/>}/>
 
       <div style={{flex:1,padding:'0 22px 140px',overflowY:'auto',
         WebkitOverflowScrolling:'touch'}}>
-        <div className="fi" style={{background:T.card,border:`1px solid ${T.border}`,
-          borderRadius:16,padding:'40px 28px',textAlign:'center'}}>
-          <div style={{display:'flex',justifyContent:'center',marginBottom:14,color:T.o}}>
-            <SearchIcon size={28}/>
+        <div className="fi" style={{...GLASS,
+          borderRadius:20,padding:'36px 26px',textAlign:'center'}}>
+          <div style={{display:'flex',justifyContent:'center',marginBottom:16}}>
+            <span style={{width:52,height:52,borderRadius:'50%',background:T.glassHi,
+              border:`1px solid ${T.glassLine}`,color:T.t1,display:'inline-flex',
+              alignItems:'center',justifyContent:'center'}}><SearchIcon size={24}/></span>
           </div>
-          <div style={{color:T.t2,fontSize:15,lineHeight:1.6,maxWidth:'30ch',margin:'0 auto'}}>
+          <div style={{fontFamily:T.fontSerif,color:T.t1,fontSize:20,lineHeight:1.45,
+            maxWidth:'26ch',margin:'0 auto'}}>
             Hier findest du bald einen Marketplace, Communities und Clubs.
           </div>
         </div>
       </div>
 
-      <BottomFade/>
       <TabBar active="suche" onTab={onTab}/>
     </div>
   );
@@ -7950,7 +7987,7 @@ function SwipeableCard({children,onDelete,onShare,onMore}){
         onClickCapture={handleCardClick}
         style={{transform:`translateX(${tx}px)`,
           transition:swiping?'none':'transform .25s cubic-bezier(.3,0,.2,1)',
-          willChange:'transform',background:T.bg,borderRadius:20,position:'relative'}}>
+          willChange:'transform',background:'transparent',borderRadius:20,position:'relative'}}>
         {children}
       </div>
     </div>
@@ -15558,8 +15595,9 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
     });
 
   return(
-    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
+      <PhotoBackdrop/>
 
       {/* Header als relativer Anker: der "Alle löschen"-Button hängt
           rechts an dessen UNTERKANTE (Subline-Höhe) — folgt damit dem
@@ -15577,11 +15615,11 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
           <button onClick={()=>{buzz(8);setConfirmAll(true);}}
             title="Alle Spiele & Turniere löschen" aria-label="Alle Spiele & Turniere löschen"
             style={{position:'absolute',right:22,bottom:14,zIndex:5,
-              width:46,height:46,background:T.bg,border:`2px solid ${T.o}`,
-              borderRadius:16,cursor:'pointer',
+              width:44,height:44,...GLASS,
+              borderRadius:'50%',cursor:'pointer',
               display:'flex',alignItems:'center',justifyContent:'center'}}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13" stroke={T.o}
+              <path d="M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13" stroke={T.t1}
                 strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </button>
@@ -15593,7 +15631,8 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
         {items.length===0&&(
           <div className="fi" style={{display:'flex',flexDirection:'column',
             alignItems:'center',gap:20,padding:'34px 20px'}}>
-            <div style={{textAlign:'center',color:T.t3,fontSize:16,lineHeight:1.6}}>
+            <div style={{textAlign:'center',color:T.t1,fontFamily:T.fontSerif,fontSize:19,
+              lineHeight:1.5,textShadow:'0 1px 8px rgba(0,0,0,.45)'}}>
               Noch nichts los — starte direkt hier ein neues Match oder Turnier.
             </div>
             {/* Plus-Button (Liquid Glass) → klappt die zwei Start-Optionen auf. */}
@@ -15633,8 +15672,8 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
         )}
 
         {renderList.map((item,i)=> item.header?(
-          <div key={item.id} className="fi" style={{color:T.t3,fontSize:11,fontWeight:800,
-            letterSpacing:1.4,textTransform:'uppercase',margin:'6px 2px -4px'}}>
+          <div key={item.id} className="fi" style={{...HEAD_SERIF,fontSize:24,
+            margin:'10px 2px -2px'}}>
             {item.header}
           </div>
         ):(
@@ -15642,22 +15681,26 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
             <SwipeableCard onDelete={item.onDelete} onShare={item.onShare}
               onMore={()=>setMoreItem(item)}>
               <button onClick={()=>item.onClick?item.onClick():nav(item.navTo)}
-                style={{width:'100%',background:T.card,border:`1px solid ${item.finished?T.border:T.border}`,
-                  borderRadius:20,padding:'18px 20px',display:'flex',alignItems:'center',gap:18,
-                  cursor:'pointer',color:T.t1,textAlign:'left',transition:'background .15s',
-                  opacity:item.finished?0.82:1}}
-                onPointerDown={e=>e.currentTarget.style.background=T.card2}
-                onPointerUp={e=>e.currentTarget.style.background=T.card}
-                onPointerLeave={e=>e.currentTarget.style.background=T.card}>
-                {item.type==='match'?<SingleMatchIcon size={42}/>:<TrophyIcon size={42}/>}
+                style={{width:'100%',...GLASS,
+                  borderRadius:20,padding:'16px 18px',display:'flex',alignItems:'center',gap:16,
+                  cursor:'pointer',color:T.t1,textAlign:'left',transition:'background .15s'}}
+                onPointerDown={e=>e.currentTarget.style.background=T.glassHi}
+                onPointerUp={e=>e.currentTarget.style.background=T.glass}
+                onPointerLeave={e=>e.currentTarget.style.background=T.glass}>
+                <span style={{width:48,height:48,borderRadius:'50%',flexShrink:0,
+                  background:T.glassHi,border:`1px solid ${T.glassLine}`,
+                  display:'inline-flex',alignItems:'center',justifyContent:'center'}}>
+                  {item.type==='match'?<SingleMatchIcon size={28}/>:<TrophyIcon size={26} color={T.t1}/>}
+                </span>
                 <div style={{flex:1,minWidth:0}}>
-                  <div style={{color:item.draft?T.t2:item.finished?T.t1:T.o,fontSize:16,fontWeight:700,marginBottom:3,
+                  <div style={{color:item.draft?T.t2:T.t1,fontFamily:T.fontSerif,fontSize:19,
+                    fontWeight:700,marginBottom:3,
                     overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.title}</div>
-                  <div style={{color:T.t3,fontSize:12,fontWeight:500}}>{item.sub}</div>
+                  <div className="txt" style={{color:T.t2,fontSize:12.5,fontStyle:'italic'}}>{item.sub}</div>
                 </div>
                 <div style={{display:'flex',alignItems:'center',gap:8,
-                  background:(item.finished||item.draft)?T.card2:T.oSoft,borderRadius:25,
-                  padding:'5px 12px',border:`1px solid ${(item.finished||item.draft)?T.border:T.o}`,flexShrink:0}}>
+                  background:(item.finished||item.draft)?T.glassHi:T.oSoft,borderRadius:25,
+                  padding:'5px 12px',border:`1px solid ${(item.finished||item.draft)?T.glassLine:T.o}`,flexShrink:0}}>
                   {item.draft
                     ?<span style={{color:T.t2,fontSize:10.5,fontWeight:800,letterSpacing:.3}}>Entwurf</span>
                     :<span style={{color:item.finished?T.t2:T.o,fontSize:11,fontWeight:700}}>{item.finished?'✓':'▶'}</span>}
@@ -15675,7 +15718,7 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
         {trash.length>0&&(
           <button onClick={()=>{buzz(6);setTrashOpen(true);}}
             style={{width:'100%',marginTop:4,background:'none',
-              border:`1px dashed ${T.border}`,borderRadius:18,
+              border:`1px dashed ${T.glassLine}`,borderRadius:18,
               padding:'14px 18px',display:'flex',alignItems:'center',gap:14,
               cursor:'pointer',color:T.t2,textAlign:'left'}}>
             <TrashIcon size={20} color={T.t3}/>
@@ -15691,7 +15734,6 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
       </div>
 
       <div style={{height:120}}/>
-      <BottomFade/>
       <TabBar active={activeTab} onTab={setActiveTab}/>
 
       {trashOpen&&(
@@ -20028,33 +20070,36 @@ function LigaScreen({profile,onHome}){
 
 /* Wiederverwendbare große Hub-Karte: Icon-Tile links, Titel + Desc,
    Chevron rechts. Animationen erbt sie über className="fu". */
+/* Glaskarte mit rundem Glasknopf links — die Hub-Karte in der Sprache
+   der Startseite: weisses Glyph im Kreis, Titel in der Antiqua. Ein
+   Akzent (accent) faerbt nur noch das Glyph, nicht mehr die Karte. */
 function HubBigCard({icon,title,desc,onClick,accent,delay='0s'}){
   return(
     <button onClick={onClick} className="fu" data-lift
-      style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:20,
-        padding:'20px 22px',display:'flex',alignItems:'center',gap:18,
+      style={{...GLASS,borderRadius:20,
+        padding:'18px 18px',display:'flex',alignItems:'center',gap:16,
         cursor:'pointer',color:T.t1,textAlign:'left',
         animationDelay:delay,width:'100%'}}
-      onPointerDown={e=>e.currentTarget.style.background=T.card2}
-      onPointerUp={e=>e.currentTarget.style.background=T.card}
-      onPointerLeave={e=>e.currentTarget.style.background=T.card}>
-      <div style={{flexShrink:0,width:54,height:54,borderRadius:16,
-        background:`${accent||T.o}22`,
-        border:`1px solid ${accent||T.o}`,
-        color:accent||T.o,
+      onPointerDown={e=>e.currentTarget.style.background=T.glassHi}
+      onPointerUp={e=>e.currentTarget.style.background=T.glass}
+      onPointerLeave={e=>e.currentTarget.style.background=T.glass}>
+      <div style={{flexShrink:0,width:52,height:52,borderRadius:'50%',
+        background:T.glassHi,border:`1px solid ${T.glassLine}`,
+        color:accent||T.t1,
         display:'flex',alignItems:'center',justifyContent:'center'}}>
         {icon}
       </div>
       <div style={{flex:1,minWidth:0}}>
-        <div style={{color:accent||T.o,fontSize:18,fontWeight:800,letterSpacing:-.2,marginBottom:3}}>
+        <div style={{fontFamily:T.fontSerif,color:T.t1,fontSize:22,fontWeight:700,
+          lineHeight:1.1,marginBottom:4}}>
           {title}
         </div>
-        <div className="txt" style={{color:T.t3,fontSize:12.5,fontStyle:'italic',
+        <div className="txt" style={{color:T.t2,fontSize:13,fontStyle:'italic',
           lineHeight:1.45}}>
           {desc}
         </div>
       </div>
-      <ChevronRightIcon size={20} color={T.t3}/>
+      <ChevronRightIcon size={20} color={T.t2}/>
     </button>
   );
 }
@@ -20069,23 +20114,24 @@ function TournamentHub({onHome,onStart,onJoin,onCup,
      Stift aendert; ein Knopf im Knopf ist kein gueltiges HTML, deshalb
      liegt der Stift als Geschwister daneben. */
   const qsCard={flexShrink:0,width:156,minHeight:150,scrollSnapAlign:'start',
-    background:T.card,border:`1px solid ${T.border}`,borderRadius:20,
+    ...GLASS,borderRadius:20,
     padding:'16px 15px 15px',cursor:'pointer',color:T.t1,textAlign:'left',
     display:'flex',flexDirection:'column',alignItems:'flex-start',
     justifyContent:'space-between',overflow:'hidden'};
   const qsKicker={fontFamily:T.fontDisplay,color:T.o,fontSize:9.5,
     letterSpacing:2.2,lineHeight:1,marginBottom:6};
   return(
-    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
+      <PhotoBackdrop/>
       <ScreenHeader title="Turnier" kicker="Spielen" subtitle="Starten oder beitreten."
-        icon={<TrophyIcon size={32}/>}/>
+        icon={<TrophyIcon size={32} color={T.t1}/>}/>
 
       <div style={{flex:1,padding:'0 22px 120px',overflowY:'auto',
         WebkitOverflowScrolling:'touch',display:'flex',flexDirection:'column',gap:14}}>
         <HubBigCard
-          icon={<TrophyIcon size={28}/>}
+          icon={<TrophyIcon size={28} color={T.t1}/>}
           title="Turnier starten"
           desc="Americano oder Mexicano — du bist Host."
           onClick={onStart} delay=".02s"/>
@@ -20114,26 +20160,25 @@ function TournamentHub({onHome,onStart,onJoin,onCup,
               <button onClick={()=>{buzz(6);onQuickStart&&onQuickStart(q);}}
                 className="fu" data-lift
                 style={{...qsCard,scrollSnapAlign:'none',
-                  background:T.oSoft,border:`1px solid ${T.o}55`,
                   animationDelay:`${.1+i*.03}s`}}>
                 <span style={{color:T.o,display:'inline-flex'}}>
                   <TournamentModeIcon mode={q.format} size={34} active/>
                 </span>
                 <div style={{maxWidth:'100%',minWidth:0,width:'100%'}}>
                   <div style={qsKicker}>Sofort</div>
-                  <div style={{color:T.t1,fontSize:16,fontWeight:700,letterSpacing:-.3,
+                  <div style={{fontFamily:T.fontSerif,color:T.t1,fontSize:20,fontWeight:700,
                     whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
                     {q.label}
                   </div>
-                  <div className="txt" style={{color:T.t3,fontSize:12.5,fontStyle:'italic',
+                  <div className="txt" style={{color:T.t2,fontSize:12.5,fontStyle:'italic',
                     marginTop:4,lineHeight:1.4}}>{quickStartSub(q,true)}</div>
                 </div>
               </button>
               <button onClick={()=>{buzz(6);setQsEdit(q);}}
                 aria-label={`${q.label} anpassen`} title="Schnellstart anpassen"
                 style={{position:'absolute',top:9,right:9,width:30,height:30,
-                  borderRadius:9,cursor:'pointer',background:T.card2,
-                  border:`1px solid ${T.border}`,color:T.t2,
+                  borderRadius:'50%',cursor:'pointer',background:T.glassHi,
+                  border:`1px solid ${T.glassLine}`,color:T.t1,
                   display:'flex',alignItems:'center',justifyContent:'center'}}>
                 <EditIcon size={15} color="currentColor"/>
               </button>
@@ -20143,14 +20188,14 @@ function TournamentHub({onHome,onStart,onJoin,onCup,
             <button onClick={()=>{buzz(6);setQsEdit('neu');}} className="fu"
               aria-label="Schnellstart anlegen"
               style={{...qsCard,width:132,background:'none',
-                border:`1.5px dashed ${T.border}`,justifyContent:'center',
+                border:`1.5px dashed ${T.glassLine}`,justifyContent:'center',
                 alignItems:'center',textAlign:'center',
                 animationDelay:`${.1+quickStarts.length*.03}s`}}>
-              <div style={{color:T.t3,fontSize:30,fontWeight:300,lineHeight:1}}>+</div>
-              <div style={{color:T.t2,fontSize:13.5,fontWeight:700,marginTop:10}}>
+              <div style={{color:T.t1,fontSize:30,fontWeight:300,lineHeight:1}}>+</div>
+              <div style={{fontFamily:T.fontSerif,color:T.t1,fontSize:17,fontWeight:700,marginTop:10}}>
                 Schnellstart
               </div>
-              <div className="txt" style={{color:T.t3,fontSize:11.5,fontStyle:'italic',
+              <div className="txt" style={{color:T.t2,fontSize:11.5,fontStyle:'italic',
                 marginTop:3,lineHeight:1.4}}>Eigenes Format</div>
             </button>
           )}
@@ -20172,33 +20217,33 @@ function TournamentHub({onHome,onStart,onJoin,onCup,
 
 function RitmoBibel({onHome,onRules,onJourney,onFaq,onTab}){
   return(
-    <div style={{height:'100dvh',background:T.bgGrad,display:'flex',flexDirection:'column',
+    <div style={{height:'100dvh',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
+      <PhotoBackdrop/>
       <ScreenHeader title="Bibel" kicker="Wissen"
         subtitle="Regeln, Taktik und alles dazwischen."
-        icon={<BookIcon size={36}/>}/>
+        icon={<BookIcon size={36} color={T.t1}/>}/>
 
       <div style={{flex:1,padding:'0 22px 120px',overflowY:'auto',
         WebkitOverflowScrolling:'touch',display:'flex',flexDirection:'column',gap:14}}>
         <HubBigCard
-          icon={<BookIcon size={28}/>}
+          icon={<BookIcon size={28} color={T.t1}/>}
           title="Regelwerk"
           desc="Padel-Regeln, Formate, Begriffe."
           onClick={onRules} delay=".02s"/>
         <HubBigCard
-          icon={<JourneyIcon size={28}/>}
+          icon={<JourneyIcon size={28} color={T.t1}/>}
           title="Journey"
           desc="Tipps & Tricks, Taktik, Material."
           onClick={onJourney} delay=".06s"/>
         <HubBigCard
-          icon={<BookIcon size={28}/>}
+          icon={<BookIcon size={28} color={T.t1}/>}
           title="App FAQ"
           desc="Häufige Fragen zur RITMO App."
           onClick={onFaq} delay=".1s"/>
       </div>
 
-      <BottomFade/>
       {/* Bibel ist jetzt Haupt-Tab → Navbar; Fallback für alte Aufrufer. */}
       {onTab?<TabBar active="bibel" onTab={onTab}/>:<MatchBar onHome={onHome}/>}
     </div>

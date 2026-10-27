@@ -235,6 +235,34 @@ Menue als runde Glasknoepfe (`GlassCircle`).
 - Die Mock-Karten „Matches für dich“ und die Datumsleiste sind
   entfallen, mit ihnen `MATCH_SLOTS` und `HOME_EVENTS`.
 
+### Die Sprache der Startseite — Screen fuer Screen
+
+Die uebrigen Screens werden in Runden auf die Startseite umgestellt.
+Die Bausteine stehen in App.jsx direkt vor `ScreenHeader`:
+
+| Baustein | Was er tut |
+|---|---|
+| `PhotoBackdrop({dim})` | Das Foto der Startseite samt Verlauf, `zIndex:-1` hinter dem Inhalt. `dim` dunkelt fuer Arbeits-Screens nach. |
+| `PHOTO_ROOT` | In den Screen-Rahmen spreizen: `isolation:'isolate'` gibt ihm einen eigenen Stapelkontext — sonst rutscht das Foto hinter den Grund des Rahmens. |
+| `GLASS` | Karte: `T.glass` + Haarlinie `T.glassLine` + Unschaerfe. Gedrueckt `T.glassHi`, Trenner in Listen `T.glassSep`. |
+| `HEAD_SERIF` | Die kursive Antiqua der Startseiten-Ueberschriften (40 px; `ScreenHeader` 38, `SectionRule` 25). |
+| `GlassCircle` | Runder Glasknopf (bei Home definiert). |
+
+- **`GLASS` ist nicht das `GlassSurface`-Material** der Home-Karten.
+  Das rechnet je Karte einen SVG-Verzerrungsfilter; auf Listen mit
+  zwanzig Zeilen kostet das mehr, als es bringt.
+- **Kein `BottomFade` auf Foto-Screens**: er verlaeuft in `--bg` und
+  stuende als dunkler Balken ueber der Tab-Bar.
+- **Glyphen weiss, nicht orange** (`T.t1`). Orange bleibt Status und
+  Marke: Ressort, laufend, Akzent. `BookIcon`/`JourneyIcon`/`TrophyIcon`
+  nehmen dafuer `color`.
+- `SwipeableCard` hat keinen eigenen Grund mehr: die Aktionen dahinter
+  sind ungewischt unsichtbar (Deckkraft 0), Glas darf also durchscheinen.
+- Stand: **Runde 1** (Profil, Live, Suche, Bibel, Turnier-Bereich)
+  umgestellt. Danach: Einstellungen; Regelwerk/Journey/FAQ/Post/
+  Bald-Seiten; Setup-Strecken; laufendes Match/Turnier/Endstand (mit
+  `dim`); Login/Registrierung/Onboarding.
+
 ### Papierkorb (`ritmo_trash`)
 
 Ein gelöschtes Turnier ist nicht weg: es liegt **`TRASH_DAYS` (7) Tage**
@@ -1075,19 +1103,21 @@ like a sports magazine, not like a settings dialog):
 | **Centauri** (`T.fontDisplay`) | Kickers/ressorts above a title, section labels (`SectionRule`), table column heads, long-form headings. Short words, generously letter-spaced (`letterSpacing` 1.6–3). | **Numbers** — the `0` is an empty rectangle and the `2` is barely distinguishable from a `Z`. Also anything longer than ~16 characters: at 15 px a line runs ~19 px per character, so it stops fitting 390 px screens. |
 | **SF Pro** (`T.fontText`, `.txt`) | Subtitles under a screen title, card descriptions, legal/long-form body copy. Italic for sublines, upright for body. | Labels, buttons, anything functional. |
 | **Inter** (`T.fontSans`) | Everything else — titles, body, buttons, all figures (with `fontVariantNumeric:'tabular-nums'`). | — |
-| **Times** (`T.fontSerif`) | **Only the Home screen** — the three italic section heads, the Match/Turnier labels, the event card's date and line. A system font (Times New Roman / Liberation Serif), never bundled. | Anywhere else. It is the Home screen's voice, not a fourth house font. |
+| **Times** (`T.fontSerif`) | **Headlines in the Home language** — italic bold for screen titles (`ScreenHeader`) and section heads (`SectionRule`, via `HEAD_SERIF`), upright bold for card titles. A system font (Times New Roman / Liberation Serif), never bundled. | Body copy, labels, buttons, figures — those stay Inter / SF Pro. |
 
 Two shared components carry the pattern; prefer extending them over
 re-inventing a header:
 
-- `ScreenHeader({kicker,title,subtitle,rule,subtitleItalic})` — ressort →
-  headline → orange hairline → italic standfirst. `rule={false}` drops the
+- `ScreenHeader({kicker,title,subtitle,rule,subtitleItalic})` — lettering
+  (`ritmo-lettering.png`, as on Home) → ressort → headline in the Times
+  italic of Home → orange hairline → italic standfirst. `rule={false}` drops the
   hairline where vertical space is tight (the running-tournament screen).
   `subtitleItalic={false}` drops the italic where the subline is not a
   standfirst but a **status row** — the running tournament's
   `Americano | Runde 4 | Bis 21:00 Uhr`. Italic belongs to prose; those
   are three separate readings with rules between them, not a sentence.
-- `SectionRule({children,trailing})` — section label plus a full-width
+- `SectionRule({children,trailing})` — section label (Times italic, 25 px,
+  since the Home redesign; Centauri before) plus a full-width
   hairline underneath. The hairline sits *below* the row on purpose: inline
   it collapsed to a stub whenever the label was long and a trailing action
   was present.

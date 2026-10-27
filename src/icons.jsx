@@ -393,37 +393,41 @@ export function FunkyFruitsRow({size=16,gap=7}){
 }
 
 /* ─── Rules / Journey ─────────────────────────────────────────── */
-export function BookIcon({size=28}){
+/* color: Vorgabe orange; auf den Foto-Screens weiss (T.t1), wie die
+   Glyphen auf der Startseite. */
+export function BookIcon({size=28,color='var(--o)'}){
+  const c=color;
   return(<svg width={size} height={size} viewBox="0 0 32 32" fill="none">
     {/* Open book silhouette */}
-    <path d="M4 7 L4 25 L15 27 L15 9 Z" fill="none" stroke="var(--o)" strokeWidth="1.6" strokeLinejoin="round"/>
-    <path d="M28 7 L28 25 L17 27 L17 9 Z" fill="none" stroke="var(--o)" strokeWidth="1.6" strokeLinejoin="round"/>
-    <line x1="15" y1="9" x2="15" y2="27" stroke="var(--o)" strokeWidth="1.6"/>
-    <line x1="17" y1="9" x2="17" y2="27" stroke="var(--o)" strokeWidth="1.6"/>
+    <path d="M4 7 L4 25 L15 27 L15 9 Z" fill="none" stroke={c} strokeWidth="1.6" strokeLinejoin="round"/>
+    <path d="M28 7 L28 25 L17 27 L17 9 Z" fill="none" stroke={c} strokeWidth="1.6" strokeLinejoin="round"/>
+    <line x1="15" y1="9" x2="15" y2="27" stroke={c} strokeWidth="1.6"/>
+    <line x1="17" y1="9" x2="17" y2="27" stroke={c} strokeWidth="1.6"/>
     {/* Page lines */}
-    <line x1="7" y1="13" x2="12" y2="13.5" stroke="var(--o)" strokeWidth=".9" opacity=".55"/>
-    <line x1="7" y1="17" x2="12" y2="17.5" stroke="var(--o)" strokeWidth=".9" opacity=".55"/>
-    <line x1="20" y1="13.5" x2="25" y2="13" stroke="var(--o)" strokeWidth=".9" opacity=".55"/>
-    <line x1="20" y1="17.5" x2="25" y2="17" stroke="var(--o)" strokeWidth=".9" opacity=".55"/>
+    <line x1="7" y1="13" x2="12" y2="13.5" stroke={c} strokeWidth=".9" opacity=".55"/>
+    <line x1="7" y1="17" x2="12" y2="17.5" stroke={c} strokeWidth=".9" opacity=".55"/>
+    <line x1="20" y1="13.5" x2="25" y2="13" stroke={c} strokeWidth=".9" opacity=".55"/>
+    <line x1="20" y1="17.5" x2="25" y2="17" stroke={c} strokeWidth=".9" opacity=".55"/>
   </svg>);
 }
 
-export function JourneyIcon({size=28}){
+export function JourneyIcon({size=28,color='var(--o)'}){
+  const c=color;
   return(<svg width={size} height={size} viewBox="0 0 32 32" fill="none">
     {/* Compass: outer ring */}
-    <circle cx="16" cy="16" r="13" stroke="var(--o)" strokeWidth="1.6"/>
-    <circle cx="16" cy="16" r="10" stroke="var(--o)" strokeWidth="0.8" opacity="0.4"/>
+    <circle cx="16" cy="16" r="13" stroke={c} strokeWidth="1.6"/>
+    <circle cx="16" cy="16" r="10" stroke={c} strokeWidth="0.8" opacity="0.4"/>
     {/* N pointer (filled) */}
-    <path d="M 16 5.5 L 12 16 L 16 13.5 L 20 16 Z" fill="var(--o)"/>
+    <path d="M 16 5.5 L 12 16 L 16 13.5 L 20 16 Z" fill={c}/>
     {/* S pointer (outlined) */}
-    <path d="M 16 26.5 L 12 16 L 16 18.5 L 20 16 Z" fill="none" stroke="var(--o)" strokeWidth="1.2" opacity="0.55"/>
+    <path d="M 16 26.5 L 12 16 L 16 18.5 L 20 16 Z" fill="none" stroke={c} strokeWidth="1.2" opacity="0.55"/>
     {/* Cardinal marks */}
-    <circle cx="16" cy="3" r="0.9" fill="var(--o)" opacity="0.7"/>
-    <circle cx="29" cy="16" r="0.9" fill="var(--o)" opacity="0.7"/>
-    <circle cx="16" cy="29" r="0.9" fill="var(--o)" opacity="0.7"/>
-    <circle cx="3" cy="16" r="0.9" fill="var(--o)" opacity="0.7"/>
+    <circle cx="16" cy="3" r="0.9" fill={c} opacity="0.7"/>
+    <circle cx="29" cy="16" r="0.9" fill={c} opacity="0.7"/>
+    <circle cx="16" cy="29" r="0.9" fill={c} opacity="0.7"/>
+    <circle cx="3" cy="16" r="0.9" fill={c} opacity="0.7"/>
     {/* Center dot */}
-    <circle cx="16" cy="16" r="1.6" fill="var(--o)"/>
+    <circle cx="16" cy="16" r="1.6" fill={c}/>
   </svg>);
 }
 

@@ -2571,26 +2571,23 @@ function ExitGlyph({size=18}){
      (PHOTO_ROOT: isolation:isolate) — sonst rutscht das Foto hinter
      den Grund des Rahmens, und kein Screen muesste seine Ebenen
      umbauen.
-   - GLASS ist das Liquid-Glass-Material der Startseite als reines
-     CSS: dieselbe Rezeptur wie der Rueckweg von GlassSurface und wie
-     .glass-bar (duenne Toenung, Blur 24 + Saettigung 180 % +
-     Aufhellung, helle Lichtkante oben, dunkle unten, Schlagschatten).
-     Auf iOS rendert GlassSurface genau so — Karten, Knoepfe und die
-     Startseite sind dort also derselbe Stoff. Den SVG-Verzerrungs-
-     filter von GlassSurface bekommt GLASS bewusst nicht: er rechnet
-     je Flaeche, und auf Listen mit zwanzig Zeilen kostet das mehr,
-     als es bringt.
+   - GLASS ist klares Glas wie die Home-Karten in der installierten
+     App: kein Blur, kein grauer Fill — das Foto bleibt scharf, darauf
+     ein Hauch Weiss (6 %), eine helle Haarlinie und innen ein heller
+     Lichtsaum (zwei inset-Schatten), aussen ein weicher Schlagschatten.
+     So rendert iOS das GlassSurface-Material der Startseite: dort
+     greift dessen SVG-Weg, und WebKit wendet den Verzerrungsfilter
+     nicht an. Ohne backdrop-filter kostet die Flaeche beim Scrollen
+     auch nichts mehr.
    - BottomFade gehoert NICHT auf Foto-Screens: er verlaeuft in --bg
      und stuende auf dem Foto als dunkler Balken ueber der Tab-Bar.
    - dim dunkelt nach: Screens zum Arbeiten (Turnier, Match) brauchen
      mehr Ruhe hinter dem Text als ein Hub.
 ═══════════════════════════════════════════════════════════════ */
 const PHOTO_ROOT={background:T.bg,isolation:'isolate'};
-const GLASS={background:'color-mix(in srgb, var(--card) 46%, transparent)',
-  border:`1px solid ${T.glassLine}`,
-  WebkitBackdropFilter:'blur(24px) saturate(180%) brightness(1.1)',
-  backdropFilter:'blur(24px) saturate(180%) brightness(1.1)',
-  boxShadow:'0 10px 30px rgba(0,0,0,.26), inset 0 1px 0 rgba(255,255,255,.2), inset 0 -1px 0 rgba(0,0,0,.16)'};
+const GLASS={background:'rgba(255,255,255,.06)',
+  border:'1px solid rgba(255,255,255,.22)',
+  boxShadow:'inset 0 0 2px 1px rgba(255,255,255,.35), inset 0 0 10px 4px rgba(255,255,255,.12), 0 4px 16px rgba(0,0,0,.18), 0 8px 28px rgba(0,0,0,.14)'};
 const HEAD_SERIF={fontFamily:T.fontSerif,fontStyle:'italic',fontWeight:700,
   fontSize:40,letterSpacing:-.6,lineHeight:1,color:T.t1,position:'relative',
   textShadow:'0 2px 14px rgba(0,0,0,.45)'};

@@ -36,6 +36,7 @@ export const T = {
   fontSans:    'var(--font-sans)',     // Inter — UI-Grundschrift
   fontText:    'var(--font-text)',     // SF Pro — die ruhige Zweitstimme
   fontDisplay: 'var(--font-display)',  // Centauri — Headlines/Akzente
+  fontSerif:   'var(--font-serif)',    // Times — nur die Startseite (s. CLAUDE.md)
 };
 
 export const CSS = `
@@ -61,6 +62,11 @@ export const CSS = `
   --font-sans:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','SF Pro Text','Helvetica Neue','Segoe UI',Roboto,sans-serif;
   --font-text:'SF Pro Text','SF Pro Display',-apple-system,BlinkMacSystemFont,'Helvetica Neue','Segoe UI',Roboto,sans-serif;
   --font-display:'Centauri','SF Pro Text',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  /* Die Antiqua der Startseite (Spielen / Events / Deine Spiele).
+     Systemschrift, nicht ausgeliefert: Times New Roman steht auf iOS,
+     macOS und Windows bereit; Liberation Serif ist ihr metrischer
+     Zwilling unter Linux/Android. */
+  --font-serif:'Times New Roman',Times,'Liberation Serif','Tinos',Georgia,serif;
 }
 /* Utility-Klassen für die Screen-Überarbeitung. */
 .txt{font-family:var(--font-text);letter-spacing:0;}

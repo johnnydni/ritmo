@@ -246,18 +246,19 @@ Die Bausteine stehen in App.jsx direkt vor `ScreenHeader`:
 |---|---|
 | `PhotoBackdrop({dim})` | Das Foto der Startseite samt Verlauf, `zIndex:-1` hinter dem Inhalt. `dim` dunkelt fuer Arbeits-Screens nach. |
 | `PHOTO_ROOT` | In den Screen-Rahmen spreizen: `isolation:'isolate'` gibt ihm einen eigenen Stapelkontext — sonst rutscht das Foto hinter den Grund des Rahmens. |
-| `GLASS` | Liquid Glass als reines CSS: duenne Toenung (`--card` 46 %), Blur 24 + Saettigung 180 % + Aufhellung, Lichtkante oben, dunkle Kante unten, Schlagschatten, Haarlinie `T.glassLine`. Gedrueckt `T.glassHi`, Trenner in Listen `T.glassSep`. |
+| `GLASS` | Klares Glas wie die Home-Karten in der installierten App: kein Blur, kein grauer Fill — 6 % Weiss, Haarlinie 22 %, innen ein heller Lichtsaum (zwei inset-Schatten), aussen weicher Schlagschatten. Gedrueckt `T.glassHi`, Trenner in Listen `T.glassSep`. |
 | `HEAD_SERIF` | Die kursive Antiqua der Startseiten-Ueberschriften (40 px; `ScreenHeader` 38, `SectionRule` 25). |
 | `GlassCircle` | Runder Glasknopf (bei Home definiert). |
 
-- **`GLASS` ist dieselbe Rezeptur wie der Rueckweg von `GlassSurface`**
-  (und wie `.glass-bar`). Auf iOS rendert `GlassSurface` genau so —
-  Karten, Knoepfe, Leisten und die Startseite sind dort also derselbe
-  Stoff. Vorher war `GLASS` eine dunkle, flache Toenung mit wenig Blur
-  und stand neben den Home-Karten wie ein anderes Material. Den
-  SVG-Verzerrungsfilter von `GlassSurface` bekommt `GLASS` bewusst
-  nicht: er rechnet je Flaeche, auf Listen mit zwanzig Zeilen kostet
-  das mehr, als es bringt.
+- **`GLASS` sieht aus wie die Home-Karten auf dem iPhone**, und das
+  ist klares Glas, nicht Milchglas. Grund: im Standalone-Modus fehlt
+  „Safari" im User-Agent, `GlassSurface` waehlt deshalb seinen SVG-Weg
+  (`.glass-surface--svg`) — und WebKit wendet den
+  `backdrop-filter: url(#…)` nicht an. Uebrig bleiben 6 % Weiss und der
+  innere Lichtsaum. Eine Zeit lang trug `GLASS` stattdessen Blur 24 und
+  eine Toenung; auf dem Telefon stand das als grauer Fill neben den
+  klaren Home-Karten. Ohne `backdrop-filter` kostet eine Glasflaeche
+  beim Scrollen ausserdem nichts mehr.
 - Wer `boxShadow` auf einer `GLASS`-Flaeche setzt (Auswahl-Schein),
   haengt `GLASS.boxShadow` an, statt ihn zu ersetzen — sonst fehlen
   Lichtkante und Schatten genau an der gewaehlten Karte.

@@ -7404,7 +7404,7 @@ function SwipeableRow({children,onDelete,disabled=false,label='Löschen'}){
         onTouchEnd={onEnd} onTouchCancel={onEnd}
         onClickCapture={e=>{ if(tx!==0){ e.stopPropagation(); e.preventDefault(); setTx(0); } }}
         style={{transform:`translateX(${tx}px)`,
-          transition:swiping?'none':'transform .25s cubic-bezier(.3,0,.2,1)',
+          transition:swiping?'none':'transform .38s cubic-bezier(.32,.72,0,1)',
           position:'relative'}}>
         {children}
       </div>
@@ -7490,7 +7490,7 @@ function SwipeableCard({children,onDelete,onShare,onMore}){
               onClick={(e)=>{e.stopPropagation();if(isDel)doDelete();else{setTx(0);a.run();}}}
               style={{position:'absolute',top:0,bottom:0,right:0,width:bw,
                 transform:`translateX(${-j*reveal/n}px)`,
-                transition:swiping?'none':'transform .25s cubic-bezier(.3,0,.2,1), width .25s cubic-bezier(.3,0,.2,1)',
+                transition:swiping?'none':'transform .38s cubic-bezier(.32,.72,0,1), width .38s cubic-bezier(.32,.72,0,1)',
                 opacity:Math.min(1,Math.max(0,(reveal/W)*n-j)),
                 zIndex:n-j,cursor:'pointer',userSelect:'none',
                 display:'flex',flexDirection:'column',alignItems:'center',
@@ -7519,7 +7519,7 @@ function SwipeableCard({children,onDelete,onShare,onMore}){
         onMouseDown={onStart} onMouseMove={swiping?onMove:undefined} onMouseUp={onEnd} onMouseLeave={swiping?onEnd:undefined}
         onClickCapture={handleCardClick}
         style={{transform:`translateX(${tx}px)`,
-          transition:swiping?'none':'transform .25s cubic-bezier(.3,0,.2,1)',
+          transition:swiping?'none':'transform .38s cubic-bezier(.32,.72,0,1)',
           willChange:'transform',background:'transparent',borderRadius:20,position:'relative'}}>
         {children}
       </div>
@@ -7578,13 +7578,13 @@ function useSheetDrag(onClose){
     setDragging(false);
     axis.current=null;
     if(closing.current)return;
-    if(armed.current&&dy>110){closing.current=true;setDy(Math.max(400,dy*3));setTimeout(onClose,200);}
+    if(armed.current&&dy>110){closing.current=true;setDy(Math.max(window.innerHeight||800,dy*3));setTimeout(onClose,280);}
     else setDy(0);
     armed.current=false;
   };
   return {ref,
     style:{transform:`translateY(${dy}px)`,
-      transition:dragging?'none':'transform .25s cubic-bezier(.3,0,.2,1)',
+      transition:dragging?'none':'transform .42s cubic-bezier(.32,.72,0,1)',
       ...(touched?{animation:'none'}:{})},
     handlers:{onTouchStart,onTouchMove,onTouchEnd,onTouchCancel:onTouchEnd}};
 }
@@ -16071,7 +16071,7 @@ function SettingsRechtliches({onBack,onHome}){
               </div>
               <span style={{color:isOpen?T.o:T.t3,fontSize:15,flexShrink:0,
                 transform:isOpen?'rotate(90deg)':'none',
-                transition:'transform .25s cubic-bezier(.3,0,.2,1),color .2s',
+                transition:'transform .38s cubic-bezier(.32,.72,0,1),color .2s',
                 display:'inline-block'}}>›</span>
             </button>
             {isOpen&&(

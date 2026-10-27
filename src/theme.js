@@ -708,12 +708,12 @@ input[type="time"]::-webkit-calendar-picker-indicator{display:none;-webkit-appea
 input[type="time"]::-webkit-date-and-time-value{text-align:center;margin:0;}
 input[type="time"]::-webkit-datetime-edit{padding:0;text-align:center;}
 
-@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes fadeIn{from{opacity:0}}
 /* DNA Cup: PIN-Punkte schütteln bei falscher Eingabe. */
 @keyframes cupShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
 .cup-shake{animation:cupShake .3s ease;}
-@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-@keyframes scaleIn{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
+@keyframes fadeUp{from{opacity:0;translate:0 14px}to{opacity:1;translate:none}}
+@keyframes scaleIn{from{opacity:0;scale:.95}to{opacity:1;scale:none}}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 /* Splash: der Ladebalken fuellt sich einmal ueber --spl-ms, ein
    Glanz laeuft darueber. Bei reduzierter Bewegung kuerzt der
@@ -778,9 +778,9 @@ input[type="time"]::-webkit-datetime-edit{padding:0;text-align:center;}
 @keyframes vsPulse{0%,100%{transform:scale(1) rotate(0deg);opacity:.85}50%{transform:scale(1.12) rotate(-3deg);opacity:1}}
 @keyframes scorePop{0%{transform:scale(.7);opacity:.4}60%{transform:scale(1.18);opacity:1}100%{transform:scale(1);opacity:1}}
 @keyframes courtCardEnter{from{opacity:0;transform:translateY(22px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
-.fu{animation:fadeUp .4s ease both;}
-.fi{animation:fadeIn .25s ease both;}
-.si{animation:scaleIn .2s ease both;}
+.fu{animation:fadeUp .62s var(--ease-out-quint) both;}
+.fi{animation:fadeIn .34s var(--ease-out-quint) backwards;}
+.si{animation:scaleIn .42s var(--ease-out-soft) both;}
 .flash{animation:flashOrange .42s ease;}
 .court-card{animation:courtCardEnter .5s cubic-bezier(.22,.95,.34,1) both;}
 .court-live-dot{animation:courtLivePulse 1.4s ease-in-out infinite;}
@@ -847,6 +847,14 @@ input[type="time"]::-webkit-datetime-edit{padding:0;text-align:center;}
   --ease-in-out:cubic-bezier(.65,0,.35,1);
   --ease-out-back:cubic-bezier(.34,1.56,.64,1);
   --ease-out-smooth:cubic-bezier(.22,.95,.34,1);
+  /* ease-out-quint: der Standard fuer alles, was hereinkommt — sehr
+     schneller Anfang, langes, ruhiges Auslaufen. --ease-ios ist die
+     Kurve der iOS-Sheets (UISpringTimingParameters, gedaempft), und
+     --ease-out-soft ein Feder-Ausklang mit kaum sichtbarem Ueberschwingen
+     (1,1 statt 1,56 wie bei --ease-out-back). */
+  --ease-out-quint:cubic-bezier(.22,1,.36,1);
+  --ease-ios:cubic-bezier(.32,.72,0,1);
+  --ease-out-soft:cubic-bezier(.2,1.1,.3,1);
   /* Komposite Duration-Easing Pairs */
   --anim-fast:140ms var(--ease-out-smooth);
   --anim-base:220ms var(--ease-out-expo);
@@ -879,7 +887,7 @@ input[type="time"]::-webkit-datetime-edit{padding:0;text-align:center;}
      - box-shadow → etwas langsamer (snobby Tiefenwechsel) */
 button{
   transition:
-    transform 180ms var(--ease-out-back),
+    transform 420ms var(--ease-out-soft),
     filter 180ms var(--ease-out-expo),
     background-color 220ms var(--ease-out-expo),
     color 220ms var(--ease-out-expo),
@@ -888,7 +896,6 @@ button{
     opacity 200ms var(--ease-out-expo);
   -webkit-tap-highlight-color:transparent;
   touch-action:manipulation;
-  will-change:transform;
   /* Kein Text-Select bei schnellen Doppel-Taps (Score-Buttons etc.) */
   user-select:none;
   -webkit-user-select:none;
@@ -896,12 +903,18 @@ button{
 /* Klick-Feedback: sichtbarer Scale-Dip + kurzer Helligkeits-Pop.
    Gilt automatisch für JEDEN <button>; Elemente mit eigenem inline-
    transform (z. B. Swipe-Layer) sind unberührt — inline gewinnt. */
-button:active:not(:disabled){transform:scale(.95);filter:brightness(1.18);}
+/* Druck: schnell hinein (90 ms), mit weicher Feder zurueck (420 ms,
+   siehe oben). Nur transform — ein filter auf einer Glasflaeche
+   zwingt den Browser, die Unschaerfe dahinter neu zu rechnen, und das
+   ruckelt auf dem Telefon. Aus demselben Grund kein globales
+   will-change mehr: es legte fuer JEDEN Knopf eine eigene
+   Grafik-Ebene an — hunderte auf langen Listen. */
+button:active:not(:disabled){transform:scale(.965);transition-duration:90ms;}
 button:disabled{cursor:not-allowed;opacity:.55;}
 /* Gleicher Effekt als Utility-Klasse für klickbare Nicht-Buttons
    (z. B. die Swipe-Action-Pills, die als div gerendert werden). */
-.pressable{transition:transform 180ms var(--ease-out-back),filter 180ms var(--ease-out-expo);}
-.pressable:active{transform:scale(.88);filter:brightness(1.18);}
+.pressable{transition:transform 420ms var(--ease-out-soft);}
+.pressable:active{transform:scale(.94);transition-duration:90ms;}
 
 /* Liquid-Glass-Pill für die TabBar:
    - backdrop-filter: glas-getönt mit erhöhter Sättigung
@@ -1151,6 +1164,7 @@ a:focus-visible{
   from{opacity:0;transform:translateY(20px);}
   to{opacity:1;transform:translateY(0);}
 }
+@keyframes sheetIn{from{translate:0 100%;}}
 @keyframes slideDown{
   from{opacity:0;transform:translateY(-20px);}
   to{opacity:1;transform:translateY(0);}
@@ -1212,12 +1226,19 @@ a:focus-visible{
 }
 
 /* ── Utility-Klassen ── */
-.nav-icon-active{animation:navIconBounce var(--anim-spring) ease both;}
-.dot-pop{animation:dotPop var(--anim-spring) ease both;}
-.slide-up{animation:slideUp var(--anim-base) ease both;}
-.slide-down{animation:slideDown var(--anim-base) ease both;}
-.slide-in-right{animation:slideInRight var(--anim-base) ease both;}
-.press-pop{animation:pressPop var(--anim-spring) ease both;}
+/* Vorher stand hier "var(--anim-base) ease": zwei Zeitkurven in einem
+   Shorthand machen die ganze Deklaration ungueltig — keine dieser
+   Klassen hat je animiert, die Sheets sprangen einfach auf. */
+.nav-icon-active{animation:navIconBounce var(--anim-spring) both;}
+.dot-pop{animation:dotPop var(--anim-spring) both;}
+/* Bottom-Sheets: von ganz unten, mit der iOS-Sheet-Kurve. "translate"
+   statt transform und nur "backwards": useSheetDrag schreibt das
+   Ziehen als inline-transform, und das muss nach dem Einfahren
+   wieder gelten. */
+.slide-up{animation:sheetIn .56s var(--ease-ios) backwards;}
+.slide-down{animation:slideDown .42s var(--ease-out-quint) both;}
+.slide-in-right{animation:slideInRight .42s var(--ease-out-quint) both;}
+.press-pop{animation:pressPop var(--anim-spring) both;}
 .zi{animation:zoomIn .45s var(--ease-out-back) both;}
 .stripe-in{animation:stripeIn .55s var(--ease-out-expo) both;transform-origin:left center;}
 .dna-swoosh-aggro,.dna-swoosh-calm,.dna-swoosh-creative{
@@ -1267,6 +1288,26 @@ a:focus-visible{
 .aglyph--on .ag-float{animation:agFloat 2.6s ease-in-out infinite;}
 .aglyph--on .ag-drive-1{animation:agDrive 1.4s ease-in-out infinite;}
 .aglyph--on .ag-drive-2{animation:agDrive 1.4s ease-in-out .18s infinite;}
+
+/* ── Screenwechsel ──
+   Jeder Screen haengt direkt an #root. Seine Kinder — Kopf, Inhalt,
+   Leisten — blenden beim Erscheinen weich ein und steigen dabei um
+   8 px auf; das Foto (aria-hidden) bleibt stehen. So wirkt ein Wechsel
+   wie ein Ueberblenden auf demselben Grund statt wie ein Schnitt.
+   - :where() haelt die Spezifitaet bei null: eine eigene Animation
+     (.fu, inline) gewinnt immer.
+   - Nur opacity und das Einzel-Property "translate", nie transform:
+     viele dieser Kinder positionieren sich per inline-transform
+     (translate(-50%,…)), das bliebe sonst waehrend des Einblendens
+     auf der Strecke.
+   - "backwards" und keyframe ohne "to": danach gilt wieder, was am
+     Element steht — auch eine inline-opacity:0. */
+@keyframes screenIn{from{opacity:0;translate:0 8px;}}
+:where(#root > div > :not([aria-hidden="true"])){
+  animation:screenIn .5s var(--ease-out-quint) backwards;
+}
+:where(#root > div > :nth-child(3)){animation-delay:45ms;}
+:where(#root > div > :nth-child(n+4)){animation-delay:90ms;}
 
 /* ── prefers-reduced-motion Killswitch ──
    Respektiert OS-/Browser-Setting; deaktiviert ALLE App-Animationen

@@ -36,7 +36,12 @@ export const T = {
   fontSans:    'var(--font-sans)',     // Inter — UI-Grundschrift
   fontText:    'var(--font-text)',     // SF Pro — die ruhige Zweitstimme
   fontDisplay: 'var(--font-display)',  // Centauri — Headlines/Akzente
-  fontSerif:   'var(--font-serif)',    // Times — nur die Startseite (s. CLAUDE.md)
+  fontSerif:   'var(--font-serif)',    // Times — Ueberschriften der Foto-Screens (s. CLAUDE.md)
+  /* Foto-Glas — siehe --glass* in CSS unten. */
+  glass:     'var(--glass)',
+  glassHi:   'var(--glassHi)',
+  glassLine: 'var(--glassLine)',
+  glassSep:  'var(--glassSep)',
 };
 
 export const CSS = `
@@ -324,6 +329,18 @@ export const CSS = `
 :root, :root[data-theme="dark"]{
   --yellow: #FFC93C;
   --yellowSoft: rgba(255,201,60,0.12);
+}
+
+/* ── FOTO-GLAS ────────────────────────────────────────────────────
+   Das Material der Screens mit Foto-Hintergrund (PhotoBackdrop in
+   App.jsx): eine dunkle, durchscheinende Flaeche mit weisser
+   Haarlinie, dahinter Unschaerfe. Themeunabhaengig, weil das Foto
+   selbst es ist — auf einem Schwarzweissbild traegt nur Weiss. */
+:root{
+  --glass: rgba(14,14,18,0.36);
+  --glassHi: rgba(255,255,255,0.10);
+  --glassLine: rgba(255,255,255,0.20);
+  --glassSep: rgba(255,255,255,0.12);
 }
 
 /* ════ Funky Globals — Body, Headings, Cards ════════════════════

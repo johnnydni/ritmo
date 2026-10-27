@@ -662,25 +662,24 @@ input{outline:none;border:none;background:none;}
    Overshoot-Kurve (cubic-bezier .34/1.56) wie UIKit-Spring: die
    eingeklappte Kugel und die ausfahrende Bar "ploppen" von unten
    links auf (transform-origin an der Kugel-Position). */
+/* Ein- und Ausklappen der Tab-Leiste wie iOS: weich zusammenziehen
+   zur linken Kante hin, ohne Anlauf; auf mit einer Feder, die kaum
+   ueberschwingt. Vorher holte die Bar erst Schwung (105 %) und
+   sprang mit 1,56er Feder heraus — das wirkte verspielt statt ruhig. */
 @keyframes navPopIn{
-  0%{transform:scale(.45);opacity:0;}
-  62%{transform:scale(1.07);opacity:1;}
-  100%{transform:scale(1);opacity:1;}
+  from{transform:scale(.5);opacity:0;}
+  to{transform:scale(1);opacity:1;}
 }
-.nav-pop{animation:navPopIn .55s cubic-bezier(.34,1.56,.64,1) both;
-  transform-origin:26px 90%;}
-.nav-pop-bar{animation:navPopIn .62s cubic-bezier(.34,1.56,.64,1) both;
-  transform-origin:26px 90%;}
-/* Einploppen: die Bar holt kurz Schwung (Anticipation auf 105%) und
-   saugt sich dann in die Kugel-Position unten links ein — erst nach
-   dieser Exit-Animation mountet die Kugel mit ihrem Pop-in. */
+.nav-pop{animation:navPopIn .42s var(--ease-out-soft) both;
+  transform-origin:26px 50%;}
+.nav-pop-bar{animation:navPopIn .46s var(--ease-out-soft) both;
+  transform-origin:26px 50%;}
 @keyframes navPopOut{
-  0%{transform:scale(1);opacity:1;}
-  30%{transform:scale(1.05);opacity:1;}
-  100%{transform:scale(.45);opacity:0;}
+  from{transform:scale(1);opacity:1;}
+  to{transform:scale(.5);opacity:0;}
 }
-.nav-pop-out{animation:navPopOut .5s cubic-bezier(.55,-.28,.68,1) both;
-  transform-origin:26px 90%;}
+.nav-pop-out{animation:navPopOut .28s cubic-bezier(.4,0,.6,1) both;
+  transform-origin:26px 50%;}
 @media (prefers-reduced-motion: reduce){
   .nav-pop,.nav-pop-bar,.nav-pop-out{animation:none;}
 }

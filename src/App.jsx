@@ -2741,6 +2741,9 @@ function KeepTab({on,alive=true,children}){
    iPhone rund 25 px ueber der Kante, frei vom Home-Indikator. Vorher
    waren es 30 % minus 3 px (gut 7 px) — die Leiste klebte am Rand. */
 const BAR_BOTTOM='calc(env(safe-area-inset-bottom, 0px) * 0.5 + 8px)';
+/* Masse der iOS-26-Tab-Leiste: 62 pt hoch, minimiert ein 52-pt-Kreis.
+   MatchBar steht auf derselben Mittellinie (gleiche Zeilenhoehe). */
+const NAV_H=62, NAV_MINI=52;
 
 /* Unter Tab-Leiste und Knopfleiste: ein Band, in dem der Inhalt nach
    unten hin weich verschwimmt (Unschaerfe mit Maskenverlauf, dazu ein
@@ -2749,6 +2752,36 @@ const BAR_BOTTOM='calc(env(safe-area-inset-bottom, 0px) * 0.5 + 8px)';
    Unterkante des Bildschirms, auch unter den Home-Indikator. */
 function BarBlur(){
   return <div className="bar-blur" aria-hidden="true"/>;
+}
+
+/* ── Einklappen wie die iOS-26-Tab-Leiste (minimize on scroll) ──
+   Kein Timer: die Leiste klappt ein, wenn man im Inhalt nach unten
+   scrollt, und wieder auf beim Zurueckscrollen, ganz oben oder beim
+   Antippen. Vorher zog sie sich nach 2,6 s von selbst zusammen — und
+   seit die Tabs stehen bleiben (KeepTab), kamen Suche und Bibel schon
+   eingeklappt zurueck.
+
+   Der Zustand ist EINER fuer alle Tab-Leisten (jeder Tab-Screen hat
+   seine eigene): sonst stuende beim Wechsel mal eine offene, mal eine
+   eingeklappte Leiste da. Gehorcht wird nur Scrollern im sichtbaren
+   Tab (.keep-tab, visibility visible). */
+const navStore={collapsed:false,subs:new Set(),
+  set(v){if(this.collapsed===v)return;this.collapsed=v;this.subs.forEach(f=>f(v));}};
+let navScrollHooked=false;
+function hookNavScroll(){
+  if(navScrollHooked||typeof document==='undefined') return;
+  navScrollHooked=true;
+  const last=new WeakMap();
+  document.addEventListener('scroll',e=>{
+    const el=e.target; if(!(el instanceof Element)) return;
+    const tab=el.closest('.keep-tab');
+    if(!tab||tab.style.visibility==='hidden') return;
+    const y=el.scrollTop, d=y-(last.has(el)?last.get(el):y);
+    last.set(el,y);
+    if(y<24) navStore.set(false);
+    else if(d>6&&y>64) navStore.set(true);
+    else if(d<-8) navStore.set(false);
+  },{capture:true,passive:true});
 }
 
 function TabBar({active,onTab}){
@@ -2796,32 +2829,30 @@ function TabBar({active,onTab}){
   // erst im Mount-Effect → konsistenter Wert.
   const[blendIn]=useState(()=>__navBlendArm);
   useEffect(()=>{__navBlendArm=false;},[]);
-  // ── Eingeklappte Navbar ──
-  // Außerhalb von Home klappt die Bar VERZÖGERT ein: beim Screen-
-  // Wechsel bleibt sie erst ausgefahren (Orientierung + Weiter-
-  // navigieren ohne Extra-Tap) und zieht sich nach ~2.6s zur Glass-
-  // Kugel unten links zusammen. Jede Interaktion mit der Bar armiert
-  // den Timer neu; auf Home bleibt sie dauerhaft ausgefahren.
-  const[collapsed,setCollapsed]=useState(false);
-  const[popped,setPopped]=useState(false); // Bar kam per Tap aus der Kugel
-  const[closing,setClosing]=useState(false); // Exit-Animation der Bar läuft
-  const[opening,setOpening]=useState(false); // Exit-Animation der Kugel läuft
-  const collapseTimer=useRef(null);
-  const armCollapse=useCallback(()=>{
-    clearTimeout(collapseTimer.current);
-    setClosing(false);
-    if(active==='home') return;
-    // Zweistufig: erst die Pop-out-Animation der Bar (nav-pop-out),
-    // nach deren Ende mountet die Kugel mit ihrem Pop-in — das
-    // Einklappen liest sich als eine durchgehende Bewegung.
-    collapseTimer.current=setTimeout(()=>{
-      setClosing(true);
-      collapseTimer.current=setTimeout(()=>{
-        setClosing(false);setCollapsed(true);
-      },480);
-    },2600);
-  },[active]);
-  useEffect(()=>{armCollapse();return()=>clearTimeout(collapseTimer.current);},[armCollapse]);
+  // ── Eingeklappte Navbar (siehe navStore) ──
+  // want = was der gemeinsame Zustand verlangt; collapsed/closing/
+  // opening fahren die Animation dorthin: erst zieht sich die Bar
+  // zusammen (nav-pop-out), dann steht der Kreis — und umgekehrt.
+  const[want,setWant]=useState(navStore.collapsed);
+  const[collapsed,setCollapsed]=useState(navStore.collapsed);
+  const[popped,setPopped]=useState(false); // Bar kam aus dem Kreis
+  const[closing,setClosing]=useState(false);
+  const[opening,setOpening]=useState(false);
+  useEffect(()=>{
+    hookNavScroll();
+    const f=v=>setWant(v); navStore.subs.add(f);
+    return()=>{navStore.subs.delete(f);};
+  },[]);
+  useEffect(()=>{
+    if(want&&!collapsed){
+      setOpening(false);setClosing(true);
+      const t=setTimeout(()=>{setClosing(false);setCollapsed(true);},280);
+      return()=>clearTimeout(t);
+    }
+    // Aufklappen ohne Umweg: die Bar waechst direkt aus dem Kreis.
+    if(!want&&collapsed){ setClosing(false);setPopped(true);setCollapsed(false); }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[want]);
 
   // Tab-Geometrien relativ zur Padding-Box des Navbars (gleicher
   // Bezugsrahmen wie die absolute Pill).
@@ -2854,7 +2885,6 @@ function TabBar({active,onTab}){
   // der nächstgelegene Tab bekommt eine Preview-Tönung. Loslassen
   // snappt auf den nächsten Tab und committet ihn.
   const onBarPointerDown=(e)=>{
-    armCollapse();                              // Interaktion → Einklappen verschieben
     if(searchable&&searchMode) return;          // im Such-Modus kein Drag
     if(e.pointerType==='mouse'&&e.button!==0) return;
     const startX=e.clientX; let moved=false;
@@ -3003,35 +3033,29 @@ function TabBar({active,onTab}){
     :(searchable?'Suchen':action.title);
   const rightHighlight=isSearching?!!searchValue:!!action.highlight;
 
-  // Eingeklappt: kompakte Glass-Kugel (Home-Icon) unten LINKS —
-  // ploppt per Spring-Kurve auf (nav-pop) und gibt die Bühne frei.
+  // Eingeklappt: wie die minimierte iOS-Tab-Leiste ein Kreis unten
+  // links mit dem Symbol des AKTIVEN Tabs (vorher immer Home — man sah
+  // nicht mehr, wo man ist). Antippen klappt auf.
+  const CurIcon=(tabs.find(t=>t.id===active)||tabs[0]).Icon;
   if(collapsed) return(<><BarBlur/>
     <div style={{position:'absolute',
       bottom:BAR_BOTTOM,
       left:0,right:0,display:'flex',alignItems:'center',justifyContent:'flex-start',
-      padding:'0 14px',pointerEvents:'none',zIndex:5}}>
+      padding:'0 14px',pointerEvents:'none',zIndex:5,height:NAV_H}}>
       <div className={opening?'nav-pop-out':'nav-pop'}
-        style={{position:'relative',width:57,height:57,pointerEvents:'auto'}}>
-        <GlassSurface width="100%" height="100%" borderRadius={28}
+        style={{position:'relative',width:NAV_MINI,height:NAV_MINI,pointerEvents:'auto'}}>
+        <GlassSurface width="100%" height="100%" borderRadius={NAV_MINI/2}
           className="nav-glass"
           brightness={58} opacity={0.92} blur={11}
           displace={0.6} distortionScale={-130}
           redOffset={0} greenOffset={8} blueOffset={16}
           style={{position:'absolute',inset:0,pointerEvents:'none'}}/>
-        {/* Zweistufig wie das Einklappen: erst saugt sich die Kugel
-            weg (nav-pop-out), dann federt die Bar aus ihr heraus. */}
-        <button disabled={opening} onClick={()=>{
-            buzz(6);setOpening(true);
-            clearTimeout(collapseTimer.current);
-            collapseTimer.current=setTimeout(()=>{
-              setOpening(false);setPopped(true);setCollapsed(false);armCollapse();
-            },480);
-          }}
+        <button disabled={opening} onClick={()=>{buzz(6);navStore.set(false);}}
           aria-label="Navigation ausklappen" title="Navigation ausklappen"
           style={{position:'relative',zIndex:1,width:'100%',height:'100%',
             borderRadius:'50%',border:'none',background:'transparent',cursor:'pointer',
             color:T.t1,display:'flex',alignItems:'center',justifyContent:'center'}}>
-          <HomeIcon size={24}/>
+          <CurIcon active size={24}/>
         </button>
       </div>
     </div></>
@@ -3049,8 +3073,8 @@ function TabBar({active,onTab}){
           und sie steckt nicht im gefilterten/geklippten Glas-Subtree
           (das sonst die Transitions der Pill einfriert). */}
       <div className={closing?'nav-pop-out':(popped?'nav-pop-bar':'')}
-        style={{position:'relative',flex:1,maxWidth:440,height:57,pointerEvents:'auto'}}>
-      <GlassSurface width="100%" height="100%" borderRadius={28}
+        style={{position:'relative',flex:1,maxWidth:440,height:NAV_H,pointerEvents:'auto'}}>
+      <GlassSurface width="100%" height="100%" borderRadius={NAV_H/2}
         className="nav-glass"
         brightness={58} opacity={0.92} blur={11}
         displace={0.6} distortionScale={-130}
@@ -3099,6 +3123,7 @@ function TabBar({active,onTab}){
                 // Tap auf einen ANDEREN Tab → Blend-in der Pill auf
                 // dem Ziel-Screen bewaffnen (siehe __navBlendArm).
                 if(id!==active){__navBlendArm=true;buzz(6);}
+                navStore.set(false);
                 onTab(id);
               }}
               ref={el=>{tabRefs.current[id]=el;}}
@@ -3296,10 +3321,10 @@ function MatchBar({onHome,rightIcon,onRight,rightButtons,homeLabel='Zurück zur 
   return(<><BarBlur/>
     <div style={{position:'absolute',
       // Auf Navbar-Hoehe: gleicher Bottom-Anchor wie die TabBar
-      // (BAR_BOTTOM) + feste Hoehe = Navbar-Pillen-Hoehe (57px).
+      // (BAR_BOTTOM) + feste Hoehe = Navbar-Hoehe (NAV_H).
       // So sitzen Home/Start/Index/Weiter exakt auf der Navbar-Mittel-
       // linie; alignItems:center zentriert auch groessere FABs (56px) darauf.
-      bottom:BAR_BOTTOM,height:57,
+      bottom:BAR_BOTTOM,height:NAV_H,
       left:0,right:0,display:'flex',alignItems:'center',justifyContent:'space-between',
       padding:'0 24px',pointerEvents:'none',zIndex:5}}>
       <button onClick={onHome} className="glass-bar"

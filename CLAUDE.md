@@ -152,8 +152,11 @@ The grid is five columns — `players | innerA | net | innerB | players` — and
 
 ### Die Court-Karte — der Zustand sitzt auf dem Netz
 
-Der Kopf trägt links `COURT 1 · 1V1`, rechts die `✓ FERTIG`-Plakette
-und den Stift für die **Aufstellung**. Sonst nichts.
+Der Kopf trägt links den Court-Namen als Kartentitel in der Antiqua
+(dahinter ggf. die `1V1`-Pille), rechts die `✓ FERTIG`-Plakette und
+den Stift für die **Aufstellung**. Sonst nichts. Der Name stand bis
+Runde 5 als orange Plakette da — Orange ist Status, und ein Name ist
+keiner.
 
 Der Zustand des Matches — und der Knopf, der ihn weiterschaltet —
 sitzt **auf dem Netz**, auf der Kreuzung mit dem Reihentrenner,
@@ -269,9 +272,55 @@ Die Bausteine stehen in App.jsx direkt vor `ScreenHeader`:
   **Runde 2** (Einstellungen samt Unterseiten: `SettingsCard`,
   `SettingsSubLayout`, `SettingsSection`) und **Runde 3** (RITMO Post,
   Bald-Seiten, Profil bearbeiten, Match-Praeferenzen, RITMO-DNA-Seite,
-  die Bibel — siehe unten) umgestellt. Danach: 
-  Bald-Seiten; Setup-Strecken; laufendes Match/Turnier/Endstand (mit
-  `dim`); Login/Registrierung/Onboarding.
+  die Bibel — siehe unten), **Runde 4** (Single Match, siehe dort) und
+  **Runde 5** (der ganze Turnierbereich, siehe „Turniere in der
+  Sprache der Startseite“) umgestellt. Danach:
+  Login/Registrierung/Onboarding.
+
+### Turniere in der Sprache der Startseite (Runde 5)
+
+Assistent, Konfigurator, Beitreten, Lobby, Teilnehmeransicht, laufendes
+Turnier, Endstand und alle Sheets darunter. **Nur Darstellung**: kein
+Handler, kein State, keine Regel und nichts in `src/tournament.js`
+wurde angefasst — Paarungen, Wertung und Pausen-Ausgleich laufen
+unverändert.
+
+- **Foto unter allem**, gedimmt nach Arbeit: Assistent `.45`,
+  laufendes Turnier `.32`, Beitreten/Teilnehmer `.25`, Endstand `.2`.
+  Der Assistent ist ein `position:fixed`-Overlay und bekommt
+  `PHOTO_ROOT` + `PhotoBackdrop` genauso wie ein Screen.
+- **Assistent**: Kopf aus Ressort (Centauri), „Schritt n von 7“ (Inter
+  — Ziffern nie in Centauri) und sieben Segmenten statt eines Balkens
+  (der alte rechnete mit `/6` und lief im letzten Schritt über).
+  Schritt-Titel in der Antiqua, Standfirst kursiv. Fusszeile ohne
+  eigenen Grund: `‹ Zurück` gelb, `Weiter ›` / `Turnier starten ›`
+  orange — auch der Start war vorher grün.
+- **Auswahl** überall wie in Single Match: Pillen weiss mit schwarzer
+  Schrift (Modus, Format, Sieger-Modus, Pausen, Rundenpriorität);
+  gewählte Karten Glas mit oranger Kontur und Schein plus Radio-Punkt
+  statt Haken.
+- **Kartentitel** in der Antiqua (21 px), Sheet-Titel 24 px. Ausnahme:
+  Titel, die eine Zahl *sind* („3 Turniere“ im Papierkorb), bleiben
+  Inter.
+- **Zahlen** in Inter mit `tabular-nums`. Das `ui-monospace` der Timer,
+  PINs und Spielstände ist raus.
+- **Kopf des laufenden Turniers**: Timer-Karte, Ansicht- und
+  Historie-Knopf sind Glas mit weissem Glyph statt schwarz mit oranger
+  2-px-Kontur. Die Zeit ist weiss, **orange nur solange sie läuft**,
+  rot wenn abgelaufen. Der aktive Ansicht-Knopf (Tabelle) ist weiss mit
+  schwarzem Glyph — dieselbe Sprache wie die Auswahl-Pillen.
+- **Werkzeug-Fach**: Glyphen weiss; der Live-Glyph wird orange, solange
+  gespiegelt wird (Status).
+- **Endstand**: Sieger als Antiqua-Name unter einem `SIEGER`-Ressort,
+  Turniername als Standfirst, die Tabelle unter einer `SectionRule`.
+- **Beitreten**: der Einleitungs-Block (`SetupHero`, inzwischen gelöscht, mit demselben Glyph
+  wie der Kopf) ist zum Standfirst geworden. QR-Scan ist eine weisse
+  Pille, der PIN-Knopf in der Leiste orange.
+- Getestet mit einem durchgespielten Americano (8 Spieler, 2 Courts,
+  Ergebnisse über die Räder, Rundenwechsel, Beenden über beide Schritte,
+  Endstand). Lobby und Teilnehmeransicht brauchen eine Supabase-Session
+  und sind nur im Code umgestellt — wer dort etwas ändert, prüft sie an
+  einer echten Session.
 
 ### Single Match: Aufstellung und Scoreboard
 

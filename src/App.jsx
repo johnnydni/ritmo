@@ -3054,8 +3054,15 @@ const HEAD_SERIF={fontFamily:T.fontSerif,fontStyle:'italic',fontWeight:700,
   textShadow:'0 2px 14px rgba(0,0,0,.45)'};
 function PhotoBackdrop({dim=0}){
   return(
-    <div aria-hidden="true" style={{position:'absolute',inset:0,zIndex:-1,overflow:'hidden',
-      pointerEvents:'none'}}>
+    /* fixed statt absolute, und unten ueber den Rand hinaus: als
+       installierte PWA auf dem iPhone (black-translucent) ist der
+       Screen-Rahmen um die Statusleiste zu kurz, und darunter stand
+       ein schwarzer Balken unter der Tab-Leiste. Fixed entkommt dem
+       overflow:hidden des Rahmens, die Ueberlaenge deckt die Luecke;
+       wo es keine gibt, liegt sie unsichtbar unter dem Bildrand. */
+    <div aria-hidden="true" style={{position:'fixed',top:0,left:0,right:0,
+      bottom:'calc(-1 * (env(safe-area-inset-top,0px) + env(safe-area-inset-bottom,0px)))',
+      zIndex:-1,overflow:'hidden',pointerEvents:'none'}}>
       <img src={`${getAssetBase()}assets/home-bg.jpg`} alt="" draggable={false}
         style={{position:'absolute',inset:0,width:'100%',height:'100%',
           objectFit:'cover',objectPosition:'50% 30%',userSelect:'none'}}/>

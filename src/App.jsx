@@ -22,7 +22,6 @@ import { LIGA_PHASES, LIGA_GROUPS, initialLigaState, ligaAddParticipant,
    Components, screens and routing remain colocated here for now;
    only side-effect-free units are split out. See CLAUDE.md. */
 import { T, CSS, rgba } from "./theme.js";
-import { sdfFromAlpha, drawMorph } from "./shapeMorph.js";
 import { lsGet, lsSet, wipeLocalData, getAssetBase, getInitials, processImageUpload, safeImageSrc, buzz, purgeTrash, trashDaysLeft, TRASH_DAYS } from "./utils.js";
 import { getLevelLabel, getLevelTier, getLevelColor, estimateLevel } from "./levels.js";
 import { B0, A0, PL, ptD, wG, bo3R, amR, DEFCFG } from "./game.js";
@@ -206,29 +205,28 @@ const APP_PAUSED=false;
 
 function BetaPause(){
   return(
-    <div style={{minHeight:'100dvh',background:T.bgGrad,color:T.t1,
+    <div style={{minHeight:'100dvh',...PHOTO_ROOT,position:'relative',color:T.t1,
       display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 40px)',
       paddingBottom:'calc(env(safe-area-inset-bottom,0px) + 40px)',
       paddingLeft:24,paddingRight:24,textAlign:'center'}}>
+      <PhotoBackdrop dim={.35}/>
       <div className="fi" style={{display:'flex',flexDirection:'column',alignItems:'center',
         maxWidth:340,width:'100%'}}>
-        <RitmoSplashLogo size={150}/>
-        <div style={{fontFamily:T.fontDisplay,color:T.o,fontSize:11,letterSpacing:3,
-          lineHeight:1,marginTop:30}}>Beta-Programm</div>
-        <div style={{color:T.t1,fontSize:34,fontWeight:700,letterSpacing:-.6,
-          lineHeight:1.12,marginTop:9}}>Danke!</div>
-        <div style={{height:1,width:34,marginTop:13,borderRadius:1,
-          background:`linear-gradient(90deg,transparent,${T.o},transparent)`}}/>
+        <AuthMark w={190}/>
+        <div className="display" style={{color:T.o,fontSize:12,letterSpacing:3,
+          lineHeight:1,marginTop:34}}>Beta-Programm</div>
+        <div style={{...HEAD_SERIF,fontSize:46,marginTop:10}}>Danke!</div>
+        <div style={{height:1,width:34,marginTop:14,background:T.o}}/>
         <div className="txt fu" style={{color:T.t2,fontSize:16,lineHeight:1.55,marginTop:16,
-          display:'flex',flexDirection:'column',gap:14,animationDelay:'.1s'}}>
+          fontStyle:'italic',display:'flex',flexDirection:'column',gap:14,animationDelay:'.1s'}}>
           <div>Danke an alle, die beim RITMO Beta-Programm dabei waren – für jedes
             Match, jedes Turnier und für euer Feedback. Ihr habt RITMO mitgebaut.</div>
           <div>Die App wird gerade weiterentwickelt und befindet sich auf dem Weg in
             ihre nächste Phase. Bis dahin ist sie pausiert.</div>
         </div>
-        <div className="fu" style={{color:T.t1,fontSize:16,fontWeight:700,marginTop:26,
-          animationDelay:'.18s'}}>Dein RITMO Team</div>
+        <div className="fu" style={{fontFamily:T.fontSerif,color:T.t1,fontSize:21,fontWeight:700,
+          marginTop:26,animationDelay:'.18s'}}>Dein RITMO Team</div>
       </div>
     </div>
   );
@@ -248,34 +246,32 @@ function BetaPause(){
    nicht im jeweiligen Store liegt; es ist eine reine Ankündigung.
 ═══════════════════════════════════════════════════════════════ */
 function BetaLanding({onLogin,onRegister}){
+  /* Die erste Seite fuer jeden, der noch nicht angemeldet ist — in der
+     Sprache der Startseite: Foto, Schriftzug, Antiqua, Glas. Oben die
+     Ankuendigung, unten der Weg fuer Beta-Tester. */
   return(
-    <div style={{minHeight:'100dvh',background:T.bgGrad,color:T.t1,
+    <div style={{height:'100dvh',...PHOTO_ROOT,color:T.t1,
       display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 40px)',
       paddingBottom:'calc(env(safe-area-inset-bottom,0px) + 32px)',
       paddingLeft:24,paddingRight:24,position:'relative',overflow:'hidden'}}>
+      <PhotoBackdrop dim={.2}/>
 
-      {/* Hero — Logo + Coming-Soon Anchor */}
       <div className="fi" style={{flex:1,display:'flex',flexDirection:'column',
-        alignItems:'center',justifyContent:'center',gap:34,textAlign:'center'}}>
+        alignItems:'center',justifyContent:'center',textAlign:'center'}}>
+        <AuthMark w={220}/>
+        <div className="display" style={{color:T.o,fontSize:12,letterSpacing:3,marginTop:40}}>
+          Coming Soon</div>
+        <div style={{...HEAD_SERIF,fontSize:36,lineHeight:1.12,marginTop:12,maxWidth:330}}>
+          Bald im App Store und bei Google Play.</div>
+        <div style={{height:1,width:34,marginTop:16,background:T.o}}/>
 
-        <RitmoSplashLogo size={200}/>
-
-        <div style={{maxWidth:340,display:'flex',flexDirection:'column',gap:18}}>
-          <div style={{color:T.t3,fontSize:11,fontWeight:800,letterSpacing:2.5,
-            textTransform:'uppercase'}}>Coming Soon</div>
-          <div style={{color:T.t1,fontSize:24,fontWeight:900,letterSpacing:-.4,lineHeight:1.2}}>
-            Bald im Google Play Store<br/>und App Store erhältlich!
-          </div>
-        </div>
-
-        {/* Store-"Badges" — keine offiziellen Marken, sondern Bauhaus-Pillen
-            mit Play-Dreieck bzw. Apple-Logo. */}
+        {/* Store-Pillen — keine offiziellen Badges: die App liegt noch
+            in keinem Store, das hier ist eine Ankuendigung. */}
         <div className="fu" style={{display:'flex',gap:10,flexWrap:'wrap',
-          justifyContent:'center',animationDelay:'.1s'}}>
-          <div style={{display:'flex',alignItems:'center',gap:10,padding:'10px 16px',
-            background:T.card,border:`1px solid ${T.border}`,borderRadius:13,
-            color:T.t2,opacity:.85}}>
+          justifyContent:'center',marginTop:26,animationDelay:'.1s'}}>
+          <div style={{display:'flex',alignItems:'center',gap:10,padding:'9px 16px 9px 12px',
+            ...GLASS,borderRadius:999}}>
             {/* Google Play Dreieck — multi-stop gradient als Hommage */}
             <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
               <defs>
@@ -302,57 +298,40 @@ function BetaLanding({onLogin,onRegister}){
               <path d="M17.7 10.1l3.3 1.9-3.3 1.9-5.2-2z" fill="url(#ritmo-play-a)"/>
             </svg>
             <div style={{textAlign:'left'}}>
-              <div style={{fontSize:9,fontWeight:700,letterSpacing:.8,color:T.t3,
-                textTransform:'uppercase'}}>Bald auf</div>
-              <div style={{fontSize:13,fontWeight:800,color:T.t1,letterSpacing:.2}}>Google Play</div>
+              <div style={{fontSize:10.5,fontWeight:600,color:T.t3,lineHeight:1.2}}>Bald auf</div>
+              <div style={{fontSize:13.5,fontWeight:800,color:T.t1}}>Google Play</div>
             </div>
           </div>
-
-          <div style={{display:'flex',alignItems:'center',gap:10,padding:'10px 16px',
-            background:T.card,border:`1px solid ${T.border}`,borderRadius:13,
-            color:T.t2,opacity:.85}}>
-            <AppStoreIcon size={24}/>
+          <div style={{display:'flex',alignItems:'center',gap:10,padding:'9px 16px 9px 12px',
+            ...GLASS,borderRadius:999}}>
+            <AppStoreIcon size={22}/>
             <div style={{textAlign:'left'}}>
-              <div style={{fontSize:9,fontWeight:700,letterSpacing:.8,color:T.t3,
-                textTransform:'uppercase'}}>Bald im</div>
-              <div style={{fontSize:13,fontWeight:800,color:T.t1,letterSpacing:.2}}>Apple App Store</div>
+              <div style={{fontSize:10.5,fontWeight:600,color:T.t3,lineHeight:1.2}}>Bald im</div>
+              <div style={{fontSize:13.5,fontWeight:800,color:T.t1}}>App Store</div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Beta CTA — unten zentriert */}
       <div className="fu" style={{flexShrink:0,display:'flex',flexDirection:'column',
-        alignItems:'center',gap:14,paddingTop:24,animationDelay:'.18s'}}>
-
-        <div style={{maxWidth:340,textAlign:'center'}}>
-          <div style={{color:T.o,fontSize:13,fontWeight:800,letterSpacing:.3,marginBottom:6}}>
-            Du hast einen Beta-Zugangscode?
-          </div>
-          <div style={{color:T.t2,fontSize:13,lineHeight:1.5,fontWeight:500}}>
-            Teste schon jetzt — hier geht es zu Login&nbsp;/&nbsp;Registrierung.
-          </div>
+        alignItems:'center',gap:16,paddingTop:24,animationDelay:'.18s'}}>
+        <div className="txt" style={{maxWidth:320,textAlign:'center',color:T.t2,fontSize:15,
+          fontStyle:'italic',lineHeight:1.5}}>
+          Du hast einen Beta-Zugang? Dann teste schon jetzt.
         </div>
-
-        <div style={{display:'flex',gap:10,width:'100%',maxWidth:340}}>
+        <div style={{display:'flex',gap:10,width:'100%',maxWidth:360}}>
           <button onClick={onLogin}
-            style={{flex:1,padding:'14px 16px',background:T.card,
-              border:`1px solid ${T.border}`,borderRadius:15,
-              color:T.t1,fontSize:16,fontWeight:800,letterSpacing:.3,
-              cursor:'pointer',transition:'background .15s'}}
-            onPointerDown={e=>e.currentTarget.style.background=T.card2}
-            onPointerUp={e=>e.currentTarget.style.background=T.card}
-            onPointerLeave={e=>e.currentTarget.style.background=T.card}>
-            Login
+            style={{flex:1,height:54,...GLASS,borderRadius:999,
+              color:T.t1,fontSize:16,fontWeight:700,cursor:'pointer'}}>
+            Anmelden
           </button>
           <button onClick={onRegister}
-            style={{flex:1,padding:'14px 16px',background:T.o,border:'none',borderRadius:15,
-              color:'#000',fontSize:16,fontWeight:800,letterSpacing:.3,
-              cursor:'pointer',boxShadow:'0 6px 18px var(--oGlow)'}}>
-            Registrierung
+            style={{flex:1,height:54,background:T.o,border:'none',borderRadius:999,
+              color:'#000',fontSize:16,fontWeight:800,
+              cursor:'pointer',boxShadow:'0 8px 26px var(--oGlow)'}}>
+            Registrieren
           </button>
         </div>
-
       </div>
     </div>
   );
@@ -360,194 +339,40 @@ function BetaLanding({onLogin,onRegister}){
 
 /* ═══════════════════════════════════════════════════════════════
    SPLASH SCREEN
+
+   Ganz schlicht: das Foto der Startseite, der Schriftzug mittig,
+   darunter ein Ladebalken, der sich einmal fuellt. Tippen startet
+   sofort. Das Logomotion-Video samt Morph ist raus — 8,5 MB, die
+   jeder Start erst laden musste, fuer zwei Sekunden Vorspann.
+
+   „Skip Intro" bleibt und merkt sich die Wahl (ritmo_skip_intro,
+   beim Logout geloescht): dann laeuft der Balken in einem Bruchteil
+   der Zeit durch, statt ganz zu fehlen — ein Bild, das sofort
+   wieder verschwindet, sieht aus wie ein Fehler.
 ═══════════════════════════════════════════════════════════════ */
-
-/* ── Der Morph: aus dem R des Schriftzugs wird die Wortbildmarke ──
-   Beide Endpunkte sind VERMESSEN, nicht geschaetzt — nur deshalb
-   geht die Uebergabe ans Video unsichtbar durch.
-
-   ritmo-lettering.png ist 720 x 120. Das R belegt dort x 12..163
-   und y 12..104; zwischen R und I liegt eine Luecke (x 163..180),
-   in deren Mitte die beiden Haelften geteilt werden. */
-const SPL_R={cx:87.5/720, cy:58/120, w:152/720, split:171.5/720};
-/* Erster Frame von logomotion720p.mp4 (720 x 1280): die Marke steht
-   bei x 306..404, y 589..646 — also NICHT in der Bildmitte, sondern
-   gut 2 % der Hoehe darueber und einen Hauch links davon. Genau
-   dorthin muss der Morph landen, sonst springt die Marke beim
-   Crossfade. */
-const SPL_MARK={cx:355/720, cy:617.5/1280, w:99/720};
-
-/* ── Der Formen-Morph (src/shapeMorph.js): woran die beiden R
-   aneinander ausgerichtet sind. Auch das ist gemessen, nicht gewaehlt.
-
-   Ausgerichtet wird NICHT Mitte auf Mitte, sondern Stamm auf Stamm
-   und Bogen auf Bogen — mit Mitte auf Mitte lag der Logo-Stamm 65 px
-   (bei 200 px Hoehe) neben dem des Schriftzugs, und mitten im Morph
-   riss der Stamm ab, weil dort keine der beiden Formen stand.
-
-   - Schriftzug-R (ritmo-lettering.png): Anker (88 | 58,5), Hoehe 93.
-     Stamm-Mitte x 20, Bogen-Aussenkante x 161.
-   - Logo (ritmo-logo-r.png, 210 x 123): der R-Koerper ohne Speedlines
-     und Ball steht bei y 0..121, Hoehe 122. Sein Stamm lehnt sich mit
-     0,47 nach rechts (Kante x 85 bei y 50 → x 52 bei y 120);
-     zurueckgeneigt steht er in allen drei Messzeilen bei x 88,3, die
-     Bogen-Aussenkante bei x 196,3.
-   - Aus Stamm und Bogenkante beider Formen folgen zwei Gleichungen
-     und daraus Anker x 140,4 und Stauchung 0,584: so breit ist das
-     Logo-R zwischen Stamm und Bogen, gemessen am Schriftzug-R. */
-const SPL_MORPH={ax:88, ay:58.5, ah:93,  bx:140.4, by:61, bh:122,
-  lean:0.47, narrow:0.584, fuse:0.25, swell:0.006, ripple:0.008, ms:900};
-
-/* Ein Alpharaster aus einem PNG schneiden, gepolstert — das Feld muss
-   bis dorthin reichen, wo die andere Form im Morph steht. `maxU`
-   schneidet rechts ab: aus dem Schriftzug darf nur das R ins Feld,
-   nicht das I daneben. */
-function splAlphaGrid(img,x0,y0,x1,y1,P,maxU){
-  const c=document.createElement('canvas');
-  c.width=img.naturalWidth; c.height=img.naturalHeight;
-  const g=c.getContext('2d',{willReadFrequently:true});
-  g.drawImage(img,0,0);
-  const src=g.getImageData(0,0,c.width,c.height).data;
-  const w=(x1-x0)+2*P, h=(y1-y0)+2*P, a=new Uint8Array(w*h);
-  for(let y=0;y<h;y++) for(let x=0;x<w;x++){
-    const u=x0-P+x, v=y0-P+y;
-    if(u<0||v<0||u>=c.width||v>=c.height||u>=maxU) continue;
-    a[y*w+x]=src[(v*c.width+u)*4+3];
-  }
-  return {f:sdfFromAlpha(a,w,h), gx:x0-P, gy:y0-P};
-}
-function splBuildFields(L,M){
-  const M_=SPL_MORPH;
-  const RA=splAlphaGrid(L,12,12,164,105,40,171), RB=splAlphaGrid(M,0,0,210,123,48,1e9);
-  return {
-    A:{f:RA.f, ax:M_.ax-RA.gx-0.5, ay:M_.ay-RA.gy-0.5, hs:M_.ah},
-    B:{f:RB.f, ax:M_.bx-RB.gx-0.5, ay:M_.by-RB.gy-0.5, hs:M_.bh},
-  };
-}
-/* Wo der gemeinsame Anker zum Zeitpunkt m steht und wie hoch der
-   Koerper ist — Schirm-px relativ zur Mitte. Start: das R, wie es nach
-   dem Slide steht (Bild bei translate(-12,2 %, -50 %), also exakt die
-   Werte aus splashSlideR). Ende: der Anker im Logo, wie es im Video
-   steht. Bei m = 0 und m = 1 kommen damit pixelgenau die beiden Bilder
-   heraus, gegen die getauscht wird. */
-function splMorphFrame(g,m){
-  const M_=SPL_MORPH, sA=g.letW/720, k=g.markW/210;
-  const x0=-0.122*g.letW+M_.ax*sA, y0=-g.letH/2+M_.ay*sA, h0=M_.ah*sA;
-  const x1=g.mx+(M_.bx-105)*k, y1=g.my+(M_.by-61.5)*k, h1=M_.bh*k;
-  return {cx:x0+(x1-x0)*m, cy:y0+(y1-y0)*m, h:h0+(h1-h0)*m};
-}
-/* Die Zeichenflaeche: Huelle beider Formen ueber den ganzen Weg. Das
-   Logo zaehlt erst ab e = 0,55 — vorher kann es nur dort sichtbar
-   werden, wo das R ohnehin steht, und seine Speedlines stuenden in
-   der aufgerichteten Startpose weit links und wuerden die Flaeche
-   unnoetig verdoppeln. */
-function splMorphBox(g){
-  const M_=SPL_MORPH;
-  let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
-  const add=(fr,e,p,q)=>{
-    const sig=M_.lean*e, kap=1+(M_.narrow-1)*e;
-    const X=fr.cx+(kap*p-sig*q)*fr.h, Y=fr.cy+q*fr.h;
-    if(X<x0)x0=X; if(X>x1)x1=X; if(Y<y0)y0=Y; if(Y>y1)y1=Y;
-  };
-  for(let i=0;i<=10;i++){
-    const e=i/10, fr=splMorphFrame(g,e);
-    for(const [u,v] of [[12,12],[164,12],[12,105],[164,105]])
-      add(fr,e,(u-M_.ax)/M_.ah,(v-M_.ay)/M_.ah);
-    if(e>=0.55) for(const [u,v] of [[0,0],[210,0],[0,123],[210,123]]){
-      const pB=(u-M_.bx)/M_.bh, qB=(v-M_.by)/M_.bh;
-      add(fr,e,(pB+M_.lean*qB)/M_.narrow,qB);
-    }
-  }
-  return {x0:Math.floor(x0-4),y0:Math.floor(y0-4),x1:Math.ceil(x1+4),y1:Math.ceil(y1+4)};
-}
+const SPL_MS=2600, SPL_MS_SKIP=700;
 
 function Splash({onDone}){
-  // Primär läuft das Logomotion-Video (~9 s, einmal durch — Ende
-  // öffnet die App, Tap überspringt sofort). Zwei Wege zum BRAND-
-  // Splash (Pulse-Gradient + RITMO-Schriftzug + drei Puls-Streifen):
-  //  - ritmo_skip_intro gesetzt (Check-Button im Video; wird beim
-  //    Logout gelöscht → nach neuem Login läuft das Video wieder)
-  //  - Video-Fehler/Timeout — der Brand-Splash IST der neue Fallback
-  //    (das alte Loop-Video ritmo-loadingscreen.mp4 ist raus).
   const doneRef=useRef(false);
   const finish=()=>{ if(doneRef.current) return; doneRef.current=true; onDone(); };
-  const[videoFailed,setVideoFailed]=useState(false);
-  const playingRef=useRef(false);
-  // Einmal beim Mount gelesen — Umschalten greift ab dem nächsten Start.
-  const[skipVideo]=useState(()=>!!lsGet('ritmo_skip_intro',false));
-  // Check-Button-Zustand ("Skip Intro") im Video-Pfad.
-  const[noIntro,setNoIntro]=useState(false);
+  // Einmal beim Mount gelesen — Umschalten greift ab dem naechsten Start.
+  const[skip]=useState(()=>!!lsGet('ritmo_skip_intro',false));
+  const[noIntro,setNoIntro]=useState(skip);
   const toggleNoIntro=(e)=>{
-    e.stopPropagation(); // Tap auf den Button darf den Splash nicht beenden
+    e.stopPropagation(); // Tap auf den Knopf darf den Splash nicht beenden
     buzz(8);
     setNoIntro(v=>{ lsSet('ritmo_skip_intro',!v); return !v; });
   };
-  const brand=skipVideo||videoFailed;
-  // ── Intro-Phase: ~2 s schwarzer Pulse-Gradient, BEVOR das Video
-  // startet. Das Video ist währenddessen unsichtbar gemountet
-  // (preload läuft) und wird erst nach dem Intro per play() gestartet
-  // (muted → auch ohne Nutzer-Geste erlaubt).
-  const INTRO_MS=2400;
-  const[intro,setIntro]=useState(true);
-  /* Der Morph startet, wenn der Slide STEHT (0,45 s Verzoegerung +
-     0,85 s Lauf = 1,3 s) — die 100 ms Pause dazwischen sind Absicht:
-     laufen Slide und Morph ineinander, wandert das R diagonal und
-     der Wechsel wird zu einer zweiten Bewegung statt zu einem
-     Moment. Der Morph hat 0,9 s und ist bei 2,3 s fertig, 100 ms
-     bevor der Vorhang aufgeht — die Marke steht also schon, wenn das
-     Video sie uebernimmt.
-
-     Zwei Wege:
-     - 'sdf': die Form fliesst (Distanzfelder, src/shapeMorph.js). Ein
-       Canvas uebernimmt in dem Bild, in dem das R verschwindet, und
-       gibt an die Marke ab, sobald er sie zeichnet — Anfang und Ende
-       sind bildgleich, der Tausch ist unsichtbar.
-     - 'fade': das R blendet deckungsgleich in die Marke ueber. Der
-       Rueckweg, falls die Felder bis 1,4 s nicht stehen (Bilder nicht
-       geladen, Canvas nicht lesbar), und bei prefers-reduced-motion:
-       der Killswitch aus theme.js kuerzt die Transitions auf 0, die
-       Marke steht dann sofort da. Eine rAF-Schleife wuerde er nicht
-       anhalten. */
-  const MORPH_AT=1400;
-  const[morph,setMorph]=useState(false);
-  const[mode,setMode]=useState(null);           // 'sdf' | 'fade'
-  const[morphDone,setMorphDone]=useState(false);
-  const sdfRef=useRef(null);
-  const geoRef=useRef(null);
-  const morphCvRef=useRef(null);
+  const ms=skip?SPL_MS_SKIP:SPL_MS;
   useEffect(()=>{
-    if(skipVideo) return;
-    const a=setTimeout(()=>{
-      const reduce=!!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-      setMode(sdfRef.current&&geoRef.current&&!reduce?'sdf':'fade');
-      setMorph(true);
-    },MORPH_AT);
-    const t=setTimeout(()=>setIntro(false),INTRO_MS);
-    return()=>{clearTimeout(a);clearTimeout(t);};
+    const t=setTimeout(finish,ms+150);
+    return()=>clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[]);
-  useEffect(()=>{
-    if(skipVideo||intro||videoFailed) return;
-    vidRef.current?.play?.().catch(()=>setVideoFailed(true));
-    // Startet das Video binnen 2,5 s nach dem Intro nicht → Fallback.
-    const t=setTimeout(()=>{ if(!playingRef.current) setVideoFailed(true); },2500);
-    return()=>clearTimeout(t);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[intro,videoFailed]);
-  // Backstop-Timer: Video-Pfad 15 s (Intro 2 s + ~10,5 s Video wegen
-  // 0,75×-erster-Hälfte; onEnded beendet ohnehin früher). Brand-Splash
-  // (Skip oder Fallback) öffnet nach 3,5 s.
-  useEffect(()=>{
-    const t=setTimeout(finish,brand?3500:15000);
-    return()=>clearTimeout(t);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[brand]);
-  // html/body/theme-color solange auf Schwarz zwingen: die Zonen
-  // außerhalb des Web-Viewports (Safari-Bottom-Bar, Safe-Areas)
-  // werden von iOS mit html-Hintergrund bzw. theme-color getönt —
-  // sonst stehen sie als grauer Balken unter dem Video. Der App-
-  // Theme-Sync pausiert währenddessen (scr==='splash'-Guard) und
-  // stellt die Theme-Farben nach dem Splash wieder her.
+  /* html/body/theme-color solange auf Schwarz: die Zonen ausserhalb des
+     Web-Viewports (Safe-Areas, Safari-Leiste) toent iOS mit dem
+     html-Grund bzw. theme-color. Der Theme-Sync der App pausiert
+     waehrenddessen (scr==='splash') und stellt danach alles wieder her. */
   useEffect(()=>{
     const prevBody=document.body.style.background;
     const prevHtml=document.documentElement.style.background;
@@ -562,354 +387,55 @@ function Splash({onDone}){
       if(meta&&prevMeta) meta.setAttribute('content',prevMeta);
     };
   },[]);
-  // Cover-Geometrie in JS statt object-fit:cover — iOS Safari
-  // ignoriert object-fit auf <video> teils (Hardware-Decoder rendert
-  // intern contain) und letterboxt das 9:16-Video auf dem ~9:19.5-
-  // Screen mit schwarzen Balken oben/unten. Workaround: das Element
-  // bekommt EXAKT das Video-Seitenverhältnis (9:16) in Cover-Größe
-  // und steht zentriert über — im eigenen Seitenverhältnis kann das
-  // Video nicht letterboxen.
-  const vidRef=useRef(null);
-  const fitRef=useRef(null);
-  // Ladebalken-Fortschritt: läuft per rAF mit dem Video mit —
-  // scaleX = currentTime/duration, füllt sich also erst ab Video-
-  // Start und über die GESAMTE Videolänge.
-  const barRef=useRef(null);
-  // Ab der Hälfte des Ladebalkens: subtiler "Tippe zum starten"-Hinweis.
-  const[hintOn,setHintOn]=useState(false);
-  useEffect(()=>{
-    if(brand) return;
-    let raf;
-    const loop=()=>{
-      const v=vidRef.current,b=barRef.current;
-      if(v&&v.duration>0){
-        // Dramaturgie: erste Videohälfte in 0,75× (leichte Zeitlupe), Rest 1×.
-        const p=v.currentTime/v.duration;
-        const rate=p<0.5?0.75:1;
-        if(v.playbackRate!==rate) v.playbackRate=rate;
-        if(b) b.style.transform=`scaleX(${Math.min(1,p)})`;
-        // Hinweis 2 s (Echtzeit) vor der Video-Mitte: die erste Hälfte
-        // läuft 0,75× → Mitte = 5,97 s Echtzeit; 2 s früher = 3,97 s
-        // ≙ 2,98 s Contentzeit ≙ Fortschritt 0,33.
-        if(p>=0.33) setHintOn(true); // idempotent — React ignoriert no-ops
-      }
-      raf=requestAnimationFrame(loop);
-    };
-    raf=requestAnimationFrame(loop);
-    return()=>cancelAnimationFrame(raf);
-  },[brand]);
-  /* Morph-Geometrie: wohin das R wandern und wie weit es wachsen
-     muss. Faellt im selben Effekt an wie die Video-Groesse, weil sie
-     aus denselben zwei Zahlen folgt — das Video steht im Cover und
-     die Marke sitzt an einer festen Stelle IN ihm, nicht auf dem
-     Schirm. Deshalb kann das hier nicht in CSS stehen. */
-  const[geo,setGeo]=useState(null);
-  useEffect(()=>{
-    if(brand) return;
-    const AR=720/1280; // logomotion720p ist 720×1280 (9:16)
-    const fit=()=>{
-      const el=vidRef.current; if(!el) return;
-      // innerHeight ist beim Standalone-Start kurzzeitig um die untere
-      // Safe-Area zu klein (und iOS feuert danach kein resize) →
-      // screen.height als Mindesthöhe: echte Geraetehoehe, Ueberstand
-      // wird vom Container ohnehin beschnitten (zentriert = symmetrisch).
-      const vw=window.innerWidth;
-      const vh=Math.max(window.innerHeight,
-        document.documentElement.clientHeight||0,
-        window.visualViewport?.height||0,
-        window.screen?.height||0);
-      let h=vh,w=vh*AR;
-      if(w<vw){ w=vw; h=vw/AR; }
-      el.style.width=`${Math.ceil(w)}px`;
-      el.style.height=`${Math.ceil(h)}px`;
-      /* Alles relativ zur SCHIRMMITTE gerechnet (dort liegen beide
-         Elemente per left/top 50 %). letW spiegelt das width des
-         Schriftzugs — wer das dort aendert, aendert es hier mit. */
-      const letW=Math.min(vw*0.56,260), letH=letW/6;
-      const rW=SPL_R.w*letW;                      // Breite des R am Schirm
-      const rY=(SPL_R.cy-0.5)*letH;               // R-Mitte vs. Bildmitte
-      const markW=SPL_MARK.w*w;
-      const g={markW,rW,rY,letW,letH,
-        mx:(SPL_MARK.cx-0.5)*w,
-        my:(SPL_MARK.cy-0.5)*h,
-        s:markW/rW};
-      geoRef.current=g;
-      setGeo(g);
-    };
-    fitRef.current=fit;
-    fit();
-    // Nachmessen: iOS settelt den Viewport erst nach dem ersten Paint.
-    const t1=setTimeout(fit,400),t2=setTimeout(fit,1500);
-    window.addEventListener('resize',fit);
-    window.addEventListener('orientationchange',fit);
-    window.visualViewport?.addEventListener('resize',fit);
-    return()=>{
-      clearTimeout(t1);clearTimeout(t2);
-      window.removeEventListener('resize',fit);
-      window.removeEventListener('orientationchange',fit);
-      window.visualViewport?.removeEventListener('resize',fit);
-    };
-  },[brand]);
-  /* Die Distanzfelder entstehen im Intro, lange bevor sie gebraucht
-     werden: ~60 ms Rechenzeit auf dem Rechner, auf dem Telefon das
-     Doppelte bis Dreifache. Der Slide laeuft als CSS-Transform auf dem
-     Compositor weiter, den stoert das nicht. 60 ms Verzoegerung, damit
-     das erste Bild nicht darauf wartet. */
-  useEffect(()=>{
-    if(brand) return;
-    let dead=false;
-    const t=setTimeout(async()=>{
-      try{
-        const load=src=>new Promise((res,rej)=>{
-          const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=src;
-        });
-        const [L,M]=await Promise.all([
-          load(`${getAssetBase()}assets/ritmo-lettering.png`),
-          load(`${getAssetBase()}assets/ritmo-logo-r.png`)]);
-        if(!dead) sdfRef.current=splBuildFields(L,M);
-      }catch(e){ sdfRef.current=null; }
-    },60);
-    return()=>{dead=true;clearTimeout(t);};
-  },[brand]);
-  /* Die Morph-Schleife. Layout-Effekt, damit das erste Bild VOR dem
-     Paint steht: im selben Commit wird das R unsichtbar — ohne das
-     gaebe es einen Frame ohne beides.
-
-     Gezeichnet wird mit hoechstens doppelter Pixeldichte: die Form
-     bewegt sich die ganze Zeit, und eine dritte Dichte kostet mehr
-     als die Haelfte der Rechenzeit, ohne dass man sie saehe. Das
-     ruhende Endbild ist ohnehin das PNG. */
-  useLayoutEffect(()=>{
-    if(mode!=='sdf') return;
-    const cv=morphCvRef.current, F=sdfRef.current, g=geoRef.current;
-    if(!cv||!F||!g){ setMode('fade'); return; }
-    const box=splMorphBox(g), rs=Math.min(window.devicePixelRatio||1,2);
-    const W=Math.ceil((box.x1-box.x0)*rs), H=Math.ceil((box.y1-box.y0)*rs);
-    cv.width=W; cv.height=H;
-    cv.style.width=`${W/rs}px`; cv.style.height=`${H/rs}px`;
-    cv.style.transform=`translate(${box.x0}px,${box.y0}px)`;
-    const ctx=cv.getContext('2d'), img=ctx.createImageData(W,H);
-    const M_=SPL_MORPH;
-    const ease=x=>x<=0?0:x>=1?1:x*x*x*(x*(x*6-15)+10);
-    const draw=k=>{
-      const e=ease(k), fr=splMorphFrame(g,e);
-      drawMorph(img.data,W,H,rs,F.A,F.B,{cx:fr.cx-box.x0,cy:fr.cy-box.y0,h:fr.h},e,
-        {lean:M_.lean,narrow:M_.narrow,fuse:M_.fuse,swell:M_.swell,ripple:M_.ripple,
-         t:k*M_.ms/1000});
-      ctx.putImageData(img,0,0);
-    };
-    draw(0);
-    let raf; const t0=performance.now();
-    const tick=now=>{
-      const k=(now-t0)/M_.ms;
-      if(k>=1){ setMorphDone(true); return; }
-      draw(k); raf=requestAnimationFrame(tick);
-    };
-    raf=requestAnimationFrame(tick);
-    return()=>cancelAnimationFrame(raf);
-  },[mode]);
   return(
     <div onClick={finish} style={{position:'fixed',inset:0,zIndex:1000,
-      /* Ladebildschirm IMMER schwarz — bewusst hartkodiert (#000),
-         unabhängig vom gewählten Theme. fixed+inset:0 deckt den
-         KOMPLETTEN Viewport ab (inkl. Safe-Areas), wo 100dvh auf
-         iOS einen Streifen frei ließ. */
-      background:'#000',overflow:'hidden',
-      cursor:'pointer',userSelect:'none'}}>
-      {!brand?(<>
-        {/* ── Logomotion-Intro — startet NACH der Pulse-Phase (play()
-            im Intro-Effekt), spielt einmal, Ende öffnet die App. */}
-        <video ref={vidRef}
-          src={`${getAssetBase()}assets/logomotion720p.mp4`}
-          muted playsInline preload="auto" aria-hidden="true"
-          onPlaying={()=>{playingRef.current=true;fitRef.current?.();}}
-          onError={()=>setVideoFailed(true)}
-          onEnded={finish}
-          /* Größe setzt der fit()-Effekt (JS-Cover, s. o.) — das
-             Element hat exakt das Video-Seitenverhältnis, steht
-             zentriert über und wird vom Container beschnitten.
-             object-fit bleibt als Hinweis für Browser ohne den
-             iOS-Video-Bug. */
-          style={{position:'absolute',left:'50%',top:'50%',
-            transform:'translate(-50%,-50%)',
-            objectFit:'cover',background:'#000',pointerEvents:'none',
-            opacity:intro?0:1,transition:'opacity .7s ease'}}/>
-        {/* ── Intro-Overlay: Schwarz mit atmendem Glow — blendet nach
-            INTRO_MS über dem startenden Video aus. */}
-        <div aria-hidden="true" style={{position:'absolute',inset:0,zIndex:2,
-          background:'#000',pointerEvents:'none',
-          opacity:intro?1:0,transition:'opacity .7s ease'}}>
-          <div style={{position:'absolute',left:'50%',top:'50%',
-            width:'72vmin',height:'72vmin',borderRadius:'50%',
-            background:'radial-gradient(circle, rgba(255,122,26,.30) 0%, rgba(255,122,26,.10) 42%, transparent 68%)',
-            animation:'splashPulse 1.9s ease-in-out infinite'}}/>
-          {/* ── Schriftzug → Marke.
-
-              Der Schriftzug startet zentriert und slidet nach rechts,
-              bis die R-Mitte auf der Bildschirmmitte sitzt (12,2 %
-              der Bildbreite, aus dem PNG vermessen). Dann der Morph:
-              ITMO zieht nach rechts ab, und das R FLIESST in die
-              Wortbildmarke, die dabei auf ihren Platz IM VIDEO
-              waechst — gezeichnet vom Canvas weiter unten (Weg
-              'sdf'). Die beiden Bilder hier sind Anfang und Ende
-              davon und der Rueckweg ('fade'): dort blenden sie
-              deckungsgleich ineinander.
-
-              Die SLIDE-GRUPPE traegt die Bewegung, die Kinder tragen
-              den Morph — zwei verschachtelte Transforms. In EINEM
-              Element ginge es nicht: die Keyframe-Animation haelt per
-              `both` ihren Endwert und wuerde ein inline gesetztes
-              transform ueberschreiben. */}
-          <div style={{position:'absolute',left:'50%',top:'50%',
-            width:'min(56vw, 260px)',pointerEvents:'none',
-            animation:'splashSlideR .85s cubic-bezier(.65,0,.35,1) .45s both'}}>
-            {/* ITMO — zieht beim Morph nach rechts ab. */}
-            <img src={`${getAssetBase()}assets/ritmo-lettering.png`} alt=""
-              style={{width:'100%',height:'auto',display:'block',
-                clipPath:`inset(0 0 0 ${SPL_R.split*100}%)`,
-                transform:morph?'translateX(16px)':'none',
-                opacity:morph?0:1,
-                transition:'opacity .34s ease, transform .6s cubic-bezier(.4,0,1,1)'}}/>
-            {/* Das R — dasselbe PNG, nur andersherum beschnitten, und
-                deckungsgleich darueber. Der Drehpunkt ist die R-Mitte
-                im Bild, nicht die Bildmitte: sonst wandert das R beim
-                Skalieren aus dem Bild. */}
-            <img src={`${getAssetBase()}assets/ritmo-lettering.png`} alt="RITMO"
-              style={{position:'absolute',inset:0,width:'100%',height:'auto',
-                clipPath:`inset(0 ${(1-SPL_R.split)*100}% 0 0)`,
-                transformOrigin:`${SPL_R.cx*100}% ${SPL_R.cy*100}%`,
-                transform:morph&&mode==='fade'&&geo
-                  ?`translate(${geo.mx}px,${geo.my-geo.rY}px) scale(${geo.s})`
-                  :'none',
-                opacity:morph?0:1,
-                /* Nur im 'fade'-Weg: das duenne R geht FRUEHER als die
-                   Marke kommt und verliert dabei die Kante — sonst
-                   stehen 200 ms lang zwei scharfe R uebereinander.
-                   Im 'sdf'-Weg verschwindet es ohne Uebergang: in
-                   genau diesem Bild zeichnet der Canvas es. */
-                filter:morph&&mode==='fade'?'blur(2.5px)':'blur(0px)',
-                transition:mode==='sdf'?'none'
-                  :'opacity .36s ease, filter .36s ease, transform .7s cubic-bezier(.5,0,.2,1)'}}/>
-          </div>
-          {/* Die Marke steht in SCHIRM-Koordinaten, nicht in der
-              Slide-Gruppe — ihr Ziel haengt am Video, nicht am
-              Schriftzug. Sie startet exakt auf dem R (Groesse und
-              Mitte) und faehrt mit ihm auf die Zielposition. */}
-          {/* Der fliessende Teil: ein Canvas, der vom R zur Marke
-              zeichnet. Groesse und Lage setzt die Morph-Schleife;
-              left/top 50 % machen die Schirmmitte zum Ursprung, wie
-              bei allem anderen hier. */}
-          <canvas ref={morphCvRef} aria-hidden="true"
-            style={{position:'absolute',left:'50%',top:'50%',pointerEvents:'none',
-              display:mode==='sdf'&&!morphDone?'block':'none'}}/>
-          {geo&&(()=>{
-            /* Die Marke: im 'fade'-Weg blendet sie ueber, im
-               'sdf'-Weg erscheint sie in dem Bild, in dem der Canvas
-               sie fertig gezeichnet hat — ohne Uebergang. */
-            const shown=(morph&&mode==='fade')||morphDone;
-            return(
-              <img src={`${getAssetBase()}assets/ritmo-logo-r.png`} alt=""
-                style={{position:'absolute',left:'50%',top:'50%',
-                  width:geo.markW,height:'auto',pointerEvents:'none',
-                  transform:shown
-                    ?`translate(-50%,-50%) translate(${geo.mx}px,${geo.my}px)`
-                    :`translate(-50%,-50%) translate(0px,${geo.rY}px) scale(${geo.rW/geo.markW})`,
-                  opacity:shown?1:0,
-                  transition:mode==='sdf'?'none'
-                    :'opacity .44s ease .1s, transform .7s cubic-bezier(.5,0,.2,1)'}}/>
-            );
-          })()}
+      ...PHOTO_ROOT,background:'#000',overflow:'hidden',cursor:'pointer',userSelect:'none'}}>
+      <PhotoBackdrop dim={.35}/>
+      <div style={{position:'absolute',left:'50%',top:'50%',transform:'translate(-50%,-50%)',
+        display:'flex',flexDirection:'column',alignItems:'center',gap:30,pointerEvents:'none'}}>
+        <img className="si" src={`${getAssetBase()}assets/ritmo-lettering.png`} alt="RITMO"
+          draggable={false}
+          style={{width:'min(58vw, 250px)',height:'auto',display:'block',
+            filter:'drop-shadow(0 4px 24px rgba(0,0,0,.5))'}}/>
+        {/* Der Balken: eine Haarlinie, die sich mit einer weichen
+            S-Kurve fuellt; vorn ein orange Kopf, darueber ein Glanz. */}
+        <div role="progressbar" aria-label="RITMO wird geladen"
+          style={{position:'relative',width:'min(46vw, 180px)',height:3,borderRadius:2,
+            background:'rgba(255,255,255,.16)',overflow:'hidden'}}>
+          <div style={{position:'absolute',inset:0,borderRadius:2,transformOrigin:'left center',
+            background:`linear-gradient(90deg, rgba(255,255,255,.85) 0%, #fff 78%, ${T.o} 100%)`,
+            boxShadow:`0 0 10px ${T.o}`,
+            animation:`splFill ${ms}ms cubic-bezier(.65,0,.35,1) both`}}/>
+          <div style={{position:'absolute',top:0,bottom:0,left:0,width:'38%',
+            background:'linear-gradient(90deg, transparent, rgba(255,255,255,.9), transparent)',
+            mixBlendMode:'overlay',
+            animation:'splGlint 1.1s ease-in-out .2s infinite'}}/>
         </div>
-        {/* Simpler weißer Ladebalken — leicht unter dem Zentrum:
-            erscheint erst NACH dem Pulse-Intro (blendet mit dem Video
-            ein) und füllt sich mit dem Video-Fortschritt (rAF aus
-            currentTime/duration) über die gesamte Videolänge. */}
-        <div style={{position:'absolute',left:'50%',top:'58%',zIndex:3,
-          transform:'translateX(-50%)',width:148,height:3,borderRadius:2,
-          background:'rgba(255,255,255,.16)',overflow:'hidden',
-          opacity:intro?0:1,transition:'opacity .7s ease',
-          pointerEvents:'none'}}>
-          <div ref={barRef} style={{width:'100%',height:'100%',borderRadius:2,
-            background:'#fff',transformOrigin:'left center',
-            transform:'scaleX(0)'}}/>
-        </div>
-        {/* Subtiler Skip-Hinweis — Versalien, exakt auf Ladebalken-
-            Breite gespreizt (Buchstaben per Flex gleich verteilt). */}
-        <div aria-hidden="true" style={{position:'absolute',left:'50%',zIndex:3,
-          top:'calc(58% + 16px)',transform:'translateX(-50%)',
-          width:148,display:'flex',justifyContent:'space-between',
-          color:'rgba(255,255,255,.7)',fontSize:9.5,fontWeight:600,
-          whiteSpace:'nowrap',pointerEvents:'none',
-          opacity:hintOn?1:0,transition:'opacity 1s ease'}}>
-          {'TIPPE ZUM STARTEN'.split('').map((c,i)=>(
-            <span key={i}>{c===' '?' ':c}</span>
-          ))}
-        </div>
-        {/* ── "Skip Intro" — Liquid-Glass-Pille mit Check.
-            Merkt sich die Wahl (ritmo_skip_intro); beim Logout wird
-            sie gelöscht → nach neuem Login läuft das Video wieder. */}
-        <button onClick={toggleNoIntro}
-          aria-pressed={noIntro}
-          aria-label="Skip Intro — Intro-Video künftig überspringen"
-          style={{position:'absolute',left:'50%',zIndex:4,
-            bottom:'calc(env(safe-area-inset-bottom,0px) + 28px)',
-            transform:'translateX(-50%)',
-            display:'flex',alignItems:'center',gap:10,
-            padding:'11px 16px',borderRadius:999,cursor:'pointer',
-            background:'rgba(255,255,255,0.10)',
-            border:'1px solid rgba(255,255,255,0.22)',
-            backdropFilter:'blur(14px) saturate(160%)',
-            WebkitBackdropFilter:'blur(14px) saturate(160%)',
-            opacity:intro?0:1,transition:'opacity .7s ease',
-            pointerEvents:intro?'none':'auto'}}>
-          <span style={{width:22,height:22,borderRadius:'50%',flexShrink:0,
-            display:'flex',alignItems:'center',justifyContent:'center',
-            background:noIntro?'#FF7A1A':'transparent',
-            border:`1.5px solid ${noIntro?'#FF7A1A':'rgba(255,255,255,0.7)'}`,
-            transition:'background .2s,border-color .2s'}}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"
-              style={{opacity:noIntro?1:0,transition:'opacity .2s'}}>
-              <polyline points="20 6 9 17 4 12" stroke="#fff" strokeWidth="3"
-                strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </span>
-          <span style={{color:'rgba(255,255,255,0.88)',fontSize:12.5,fontWeight:700,
-            letterSpacing:.2,whiteSpace:'nowrap'}}>
-            Skip Intro
-          </span>
-        </button>
-      </>):(
-        /* ── BRAND-SPLASH — Skip-Modus UND neuer Fallback:
-              Pulse-Gradient + RITMO-Schriftzug + drei Puls-Streifen. */
-        <>
-          {/* Pulsierender Glow — Echo des Video-Intros, im Loop. */}
-          <div aria-hidden="true" style={{position:'absolute',left:'50%',top:'50%',
-            width:'72vmin',height:'72vmin',transform:'translate(-50%,-50%)',
-            borderRadius:'50%',pointerEvents:'none',
-            background:'radial-gradient(circle, rgba(255,122,26,.30) 0%, rgba(255,122,26,.10) 42%, transparent 70%)',
-            animation:'splashPulse 1.9s ease-in-out infinite'}}/>
-
-          {/* RITMO-Schriftzug + Puls-Streifen als Gruppe zentriert; die
-              Streifen sitzen linksbündig direkt unter dem R (Echo der
-              Logo-Speed-Lines). Brand-Orange bewusst hartkodiert wie
-              der schwarze Grund. */}
-          <div style={{position:'absolute',left:'50%',top:'50%',zIndex:2,
-            transform:'translate(-50%,-50%)',pointerEvents:'none',
-            display:'flex',flexDirection:'column',alignItems:'flex-start',gap:9}}>
-            <img src={`${getAssetBase()}assets/ritmo-lettering.png`} alt="RITMO"
-              draggable={false}
-              style={{width:'min(56vw, 260px)',display:'block',userSelect:'none'}}/>
-            <div style={{display:'flex',flexDirection:'column',gap:6,marginLeft:2}}>
-              {[54,36,22].map((w,i)=>(
-                <span key={i} style={{width:w,height:5,borderRadius:3,
-                  background:'#FF7A1A',transformOrigin:'left center',
-                  animation:`stripePulse 1.5s ease-in-out ${i*0.18}s infinite`,
-                  display:'block'}}/>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
+      </div>
+      {/* „Skip Intro" — Glas-Pille mit Haken, wie bisher. */}
+      <button onClick={toggleNoIntro}
+        aria-pressed={noIntro}
+        aria-label="Skip Intro — Ladebildschirm künftig abkürzen"
+        style={{position:'absolute',left:'50%',zIndex:4,
+          bottom:'calc(env(safe-area-inset-bottom,0px) + 28px)',
+          transform:'translateX(-50%)',
+          display:'flex',alignItems:'center',gap:10,
+          padding:'11px 16px',borderRadius:999,cursor:'pointer',...GLASS}}>
+        <span style={{width:22,height:22,borderRadius:'50%',flexShrink:0,
+          display:'flex',alignItems:'center',justifyContent:'center',
+          background:noIntro?T.o:'transparent',
+          border:`1.5px solid ${noIntro?T.o:'rgba(255,255,255,0.7)'}`,
+          transition:'background .2s,border-color .2s'}}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"
+            style={{opacity:noIntro?1:0,transition:'opacity .2s'}}>
+            <polyline points="20 6 9 17 4 12" stroke="#000" strokeWidth="3"
+              strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </span>
+        <span style={{color:T.t1,fontSize:12.5,fontWeight:700,letterSpacing:.2,whiteSpace:'nowrap'}}>
+          Skip Intro
+        </span>
+      </button>
     </div>
   );
 }
@@ -928,11 +454,11 @@ function WelcomeNotice({onConfirm}){
       padding:'24px',animation:'fadeIn .25s ease'}}>
       <div className="si" style={{
         maxWidth:380,width:'100%',background:T.card,
-        border:`1px solid ${T.border}`,borderRadius:20,
+        border:`1px solid ${T.glassLine}`,borderRadius:20,
         padding:'28px 24px 22px',
         boxShadow:'0 24px 48px rgba(0,0,0,0.55)'}}>
         <div style={{display:'flex',justifyContent:'center',marginBottom:16}}>
-          <RitmoSplashLogo size={80}/>
+          <AuthMark/>
         </div>
         <div style={{color:T.t1,fontSize:13,lineHeight:1.6,textAlign:'center',
           marginBottom:22,letterSpacing:.1}}>
@@ -944,8 +470,8 @@ function WelcomeNotice({onConfirm}){
           </div>
         </div>
         <button onClick={onConfirm}
-          style={{width:'100%',background:T.o,border:'none',borderRadius:15,
-            padding:'13px 16px',color:'#000',fontSize:15,fontWeight:800,letterSpacing:.3,
+          style={{width:'100%',background:T.o,border:'none',borderRadius:999,
+            padding:'15px 16px',color:'#000',fontSize:15,fontWeight:800,letterSpacing:.3,
             cursor:'pointer',boxShadow:'0 4px 14px var(--oGlow)'}}>
           OK
         </button>
@@ -998,7 +524,7 @@ const PHONE_COUNTRIES=[
 /* Schlichte SVG-Flaggen (keine Emojis — renderkonsistent über alle OS). */
 function FlagIcon({code,size=20}){
   const w=size, h=Math.round(size*0.72);
-  const box={borderRadius:3,display:'block',flexShrink:0,border:`1px solid ${T.border}`};
+  const box={borderRadius:3,display:'block',flexShrink:0,border:`1px solid ${T.glassLine}`};
   if(code==='DE') return(
     <svg width={w} height={h} viewBox="0 0 30 21" style={box} aria-hidden="true">
       <rect width="30" height="7" y="0" fill="#000"/>
@@ -1041,6 +567,15 @@ const AUTH_SCREEN={
 };
 const AUTH_BOX={width:'100%',maxWidth:380,margin:'auto',
   display:'flex',flexDirection:'column'};
+/* Kopf der Auth-Screens: der reine Schriftzug wie auf Home — das
+   runde Splash-Logo darueber war eine zweite Marke neben der ersten. */
+function AuthMark({w=176}){
+  return(
+    <img src={`${getAssetBase()}assets/ritmo-lettering.png`} alt="RITMO" draggable={false}
+      style={{width:w,height:'auto',display:'block',userSelect:'none',
+        filter:'drop-shadow(0 2px 14px rgba(0,0,0,.45))'}}/>
+  );
+}
 
 function Login({onSuccess,onRegister}){
   const[username,setUsername]=useState('');
@@ -1114,7 +649,8 @@ function Login({onSuccess,onRegister}){
   const onKeyDown=(e)=>{ if(e.key==='Enter'&&!locked) tryLogin(); };
 
   return(
-    <div style={{...AUTH_SCREEN,background:T.bgGrad}}>
+    <div style={{...AUTH_SCREEN,...PHOTO_ROOT,position:'relative'}}>
+      <PhotoBackdrop dim={.3}/>
       <style>{`
         @keyframes shakeBox {
           0%,100%{transform:translateX(0)}
@@ -1131,15 +667,17 @@ function Login({onSuccess,onRegister}){
 
         {/* Logo + Title */}
         <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:14,marginBottom:32}}>
-          <RitmoSplashLogo size={120}/>
-          <div style={{color:T.t1,fontSize:24,fontWeight:800,letterSpacing:-.3}}>RITMO Log-In</div>
+          <AuthMark/>
+          <div style={{...HEAD_SERIF,fontSize:34,lineHeight:1.1,textAlign:'center'}}>Anmelden</div>
+          <div className="txt" style={{color:T.t2,fontSize:14,fontStyle:'italic',marginTop:-6}}>
+            Schön, dass du wieder da bist.</div>
         </div>
 
         {/* Google — disabled (OAuth folgt) */}
         <button disabled
           style={{display:'flex',alignItems:'center',justifyContent:'center',gap:10,
-            background:T.card,border:`1px solid ${T.border}`,borderRadius:15,
-            padding:'13px 16px',color:T.t2,fontSize:15,fontWeight:600,
+            ...GLASS,border:`1px solid ${T.glassLine}`,borderRadius:999,
+            padding:'15px 16px',color:T.t2,fontSize:15,fontWeight:600,
             cursor:'not-allowed',marginBottom:10,position:'relative'}}>
           <GoogleGlyph size={18}/>
           <span>Mit Google anmelden</span>
@@ -1150,8 +688,8 @@ function Login({onSuccess,onRegister}){
         {/* Apple — disabled bis Apple Dev Program aktiv */}
         <button disabled
           style={{display:'flex',alignItems:'center',justifyContent:'center',gap:10,
-            background:'#000',border:'1px solid rgba(255,255,255,.08)',borderRadius:15,
-            padding:'13px 16px',color:'rgba(255,255,255,.4)',fontSize:15,fontWeight:600,
+            background:'#000',border:'1px solid rgba(255,255,255,.08)',borderRadius:999,
+            padding:'15px 16px',color:'rgba(255,255,255,.4)',fontSize:15,fontWeight:600,
             cursor:'not-allowed',marginBottom:22,position:'relative'}}>
           <AppleGlyph size={18}/>
           <span>Mit Apple anmelden</span>
@@ -1161,33 +699,31 @@ function Login({onSuccess,onRegister}){
 
         {/* Divider */}
         <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:18}}>
-          <div style={{flex:1,height:1,background:T.border}}/>
-          <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.5}}>ODER MIT RITMO</div>
-          <div style={{flex:1,height:1,background:T.border}}/>
+          <div style={{flex:1,height:1,background:T.glassSep}}/>
+          <div className="txt" style={{color:T.t3,fontSize:13,fontStyle:'italic'}}>oder mit RITMO</div>
+          <div style={{flex:1,height:1,background:T.glassSep}}/>
         </div>
 
         {/* Email */}
         <div style={{marginBottom:10}}>
-          <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
-            textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>E-Mail</div>
+          <div style={{color:T.t2,fontSize:13,fontWeight:600,marginBottom:6,paddingLeft:4}}>E-Mail</div>
           <input value={username} onChange={e=>{setUsername(e.target.value);setError('');}}
             onKeyDown={onKeyDown} autoComplete="email" type="email"
             autoCapitalize="off" autoCorrect="off" spellCheck={false}
             placeholder="du@example.com"
-            style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-              borderRadius:13,padding:'14px 16px',color:T.t1,fontSize:16,fontWeight:500,
+            style={{width:'100%',background:T.glassHi,border:`1px solid ${T.glassLine}`,
+              borderRadius:16,padding:'14px 16px',color:T.t1,fontSize:16,fontWeight:500,
               outline:'none',boxSizing:'border-box'}}/>
         </div>
 
         {/* Password */}
         <div style={{marginBottom:16}}>
-          <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
-            textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Passwort</div>
+          <div style={{color:T.t2,fontSize:13,fontWeight:600,marginBottom:6,paddingLeft:4}}>Passwort</div>
           <input type="password" value={password} onChange={e=>{setPassword(e.target.value);setError('');}}
             onKeyDown={onKeyDown} autoComplete="current-password"
             placeholder="••••••••"
-            style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-              borderRadius:13,padding:'14px 16px',color:T.t1,fontSize:16,fontWeight:500,
+            style={{width:'100%',background:T.glassHi,border:`1px solid ${T.glassLine}`,
+              borderRadius:16,padding:'14px 16px',color:T.t1,fontSize:16,fontWeight:500,
               outline:'none',boxSizing:'border-box'}}/>
         </div>
 
@@ -1202,9 +738,9 @@ function Login({onSuccess,onRegister}){
 
         {/* Submit — bei aktiver Sperre disabled + Live-Countdown */}
         <button onClick={tryLogin} disabled={busy||locked}
-          style={{background:locked?T.card2:T.o,border:locked?`1px solid ${T.border}`:'none',
-            borderRadius:15,
-            padding:'14px 16px',color:locked?T.t2:'#000',fontSize:15,fontWeight:800,letterSpacing:.2,
+          style={{background:locked?T.glassHi:T.o,border:locked?`1px solid ${T.glassLine}`:'none',
+            borderRadius:999,
+            padding:'15px 16px',color:locked?T.t2:'#000',fontSize:15,fontWeight:800,letterSpacing:.2,
             cursor:(busy||locked)?'not-allowed':'pointer',opacity:busy?.6:1,
             boxShadow:locked?'none':'0 4px 14px var(--oGlow)'}}>
           {locked?`Gesperrt, ${fmtLockRemain(lockRemain)}`:(busy?'…':'Anmelden')}
@@ -1220,32 +756,31 @@ function Login({onSuccess,onRegister}){
         </div>
 
         {resetMode&&(
-          <div className="fi" style={{marginTop:10,background:T.card2,
-            border:`1px solid ${T.border}`,borderRadius:15,padding:'14px 14px 12px'}}>
+          <div className="fi" style={{marginTop:10,background:T.glassHi,
+            border:`1px solid ${T.glassLine}`,borderRadius:15,padding:'14px 14px 12px'}}>
             {resetSent?(
               <div style={{color:T.g,fontSize:13,fontWeight:600,textAlign:'center',
                 padding:'6px 0'}}>
                 ✓ Reset-Mail gesendet — prüfe dein Postfach.
               </div>
             ):(<>
-              <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
-                textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>E-Mail für Reset</div>
+              <div style={{color:T.t2,fontSize:13,fontWeight:600,marginBottom:6,paddingLeft:4}}>E-Mail für Reset</div>
               <input value={resetEmail}
                 onChange={e=>{setResetEmail(e.target.value);setResetError('');}}
                 onKeyDown={e=>{if(e.key==='Enter') submitReset();}}
                 autoComplete="email" type="email"
                 autoCapitalize="off" autoCorrect="off" spellCheck={false}
                 placeholder="du@example.com"
-                style={{width:'100%',background:T.bg,border:`1px solid ${T.border}`,
-                  borderRadius:13,padding:'10px 12px',color:T.t1,fontSize:13,fontWeight:500,
+                style={{width:'100%',background:T.glassHi,border:`1px solid ${T.glassLine}`,
+                  borderRadius:14,padding:'11px 12px',color:T.t1,fontSize:14,fontWeight:500,
                   outline:'none',boxSizing:'border-box',marginBottom:10}}/>
               {resetError&&(
                 <div style={{color:'#FF6B6B',fontSize:11,fontWeight:600,
                   marginBottom:8,paddingLeft:2}}>{resetError}</div>
               )}
               <button onClick={submitReset} disabled={resetBusy}
-                style={{width:'100%',background:T.o,border:'none',borderRadius:13,
-                  padding:'10px 14px',color:'#000',fontSize:13,fontWeight:800,
+                style={{width:'100%',background:T.o,border:'none',borderRadius:999,
+                  padding:'11px 14px',color:'#000',fontSize:13.5,fontWeight:800,
                   cursor:resetBusy?'not-allowed':'pointer',opacity:resetBusy?.6:1}}>
                 {resetBusy?'Sende…':'Reset-Mail anfordern'}
               </button>
@@ -1258,7 +793,7 @@ function Login({onSuccess,onRegister}){
           justifyContent:'center'}}>
           <div style={{color:T.t3,fontSize:12}}>Noch kein Account?</div>
           <button onClick={onRegister}
-            style={{background:'none',border:'none',color:T.o,fontSize:13,
+            style={{background:'none',border:'none',color:T.t1,fontSize:13,
               fontWeight:700,cursor:'pointer',padding:'4px 8px',textDecoration:'underline'}}>
             Registrieren
           </button>
@@ -1372,7 +907,8 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
   };
 
   return(
-    <div style={{...AUTH_SCREEN,background:T.bgGrad}}>
+    <div style={{...AUTH_SCREEN,...PHOTO_ROOT,position:'relative'}}>
+      <PhotoBackdrop dim={.3}/>
       <style>{`
         @keyframes shakeBox {
           0%,100%{transform:translateX(0)}
@@ -1385,11 +921,12 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
       <div className={`fi ${shake?'reg-shake':''}`} style={AUTH_BOX}>
 
         <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:14,marginBottom:28}}>
-          <RitmoSplashLogo size={110}/>
-          <div style={{color:T.t1,fontSize:22,fontWeight:800,letterSpacing:-.3}}>
+          <AuthMark/>
+          <div style={{...HEAD_SERIF,fontSize:34,lineHeight:1.1,textAlign:'center'}}>
             {step==='key'?'Beta-Zugang':'Account erstellen'}
           </div>
-          <div style={{color:T.t3,fontSize:12,textAlign:'center',maxWidth:280}}>
+          <div className="txt" style={{color:T.t2,fontSize:14,fontStyle:'italic',lineHeight:1.5,
+            textAlign:'center',maxWidth:300}}>
             {step==='key'
               ?'Die App ist aktuell in einer geschlossenen Beta. Mit deinem Beta-Key kannst du dich registrieren.'
               :'Beta-Key bestätigt — leg jetzt dein Konto an.'}
@@ -1400,15 +937,14 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
           /* ───── STEP 1: Beta-Key prüfen ───── */
           <Fragment>
             <div style={{marginBottom:14}}>
-              <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
-                textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Beta-Key</div>
+              <div style={{color:T.t2,fontSize:13,fontWeight:600,marginBottom:6,paddingLeft:4}}>Beta-Key</div>
               <input value={betaInput}
                 onChange={e=>{setBetaInput(e.target.value.toUpperCase());setError('');}}
                 onKeyDown={onKeyDown}
                 autoCapitalize="characters" autoCorrect="off" spellCheck={false}
                 placeholder="RITMO-XXXX-XXXX"
-                style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-                  borderRadius:13,padding:'14px 16px',color:T.t1,fontSize:16,fontWeight:700,
+                style={{width:'100%',background:T.glassHi,border:`1px solid ${T.glassLine}`,
+                  borderRadius:16,padding:'14px 16px',color:T.t1,fontSize:16,fontWeight:700,
                   letterSpacing:1,outline:'none',boxSizing:'border-box',
                   fontFamily:'-apple-system,SFMono-Regular,Menlo,monospace'}}/>
             </div>
@@ -1422,8 +958,8 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
             )}
 
             <button onClick={tryCheckKey} disabled={busy}
-              style={{background:T.o,border:'none',borderRadius:15,
-                padding:'14px 16px',color:'#000',fontSize:15,fontWeight:800,letterSpacing:.2,
+              style={{background:T.o,border:'none',borderRadius:999,
+                padding:'15px 16px',color:'#000',fontSize:15,fontWeight:800,letterSpacing:.2,
                 cursor:busy?'not-allowed':'pointer',opacity:busy?.6:1,
                 boxShadow:'0 4px 14px var(--oGlow)'}}>
               {busy?'…':'Beta-Key prüfen'}
@@ -1439,7 +975,7 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
               justifyContent:'center'}}>
               <div style={{color:T.t3,fontSize:12}}>Hast du schon einen Account?</div>
               <button onClick={onLogin}
-                style={{background:'none',border:'none',color:T.o,fontSize:13,
+                style={{background:'none',border:'none',color:T.t1,fontSize:13,
                   fontWeight:700,cursor:'pointer',padding:'4px 8px',textDecoration:'underline'}}>
                 Anmelden
               </button>
@@ -1469,8 +1005,8 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
             {/* Google — disabled (OAuth folgt) */}
             <button disabled
               style={{display:'flex',alignItems:'center',justifyContent:'center',gap:10,
-                background:T.card,border:`1px solid ${T.border}`,borderRadius:15,
-                padding:'13px 16px',color:T.t2,fontSize:15,fontWeight:600,
+                ...GLASS,border:`1px solid ${T.glassLine}`,borderRadius:999,
+                padding:'15px 16px',color:T.t2,fontSize:15,fontWeight:600,
                 cursor:'not-allowed',marginBottom:10,position:'relative'}}>
               <GoogleGlyph size={18}/>
               <span>Mit Google registrieren</span>
@@ -1481,8 +1017,8 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
             {/* Apple disabled */}
             <button disabled
               style={{display:'flex',alignItems:'center',justifyContent:'center',gap:10,
-                background:'#000',border:'1px solid rgba(255,255,255,.08)',borderRadius:15,
-                padding:'13px 16px',color:'rgba(255,255,255,.4)',fontSize:15,fontWeight:600,
+                background:'#000',border:'1px solid rgba(255,255,255,.08)',borderRadius:999,
+                padding:'15px 16px',color:'rgba(255,255,255,.4)',fontSize:15,fontWeight:600,
                 cursor:'not-allowed',marginBottom:22,position:'relative'}}>
               <AppleGlyph size={18}/>
               <span>Mit Apple registrieren</span>
@@ -1492,34 +1028,32 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
 
             {/* Divider */}
             <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:18}}>
-              <div style={{flex:1,height:1,background:T.border}}/>
-              <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.5}}>ODER MIT E-MAIL</div>
-              <div style={{flex:1,height:1,background:T.border}}/>
+              <div style={{flex:1,height:1,background:T.glassSep}}/>
+              <div className="txt" style={{color:T.t3,fontSize:13,fontStyle:'italic'}}>oder mit E-Mail</div>
+              <div style={{flex:1,height:1,background:T.glassSep}}/>
             </div>
 
             {/* Email */}
             <div style={{marginBottom:10}}>
-              <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
-                textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>E-Mail</div>
+              <div style={{color:T.t2,fontSize:13,fontWeight:600,marginBottom:6,paddingLeft:4}}>E-Mail</div>
               <input value={email} onChange={e=>{setEmail(e.target.value);setError('');}}
                 onKeyDown={onKeyDown} autoComplete="email" type="email"
                 autoCapitalize="off" autoCorrect="off" spellCheck={false}
                 placeholder="du@example.com"
-                style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-                  borderRadius:13,padding:'14px 16px',color:T.t1,fontSize:16,fontWeight:500,
+                style={{width:'100%',background:T.glassHi,border:`1px solid ${T.glassLine}`,
+                  borderRadius:16,padding:'14px 16px',color:T.t1,fontSize:16,fontWeight:500,
                   outline:'none',boxSizing:'border-box'}}/>
             </div>
 
             {/* Telefon — Pflichtfeld, nur Format-Check; Länder-Vorwahl
                 (DACH) mit Flagge im Dropdown davor. */}
             <div style={{marginBottom:10}}>
-              <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
-                textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Telefon</div>
+              <div style={{color:T.t2,fontSize:13,fontWeight:600,marginBottom:6,paddingLeft:4}}>Telefon</div>
               <div style={{display:'flex',gap:8,position:'relative'}}>
                 <button type="button" onClick={()=>setCcOpen(o=>!o)}
                   aria-label="Ländervorwahl wählen" aria-expanded={ccOpen}
                   style={{display:'flex',alignItems:'center',gap:7,flexShrink:0,
-                    background:T.card2,border:`1px solid ${T.border}`,borderRadius:13,
+                    background:T.glassHi,border:`1px solid ${T.glassLine}`,borderRadius:13,
                     padding:'12px 12px',color:T.t1,fontSize:16,fontWeight:700,cursor:'pointer'}}>
                   <FlagIcon code={phoneCountry} size={20}/>
                   <span>{PHONE_COUNTRIES.find(c=>c.code===phoneCountry)?.dial}</span>
@@ -1529,18 +1063,18 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
                 <input value={phone} onChange={e=>{setPhone(e.target.value);setError('');}}
                   onKeyDown={onKeyDown} type="tel" inputMode="tel" autoComplete="tel"
                   placeholder="170 1234567"
-                  style={{flex:1,minWidth:0,background:T.card2,border:`1px solid ${T.border}`,
-                    borderRadius:13,padding:'14px 16px',color:T.t1,fontSize:16,fontWeight:500,
+                  style={{flex:1,minWidth:0,background:T.glassHi,border:`1px solid ${T.glassLine}`,
+                    borderRadius:16,padding:'14px 16px',color:T.t1,fontSize:16,fontWeight:500,
                     outline:'none',boxSizing:'border-box'}}/>
                 {ccOpen&&(
                   <div className="fi" style={{position:'absolute',top:'calc(100% + 6px)',left:0,
-                    zIndex:20,background:T.card,border:`1px solid ${T.border}`,borderRadius:13,
+                    zIndex:20,...GLASS,border:`1px solid ${T.glassLine}`,borderRadius:13,
                     padding:6,minWidth:210,boxShadow:'0 12px 30px rgba(0,0,0,.45)'}}>
                     {PHONE_COUNTRIES.map(c=>(
                       <button key={c.code} type="button"
                         onClick={()=>{setPhoneCountry(c.code);setCcOpen(false);}}
                         style={{display:'flex',alignItems:'center',gap:10,width:'100%',
-                          background:c.code===phoneCountry?T.card2:'none',border:'none',
+                          background:c.code===phoneCountry?T.glassHi:'none',border:'none',
                           borderRadius:9,padding:'10px 10px',cursor:'pointer',textAlign:'left'}}>
                         <FlagIcon code={c.code} size={20}/>
                         <span style={{flex:1,color:T.t1,fontSize:13,fontWeight:600}}>{c.name}</span>
@@ -1554,27 +1088,25 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
 
             {/* Password */}
             <div style={{marginBottom:10}}>
-              <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
-                textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Passwort</div>
+              <div style={{color:T.t2,fontSize:13,fontWeight:600,marginBottom:6,paddingLeft:4}}>Passwort</div>
               <input type="password" value={password}
                 onChange={e=>{setPassword(e.target.value);setError('');}}
                 onKeyDown={onKeyDown} autoComplete="new-password"
                 placeholder="Min. 10 Zeichen, mit Ziffer"
-                style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-                  borderRadius:13,padding:'14px 16px',color:T.t1,fontSize:16,fontWeight:500,
+                style={{width:'100%',background:T.glassHi,border:`1px solid ${T.glassLine}`,
+                  borderRadius:16,padding:'14px 16px',color:T.t1,fontSize:16,fontWeight:500,
                   outline:'none',boxSizing:'border-box'}}/>
             </div>
 
             {/* Confirm Password */}
             <div style={{marginBottom:16}}>
-              <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
-                textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Passwort bestätigen</div>
+              <div style={{color:T.t2,fontSize:13,fontWeight:600,marginBottom:6,paddingLeft:4}}>Passwort bestätigen</div>
               <input type="password" value={password2}
                 onChange={e=>{setPassword2(e.target.value);setError('');}}
                 onKeyDown={onKeyDown} autoComplete="new-password"
                 placeholder="••••••••"
-                style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-                  borderRadius:13,padding:'14px 16px',color:T.t1,fontSize:16,fontWeight:500,
+                style={{width:'100%',background:T.glassHi,border:`1px solid ${T.glassLine}`,
+                  borderRadius:16,padding:'14px 16px',color:T.t1,fontSize:16,fontWeight:500,
                   outline:'none',boxSizing:'border-box'}}/>
             </div>
 
@@ -1587,8 +1119,8 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
             )}
 
             <button onClick={tryRegister} disabled={busy}
-              style={{background:T.o,border:'none',borderRadius:15,
-                padding:'14px 16px',color:'#000',fontSize:15,fontWeight:800,letterSpacing:.2,
+              style={{background:T.o,border:'none',borderRadius:999,
+                padding:'15px 16px',color:'#000',fontSize:15,fontWeight:800,letterSpacing:.2,
                 cursor:busy?'not-allowed':'pointer',opacity:busy?.6:1,
                 boxShadow:'0 4px 14px var(--oGlow)'}}>
               {busy?'…':'Registrieren'}
@@ -1598,7 +1130,7 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
               justifyContent:'center'}}>
               <div style={{color:T.t3,fontSize:12}}>Hast du schon einen Account?</div>
               <button onClick={onLogin}
-                style={{background:'none',border:'none',color:T.o,fontSize:13,
+                style={{background:'none',border:'none',color:T.t1,fontSize:13,
                   fontWeight:700,cursor:'pointer',padding:'4px 8px',textDecoration:'underline'}}>
                 Anmelden
               </button>
@@ -1701,14 +1233,15 @@ function EmailVerification({email,onBack,onSignIn,onVerified}){
     finally{setBusy(false);}
   };
 
-  const btn={width:'100%',borderRadius:15,padding:'13px 16px',fontSize:14,
+  const btn={width:'100%',borderRadius:999,padding:'15px 16px',fontSize:14,
     fontWeight:700,cursor:'pointer',marginBottom:10,display:'flex',
     alignItems:'center',justifyContent:'center',gap:8};
 
   /* Bestätigt: kurzer Moment mit dem grünen Haken, dann routet die
      App weiter. Kein Button — hier gibt es nichts zu entscheiden. */
   if(confirmed) return(
-    <div style={{...AUTH_SCREEN,background:T.bgGrad}}>
+    <div style={{...AUTH_SCREEN,...PHOTO_ROOT,position:'relative'}}>
+      <PhotoBackdrop dim={.3}/>
       <div className="fi" style={{...AUTH_BOX,alignItems:'center',textAlign:'center'}}>
         <div style={{width:88,height:88,borderRadius:'50%',marginBottom:22,
           background:`${T.g}22`,border:`2px solid ${T.g}`,
@@ -1719,7 +1252,7 @@ function EmailVerification({email,onBack,onSignIn,onVerified}){
             <polyline points="20 6 9 17 4 12"/>
           </svg>
         </div>
-        <div style={{color:T.t1,fontSize:22,fontWeight:800,letterSpacing:-.3,marginBottom:8}}>
+        <div style={{...HEAD_SERIF,fontSize:34,lineHeight:1.1,textAlign:'center',marginBottom:8}}>
           E-Mail bestätigt
         </div>
         <div className="txt" style={{color:T.t3,fontSize:15,fontStyle:'italic'}}>
@@ -1730,7 +1263,8 @@ function EmailVerification({email,onBack,onSignIn,onVerified}){
   );
 
   return(
-    <div style={{...AUTH_SCREEN,background:T.bgGrad}}>
+    <div style={{...AUTH_SCREEN,...PHOTO_ROOT,position:'relative'}}>
+      <PhotoBackdrop dim={.3}/>
       <div className="fi" style={{...AUTH_BOX,alignItems:'center'}}>
 
         {/* Mail icon */}
@@ -1744,7 +1278,7 @@ function EmailVerification({email,onBack,onSignIn,onVerified}){
           </svg>
         </div>
 
-        <div style={{color:T.t1,fontSize:22,fontWeight:800,letterSpacing:-.3,
+        <div style={{...HEAD_SERIF,fontSize:34,lineHeight:1.1,textAlign:'center',
           textAlign:'center',marginBottom:10}}>
           Bestätige deine E-Mail
         </div>
@@ -1764,7 +1298,7 @@ function EmailVerification({email,onBack,onSignIn,onVerified}){
         {/* Lebenszeichen: der Screen pollt, das soll man sehen. */}
         <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:20,
           padding:'7px 13px',borderRadius:999,
-          background:T.card,border:`1px solid ${T.border}`}}>
+          ...GLASS,border:`1px solid ${T.glassLine}`}}>
           <span className="pulse-dot" style={{width:7,height:7,borderRadius:'50%',
             background:T.o,flexShrink:0}}/>
           <span style={{color:T.t3,fontSize:12,fontWeight:600}}>
@@ -1789,7 +1323,7 @@ function EmailVerification({email,onBack,onSignIn,onVerified}){
         )}
 
         <button onClick={resend} disabled={busy||cool>0}
-          style={{...btn,background:T.card,border:`1px solid ${T.border}`,color:T.t1,
+          style={{...btn,...GLASS,border:`1px solid ${T.glassLine}`,color:T.t1,
             cursor:(busy||cool>0)?'not-allowed':'pointer',opacity:(busy||cool>0)?.55:1}}>
           {busy?'…'
             :cool>0?`Erneut senden in ${cool} s`
@@ -1849,11 +1383,12 @@ function PasswordRecovery({onDone}){
   };
 
   return(
-    <div style={{...AUTH_SCREEN,background:T.bgGrad}}>
+    <div style={{...AUTH_SCREEN,...PHOTO_ROOT,position:'relative'}}>
+      <PhotoBackdrop dim={.3}/>
       <div className="fi" style={AUTH_BOX}>
         <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:14,marginBottom:24}}>
-          <RitmoSplashLogo size={110}/>
-          <div style={{color:T.t1,fontSize:22,fontWeight:800,letterSpacing:-.3}}>
+          <AuthMark/>
+          <div style={{...HEAD_SERIF,fontSize:34,lineHeight:1.1,textAlign:'center'}}>
             Neues Passwort setzen
           </div>
           <div style={{color:T.t3,fontSize:12,textAlign:'center',maxWidth:300,lineHeight:1.5}}>
@@ -1862,27 +1397,25 @@ function PasswordRecovery({onDone}){
         </div>
 
         <div style={{marginBottom:10}}>
-          <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
-            textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Neues Passwort</div>
+          <div style={{color:T.t2,fontSize:13,fontWeight:600,marginBottom:6,paddingLeft:4}}>Neues Passwort</div>
           <input type="password" value={pw}
             onChange={e=>{setPw(e.target.value);setError('');}}
             autoComplete="new-password"
             placeholder="Min. 10 Zeichen, mit Ziffer"
-            style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-              borderRadius:13,padding:'14px 16px',color:T.t1,fontSize:16,fontWeight:500,
+            style={{width:'100%',background:T.glassHi,border:`1px solid ${T.glassLine}`,
+              borderRadius:16,padding:'14px 16px',color:T.t1,fontSize:16,fontWeight:500,
               outline:'none',boxSizing:'border-box'}}/>
         </div>
 
         <div style={{marginBottom:16}}>
-          <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
-            textTransform:'uppercase',marginBottom:6,paddingLeft:4}}>Passwort bestätigen</div>
+          <div style={{color:T.t2,fontSize:13,fontWeight:600,marginBottom:6,paddingLeft:4}}>Passwort bestätigen</div>
           <input type="password" value={pw2}
             onChange={e=>{setPw2(e.target.value);setError('');}}
             onKeyDown={e=>{if(e.key==='Enter') submit();}}
             autoComplete="new-password"
             placeholder="••••••••"
-            style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-              borderRadius:13,padding:'14px 16px',color:T.t1,fontSize:16,fontWeight:500,
+            style={{width:'100%',background:T.glassHi,border:`1px solid ${T.glassLine}`,
+              borderRadius:16,padding:'14px 16px',color:T.t1,fontSize:16,fontWeight:500,
               outline:'none',boxSizing:'border-box'}}/>
         </div>
 
@@ -1895,8 +1428,8 @@ function PasswordRecovery({onDone}){
         )}
 
         <button onClick={submit} disabled={busy}
-          style={{background:T.o,border:'none',borderRadius:15,
-            padding:'14px 16px',color:'#000',fontSize:15,fontWeight:800,letterSpacing:.2,
+          style={{background:T.o,border:'none',borderRadius:999,
+            padding:'15px 16px',color:'#000',fontSize:15,fontWeight:800,letterSpacing:.2,
             cursor:busy?'not-allowed':'pointer',opacity:busy?.6:1,
             boxShadow:'0 4px 14px var(--oGlow)'}}>
           {busy?'…':'Passwort speichern'}
@@ -1934,10 +1467,11 @@ function VerifiedLanding({onContinue}){
   },[]);
 
   return(
-    <div style={{position:'fixed',inset:0,zIndex:900,background:T.bg,
+    <div style={{position:'fixed',inset:0,zIndex:900,...PHOTO_ROOT,
       height:'100dvh',overflowY:'auto',WebkitOverflowScrolling:'touch',
       display:'flex',flexDirection:'column',alignItems:'center',
       padding:'calc(env(safe-area-inset-top,0px) + 40px) 22px calc(env(safe-area-inset-bottom,0px) + 40px)'}}>
+      <PhotoBackdrop dim={.3}/>
       <div className="fi" style={{...AUTH_BOX,alignItems:'center'}}>
 
         {/* Check-Icon */}
@@ -1951,9 +1485,9 @@ function VerifiedLanding({onContinue}){
           </svg>
         </div>
 
-        <RitmoSplashLogo size={88}/>
+        <AuthMark/>
 
-        <div style={{color:T.t1,fontSize:22,fontWeight:800,letterSpacing:-.3,
+        <div style={{...HEAD_SERIF,fontSize:34,lineHeight:1.1,textAlign:'center',
           textAlign:'center',marginTop:20,marginBottom:12,maxWidth:320,lineHeight:1.45}}>
           Deine E-Mail ist bestätigt.
         </div>
@@ -1966,7 +1500,7 @@ function VerifiedLanding({onContinue}){
         </div>
 
         <button onClick={()=>onContinue?.(hasSession)} disabled={hasSession===null}
-          style={{width:'100%',background:T.o,border:'none',borderRadius:15,
+          style={{width:'100%',background:T.o,border:'none',borderRadius:999,
             padding:'15px 16px',color:'#000',fontSize:16,fontWeight:800,
             letterSpacing:.3,cursor:hasSession===null?'wait':'pointer',
             opacity:hasSession===null?.6:1,
@@ -16843,7 +16377,7 @@ function SettingsSicherheit({onBack,onHome}){
       // scope:'global' beendet alle Sessions des Users auf allen
       // Geräten — der refresh_token wird invalidiert.
       if(window.supabase) await window.supabase.auth.signOut({scope:'global'});
-      lsSet('ritmo_skip_intro',false); // Abmeldung → Intro-Video läuft wieder
+      lsSet('ritmo_skip_intro',false); // Abmeldung → Splash läuft wieder in voller Länge
       showFlash('ok','Alle Sessions beendet. Du wirst gleich abgemeldet …',2500);
       setTimeout(()=>{
         try{ if(typeof window!=='undefined') window.location.reload(); }catch{}
@@ -23053,7 +22587,7 @@ export default function App(){
       onLogout={async()=>{
         try{await auth.signOut();}catch(e){}
         setLoggedIn(false);
-        lsSet('ritmo_skip_intro',false); // Abmeldung → Intro-Video läuft wieder
+        lsSet('ritmo_skip_intro',false); // Abmeldung → Splash läuft wieder in voller Länge
         // onboarded NICHT zurücksetzen — bleibt persistiert, damit
         // ein erneuter Login desselben Users nicht ins Onboarding
         // läuft. Bei User-Wechsel auf demselben Gerät korrigiert der
@@ -23161,7 +22695,7 @@ export default function App(){
       onLogout={async()=>{
         try{await auth.signOut();}catch(e){}
         setLoggedIn(false);
-        lsSet('ritmo_skip_intro',false); // Abmeldung → Intro-Video läuft wieder
+        lsSet('ritmo_skip_intro',false); // Abmeldung → Splash läuft wieder in voller Länge
         nav('login');
       }}/>}
     {scr==='settings-steuerung'&&<SettingsSteuerung

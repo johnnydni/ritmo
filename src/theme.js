@@ -36,7 +36,8 @@ export const T = {
   fontSans:    'var(--font-sans)',     // Inter — UI-Grundschrift
   fontText:    'var(--font-text)',     // SF Pro — die ruhige Zweitstimme
   fontDisplay: 'var(--font-display)',  // Centauri — Headlines/Akzente
-  fontSerif:   'var(--font-serif)',    // Libre Caslon kursiv — Ueberschriften der Foto-Screens (s. CLAUDE.md)
+  fontSerif:   'var(--font-serif)',    // Times — Ueberschriften der Foto-Screens (s. CLAUDE.md)
+  fontCard:    'var(--font-card)',     // Libre Caslon kursiv — nur der Turniername auf der Live-Karte
   /* Foto-Glas — siehe --glass* in CSS unten. */
   glass:     'var(--glass)',
   glassHi:   'var(--glassHi)',
@@ -71,7 +72,8 @@ export const CSS = `
      Systemschrift, nicht ausgeliefert: Times New Roman steht auf iOS,
      macOS und Windows bereit; Liberation Serif ist ihr metrischer
      Zwilling unter Linux/Android. */
-  --font-serif:'RITMO Caslon','Times New Roman',Times,'Liberation Serif','Tinos',Georgia,serif;
+  --font-serif:'Times New Roman',Times,'Liberation Serif','Tinos',Georgia,serif;
+  --font-card:'RITMO Caslon','Times New Roman',Times,Georgia,serif;
 }
 /* Utility-Klassen für die Screen-Überarbeitung. */
 .txt{font-family:var(--font-text);letter-spacing:0;}

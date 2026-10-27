@@ -15289,12 +15289,15 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
                   {item.type==='match'?<SingleMatchIcon size={28}/>:<TrophyIcon size={26} color={T.t1}/>}
                 </span>
                 <div style={{flex:1,minWidth:0}}>
-                  {/* Ein Turnier traegt nur seinen Namen — Format, Runde und
+                  {/* Ein Turnier traegt nur seinen Namen, in Libre Caslon
+                      kursiv (die einzige Stelle mit dieser Schrift) — Format, Runde und
                       Spielerzahl stehen im Turnier selbst; der Zustand
                       (laeuft / fertig / Entwurf) steht rechts in der Pille.
                       Lange Namen duerfen in eine zweite Zeile. */}
-                  <div style={{color:item.draft?T.t2:T.t1,fontFamily:T.fontSerif,
-                    fontSize:item.type==='tourney'?21:19,lineHeight:1.15,
+                  <div style={{color:item.draft?T.t2:T.t1,
+                    ...(item.type==='tourney'
+                      ?{fontFamily:T.fontCard,fontStyle:'italic',fontWeight:400,fontSize:21}
+                      :{fontFamily:T.fontSerif,fontWeight:700,fontSize:19}),lineHeight:1.15,
                     marginBottom:item.type==='tourney'?0:3,overflow:'hidden',
                     ...(item.type==='tourney'
                       ?{display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical'}

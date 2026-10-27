@@ -2708,6 +2708,13 @@ const FAB_BASE={position:'absolute',
    nach dem Snap sitzt die Pill bereits unterm Finger. */
 let __navBlendArm=false;
 
+/* Abstand von Tab-Leiste und Knopfleiste zur Unterkante — fuer beide
+   derselbe, sonst stehen Home-Knopf und Tab-Leiste auf zwei Hoehen.
+   Die Haelfte des unteren Sicherheitsabstands plus 8 px: auf dem
+   iPhone rund 25 px ueber der Kante, frei vom Home-Indikator. Vorher
+   waren es 30 % minus 3 px (gut 7 px) — die Leiste klebte am Rand. */
+const BAR_BOTTOM='calc(env(safe-area-inset-bottom, 0px) * 0.5 + 8px)';
+
 /* Unter Tab-Leiste und Knopfleiste: ein Band, in dem der Inhalt nach
    unten hin weich verschwimmt (Unschaerfe mit Maskenverlauf, dazu ein
    Hauch Schwarz). Kein Verlauf in --bg: der stuende auf dem Foto als
@@ -2973,7 +2980,7 @@ function TabBar({active,onTab}){
   // ploppt per Spring-Kurve auf (nav-pop) und gibt die Bühne frei.
   if(collapsed) return(<><BarBlur/>
     <div style={{position:'absolute',
-      bottom:'calc(env(safe-area-inset-bottom, 0px) * 0.3 - 3px)',
+      bottom:BAR_BOTTOM,
       left:0,right:0,display:'flex',alignItems:'center',justifyContent:'flex-start',
       padding:'0 14px',pointerEvents:'none',zIndex:5}}>
       <div className={opening?'nav-pop-out':'nav-pop'}
@@ -3005,10 +3012,7 @@ function TabBar({active,onTab}){
 
   return(<><BarBlur/>
     <div style={{position:'absolute',
-      // Navbar tiefer ansetzen: nur ~30% des Bottom-Safe-Insets als Abstand
-      // (vorher fast der volle Inset), zusätzlich 5px tiefer → die Bar
-      // hugt die untere Kante.
-      bottom:'calc(env(safe-area-inset-bottom, 0px) * 0.3 - 3px)',
+      bottom:BAR_BOTTOM,
       left:0,right:0,display:'flex',alignItems:'center',justifyContent:'center',gap:10,
       padding:'0 14px',pointerEvents:'none',zIndex:5}}>
       {/* Liquid-Glass-Surface (reactbits GlassSurface) als Glas-
@@ -3265,10 +3269,10 @@ function MatchBar({onHome,rightIcon,onRight,rightButtons,homeLabel='Zurück zur 
   return(<><BarBlur/>
     <div style={{position:'absolute',
       // Auf Navbar-Hoehe: gleicher Bottom-Anchor wie die TabBar
-      // (calc(...*0.3 - 3px)) + feste Hoehe = Navbar-Pillen-Hoehe (57px).
+      // (BAR_BOTTOM) + feste Hoehe = Navbar-Pillen-Hoehe (57px).
       // So sitzen Home/Start/Index/Weiter exakt auf der Navbar-Mittel-
       // linie; alignItems:center zentriert auch groessere FABs (56px) darauf.
-      bottom:'calc(env(safe-area-inset-bottom, 0px) * 0.3 - 3px)',height:57,
+      bottom:BAR_BOTTOM,height:57,
       left:0,right:0,display:'flex',alignItems:'center',justifyContent:'space-between',
       padding:'0 24px',pointerEvents:'none',zIndex:5}}>
       <button onClick={onHome} className="glass-bar"

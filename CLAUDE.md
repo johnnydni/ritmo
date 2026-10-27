@@ -246,13 +246,21 @@ Die Bausteine stehen in App.jsx direkt vor `ScreenHeader`:
 |---|---|
 | `PhotoBackdrop({dim})` | Das Foto der Startseite samt Verlauf, `zIndex:-1` hinter dem Inhalt. `dim` dunkelt fuer Arbeits-Screens nach. |
 | `PHOTO_ROOT` | In den Screen-Rahmen spreizen: `isolation:'isolate'` gibt ihm einen eigenen Stapelkontext — sonst rutscht das Foto hinter den Grund des Rahmens. |
-| `GLASS` | Karte: `T.glass` + Haarlinie `T.glassLine` + Unschaerfe. Gedrueckt `T.glassHi`, Trenner in Listen `T.glassSep`. |
+| `GLASS` | Liquid Glass als reines CSS: duenne Toenung (`--card` 46 %), Blur 24 + Saettigung 180 % + Aufhellung, Lichtkante oben, dunkle Kante unten, Schlagschatten, Haarlinie `T.glassLine`. Gedrueckt `T.glassHi`, Trenner in Listen `T.glassSep`. |
 | `HEAD_SERIF` | Die kursive Antiqua der Startseiten-Ueberschriften (40 px; `ScreenHeader` 38, `SectionRule` 25). |
 | `GlassCircle` | Runder Glasknopf (bei Home definiert). |
 
-- **`GLASS` ist nicht das `GlassSurface`-Material** der Home-Karten.
-  Das rechnet je Karte einen SVG-Verzerrungsfilter; auf Listen mit
-  zwanzig Zeilen kostet das mehr, als es bringt.
+- **`GLASS` ist dieselbe Rezeptur wie der Rueckweg von `GlassSurface`**
+  (und wie `.glass-bar`). Auf iOS rendert `GlassSurface` genau so —
+  Karten, Knoepfe, Leisten und die Startseite sind dort also derselbe
+  Stoff. Vorher war `GLASS` eine dunkle, flache Toenung mit wenig Blur
+  und stand neben den Home-Karten wie ein anderes Material. Den
+  SVG-Verzerrungsfilter von `GlassSurface` bekommt `GLASS` bewusst
+  nicht: er rechnet je Flaeche, auf Listen mit zwanzig Zeilen kostet
+  das mehr, als es bringt.
+- Wer `boxShadow` auf einer `GLASS`-Flaeche setzt (Auswahl-Schein),
+  haengt `GLASS.boxShadow` an, statt ihn zu ersetzen — sonst fehlen
+  Lichtkante und Schatten genau an der gewaehlten Karte.
 - **Kein `BottomFade` auf Foto-Screens**: er verlaeuft in `--bg` und
   stuende als dunkler Balken ueber der Tab-Bar.
 - **Glyphen weiss, nicht orange** (`T.t1`). Orange bleibt Status und

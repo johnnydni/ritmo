@@ -15289,10 +15289,19 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
                   {item.type==='match'?<SingleMatchIcon size={28}/>:<TrophyIcon size={26} color={T.t1}/>}
                 </span>
                 <div style={{flex:1,minWidth:0}}>
-                  <div style={{color:item.draft?T.t2:T.t1,fontFamily:T.fontSerif,fontSize:19,
-                    fontWeight:700,marginBottom:3,
-                    overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.title}</div>
-                  <div className="txt" style={{color:T.t2,fontSize:12.5,fontStyle:'italic'}}>{item.sub}</div>
+                  {/* Ein Turnier traegt nur seinen Namen — Format, Runde und
+                      Spielerzahl stehen im Turnier selbst; der Zustand
+                      (laeuft / fertig / Entwurf) steht rechts in der Pille.
+                      Lange Namen duerfen in eine zweite Zeile. */}
+                  <div style={{color:item.draft?T.t2:T.t1,fontFamily:T.fontSerif,
+                    fontSize:item.type==='tourney'?21:19,lineHeight:1.15,
+                    marginBottom:item.type==='tourney'?0:3,overflow:'hidden',
+                    ...(item.type==='tourney'
+                      ?{display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical'}
+                      :{textOverflow:'ellipsis',whiteSpace:'nowrap'})}}>{item.title}</div>
+                  {item.type!=='tourney'&&(
+                    <div className="txt" style={{color:T.t2,fontSize:12.5,fontStyle:'italic'}}>{item.sub}</div>
+                  )}
                 </div>
                 <div style={{display:'flex',alignItems:'center',gap:8,
                   background:(item.finished||item.draft)?T.glassHi:T.oSoft,borderRadius:25,

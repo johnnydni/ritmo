@@ -2571,18 +2571,26 @@ function ExitGlyph({size=18}){
      (PHOTO_ROOT: isolation:isolate) — sonst rutscht das Foto hinter
      den Grund des Rahmens, und kein Screen muesste seine Ebenen
      umbauen.
-   - GLASS ist eine abgedunkelte, durchscheinende Flaeche mit
-     Unschaerfe, NICHT das GlassSurface-Material der Startseiten-
-     Karten: das rechnet je Karte einen SVG-Verzerrungsfilter, und auf
-     Listen mit zwanzig Zeilen kostet das mehr, als es bringt.
+   - GLASS ist das Liquid-Glass-Material der Startseite als reines
+     CSS: dieselbe Rezeptur wie der Rueckweg von GlassSurface und wie
+     .glass-bar (duenne Toenung, Blur 24 + Saettigung 180 % +
+     Aufhellung, helle Lichtkante oben, dunkle unten, Schlagschatten).
+     Auf iOS rendert GlassSurface genau so — Karten, Knoepfe und die
+     Startseite sind dort also derselbe Stoff. Den SVG-Verzerrungs-
+     filter von GlassSurface bekommt GLASS bewusst nicht: er rechnet
+     je Flaeche, und auf Listen mit zwanzig Zeilen kostet das mehr,
+     als es bringt.
    - BottomFade gehoert NICHT auf Foto-Screens: er verlaeuft in --bg
      und stuende auf dem Foto als dunkler Balken ueber der Tab-Bar.
    - dim dunkelt nach: Screens zum Arbeiten (Turnier, Match) brauchen
      mehr Ruhe hinter dem Text als ein Hub.
 ═══════════════════════════════════════════════════════════════ */
 const PHOTO_ROOT={background:T.bg,isolation:'isolate'};
-const GLASS={background:T.glass,border:`1px solid ${T.glassLine}`,
-  WebkitBackdropFilter:'blur(16px) saturate(140%)',backdropFilter:'blur(16px) saturate(140%)'};
+const GLASS={background:'color-mix(in srgb, var(--card) 46%, transparent)',
+  border:`1px solid ${T.glassLine}`,
+  WebkitBackdropFilter:'blur(24px) saturate(180%) brightness(1.1)',
+  backdropFilter:'blur(24px) saturate(180%) brightness(1.1)',
+  boxShadow:'0 10px 30px rgba(0,0,0,.26), inset 0 1px 0 rgba(255,255,255,.2), inset 0 -1px 0 rgba(0,0,0,.16)'};
 const HEAD_SERIF={fontFamily:T.fontSerif,fontStyle:'italic',fontWeight:700,
   fontSize:40,letterSpacing:-.6,lineHeight:1,color:T.t1,position:'relative',
   textShadow:'0 2px 14px rgba(0,0,0,.45)'};
@@ -5229,7 +5237,7 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
         style={{flex:1,minWidth:0,...GLASS,borderRadius:20,padding:'16px 14px',
           border:`1.5px solid ${on?T.o:T.glassLine}`,cursor:'pointer',color:T.t1,
           textAlign:'left',display:'flex',flexDirection:'column',gap:10,
-          boxShadow:on?'0 0 22px var(--oGlow)':'none',transition:'border-color .2s, box-shadow .2s'}}>
+          boxShadow:on?`0 0 22px var(--oGlow), ${GLASS.boxShadow}`:GLASS.boxShadow,transition:'border-color .2s, box-shadow .2s'}}>
         <span style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
           <span style={{width:40,height:40,borderRadius:'50%',background:T.glassHi,
             border:`1px solid ${T.glassLine}`,display:'inline-flex',alignItems:'center',
@@ -8576,7 +8584,7 @@ function TournamentWizard({onClose,onFinish,canStart,entrance=true,
   // oranger Kontur und Schein; Auswahl-Pillen weiss auf Schwarz.
   const card=sel=>({width:'100%',textAlign:'left',padding:'16px 18px',borderRadius:20,
     ...GLASS,border:`1.5px solid ${sel?T.o:T.glassLine}`,color:T.t1,
-    boxShadow:sel?'0 0 22px var(--oGlow)':'none',transition:'border-color .2s, box-shadow .2s',
+    boxShadow:sel?`0 0 22px var(--oGlow), ${GLASS.boxShadow}`:GLASS.boxShadow,transition:'border-color .2s, box-shadow .2s',
     cursor:'pointer',display:'flex',alignItems:'center',gap:14});
   const chip=sel=>({flex:1,padding:'11px 8px',borderRadius:999,
     background:sel?T.t1:T.glassHi,border:`1px solid ${sel?T.t1:T.glassLine}`,

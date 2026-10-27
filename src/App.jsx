@@ -230,15 +230,14 @@ function ServiceIndicator({servingTeam,isDeuce}){
    Bestaetigungsmail. App() rendert dann nur noch Splash und diese
    Seite — kein Login, kein Home, kein Turnier.
 
-   Wieder aufmachen: APP_PAUSED auf false und deployen.
-   Lokal entwickeln: VITE_APP_PAUSED=0 in .env.local (wirkt nur im
-   Dev-Build; Production ist pausiert, egal was im Build-Env steht).
+   Zumachen: APP_PAUSED auf true und deployen; aufmachen: false.
+   Derzeit OFFEN.
 
    Die Daten auf dem Geraet bleiben unangetastet: Profil, Turniere und
    Papierkorb liegen weiter in localStorage und sind wieder da, sobald
    die Sperre faellt.
 ═══════════════════════════════════════════════════════════════ */
-const APP_PAUSED=!(import.meta.env.DEV&&import.meta.env.VITE_APP_PAUSED==='0');
+const APP_PAUSED=false;
 
 function BetaPause(){
   return(

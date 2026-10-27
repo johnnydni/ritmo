@@ -1164,6 +1164,42 @@ trugen „zurück" und „nachsehen" beide die graue Standardkontur; in
 einem Stapel aus drei Knöpfen sah der Ausweg aus wie die Nebensache
 daneben.
 
+### Bewegung (theme.js)
+
+Ein System, nicht dreissig Einzelfaelle. Die Kurven stehen als Tokens
+in `:root`:
+
+| Token | Wofuer |
+|---|---|
+| `--ease-out-quint` | alles, was hereinkommt (Screens, `.fu`, `.fi`) |
+| `--ease-ios` | Bottom-Sheets und Wisch-Gesten (Einfahren, Zurueckschnappen) |
+| `--ease-out-soft` | Feder mit kaum sichtbarem Ueberschwingen (Loslassen eines Knopfs, `.si`) |
+
+- **Screenwechsel**: die Kinder jedes Screens (Kopf, Inhalt, Leisten)
+  blenden ein und steigen 8 px auf, leicht gestaffelt; das Foto
+  (`aria-hidden`) bleibt stehen. Die Regel steht unter `:where()`
+  (Spezifitaet null) — eine eigene Animation gewinnt immer.
+- **Nur `opacity` und die Einzel-Properties `translate`/`scale`**, nie
+  `transform`, in Keyframes, die auf beliebige Elemente treffen: eine
+  Animation ueberschreibt ein inline-`transform`, und viele Elemente
+  positionieren sich damit (`translate(-50%,…)`, das Ziehen der Sheets).
+  Endzustand `none`, nicht `translate(0)`: ein stehengebliebenes
+  `translate`/`transform` macht das Element zum Bezugsrahmen fuer
+  `position:fixed` darin.
+- **`backwards` statt `both`**, wo das Element danach wieder seinen
+  inline-Wert tragen muss (`.fi`, `.slide-up`, Screenwechsel).
+- **Sheets** (`.slide-up`) fahren von ganz unten ein (0,56 s,
+  `--ease-ios`). Vorher stand dort `var(--anim-base) ease` — zwei
+  Zeitkurven im Shorthand machen die Deklaration ungueltig, die Sheets
+  sprangen auf. Gleiches galt fuer `.slide-down`, `.slide-in-right`,
+  `.press-pop`, `.nav-icon-active`, `.dot-pop`.
+- **Druck auf Knoepfe**: hinein in 90 ms auf `scale(.965)`, zurueck mit
+  der weichen Feder (420 ms). **Kein `filter`** dabei — auf einer
+  Glasflaeche zwingt er die Unschaerfe dahinter neu zu rechnen. **Kein
+  globales `will-change`** mehr: es legte fuer jeden Knopf eine eigene
+  Grafik-Ebene an, hunderte auf langen Listen.
+- Der Killswitch fuer `prefers-reduced-motion` bleibt unveraendert.
+
 ### Fonts
 
 Three families, exposed as theme-independent tokens (`--font-sans`, `--font-text`,

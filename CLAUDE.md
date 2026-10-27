@@ -1201,6 +1201,31 @@ Scrollposition weg. Das wirkte wie ein Neuladen bei jedem Tipp.
   dort einen teuren Effekt oder Timer einbaut, denkt daran, dass er
   auch laeuft, solange der Tab unsichtbar ist.
 
+### Tab-Leiste: einklappen wie iOS (`navStore`)
+
+Die Leiste verhaelt sich wie die iOS-26-Tab-Leiste mit „minimize on
+scroll": **kein Timer**. Sie klappt ein, wenn man im Inhalt nach unten
+scrollt (mehr als 6 px am Stueck, ab 64 px Abstand vom Anfang), und auf
+beim Zurueckscrollen, ganz oben (unter 24 px), beim Antippen des
+Kreises und bei jedem Tab-Tipp.
+
+- Vorher zog sie sich ausserhalb von Home nach 2,6 s von selbst
+  zusammen. Seit die Tabs stehen bleiben (`KeepTab`), kamen Suche und
+  Bibel dadurch schon eingeklappt zurueck — „sofort eingeklappt".
+- **Ein Zustand fuer alle Leisten** (`navStore`, Modul-Ebene mit
+  Abonnenten): jeder Tab-Screen hat seine eigene `TabBar`, und sie
+  muessen beim Wechsel uebereinstimmen.
+- Gehoert wird per `scroll`-Listener in der Capture-Phase am Dokument
+  (scroll blubbert nicht), aber nur auf Scroller im **sichtbaren**
+  `.keep-tab`.
+- Eingeklappt steht ein Kreis (`NAV_MINI`, 52 pt) unten links mit dem
+  Symbol des **aktiven** Tabs — vorher immer Home, man sah nicht mehr,
+  wo man war. Ausgeklappt ist die Leiste `NAV_H` (62 pt) hoch; die
+  Knopfleiste (`MatchBar`) steht auf derselben Mittellinie.
+- Zusammenziehen 0,28 s ohne Anlauf, Aufgehen 0,46 s mit kaum
+  sichtbarer Feder (`--ease-out-soft`), beides zur linken Kante hin.
+  Aufgeklappt wird ohne Umweg: die Bar waechst direkt aus dem Kreis.
+
 ### Bewegung (theme.js)
 
 Ein System, nicht dreissig Einzelfaelle. Die Kurven stehen als Tokens

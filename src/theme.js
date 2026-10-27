@@ -1061,6 +1061,18 @@ button:disabled{cursor:not-allowed;opacity:.55;}
 /* Navbar-Variante: kein Content-Padding (die Bar fuellt die Flaeche). */
 .nav-glass .glass-surface__content{padding:0;}
 
+/* ── Unschaerfe-Band unter den Leisten (BarBlur in App.jsx) ── */
+.bar-blur{
+  position:absolute;left:0;right:0;bottom:0;
+  height:calc(env(safe-area-inset-bottom,0px) + 104px);
+  pointer-events:none;z-index:4;
+  -webkit-backdrop-filter:blur(14px) saturate(140%);
+  backdrop-filter:blur(14px) saturate(140%);
+  background:linear-gradient(to bottom,transparent 0%,rgba(0,0,0,.18) 60%,rgba(0,0,0,.34) 100%);
+  -webkit-mask-image:linear-gradient(to bottom,transparent 0%,#000 55%);
+  mask-image:linear-gradient(to bottom,transparent 0%,#000 55%);
+}
+
 /* ── Bottom-Fade — ersetzt die Fußzeilen: Inhalte laufen unter
    Navbar/FABs in einen PROGRESSIVEN Blur + Farb-Fade aus (iOS-Look).
    ::before blurt den dahinterliegenden Content mit Maskenverlauf,

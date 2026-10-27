@@ -2708,6 +2708,33 @@ const FAB_BASE={position:'absolute',
    nach dem Snap sitzt die Pill bereits unterm Finger. */
 let __navBlendArm=false;
 
+/* Die fuenf Tab-Screens (Home, Profil, Live, Suche, Bibel) bleiben nach
+   dem ersten Besuch gemountet und werden beim Wechsel nur unsichtbar.
+   Vorher wurde jeder Tab beim Verlassen abgebaut und beim Zurueckkommen
+   neu gebaut: Bilder neu dekodiert, Einblenden von vorn, Scrollposition
+   weg — das wirkte wie ein Neuladen bei jedem Tipp auf die Leiste.
+
+   - visibility statt display:none: ein Element, das aus display:none
+     zurueckkommt, startet seine CSS-Animationen neu (.fu & Co.) — genau
+     das „Refresh"-Gefuehl, um das es ging.
+   - Absolut im #root (der dafuer position:relative traegt), nicht fixed:
+     fixed bezieht sich auf das Fenster, und das ist in der iPhone-App zu
+     kurz (siehe fitStandaloneHeight in main.jsx).
+   - Erst ab dem ersten Besuch: wer nie in die Bibel tippt, baut sie auch
+     nie auf. Nach dem Abmelden faellt alles weg (`alive`). */
+function KeepTab({on,alive=true,children}){
+  const seen=useRef(false);
+  if(!alive) seen.current=false;
+  else if(on) seen.current=true;
+  if(!seen.current) return null;
+  return(
+    <div className="keep-tab" style={{position:'absolute',inset:0,
+      visibility:on?'visible':'hidden',pointerEvents:on?'auto':'none'}}>
+      {children}
+    </div>
+  );
+}
+
 /* Abstand von Tab-Leiste und Knopfleiste zur Unterkante — fuer beide
    derselbe, sonst stehen Home-Knopf und Tab-Leiste auf zwei Hoehen.
    Die Haelfte des unteren Sicherheitsabstands plus 8 px: auf dem
@@ -22591,11 +22618,11 @@ export default function App(){
     {scr==='welcome'&&<Welcome
       profile={profile} setProfile={setProfile}
       onComplete={()=>{setOnboarded(true);nav('home');}}/>}
-    {scr==='home'&&<Home nav={nav} activeTab={activeTab} setActiveTab={handleTab}
+    <KeepTab on={scr==='home'} alive={loggedIn}><Home nav={nav} activeTab={activeTab} setActiveTab={handleTab}
       onboarded={onboarded}
       tourneys={tourneys} hasMatch={hasMatch} matchCfg={cfg}
-      onOpenTourney={openTourney}/>}
-    {scr==='profile'&&<Profile profile={profile} setProfile={setProfile}
+      onOpenTourney={openTourney}/></KeepTab>
+    <KeepTab on={scr==='profile'} alive={loggedIn}><Profile profile={profile} setProfile={setProfile}
       onHome={goHome} currentUid={currentUid} onTab={handleTab}
       onOpenSettings={()=>setScr('settings')}
       onOpenEdit={()=>setScr('profile-edit')}
@@ -22611,7 +22638,7 @@ export default function App(){
         // läuft. Bei User-Wechsel auf demselben Gerät korrigiert der
         // Auth-Listener (DB-Profil-Load) den Status nach Login.
         nav('login');
-      }}/>}
+      }}/></KeepTab>
     {scr==='profile-ritmodna'&&<ProfileRitmoDNA profile={profile}
       onBack={()=>setScr('profile')}
       onHome={goHome}/>}
@@ -22692,7 +22719,7 @@ export default function App(){
         schlaeger:JourneySchlaeger,baelle:JourneyBaelle}[id];
       return Comp?<Comp {...nav}/>:null;
     })()}
-    {scr==='live'&&<Live nav={nav} hasMatch={hasMatch} tourneys={tourneys}
+    <KeepTab on={scr==='live'} alive={loggedIn}><Live nav={nav} hasMatch={hasMatch} tourneys={tourneys}
       matchCfg={cfg}
       activeTab={activeTab} setActiveTab={handleTab}
       onDeleteMatch={deleteMatch} onDeleteTourney={deleteTourney} onOpenTourney={openTourney}
@@ -22707,7 +22734,7 @@ export default function App(){
           leaveOnlineTournament(joinedSession.pin,joinedSession.participantId).catch(()=>{});
         }
         setJoinedSession(null);
-      }}/>}
+      }}/></KeepTab>
     {scr==='settings'&&<Settings onHome={goHome} nav={nav}
       onBack={()=>setScr('profile')}
       onLogout={async()=>{
@@ -22809,16 +22836,16 @@ export default function App(){
       onCup={()=>setScr('dnacup')}/>}
     {/* RITMO DNA CUP — PIN-geschützter Event-Bereich (rein & raus nur mit PIN). */}
     {scr==='dnacup'&&<DnaCupScreen onExit={()=>setScr('tournament-hub')}/>}
-    {scr==='ritmo-bibel'&&<RitmoBibel
+    <KeepTab on={scr==='ritmo-bibel'} alive={loggedIn}><RitmoBibel
       onHome={goHome}
       onRules={()=>nav('rules')}
       onJourney={()=>nav('journey')}
       onFaq={()=>setScr('app-faq')}
-      onTab={handleTab}/>}
+      onTab={handleTab}/></KeepTab>
     {scr==='app-faq'&&<AppFAQ onBack={()=>setScr('ritmo-bibel')} onHome={goHome}/>}
 
     {/* Suche-Tab-Hub + Coming-Soon-Teaser (Liga, Buchungsassistent) */}
-    {scr==='search-hub'&&<SearchHub nav={nav} onTab={handleTab}/>}
+    <KeepTab on={scr==='search-hub'} alive={loggedIn}><SearchHub nav={nav} onTab={handleTab}/></KeepTab>
     {scr==='liga'&&<LigaScreen profile={profile} onHome={goHome}/>}
     {scr==='booking-assist'&&<ComingSoon
       icon={<AirPlayIcon size={52} color={T.o}/>}

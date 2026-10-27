@@ -715,24 +715,11 @@ input[type="time"]::-webkit-datetime-edit{padding:0;text-align:center;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 @keyframes scaleIn{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-/* Splash: pulsierende RITMO-Streifen statt Ladebalken — schlichter
-   Loop (Opacity + leichtes Längen-Atmen, links verankert). */
-/* Splash-Intro: RITMO startet zentriert und slidet nach rechts, bis
-   die R-Mitte auf der Bildschirmmitte liegt (12,2% der Bildbreite —
-   deckungsgleich mit dem R-Logo im anschließenden Video). */
-@keyframes splashSlideR{
-  from{transform:translate(-50%,-50%);}
-  to{transform:translate(-12.2%,-50%);}
-}
-/* Splash-Intro: atmender Glow auf Schwarz, bevor das Video startet. */
-@keyframes splashPulse{
-  0%,100%{transform:translate(-50%,-50%) scale(1);opacity:.45;}
-  50%{transform:translate(-50%,-50%) scale(1.28);opacity:1;}
-}
-@keyframes stripePulse{
-  0%,100%{opacity:.22;transform:scaleX(.86);}
-  50%{opacity:1;transform:scaleX(1);}
-}
+/* Splash: der Ladebalken fuellt sich einmal ueber --spl-ms, ein
+   Glanz laeuft darueber. Bei reduzierter Bewegung kuerzt der
+   Killswitch beides — der Balken steht dann sofort voll da. */
+@keyframes splFill{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes splGlint{from{transform:translateX(-100%)}to{transform:translateX(260%)}}
 /* Einmaliger Orange-Ring um eine Karte — Hinweis, dass sich an ihr
    gerade etwas geändert hat (Spielerkarte ab dem 5. Spieler: ab da
    lassen sich Zeilen per Wisch löschen). Läuft genau einmal. */

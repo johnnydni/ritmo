@@ -19650,7 +19650,7 @@ function TournamentHub({onHome,onStart,onJoin,onCup,
   );
 }
 
-function RitmoBibel({onHome,onRules,onJourney,onFaq,onTab}){
+function RitmoBibel({onHome,onRules,onJourney,onFaq,onTactics,onTab}){
   return(
     <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden',
@@ -19673,6 +19673,11 @@ function RitmoBibel({onHome,onRules,onJourney,onFaq,onTab}){
           desc="Tipps & Tricks, Taktik, Material."
           onClick={onJourney} delay=".06s"/>
         <HubBigCard
+          icon={<CourtsIcon size={28} color={T.t1}/>}
+          title="Taktik-Board"
+          desc="Spielzüge in 3D — ziehen, abspielen, Wetter wechseln."
+          onClick={onTactics} delay=".08s"/>
+        <HubBigCard
           icon={<BookIcon size={28} color={T.t1}/>}
           title="App FAQ"
           desc="Häufige Fragen zur RITMO App."
@@ -19681,6 +19686,223 @@ function RitmoBibel({onHome,onRules,onJourney,onFaq,onTab}){
 
       {/* Bibel ist jetzt Haupt-Tab → Navbar; Fallback für alte Aufrufer. */}
       {onTab?<TabBar active="bibel" onTab={onTab}/>:<MatchBar onHome={onHome}/>}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TAKTIK-BOARD — Spielzuege in 3D (Bibel)
+
+   Die Engine (src/tactics3d.js, three.js) wird erst hier per import()
+   geladen. Dieser Screen ist nur die Oberflaeche darueber: Kopf,
+   Wetter, Zeitleiste der Schritte, Werkzeuge. Was der Nutzer am Platz
+   verschiebt, landet je Spielzug in ritmo_tactics; die mitgelieferten
+   Zuege lassen sich mit „Zurücksetzen“ wiederherstellen.
+═══════════════════════════════════════════════════════════════ */
+const TB_WX_ICON={
+  sun:<><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4L6 18M18 6l1.4-1.4"/></>,
+  rain:<><path d="M7 15a4 4 0 1 1 1-7.9A5 5 0 0 1 18 8a3.5 3.5 0 0 1 0 7H7z"/><path d="M8.5 18l-1 2.5M12.5 18l-1 2.5M16.5 18l-1 2.5"/></>,
+  night:<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>,
+  fog:<path d="M4 9h16M2.5 13h19M5 17h14"/>,
+  snow:<path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9M9.5 4.5L12 7l2.5-2.5M9.5 19.5L12 17l2.5 2.5"/>,
+};
+const TB_CAMS=[['orbit','Schräg'],['top','Oben'],['low','Flach'],['player','Spieler']];
+function TacticsBoard({onBack}){
+  const cvRef=useRef(null), api=useRef(null), modRef=useRef(null);
+  const[err,setErr]=useState(null);
+  const[ready,setReady]=useState(false);
+  const[st,setSt]=useState({step:0,count:1,playing:false,label:''});
+  const[wx,setWx]=useState(()=>lsGet('ritmo_tactics_wx','sun'));
+  const[playId,setPlayId]=useState(()=>lsGet('ritmo_tactics_play','globo'));
+  const[edits,setEdits]=useState(()=>lsGet('ritmo_tactics',{}));
+  const[cam,setCam]=useState('orbit');
+  const[picker,setPicker]=useState(false);
+  const[hint,setHint]=useState(()=>!lsGet('ritmo_tactics_hint',false));
+  const editsRef=useRef(edits); editsRef.current=edits;
+  const playIdRef=useRef(playId); playIdRef.current=playId;
+  const playOf=(M,id)=>{const base=M.PLAYS.find(p=>p.id===id)||M.PLAYS[0];
+    const e=editsRef.current[base.id];return e?{...base,steps:e}:base;};
+
+  useEffect(()=>{
+    let dead=false;
+    (async()=>{
+      try{
+        const M=await import('./tactics3d.js');
+        if(dead) return;
+        if(!M.webglOk()){setErr('Dein Gerät kann kein 3D (WebGL) darstellen.');return;}
+        await document.fonts?.ready;
+        if(dead||!cvRef.current) return;
+        modRef.current=M;
+        api.current=M.createBoard(cvRef.current,{
+          play:playOf(M,playIdRef.current),weather:wx,
+          reduced:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
+          onState:s=>setSt(s),
+          onEdit:p=>{const n={...editsRef.current,[p.id]:p.steps};setEdits(n);lsSet('ritmo_tactics',n);},
+        });
+        setReady(true);
+      }catch(e){if(!dead)setErr('Das Taktik-Board ließ sich nicht laden.');}
+    })();
+    return()=>{dead=true;api.current?.dispose();api.current=null;};
+  },[]);
+  useEffect(()=>{lsSet('ritmo_tactics_wx',wx);api.current?.setWeather(wx);},[wx]);
+  useEffect(()=>{lsSet('ritmo_tactics_play',playId);
+    if(api.current&&modRef.current) api.current.setPlay(playOf(modRef.current,playId));},[playId]);
+  useEffect(()=>{api.current?.setCamera(cam);},[cam]);
+
+  const M=modRef.current;
+  const cur=M?(M.PLAYS.find(p=>p.id===playId)||M.PLAYS[0]):null;
+  const edited=!!edits[playId];
+  const resetPlay=()=>{buzz(8);const n={...edits};delete n[playId];setEdits(n);lsSet('ritmo_tactics',n);
+    editsRef.current=n;api.current?.setPlay(playOf(M,playId));};
+  const steps=api.current?.getPlay().steps||[];
+  const glassC={width:44,height:44,borderRadius:'50%',...GLASS,display:'flex',alignItems:'center',
+    justifyContent:'center',cursor:'pointer',padding:0,color:T.t1};
+  const tool=(label,icon,onClick,on,disabled)=>(
+    <button onClick={()=>{if(disabled)return;buzz(6);onClick();}} aria-label={label} disabled={disabled}
+      style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',alignItems:'center',gap:5,
+        background:'none',border:'none',color:T.t1,cursor:disabled?'default':'pointer',
+        opacity:disabled?.35:1,padding:0}}>
+      <span style={{width:40,height:40,borderRadius:13,display:'flex',alignItems:'center',justifyContent:'center',
+        background:on?T.t1:'rgba(255,255,255,.06)',border:`1px solid ${on?T.t1:'rgba(255,255,255,.16)'}`}}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={on?'#000':'#fff'} strokeWidth="1.5"
+          strokeLinecap="round" strokeLinejoin="round">{icon}</svg>
+      </span>
+      <span style={{fontSize:11,whiteSpace:'nowrap'}}>{label}</span>
+    </button>);
+
+  return(
+    <div style={{height:'100%',position:'relative',overflow:'hidden',background:'#0b0f18'}}>
+      <canvas ref={cvRef} style={{position:'absolute',inset:0,width:'100%',height:'100%',display:'block'}}/>
+
+      {!ready&&!err&&(
+        <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',
+          color:T.t2,fontSize:14,fontStyle:'italic'}}>Die Insel wird gebaut …</div>
+      )}
+      {err&&(
+        <div style={{position:'absolute',inset:0,display:'flex',flexDirection:'column',alignItems:'center',
+          justifyContent:'center',gap:14,padding:32,textAlign:'center'}}>
+          <div style={{...HEAD_SERIF,fontSize:28}}>Kein 3D.</div>
+          <div style={{color:T.t2,fontSize:14,lineHeight:1.5}}>{err}</div>
+          <button onClick={onBack} style={{padding:'12px 22px',borderRadius:999,...GLASS,color:T.t1,
+            fontSize:15,fontWeight:700,cursor:'pointer'}}>‹ Zurück</button>
+        </div>
+      )}
+
+      {/* Kopf */}
+      <div style={{position:'absolute',left:0,right:0,top:0,pointerEvents:'none',
+        padding:'calc(env(safe-area-inset-top,0px) + 14px) 18px 40px',
+        background:'linear-gradient(rgba(0,0,0,.5),rgba(0,0,0,0))'}}>
+        <div style={{display:'flex',alignItems:'flex-start',gap:12}}>
+          <button onClick={()=>{buzz(6);onBack();}} aria-label="Zurück zur Bibel"
+            style={{...glassC,pointerEvents:'auto',flexShrink:0}}>
+            <span style={{display:'flex',transform:'rotate(180deg)'}}><ChevronRightIcon size={18} color={T.t1}/></span>
+          </button>
+          <div style={{flex:1,minWidth:0,paddingTop:2}}>
+            <div className="display" style={{fontSize:10.5,letterSpacing:2.6,color:T.o,textTransform:'uppercase'}}>
+              Taktik-Board</div>
+            <div style={{...HEAD_SERIF,fontSize:30,lineHeight:1.05,marginTop:4}}>{cur?.name||' '}</div>
+            <div className="txt" style={{color:T.t1,opacity:.8,fontSize:13.5,fontStyle:'italic',marginTop:4,
+              fontVariantNumeric:'tabular-nums'}}>
+              {st.count?`Schritt ${st.step+1} von ${st.count}${st.label?` · ${st.label}`:''}`:''}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Wetter */}
+      {ready&&(
+        <div style={{position:'absolute',right:16,top:'calc(env(safe-area-inset-top,0px) + 118px)',
+          display:'flex',flexDirection:'column',gap:8}}>
+          {Object.keys(TB_WX_ICON).map(k=>(
+            <button key={k} onClick={()=>{buzz(6);setWx(k);}} aria-label={k} aria-pressed={wx===k}
+              style={{...glassC,background:wx===k?T.t1:GLASS.background}}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={wx===k?'#000':'#fff'}
+                strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">{TB_WX_ICON[k]}</svg>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Hinweis beim ersten Mal */}
+      {ready&&hint&&(
+        <button onClick={()=>{setHint(false);lsSet('ritmo_tactics_hint',true);}}
+          style={{position:'absolute',left:'50%',top:'44%',transform:'translateX(-50%)',maxWidth:280,
+            padding:'12px 16px',borderRadius:16,...GLASS,background:'rgba(14,16,20,.7)',color:T.t1,
+            fontSize:13.5,lineHeight:1.45,cursor:'pointer',textAlign:'center'}}>
+          Spieler und Ball ziehen, um sie zu versetzen. Leere Fläche ziehen dreht die Insel, zwei Finger zoomen.
+          <div style={{color:T.o,fontWeight:700,marginTop:6}}>Verstanden</div>
+        </button>
+      )}
+
+      {/* Dock */}
+      {ready&&(
+        <div style={{position:'absolute',left:12,right:12,bottom:'calc(env(safe-area-inset-bottom,0px) + 14px)',
+          borderRadius:26,padding:'12px 12px 10px',background:'rgba(14,16,20,.62)',
+          border:'1px solid rgba(255,255,255,.2)',WebkitBackdropFilter:'blur(16px)',backdropFilter:'blur(16px)',
+          boxShadow:'inset 0 1px 0 rgba(255,255,255,.16),0 18px 40px rgba(0,0,0,.45)'}}>
+          <div style={{display:'flex',alignItems:'center',gap:10}}>
+            <button onClick={()=>{buzz(8);st.playing?api.current?.pause():api.current?.play();}}
+              aria-label={st.playing?'Anhalten':'Abspielen'}
+              style={{width:44,height:44,borderRadius:'50%',border:'none',background:T.o,flexShrink:0,
+                display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',
+                boxShadow:'0 8px 24px var(--oGlow)'}}>
+              {st.playing?<PauseGlyph size={16} color="#000"/>:<PlayGlyph size={16} color="#000"/>}
+            </button>
+            <div style={{flex:1,minWidth:0,overflowX:'auto',WebkitOverflowScrolling:'touch',scrollbarWidth:'none'}}>
+              <div style={{display:'flex',alignItems:'flex-start',minWidth:'100%',width:'max-content',
+                position:'relative',padding:'0 6px'}}>
+                {steps.map((s,i)=>(
+                  <button key={i} onClick={()=>{buzz(6);api.current?.seek(i);}}
+                    style={{flex:'1 0 64px',display:'flex',flexDirection:'column',alignItems:'center',gap:5,
+                      background:'none',border:'none',color:T.t1,cursor:'pointer',padding:'2px 0',position:'relative'}}>
+                    {i>0&&<span aria-hidden="true" style={{position:'absolute',top:8,right:'50%',width:'100%',height:2,
+                      background:i<=st.step?T.o:'rgba(255,255,255,.22)'}}/>}
+                    <span style={{position:'relative',width:14,height:14,borderRadius:'50%',
+                      border:`2px solid ${T.o}`,background:i<=st.step?T.o:'#16181d',
+                      boxShadow:i===st.step?'0 0 0 4px rgba(255,122,26,.25)':'none'}}/>
+                    <span style={{fontSize:10.5,opacity:i===st.step?1:.65,whiteSpace:'nowrap',
+                      maxWidth:76,overflow:'hidden',textOverflow:'ellipsis'}}>{s.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div style={{display:'flex',marginTop:12,gap:4}}>
+            {tool('Spielzug',<path d="M4 6h16M4 12h10M4 18h13"/>,()=>setPicker(true))}
+            {tool(TB_CAMS.find(c=>c[0]===cam)[1],<><path d="M3 12l9-7 9 7-9 7z"/><circle cx="12" cy="12" r="2"/></>,
+              ()=>{const i=TB_CAMS.findIndex(c=>c[0]===cam);setCam(TB_CAMS[(i+1)%TB_CAMS.length][0]);})}
+            {tool('Schritt',<path d="M12 5v14M5 12h14"/>,()=>api.current?.addStep(),false,steps.length>=8)}
+            {tool('Löschen',<path d="M5 12h14"/>,()=>api.current?.removeStep(),false,steps.length<3)}
+            {tool('Zurück',<><path d="M4 12a8 8 0 1 0 2.3-5.6"/><path d="M4 4v4h4"/></>,resetPlay,false,!edited)}
+          </div>
+        </div>
+      )}
+
+      {/* Spielzug waehlen */}
+      {picker&&M&&(
+        <div onClick={()=>setPicker(false)} style={{position:'absolute',inset:0,background:'rgba(0,0,0,.45)',
+          display:'flex',alignItems:'flex-end'}}>
+          <div className="slide-up" onClick={e=>e.stopPropagation()}
+            style={{width:'100%',borderRadius:'26px 26px 0 0',padding:'18px 18px calc(env(safe-area-inset-bottom,0px) + 22px)',
+              background:'linear-gradient(var(--card),var(--card)),var(--bg)',borderTop:`1px solid ${T.glassLine}`}}>
+            <div className="display" style={{fontSize:10.5,letterSpacing:2.6,color:T.o,textTransform:'uppercase'}}>Spielzüge</div>
+            <div style={{...HEAD_SERIF,fontSize:26,margin:'6px 0 12px'}}>Was üben wir?</div>
+            {M.PLAYS.map(p=>(
+              <button key={p.id} onClick={()=>{buzz(6);setPlayId(p.id);setPicker(false);}}
+                style={{width:'100%',display:'flex',alignItems:'center',gap:12,padding:'13px 4px',
+                  background:'none',border:'none',borderTop:`1px solid ${T.glassSep}`,color:T.t1,
+                  cursor:'pointer',textAlign:'left'}}>
+                <span style={{width:10,height:10,borderRadius:'50%',flexShrink:0,
+                  background:p.id===playId?T.o:'transparent',border:`2px solid ${p.id===playId?T.o:T.t3}`}}/>
+                <span style={{flex:1,minWidth:0}}>
+                  <span style={{display:'block',fontFamily:T.fontSerif,fontSize:19,fontWeight:700}}>{p.name}</span>
+                  <span style={{display:'block',color:T.t2,fontSize:13,marginTop:2}}>
+                    {p.sub}{edits[p.id]?' · bearbeitet':''}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -22263,7 +22485,9 @@ export default function App(){
       onRules={()=>nav('rules')}
       onJourney={()=>nav('journey')}
       onFaq={()=>setScr('app-faq')}
+      onTactics={()=>setScr('tactics')}
       onTab={handleTab}/></KeepTab>
+    {scr==='tactics'&&<TacticsBoard onBack={()=>setScr('ritmo-bibel')}/>}
     {scr==='app-faq'&&<AppFAQ onBack={()=>setScr('ritmo-bibel')} onHome={goHome}/>}
 
     {/* Suche-Tab-Hub + Coming-Soon-Teaser (Liga, Buchungsassistent) */}

@@ -476,6 +476,12 @@ Leute ruft.
   Regel wie beim Werkzeug-Fach: mit einem zu grossen Wert laeuft der
   erste Teil des Uebergangs ins Leere. Ab 320 px scrollt das Fach in
   sich, damit das Turnier darunter nicht verschwindet.
+- **Laufend ist die Karte eine Mini-Kapsel** wie der Timer im Single
+  Match (`TimerCapsule`): Knopf links, Zeit rechts in allen
+  Zustaenden; ab dem ersten Start wird sie schwarz und ganz rund, der
+  Knopf getoent mit orangem Glyph, „Timer“ bzw. „Zeit um“ vor der
+  Zahl, die Ziffern duenn und orange (pausiert gedimmt). Der
+  Fortschrittsbalken ist entfallen. Aufgeklappt bleibt sie Glas.
 - Das Fach **schiebt**, statt sich darueberzulegen: was darin steht,
   liest man im Vergleich mit dem, was gerade laeuft.
 - Der Rundenwechsel schliesst es (derselbe Effekt, der den

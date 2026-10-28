@@ -20102,140 +20102,23 @@ function PausenPoolVisual(){
   );
 }
 
-/* ───── Shot illustrations: stick-figure player + racket + ball ─────
-   Common defs: arrow marker. Base body: head + torso + legs.
-   Each shot overrides arms, racket position, ball location & trajectory.
+/* ───── Schlagarten: Strichzeichnungen ─────
+   Die Zeichnungen liegen als SVG unter public/assets/shots/ (schwarz
+   auf transparent) und werden als Maske gesetzt, nicht als <img>: so
+   faerbt sie T.t1 und sie folgen dem Theme, statt als schwarze Linie
+   auf dunklem Glas zu verschwinden.
 ─────────────────────────────────────────────────────────────────── */
-function ShotBase({head=true,leftArm,rightArm,racket,ball,trajectory,arrowId}){
+function ShotArt({src,h=170,label}){
+  const url=`url(${getAssetBase()}assets/shots/${src}.svg)`;
   return(
-    <>
-      <defs>
-        <marker id={arrowId} markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
-          <polygon points="0 0, 6 3, 0 6" fill="var(--o)"/>
-        </marker>
-      </defs>
-      {/* Head */}
-      {head&&<circle cx="78" cy="32" r="10" fill="var(--t1)" opacity="0.85"/>}
-      {/* Torso */}
-      <line x1="78" y1="42" x2="78" y2="105" stroke="var(--t1)" strokeWidth="4" strokeLinecap="round"/>
-      {/* Legs */}
-      <line x1="78" y1="105" x2="60" y2="158" stroke="var(--t1)" strokeWidth="3.5" strokeLinecap="round"/>
-      <line x1="78" y1="105" x2="96" y2="158" stroke="var(--t1)" strokeWidth="3.5" strokeLinecap="round"/>
-      {/* Arms (per-shot) */}
-      {leftArm}
-      {rightArm}
-      {/* Racket */}
-      {racket}
-      {/* Ball */}
-      {ball}
-      {/* Trajectory */}
-      {trajectory}
-    </>
-  );
-}
-
-function SmashFigure(){
-  return(
-    <svg viewBox="0 0 160 180" style={{width:'100%',maxWidth:140,height:'auto',display:'block'}}>
-      <ShotBase
-        arrowId="arrSmash"
-        leftArm={<line x1="72" y1="52" x2="58" y2="80" stroke="var(--t1)" strokeWidth="3" strokeLinecap="round"/>}
-        rightArm={<line x1="84" y1="52" x2="90" y2="14" stroke="var(--t1)" strokeWidth="3.5" strokeLinecap="round"/>}
-        racket={<g transform="rotate(15 90 8)"><ellipse cx="90" cy="8" rx="8" ry="11" stroke="var(--o)" strokeWidth="2.4" fill="none"/><line x1="90" y1="14" x2="90" y2="20" stroke="var(--o)" strokeWidth="2"/></g>}
-        ball={<><circle cx="98" cy="-2" r="4.5" fill="#E8FF3D" stroke="rgba(0,0,0,.4)" strokeWidth=".5"/><path d="M 95 -1 Q 98 -3.5 101 -1" stroke="rgba(255,255,255,.5)" fill="none"/></>}
-        trajectory={<path d="M 96 6 Q 125 70 145 165" stroke="var(--o)" strokeWidth="1.6" strokeDasharray="3 3" fill="none" markerEnd="url(#arrSmash)" opacity="0.7"/>}
-      />
-    </svg>
-  );
-}
-
-function BandejaFigure(){
-  return(
-    <svg viewBox="0 0 160 180" style={{width:'100%',maxWidth:140,height:'auto',display:'block'}}>
-      <ShotBase
-        arrowId="arrBand"
-        leftArm={<line x1="72" y1="52" x2="62" y2="86" stroke="var(--t1)" strokeWidth="3" strokeLinecap="round"/>}
-        rightArm={<><line x1="84" y1="52" x2="116" y2="32" stroke="var(--t1)" strokeWidth="3.5" strokeLinecap="round"/></>}
-        racket={<g transform="rotate(55 122 28)"><ellipse cx="122" cy="28" rx="8" ry="11" stroke="var(--o)" strokeWidth="2.4" fill="none"/><line x1="122" y1="34" x2="122" y2="40" stroke="var(--o)" strokeWidth="2"/></g>}
-        ball={<><circle cx="132" cy="14" r="4.5" fill="#E8FF3D" stroke="rgba(0,0,0,.4)" strokeWidth=".5"/><path d="M 129 15 Q 132 12.5 135 15" stroke="rgba(255,255,255,.5)" fill="none"/></>}
-        trajectory={<path d="M 130 22 Q 140 90 155 160" stroke="var(--o)" strokeWidth="1.4" strokeDasharray="3 3" fill="none" markerEnd="url(#arrBand)" opacity="0.6"/>}
-      />
-    </svg>
-  );
-}
-
-function ViboraFigure(){
-  return(
-    <svg viewBox="0 0 160 180" style={{width:'100%',maxWidth:140,height:'auto',display:'block'}}>
-      <ShotBase
-        arrowId="arrVib"
-        leftArm={<line x1="72" y1="52" x2="58" y2="82" stroke="var(--t1)" strokeWidth="3" strokeLinecap="round"/>}
-        rightArm={<line x1="84" y1="52" x2="110" y2="42" stroke="var(--t1)" strokeWidth="3.5" strokeLinecap="round"/>}
-        racket={<g transform="rotate(80 116 36)"><ellipse cx="116" cy="36" rx="8" ry="11" stroke="var(--o)" strokeWidth="2.4" fill="none"/><line x1="116" y1="42" x2="116" y2="48" stroke="var(--o)" strokeWidth="2"/></g>}
-        ball={<><circle cx="125" cy="26" r="4.5" fill="#E8FF3D" stroke="rgba(0,0,0,.4)" strokeWidth=".5"/><path d="M 122 27 Q 125 24.5 128 27" stroke="rgba(255,255,255,.5)" fill="none"/></>}
-        trajectory={<path d="M 122 35 Q 138 75 132 145" stroke="var(--o)" strokeWidth="1.6" strokeDasharray="3 2" fill="none" markerEnd="url(#arrVib)" opacity="0.7"/>}
-      />
-    </svg>
-  );
-}
-
-function VoleaFigure(){
-  return(
-    <svg viewBox="0 0 160 180" style={{width:'100%',maxWidth:140,height:'auto',display:'block'}}>
-      <ShotBase
-        arrowId="arrVol"
-        leftArm={<line x1="72" y1="52" x2="50" y2="70" stroke="var(--t1)" strokeWidth="3" strokeLinecap="round"/>}
-        rightArm={<line x1="84" y1="52" x2="118" y2="68" stroke="var(--t1)" strokeWidth="3.5" strokeLinecap="round"/>}
-        racket={<g transform="rotate(75 126 65)"><ellipse cx="126" cy="65" rx="8" ry="11" stroke="var(--o)" strokeWidth="2.4" fill="none"/><line x1="126" y1="71" x2="126" y2="77" stroke="var(--o)" strokeWidth="2"/></g>}
-        ball={<><circle cx="138" cy="62" r="4.5" fill="#E8FF3D" stroke="rgba(0,0,0,.4)" strokeWidth=".5"/><path d="M 135 63 Q 138 60.5 141 63" stroke="rgba(255,255,255,.5)" fill="none"/></>}
-        trajectory={<path d="M 140 64 L 155 62" stroke="var(--o)" strokeWidth="1.6" fill="none" markerEnd="url(#arrVol)" opacity="0.7"/>}
-      />
-    </svg>
-  );
-}
-
-function DriveFigure(){
-  return(
-    <svg viewBox="0 0 160 180" style={{width:'100%',maxWidth:140,height:'auto',display:'block'}}>
-      <ShotBase
-        arrowId="arrDrv"
-        leftArm={<line x1="72" y1="55" x2="55" y2="78" stroke="var(--t1)" strokeWidth="3" strokeLinecap="round"/>}
-        rightArm={<line x1="84" y1="55" x2="42" y2="92" stroke="var(--t1)" strokeWidth="3.5" strokeLinecap="round"/>}
-        racket={<g transform="rotate(-30 38 96)"><ellipse cx="38" cy="96" rx="8" ry="11" stroke="var(--o)" strokeWidth="2.4" fill="none"/><line x1="38" y1="102" x2="38" y2="108" stroke="var(--o)" strokeWidth="2"/></g>}
-        ball={<><circle cx="50" cy="98" r="4.5" fill="#E8FF3D" stroke="rgba(0,0,0,.4)" strokeWidth=".5"/><path d="M 47 99 Q 50 96.5 53 99" stroke="rgba(255,255,255,.5)" fill="none"/></>}
-        trajectory={<path d="M 54 96 Q 100 80 145 96" stroke="var(--o)" strokeWidth="1.6" strokeDasharray="3 3" fill="none" markerEnd="url(#arrDrv)" opacity="0.7"/>}
-      />
-    </svg>
-  );
-}
-
-function GloboFigure(){
-  return(
-    <svg viewBox="0 0 160 180" style={{width:'100%',maxWidth:140,height:'auto',display:'block'}}>
-      <ShotBase
-        arrowId="arrGlb"
-        leftArm={<line x1="72" y1="55" x2="60" y2="92" stroke="var(--t1)" strokeWidth="3" strokeLinecap="round"/>}
-        rightArm={<line x1="84" y1="55" x2="48" y2="115" stroke="var(--t1)" strokeWidth="3.5" strokeLinecap="round"/>}
-        racket={<g transform="rotate(-60 44 122)"><ellipse cx="44" cy="122" rx="8" ry="11" stroke="var(--o)" strokeWidth="2.4" fill="none"/><line x1="44" y1="128" x2="44" y2="134" stroke="var(--o)" strokeWidth="2"/></g>}
-        ball={<><circle cx="58" cy="118" r="4.5" fill="#E8FF3D" stroke="rgba(0,0,0,.4)" strokeWidth=".5"/><path d="M 55 119 Q 58 116.5 61 119" stroke="rgba(255,255,255,.5)" fill="none"/></>}
-        trajectory={<path d="M 62 115 Q 105 -10 155 130" stroke="var(--o)" strokeWidth="1.6" strokeDasharray="3 3" fill="none" markerEnd="url(#arrGlb)" opacity="0.7"/>}
-      />
-    </svg>
-  );
-}
-
-function ChiquitaFigure(){
-  return(
-    <svg viewBox="0 0 160 180" style={{width:'100%',maxWidth:140,height:'auto',display:'block'}}>
-      <ShotBase
-        arrowId="arrChq"
-        leftArm={<line x1="72" y1="55" x2="60" y2="82" stroke="var(--t1)" strokeWidth="3" strokeLinecap="round"/>}
-        rightArm={<line x1="84" y1="55" x2="104" y2="92" stroke="var(--t1)" strokeWidth="3.5" strokeLinecap="round"/>}
-        racket={<g transform="rotate(40 110 98)"><ellipse cx="110" cy="98" rx="8" ry="11" stroke="var(--o)" strokeWidth="2.4" fill="none"/><line x1="110" y1="104" x2="110" y2="110" stroke="var(--o)" strokeWidth="2"/></g>}
-        ball={<><circle cx="120" cy="92" r="4.5" fill="#E8FF3D" stroke="rgba(0,0,0,.4)" strokeWidth=".5"/><path d="M 117 93 Q 120 90.5 123 93" stroke="rgba(255,255,255,.5)" fill="none"/></>}
-        trajectory={<path d="M 124 88 Q 140 70 152 100" stroke="var(--o)" strokeWidth="1.4" strokeDasharray="3 2" fill="none" markerEnd="url(#arrChq)" opacity="0.7"/>}
-      />
-    </svg>
+    <div style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',alignItems:'center',gap:6}}>
+      <div role="img" aria-label={label||src} style={{width:'100%',height:h,background:T.t1,
+        WebkitMaskImage:url,maskImage:url,WebkitMaskRepeat:'no-repeat',maskRepeat:'no-repeat',
+        WebkitMaskPosition:'center',maskPosition:'center',
+        WebkitMaskSize:'contain',maskSize:'contain'}}/>
+      {label&&<div className="display" style={{fontSize:10,letterSpacing:1.8,color:T.t3,
+        textTransform:'uppercase'}}>{label}</div>}
+    </div>
   );
 }
 
@@ -20448,25 +20331,25 @@ function RulesRotation({onBackToRules,onHome,onNext,onPrev,currentIdx,totalSecti
 
 function RulesGlossar({onBackToRules,onHome,onNext,onPrev,currentIdx,totalSections}){
   const shots=[
-    {id:'smash',title:'Smash / Remate',Fig:SmashFigure,
+    {id:'smash',title:'Smash / Remate',art:['smash'],
       desc:'Kraftvoller Schlag aus der Luft. Treffpunkt direkt über dem Kopf, Trajektorie steil nach unten.',
       stance:'Körper unter dem Ball, beide Arme hoch — der linke zielt zum Ball, der rechte schwingt voll aus.'},
-    {id:'bandeja',title:'Bandeja',Fig:BandejaFigure,
+    {id:'bandeja',title:'Bandeja',art:['bandeja'],
       desc:'Defensiver Smash mit Slice. Gleitende, kontrollierte Bewegung — weniger Power, mehr Genauigkeit.',
       stance:'Treffpunkt rechts und oberhalb des Kopfes. Racketfläche flach, Schwung von hoch nach tief mit Seitenschnitt.'},
-    {id:'vibora',title:'Víbora',Fig:ViboraFigure,
+    {id:'vibora',title:'Víbora',art:['vibora'],
       desc:'Kürzerer, schärferer Smash mit aggressivem Slice. Zwischen Bandeja und Smash — kontrolliert aber bissig.',
       stance:'Treffpunkt auf Schulterhöhe seitlich, Schlag mit gekürztem, schnellem Ausschwung.'},
-    {id:'volea',title:'Volea',Fig:VoleaFigure,
+    {id:'volea',title:'Volea',art:['volea-vorhand','volea-rueckhand'],
       desc:'Volley — Schlag aus der Luft, ohne Bodenkontakt. Klassischer Netz-Schlag.',
       stance:'Frontal zum Netz, kompakte Bewegung. Racket vor dem Körper, Schlag aus der Schulter, kurzer Punch.'},
-    {id:'drive',title:'Drive',Fig:DriveFigure,
+    {id:'drive',title:'Drive',art:['drive-vorhand','drive-rueckhand'],
       desc:'Grundlinienschlag mit Topspin, gerade oder cross gespielt. Klassischer Aufbau- oder Druck-Schlag.',
       stance:'Seitlicher Stand, Racket weit zurück geführt, Treffpunkt auf Hüfthöhe, Schwung von tief nach hoch.'},
-    {id:'globo',title:'Globo',Fig:GloboFigure,
+    {id:'globo',title:'Globo',art:['globo'],
       desc:'Lob über die Gegner. Hoch und tief — zwingt das Gegner-Team zurück zur Grundlinie.',
       stance:'Tiefer Stand, Schläger unter dem Ball, weicher Schwung von tief nach hoch — der Ball muss fast vertikal nach oben.'},
-    {id:'chiquita',title:'Chiquita',Fig:ChiquitaFigure,
+    {id:'chiquita',title:'Chiquita',
       desc:'Kurzer, weicher Ball direkt hinters Netz. Technische Antwort auf Volleys am Netz.',
       stance:'Stand zentral, Racket leicht von oben nach unten geführt, weicher Touch ohne Schwung.'},
   ];
@@ -20479,15 +20362,22 @@ function RulesGlossar({onBackToRules,onHome,onNext,onPrev,currentIdx,totalSectio
       <div style={{display:'flex',flexDirection:'column',gap:14}}>
         {shots.map((s,i)=>(
           <div key={s.id} className="fu"
-            style={{...GLASS,borderRadius:16,
-              padding:14,display:'flex',gap:14,animationDelay:`${i*60}ms`}}>
-            <div style={{flexShrink:0,width:120,display:'flex',alignItems:'center',
-              justifyContent:'center',background:T.card2,borderRadius:13,padding:6,
-              border:`1px solid ${T.glassSep}`}}>
-              <s.Fig/>
-            </div>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{color:T.t1,fontSize:16,fontWeight:700,marginBottom:4,letterSpacing:.2}}>{s.title}</div>
+            style={{...GLASS,borderRadius:16,overflow:'hidden',animationDelay:`${i*60}ms`}}>
+            {/* Vorhand und Rueckhand nebeneinander, wo der Schlag beide
+                Seiten hat — sonst eine Zeichnung ueber die volle Breite.
+                Die Chiquita hat (noch) keine. */}
+            {s.art&&(
+              <div style={{display:'flex',gap:10,padding:'16px 14px 12px',
+                borderBottom:`1px solid ${T.glassSep}`}}>
+                {s.art.map(a=>(
+                  <ShotArt key={a} src={a} h={s.art.length>1?150:180}
+                    label={s.art.length>1?(a.endsWith('vorhand')?'Vorhand':'Rückhand'):null}/>
+                ))}
+              </div>
+            )}
+            <div style={{padding:14}}>
+              <div style={{color:T.t1,fontFamily:T.fontSerif,fontSize:21,fontWeight:700,
+                marginBottom:4}}>{s.title}</div>
               <div style={{color:T.t2,fontSize:12,lineHeight:1.5,marginBottom:6}}>{s.desc}</div>
               <div style={{color:T.t3,fontSize:11,lineHeight:1.5,
                 padding:'6px 8px',background:T.card2,borderRadius:6,

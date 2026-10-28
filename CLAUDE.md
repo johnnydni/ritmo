@@ -412,6 +412,16 @@ Neu gebaut als Magazin, nicht nur umgefaerbt.
   `RulesDef` (Begriff in der Antiqua, Erklaerung darunter, Haarlinie
   links). Wer ein Kapitel schreibt, nimmt diese vier — dann sieht es
   von selbst aus wie die anderen.
+- **Schlagarten** (`RulesGlossar`): je Schlag eine Strichzeichnung aus
+  [public/assets/shots/](public/assets/shots/), schwarz auf transparent,
+  gesetzt als **CSS-Maske** in `T.t1` (`ShotArt`) — als `<img>` stuende
+  eine schwarze Linie auf dunklem Glas. Volea und Drive zeigen Vorhand
+  und Rueckhand nebeneinander; die Chiquita hat keine Zeichnung. Die
+  gelieferten Dateien `lop.svg` und `vibora.svg` waren vertauscht (der
+  Ausfallschritt mit steigender Flugkurve ist der Globo, die
+  Ausholbewegung ueber Kopf die Víbora) — wer neue liefert, prueft das
+  Bild, nicht den Dateinamen. Die alten Strichmaennchen (`ShotBase`
+  samt sieben `*Figure`) sind raus.
 - **`WissenLanding`** — der Einstieg vor dem ersten Lesen: Kopf wie
   ueberall, Bild als gerahmte Karte, Schlagzeile, grosser Weiter-Knopf.
 - **App-FAQ** ist nach Themen gruppiert (`APP_FAQ` = Gruppen mit

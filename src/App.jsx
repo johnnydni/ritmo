@@ -5980,7 +5980,7 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
               borderTop:'2px solid #000018',
               borderBottom:'2px solid #000018',
               boxShadow:'0 -6px 24px rgba(0,0,0,0.35)',
-              fontFamily:'-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Neue",sans-serif',
+              fontFamily:T.fontSans,
               letterSpacing:0.4,
               pointerEvents:'none',
               zIndex:0,

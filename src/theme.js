@@ -33,8 +33,8 @@ export const T = {
   yellowSoft: 'var(--yellowSoft)',
   gold:     'var(--gold)',
   /* Schriften — siehe --font-* in CSS unten. */
-  fontSans:    'var(--font-sans)',     // Inter — UI-Grundschrift
-  fontText:    'var(--font-text)',     // SF Pro — die ruhige Zweitstimme
+  fontSans:    'var(--font-sans)',     // Space Grotesk — Textschrift
+  fontText:    'var(--font-text)',     // = fontSans (frueher SF Pro)
   fontDisplay: 'var(--font-display)',  // Centauri — Headlines/Akzente
   fontSerif:   'var(--font-serif)',    // Times — Ueberschriften der Foto-Screens (s. CLAUDE.md)
   fontCard:    'var(--font-card)',     // Libre Caslon (aufrecht) — nur der Turniername auf der Live-Karte
@@ -48,26 +48,30 @@ export const T = {
 export const CSS = `
 /* ── SCHRIFTEN ────────────────────────────────────────────────────
    Drei Familien, themeunabhängig als Tokens:
-     --font-sans     Inter — die UI-Grundschrift (Fließtext, Buttons)
-     --font-text     SF Pro — die ruhige Zweitstimme (Vorspann,
-                     Kartenbeschreibungen, Langtext). Systemschrift auf
-                     iOS/macOS; wo es sie nicht gibt, greift die
-                     jeweilige System-Grotesk. Wird NICHT ausgeliefert —
-                     Apple lizenziert SF Pro nicht zum Selbsthosten.
-     --font-display  Centauri — Headlines/Akzente. VERSALSCHRIFT:
+     --font-sans     Space Grotesk — die Textschrift der ganzen App
+     --font-text     dieselbe. Bis hier stand dort SF Pro als zweite
+                     Stimme fuer Vorspann und Kartentexte; zwei
+                     Grotesken nebeneinander sahen aus wie ein Versehen.
+                     Der Token bleibt, damit T.fontText / .txt weiter
+                     gelten.
+     --font-display  Centauri — Ressorts/Kicker. VERSALSCHRIFT:
                      Kleinbuchstaben erscheinen als Versalien, für
                      Fließtext also ungeeignet. Nicht enthaltene
                      Zeichen (→ ✓ € @, Akzentbuchstaben) fallen pro
                      Zeichen auf --font-text zurück.
-   Inter und Centauri werden in main.jsx importiert und von Vite
-   gebündelt — kein CDN, damit font-src 'self' in der CSP reicht.
+     --font-serif    Times — Ueberschriften (siehe unten).
+   Laufweite der Textschrift: -0.04em (--track), gesetzt auf body und
+   .txt. Wer letterSpacing inline setzt, ueberschreibt sie bewusst.
+   Space Grotesk und Centauri werden in main.jsx importiert und von
+   Vite gebündelt — kein CDN, damit font-src 'self' in der CSP reicht.
 
    In Komponenten NICHT hart setzen, sondern T.fontText /
    T.fontDisplay verwenden (oder die Klassen .txt / .display). */
 :root{
-  --font-sans:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','SF Pro Text','Helvetica Neue','Segoe UI',Roboto,sans-serif;
-  --font-text:'SF Pro Text','SF Pro Display',-apple-system,BlinkMacSystemFont,'Helvetica Neue','Segoe UI',Roboto,sans-serif;
-  --font-display:'Centauri','SF Pro Text',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  --track:-0.04em;
+  --font-sans:'Space Grotesk',-apple-system,BlinkMacSystemFont,'Helvetica Neue','Segoe UI',Roboto,sans-serif;
+  --font-text:var(--font-sans);
+  --font-display:'Centauri','Space Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
   /* Die Antiqua der Startseite (Spielen / Events / Deine Spiele).
      Systemschrift, nicht ausgeliefert: Times New Roman steht auf iOS,
      macOS und Windows bereit; Liberation Serif ist ihr metrischer
@@ -76,8 +80,21 @@ export const CSS = `
   --font-card:'RITMO Caslon','Times New Roman',Times,Georgia,serif;
 }
 /* Utility-Klassen für die Screen-Überarbeitung. */
-.txt{font-family:var(--font-text);letter-spacing:0;}
+.txt{font-family:var(--font-text);letter-spacing:var(--track);}
 .display{font-family:var(--font-display);letter-spacing:0;}
+/* Die -4 % gehoeren nur der Textschrift. Antiqua und Centauri werden
+   inline per T.fontSerif / T.fontDisplay gesetzt — der Wert steht als
+   var(...) im style-Attribut, daran haengt diese Regel. Ein inline
+   gesetztes letterSpacing gewinnt weiterhin. */
+[style*="--font-serif"],[style*="--font-card"]{letter-spacing:-0.011em;}
+[style*="--font-display"]{letter-spacing:0;}
+/* Jedes Element rechnet die -4 % aus SEINER Schriftgroesse. Auf body
+   allein wird -0.04em einmal zu -0.64px und so vererbt — eine 30-px-
+   Zahl bekaeme dann nur -2 %. :where() haelt die Spezifitaet bei
+   null: alles oben und jedes inline gesetzte letterSpacing gewinnt;
+   unter einem Element mit eigenem letterSpacing wird weitervererbt. */
+:where(*){letter-spacing:var(--track);}
+:where([style*="letter-spacing"] *, [style*="--font-serif"] *, [style*="--font-display"] *, .display *){letter-spacing:inherit;}
 
 :root, :root[data-theme="dark"] {
   /* Clean-Modern-Redesign: weicheres Near-Black statt hartem #000,
@@ -652,12 +669,12 @@ html,body,#root{background:var(--bg);height:100%;min-height:100dvh;overflow:hidd
   overscroll-behavior:none;
   font-family:var(--font-sans);
   -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
-  text-rendering:optimizeLegibility;letter-spacing:-0.011em;color:var(--t1);}
+  text-rendering:optimizeLegibility;letter-spacing:var(--track);color:var(--t1);}
 /* Branded Text-Selektion statt Browser-Default-Blau. */
 ::selection{background:var(--oSoft);color:var(--t1);}
 /* Placeholder einheitlich gedimmt — statt Browser-Default-Grau. */
 ::placeholder{color:var(--t3);opacity:.9;}
-button,input,textarea,select{font-family:inherit;color:inherit;}
+button,input,textarea,select{font-family:inherit;letter-spacing:inherit;color:inherit;}
 input{outline:none;border:none;background:none;}
 ::-webkit-scrollbar{display:none;}
 /* ── Navbar Collapse/Expand — iOS-Spring-Pop ─────────────────────

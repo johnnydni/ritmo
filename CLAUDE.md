@@ -326,7 +326,7 @@ unverändert.
   laufendes Turnier `.32`, Beitreten/Teilnehmer `.25`, Endstand `.2`.
   Der Assistent ist ein `position:fixed`-Overlay und bekommt
   `PHOTO_ROOT` + `PhotoBackdrop` genauso wie ein Screen.
-- **Assistent**: Kopf aus Ressort (Centauri), „Schritt n von 7“ (Inter
+- **Assistent**: Kopf aus Ressort (Centauri), „Schritt n von 7“ (Space Grotesk
   — Ziffern nie in Centauri) und sieben Segmenten statt eines Balkens
   (der alte rechnete mit `/6` und lief im letzten Schritt über).
   Schritt-Titel in der Antiqua, Standfirst kursiv. Fusszeile ohne
@@ -338,8 +338,8 @@ unverändert.
   statt Haken.
 - **Kartentitel** in der Antiqua (21 px), Sheet-Titel 24 px. Ausnahme:
   Titel, die eine Zahl *sind* („3 Turniere“ im Papierkorb), bleiben
-  Inter.
-- **Zahlen** in Inter mit `tabular-nums`. Das `ui-monospace` der Timer,
+  Space Grotesk.
+- **Zahlen** in Space Grotesk mit `tabular-nums`. Das `ui-monospace` der Timer,
   PINs und Spielstände ist raus.
 - **Kopf des laufenden Turniers**: Timer-Karte, Ansicht- und
   Historie-Knopf sind Glas mit weissem Glyph statt schwarz mit oranger
@@ -1054,7 +1054,7 @@ passt (`nameFs`: 88 px bis 6 Zeichen, dann 68 / 52 / 42).
   bei Gleichstand „punktgleich mit X — mehr Siege" (bzw.
   „siegegleich … — mehr Punkte").
 - **Drei Zahlen** in Glaskacheln: Punkte, Siege, Matches; die Zahl der
-  gewaehlten Wertung steht orange. Duenne Ziffern (Inter 300) wie die
+  gewaehlten Wertung steht orange. Duenne Ziffern (Space Grotesk 300) wie die
   laufende Timer-Kapsel.
 - **Die Tabelle klappt auf** („Ganze Tabelle", mit den Kugeln 2–4 als
   Vorschau), statt den Sieger nach oben zu schieben; daneben
@@ -1086,7 +1086,7 @@ und der Bestaetigungsschritt vor dem Beenden (`EndReviewSheet`).
 
 `Platz | Kugel | Name + „4 S · 0 N · 1 P“ | Wertung`
 
-- Der **Platz** ist eine duenne Ziffer (Inter 300, 24 px), 1–3 in den
+- Der **Platz** ist eine duenne Ziffer (Space Grotesk 300, 24 px), 1–3 in den
   Medaillenfarben (`LB_MEDAL`, dieselben wie `MedalIcon`), sonst
   gedimmt.
 - Die **Kugel** (`GlassOrb`, 30 px) traegt die Spielernummer (`num`,
@@ -1096,7 +1096,7 @@ und der Bestaetigungsschritt vor dem Beenden (`EndReviewSheet`).
   Namen. Die SP/S/N/P-Spalten mit Haarlinien sind raus — senkrecht
   verglichen hat sie niemand, gelesen wird von der Wertung her.
 - Die **Wertung** kommt als `children`, normalerweise `LbScore`: Zahl
-  in Inter 300 / 28 px, der Fuehrende orange, darunter die Einheit und
+  in Space Grotesk 300 / 28 px, der Fuehrende orange, darunter die Einheit und
   ggf. der `PauseBonusChip`. Im laufenden Turnier ist sie ein Knopf
   (Punkte anpassen) mit kleinem Stift vor der Einheit; angepasste
   Werte zeigen „angepasst“ statt der Einheit. Der Knopf greift per
@@ -1245,29 +1245,52 @@ in `:root`:
 
 ### Fonts
 
-Three families, exposed as theme-independent tokens (`--font-sans`, `--font-text`,
-`--font-display`) with the JS mirrors `T.fontSans`, `T.fontText`, `T.fontDisplay`
+Three families plus the Times of the headlines, exposed as theme-independent
+tokens (`--font-sans`, `--font-text`, `--font-display`, `--font-serif`) with
+the JS mirrors `T.fontSans`, `T.fontText`, `T.fontDisplay`, `T.fontSerif`
 plus the `.txt` / `.display` utility classes:
 
 | Token | Family | Loading |
 |---|---|---|
-| `T.fontSans` | Inter | `@fontsource/inter`, imported in [src/main.jsx](src/main.jsx) |
-| `T.fontText` | SF Pro | system font on iOS/macOS, **never bundled** — Apple does not license it for self-hosting. Elsewhere the stack falls through to the platform's own grotesque |
+| `T.fontSans` = `T.fontText` | **Space Grotesk**, 300–700 | `@fontsource/space-grotesk`, imported in [src/main.jsx](src/main.jsx) |
 | `T.fontDisplay` | Centauri | bundled from [src/fonts/](src/fonts/README.md) — **unicase** (lowercase renders as caps), German glyphs generated via [tools/extend-centauri.py](tools/extend-centauri.py) |
+| `T.fontSerif` | Times New Roman | system font, never bundled |
 
-Bundled fonts (Inter, Centauri) are self-hosted via npm + Vite, never a CDN —
-the CSP in `index.html` allows `font-src 'self' data:` only. Use the tokens instead of hardcoding
-family names, same rule as for colors.
+- **Space Grotesk ist die einzige Textschrift.** Bis hierher teilten
+  sich Inter (UI) und SF Pro (Vorspann, Kartentexte) die Arbeit; zwei
+  Grotesken nebeneinander sahen aus wie ein Versehen. `--font-text`
+  zeigt deshalb auf `--font-sans`, der Token bleibt nur, damit alte
+  Aufrufer gelten.
+- **Laufweite −4 %** (`--track: -0.04em`), und zwar **je Element aus
+  seiner eigenen Groesse** (`:where(*)` in theme.js). Nur auf `body`
+  gesetzt, wird `-0.04em` einmal zu −0,64 px und so vererbt — eine
+  30-px-Zahl bekam dann −2 %. Die Regel hat Spezifitaet null: ein
+  inline gesetztes `letterSpacing` gewinnt, und unter einem Element
+  mit eigenem `letterSpacing` wird weitervererbt.
+- **Die −4 % gelten nur fuer Space Grotesk.** Antiqua und Centauri
+  holen sich ihre Laufweite per Attribut-Selektor zurueck
+  (`[style*="--font-serif"]` → −0.011em, `[style*="--font-display"]`
+  → 0) — `T.fontSerif` steht als `var(--font-serif)` im style-Attribut,
+  daran haengt die Regel.
+- **Gewicht 700 ist das Maximum.** Die vielen `fontWeight:800/900` im
+  Code fallen auf 700 zurueck, ohne Fett-Attrappe.
+- **Keine Kursive im Schnitt.** Kursive Standfirsts werden vom Browser
+  schraeggestellt.
+- Das **Turnier-PDF** bettet weiter Inter ein (eigene TTFs unter
+  `src/fonts/pdf/`) — unabhaengig von der App-Schrift.
+
+Bundled fonts are self-hosted via npm + Vite, never a CDN — the CSP in
+`index.html` allows `font-src 'self' data:` only. Use the tokens instead of
+hardcoding family names, same rule as for colors.
 
 **Each family has one job** ("Sport meets Lifestyle" — the app should read
 like a sports magazine, not like a settings dialog):
 
 | Family | Used for | Never for |
 |---|---|---|
-| **Centauri** (`T.fontDisplay`) | Kickers/ressorts above a title, section labels (`SectionRule`), table column heads, long-form headings. Short words, generously letter-spaced (`letterSpacing` 1.6–3). | **Numbers** — the `0` is an empty rectangle and the `2` is barely distinguishable from a `Z`. Also anything longer than ~16 characters: at 15 px a line runs ~19 px per character, so it stops fitting 390 px screens. |
-| **SF Pro** (`T.fontText`, `.txt`) | Subtitles under a screen title, card descriptions, legal/long-form body copy. Italic for sublines, upright for body. | Labels, buttons, anything functional. |
-| **Inter** (`T.fontSans`) | Everything else — titles, body, buttons, all figures (with `fontVariantNumeric:'tabular-nums'`). | — |
-| **Times** (`T.fontSerif`) | **Headlines in the Home language** — italic bold for screen titles (`ScreenHeader`) and section heads (`SectionRule`, via `HEAD_SERIF`), upright bold for card titles. A system font (Times New Roman / Liberation Serif), never bundled. | Body copy, labels, buttons, figures — those stay Inter / SF Pro. |
+| **Centauri** (`T.fontDisplay`) | Kickers/ressorts above a title, section labels, table column heads. Short words, generously letter-spaced (`letterSpacing` 1.6–3). | **Numbers** — the `0` is an empty rectangle and the `2` is barely distinguishable from a `Z`. Also anything longer than ~16 characters: at 15 px a line runs ~19 px per character, so it stops fitting 390 px screens. |
+| **Times** (`T.fontSerif`) | **Headlines** — italic bold for screen titles (`ScreenHeader`) and section heads (`SectionRule`, via `HEAD_SERIF`), upright bold for card titles. | Body copy, labels, buttons, figures. |
+| **Space Grotesk** (`T.fontSans`) | Everything else — body, sublines, buttons, inputs, all figures (with `fontVariantNumeric:'tabular-nums'`). | — |
 
 **Libre Caslon (Regular, aufrecht) steht an genau einer Stelle: dem
 Turniernamen auf der Live-Karte** (`T.fontCard`, gebuendelt aus

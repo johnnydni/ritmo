@@ -4,18 +4,15 @@ import { createRoot } from "react-dom/client";
 // Script in index.html injiziert — das blockiert die CSP (script-src
 // 'self'). Im gebündelten Modul ist es CSP-konform und identisch.
 window.__BASE__ = import.meta.env.BASE_URL;
-// Inter — der freie SF-Pro-Zwilling; selbst gehostet (kein CDN, CSP-fest).
-// Gewichte passend zur App-Typo: 400/600/700 Text, 800/900 Display.
-import "@fontsource/inter/300.css"; // duenne Ziffern des laufenden Timers
-import "@fontsource/inter/400.css";
-import "@fontsource/inter/500.css";
-import "@fontsource/inter/600.css";
-import "@fontsource/inter/700.css";
-import "@fontsource/inter/800.css";
-import "@fontsource/inter/900.css";
-// SF Pro (--font-text) wird bewusst NICHT gebündelt: Apple lizenziert
-// die Schrift nur für Apple-Plattformen, wo sie ohnehin installiert
-// ist. Auf allen anderen greift die System-Grotesk aus dem Stack.
+// Space Grotesk — die Textschrift der ganzen App (Fliesstext, Knoepfe,
+// Zahlen); selbst gehostet (kein CDN, CSP-fest). 300 fuer die duennen
+// Ziffern von Timer und Tabelle, 700 ist das Maximum — ein 800/900 im
+// Code faellt auf 700 zurueck, ohne Fett-Attrappe.
+import "@fontsource/space-grotesk/300.css";
+import "@fontsource/space-grotesk/400.css";
+import "@fontsource/space-grotesk/500.css";
+import "@fontsource/space-grotesk/600.css";
+import "@fontsource/space-grotesk/700.css";
 // Centauri — Display-Schrift für Headlines/Akzente; liegt im Repo, weil
 // es sie weder bei Google Fonts noch bei Fontsource gibt. Versalschrift
 // mit ergänzten deutschen Zeichen, Details in src/fonts/README.md.

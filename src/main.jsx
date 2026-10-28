@@ -19,7 +19,7 @@ import "@fontsource/inter/900.css";
 // es sie weder bei Google Fonts noch bei Fontsource gibt. Versalschrift
 // mit ergänzten deutschen Zeichen, Details in src/fonts/README.md.
 import "./fonts/centauri.css";
-// Libre Caslon (Kursive) — nur der Turniername auf der Live-Karte, s. fonts/caslon.css.
+// Libre Caslon — nur der Turniername auf der Live-Karte, s. fonts/caslon.css.
 import "./fonts/caslon.css";
 import App from "./App.jsx";
 

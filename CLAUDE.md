@@ -688,6 +688,32 @@ dazu zwei PNGs.
 Wer die Form ändert, rechnet sie neu und prüft sie **im Satz**: bei
 22 px in der Tab-Bar und bei 150 px nebeneinander.
 
+### Die Linien-Palette (`LineIcon`, „Haarlinie")
+
+Die Glyphen der App sind **ein Satz** in [src/icons.jsx](src/icons.jsx)
+(`LN` + `LineIcon({name,size,color,sw})`): 24er-Raster, 1,25er
+Strich, runde Enden, nichts gefuellt — so fein wie die Antiqua
+daneben. Masse kommt vom Glaskreis, nicht vom Glyph.
+
+- Die alten Komponenten (`HomeIcon`, `TrophyIcon`, `EditIcon`,
+  `TrashIcon`, `ToolsIcon`, `SpeakerIcon`, `BellIcon`, `MenuIcon`,
+  `PersonGlyph`, `BookIcon`, `SearchIcon`, `StopwatchIcon`,
+  `PeopleIcon`, in App.jsx die Tab-Glyphen, `ShareIcon`,
+  `HistoryIcon`, `ScanGlyph`, die Home-Glyphen fuer Match, Kalender,
+  Route und der Live-teilen-Sender) **behalten ihre Namen** und
+  zeichnen nur noch mit `LineIcon` — die Aufrufer bleiben, wie sie
+  sind. Ein neuer Glyph kommt als Eintrag in `LN`, nicht als eigenes SVG.
+- **Unter ~19 px waechst der Strich mit** (`24/size`), sonst faellt
+  1,25 unter einen Geraetepixel und wird grau.
+- **Aktiv** heisst in der Tab-Leiste: derselbe Glyph mit 1,75er Strich
+  auf der hellen Pille — nicht gefuellt. Gefuellte Glyphen stehen nur
+  noch in Knoepfen, deren Flaeche selbst die Farbe ist (Play/Pause im
+  orangen Kreis).
+- Der Schlaeger (`PadelRacketIcon`) und die Modus-Glyphen bleiben
+  eigene Zeichnungen; sie sind Bildsprache, keine Werkzeugsymbole.
+- Turnier auf Home ist nur noch der Pokal — Schlaeger plus Pokal
+  schief uebereinander war das einzige zusammengesetzte Zeichen.
+
 ### `TournamentModeIcon` — die sieben Modus-Glyphen
 
 Steht in [src/icons.jsx](src/icons.jsx) und rechts auf den Format-Karten
@@ -1288,12 +1314,14 @@ like a sports magazine, not like a settings dialog):
 | **Inter** (`T.fontSans`) | Everything else — titles, body, buttons, all figures (with `fontVariantNumeric:'tabular-nums'`). | — |
 | **Times** (`T.fontSerif`) | **Headlines in the Home language** — italic bold for screen titles (`ScreenHeader`) and section heads (`SectionRule`, via `HEAD_SERIF`), upright bold for card titles. A system font (Times New Roman / Liberation Serif), never bundled. | Body copy, labels, buttons, figures — those stay Inter / SF Pro. |
 
-**Libre Caslon (kursiv) steht an genau einer Stelle: dem
+**Libre Caslon (Regular, aufrecht) steht an genau einer Stelle: dem
 Turniernamen auf der Live-Karte** (`T.fontCard`, gebuendelt aus
 [src/fonts/caslon.css](src/fonts/caslon.css), OFL). Sie lief kurz
 app-weit als Antiqua und ging wieder zurueck auf Times — sie ist eine
-Auszeichnung fuer den Namen, keine Hausschrift. Es gibt nur den einen
-Schnitt (Kursive 400), gemeldet fuer die Gewichte 100–900: ein
+Auszeichnung fuer den Namen, keine Hausschrift. Erst stand sie dort
+kursiv; **Turnier-Karten tragen keine Kursive** (Live-Karte, „Deine
+Spiele" auf Home, Schnellstarts im Turnier-Bereich — auch deren
+Unterzeilen sind aufrecht). Ein Schnitt, gemeldet fuer 100–900: ein
 `fontWeight:700` wuerde sonst eine Fett-Attrappe erzeugen.
 
 Die Live-Karte eines Turniers traegt **nur den Namen** (21 px, bis zu

@@ -37,7 +37,7 @@ export const T = {
   fontText:    'var(--font-text)',     // SF Pro — die ruhige Zweitstimme
   fontDisplay: 'var(--font-display)',  // Centauri — Headlines/Akzente
   fontSerif:   'var(--font-serif)',    // Times — Ueberschriften der Foto-Screens (s. CLAUDE.md)
-  fontCard:    'var(--font-card)',     // Libre Caslon kursiv — nur der Turniername auf der Live-Karte
+  fontCard:    'var(--font-card)',     // Libre Caslon (aufrecht) — nur der Turniername auf der Live-Karte
   /* Foto-Glas — siehe --glass* in CSS unten. */
   glass:     'var(--glass)',
   glassHi:   'var(--glassHi)',

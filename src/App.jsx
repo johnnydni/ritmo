@@ -2492,6 +2492,41 @@ function BibelTabIcon({active,size=22}){
    eigener, zweiter Schläger — ein Kreis mit drei Punkten und einem
    Strich dran —, während die Bibel und die Match-Zeilen einen dritten
    trugen. Es gibt jetzt genau einen. */
+/* Spieler als Glaskugel — statt farbiger Kreise mit Initiale. Klar
+   wie GLASS, oben links ein Glanzpunkt, unten rechts ein Hauch der
+   Spielerfarbe, innen ein dunkler Gegenschatten, der die Kugel rund
+   macht. Die Kontur morpht langsam (.orb, orbMorph), versetzt je
+   Kugel, damit ein Stapel nicht im Gleichtakt atmet. */
+function GlassOrb({name='',color,size=28,i=0,ring}){
+  const tint=color||'rgba(255,255,255,.4)';
+  return(
+    <span className="orb" aria-hidden="true" style={{width:size,height:size,flexShrink:0,
+      display:'inline-flex',alignItems:'center',justifyContent:'center',position:'relative',
+      borderRadius:'50%',animationDelay:`${-i*1.7}s`,
+      background:`radial-gradient(circle at 32% 26%, rgba(255,255,255,.85) 0, rgba(255,255,255,.22) ${size*.18}px, transparent ${size*.42}px),
+        radial-gradient(circle at 72% 82%, color-mix(in srgb, ${tint} 62%, transparent) 0, transparent 62%),
+        rgba(255,255,255,.07)`,
+      border:'1px solid rgba(255,255,255,.38)',
+      boxShadow:`inset 0 0 ${size*.18}px rgba(255,255,255,.28), inset ${-size*.1}px ${-size*.14}px ${size*.3}px rgba(0,0,0,.42), 0 3px 10px rgba(0,0,0,.35)${ring?`, 0 0 0 2px ${ring}`:''}`,
+      color:'#fff',fontSize:size*.4,fontWeight:700,lineHeight:1,
+      textShadow:'0 1px 3px rgba(0,0,0,.55)'}}>{(name.trim()[0]||'?').toUpperCase()}</span>
+  );
+}
+function OrbStack({players=[],max=4,size=28}){
+  const shown=players.slice(0,max), rest=players.length-shown.length;
+  return(
+    <span style={{display:'inline-flex',alignItems:'center'}}>
+      {shown.map((p,i)=>(
+        <span key={p.id??i} style={{marginLeft:i?-size*.3:0,display:'inline-flex'}}>
+          <GlassOrb name={p.name} color={p.color} size={size} i={i}/>
+        </span>
+      ))}
+      {rest>0&&<span style={{marginLeft:6,color:T.t2,fontSize:12.5,fontWeight:600,
+        fontVariantNumeric:'tabular-nums'}}>+{rest}</span>}
+    </span>
+  );
+}
+
 function LiveTabIcon({active,size=22}){
   return <PadelRacketIcon size={size} color={T.t1} active={active}/>;
 }
@@ -15072,6 +15107,87 @@ function TrashSheet({items=[],onClose,onRestore,onPurge,onEmpty}){
   );
 }
 
+/* Turnier in der Live-Liste. Das laufende bekommt die Buehne — Format,
+   Name gross, die Courts der Runde als Segmente (orange = fertig), die
+   Spieler als Glaskugeln und „Weiter". Beendete und Entwuerfe sind
+   schlanke Zeilen: dort will man nachsehen oder weitermachen, nicht
+   lesen. Die Karte selbst ist der Knopf (Swipe-Aktionen liegen
+   dahinter); „Weiter" ist nur die Zusage, kein zweiter Knopf. */
+function LiveTourneyCard({item}){
+  const t=item.tourney||{}; const pl=t.players||[];
+  const fmt=(FORMATS[t.format]||FORMATS.americano).name;
+  const press={onPointerDown:e=>e.currentTarget.style.background=T.glassHi,
+    onPointerUp:e=>e.currentTarget.style.background=T.glass,
+    onPointerLeave:e=>e.currentTarget.style.background=T.glass};
+  const name={fontFamily:T.fontCard,fontWeight:400,lineHeight:1.12,overflow:'hidden',
+    display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical'};
+  if(!item.finished&&!item.draft){
+    const rd=(t.rounds||[])[t.current||0]||{};
+    const cs=rd.courts||[]; const done=cs.filter(c=>c.done).length;
+    return(
+      <button onClick={item.onClick} {...press}
+        style={{width:'100%',...GLASS,borderRadius:26,padding:'18px 18px 16px',
+          cursor:'pointer',color:T.t1,textAlign:'left',display:'block',
+          transition:'background .15s'}}>
+        <span style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10}}>
+          <span style={{fontFamily:T.fontDisplay,fontSize:10.5,letterSpacing:2.2,color:T.o,
+            whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{fmt.toUpperCase()}</span>
+          <span style={{display:'inline-flex',alignItems:'center',gap:6,color:T.o,
+            fontSize:12,fontWeight:600,flexShrink:0}}>
+            <span style={{width:7,height:7,borderRadius:'50%',background:T.o,
+              boxShadow:`0 0 8px ${T.o}`}}/>läuft
+          </span>
+        </span>
+        <span style={{...name,fontSize:28,margin:'10px 0 8px'}}>{item.title}</span>
+        <span style={{display:'flex',alignItems:'center',gap:10,color:T.t2,fontSize:13}}>
+          <span style={{flexShrink:0,fontVariantNumeric:'tabular-nums'}}>Runde {(t.current||0)+1}</span>
+          {cs.length>0&&(
+            <span style={{flex:1,display:'flex',gap:4}} aria-label={`${done} von ${cs.length} Courts fertig`}>
+              {cs.map((c,k)=><span key={k} style={{flex:1,height:4,borderRadius:2,
+                background:c.done?T.o:'rgba(255,255,255,.16)'}}/>)}
+            </span>
+          )}
+          {cs.length>0&&<span style={{flexShrink:0,fontVariantNumeric:'tabular-nums'}}>{done}/{cs.length}</span>}
+        </span>
+        <span style={{display:'flex',alignItems:'center',gap:10,marginTop:14,paddingTop:13,
+          borderTop:`1px solid ${T.glassSep}`}}>
+          <OrbStack players={pl} max={4} size={28}/>
+          <span style={{flex:1,minWidth:0,color:T.t2,fontSize:13,whiteSpace:'nowrap',
+            overflow:'hidden',textOverflow:'ellipsis'}}>
+            {cs.length>0?`${cs.length} ${cs.length===1?'Court':'Courts'}`:`${pl.length} Spieler`}
+          </span>
+          <span style={{flexShrink:0,padding:'9px 16px',borderRadius:999,background:T.o,
+            color:'#000',fontSize:13,fontWeight:700}}>Weiter ›</span>
+        </span>
+      </button>
+    );
+  }
+  let sub;
+  if(item.draft) sub=`Entwurf · ${(FORMATS[t.format]||FORMATS.americano).name} · ${pl.length} Spieler`;
+  else{
+    const lb=calcLeaderboard(pl,t.rounds||[],t.winMode,t.pauseMode,t.pausePts)
+      .sort((a,b)=>t.winMode==='points'?b.totalPts-a.totalPts||b.totalWins-a.totalWins:b.totalWins-a.totalWins||b.totalPts-a.totalPts);
+    const d=t.createdAt?new Date(t.createdAt).toLocaleDateString('de-DE',{day:'numeric',month:'short'}):null;
+    sub=[lb[0]?`Sieger ${lb[0].name}`:fmt,d].filter(Boolean).join(' · ');
+  }
+  return(
+    <button onClick={item.onClick} {...press}
+      style={{width:'100%',...GLASS,borderRadius:20,padding:'13px 16px',display:'flex',
+        alignItems:'center',gap:14,cursor:'pointer',color:T.t1,textAlign:'left',
+        transition:'background .15s'}}>
+      <span style={{display:'inline-flex',flexShrink:0,opacity:item.draft?.7:1}}>
+        {item.draft?<EditIcon size={21} color={T.t1}/>:<TrophyIcon size={22} color={T.t1}/>}
+      </span>
+      <span style={{flex:1,minWidth:0}}>
+        <span style={{...name,fontSize:19,color:item.draft?T.t2:T.t1}}>{item.title}</span>
+        <span style={{display:'block',color:T.t2,fontSize:12.5,marginTop:3,whiteSpace:'nowrap',
+          overflow:'hidden',textOverflow:'ellipsis'}}>{sub}</span>
+      </span>
+      <ChevronRightIcon size={16} color={T.t3}/>
+    </button>
+  );
+}
+
 function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
   onDeleteMatch,onDeleteTourney,onOpenTourney,joinedSession,onLeaveJoined,onDeleteAll,
   trash=[],onRestoreTrash,onPurgeTrash,onEmptyTrash}){
@@ -15256,6 +15372,7 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
           <div key={item.id} className="fu" style={{animationDelay:`${Math.min(i*0.06,0.4)}s`}}>
             <SwipeableCard onDelete={item.onDelete} onShare={item.onShare}
               onMore={()=>setMoreItem(item)}>
+              {item.type==='tourney'?<LiveTourneyCard item={item}/>:
               <button onClick={()=>item.onClick?item.onClick():nav(item.navTo)}
                 style={{width:'100%',...GLASS,
                   borderRadius:20,padding:'16px 18px',display:'flex',alignItems:'center',gap:16,
@@ -15293,7 +15410,7 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
                     ?<span style={{color:T.t2,fontSize:10.5,fontWeight:800,letterSpacing:.3}}>Entwurf</span>
                     :<span style={{color:item.finished?T.t2:T.o,fontSize:11,fontWeight:700}}>{item.finished?'✓':'▶'}</span>}
                 </div>
-              </button>
+              </button>}
             </SwipeableCard>
           </div>
         ))}

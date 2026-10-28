@@ -818,6 +818,14 @@ input[type="time"]::-webkit-datetime-edit{padding:0;text-align:center;}
 .intro-line{animation:introUp .4s cubic-bezier(.22,.95,.34,1) both;}
 .intro-strike{transform-origin:left center;animation:introStrike .26s cubic-bezier(.4,0,.2,1) both;}
 .intro-punch{animation:introPunch .52s cubic-bezier(.22,1.2,.36,1) both;}
+/* Spieler als Glaskugel (GlassOrb): die Kontur atmet langsam, der
+   Glanz wandert mit — fluessiges Glas statt Aufkleber. */
+@keyframes orbMorph{
+  0%{border-radius:50% 50% 50% 50% / 50% 50% 50% 50%;background-position:0 0,0 0,0 0}
+  33%{border-radius:56% 44% 52% 48% / 46% 56% 44% 54%;background-position:2px 1px,-1px 1px,0 0}
+  66%{border-radius:46% 54% 47% 53% / 54% 45% 55% 46%;background-position:-1px 2px,1px -1px,0 0}
+  100%{border-radius:50% 50% 50% 50% / 50% 50% 50% 50%;background-position:0 0,0 0,0 0}}
+.orb{animation:orbMorph 7s ease-in-out infinite}
 @keyframes netPop{
   0%   {transform:scale(.35) rotate(-120deg); opacity:0;}
   55%  {transform:scale(1.18) rotate(8deg);   opacity:1;}

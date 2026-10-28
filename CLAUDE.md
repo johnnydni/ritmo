@@ -44,6 +44,7 @@ Pure / side-effect-free modules have been extracted from the original mega-file.
 | [src/courtLayout.js](src/courtLayout.js) | Raeumliche Anordnung der Courts: `defaultLayout`, `normLayout`, `layoutBounds`, `moveTo`, `rotateCourt`, `compactLayout`. | Reines Raster (4 x 5), keine React-Abhaengigkeit. Gezeichnet wird in `CourtMap` (App.jsx). |
 | [src/events.js](src/events.js) | `EVENTS` (die Termine der Startseite, von Hand gepflegt) + `upcomingEvents`, `eventLabel`, `eventIcs` (Kalenderdatei), `eventMapsUrl`. | Nur kommende Events werden gezeigt; neue Termine einfach anhaengen. |
 | [src/whatsNew.js](src/whatsNew.js) | `RELEASES` (die Ausgaben des Update-Newsletters) + `unseenRelease(seen)`. | Inhalt/Daten; die Regeln fuer neue Ausgaben stehen im Dateikopf. |
+| [src/tactics3d.js](src/tactics3d.js) | Das 3D-Taktik-Board der Bibel (three.js): `PLAYS`, `WEATHERS`, `createBoard(canvas,opts)`, `webglOk()`. | Wird per `import()` erst beim Oeffnen geladen (eigener Chunk, ~142 kB gz). UI-Schale ist `TacticsBoard` in App.jsx. |
 | [src/scenes.jsx](src/scenes.jsx) | Die bewegten Grafiken der Bibel: `useSceneClock` (Zeitleiste, spielt nur im Bild), Bausteine (`Court`, `Orb`, `Ball`, `Tag`, `Steps`) und je Kapitel eine `Scene*`. | Siehe „Die Bibel“. Reine Darstellung, kein App-State. |
 | [src/skillDescriptions.js](src/skillDescriptions.js) | `SKILL_DESCRIPTIONS` — text for the RITMO DNA Skill tier card. | Translation-ready content. |
 | [src/supabase.js](src/supabase.js) | Older standalone tournament-sharing helper (legacy). | Currently unused by the active flow. |
@@ -466,6 +467,36 @@ Neu gebaut als Magazin, nicht nur umgefaerbt.
   `Hl`), Akkordeon mit Plus, das zum Kreuz kippt. Die Antworten nennen
   Wege in der App so, wie sie dort beschriftet sind — wer einen Screen
   umbenennt, sucht hier mit.
+
+### Das Taktik-Board (`TacticsBoard`, [src/tactics3d.js](src/tactics3d.js))
+
+Ein 3D-Court in der Bibel (Karte „Taktik-Board“, Route `tactics`), im
+Stil eines Indie-Spiels: Toon-Shading mit drei Stufen, schwarze
+Konturen (inverted hull), eine schwebende Insel mit Clubhaus, zweitem
+Court, Teich, Bach samt Wasserfall, Windmuehle, Ballon, Wolken, Voegeln
+und Nachbarinseln. Wetter: Sonne, Regen, Nacht, Nebel, Schnee.
+
+- **three.js liegt nicht im Startbundle.** `TacticsBoard` holt
+  `tactics3d.js` per `import()` und wartet auf `document.fonts.ready`
+  (die Nummern-Sprites werden auf Canvas gesetzt). Ohne WebGL steht
+  „Kein 3D." statt einer leeren Flaeche.
+- **Datenmodell**: ein Spielzug ist `{id,name,sub,steps}`, ein Schritt
+  `{label, p:[[x,z]×4], b:[x,y,z], h}` — vier Spielerpositionen in
+  Metern (Netz bei z=0), Ballposition und Bogenhoehe zum naechsten
+  Schritt. Spieler bewegen sich mit Easing, der Ball auf `4h·u(1−u)`.
+- **Bearbeiten**: Spieler oder Ball ziehen aendert den aktuellen
+  Schritt (Haelften werden erzwungen), leere Flaeche ziehen dreht die
+  Kamera, Pinch/Rad zoomt. „+ Schritt“ bis 8, „Löschen“ bis 2,
+  „Zurück“ stellt den mitgelieferten Spielzug wieder her.
+- Gespeichert: `ritmo_tactics` (Aenderungen je Spielzug-id),
+  `ritmo_tactics_wx`, `ritmo_tactics_play`, `ritmo_tactics_hint`.
+- **Lichtmasten zwischen Kamera und Court blenden aus** — sonst steht
+  in der Schraegsicht ein Mast mitten im Spielzug.
+- Die Schleife rendert nicht, solange `document.hidden`; `dispose()`
+  raeumt Geometrien, Materialien, Observer und Listener ab. Wer etwas
+  in die Szene haengt, haengt es in dieselbe Aufraeumliste.
+- Testen in Playwright nur mit SwiftShader
+  (`--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader`).
 
 ### Papierkorb (`ritmo_trash`)
 

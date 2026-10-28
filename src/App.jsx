@@ -7237,14 +7237,12 @@ function TimerCard({minutes,setMinutes,running,secsLeft,finished,onStart,onPause
       hasStarted={hasStarted}
       onStart={onStart} onPause={onPause} onReset={onReset}/>;
   }
-  const totalSecs=minutes*60;
-  const progress=totalSecs?secsLeft/totalSecs:0;
   const fmtTime=(s)=>`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
 
   // 3 states: idle (picker visible), running/paused (countdown), finished
   return(
-    <div style={{...GLASS,borderRadius:22,
-      padding:'14px 16px',transition:'border-color .25s'}}>
+    <div style={{...(hasStarted&&!finished?{borderRadius:999}:{...GLASS,borderRadius:22}),
+      padding:'14px 16px'}}>
 
       {/* Eingestellt wird wie die Rundendauer im Turnier-Konfigurator:
           dieselbe Skala, dieselbe Ablesung. Start sitzt links auf der
@@ -7266,38 +7264,38 @@ function TimerCard({minutes,setMinutes,running,secsLeft,finished,onStart,onPause
         </div>
       )}
 
+      {/* Laufend wie der iOS-Timer (Live-Aktivitaet): schwarze Kapsel,
+          links Pause/Weiter im orange getoenten Kreis und Abbrechen im
+          grauen, rechts „Timer" und die Zeit in duennen orangen
+          Ziffern. Kein Fortschrittsbalken — die Zahl sagt es. Die
+          Kapsel ist schwarz und nicht --bg: sie richtet sich nach dem
+          Vorbild, nicht nach dem Theme (wie die Tinte im Weiter-Knopf). */}
       {hasStarted&&!finished&&(
-        <div style={{position:'relative',margin:-16,padding:16,
-          border:`1px solid ${T.o}`,borderRadius:16,
-          overflow:'hidden'}}>
-          {/* Progress fill — shrinks as time runs out (tournament pattern) */}
-          <div style={{position:'absolute',left:0,top:0,bottom:0,
-            width:`${progress*100}%`,
-            background:'var(--oSoft)',
-            transition:'width 1s linear'}}/>
-          <div style={{position:'relative',zIndex:1,
-            display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-            <div style={{fontSize:34,fontWeight:800,color:T.o,
-              fontVariantNumeric:'tabular-nums',letterSpacing:1.5}}>
-              {fmtTime(secsLeft)}
-            </div>
-            <div style={{display:'flex',gap:8}}>
-              <button onClick={running?onPause:onStart}
-                aria-label={running?'Timer pausieren':'Timer fortsetzen'}
-                title={running?'Timer pausieren':'Timer fortsetzen'}
-                style={{width:42,height:42,borderRadius:'50%',
-                  background:T.o,border:'none',color:T.bg,
-                  fontSize:16,fontWeight:800,cursor:'pointer',
-                  display:'flex',alignItems:'center',justifyContent:'center'}}>
-                {running?<PauseGlyph size={16} color={T.bg}/>:<PlayGlyph size={16} color={T.bg}/>}
-              </button>
-              <button onClick={onReset} aria-label="Timer zurücksetzen"
-                style={{width:42,height:42,borderRadius:'50%',
-                  border:`1px solid ${T.glassLine}`,background:T.glassHi,
-                  color:T.t1,fontSize:16,cursor:'pointer'}}>
-                ↺
-              </button>
-            </div>
+        <div style={{margin:'-14px -16px',padding:'14px 22px 14px 14px',borderRadius:999,
+          background:'#000',display:'flex',alignItems:'center',gap:10}}>
+          <button onClick={running?onPause:onStart}
+            aria-label={running?'Timer pausieren':'Timer fortsetzen'}
+            title={running?'Timer pausieren':'Timer fortsetzen'}
+            style={{width:52,height:52,borderRadius:'50%',flexShrink:0,border:'none',
+              background:'color-mix(in srgb, var(--o) 34%, transparent)',cursor:'pointer',
+              display:'flex',alignItems:'center',justifyContent:'center'}}>
+            {running?<PauseGlyph size={22} color={T.o}/>:<PlayGlyph size={22} color={T.o}/>}
+          </button>
+          <button onClick={onReset} aria-label="Timer abbrechen" title="Timer abbrechen"
+            style={{width:52,height:52,borderRadius:'50%',flexShrink:0,border:'none',
+              background:'rgba(255,255,255,.2)',cursor:'pointer',
+              display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff"
+              strokeWidth="2.6" strokeLinecap="round" aria-hidden="true">
+              <path d="M5 5l14 14M19 5L5 19"/>
+            </svg>
+          </button>
+          <div style={{flex:1,minWidth:0,display:'flex',alignItems:'baseline',
+            justifyContent:'flex-end',gap:8,color:T.o,opacity:running?1:.6,
+            transition:'opacity .25s'}}>
+            <span style={{fontSize:16,fontWeight:500}}>Timer</span>
+            <span style={{fontSize:46,fontWeight:300,lineHeight:1,letterSpacing:-.5,
+              fontVariantNumeric:'tabular-nums'}}>{fmtTime(secsLeft)}</span>
           </div>
         </div>
       )}

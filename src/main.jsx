@@ -6,6 +6,7 @@ import { createRoot } from "react-dom/client";
 window.__BASE__ = import.meta.env.BASE_URL;
 // Inter — der freie SF-Pro-Zwilling; selbst gehostet (kein CDN, CSP-fest).
 // Gewichte passend zur App-Typo: 400/600/700 Text, 800/900 Display.
+import "@fontsource/inter/300.css"; // duenne Ziffern des laufenden Timers
 import "@fontsource/inter/400.css";
 import "@fontsource/inter/500.css";
 import "@fontsource/inter/600.css";

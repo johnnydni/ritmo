@@ -11575,7 +11575,7 @@ function MatchSlotGrid({court,playerById,numOf,meName,net=null,avatar=52,innerA=
     <div key={pos} style={{display:'flex',flexDirection:'column',alignItems:'center',
       justifyContent:'center',gap:7,padding:'14px 6px',minWidth:0,height:'100%'}}>
       <GlassOrb name={nm(id)} label={numOf?.(id)??undefined} size={avatar}
-        i={pos} ring={isMe(id)?T.o:undefined}/>
+        ring={isMe(id)?T.o:undefined}/>
       <div style={{color:isMe(id)?T.o:T.t1,fontSize:13,fontWeight:isMe(id)?800:600,
         maxWidth:'100%',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
         textAlign:'center'}}>

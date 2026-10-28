@@ -32,6 +32,9 @@ import { RINGS, CUES, playRing, playCue, unlockAudio } from "./audio.js";
 import { CL_COLS, CL_ROWS, defaultLayout, normLayout, layoutBounds, moveTo,
   rotateCourt, compactLayout } from "./courtLayout.js";
 import { exportTourneyPdf } from "./tourneyPdf.js";
+import { useInView, SceneCourt, SceneServe, SceneWalls, SceneScore, SceneAmericano,
+  SceneMexicano, SceneKing, ScenePause, SceneFormation, SceneHands, SceneShotChoice,
+  SceneRacket, SceneBalls, SceneFairPlay } from "./scenes.jsx";
 import { RELEASES, unseenRelease } from "./whatsNew.js";
 import { auth } from "./auth.js";
 import { readNamesFromImage, releaseOcr } from "./ocr.js";
@@ -19866,275 +19869,54 @@ function RulesDetailLayout({icon,title,sub,visual,children,onBackToRules,onHome,
   );
 }
 
-/* ───── Animated visual: Padel Court diagram (portrait, 20m × 10m) ───── */
-function CourtVisual(){
-  return(
-    <svg viewBox="0 0 140 220" style={{width:'auto',maxHeight:280,height:'70vh',display:'block'}}>
-      <defs>
-        <style>{`
-          .court-line { stroke-dasharray: 600; stroke-dashoffset: 600;
-            animation: drawLine 1.4s ease forwards; }
-          .court-line.delay1 { animation-delay: .3s; }
-          .court-line.delay2 { animation-delay: .6s; }
-          .court-line.delay3 { animation-delay: .9s; }
-          @keyframes drawLine { to { stroke-dashoffset: 0; } }
-          @keyframes fadeIn2 { from { opacity: 0 } to { opacity: 1 } }
-          .court-label { opacity: 0; animation: fadeIn2 .6s ease forwards; animation-delay: 1.2s; }
-        `}</style>
-      </defs>
-      {/* Court outline — 100 wide × 180 tall (10m × 20m proportion) */}
-      <rect className="court-line" x="20" y="20" width="100" height="180" rx="2"
-        fill="rgba(255,255,255,0.04)" stroke="var(--t1)" strokeWidth="1.6"/>
-      {/* Net — horizontal across middle (long axis split) */}
-      <line className="court-line delay1" x1="20" y1="110" x2="120" y2="110"
-        stroke="var(--o)" strokeWidth="2" strokeDasharray="3 2"/>
-      {/* Service lines — 3m from net = ~27 units (out of 90 per half) */}
-      <line className="court-line delay2" x1="20" y1="83" x2="120" y2="83"
-        stroke="var(--t1)" strokeWidth="1" opacity="0.6"/>
-      <line className="court-line delay2" x1="20" y1="137" x2="120" y2="137"
-        stroke="var(--t1)" strokeWidth="1" opacity="0.6"/>
-      {/* Center service line — vertical between service lines */}
-      <line className="court-line delay3" x1="70" y1="83" x2="70" y2="137"
-        stroke="var(--t1)" strokeWidth="1" opacity="0.6"/>
-      {/* Labels */}
-      <text className="court-label" x="70" y="14" textAnchor="middle"
-        fontSize="7" fill="var(--t3)" letterSpacing="1.5">10 m</text>
-      <text className="court-label" x="11" y="113" textAnchor="middle"
-        fontSize="7" fill="var(--t3)" letterSpacing="1.5"
-        transform="rotate(-90 11 113)">20 m</text>
-      <text className="court-label" x="70" y="214" textAnchor="middle"
-        fontSize="7" fill="var(--o)" fontWeight="700" letterSpacing="2">NETZ</text>
-    </svg>
-  );
-}
-
-/* ───── Bo3 score hierarchy pyramid ───── */
-function Bo3HierarchyVisual(){
-  const rows=[
-    {label:'MATCH',sub:'Best of 3',color:T.o,bars:[100]},
-    {label:'SÄTZE',sub:'2 zum Sieg',color:T.t1,bars:[48,48]},
-    {label:'SPIELE',sub:'6 (+2 Vorsprung)',color:T.t2,bars:[16,16,16,16,16,16]},
-    {label:'PUNKTE',sub:'0/15/30/40',color:T.t3,bars:[10,10,10,10]},
-  ];
-  return(
-    <div style={{width:'100%',maxWidth:300,display:'flex',flexDirection:'column',gap:10}}>
-      {rows.map((row,i)=>(
-        <div key={row.label} className="fu" style={{animationDelay:`${i*.15}s`}}>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',
-            marginBottom:4}}>
-            <div style={{color:row.color,fontSize:11,fontWeight:700,letterSpacing:1.5}}>
-              {row.label}</div>
-            <div style={{color:T.t3,fontSize:10,fontWeight:500}}>{row.sub}</div>
-          </div>
-          <div style={{display:'flex',gap:3}}>
-            {row.bars.map((w,j)=>(
-              <div key={j} style={{flex:w,height:8,borderRadius:4,
-                background:row.color,opacity:0.85-i*0.15}}/>
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/* ───── Americano rotation diagram ───── */
-function AmericanoRotationVisual(){
-  const players=[
-    {label:'A',x:60,y:30,delay:0},
-    {label:'B',x:140,y:60,delay:.15},
-    {label:'C',x:60,y:130,delay:.3},
-    {label:'D',x:140,y:160,delay:.45},
-  ];
-  return(
-    <svg viewBox="0 0 200 200" style={{width:'100%',maxWidth:240,height:'auto'}}>
-      <defs>
-        <marker id="rotArr" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
-          <polygon points="0 0, 6 3, 0 6" fill="var(--o)"/>
-        </marker>
-        <style>{`
-          .rot-player { animation: rotPop .5s ease backwards; }
-          @keyframes rotPop { from { opacity: 0; transform: scale(.6); } to { opacity: 1; transform: scale(1); } }
-        `}</style>
-      </defs>
-      {/* Rotation arrows in a soft circular pattern */}
-      <path d="M 85 35 Q 130 30 145 70" stroke="var(--o)" strokeWidth="1.4"
-        fill="none" markerEnd="url(#rotArr)" opacity="0.7"/>
-      <path d="M 145 95 Q 130 130 90 130" stroke="var(--o)" strokeWidth="1.4"
-        fill="none" markerEnd="url(#rotArr)" opacity="0.7"/>
-      <path d="M 80 135 Q 110 160 130 160" stroke="var(--o)" strokeWidth="1.4"
-        fill="none" markerEnd="url(#rotArr)" opacity="0.7"/>
-      <path d="M 145 130 Q 165 100 90 35" stroke="var(--o)" strokeWidth="1.4"
-        fill="none" strokeDasharray="3 2" opacity="0.4"/>
-
-      {players.map(p=>(
-        <g key={p.label} className="rot-player" style={{transformOrigin:`${p.x}px ${p.y}px`,
-          animationDelay:`${p.delay}s`}}>
-          <circle cx={p.x} cy={p.y} r="18" fill="var(--card2)"
-            stroke="var(--o)" strokeWidth="1.5"/>
-          <text x={p.x} y={p.y+1} textAnchor="middle" dominantBaseline="middle"
-            fontSize="14" fontWeight="800" fill="var(--t1)">{p.label}</text>
-        </g>
-      ))}
-      <text x="100" y="195" textAnchor="middle" fontSize="7"
-        fill="var(--t3)" letterSpacing="2" fontWeight="600">ZUFÄLLIGE PAARUNGEN PRO RUNDE</text>
-    </svg>
-  );
-}
-
-/* ───── Mexicano pairing diagram ───── */
-function MexicanoPairingVisual(){
-  const ranks=[1,2,3,4,5,6,7,8];
-  return(
-    <svg viewBox="0 0 280 140" style={{width:'100%',maxWidth:340,height:'auto'}}>
-      <defs>
-        <style>{`
-          .pair-line { stroke-dasharray: 200; stroke-dashoffset: 200;
-            animation: drawP 1s ease forwards; }
-          @keyframes drawP { to { stroke-dashoffset: 0; } }
-        `}</style>
-      </defs>
-      {/* Court labels */}
-      <text x="65" y="14" textAnchor="middle" fontSize="9" fontWeight="700"
-        fill="var(--o)" letterSpacing="1.5">COURT 1</text>
-      <text x="215" y="14" textAnchor="middle" fontSize="9" fontWeight="700"
-        fill="var(--o)" letterSpacing="1.5">COURT 2</text>
-
-      {/* Rank circles in a row */}
-      {ranks.map((r,i)=>{
-        const x=20+i*32;
-        return(
-          <g key={r}>
-            <circle cx={x} cy="40" r="13" fill="var(--card2)"
-              stroke="var(--o)" strokeWidth="1.5"/>
-            <text x={x} y="41" textAnchor="middle" dominantBaseline="middle"
-              fontSize="11" fontWeight="800" fill="var(--t1)">{r}</text>
-            <text x={x} y="70" textAnchor="middle" fontSize="7"
-              fill="var(--t3)" letterSpacing=".5">{r===1?'TOP':r===8?'LAST':''}</text>
-          </g>
-        );
-      })}
-
-      {/* Pairing arcs (1-4 vs 2-3, 5-8 vs 6-7) */}
-      <path className="pair-line" d="M 20 53 Q 50 100 116 53"
-        stroke="var(--o)" strokeWidth="1.7" fill="none" opacity="0.85"
-        style={{animationDelay:'.2s'}}/>
-      <path className="pair-line" d="M 52 53 Q 70 80 84 53"
-        stroke="var(--blue)" strokeWidth="1.7" fill="none" opacity="0.85"
-        style={{animationDelay:'.4s'}}/>
-      <path className="pair-line" d="M 148 53 Q 180 100 244 53"
-        stroke="var(--o)" strokeWidth="1.7" fill="none" opacity="0.85"
-        style={{animationDelay:'.6s'}}/>
-      <path className="pair-line" d="M 180 53 Q 200 80 212 53"
-        stroke="var(--blue)" strokeWidth="1.7" fill="none" opacity="0.85"
-        style={{animationDelay:'.8s'}}/>
-
-      {/* Legend */}
-      <g transform="translate(0,105)">
-        <rect x="20" y="0" width="14" height="3" fill="var(--o)" rx="1.5"/>
-        <text x="40" y="3" fontSize="8" fill="var(--t2)" dominantBaseline="middle">Team 1 (1+4)</text>
-        <rect x="120" y="0" width="14" height="3" fill="var(--blue)" rx="1.5"/>
-        <text x="140" y="3" fontSize="8" fill="var(--t2)" dominantBaseline="middle">Team 2 (2+3)</text>
-      </g>
-      <text x="140" y="128" textAnchor="middle" fontSize="7"
-        fill="var(--t3)" letterSpacing="1.5" fontWeight="600">
-        TOP + LOW  vs  MITTEN-PAARUNG → AUSGEGLICHENE MATCHES
-      </text>
-    </svg>
-  );
-}
-
-/* ───── Pausen-Pool visual ───── */
-function PausenPoolVisual(){
-  const players=['A','B','C','D','E'];
-  const paused=2; // E (index 4) and C (index 2) — show one
-  return(
-    <svg viewBox="0 0 240 130" style={{width:'100%',maxWidth:300,height:'auto'}}>
-      <defs>
-        <style>{`
-          .pulse { animation: pulse 2s ease infinite; transform-origin: center; }
-          @keyframes pulse { 0%,100% { opacity:0.5; transform: scale(1); } 50% { opacity: 1; transform: scale(1.08); } }
-        `}</style>
-      </defs>
-      <text x="120" y="12" textAnchor="middle" fontSize="8" fontWeight="700"
-        fill="var(--o)" letterSpacing="1.5">5 SPIELER, 1 COURT</text>
-
-      {/* Active 4 players */}
-      <text x="55" y="34" textAnchor="middle" fontSize="6"
-        fill="var(--t3)" letterSpacing="1">SPIELT</text>
-      {[0,1,2,3].map(i=>{
-        const x=20+i*30;
-        const isPlayingNow=i!==paused;
-        return(
-          <g key={i}>
-            <circle cx={x} cy="55" r="11" 
-              fill={isPlayingNow?'var(--card2)':'transparent'}
-              stroke={isPlayingNow?'var(--o)':'var(--t4)'}
-              strokeWidth="1.5"
-              strokeDasharray={isPlayingNow?'0':'2 2'}/>
-            <text x={x} y="56" textAnchor="middle" dominantBaseline="middle"
-              fontSize="10" fontWeight="800"
-              fill={isPlayingNow?'var(--t1)':'var(--t3)'}>{players[i]}</text>
-          </g>
-        );
-      })}
-
-      {/* Paused player on right */}
-      <text x="195" y="34" textAnchor="middle" fontSize="6"
-        fill="var(--t3)" letterSpacing="1">PAUSIERT</text>
-      <g className="pulse" style={{transformOrigin:'195px 55px'}}>
-        <circle cx="195" cy="55" r="13"
-          fill="var(--oSoft)" stroke="var(--o)" strokeWidth="1.8"/>
-        <text x="195" y="56" textAnchor="middle" dominantBaseline="middle"
-          fontSize="11" fontWeight="800" fill="var(--o)">{players[paused]}</text>
-      </g>
-
-      {/* Rotation arrow */}
-      <path d="M 170 55 Q 130 95 90 80" stroke="var(--o)" strokeWidth="1.4"
-        strokeDasharray="3 2" fill="none" opacity="0.55"/>
-      <polygon points="92 76, 86 79, 90 82" fill="var(--o)" opacity="0.55"/>
-
-      <text x="120" y="115" textAnchor="middle" fontSize="7"
-        fill="var(--t3)" letterSpacing="1.5" fontWeight="600">
-        ROTATION: WER AM WENIGSTEN PAUSIERT HAT, SITZT AUS
-      </text>
-    </svg>
-  );
-}
-
 /* ───── Schlagarten: Strichzeichnungen ─────
    Die Zeichnungen liegen als SVG unter public/assets/shots/ (schwarz
    auf transparent) und werden als Maske gesetzt, nicht als <img>: so
    faerbt sie T.t1 und sie folgen dem Theme, statt als schwarze Linie
    auf dunklem Glas zu verschwinden.
 ─────────────────────────────────────────────────────────────────── */
-function ShotArt({src,h=170,label}){
+function ShotArt({src,h=170,label,delay=0}){
   const url=`url(${getAssetBase()}assets/shots/${src}.svg)`;
+  const[ref,seen]=useInView();
   return(
-    <div style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',alignItems:'center',gap:6}}>
+    <div ref={ref} style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',alignItems:'center',gap:6}}>
+      {/* Auftritt wie eine Feder, die die Linie zieht: ein weicher Rand
+          wandert einmal von links nach rechts. Maske auf Maske geht
+          nicht (die Zeichnung IST schon die Maske), deshalb clip-path. */}
       <div role="img" aria-label={label||src} style={{width:'100%',height:h,background:T.t1,
         WebkitMaskImage:url,maskImage:url,WebkitMaskRepeat:'no-repeat',maskRepeat:'no-repeat',
         WebkitMaskPosition:'center',maskPosition:'center',
-        WebkitMaskSize:'contain',maskSize:'contain'}}/>
+        WebkitMaskSize:'contain',maskSize:'contain',
+        clipPath:seen?'inset(0 0 0 0)':'inset(0 100% 0 0)',
+        transition:`clip-path 1.4s var(--ease-out-quint) ${delay}ms`}}/>
       {label&&<div className="display" style={{fontSize:10,letterSpacing:1.8,color:T.t3,
         textTransform:'uppercase'}}>{label}</div>}
     </div>
   );
 }
 
-/* ───── Rules — Übersicht ───── */
+/* ───── Rules — Übersicht ─────
+   Zehn Kapitel: erst der Platz und die Regeln des Spiels, dann die
+   Formate, wie RITMO sie spielt, zum Schluss Begriffe und Fair Play.
+   Die Reihenfolge steht ein zweites Mal in App() (RULES_ORDER) —
+   beide aus derselben Liste. */
+const RULES_CHAPTERS=[
+  {id:'court',     icon:<CourtsIcon size={24} color={T.t1}/>,title:'Court & Ausrüstung', sub:'Maße, Wände, Schläger, Ball'},
+  {id:'aufschlag', icon:<TargetIcon size={24} color={T.o}/>, title:'Aufschlag',          sub:'Ablauf, Let, zwei Versuche'},
+  {id:'waende',    icon:<LineIcon name="scan" size={24} color={T.t1}/>,title:'Wände & Ballwechsel',sub:'Erst Boden, dann Wand'},
+  {id:'zaehlung',  icon:<ScrollIcon size={24} color={T.o}/>, title:'Zählweise',          sub:'Einstand, Golden Point, Tiebreak'},
+  {id:'americano', icon:<TrophyIcon size={26}/>,             title:'Americano',          sub:'Wechselnde Partner, eigene Punkte'},
+  {id:'mexicano',  icon:<TargetIcon size={24} color={T.o}/>, title:'Mexicano',           sub:'Die Tabelle bestimmt die Paarung'},
+  {id:'formate',   icon:<TrophyIcon size={26}/>,             title:'Weitere Formate',    sub:'Teams, Mixed, King of the Court, K.-o.'},
+  {id:'rotation',  icon:<StopwatchIcon size={24} color={T.o}/>,title:'Pausen & Wertung', sub:'Wer aussetzt und was es dafür gibt'},
+  {id:'glossar',   icon:<BookIcon size={24}/>,               title:'Schlagarten',        sub:'Bandeja, Víbora, Smash & mehr'},
+  {id:'fairplay',  icon:<HandIcon size={24} color={T.o}/>,   title:'Fair Play',          sub:'Was auf dem Platz dazugehört'},
+];
+const RULES_ORDER=RULES_CHAPTERS.map(c=>c.id);
 function Rules({onHome,onSelect,alreadyRead,onToggleRead,onBibel}){
-  const sections=[
-    {id:'basics',    icon:<TennisBallIcon size={24}/>,title:'Padel-Grundregeln', sub:'Aufschlag, Wände, Punktezählung'},
-    {id:'bo3',       icon:<ScrollIcon size={24} color={T.o}/>,title:'Best of 3',         sub:'Klassisches Tennis-Scoring, Tiebreak bei 6:6'},
-    {id:'americano', icon:<TrophyIcon size={26}/>,title:'Americano',         sub:'Wechselnde Partner, individuelle Punkte'},
-    {id:'mexicano',  icon:<TargetIcon size={24} color={T.o}/>,title:'Mexicano',          sub:'Ranking-basierte Paarungen ab Runde 2'},
-    {id:'rotation',  icon:<StopwatchIcon size={24} color={T.o}/>,title:'Pausen & Rotation', sub:'Fairer Rotations-Pool bei ungeraden Spielern'},
-    {id:'glossar',   icon:<BookIcon size={24}/>,title:'Schlagarten',       sub:'Bandeja, Víbora, Smash & mehr'},
-  ];
   return(
     <WissenList title="Regelwerk" subtitle="Padel-Regeln, Formate, Begriffe."
-      icon={<BookIcon size={32} color={T.t1}/>} sections={sections} onSelect={onSelect}
+      icon={<BookIcon size={32} color={T.t1}/>} sections={RULES_CHAPTERS} onSelect={onSelect}
       alreadyRead={alreadyRead} onToggleRead={onToggleRead} onHome={onHome} onBibel={onBibel}/>
   );
 }
@@ -20185,147 +19967,222 @@ function WissenList({title,subtitle,icon,sections,onSelect,alreadyRead,onToggleR
   );
 }
 
-/* ───── Detail screens (one per section) ───── */
-function RulesBasics({onBackToRules,onHome,onNext,onPrev,currentIdx,totalSections}){
+/* ───── Kapitel ─────
+   Jedes Kapitel: eine Szene aus src/scenes.jsx oben, darunter Text aus
+   den vier Bausteinen (RulesH, RulesP, RulesUl, RulesDef). Was RITMO
+   selbst tut, steht in der Sprache der App-Knoepfe — wer dort etwas
+   umbenennt, sucht hier mit. */
+const RCH=id=>RULES_CHAPTERS.find(c=>c.id===id);
+function RulesChapter({id,visual,children,...nav}){
+  const c=RCH(id);
   return(
-    <RulesDetailLayout icon={<TennisBallIcon size={32}/>} title="Padel-Grundregeln"
-      sub="Aufschlag, Wände, Punktezählung"
-      visual={<CourtVisual/>}
-      onBackToRules={onBackToRules} onHome={onHome}
-      onNext={onNext} onPrev={onPrev}
-      currentIdx={currentIdx} totalSections={totalSections}>
-      <RulesH>Platz & Format</RulesH>
-      <RulesP>Padel-Court ist 20 m × 10 m, umschlossen von 3 m Glas und 4 m Drahtgitter. Gespielt wird ausschließlich im Doppel — 2 vs 2.</RulesP>
-      <RulesH>Aufschlag</RulesH>
+    <RulesDetailLayout icon={c.icon} title={c.title} sub={c.sub} visual={visual}
+      onBackToRules={nav.onBackToRules} onHome={nav.onHome}
+      onNext={nav.onNext} onPrev={nav.onPrev}
+      currentIdx={nav.currentIdx} totalSections={nav.totalSections}>
+      {children}
+    </RulesDetailLayout>
+  );
+}
+const RulesB=({children})=><strong style={{color:T.t1,fontWeight:700}}>{children}</strong>;
+
+function RulesCourt(nav){
+  return(
+    <RulesChapter id="court" visual={<SceneCourt/>} {...nav}>
+      <RulesH>Der Platz</RulesH>
       <RulesUl items={[
-        'Unterhand-Aufschlag — Treffpunkt unterhalb der Hüfte',
-        'Ball muss vor dem Schlag einmal am Boden aufspringen',
-        'Erstes Aufschlag-Ziel: diagonales Service-Feld der Gegenseite',
-        'Zwei Versuche pro Punkt (wie Tennis)',
-        'Seitenwechsel innerhalb des Spiels: rechts → links → rechts …',
+        '20 × 10 m, durch das Netz in zwei Hälften geteilt',
+        'Netz: 88 cm hoch in der Mitte, 92 cm an den Pfosten',
+        'Aufschlaglinie 6,95 m vom Netz — also gut 3 m vor der Rückwand',
+        'Die Mittellinie teilt das Aufschlagfeld in rechts und links',
       ]}/>
-      <RulesH>Wandspiel</RulesH>
-      <RulesP>Nach dem Boden-Aufprall darf der Ball die eigenen Wände berühren und bleibt im Spiel. Direkter Wandkontakt vor dem Boden = Punkt für den Gegner.</RulesP>
-      <RulesH>Punktezählung</RulesH>
+      <RulesH>Die Wände</RulesH>
+      <RulesDef term="Rückwand">3 m Glas, darüber 1 m Gitter — zusammen 4 m hoch.</RulesDef>
+      <RulesDef term="Seitenwand">An beiden Enden Glas (erst 3 m, dann 2 m hoch), dazwischen Gitter bis 3 m.</RulesDef>
+      <RulesDef term="Gitter">Gehört zum Spielfeld, springt aber unberechenbar ab. Was dort erlaubt ist, steht unter „Wände & Ballwechsel“.</RulesDef>
+      <RulesH>Schläger & Ball</RulesH>
+      <RulesUl items={[
+        'Schläger ohne Saiten, mit gelochter Fläche: höchstens 45,5 cm lang, 26 cm breit, 38 mm dick',
+        'Die Schlaufe am Griff gehört ums Handgelenk — das ist Pflicht, kein Zubehör',
+        'Der Ball sieht aus wie ein Tennisball, hat aber weniger Innendruck',
+      ]}/>
+      <RulesH>Gespielt wird</RulesH>
+      <RulesP>Immer im Doppel, zwei gegen zwei. Die Seiten und wer aufschlägt, entscheidet vor dem Match das Los — Münze oder Schläger drehen.</RulesP>
+    </RulesChapter>
+  );
+}
+
+function RulesAufschlag(nav){
+  return(
+    <RulesChapter id="aufschlag" visual={<SceneServe/>} {...nav}>
+      <RulesH>Ablauf</RulesH>
+      <RulesUl items={[
+        'Hinter der Aufschlaglinie stehen, zwischen Mittellinie und Seitenwand',
+        'Den Ball in der eigenen Hälfte einmal aufspringen lassen',
+        'Treffen auf oder unter Hüfthöhe',
+        'Beim Schlag mindestens ein Fuß am Boden — die Linie nicht berühren',
+        'Diagonal ins gegnerische Aufschlagfeld; die Linien zählen zum Feld',
+      ]}/>
+      <RulesH>Nach dem Aufspringen</RulesH>
+      <RulesUl items={[
+        'Der Aufschlag darf danach ans Glas prallen — er bleibt im Spiel',
+        'Trifft er nach dem Aufspringen zuerst das Gitter, ist es ein Fehler',
+        'Der Rückschläger muss ihn aufspringen lassen — kein Volley beim Return',
+      ]}/>
+      <RulesH>Let — wiederholen</RulesH>
+      <RulesP>Streift der Ball das Netz und landet trotzdem im richtigen Feld, wird der Aufschlag wiederholt — außer er trifft danach das Gitter, dann ist es ein Fehler. Wiederholt wird auch, wenn der Rückschläger noch nicht bereit war.</RulesP>
+      <RulesH>Zwei Versuche</RulesH>
+      <RulesP>Pro Punkt gibt es zwei Aufschläge. Gehen beide daneben, ist das ein <RulesB>Doppelfehler</RulesB> und der Punkt geht an die Gegenseite.</RulesP>
+      <RulesH>Reihenfolge</RulesH>
+      <RulesUl items={[
+        'Ein Spiel lang schlägt dieselbe Person auf',
+        'Begonnen wird von rechts, danach wechselt die Seite mit jedem Punkt',
+        'Nach jedem Spiel wechselt der Aufschlag zum anderen Team — und innerhalb des Teams reihum',
+      ]}/>
+    </RulesChapter>
+  );
+}
+
+function RulesWaende(nav){
+  return(
+    <RulesChapter id="waende" visual={<SceneWalls/>} {...nav}>
+      <RulesH>Die Grundregel</RulesH>
+      <RulesP><RulesB>Erst Boden, dann Wand.</RulesB> Dein Ball muss in der gegnerischen Hälfte aufspringen, bevor er eine Wand berührt. Danach darf er von Glas und Gitter zurückkommen — auch von mehreren Wänden — und wird weitergespielt.</RulesP>
+      <RulesH>Erlaubt</RulesH>
+      <RulesUl items={[
+        'Ball springt auf, prallt ans Glas, du spielst ihn zurück',
+        'Volley vor dem Aufspringen — überall außer beim Return',
+        'Den Ball gegen die eigene Wand spielen, damit er von dort übers Netz geht',
+        'Einem Ball nachlaufen, der durch einen offenen Ausgang den Platz verlässt — sofern die Anlage dafür gebaut ist',
+      ]}/>
+      <RulesH>Punkt verloren</RulesH>
+      <RulesUl items={[
+        'Der Ball springt in deiner Hälfte zweimal auf',
+        'Dein Schlag trifft direkt Wand oder Gitter der Gegenseite, ohne vorher aufzuspringen',
+        'Der Ball berührt dich oder deinen Partner',
+        'Du berührst das Netz oder greifst mit dem Schläger hinüber',
+        'Ihr trefft den Ball zu zweit oder du zweimal hintereinander',
+      ]}/>
+      <RulesH>Im Gitter stecken</RulesH>
+      <RulesP>Bleibt ein regulär aufgesprungener Ball im Gitter hängen, geht der Punkt an das Team, das ihn gespielt hat.</RulesP>
+    </RulesChapter>
+  );
+}
+
+function RulesZaehlung(nav){
+  return(
+    <RulesChapter id="zaehlung" visual={<SceneScore/>} {...nav}>
+      <RulesH>Punkte</RulesH>
       <RulesUl items={[
         '0 → 15 → 30 → 40 → Spiel',
-        'Bei 40-40: Einstand (Deuce). 2 Punkte in Folge nötig',
-        'Erster Punkt nach Einstand = Vorteil; danach 1 weiterer = Spiel',
+        'Bei 40:40 heißt es Einstand — gewonnen ist das Spiel erst mit zwei Punkten in Folge',
+        'Der erste Punkt nach dem Einstand ist der Vorteil',
       ]}/>
-    </RulesDetailLayout>
+      <RulesH>Golden Point</RulesH>
+      <RulesP>Statt Einstand und Vorteil entscheidet bei 40:40 <RulesB>ein einziger Punkt</RulesB>. Das rückschlagende Team wählt, auf welcher Seite es annimmt. Viele Turniere spielen so; im Match-Setup stellst du ein, ob der Golden Point sofort gilt oder erst ab dem zweiten oder dritten Einstand.</RulesP>
+      <RulesH>Satz und Match</RulesH>
+      <RulesUl items={[
+        'Ein Satz geht an das Team, das zuerst 6 Spiele mit 2 Vorsprung hat',
+        'Bei 6:6 entscheidet der Tiebreak',
+        'Best of 3: wer zwei Sätze gewinnt, gewinnt das Match',
+      ]}/>
+      <RulesH>Tiebreak</RulesH>
+      <RulesUl items={[
+        'Gewonnen hat, wer zuerst 7 Punkte mit 2 Vorsprung hat',
+        'Wer dran ist, schlägt den ersten Punkt auf — danach wechselt der Aufschlag alle zwei Punkte',
+        'Seitenwechsel nach jeweils 6 Punkten',
+      ]}/>
+      <RulesH>Seitenwechsel</RulesH>
+      <RulesP>Nach dem ersten, dritten, fünften … Spiel eines Satzes wechseln beide Teams die Seite.</RulesP>
+    </RulesChapter>
   );
 }
 
-function RulesBo3({onBackToRules,onHome,onNext,onPrev,currentIdx,totalSections}){
+function RulesAmericano(nav){
   return(
-    <RulesDetailLayout icon={<ScrollIcon size={30} color={T.o}/>} title="Best of 3"
-      sub="Klassisches Tennis-Scoring, Tiebreak bei 6:6"
-      visual={<Bo3HierarchyVisual/>}
-      onBackToRules={onBackToRules} onHome={onHome}
-      onNext={onNext} onPrev={onPrev}
-      currentIdx={currentIdx} totalSections={totalSections}>
-      <RulesH>Satz- und Match-Struktur</RulesH>
+    <RulesChapter id="americano" visual={<SceneAmericano/>} {...nav}>
+      <RulesH>Prinzip</RulesH>
+      <RulesP>Doppel mit wechselnden Partnern: jede Runde wird neu gelost, gewertet wird jede:r einzeln. Wer gut spielt, sammelt Punkte — egal, mit wem.</RulesP>
+      <RulesH>So lost RITMO</RulesH>
       <RulesUl items={[
-        'Match endet, sobald ein Team 2 Sätze gewinnt (max. 3 Sätze)',
-        'Ein Satz: erstes Team mit 6 Spielen UND 2 Spielen Vorsprung',
-        'Bei 5-5: weiterspielen bis 7-5 oder Tiebreak bei 6-6',
-        'Beim Tiebreak (6-6): erstes Team mit 7 Punkten und 2 Vorsprung gewinnt den Satz',
+        'Zuerst vermeiden: zweimal derselbe Partner',
+        'Dann: zweimal derselbe Gegner',
+        'Dann: überhaupt wiederholte Begegnungen — so trifft am Ende jede:r möglichst jede:n',
+        'Sind mehr Leute da als Plätze, pausiert, wer bisher am seltensten pausiert hat',
       ]}/>
-      <RulesH>Aufschlagswechsel</RulesH>
+      <RulesH>Gezählt wird</RulesH>
       <RulesUl items={[
-        'Aufschlag wechselt nach jedem abgeschlossenen Spiel',
-        'Im Tiebreak: 1. Punkt vom ursprünglichen Aufschläger, dann alle 2 Punkte Wechsel',
-        'Service-Seite (rechts/links) alterniert mit jedem Punkt',
+        'Jede Runde läuft auf Zeit; eingetragen wird, wie viele Punkte jedes Team gemacht hat',
+        'Jeder Punkt deines Teams zählt für dich',
+        'Im Einzelmatch gibt es „Split 21“: das Match endet, wenn beide Teams zusammen 21 Punkte haben — etwa 13:8',
       ]}/>
-      <RulesH>Visualisierung in dieser App</RulesH>
-      <RulesP>Im Big-Screen siehst du rechts ein Court-Diagramm, das anzeigt, wer aufschlägt und in welche Service-Box der nächste Ball gespielt werden muss.</RulesP>
-    </RulesDetailLayout>
+      <RulesH>Sieger</RulesH>
+      <RulesP>Je nach Wertung im Setup: die meisten <RulesB>Punkte</RulesB> oder die meisten <RulesB>Siege</RulesB>. Bei Gleichstand entscheidet die jeweils andere Zahl.</RulesP>
+      <RulesH>Passt für</RulesH>
+      <RulesP>Gemischte Spielstärken und Gruppen, die sich kennenlernen wollen — jede:r spielt mit jedem.</RulesP>
+    </RulesChapter>
   );
 }
 
-function RulesAmericano({onBackToRules,onHome,onNext,onPrev,currentIdx,totalSections}){
+function RulesMexicano(nav){
   return(
-    <RulesDetailLayout icon={<TrophyIcon size={34}/>} title="Americano"
-      sub="Wechselnde Partner, individuelle Punkte"
-      visual={<AmericanoRotationVisual/>}
-      onBackToRules={onBackToRules} onHome={onHome}
-      onNext={onNext} onPrev={onPrev}
-      currentIdx={currentIdx} totalSections={totalSections}>
-      <RulesH>Spielprinzip</RulesH>
+    <RulesChapter id="mexicano" visual={<SceneMexicano/>} {...nav}>
+      <RulesH>Prinzip</RulesH>
+      <RulesP>Wie Americano, aber ab Runde 2 bestimmt die Tabelle, wer mit wem spielt. Die Matches bleiben dadurch eng — die Spitze spielt gegen die Spitze.</RulesP>
+      <RulesH>Paarung</RulesH>
       <RulesUl items={[
-        'Doppel-Turnier mit rotierenden Partnern',
-        'Jede Runde neue, zufällige Paarungen',
-        'Algorithmus vermeidet Wiederholung gleicher Partner über mehrere Runden',
-        'Individuelle Wertung — jeder Spieler sammelt eigene Punkte',
-      ]}/>
-      <RulesH>Scoring-Varianten</RulesH>
-      <RulesUl items={[
-        'Split-21: 21 Punkte pro Match werden zwischen beiden Teams aufgeteilt (z. B. 13-8)',
-        'Zeit-basiert: feste Rundenzeit, am Ende der Zeit zählt der aktuelle Stand',
-        'Unlimitiert (∞): Spiel läuft bis Timer-Ende oder manueller Stop',
-      ]}/>
-      <RulesH>Sieger-Modus</RulesH>
-      <RulesUl items={[
-        'Meiste Punkte: Summe aller in Matches gesammelten Punkte',
-        'Meiste Siege: Anzahl gewonnener Matches',
-      ]}/>
-      <RulesH>Vorteile</RulesH>
-      <RulesP>Ideal für gemischte Spielstärken — alle spielen mit jedem. Kein "stärkstes Team gewinnt" sondern individuelle Performance entscheidet.</RulesP>
-    </RulesDetailLayout>
-  );
-}
-
-function RulesMexicano({onBackToRules,onHome,onNext,onPrev,currentIdx,totalSections}){
-  return(
-    <RulesDetailLayout icon={<TargetIcon size={30} color={T.o}/>} title="Mexicano"
-      sub="Ranking-basierte Paarungen ab Runde 2"
-      visual={<MexicanoPairingVisual/>}
-      onBackToRules={onBackToRules} onHome={onHome}
-      onNext={onNext} onPrev={onPrev}
-      currentIdx={currentIdx} totalSections={totalSections}>
-      <RulesH>Unterschied zu Americano</RulesH>
-      <RulesP>Wie Americano, aber Paarungen werden nach Tabellenstand zusammengestellt. Hält das Niveau jedes Matches ausgeglichen.</RulesP>
-      <RulesH>Paarungs-Logik</RulesH>
-      <RulesUl items={[
-        'Runde 1: zufällige Paarungen (wie Americano)',
-        'Ab Runde 2: nach Tabellenstand sortieren',
-        'Pro Court werden 4 nebeneinanderliegende Plätze gepaart:',
-        'Platz 1 + Platz 4  vs  Platz 2 + Platz 3',
-        'Court 2: Plätze 5+8 vs 6+7, usw.',
+        'Runde 1 wird gelost wie beim Americano',
+        'Danach bilden je vier Tabellennachbarn einen Court',
+        'Platz 1 + 4 gegen Platz 2 + 3, dann 5 + 8 gegen 6 + 7 und so weiter',
+        'Bei Punktgleichstand ordnet RITMO so, dass möglichst neue Paarungen entstehen',
       ]}/>
       <RulesH>Effekt</RulesH>
       <RulesUl items={[
-        'Top-Spieler treten gegen ähnlich starke Gegner an',
-        'Schwächere Spieler werden mit stärkeren gepaart',
-        'Spiele bleiben kompetitiv — kein "Walk-over"',
+        'Starke Spieler:innen treffen auf ähnlich starke Gegner',
+        'Innerhalb jedes Courts spielt der Beste mit dem Schwächsten zusammen',
+        'Kaum klare Ergebnisse — jedes Match ist offen',
       ]}/>
-    </RulesDetailLayout>
+    </RulesChapter>
   );
 }
 
-function RulesRotation({onBackToRules,onHome,onNext,onPrev,currentIdx,totalSections}){
+/* Die weiteren Formate kommen aus FORMAT_RULES (tournament.js) — dieselben
+   Saetze wie im Info-Aufklapper des Konfigurators, damit Bibel und
+   Setup nicht auseinanderlaufen. */
+function RulesFormate(nav){
   return(
-    <RulesDetailLayout icon={<StopwatchIcon size={30} color={T.o}/>} title="Pausen & Rotation"
-      sub="Fairer Rotations-Pool bei ungeraden Spielern"
-      visual={<PausenPoolVisual/>}
-      onBackToRules={onBackToRules} onHome={onHome}
-      onNext={onNext} onPrev={onPrev}
-      currentIdx={currentIdx} totalSections={totalSections}>
-      <RulesH>Pausen-Logik</RulesH>
+    <RulesChapter id="formate" visual={<SceneKing/>} {...nav}>
+      <RulesP>Neben Americano und Mexicano kennt RITMO fünf weitere Formate. Du wählst sie im ersten Schritt des Turnier-Assistenten.</RulesP>
+      {['teamamericano','teammexicano','mixicano','kingofcourt','knockout'].map(id=>(
+        <div key={id}>
+          <RulesH>{FORMATS[id].name}</RulesH>
+          {FORMAT_RULES[id].map(([k,v])=>(<RulesDef key={k} term={k}>{v}</RulesDef>))}
+        </div>
+      ))}
+    </RulesChapter>
+  );
+}
+
+function RulesRotation(nav){
+  return(
+    <RulesChapter id="rotation" visual={<ScenePause/>} {...nav}>
+      <RulesH>Wer pausiert</RulesH>
       <RulesUl items={[
-        'Bei ungerader Spielerzahl (nicht durch 4 teilbar) pausieren Spieler pro Runde',
-        'Anzahl der Pausierenden = Spieler − (Courts × 4)',
-        'Faire Rotation: wer am wenigsten pausiert hat, sitzt als nächstes aus',
-        'Bei Gleichstand entscheidet der Zufall (Tiebreak)',
-        'Über genug Runden hat jeder gleich oft pausiert',
+        'Mehr Leute als Plätze (Courts × 4)? Dann setzen die übrigen eine Runde aus',
+        'Es pausiert, wer bisher am seltensten draußen war — bei Gleichstand entscheidet das Los',
+        'Über das Turnier gleicht sich das aus: alle pausieren gleich oft',
       ]}/>
-      <RulesH>Pausen-Bonus (Punkte-Modus)</RulesH>
-      <RulesP>Pausierte Spieler bekommen für die Pausenrunde den <strong style={{color:T.t1}}>aufgerundeten Mittelwert aller Punkte</strong> dieser Runde gutgeschrieben. So entgehen sie keinem Punkteverlust durch erzwungene Pause.</RulesP>
-      <RulesH>Pausen-Bonus (Siege-Modus)</RulesH>
-      <RulesP>Spieler in der <strong style={{color:T.t1}}>unteren Tabellenhälfte</strong> bekommen <strong style={{color:T.t1}}>+1 Sieg pro Pause</strong>. So fallen Spieler nicht weiter zurück, die ohnehin schon hinten liegen.</RulesP>
-      <RulesH>Transparenz</RulesH>
-      <RulesP>Im Tournament-Play öffnet das ?-Icon neben "Pausiert: …" eine Info-Box mit der aktuell aktiven Bonus-Regel. Im Leaderboard erscheint bei jedem Bonus-Empfänger ein "+X Pause"-Hinweis unter der Punktezahl.</RulesP>
-    </RulesDetailLayout>
+      <RulesH>Was es dafür gibt</RulesH>
+      <RulesP>Im Setup unter „Wenn jemand pausiert“:</RulesP>
+      <RulesDef term="Ausgleich">Punkte-Wertung: der aufgerundete Mittelwert der Runde. Siege-Wertung: +1 Sieg für alle aus der unteren Tabellenhälfte.</RulesDef>
+      <RulesDef term="Eigener Wert">Ein fester Betrag je Pause, egal was auf den Courts passiert. In der Siege-Wertung zählen diese Punkte bei Gleichstand.</RulesDef>
+      <RulesDef term="Nichts">Eine Pause ist eine Runde ohne Punkte — härter, dafür ungeschönt.</RulesDef>
+      <RulesH>Wo du es siehst</RulesH>
+      <RulesUl items={[
+        'Unter den Courts steht, wer gerade pausiert — das ? daneben erklärt die aktive Regel',
+        'In der Tabelle zeigt ein blauer Chip unter der Wertung, was gutgeschrieben wurde',
+      ]}/>
+    </RulesChapter>
   );
 }
 
@@ -20369,8 +20226,8 @@ function RulesGlossar({onBackToRules,onHome,onNext,onPrev,currentIdx,totalSectio
             {s.art&&(
               <div style={{display:'flex',gap:10,padding:'16px 14px 12px',
                 borderBottom:`1px solid ${T.glassSep}`}}>
-                {s.art.map(a=>(
-                  <ShotArt key={a} src={a} h={s.art.length>1?150:180}
+                {s.art.map((a,j)=>(
+                  <ShotArt key={a} src={a} h={s.art.length>1?150:180} delay={j*160}
                     label={s.art.length>1?(a.endsWith('vorhand')?'Vorhand':'Rückhand'):null}/>
                 ))}
               </div>
@@ -20389,229 +20246,45 @@ function RulesGlossar({onBackToRules,onHome,onNext,onPrev,currentIdx,totalSectio
         ))}
 
         <RulesH>Weitere Begriffe</RulesH>
-        <RulesDef term="Por 3 / x3">Ball geht durch die Glasecke ins Aus — Punktgewinn, wenn der Gegner ihn nicht zurückholen kann.</RulesDef>
-        <RulesDef term="Por 4 / x4">Ball wird über die Wand gespielt — extrem schwer zu retournieren.</RulesDef>
-        <RulesDef term="Contrapared">Ball aus der eigenen Wand zurück übers Netz — kontrollierte Verteidigung.</RulesDef>
-        <RulesDef term="Doble Pared">Ball berührt 2 Wände nach Boden-Aufprall — bleibt weiterhin im Spiel.</RulesDef>
+        <RulesDef term="Por 3">Smash, der nach dem Aufspringen über die Seitenwand aus dem Platz fliegt — kaum noch zu holen.</RulesDef>
+        <RulesDef term="Por 4">Smash, der nach dem Aufspringen über die Rückwand aus dem Platz fliegt.</RulesDef>
+        <RulesDef term="Bajada">Angriffsschlag auf einen Ball, der hoch von der Rückwand zurückkommt.</RulesDef>
+        <RulesDef term="Contrapared">Du spielst den Ball gegen die eigene Wand, damit er von dort übers Netz geht — die Notlösung, wenn er an dir vorbei ist.</RulesDef>
+        <RulesDef term="Doble Pared">Der Ball trifft nach dem Aufspringen zwei Wände, etwa Rück- und Seitenwand, und bleibt im Spiel.</RulesDef>
+        <RulesDef term="Salida">Ein Ball, der von der Wand zurückkommt und dann gespielt wird.</RulesDef>
       </div>
     </RulesDetailLayout>
+  );
+}
+
+function RulesFairPlay(nav){
+  return(
+    <RulesChapter id="fairplay" visual={<SceneFairPlay/>} {...nav}>
+      <RulesH>Ansagen</RulesH>
+      <RulesUl items={[
+        'Über Bälle auf deiner Seite entscheidest du — im Zweifel für die Gegenseite',
+        'Ansagen sofort und deutlich, nicht erst nach dem nächsten Schlag',
+        'Spielstand vor jedem Aufschlag laut sagen — das erspart jeden Streit',
+      ]}/>
+      <RulesH>Während des Punkts</RulesH>
+      <RulesUl items={[
+        'Rollt ein Ball vom Nachbarcourt herein: „Ball!“ rufen, der Punkt wird wiederholt',
+        'Absprachen mit dem Partner ja, Rufe gegen die Gegenseite nein',
+        'Netzroller oder Kantenball zu deinen Gunsten: kurz die Hand heben',
+      ]}/>
+      <RulesH>Rund um den Platz</RulesH>
+      <RulesUl items={[
+        'Nicht hinter einem laufenden Court vorbeigehen — warten, bis der Punkt vorbei ist',
+        'Die Tür bleibt während des Spiels zu',
+        'Nach dem Match: ans Netz, Hand geben, danke sagen',
+      ]}/>
+    </RulesChapter>
   );
 }
 
 /* ═══════════════════════════════════════════════════════════════
    JOURNEY — Tipps & Tricks
 ═══════════════════════════════════════════════════════════════ */
-
-function AngabenVisual(){
-  return(
-    <svg viewBox="0 0 140 220" style={{width:'auto',maxHeight:260,height:'62vh',display:'block'}}>
-      <defs>
-        <style>{`
-          @keyframes drawIn { to { stroke-dashoffset: 0; } }
-          .ang-arc { stroke-dasharray: 200; stroke-dashoffset: 200; animation: drawIn 1.4s ease forwards; animation-delay: .3s; }
-        `}</style>
-      </defs>
-      <rect x="20" y="20" width="100" height="180" rx="2" fill="rgba(255,255,255,0.04)"
-        stroke="var(--t1)" strokeWidth="1.8"/>
-      <line x1="20" y1="110" x2="120" y2="110" stroke="var(--o)" strokeWidth="2" strokeDasharray="3 2"/>
-      <line x1="20" y1="83" x2="120" y2="83" stroke="var(--t1)" strokeWidth="1.4"/>
-      <line x1="20" y1="137" x2="120" y2="137" stroke="var(--t1)" strokeWidth="1.4"/>
-      <line x1="70" y1="83" x2="70" y2="137" stroke="var(--t1)" strokeWidth="1.4"/>
-      <rect x="20" y="83" width="50" height="27" fill="var(--oSoft)" stroke="var(--o)"
-        strokeWidth="0.8" opacity="0.85"/>
-      <text x="45" y="100" textAnchor="middle" dominantBaseline="middle" fontSize="14"
-        fill="var(--o)" fontWeight="800">×</text>
-      <circle cx="95" cy="180" r="7" fill="var(--o)"/>
-      <text x="95" y="180" textAnchor="middle" dominantBaseline="middle" fontSize="7"
-        fill="white" fontWeight="800">A</text>
-      <text x="95" y="195" textAnchor="middle" fontSize="6" fill="var(--t2)"
-        fontWeight="700" letterSpacing="0.5">AUFSCHLAG</text>
-      <path className="ang-arc" d="M 95 175 Q 65 110 45 95"
-        stroke="var(--o)" strokeWidth="1.6" strokeDasharray="3 2" fill="none" opacity="0.8"/>
-      <circle r="3" fill="#E8FF3D" stroke="rgba(0,0,0,.4)" strokeWidth="0.5">
-        <animateMotion dur="2.4s" repeatCount="indefinite" begin="1s"
-          path="M 95 175 Q 65 110 45 95"/>
-      </circle>
-      <text x="70" y="14" textAnchor="middle" fontSize="7" fill="var(--o)"
-        fontWeight="700" letterSpacing="1.5">DIAGONAL, UNTER DER HÜFTE</text>
-    </svg>
-  );
-}
-
-function AufstellungenVisual(){
-  return(
-    <svg viewBox="0 0 140 220" style={{width:'auto',maxHeight:260,height:'62vh',display:'block'}}>
-      <defs>
-        <style>{`
-          @keyframes pulseDot { 0%,100% { opacity: 1 } 50% { opacity: 0.55 } }
-          .pulse-dot { animation: pulseDot 1.8s ease infinite; }
-        `}</style>
-      </defs>
-      <rect x="20" y="20" width="100" height="180" rx="2" fill="rgba(255,255,255,0.04)"
-        stroke="var(--t1)" strokeWidth="1.8"/>
-      <line x1="20" y1="110" x2="120" y2="110" stroke="var(--o)" strokeWidth="2" strokeDasharray="3 2"/>
-      <line x1="20" y1="83" x2="120" y2="83" stroke="var(--t1)" strokeWidth="1.2" opacity="0.55"/>
-      <line x1="20" y1="137" x2="120" y2="137" stroke="var(--t1)" strokeWidth="1.2" opacity="0.55"/>
-      <line x1="70" y1="83" x2="70" y2="137" stroke="var(--t1)" strokeWidth="1.2" opacity="0.55"/>
-      <g className="pulse-dot">
-        <circle cx="50" cy="175" r="7" fill="var(--o)"/>
-        <text x="50" y="175" textAnchor="middle" dominantBaseline="middle" fontSize="6.5" fill="white" fontWeight="800">A1</text>
-        <text x="50" y="192" textAnchor="middle" fontSize="5.5" fill="var(--t3)" fontWeight="600">HINTEN</text>
-      </g>
-      <g className="pulse-dot" style={{animationDelay:'.3s'}}>
-        <circle cx="90" cy="135" r="7" fill="var(--o)"/>
-        <text x="90" y="135" textAnchor="middle" dominantBaseline="middle" fontSize="6.5" fill="white" fontWeight="800">A2</text>
-        <text x="90" y="152" textAnchor="middle" fontSize="5.5" fill="var(--t3)" fontWeight="600">NETZ</text>
-      </g>
-      <g className="pulse-dot" style={{animationDelay:'.6s'}}>
-        <circle cx="90" cy="45" r="7" fill="var(--blue)"/>
-        <text x="90" y="45" textAnchor="middle" dominantBaseline="middle" fontSize="6.5" fill="white" fontWeight="800">B1</text>
-        <text x="90" y="32" textAnchor="middle" fontSize="5.5" fill="var(--t3)" fontWeight="600">HINTEN</text>
-      </g>
-      <g className="pulse-dot" style={{animationDelay:'.9s'}}>
-        <circle cx="50" cy="85" r="7" fill="var(--blue)"/>
-        <text x="50" y="85" textAnchor="middle" dominantBaseline="middle" fontSize="6.5" fill="white" fontWeight="800">B2</text>
-        <text x="50" y="72" textAnchor="middle" fontSize="5.5" fill="var(--t3)" fontWeight="600">NETZ</text>
-      </g>
-      <text x="70" y="14" textAnchor="middle" fontSize="7" fill="var(--o)" fontWeight="700" letterSpacing="1.5">EINER NETZ, EINER HINTEN</text>
-      <text x="70" y="214" textAnchor="middle" fontSize="6" fill="var(--t3)" opacity="0.7" letterSpacing="1">DIAGONALE DECKUNG, MITTE SCHLIESST</text>
-    </svg>
-  );
-}
-
-function HandSeitenVisual(){
-  return(
-    <svg viewBox="0 0 200 200" style={{width:'auto',maxHeight:240,height:'58vh',display:'block'}}>
-      <defs>
-        <style>{`
-          @keyframes fadeArrow { 0% { opacity: 0 } 50% { opacity: 1 } 100% { opacity: 0.4 } }
-          .fade-arrow { animation: fadeArrow 2.4s ease infinite; }
-        `}</style>
-      </defs>
-      <text x="100" y="14" textAnchor="middle" fontSize="8" fill="var(--o)" fontWeight="700" letterSpacing="1.5">VORHÄNDE ZUR MITTE</text>
-      <rect x="30" y="30" width="140" height="130" rx="3" fill="rgba(255,255,255,0.04)" stroke="var(--t1)" strokeWidth="1.4"/>
-      <line x1="100" y1="30" x2="100" y2="160" stroke="var(--t1)" strokeWidth="1.1" opacity="0.45" strokeDasharray="3 2"/>
-      <g transform="translate(60, 95)">
-        <circle r="14" fill="var(--card2)" stroke="var(--o)" strokeWidth="1.8"/>
-        <text y="0" textAnchor="middle" dominantBaseline="middle" fontSize="13" fill="var(--o)" fontWeight="800">R</text>
-        <line x1="13" y1="-2" x2="28" y2="-2" stroke="var(--o)" strokeWidth="2" strokeLinecap="round"/>
-        <ellipse cx="33" cy="-2" rx="5" ry="6" fill="none" stroke="var(--o)" strokeWidth="1.6"/>
-        <text y="32" textAnchor="middle" fontSize="6" fill="var(--t3)" fontWeight="600" letterSpacing="0.5">RECHTSHÄNDER</text>
-      </g>
-      <g transform="translate(140, 95)">
-        <circle r="14" fill="var(--card2)" stroke="var(--blue)" strokeWidth="1.8"/>
-        <text y="0" textAnchor="middle" dominantBaseline="middle" fontSize="13" fill="var(--blue)" fontWeight="800">L</text>
-        <line x1="-13" y1="-2" x2="-28" y2="-2" stroke="var(--blue)" strokeWidth="2" strokeLinecap="round"/>
-        <ellipse cx="-33" cy="-2" rx="5" ry="6" fill="none" stroke="var(--blue)" strokeWidth="1.6"/>
-        <text y="32" textAnchor="middle" fontSize="6" fill="var(--t3)" fontWeight="600" letterSpacing="0.5">LINKSHÄNDER</text>
-      </g>
-      <g className="fade-arrow">
-        <path d="M 93 75 L 107 75" stroke="var(--o)" strokeWidth="1.4" strokeLinecap="round"/>
-        <polygon points="93 75, 96 73, 96 77" fill="var(--o)"/>
-        <polygon points="107 75, 104 73, 104 77" fill="var(--o)"/>
-      </g>
-      <text x="100" y="186" textAnchor="middle" fontSize="6.5" fill="var(--o)" opacity="0.85" fontWeight="700">OPTIMALE PADEL-PAARUNG</text>
-    </svg>
-  );
-}
-
-function SchlagwahlVisual(){
-  return(
-    <svg viewBox="0 0 220 200" style={{width:'auto',maxHeight:240,height:'58vh',display:'block'}}>
-      <text x="110" y="14" textAnchor="middle" fontSize="8" fill="var(--o)" fontWeight="700" letterSpacing="1.5">BALLHÖHE → SCHLAGART</text>
-      <text x="110" y="26" textAnchor="middle" fontSize="6" fill="var(--t3)" opacity="0.8" letterSpacing="1">HOCH = AGGRESSIV, TIEF = KONTROLLE</text>
-      <g className="fi" style={{animationDelay:'.1s'}}>
-        <rect x="30" y="38" width="160" height="42" rx="8" fill="var(--oSoft)" stroke="var(--o)" strokeWidth="1.4"/>
-        <text x="46" y="58" fontSize="9" fill="var(--o)" fontWeight="800">HOCH</text>
-        <text x="46" y="72" fontSize="6.5" fill="var(--t3)">über Schulter</text>
-        <text x="180" y="58" textAnchor="end" fontSize="7.5" fill="var(--t1)" fontWeight="700">Smash</text>
-        <text x="180" y="68" textAnchor="end" fontSize="6.5" fill="var(--t2)">Bandeja, Víbora</text>
-      </g>
-      <g className="fi" style={{animationDelay:'.25s'}}>
-        <rect x="30" y="86" width="160" height="42" rx="8" fill="var(--blueSoft)" stroke="var(--blue)" strokeWidth="1.4"/>
-        <text x="46" y="106" fontSize="9" fill="var(--blue)" fontWeight="800">MITTE</text>
-        <text x="46" y="120" fontSize="6.5" fill="var(--t3)">Brust – Hüfte</text>
-        <text x="180" y="106" textAnchor="end" fontSize="7.5" fill="var(--t1)" fontWeight="700">Volea</text>
-        <text x="180" y="116" textAnchor="end" fontSize="6.5" fill="var(--t2)">Drive, Chiquita</text>
-      </g>
-      <g className="fi" style={{animationDelay:'.4s'}}>
-        <rect x="30" y="134" width="160" height="42" rx="8" fill="rgba(255,255,255,0.04)" stroke="var(--t1)" strokeWidth="1.4"/>
-        <text x="46" y="154" fontSize="9" fill="var(--t1)" fontWeight="800">TIEF</text>
-        <text x="46" y="168" fontSize="6.5" fill="var(--t3)">unterhalb Hüfte</text>
-        <text x="180" y="154" textAnchor="end" fontSize="7.5" fill="var(--t1)" fontWeight="700">Globo</text>
-        <text x="180" y="164" textAnchor="end" fontSize="6.5" fill="var(--t2)">Drive, Reset</text>
-      </g>
-      <text x="110" y="190" textAnchor="middle" fontSize="6.5" fill="var(--t3)" opacity="0.7" letterSpacing="0.5">Nach Wand-Rückprall → Drive oder Globo</text>
-    </svg>
-  );
-}
-
-function SchlaegerVisual(){
-  return(
-    <svg viewBox="0 0 240 200" style={{width:'auto',maxHeight:240,height:'58vh',display:'block'}}>
-      <text x="120" y="14" textAnchor="middle" fontSize="8" fill="var(--o)" fontWeight="700" letterSpacing="1.5">3 SCHLÄGER-FORMEN</text>
-      <g transform="translate(50, 32)" className="fi">
-        <ellipse cx="0" cy="42" rx="22" ry="28" fill="rgba(255,255,255,0.05)" stroke="var(--o)" strokeWidth="1.6"/>
-        <circle cx="0" cy="42" r="7" fill="var(--oSoft)" stroke="var(--o)" strokeWidth="1.2"/>
-        <line x1="0" y1="72" x2="0" y2="98" stroke="var(--o)" strokeWidth="3.5" strokeLinecap="round"/>
-        <text y="120" textAnchor="middle" fontSize="9" fill="var(--t1)" fontWeight="800">Rund</text>
-        <text y="134" textAnchor="middle" fontSize="6.5" fill="var(--t3)">Kontrolle</text>
-        <text y="146" textAnchor="middle" fontSize="6" fill="var(--t3)" opacity="0.7">Anfänger</text>
-      </g>
-      <g transform="translate(120, 32)" className="fi" style={{animationDelay:'.1s'}}>
-        <path d="M 0 14 L 22 42 L 0 70 L -22 42 Z" fill="rgba(255,255,255,0.05)" stroke="var(--o)" strokeWidth="1.6" strokeLinejoin="round"/>
-        <circle cx="0" cy="30" r="7" fill="var(--oSoft)" stroke="var(--o)" strokeWidth="1.2"/>
-        <line x1="0" y1="72" x2="0" y2="98" stroke="var(--o)" strokeWidth="3.5" strokeLinecap="round"/>
-        <text y="120" textAnchor="middle" fontSize="9" fill="var(--t1)" fontWeight="800">Diamant</text>
-        <text y="134" textAnchor="middle" fontSize="6.5" fill="var(--t3)">Power</text>
-        <text y="146" textAnchor="middle" fontSize="6" fill="var(--t3)" opacity="0.7">Smash-Spieler</text>
-      </g>
-      <g transform="translate(190, 32)" className="fi" style={{animationDelay:'.2s'}}>
-        <path d="M 0 14 Q 22 22 22 44 Q 22 70 0 70 Q -22 70 -22 44 Q -22 22 0 14 Z" fill="rgba(255,255,255,0.05)" stroke="var(--o)" strokeWidth="1.6"/>
-        <circle cx="0" cy="36" r="7" fill="var(--oSoft)" stroke="var(--o)" strokeWidth="1.2"/>
-        <line x1="0" y1="72" x2="0" y2="98" stroke="var(--o)" strokeWidth="3.5" strokeLinecap="round"/>
-        <text y="120" textAnchor="middle" fontSize="9" fill="var(--t1)" fontWeight="800">Tropfen</text>
-        <text y="134" textAnchor="middle" fontSize="6.5" fill="var(--t3)">Allround</text>
-        <text y="146" textAnchor="middle" fontSize="6" fill="var(--t3)" opacity="0.7">Fortgeschr.</text>
-      </g>
-      <text x="120" y="186" textAnchor="middle" fontSize="6" fill="var(--o)" opacity="0.7" fontWeight="700" letterSpacing="1">SWEET SPOT (ORANGE) WANDERT NACH OBEN</text>
-    </svg>
-  );
-}
-
-function BaelleVisual(){
-  return(
-    <svg viewBox="0 0 240 200" style={{width:'auto',maxHeight:240,height:'58vh',display:'block'}}>
-      <text x="120" y="14" textAnchor="middle" fontSize="8" fill="var(--o)" fontWeight="700" letterSpacing="1.5">TENNIS vs PADEL</text>
-      <g transform="translate(70, 55)" className="fi">
-        <circle r="32" fill="#E8FF3D" stroke="rgba(0,0,0,.3)" strokeWidth="0.6"/>
-        <path d="M -32 0 Q -16 -12 0 -10 Q 16 -12 32 0" stroke="rgba(255,255,255,.55)" strokeWidth="1.4" fill="none"/>
-        <path d="M -32 0 Q -16 12 0 10 Q 16 12 32 0" stroke="rgba(255,255,255,.55)" strokeWidth="1.4" fill="none"/>
-        <text y="52" textAnchor="middle" fontSize="9" fill="var(--t1)" fontWeight="800">TENNIS</text>
-        <text y="64" textAnchor="middle" fontSize="6" fill="var(--t3)">~6.5 cm</text>
-      </g>
-      <g transform="translate(170, 55)" className="fi" style={{animationDelay:'.15s'}}>
-        <circle r="30" fill="#E8FF3D" stroke="rgba(0,0,0,.3)" strokeWidth="0.6"/>
-        <path d="M -30 0 Q -15 -11 0 -9 Q 15 -11 30 0" stroke="rgba(255,255,255,.55)" strokeWidth="1.4" fill="none"/>
-        <path d="M -30 0 Q -15 11 0 9 Q 15 11 30 0" stroke="rgba(255,255,255,.55)" strokeWidth="1.4" fill="none"/>
-        <text y="52" textAnchor="middle" fontSize="9" fill="var(--t1)" fontWeight="800">PADEL</text>
-        <text y="64" textAnchor="middle" fontSize="6" fill="var(--t3)">~6.3 cm</text>
-      </g>
-      <g transform="translate(0, 138)">
-        <text x="120" y="0" textAnchor="middle" fontSize="6" fill="var(--t3)" fontWeight="700" letterSpacing="1.2">INNENDRUCK (PSI)</text>
-        <text x="22" y="16" fontSize="7" fill="var(--t2)" fontWeight="700">T</text>
-        <rect x="36" y="10" width="170" height="6" rx="3" fill="var(--card2)"/>
-        <rect x="36" y="10" width="155" height="6" rx="3" fill="var(--o)"/>
-        <text x="210" y="16" fontSize="6" fill="var(--t2)" textAnchor="end" fontWeight="600">14 PSI</text>
-        <text x="22" y="32" fontSize="7" fill="var(--t2)" fontWeight="700">P</text>
-        <rect x="36" y="26" width="170" height="6" rx="3" fill="var(--card2)"/>
-        <rect x="36" y="26" width="55" height="6" rx="3" fill="var(--blue)"/>
-        <text x="210" y="32" fontSize="6" fill="var(--t2)" textAnchor="end" fontWeight="600">~5 PSI</text>
-      </g>
-      <text x="120" y="190" textAnchor="middle" fontSize="6" fill="var(--t3)" opacity="0.7" letterSpacing="0.5">Padel-Ball springt niedriger, mehr Kontrolle</text>
-    </svg>
-  );
-}
 
 function Journey({onHome,onSelect,alreadyRead,onToggleRead,onBibel}){
   const sections=[
@@ -21126,24 +20799,16 @@ function JourneyAngaben({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalSe
   return(
     <RulesDetailLayout icon={<TargetIcon size={30} color={T.o}/>} title="Aufschlag"
       sub="Reihenfolge, Position & Strategie"
-      visual={<AngabenVisual/>}
+      visual={<SceneServe targets/>}
       onBackToRules={onBackToJourney} onHome={onHome}
       onNext={onNext} onPrev={onPrev}
       currentIdx={currentIdx} totalSections={totalSections}
       {...J_BACK}>
-      <RulesH>Reihenfolge</RulesH>
-      <RulesUl items={[
-        'Aufschlag wechselt nach jedem Spiel zur Gegen-Mannschaft',
-        'Innerhalb eines Spiels schlägt derselbe Spieler durch',
-        'Service-Seite alterniert mit jedem Punkt (rechts/links)',
-      ]}/>
-      <RulesH>Technik</RulesH>
-      <RulesUl items={[
-        'Treffpunkt UNTER der Hüfte (Pflicht)',
-        'Ball muss vorher einmal am Boden aufspringen',
-        'Ziel: diagonales Service-Feld der Gegenseite',
-        'Zwei Versuche pro Punkt (wie Tennis)',
-      ]}/>
+      <RulesP>Die Regeln — aufspringen lassen, unter Hüfthöhe, diagonal — stehen im Regelwerk unter „Aufschlag“. Hier geht es darum, wohin.</RulesP>
+      <RulesH>Drei Ziele</RulesH>
+      <RulesDef term="T-Linie">An die Mittellinie: kurzer Winkel, der Return kommt meist durch die Mitte — dort steht dein Partner am Netz.</RulesDef>
+      <RulesDef term="Körper">Direkt auf den Rückschläger: er muss ausweichen und hat keinen freien Schwung.</RulesDef>
+      <RulesDef term="Außen">Richtung Seitenglas: zieht den Rückschläger aus dem Platz und öffnet die Mitte.</RulesDef>
       <RulesH>Strategie</RulesH>
       <RulesUl items={[
         'Variation in Effet & Tempo schlägt rohe Power',
@@ -21161,7 +20826,7 @@ function JourneyAufstellungen({onBackToJourney,onHome,onNext,onPrev,currentIdx,t
   return(
     <RulesDetailLayout icon={<PeopleIcon size={30} color={T.o}/>} title="Aufstellungen"
       sub="Netz, Hinten, Verteidigung, Angriff"
-      visual={<AufstellungenVisual/>}
+      visual={<SceneFormation/>}
       onBackToRules={onBackToJourney} onHome={onHome}
       onNext={onNext} onPrev={onPrev}
       currentIdx={currentIdx} totalSections={totalSections}
@@ -21192,7 +20857,7 @@ function JourneyHaende({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalSec
   return(
     <RulesDetailLayout icon={<HandIcon size={30} color={T.o}/>} title="Hand-Seiten"
       sub="Links-/Rechtshänder am Court"
-      visual={<HandSeitenVisual/>}
+      visual={<SceneHands/>}
       onBackToRules={onBackToJourney} onHome={onHome}
       onNext={onNext} onPrev={onPrev}
       currentIdx={currentIdx} totalSections={totalSections}
@@ -21223,7 +20888,7 @@ function JourneySchlagwahl({onBackToJourney,onHome,onNext,onPrev,currentIdx,tota
   return(
     <RulesDetailLayout icon={<TennisBallIcon size={32}/>} title="Schlagwahl"
       sub="Wann welche Schlagart?"
-      visual={<SchlagwahlVisual/>}
+      visual={<SceneShotChoice/>}
       onBackToRules={onBackToJourney} onHome={onHome}
       onNext={onNext} onPrev={onPrev}
       currentIdx={currentIdx} totalSections={totalSections}
@@ -21258,7 +20923,7 @@ function JourneySchlaeger({onBackToJourney,onHome,onNext,onPrev,currentIdx,total
   return(
     <RulesDetailLayout icon={<RacketMini size={30} color={T.o}/>} title="Schläger"
       sub="Rund, Diamant, Tropfen — Materialkunde"
-      visual={<SchlaegerVisual/>}
+      visual={<SceneRacket/>}
       onBackToRules={onBackToJourney} onHome={onHome}
       onNext={onNext} onPrev={onPrev}
       currentIdx={currentIdx} totalSections={totalSections}
@@ -21297,39 +20962,22 @@ function JourneyBaelle({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalSec
   return(
     <RulesDetailLayout icon={<TennisBallIcon size={32}/>} title="Bälle"
       sub="Tennis vs Padel — die Unterschiede"
-      visual={<BaelleVisual/>}
+      visual={<SceneBalls/>}
       onBackToRules={onBackToJourney} onHome={onHome}
       onNext={onNext} onPrev={onPrev}
       currentIdx={currentIdx} totalSections={totalSections}
       {...J_BACK}>
-      <RulesH>Optisch identisch — technisch nicht</RulesH>
-      <RulesP>Beide gelb, beide Filz. Aber Größe, Druck und Sprung-Verhalten unterscheiden sich.</RulesP>
-      <RulesH>Größe & Druck</RulesH>
+      <RulesH>Optisch fast gleich</RulesH>
+      <RulesP>Beide gelb, beide mit Filz. Der Unterschied steckt innen: der Padel-Ball hat <strong style={{color:T.t1}}>weniger Innendruck</strong> und ist eine Spur kleiner. Das macht ihn auf dem kleinen Platz langsamer und kontrollierbarer.</RulesP>
+      <RulesH>Die Vorgaben</RulesH>
+      <RulesDef term="Durchmesser">Padel 6,35–6,77 cm, Tennis 6,54–6,86 cm.</RulesDef>
+      <RulesDef term="Gewicht">Bei beiden 56–59,4 g.</RulesDef>
+      <RulesDef term="Sprung">Aus 2,54 m fallen gelassen: Padel 1,35–1,45 m, Tennis 1,35–1,47 m — fast gleich, wie die Szene oben zeigt.</RulesDef>
+      <RulesH>Warum das zählt</RulesH>
       <RulesUl items={[
-        'Tennis: ~6.5 cm Durchmesser, 14 PSI Innendruck',
-        'Padel: ~6.3 cm, nur 4.6-5.2 PSI',
-        'Padel-Ball ist also etwas kleiner UND deutlich weniger unter Druck',
-      ]}/>
-      <RulesH>Sprung-Verhalten</RulesH>
-      <RulesUl items={[
-        'Aus 254 cm Höhe fallen gelassen:',
-        'Tennis springt 135-147 cm hoch',
-        'Padel springt 135-145 cm hoch',
-        'Klingt ähnlich, aber Padel-Ball verlangsamt sich schneller',
-      ]}/>
-      <RulesH>Warum die Unterschiede wichtig sind</RulesH>
-      <RulesUl items={[
-        'Tennis-Ball auf Padel-Court: zu schnell, zu hoch nach Wand',
-        'Padel-Ball auf Tennis-Court: zu langsam, zu wenig Sprung',
-        'Niedrigerer Druck → langsamere Geschwindigkeit → mehr Kontrolle möglich',
-        'Wand-Rückprall: Padel-Ball verliert Energie schneller, ist berechenbarer',
-      ]}/>
-      <RulesH>Lebensdauer</RulesH>
-      <RulesUl items={[
-        'Profis: alle 9 Spiele neuer Ball',
-        'Hobby: nach 2-3 Sessions deutlicher Druck-Verlust',
-        'Auch ungeöffnete Dosen verlieren Druck nach ~3 Wochen',
-        'Tipp: Dose immer im Kühlschrank — verlängert Lebensdauer',
+        'Ein Tennisball ist auf dem Padel-Court zu schnell und kommt zu hoch von der Wand',
+        'Mit der Zeit verliert jeder Ball Druck — er springt dann flacher und stirbt an der Wand',
+        'Springt ein Ball merklich tiefer als die anderen: aussortieren, nicht weiterspielen',
       ]}/>
     </RulesDetailLayout>
   );
@@ -22427,7 +22075,7 @@ export default function App(){
       onToggleRead={()=>setRulesRead(r=>!r)}
       onBibel={()=>setScr('ritmo-bibel')}/>}
     {(()=>{
-      const order=['basics','bo3','americano','mexicano','rotation','glossar'];
+      const order=RULES_ORDER;
       const id=scr.startsWith('rules-')?scr.slice(6):null;
       if(id==='overview') return null;
       const idx=id?order.indexOf(id):-1;
@@ -22440,8 +22088,10 @@ export default function App(){
         onNext:idx<order.length-1?()=>setScr(`rules-${order[idx+1]}`):null,
         onPrev:idx>0?()=>setScr(`rules-${order[idx-1]}`):null,
       };
-      const Comp={basics:RulesBasics,bo3:RulesBo3,americano:RulesAmericano,
-        mexicano:RulesMexicano,rotation:RulesRotation,glossar:RulesGlossar}[id];
+      const Comp={court:RulesCourt,aufschlag:RulesAufschlag,waende:RulesWaende,
+        zaehlung:RulesZaehlung,americano:RulesAmericano,mexicano:RulesMexicano,
+        formate:RulesFormate,rotation:RulesRotation,glossar:RulesGlossar,
+        fairplay:RulesFairPlay}[id];
       return Comp?<Comp {...nav}/>:null;
     })()}
     {scr==='journey'&&<JourneyLanding onHome={goHome}

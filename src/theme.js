@@ -31,6 +31,7 @@ export const T = {
   blueGlow: 'var(--blueGlow)',
   yellow:     'var(--yellow)',      // der Weg zurueck (siehe CSS unten)
   yellowSoft: 'var(--yellowSoft)',
+  ball:       'var(--ball)',        // Ball in den Bibel-Szenen
   gold:     'var(--gold)',
   /* Schriften — siehe --font-* in CSS unten. */
   fontSans:    'var(--font-sans)',     // Space Grotesk — Textschrift
@@ -349,6 +350,9 @@ export const CSS = `
   --yellow: #FFC93C;
   --yellowSoft: rgba(255,201,60,0.12);
 }
+/* Der Ball in den Bibel-Szenen (src/scenes.jsx): ein Gegenstand, keine
+   Rolle — deshalb ein Wert fuer alle Themes. */
+:root{ --ball:#D8F23B; }
 
 /* ── FOTO-GLAS ────────────────────────────────────────────────────
    Das Material der Screens mit Foto-Hintergrund (PhotoBackdrop in

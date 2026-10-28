@@ -44,6 +44,7 @@ Pure / side-effect-free modules have been extracted from the original mega-file.
 | [src/courtLayout.js](src/courtLayout.js) | Raeumliche Anordnung der Courts: `defaultLayout`, `normLayout`, `layoutBounds`, `moveTo`, `rotateCourt`, `compactLayout`. | Reines Raster (4 x 5), keine React-Abhaengigkeit. Gezeichnet wird in `CourtMap` (App.jsx). |
 | [src/events.js](src/events.js) | `EVENTS` (die Termine der Startseite, von Hand gepflegt) + `upcomingEvents`, `eventLabel`, `eventIcs` (Kalenderdatei), `eventMapsUrl`. | Nur kommende Events werden gezeigt; neue Termine einfach anhaengen. |
 | [src/whatsNew.js](src/whatsNew.js) | `RELEASES` (die Ausgaben des Update-Newsletters) + `unseenRelease(seen)`. | Inhalt/Daten; die Regeln fuer neue Ausgaben stehen im Dateikopf. |
+| [src/scenes.jsx](src/scenes.jsx) | Die bewegten Grafiken der Bibel: `useSceneClock` (Zeitleiste, spielt nur im Bild), Bausteine (`Court`, `Orb`, `Ball`, `Tag`, `Steps`) und je Kapitel eine `Scene*`. | Siehe „Die Bibel“. Reine Darstellung, kein App-State. |
 | [src/skillDescriptions.js](src/skillDescriptions.js) | `SKILL_DESCRIPTIONS` — text for the RITMO DNA Skill tier card. | Translation-ready content. |
 | [src/supabase.js](src/supabase.js) | Older standalone tournament-sharing helper (legacy). | Currently unused by the active flow. |
 
@@ -422,6 +423,42 @@ Neu gebaut als Magazin, nicht nur umgefaerbt.
   Ausholbewegung ueber Kopf die Víbora) — wer neue liefert, prueft das
   Bild, nicht den Dateinamen. Die alten Strichmaennchen (`ShotBase`
   samt sieben `*Figure`) sind raus.
+- **Das Regelwerk hat zehn Kapitel** (`RULES_CHAPTERS`, daraus auch
+  `RULES_ORDER` fuer das Blaettern in `App()`): Court & Ausrüstung,
+  Aufschlag, Wände & Ballwechsel, Zählweise, Americano, Mexicano,
+  Weitere Formate, Pausen & Wertung, Schlagarten, Fair Play. Jedes
+  Kapitel ist ein `RulesChapter` (Kopf aus der Liste, Szene oben,
+  Text darunter). „Weitere Formate“ liest **`FORMAT_RULES`** aus
+  tournament.js — derselbe Text wie im Info-Aufklapper des
+  Konfigurators; wer ein Format aendert, aendert beide auf einmal.
+- **Fakten nach FIP**, nicht nach Gefuehl: Aufschlaglinie 6,95 m vom
+  Netz, Rueckwand 3 m Glas + 1 m Gitter, Aufschlag nach dem Aufspringen
+  ans Glas erlaubt, ans Gitter Fehler, Por 3/Por 4 = ueber Seiten- bzw.
+  Rueckwand. Die alte Fassung hatte die Aufschlaglinie bei ~3 m, den
+  Padel-Ball bei „4,6 PSI“ und den Contrapared falsch — wer hier etwas
+  ergaenzt, prueft es nach.
+- **Die Szenen** ([src/scenes.jsx](src/scenes.jsx)) sind Funktionen der
+  Zeit: `useSceneClock(dauer)` liefert t in Sekunden, `seg(t,a,b,kurve)`
+  einen Einsatz von 0 bis 1, `win()` ein Ein-Halten-Aus. So steht jede
+  Choreografie an einer Stelle und in Sekunden lesbar, statt in
+  dreissig CSS-Keyframes. Gespielt wird **nur, solange die Szene im
+  Bild ist** (IntersectionObserver); bei reduzierter Bewegung steht
+  ein Standbild (`still`).
+- **Massstab**: der Court ist 10 × 20 m mit 1 m = 9 Einheiten, die
+  Aufschlaglinien liegen exakt bei 6,95 m. Der Ball fliegt auf einer
+  Parabel: Schatten am Boden, Ball um die Hoehe versetzt, dahinter ein
+  kurzer Schweif — so liest man die Hoehe ohne Seitenansicht.
+- **Beschriftung in Szenen**: Centauri nur fuer kurze Woerter
+  (`Kicker`, hoechstens ~14 Zeichen bei 160 Einheiten Breite) —
+  „Neue Partner jede Runde“ lief aus der Karte. Saetze als `Tag` in
+  der Antiqua (`serif`) oder in Space Grotesk.
+- Die **Schlagarten-Zeichnungen** ziehen sich beim ersten Sichtkontakt
+  von links ein (`clip-path`, `useInView`) — Maske auf Maske geht
+  nicht, die Zeichnung IST schon die Maske.
+- Wer die Szenen im Browser prueft: **nicht waehrend eines
+  Testlaufs neu bauen.** Die laufende Vorschau laedt sonst Chunks, die
+  es nicht mehr gibt, und die Seite wird schwarz — das sieht aus wie
+  ein Absturz der Szene und ist keiner.
 - **`WissenLanding`** — der Einstieg vor dem ersten Lesen: Kopf wie
   ueberall, Bild als gerahmte Karte, Schlagzeile, grosser Weiter-Knopf.
 - **App-FAQ** ist nach Themen gruppiert (`APP_FAQ` = Gruppen mit

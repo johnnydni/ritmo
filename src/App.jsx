@@ -340,17 +340,22 @@ function BetaLanding({onLogin,onRegister}){
 /* ═══════════════════════════════════════════════════════════════
    SPLASH SCREEN
 
-   Ganz schlicht: das Foto der Startseite, der Schriftzug mittig,
-   darunter ein Ladebalken, der sich einmal fuellt. Tippen startet
-   sofort. Das Logomotion-Video samt Morph ist raus — 8,5 MB, die
-   jeder Start erst laden musste, fuer zwei Sekunden Vorspann.
+   Das Intro-Video (assets/splash-intro.mp4, Handschlag am Netz von
+   oben) unter dem Schriftzug, darunter ein Ladebalken in
+   Uebertragungs-Breite, der sich ueber die Laenge des Videos einmal
+   fuellt. Tippen startet sofort. Das Video ist auf 720p ohne Ton
+   heruntergerechnet (~0,7 MB statt 15,7) — das alte Logomotion-Video
+   flog mit 8,5 MB genau deshalb raus.
+   - Ende = Ende des Videos (`ended`), mit einer Obergrenze, falls es
+     haengt oder iOS es im Stromsparmodus gar nicht startet: dann
+     steht das Standbild (poster) da, und der Splash endet trotzdem.
 
    „Skip Intro" bleibt und merkt sich die Wahl (ritmo_skip_intro,
    beim Logout geloescht): dann laeuft der Balken in einem Bruchteil
    der Zeit durch, statt ganz zu fehlen — ein Bild, das sofort
    wieder verschwindet, sieht aus wie ein Fehler.
 ═══════════════════════════════════════════════════════════════ */
-const SPL_MS=2600, SPL_MS_SKIP=700;
+const SPL_MS=8400, SPL_MS_SKIP=700; // SPL_MS = Laenge des Intro-Videos
 
 function Splash({onDone}){
   const doneRef=useRef(false);
@@ -364,9 +369,17 @@ function Splash({onDone}){
     setNoIntro(v=>{ lsSet('ritmo_skip_intro',!v); return !v; });
   };
   const ms=skip?SPL_MS_SKIP:SPL_MS;
+  const vidRef=useRef(null);
   useEffect(()=>{
-    const t=setTimeout(finish,ms+150);
-    return()=>clearTimeout(t);
+    const t=setTimeout(finish,ms+(skip?150:1600));
+    /* Laeuft das Video nach 1,5 s nicht (iOS-Stromsparmodus,
+       fehlender Codec, kein Netz), steht nur das Standbild da —
+       dann nicht acht Sekunden darauf warten. */
+    const c=skip?0:setTimeout(()=>{
+      const v=vidRef.current;
+      if(v&&(v.error||(v.paused&&v.currentTime===0))) setTimeout(finish,900);
+    },1500);
+    return()=>{clearTimeout(t);clearTimeout(c);};
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[]);
   /* html/body/theme-color solange auf Schwarz: die Zonen ausserhalb des
@@ -390,19 +403,29 @@ function Splash({onDone}){
   return(
     <div onClick={finish} style={{position:'fixed',inset:0,zIndex:1000,
       ...PHOTO_ROOT,background:'#000',overflow:'hidden',cursor:'pointer',userSelect:'none'}}>
-      <PhotoBackdrop dim={.35}/>
+      {skip?<PhotoBackdrop dim={.35}/>:(<>
+        {/* Wer das Intro abkuerzt, laedt das Video gar nicht erst. */}
+        <video src={`${getAssetBase()}assets/splash-intro.mp4`}
+          poster={`${getAssetBase()}assets/splash-intro-poster.jpg`}
+          ref={vidRef} autoPlay muted playsInline preload="auto" aria-hidden="true"
+          onEnded={finish}
+          style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover'}}/>
+        <div aria-hidden="true" style={{position:'absolute',inset:0,
+          background:'linear-gradient(rgba(0,0,0,.25), rgba(0,0,0,.12) 40%, rgba(0,0,0,.45))'}}/>
+      </>)}
       <div style={{position:'absolute',left:'50%',top:'50%',transform:'translate(-50%,-50%)',
         display:'flex',flexDirection:'column',alignItems:'center',gap:30,pointerEvents:'none'}}>
         <img className="si" src={`${getAssetBase()}assets/ritmo-lettering.png`} alt="RITMO"
           draggable={false}
           style={{width:'min(58vw, 250px)',height:'auto',display:'block',
             filter:'drop-shadow(0 4px 24px rgba(0,0,0,.5))'}}/>
-        {/* Der Balken: eine Haarlinie, die sich mit einer weichen
-            S-Kurve fuellt; vorn ein orange Kopf, darueber ein Glanz. */}
+        {/* Der Balken: breit wie die Leiste einer Sportuebertragung,
+            fuellt sich mit einer weichen S-Kurve; vorn ein orange
+            Kopf, darueber ein Glanz. */}
         <div role="progressbar" aria-label="RITMO wird geladen"
-          style={{position:'relative',width:'min(46vw, 180px)',height:3,borderRadius:2,
-            background:'rgba(255,255,255,.16)',overflow:'hidden'}}>
-          <div style={{position:'absolute',inset:0,borderRadius:2,transformOrigin:'left center',
+          style={{position:'relative',width:'min(76vw, 300px)',height:5,borderRadius:3,
+            background:'rgba(255,255,255,.18)',overflow:'hidden'}}>
+          <div style={{position:'absolute',inset:0,borderRadius:3,transformOrigin:'left center',
             background:`linear-gradient(90deg, rgba(255,255,255,.85) 0%, #fff 78%, ${T.o} 100%)`,
             boxShadow:`0 0 10px ${T.o}`,
             animation:`splFill ${ms}ms cubic-bezier(.65,0,.35,1) both`}}/>

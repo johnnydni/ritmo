@@ -529,27 +529,39 @@ Rueckgabe nur Splash und diese Seite — kein Login, kein Home, kein
   App** — der Code liegt auf seinem Geraet, dagegen hilft kein
   Server.
 
-### Der Splash: Foto, Schriftzug, Ladebalken
+### Der Splash: Intro-Video, Schriftzug, Ladebalken
 
-Ganz schlicht: das Foto der Startseite (`dim .35`), der Schriftzug
-mittig, darunter eine 3-px-Haarlinie, die sich einmal fuellt (`splFill`,
-weiche S-Kurve, vorn ein oranger Kopf, ein Glanz `splGlint` laeuft
-darueber). `SPL_MS` (2,6 s) bis zum Ende, Tippen startet sofort.
+Das Intro-Video (`assets/splash-intro.mp4`, Handschlag am Netz von
+oben, 8,4 s) laeuft vollflaechig unter einem leichten Verlauf, darauf
+mittig der Schriftzug und darunter der Ladebalken — **5 px hoch und
+bis 300 px breit**, wie die Leiste einer Sportuebertragung. Er fuellt
+sich ueber die Laenge des Videos (`SPL_MS` = 8400, `splFill`, vorn ein
+oranger Kopf, ein Glanz `splGlint` laeuft darueber). Der Splash endet
+mit dem Video (`ended`), Tippen startet sofort.
 
-- **„Skip Intro" bleibt** und merkt sich die Wahl
-  (`ritmo_skip_intro`, beim Logout geloescht). Dann laeuft der Balken
-  in `SPL_MS_SKIP` (0,7 s) durch, statt ganz zu fehlen — ein Bild, das
-  sofort wieder verschwindet, sieht aus wie ein Fehler.
-- **Das Logomotion-Video ist raus**, mit ihm der Morph vom R zur Marke
-  (`shapeMorph.js`, `ritmo-logo-r.png`, `logomotion720p.mp4`): 8,5 MB,
-  die jeder Start erst laden musste, fuer zwei Sekunden Vorspann. Wer
-  ihn zurueckwill, findet ihn in der Git-Historie vor Runde 6.
+- **Das Video ist heruntergerechnet**: 720p, H.264, ohne Ton,
+  `+faststart` — 0,7 MB statt 15,7 MB im Original. Wer ein neues
+  liefert, rechnet es genauso um (`ffmpeg -an -vf scale=720:-2
+  -c:v libx264 -crf 24 -movflags +faststart`) und legt ein Standbild
+  daneben (`splash-intro-poster.jpg`).
+- **Der Service Worker laesst Range-Anfragen durch** (`sw.js`, ab
+  `ritmo-v6`). Safari fragt Videos mit `bytes=0-1` an und will 206;
+  ein 200 mit der ganzen Datei aus dem Cache, und das Video spielt auf
+  dem iPhone gar nicht.
+- **Laeuft das Video nach 1,5 s nicht** (Stromsparmodus auf iOS,
+  fehlender Codec, kein Netz), endet der Splash 0,9 s spaeter — statt
+  acht Sekunden ein Standbild zu zeigen. Die harte Obergrenze ist
+  `SPL_MS` + 1,6 s.
+- **„Skip Intro" bleibt** und merkt sich die Wahl (`ritmo_skip_intro`,
+  beim Logout geloescht). Dann steht statt des Videos das Foto der
+  Startseite da, das Video wird gar nicht erst geladen, und der Balken
+  laeuft in `SPL_MS_SKIP` (0,7 s) durch.
+- Playwrights Chromium kann kein H.264 (`MediaError` 4). Wer den
+  Splash dort testet, leitet die Datei per `route` auf eine WebM-Kopie
+  um — sonst sieht man nur den Rueckweg.
 - html/body/`theme-color` stehen waehrend des Splash auf Schwarz, damit
   iOS die Safe-Areas nicht in der Theme-Farbe toent; der Theme-Sync
   der App pausiert solange (`scr==='splash'`).
-- Bei `prefers-reduced-motion` kuerzt der Killswitch die Animation —
-  der Balken steht sofort voll da, der Splash endet trotzdem erst nach
-  der Zeit (oder beim Tippen).
 
 ### Der Turnier-Start-Vorhang und sein Orb (`TennisOrb`)
 

@@ -27,7 +27,7 @@
      Minuten kam auch "online" noch die alte Shell aus dem HTTP-Cache.
      → Navigationen gehen mit cache:'no-cache' raus (Revalidierung).
 ═══════════════════════════════════════════════════════════════ */
-const CACHE = 'ritmo-v5';
+const CACHE = 'ritmo-v6';
 
 self.addEventListener('install', () => { self.skipWaiting(); });
 
@@ -50,6 +50,11 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
+  // Range-Anfragen (Video) nie aus dem Cache: Safari fragt das
+  // Splash-Video mit "bytes=0-1" an und will 206 zurueck — ein 200 mit
+  // der ganzen Datei aus dem Cache und das Video spielt auf dem iPhone
+  // gar nicht.
+  if (req.headers.has('range')) return;
 
   if (req.mode === 'navigate') {
     e.respondWith(

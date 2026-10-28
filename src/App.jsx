@@ -6874,7 +6874,7 @@ const RL_TIME_FS=41;     // Ziffernhoehe 29,7 (89)
 const RL_DIM=.4;         // Deckkraft hinter dem Zeiger (94/234)
 const RL_MASK='linear-gradient(to right, transparent 0, #000 12%, #000 88%, transparent 100%)';
 
-function MinuteRuler({value,onChange,min=1,max=60}){
+function MinuteRuler({value,onChange,min=1,max=60,label='Rundendauer'}){
   const ref=useRef(null);
   const settle=useRef(null);            // Debounce bis das Momentum steht
   const lastUser=useRef(0);             // Zeitstempel der letzten Nutzer-Scrollung
@@ -6949,7 +6949,7 @@ function MinuteRuler({value,onChange,min=1,max=60}){
   return(
     <div style={{width:'100%'}}>
       <div ref={ref} onScroll={handleScroll}
-        role="slider" aria-label="Rundendauer in Minuten"
+        role="slider" aria-label={`${label} in Minuten`}
         aria-valuemin={min} aria-valuemax={max} aria-valuenow={value}
         aria-valuetext={`${value} Minuten`}
         style={{height:RL_LABEL_H+RL_GAP_LABEL+RL_TICK_H,
@@ -7283,31 +7283,29 @@ function TimerCard({minutes,setMinutes,running,secsLeft,finished,onStart,onPause
   const totalSecs=minutes*60;
   const progress=totalSecs?secsLeft/totalSecs:0;
   const fmtTime=(s)=>`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
-  const opts=Array.from({length:60},(_,i)=>i+1);
 
   // 3 states: idle (picker visible), running/paused (countdown), finished
   return(
     <div style={{...GLASS,borderRadius:22,
       padding:'14px 16px',transition:'border-color .25s'}}>
 
+      {/* Eingestellt wird wie die Rundendauer im Turnier-Konfigurator:
+          dieselbe Skala, dieselbe Ablesung. Start sitzt links auf der
+          Hoehe der Zeit — rechts steht sie selbst. */}
       {!hasStarted&&!finished&&(
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:14}}>
-          <div style={{flexShrink:0}}>
-            <div style={{fontFamily:T.fontSerif,color:T.t1,fontSize:20,fontWeight:700}}>Timer</div>
-            <div className="txt" style={{color:T.t2,fontSize:12,fontStyle:'italic',marginTop:2}}>Minuten</div>
+        <div style={{padding:'0 2px 2px'}}>
+          <div style={{fontFamily:T.fontSerif,color:T.t1,fontSize:21,fontWeight:700,
+            marginBottom:10}}>Timer</div>
+          <div style={{position:'relative'}}>
+            <MinuteRuler value={minutes} onChange={setMinutes} label="Timer"/>
+            <button onClick={onStart} aria-label="Timer starten" title="Timer starten"
+              style={{position:'absolute',left:0,bottom:-4,width:50,height:50,
+                borderRadius:'50%',background:T.o,border:'none',cursor:'pointer',
+                display:'flex',alignItems:'center',justifyContent:'center',
+                boxShadow:'0 4px 16px var(--oGlow)'}}>
+              <PlayGlyph size={19} color="#000"/>
+            </button>
           </div>
-          {/* Durchsicht statt Kartenfarbe: der Picker blendet seine Raender
-              in bgColor aus, und auf Glas staenden da zwei Baender. */}
-          <ScrollPicker value={minutes} onChange={setMinutes} options={opts} bgColor="transparent"/>
-          <button onClick={onStart}
-            style={{flexShrink:0,background:T.o,color:'#000',border:'none',
-              borderRadius:'50%',width:56,height:56,fontSize:13,fontWeight:800,
-              cursor:'pointer',transition:'opacity .15s'}}
-            onPointerDown={e=>e.currentTarget.style.opacity='.7'}
-            onPointerUp={e=>e.currentTarget.style.opacity='1'}
-            onPointerLeave={e=>e.currentTarget.style.opacity='1'}>
-            Start
-          </button>
         </div>
       )}
 

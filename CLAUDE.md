@@ -1366,8 +1366,9 @@ aufklappte.
 
 **Spieler als Glaskugel** (`GlassOrb`, `OrbStack` in App.jsx) statt
 farbiger Kreise — **farblos**: klares Glas mit Glanzpunkt oben links,
-hellem Saum unten rechts und dunklem Gegenschatten; die Kontur morpht
-langsam (`.orb`/`orbMorph` in theme.js), je Kugel versetzt. Darin
+hellem Saum unten rechts und dunklem Gegenschatten. **Sie steht still**:
+eine Weile morphte ihre Kontur (`orbMorph`), das lenkte im Turnier vom
+Spielstand ab und ist wieder raus. Darin
 steht die **Nummer** des Spielers (`label`; `pNum(list,id)` = Stelle
 in der Turnierliste — die id ist im Setup ein Zaehler mit Luecken),
 auf der Live-Karte die Initiale. Ueberall im Turnier: Spielerliste im

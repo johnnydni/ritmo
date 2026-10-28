@@ -8574,71 +8574,6 @@ function TimeDial({start,end,onChange}){
    spiegelt jeden Schritt live. Nur für den Lokal-Modus — Online
    hat mit der Lobby bereits einen eigenen geführten Flow.
 ═══════════════════════════════════════════════════════════════ */
-/* ── Zwischensequenz: "Turnier starten" → Assistent ───────────────
-   Zwischen dem Tipp und dem ersten Schritt lag ein Wimpernschlag
-   freies Formular: der Assistent liegt als Overlay darueber und
-   blendet ein (.fi, 250 ms), und solange sieht man das Formular, das
-   in diesem Moment niemand sehen soll. Hier steht jetzt eine kurze
-   Sequenz davor — sie deckt die Uebergabe ab und sagt nebenbei,
-   worum es geht.
-
-   Die Taktung liegt als animation-delay an den Zeilen, nicht in
-   einer Kette von Timern: so laeuft sie auch dann sauber, wenn der
-   Assistent dahinter gerade seine sieben Schritte aufbaut.
-
-   Tippen ueberspringt. Wer das zum zwanzigsten Mal sieht, will
-   spielen und nicht zuschauen. */
-const INTRO_MS=1850;      // bis zum Ausblenden
-const INTRO_FADE=280;     // Ausblendzeit
-function PadelIntro({onDone}){
-  const[out,setOut]=useState(false);
-  const done=useRef(false);
-  const finish=()=>{if(done.current)return;done.current=true;setOut(true);setTimeout(onDone,INTRO_FADE);};
-  useEffect(()=>{
-    const t=setTimeout(finish,INTRO_MS);
-    return()=>clearTimeout(t);
-  },[]);  // eslint-disable-line react-hooks/exhaustive-deps
-  // Eine abgelehnte Sportart: Wort, Strich, Urteil.
-  const meh=(word,verdict,d)=>(
-    <div className="intro-line" style={{animationDelay:`${d}ms`,
-      display:'flex',alignItems:'baseline',gap:10,
-      color:T.t3,fontSize:27,fontWeight:800,letterSpacing:-.3}}>
-      <span style={{position:'relative'}}>
-        {word}
-        <span className="intro-strike" style={{animationDelay:`${d+300}ms`,
-          position:'absolute',left:-2,right:-2,top:'52%',height:3,borderRadius:2,
-          background:T.t3,opacity:.7}}/>
-      </span>
-      {verdict&&<span style={{fontSize:20,fontWeight:700,opacity:.75}}>{verdict}</span>}
-    </div>
-  );
-  return(
-    <div onClick={finish} role="presentation"
-      style={{position:'fixed',inset:0,zIndex:400,cursor:'pointer',
-        /* Deckend ab dem ersten Frame — das ist der ganze Sinn der
-           Sache. Kein Einblenden, nur ein Ausblenden. */
-        background:T.bg,backgroundImage:'var(--bgGrad)',
-        opacity:out?0:1,transition:`opacity ${INTRO_FADE}ms ease`,
-        display:'flex',flexDirection:'column',justifyContent:'center',
-        gap:9,padding:'0 30px'}}>
-      {meh('Ping Pong?',null,0)}
-      {meh('Tennis?',null,260)}
-      {meh('Pickleball?','Meh.',520)}
-      <div className="intro-punch display" style={{animationDelay:'1000ms',
-        /* 38/2.5 ist gemessen, nicht gewaehlt: Centauri laeuft breit,
-           bei 46 px stand "Padel?" 372 px breit in 330 px Platz und
-           das Fragezeichen fiel aus dem Bild. */
-        marginTop:18,color:T.o,fontSize:38,letterSpacing:2.5,lineHeight:1.05}}>
-        Padel?
-      </div>
-      <div className="intro-line" style={{animationDelay:'1180ms',
-        color:T.t1,fontSize:29,fontWeight:800,letterSpacing:-.4}}>
-        Hell yeah.
-      </div>
-    </div>
-  );
-}
-
 /* Listen, die per Plus/Minus wachsen und schrumpfen (Spieler, Courts
    im Assistenten): neue Eintraege fliegen von links ein, gehende nach
    rechts hinaus. `useFlyIn` merkt sich, wann ein Schluessel zum
@@ -9448,12 +9383,6 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
      ihn spaeter aus dem Formular wieder aufmacht, bekommt die Blende —
      da kommt er ja von irgendwo. */
   const autoWiz=useRef(!isEdit&&!seed);
-  /* Davor die Zwischensequenz. Bei reduzierter Bewegung faellt sie
-     aus: der globale Killswitch in theme.js kuerzt jede Animation auf
-     0,01 ms, die Sequenz stuende also 1,8 s lang fertig da. */
-  const[intro,setIntro]=useState(()=>!isEdit&&!seed
-    &&!(typeof window!=='undefined'&&window.matchMedia
-      &&window.matchMedia('(prefers-reduced-motion: reduce)').matches));
   // Schnellzugriff: 'spieler' | 'courts' | 'zeit' | 'dauer' | null
   const[quick,setQuick]=useState(null);
   // Screenshot-Scan (Spieler per OCR uebernehmen).
@@ -10410,10 +10339,6 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
           suggest={suggest} pauseStats={pauseStats}
           nameHistory={nameHistory}/>
       )}
-
-      {/* Zwischensequenz — liegt ueber dem Assistenten und deckt
-          dessen Aufbau ab. */}
-      {intro&&<PadelIntro onDone={()=>setIntro(false)}/>}
 
       {stylePickerFor!=null&&(
         <StylePickerSheet

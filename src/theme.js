@@ -803,21 +803,6 @@ input[type="time"]::-webkit-datetime-edit{padding:0;text-align:center;}
 }
 .wn-spot{animation:wnSpot 2s ease-out infinite;}
 
-/* Zwischensequenz vor dem Turnier-Assistenten. Die drei abgelehnten
-   Sportarten fahren von unten ein und bekommen ihren Strich, die
-   Pointe federt. Dauer und Reihenfolge stehen als animation-delay
-   am Element — die Sequenz laeuft also im Compositor und nicht ueber
-   eine Kette von React-Timern. */
-@keyframes introUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
-@keyframes introStrike{from{transform:scaleX(0)}to{transform:scaleX(1)}}
-@keyframes introPunch{
-  0%  {opacity:0;transform:translateY(18px) scale(.86)}
-  58% {opacity:1;transform:translateY(0)    scale(1.07)}
-  100%{opacity:1;transform:translateY(0)    scale(1)}
-}
-.intro-line{animation:introUp .4s cubic-bezier(.22,.95,.34,1) both;}
-.intro-strike{transform-origin:left center;animation:introStrike .26s cubic-bezier(.4,0,.2,1) both;}
-.intro-punch{animation:introPunch .52s cubic-bezier(.22,1.2,.36,1) both;}
 /* Listen im Assistenten: was dazukommt, fliegt von links ein; was
    geht, fliegt nach rechts hinaus und klappt dabei seine Hoehe zu. */
 @keyframes flyIn{from{opacity:0;translate:-56px 0}to{opacity:1;translate:none}}

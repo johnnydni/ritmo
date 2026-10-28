@@ -12993,242 +12993,6 @@ function TennisOrb({size=120,dots=1100,speed=0.9,style}){
     style={{width:size,height:size,display:'block',...style}}/>;
 }
 
-/* ── Endstand: die Partikel-Szene ─────────────────────────────────
-   Derselbe Gedanke wie beim Orb, nur mit drei Formen: aus dem Pokal
-   wird ein Tennisball, daraus ein Schlaeger, dann wieder der Pokal.
-   Jede Form ist eine Punktwolke mit GENAU derselben Punktzahl —
-   dadurch ist der Uebergang ein einfaches Ueberblenden Punkt fuer
-   Punkt und nicht das Ein-/Ausblenden zweier Bilder.
-
-   Die Punkte wechseln leicht versetzt (Index-Verzoegerung): die Wolke
-   flieszt dann von einer Form in die andere, statt als Block
-   umzuspringen. */
-const PC_GA=Math.PI*(3-Math.sqrt(5));
-const PC_TAU=Math.PI*2;
-function pcBall(n){
-  const out=[], seamN=Math.round(n*0.17), rest=n-seamN;
-  for(let i=0;i<seamN;i++){
-    const p=orbSeamPoint(i/seamN*PC_TAU);
-    out.push({x:p[0]*0.78,y:p[1]*0.78,z:p[2]*0.78,c:1});
-  }
-  for(let i=0;i<rest;i++){
-    const y=1-2*(i+0.5)/rest, r=Math.sqrt(Math.max(0,1-y*y)), th=i*PC_GA;
-    out.push({x:Math.cos(th)*r*0.78,y:y*0.78,z:Math.sin(th)*r*0.78,c:0});
-  }
-  return out;
-}
-/* Pokal: der Wimbledon-Pokal. Der Koerper ist eine Rotationsflaeche
-   ueber PC_CUP (Wertepaare y/r von unten nach oben): Fuss, Stiel mit
-   Knauf, Kelch, der vorstehende Rand und darauf die Deckelkuppel.
-   Oben sitzt die Ananas, seitlich zwei Henkel.
-
-   Drei Dinge, ohne die es ein anderer Pokal wird:
-   - Das Verhaeltnis. Das Original ist rund doppelt so hoch wie breit
-     (47 cm bei 19 cm Durchmesser). Mit einer Hoehe in Randbreite
-     wurde daraus ein Kelch, ein Kreisel oder eine Linse — je nach
-     Versuch, aber nie der Pokal.
-   - Der RAND muss vorstehen (der kurze Sprung auf r 0.54). Ohne ihn
-     laufen Kelch und Deckel zu einer Kugel zusammen und der Pokal
-     hat keinen Deckel mehr, sondern eine Haube.
-   - Die Punkte werden nach MANTELFLAECHE verteilt (r x Segmentlaenge),
-     sonst bekommt der breite Deckel alles und der duenne Stiel nichts
-     — der Fuss stand dann als eigene Scheibe darunter. Die additive
-     Konstante ist genau dafuer da. */
-const PC_CUP=[
-  [0.000,0.000],[0.000,0.330],[0.030,0.335],[0.062,0.300],
-  [0.100,0.230],[0.145,0.160],[0.190,0.120],[0.250,0.098],
-  [0.320,0.090],[0.380,0.136],[0.430,0.100],[0.470,0.085],
-  [0.510,0.106],[0.545,0.160],[0.590,0.240],[0.645,0.320],
-  [0.710,0.395],[0.790,0.452],[0.880,0.484],[0.962,0.500],
-  [0.972,0.540],[0.998,0.542],[1.012,0.506],
-  [1.040,0.500],[1.062,0.496],[1.130,0.492],[1.210,0.482],
-  [1.290,0.470],[1.364,0.440],[1.433,0.398],[1.495,0.340],
-  [1.546,0.272],[1.586,0.200],[1.615,0.125],[1.632,0.060],
-];
-const PC_HB=[[0.480,0.985],[0.880,0.812],[0.286,0.598]];
-function pcRevolve(n,prof){
-  const segs=[];let tot=0;
-  for(let i=1;i<prof.length;i++){
-    const [y0,r0]=prof[i-1],[y1,r1]=prof[i];
-    const w=Math.hypot(y1-y0,r1-r0)*((r0+r1)/2+0.055);
-    segs.push({y0,r0,y1,r1,w}); tot+=w;
-  }
-  const out=[];let k=0;
-  for(const s of segs){
-    const m=Math.max(1,Math.round(n*s.w/tot));
-    for(let i=0;i<m;i++){
-      const t=(i+0.5)/m, a=(k++)*PC_GA;
-      const y=s.y0+(s.y1-s.y0)*t, r=s.r0+(s.r1-s.r0)*t;
-      out.push({x:Math.cos(a)*r,y,z:Math.sin(a)*r,c:1});
-    }
-  }
-  /* Auf n genau bringen: die Rundung je Segment laesst die Summe
-     driften, und alle drei Formen brauchen dieselbe Punktzahl. */
-  while(out.length>n) out.splice(out.length>>1,1);
-  while(out.length<n) out.push({...out[out.length>>1]});
-  return out;
-}
-function pcTrophy(n){
-  const pine=Math.round(n*0.10), hand=Math.round(n*0.17);
-  const out=pcRevolve(n-pine-hand,PC_CUP);
-  const body=Math.round(pine*0.66), y0=1.632;
-  for(let i=0;i<body;i++){
-    const t=(i+0.5)/body, a=i*PC_GA;
-    const r=0.086*Math.sin(Math.PI*(0.16+0.78*t))+0.008;
-    out.push({x:Math.cos(a)*r,y:y0+t*0.190,z:Math.sin(a)*r,c:1});
-  }
-  const leaf=pine-body, L=6;          // sechs kurze Blaetter, kein Busch
-  for(let i=0;i<leaf;i++){
-    const t=(Math.floor(i/L)+0.5)/Math.ceil(leaf/L), a=i%L/L*PC_TAU+0.35;
-    const r=0.030+0.075*Math.sin(Math.PI*0.62*t);
-    out.push({x:Math.cos(a)*r,y:y0+0.190+t*0.092,z:Math.sin(a)*r,c:1});
-  }
-  /* Henkel: eine quadratische Bezier vom Rand nach aussen und zurueck
-     an den Kelch, als duenner Schlauch abgetastet. */
-  for(const sg of [-1,1]){
-    const m=sg<0?hand>>1:hand-(hand>>1);
-    for(let i=0;i<m;i++){
-      const t=(i+0.5)/m, u=1-t, a=i*PC_GA*2;
-      const x=u*u*PC_HB[0][0]+2*u*t*PC_HB[1][0]+t*t*PC_HB[2][0];
-      const y=u*u*PC_HB[0][1]+2*u*t*PC_HB[1][1]+t*t*PC_HB[2][1];
-      const rr=0.024*(0.55+0.45*Math.sin(Math.PI*t));
-      out.push({x:sg*(x+Math.cos(a)*rr),y:y+Math.sin(a)*rr*0.9,
-        z:Math.cos(a*1.7)*rr,c:1});
-    }
-  }
-  // auf die Mitte ziehen, damit alle drei Formen dieselbe Achse haben
-  const ys=out.map(p=>p.y), yc=(Math.min(...ys)+Math.max(...ys))/2;
-  return out.map(p=>({...p,y:p.y-yc}));
-}
-/* Schlaeger: flach in der xy-Ebene (ein Schlaeger IST flach — beim
-   Drehen sieht man ihn deshalb auch von der Kante). Rahmen, gelochte
-   Flaeche, zwei Streben, Griff. */
-/* Beide Wolken auf dieselbe Ausdehnung ziehen — und zwar auf die
-   PROJIZIERTE, ueber eine ganze Umdrehung gemessen. Nach den
-   Rohkoordinaten zu normieren reicht nicht: der Kelchrand steht weit
-   aussen UND weit vorn, die Perspektive (k = D/(D−z), bis 1,4) schob
-   ihn dadurch ueber den Kartenrand, waehrend der Ball bequem Platz
-   hatte. Gerechnet wird einmal je Form, nicht je Bild. */
-function pcFitView(pts,D,ct,st,margin=0.78){
-  let m=0;
-  for(let i=0;i<24;i++){
-    const a=i/24*PC_TAU, ca=Math.cos(a), sa=Math.sin(a);
-    for(const p of pts){
-      const x1=p.x*ca+p.z*sa, z1=-p.x*sa+p.z*ca;
-      const y2=p.y*ct-z1*st, z2=p.y*st+z1*ct;
-      const k=D/(D-z2);
-      m=Math.max(m,Math.abs(x1*k),Math.abs(y2*k));
-    }
-  }
-  const k=m>0?margin/m:1;
-  return pts.map(p=>({...p,x:p.x*k,y:p.y*k,z:p.z*k}));
-}
-/* Die Szene liegt als HINTERGRUND in der Sieger-Karte und fuellt sie
-   ganz: sie misst ihren Container (und nach einem Dreh erneut), statt
-   eine feste Kantenlaenge zu bekommen. Darueber liegt ein dunkler
-   Schleier und darauf der Text — die Szene richtet sich also nach der
-   Karte und nicht umgekehrt. */
-/* Die dritte Form: Konfetti. Kein Koerper, sondern ein Schwarm —
-   die Punkte liegen frei im Raum und tragen ihre EIGENE Farbe (die
-   anderen beiden faerben nach Form). Dadurch zerfaellt der Ball
-   sichtbar in bunte Schnipsel und setzt sich danach wieder zum Pokal
-   zusammen. Etwas dichter in der Mitte, damit es ein Schwarm bleibt
-   und keine gleichmaessige Tapete. */
-function pcConfetti(n,cols){
-  const out=[];
-  for(let i=0;i<n;i++){
-    const r=Math.pow(Math.random(),0.62);
-    const a=Math.random()*PC_TAU, b=Math.acos(2*Math.random()-1);
-    out.push({
-      x:Math.sin(b)*Math.cos(a)*r*1.05,
-      y:Math.cos(b)*r*0.95,
-      z:Math.sin(b)*Math.sin(a)*r*0.85,
-      c:0, col:cols[(Math.random()*cols.length)|0],
-    });
-  }
-  return out;
-}
-function WinnerParticles({size=152,hold=2300,morph=950}){
-  const ref=useRef(null);
-  useEffect(()=>{
-    const cv=ref.current;
-    if(!cv||!cv.getContext) return;
-    const ctx=cv.getContext('2d');
-    if(!ctx) return;
-    const dpr=Math.min(3,window.devicePixelRatio||1);
-    cv.width=Math.round(size*dpr); cv.height=Math.round(size*dpr);
-    const css=getComputedStyle(document.documentElement);
-    const ink=(css.getPropertyValue('--t1')||'').trim()||'#fff';
-    const acc=(css.getPropertyValue('--o')||'').trim()||'#FF7A1A';
-    const gold=(css.getPropertyValue('--gold')||'').trim()||'#FFD60A';
-    const blue=(css.getPropertyValue('--blue')||'').trim()||'#0A84FF';
-    const green=(css.getPropertyValue('--g')||'').trim()||'#32D74B';
-    const N=1200;
-    /* Drei Formen: Pokal, Ball, Konfetti. Der Schlaeger ist raus — er
-       steht als Icon schon in der Tab-Bar und in den Listen. */
-    /* Der Pokal ist hoch und schmal, der Ball fuellt das Quadrat: mit
-       demselben Mass stuende er als Streichholz in der Karte. Er
-       bekommt deshalb mehr Rand — begrenzt wird er von der Hoehe, an
-       der Breite ist Luft. */
-    const forms=[[pcTrophy(N),0.94],[pcBall(N),0.78],
-      [pcConfetti(N,[acc,gold,blue,green,ink]),0.78]]
-      .map(([f,m])=>pcFitView(f,3.4,Math.cos(0.30),Math.sin(0.30),m));
-    /* Die Farbe haengt an der FORM, nicht am Punkt: im Pokal ist
-       Gold richtig, im Ball das Orange der Naht. Konfetti bringt
-       seine Farben selbst mit (p.col) und ueberstimmt beides. */
-    const tint=[[gold,ink],[acc,ink],[acc,ink]];
-    const R=size*dpr*0.40, cx=cv.width/2, cy=cv.height/2, D=3.4;
-    const TILT=0.30, ct=Math.cos(TILT), st=Math.sin(TILT);
-    const ease=t=>t<=0?0:t>=1?1:t*t*(3-2*t);
-    const draw=(ms)=>{
-      const cycle=hold+morph;
-      const idx=Math.floor(ms/cycle)%forms.length;
-      const nxt=(idx+1)%forms.length;
-      const local=(ms%cycle-hold)/morph;      // <0 = halten
-      const a=ms/1000*0.5225;   // 5 % langsamer als zuvor (0,55)
-      const ca=Math.cos(a), sa=Math.sin(a);
-      const A=forms[idx], B=forms[nxt];
-      /* Gedreht wird VOR dem Ueberblenden: der Punkt wandert dadurch
-         zwischen zwei bereits gedrehten Formen, und die Wolke bleibt
-         auch im Uebergang in Bewegung. */
-      const spin=p=>({x:p.x*ca+p.z*sa, y:p.y, z:-p.x*sa+p.z*ca});
-      const q=[];
-      for(let i=0;i<N;i++){
-        /* Versatz je Punkt: die Wolke flieszt, statt umzuspringen. */
-        const w=ease((local-(i%40)/40*0.35)/0.65);
-        const p0=spin(A[i]), p1=spin(B[i]);
-        const x=p0.x+(p1.x-p0.x)*w, y=p0.y+(p1.y-p0.y)*w, z=p0.z+(p1.z-p0.z)*w;
-        const y2=y*ct-z*st, z2=y*st+z*ct;
-        q.push({x:x,y:y2,z:z2,c:A[i].c+(B[i].c-A[i].c)*w,t:w,
-          ca:A[i].col,cb:B[i].col});
-      }
-      q.sort((m,o)=>m.z-o.z);
-      ctx.clearRect(0,0,cv.width,cv.height);
-      for(const p of q){
-        const k=D/(D-p.z), depth=(p.z+1)/2;
-        ctx.globalAlpha=0.18+0.82*depth*depth;
-        /* Waehrend des Uebergangs leuchtet der Punkt in der Farbe,
-           auf die er zulaeuft. */
-        const from=p.ca||(p.c>0.5?tint[idx][0]:tint[idx][1]);
-        const to=p.cb||(p.c>0.5?tint[nxt][0]:tint[nxt][1]);
-        ctx.fillStyle=p.t>0.5?to:from;
-        ctx.beginPath();
-        ctx.arc(cx+p.x*R*k,cy-p.y*R*k,Math.max(0.5,1.15*dpr*k*(size/150)),0,6.2832);
-        ctx.fill();
-      }
-      ctx.globalAlpha=1;
-    };
-    const reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if(reduce){ draw(0); return; }
-    let raf,t0=null;
-    const tick=ts=>{ if(t0===null)t0=ts; draw(ts-t0); raf=requestAnimationFrame(tick); };
-    raf=requestAnimationFrame(tick);
-    return()=>cancelAnimationFrame(raf);
-  },[size,hold,morph]);
-  return <canvas ref={ref} aria-hidden="true"
-    style={{width:size,height:size,display:'block'}}/>;
-}
-
 /* ── Konfetti ─────────────────────────────────────────────────────
    Vorher waren es 16 CSS-Schnipsel, die von oben durchs Bild fielen.
    Jetzt fliegt es aus der Mitte: Schwerkraft, Luftwiderstand, Drall
@@ -14899,117 +14663,131 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
   };
   const lb=calcLeaderboard(tourney.players,tourney.rounds,tourney.winMode,tourney.pauseMode,tourney.pausePts);
   const sortedLb=lb.sort((a,b)=>tourney.winMode==='points'?b.totalPts-a.totalPts||b.totalWins-a.totalWins:b.totalWins-a.totalWins||b.totalPts-a.totalPts);
-  const winner=sortedLb[0];
+  const winner=sortedLb[0], second=sortedLb[1];
+  const[tableOpen,setTableOpen]=useState(false);
+  // Die Schlagzeile ist der Name — so gross, wie er in die Zeile passt.
+  const nl=(winner?.name||'').length;
+  const nameFs=nl<=6?88:nl<=9?68:nl<=13?52:42;
+  /* Ein Satz zum Ausgang, gerechnet und nicht getippt: Vorsprung vor
+     dem Zweiten, oder — bei Gleichstand in der Wertung — woran es
+     hing. */
+  const story=(()=>{
+    const what=tourney.name?`„${tourney.name}“`:'das Turnier';
+    if(!winner||!second) return `gewinnt ${what}.`;
+    const byW=tourney.winMode==='wins';
+    const a=byW?winner.totalWins:winner.totalPts, b=byW?second.totalWins:second.totalPts;
+    if(a>b){ const d=a-b;
+      return `gewinnt ${what} — mit ${d} ${byW?(d===1?'Sieg':'Siegen'):(d===1?'Punkt':'Punkten')} Vorsprung vor ${second.name}.`; }
+    const tb=byW?(winner.totalPts>second.totalPts?' — mehr Punkte':''):(winner.totalWins>second.totalWins?' — mehr Siege':'');
+    return `gewinnt ${what} — ${byW?'siegegleich':'punktgleich'} mit ${second.name}${tb}.`;
+  })();
   return(
     <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
-      <PhotoBackdrop dim={.2}/>
+      <PhotoBackdrop dim={.3}/>
 
-      <ScreenHeader title="Endstand" kicker="Turnier" subtitle={tourney.name||undefined}
-        icon={<TrophyIcon size={36} color={T.t1}/>}/>
+      {/* Kopf ohne Ueberschrift: die Ueberschrift IST der Siegername. */}
+      <div className="fi" style={{padding:'0 9px',display:'flex',alignItems:'center',
+        justifyContent:'space-between',minHeight:40,flexShrink:0}}>
+        <img src={`${getAssetBase()}assets/ritmo-lettering.png`} alt="RITMO"
+          draggable={false} style={{width:150,height:'auto',display:'block',marginLeft:2,
+            userSelect:'none'}}/>
+        <span style={{marginRight:5,display:'inline-flex',opacity:.9}}>
+          <TrophyIcon size={36} color={T.t1}/>
+        </span>
+      </div>
 
-      <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
-
-        {/* Winner Hero — die Partikelwolke traegt ihn: aus dem Pokal
-            wird ein Tennisball, daraus ein Schlaeger, dann wieder der
-            Pokal. Dazu steigt einmalig Konfetti ueber den ganzen
-            Screen (nicht nur ueber die Karte: die hat overflow:hidden,
-            und Konfetti, das an einer Kante endet, ist keins). */}
+      <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',overflowY:'auto'}}>
+        {/* Konfetti steigt einmal ueber den ganzen Screen. */}
         <ConfettiBurst/>
-        <div style={{...GLASS,border:`1px solid ${T.o}`,borderRadius:24,
-          boxShadow:'0 0 28px var(--oGlow)',
-          /* flexShrink:0 — in der scrollenden Flex-Spalte schrumpfen
-             Kinder sonst: ohne die Tabelle als flex:1 wurde aus dem
-             Sieger-Block ein 48-px-Streifen Konfetti. */
-          padding:'20px 22px 24px',textAlign:'center',position:'relative',
-          overflow:'hidden',flexShrink:0}}>
-          <div style={{position:'relative',zIndex:1}}>
-          {/* Die Szene steht wieder UEBER dem Namen, nicht hinter ihm
-              — und damit ohne Schleier: eine 15-%-Flaeche auf einem
-              152er Quadrat ist kein Schleier mehr, sondern ein
-              sichtbarer grauer Kasten um die Wolke. */}
-          <div style={{display:'flex',justifyContent:'center',marginBottom:6}}>
-            <WinnerParticles size={152}/>
-          </div>
-          <div className="display" style={{color:T.o,fontSize:11,letterSpacing:2.6}}>Sieger</div>
-          <div style={{...HEAD_SERIF,fontSize:38,marginTop:6,overflowWrap:'anywhere'}}>{winner?.name}</div>
-          <div style={{fontSize:16,color:T.o,fontWeight:700,marginTop:6,fontVariantNumeric:'tabular-nums'}}>
-            {tourney.winMode==='wins'?`${winner?.totalWins} Siege`:`${winner?.totalPts} Punkte`}
-          </div>
-          <div style={{marginTop:14,display:'flex',gap:9,justifyContent:'center',
-            flexWrap:'wrap'}}>
-            {/* Ein Weg nach draussen, nicht zwei. „Teilen" heisst
-                teilen — dass dabei ein PDF entsteht, ist Ergebnis und
-                nicht Auswahl, deshalb steht es nicht auf dem Knopf. */}
-            <button onClick={makePdf} disabled={pdfBusy}
-              aria-label="Turnier teilen"
-              style={{padding:'12px 20px',borderRadius:999,
-                cursor:pdfBusy?'default':'pointer',opacity:pdfBusy?.65:1,
-                background:T.o,border:`1.5px solid ${T.o}`,color:'#000',
-                fontSize:13.5,fontWeight:800,display:'inline-flex',
-                alignItems:'center',gap:8}}>
-              <ShareIcon size={15} color="#000"/>
-              {pdfBusy?'PDF wird erstellt …':'Teilen'}
-            </button>
-            {/* Die Historie lag bisher nur im laufenden Turnier — genau
-                nachschlagen will man sie aber hinterher, wenn jemand
-                fragt, wie ein Ergebnis zustande kam. */}
-            <button onClick={()=>{buzz(6);setShowHistory(true);}}
-              style={{padding:'12px 16px',borderRadius:999,cursor:'pointer',
-                background:T.glassHi,border:`1px solid ${T.glassLine}`,color:T.t1,
-                fontSize:13,fontWeight:800,display:'inline-flex',
-                alignItems:'center',gap:7}}>
-              <HistoryIcon size={14} color="currentColor"/>
-              Runden
-            </button>
-          </div>
-          {pdfErr&&<div style={{marginTop:9,color:T.r,fontSize:12,fontWeight:600}}>{pdfErr}</div>}
-          </div>
+
+        {/* Titelseite: der Name ist die Schlagzeile, ein Satz erzaehlt
+            den Ausgang, drei Zahlen fassen ihn. Die Tabelle klappt
+            darunter auf, statt den Sieger nach oben zu schieben. */}
+        <div className="display" style={{color:T.o,fontSize:12,letterSpacing:2.8,
+          marginTop:44,flexShrink:0}}>Sieger</div>
+        <div style={{...HEAD_SERIF,fontSize:nameFs,lineHeight:.95,letterSpacing:nameFs>60?-2:-1,
+          margin:'8px 0 0 -3px',overflowWrap:'anywhere',flexShrink:0}}>{winner?.name}.</div>
+        <div className="txt" style={{color:T.t2,fontSize:15,fontStyle:'italic',lineHeight:1.45,
+          marginTop:14,flexShrink:0}}>{story}</div>
+
+        <div style={{display:'flex',gap:8,marginTop:24,flexShrink:0}}>
+          {[[winner?.totalPts,'Punkte'],[winner?.totalWins,'Siege'],[winner?.played,'Matches']].map(([v,l])=>(
+            <div key={l} style={{flex:1,minWidth:0,padding:'12px 12px 11px',borderRadius:18,...GLASS}}>
+              <div style={{fontSize:34,fontWeight:300,lineHeight:1,letterSpacing:-.5,
+                fontVariantNumeric:'tabular-nums',color:l===(tourney.winMode==='wins'?'Siege':'Punkte')?T.o:T.t1}}>{v??0}</div>
+              <div style={{color:T.t2,fontSize:11.5,fontWeight:600,marginTop:6}}>{l}</div>
+            </div>
+          ))}
         </div>
 
-        {/* Endstand — die GANZE Liste.
-            Vorher war die Karte `flex:1` mit eigenem Scrollbereich
-            darin: der Sieger-Block nahm den Bildschirm, und die
-            Tabelle bekam ein Fenster von zwei, drei Zeilen, in dem man
-            zusaetzlich scrollen musste — verschachteltes Scrollen in
-            einer ohnehin scrollenden Seite. Jetzt waechst die Karte
-            auf ihre volle Hoehe und die Seite scrollt. */}
-        <SectionRule top={4} bottom={0}>Tabelle</SectionRule>
-        <div style={{...GLASS,borderRadius:20,
-          overflow:'hidden',flexShrink:0}}>
-          <LbHead trail={tourney.winMode==='wins'?'SIEGE':'PKT'}/>
-          <div>
-            {sortedLb.map((p,i)=>(
-              <LbRow key={p.id} rank={i+1} color={p.color} name={p.name}
-                played={p.played} wins={p.wins} losses={p.losses} pauses={p.sitOut}
-                last={i===sortedLb.length-1}>
-                <div style={{color:i===0?T.o:T.t1,fontSize:17,fontWeight:800,
-                  lineHeight:1,fontVariantNumeric:'tabular-nums'}}>
-                  {tourney.winMode==='wins'?p.totalWins:p.totalPts}
-                </div>
-                <div style={{color:T.t3,fontSize:9.5,fontWeight:600}}>
-                  {tourney.winMode==='wins'?'Siege':'Punkte'}
-                </div>
-                <PauseBonusChip value={tourney.winMode==='wins'?p.bonusWins:p.bonusPts} size={8}/>
-              </LbRow>
-            ))}
-          </div>
+        {/* Zwei Wege nach unten: die ganze Tabelle (klappt auf) und der
+            Rundenverlauf (Sheet). */}
+        <div style={{...GLASS,borderRadius:20,marginTop:18,overflow:'hidden',flexShrink:0}}>
+          <button onClick={()=>{buzz(6);setTableOpen(o=>!o);}} aria-expanded={tableOpen}
+            style={{width:'100%',display:'flex',alignItems:'center',gap:12,padding:'14px 16px',
+              background:'none',border:'none',color:T.t1,cursor:'pointer',textAlign:'left'}}>
+            <span style={{flex:1,fontFamily:T.fontSerif,fontSize:19,fontWeight:700}}>Ganze Tabelle</span>
+            <span style={{display:'inline-flex'}}>
+              {sortedLb.slice(1,4).map((p,i)=>(
+                <span key={p.id} style={{marginLeft:i?-7:0,display:'inline-flex'}}>
+                  <GlassOrb label={i+2} size={24}/>
+                </span>
+              ))}
+            </span>
+            <span style={{display:'inline-flex',transform:tableOpen?'rotate(90deg)':'none',
+              transition:'transform .25s var(--ease-out-quint)'}}>
+              <ChevronRightIcon size={16} color={T.t2}/>
+            </span>
+          </button>
+          <div style={{borderTop:`1px solid ${T.glassSep}`}}/>
+          <button onClick={()=>{buzz(6);setShowHistory(true);}}
+            style={{width:'100%',display:'flex',alignItems:'center',gap:12,padding:'14px 16px',
+              background:'none',border:'none',color:T.t1,cursor:'pointer',textAlign:'left'}}>
+            <span style={{flex:1,fontFamily:T.fontSerif,fontSize:19,fontWeight:700}}>Rundenverlauf</span>
+            <span style={{color:T.t2,fontSize:12.5,fontVariantNumeric:'tabular-nums'}}>
+              {(tourney.rounds||[]).length} {(tourney.rounds||[]).length===1?'Runde':'Runden'}</span>
+            <ChevronRightIcon size={16} color={T.t2}/>
+          </button>
         </div>
 
-        <div style={{display:'flex',gap:10,marginTop:6}}>
+        {tableOpen&&(
+          <div className="fu" style={{...GLASS,borderRadius:20,overflow:'hidden',flexShrink:0,marginTop:12}}>
+            <LbHead trail={tourney.winMode==='wins'?'SIEGE':'PKT'}/>
+            <div>
+              {sortedLb.map((p,i)=>(
+                <LbRow key={p.id} rank={i+1} color={p.color} name={p.name}
+                  played={p.played} wins={p.wins} losses={p.losses} pauses={p.sitOut}
+                  last={i===sortedLb.length-1}>
+                  <div style={{color:i===0?T.o:T.t1,fontSize:17,fontWeight:800,
+                    lineHeight:1,fontVariantNumeric:'tabular-nums'}}>
+                    {tourney.winMode==='wins'?p.totalWins:p.totalPts}
+                  </div>
+                  <div style={{color:T.t3,fontSize:9.5,fontWeight:600}}>
+                    {tourney.winMode==='wins'?'Siege':'Punkte'}
+                  </div>
+                  <PauseBonusChip value={tourney.winMode==='wins'?p.bonusWins:p.bonusPts} size={8}/>
+                </LbRow>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Ein Weg nach draussen, nicht zwei: „Teilen" erzeugt das PDF. */}
+        <div style={{display:'flex',gap:10,marginTop:22,flexShrink:0}}>
+          <button onClick={makePdf} disabled={pdfBusy} aria-label="Turnier teilen"
+            style={{flex:1,height:54,borderRadius:999,border:'none',background:T.o,color:'#000',
+              fontSize:15.5,fontWeight:800,cursor:pdfBusy?'default':'pointer',opacity:pdfBusy?.65:1,
+              boxShadow:'0 8px 26px var(--oGlow)',display:'inline-flex',alignItems:'center',
+              justifyContent:'center',gap:8}}>
+            <ShareIcon size={17} color="#000"/>{pdfBusy?'PDF wird erstellt …':'Teilen'}
+          </button>
           <button onClick={onNew}
-            style={{flex:1,height:54,borderRadius:999,border:'none',
-              background:T.o,color:'#000',fontSize:16,fontWeight:800,cursor:'pointer',
-              boxShadow:'0 8px 26px var(--oGlow)'}}>
-            <span style={{display:'inline-flex',alignItems:'center',gap:7,justifyContent:'center'}}><TrophyIcon size={17} color="#000"/>Neues Turnier</span>
-          </button>
-          <button onClick={onHome}
-            style={{flex:1,height:54,borderRadius:999,...GLASS,
-              color:T.t1,fontSize:16,fontWeight:600,cursor:'pointer'}}>
-            <span style={{display:'inline-flex',alignItems:'center',gap:7,justifyContent:'center'}}><HomeIcon size={16}/>Home</span>
-          </button>
+            style={{flex:1,height:54,borderRadius:999,...GLASS,color:T.t1,fontSize:15.5,
+              fontWeight:700,cursor:'pointer'}}>Neues Turnier</button>
         </div>
-        <div style={{height:100,flexShrink:0}}/>
+        {pdfErr&&<div style={{marginTop:9,color:T.r,fontSize:12,fontWeight:600,textAlign:'center'}}>{pdfErr}</div>}
+        <div style={{height:110,flexShrink:0}}/>
       </div>
 
       {showHistory&&<RoundHistorySheet tourney={tourney}

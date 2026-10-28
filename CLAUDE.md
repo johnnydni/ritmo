@@ -348,8 +348,7 @@ unverändert.
   schwarzem Glyph — dieselbe Sprache wie die Auswahl-Pillen.
 - **Werkzeug-Fach**: Glyphen weiss; der Live-Glyph wird orange, solange
   gespiegelt wird (Status).
-- **Endstand**: Sieger als Antiqua-Name unter einem `SIEGER`-Ressort,
-  Turniername als Standfirst, die Tabelle unter einer `SectionRule`.
+- **Endstand**: siehe „Endstand: die Titelseite".
 - **Beitreten**: der Einleitungs-Block (`SetupHero`, inzwischen gelöscht, mit demselben Glyph
   wie der Kopf) ist zum Standfirst geworden. QR-Scan ist eine weisse
   Pille, der PIN-Knopf in der Leiste orange.
@@ -1027,68 +1026,26 @@ Bedienungen sein.
   des Assistenten. Zwei Zeitangaben im selben Assistenten sollen nicht
   aus zwei Uhren stammen — wer die Größe ändert, ändert beide.
 
-### Endstand: die Partikel-Szene und das Konfetti
+### Endstand: die Titelseite (`TournamentLeaderboard`)
 
-Über dem Siegernamen steht eine Punktwolke (152 px), die ihre Form
-wechselt: **Pokal → Tennisball → Konfetti → Pokal**. Dieselbe Technik
-wie beim `TennisOrb` des Turnier-Vorhangs — Punkte auf einer Fläche,
-je Bild gedreht, perspektivisch projiziert, von hinten nach vorn
-gezeichnet.
+Der Endstand ist eine **Titelseite**: kein Kopf mit „Endstand", die
+Schlagzeile IST der Siegername — `SIEGER` als Ressort, darunter der
+Name mit Punkt in der kursiven Antiqua, so gross, wie er in die Zeile
+passt (`nameFs`: 88 px bis 6 Zeichen, dann 68 / 52 / 42).
 
-Die Szene stand zwischendurch als Hintergrund hinter Name und
-Knöpfen, mit einem 15-%-Schleier dazwischen. Sie steht wieder **über**
-dem Namen und damit ohne Schleier: eine 15-%-Fläche auf einem 152er
-Quadrat ist kein Schleier mehr, sondern ein sichtbarer grauer Kasten
-um die Wolke.
-
-**Der Pokal ist der Wimbledon-Pokal** (`PC_CUP`, eine Profillinie
-aus y/r-Paaren, die `pcRevolve` um die Hochachse dreht: Fuss, Stiel
-mit Knauf, Kelch, Rand, Deckelkuppel; dazu Ananas und zwei Henkel).
-Drei Dinge entscheiden, ob er als dieser Pokal gelesen wird:
-
-- **Das Verhältnis.** Das Original ist rund doppelt so hoch wie breit
-  (47 cm bei 19 cm). Mit einer Höhe in Randbreite wurde daraus ein
-  Kelch, ein Kreisel oder eine Linse — je nach Versuch, aber nie der
-  Pokal.
-- **Der Rand steht vor** (der kurze Sprung auf r 0,54). Ohne ihn
-  laufen Kelch und Deckel zu einer Kugel zusammen, und der Pokal hat
-  keinen Deckel mehr, sondern eine Haube.
-- **Verteilt wird nach Mantelfläche** (r × Segmentlänge). Ohne die
-  additive Konstante darin bekommt der breite Deckel alle Punkte und
-  der dünne Stiel keinen — der Fuss stand dann als eigene Scheibe
-  darunter.
-
-Er bekommt als einzige Form **mehr Rand** (`pcFitView`-Mass 0,94
-statt 0,78): begrenzt wird er von der Höhe, an der Breite ist Luft.
-Mit dem Mass des Balls stünde er als Streichholz in der Karte.
-
-- Beide Wolken haben **genau dieselbe Punktzahl**. Der Übergang
-  ist damit ein Überblenden Punkt für Punkt und nicht das Ein- und
-  Ausblenden zweier Bilder. Ein kleiner Versatz je Punkt
-  (`(i % 40)`) lässt die Wolke fließen, statt als Block umzuspringen.
-- **Konfetti ist kein Körper, sondern ein Schwarm** (`pcConfetti`):
-  die Punkte liegen frei im Raum und tragen ihre **eigene** Farbe.
-  Die anderen beiden färben nach Form — deshalb überstimmt `p.col`
-  den Form-Tint. Der Ball zerfällt dadurch sichtbar in bunte
-  Schnipsel und setzt sich danach wieder zum Pokal zusammen.
-- `pcFitView` normiert auf die **projizierte** Ausdehnung, über eine
-  ganze Umdrehung gemessen, nicht auf die Rohkoordinaten. Der
-  Kelchrand steht weit außen *und* weit vorn; die Perspektive
-  (`k = D/(D−z)`, bis 1,4) schob ihn dadurch über den Rand, während
-  der Ball bequem Platz hatte. Gerechnet wird einmal je Form.
-- **Kein Schläger** in der Szene: er steht als Icon schon in der
-  Tab-Bar und in den Listen. Damit ist auch die Sonderregel weg, dass
-  sich jede Form um ihre eigene Achse dreht (der flache Schläger
-  stand um die Hochachse gedreht die halbe Zeit auf der Kante).
-- **Punktzahl folgt der Fläche**: bei voller Kartenbreite brauchte
-  die Szene 2800 Punkte, sonst klaffte Luft dazwischen und aus dem
-  Pokal wurde eine Spirale. Auf 152 px reichen 1200 — wer die Szene
-  vergrößert, zählt nach und misst die Bildrate.
-- Gedreht wird **vor** dem Überblenden: der Punkt wandert zwischen
-  zwei bereits gedrehten Formen, und die Wolke bleibt auch im
-  Übergang in Bewegung.
-- Die Farbe hängt an der **Form**, nicht am Punkt: im Pokal ist Gold
-  richtig, im Ball das Orange der Naht.
+- Darunter **ein Satz zum Ausgang** (`story`), gerechnet und nie
+  getippt: Vorsprung vor dem Zweiten in der gewaehlten Wertung, oder
+  bei Gleichstand „punktgleich mit X — mehr Siege" (bzw.
+  „siegegleich … — mehr Punkte").
+- **Drei Zahlen** in Glaskacheln: Punkte, Siege, Matches; die Zahl der
+  gewaehlten Wertung steht orange. Duenne Ziffern (Inter 300) wie die
+  laufende Timer-Kapsel.
+- **Die Tabelle klappt auf** („Ganze Tabelle", mit den Kugeln 2–4 als
+  Vorschau), statt den Sieger nach oben zu schieben; daneben
+  „Rundenverlauf" (Sheet). Danach „Teilen" (PDF) und „Neues Turnier".
+- Die **Partikel-Szene** ueber dem Namen (Pokal → Ball → Konfetti,
+  `WinnerParticles` samt `pc*`-Helfern) ist mit der Titelseite raus —
+  wer sie zurueckwill, findet sie in der Git-Historie.
 
 Das **Konfetti** (`ConfettiBurst`) fliegt aus der Mitte statt von oben
 zu fallen: Schwerkraft, Luftwiderstand, Drall — und jedes Stück kippt

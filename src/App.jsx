@@ -13950,6 +13950,12 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
       return {...t,timerRunning:!t.timerRunning};
     });
   };
+  /* Zurueck auf die volle Rundenzeit, angehalten — gestartet wird
+     wieder per Play. */
+  const resetTimer=()=>{
+    buzz(8);
+    setTourney(t=>({...t,timerSecsLeft:t.roundDurationMin*60,timerRunning:false,timerFinished:false}));
+  };
 
   const fmtT=(s)=>`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
 
@@ -14133,6 +14139,20 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
             {g(cap&&!tFin&&!tRun,<PlayGlyph size={16} color={T.o}/>)}
             {g(cap&&tFin,<span style={{color:'#fff',display:'inline-flex'}}><RefreshGlyph size={17}/></span>)}
           </button>
+          {/* Zuruecksetzen neben Play/Pause — wie „abbrechen" im Single
+              Match waechst er erst mit dem Start heraus. Bei „Zeit um"
+              traegt der Hauptknopf schon den Neustart, dort faellt er weg. */}
+          {(()=>{const rs=cap&&!tFin;return(
+          <button onClick={resetTimer} aria-label="Rundenzeit zurücksetzen"
+            title="Rundenzeit zurücksetzen" tabIndex={rs?0:-1} aria-hidden={!rs||undefined}
+            style={{width:rs?34:0,height:34,marginLeft:rs?0:-10,borderRadius:'50%',flexShrink:0,
+              border:'none',padding:0,overflow:'hidden',cursor:'pointer',
+              background:'rgba(255,255,255,.16)',color:'#fff',
+              display:'flex',alignItems:'center',justifyContent:'center',
+              scale:rs?'1':'.4',opacity:rs?1:0,
+              transition:`width ${D}, margin-left ${D}, scale ${D}, opacity .26s ease ${rs?.14:0}s`}}>
+            <RefreshGlyph size={15}/>
+          </button>);})()}
           {/* Die Karte ist zugleich der Aufklapper: tippen tauscht die
               Uhr gegen die naechste Auslosung. Der Caret ist die Zusage,
               dass da noch etwas liegt. */}
@@ -14157,8 +14177,12 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
                 justifyContent:'flex-end',gap:6,
                 color:tFin?T.r:cap?T.o:T.t1,opacity:cap&&!tRun&&!tFin?.6:1,
                 transition:'color .35s ease, opacity .25s ease'}}>
-                <span style={{fontSize:13,fontWeight:500,whiteSpace:'nowrap',...fade(cap)}}>
-                  {tFin?'Zeit um':'Timer'}
+                {/* Neben dem Zuruecksetzen passt „Timer" nicht mehr in die
+                    Kapsel; er klappt weg. „Zeit um" bleibt — dort fehlt der
+                    zweite Knopf. */}
+                <span style={{fontSize:13,fontWeight:500,whiteSpace:'nowrap',overflow:'hidden',
+                  maxWidth:tFin?70:0,transition:`max-width ${D}`,...fade(cap&&tFin)}}>
+                  Zeit um
                 </span>
                 <span style={{fontSize:cap?32:30,fontWeight:cap?300:800,lineHeight:1,
                   letterSpacing:-.5,fontVariantNumeric:'tabular-nums',

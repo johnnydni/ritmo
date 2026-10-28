@@ -481,6 +481,12 @@ Leute ruft.
   Knopf getoent mit orangem Glyph, „Timer“ bzw. „Zeit um“ vor der
   Zahl, die Ziffern duenn und orange (pausiert gedimmt). Der
   Fortschrittsbalken ist entfallen. Aufgeklappt bleibt sie Glas.
+- **Zuruecksetzen** (`resetTimer`) waechst ab dem Start neben
+  Play/Pause heraus (34 px, wie „abbrechen" im Single Match) und
+  stellt die volle Rundenzeit angehalten wieder her — die Karte ist
+  danach wieder im Ruhezustand. Das Wort „Timer" klappt dafuer weg,
+  beides passt bei 390 px nicht nebeneinander. Bei „Zeit um" fehlt
+  der Knopf: dort traegt der Hauptknopf schon den Neustart.
 - Das Fach **schiebt**, statt sich darueberzulegen: was darin steht,
   liest man im Vergleich mit dem, was gerade laeuft.
 - Der Rundenwechsel schliesst es (derselbe Effekt, der den

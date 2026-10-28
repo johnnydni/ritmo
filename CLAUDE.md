@@ -1064,45 +1064,32 @@ Kippen ist der Unterschied zwischen „Rechtecke fallen" und Konfetti.
 ### `LbRow` — die Turniertabelle
 
 Eine Zeile, vier Aufrufer: die Tabelle im laufenden Turnier (Tab
-"Tabelle"), der Endstand, die Live-Teilnehmeransicht und der
-Bestaetigungsschritt vor dem Beenden (`EndReviewSheet`). Aufbau von
-links nach rechts:
+"Tabelle"), der Endstand („Ganze Tabelle“), die Live-Teilnehmeransicht
+und der Bestaetigungsschritt vor dem Beenden (`EndReviewSheet`).
+**Ruhig, grosse Zahlen** — keine Spalten, keine Farbkante, kein Kopf:
 
-`Farbkante | Medaille/Kreis + Name | SP S N P | Wertung`
+`Platz | Kugel | Name + „4 S · 0 N · 1 P“ | Wertung`
 
-- Die **Farbkante** (`LB_BAR`, 3 px, Spielerfarbe) sitzt bündig am
-  Kartenrand. Sie hat den früheren Farbpunkt neben dem Namen ersetzt —
-  zwei Träger derselben Information in einer Zeile.
-- Der **Platz** ist Medaille für 1–3 (`MedalIcon`), sonst ein Kreis mit
-  der Ziffer. Der Kreis hält die Spalte gleich breit; eine nackte Ziffer
-  neben drei Medaillen sah aus, als fehle etwas. Der Erste trägt
-  **keinen** orangen Zeilengrund mehr — die Goldmedaille sagt dasselbe.
-  Die einzige getönte Zeile ist `highlight` (die eigene Zeile in der
-  Teilnehmeransicht).
-- **`LbStats`** zieht SP/S/N/P als echte Spalten mit Haarlinie davor
-  (`rules`). Die Ligatabelle auf dem Home-Screen schaltet sie mit
-  `rules={false}` ab — sie ist eine randlose Liste ohne Wertungsspalte.
-- Der **Endstand** rollt als *eine* Seite: die Tabellenkarte wächst
-  auf ihre volle Höhe, gescrollt wird der Screen. Vorher war sie
-  `flex:1` mit eigenem Scrollbereich darin — der Sieger-Block nahm den
-  Bildschirm, die Tabelle bekam ein Fenster von zwei Zeilen, und man
-  scrollte in einer scrollenden Seite. Achtung beim Ändern: in der
-  scrollenden Flex-Spalte schrumpfen Kinder von selbst, der
-  Sieger-Block braucht `flexShrink:0` (ohne ihn blieb ein 48-px-Streifen
-  Konfetti übrig).
-- Die **Wertungsspalte** (`LB_PKT_W`, dunkleres Panel) nimmt die
-  Wertung als `children`: im laufenden Turnier ein Knopf über die volle
-  Zellenhöhe (Punkte anpassen — der Stift allein war ein 12-px-Ziel),
-  sonst nur Text. Darin stapeln sich Zahl, Label und der
-  `PauseBonusChip`. `LB_ROW_H` (58) und die 5 px Polsterung der Zelle
-  sind für genau diesen Stapel bemessen: mit 54 px stieß der Chip unten
-  durch die Trennlinie. Der Knopf darf deshalb auch nicht
-  `height:'100%'` tragen, sonst kann die Zelle nicht mitwachsen.
-  `LB_PKT_W` (62) ist nach **drei** Ziffern bemessen — ab 100 Punkten
-  klebte die Zahl bei 50 px an beiden Rändern. Der Stift im laufenden
-  Turnier hängt absolut am linken Zellenrand: inline schob er die Zahl
-  aus der Mitte, und dreistellig stand sie sichtbar neben ihrem eigenen
-  Label.
+- Der **Platz** ist eine duenne Ziffer (Inter 300, 24 px), 1–3 in den
+  Medaillenfarben (`LB_MEDAL`, dieselben wie `MedalIcon`), sonst
+  gedimmt.
+- Die **Kugel** (`GlassOrb`, 30 px) traegt die Spielernummer (`num`,
+  per `pNum`); `highlight` (eigene Zeile in der Teilnehmeransicht)
+  gibt ihr den orangen Ring und der Zeile den `oSoft`-Grund.
+- **Siege, Niederlagen, Pausen** stehen als Unterzeile unter dem
+  Namen. Die SP/S/N/P-Spalten mit Haarlinien sind raus — senkrecht
+  verglichen hat sie niemand, gelesen wird von der Wertung her.
+- Die **Wertung** kommt als `children`, normalerweise `LbScore`: Zahl
+  in Inter 300 / 28 px, der Fuehrende orange, darunter die Einheit und
+  ggf. der `PauseBonusChip`. Im laufenden Turnier ist sie ein Knopf
+  (Punkte anpassen) mit kleinem Stift vor der Einheit; angepasste
+  Werte zeigen „angepasst“ statt der Einheit. Der Knopf greift per
+  negativem Rand bis an die Zeilenkante — der Stift allein war ein
+  12-px-Ziel.
+- `LbHead`/`LbStats` gibt es nur noch fuer die Ligatabelle auf Home
+  (`rules={false}`).
+- Der **Endstand** rollt als *eine* Seite: die Tabellenkarte waechst
+  auf ihre volle Hoehe, gescrollt wird der Screen.
 
 ### Theming
 
@@ -1299,8 +1286,9 @@ der Antiqua als Fliesstext und ein Plus, das erst zwei Knoepfe
 aufklappte.
 
 **Spieler als Glaskugel** (`GlassOrb`, `OrbStack` in App.jsx) statt
-farbiger Kreise — **farblos**: klares Glas mit Glanzpunkt oben links,
-hellem Saum unten rechts und dunklem Gegenschatten. **Sie steht still**:
+farbiger Kreise — **farblos und ohne Glanz**: 7 % Weiss, Haarlinie,
+weicher Schatten. Glanzpunkt und heller Saum sind raus — bei 30 px
+las sich das als Plastikperle. **Sie steht still**:
 eine Weile morphte ihre Kontur (`orbMorph`), das lenkte im Turnier vom
 Spielstand ab und ist wieder raus. Darin
 steht die **Nummer** des Spielers (`label`; `pNum(list,id)` = Stelle
@@ -1309,7 +1297,8 @@ auf der Live-Karte die Initiale. Ueberall im Turnier: Spielerliste im
 Assistenten und im Formular, `MatchSlotGrid` (Court-Karte und
 Teilnehmeransicht, `numOf`), Aufstellungs-Sheet, Namenswahl beim
 Beitreten. Die eigene Kugel traegt `ring` (orange). Die
-Spielerfarbe lebt nur noch als Farbkante in der Tabelle.
+Spielerfarbe ist damit aus dem Turnier verschwunden (auch die
+Farbkante der Tabelle ist raus).
 
 **Assistent**:
 

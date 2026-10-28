@@ -2516,26 +2516,22 @@ function BibelTabIcon({active,size=22}){
    Strich dran —, während die Bibel und die Match-Zeilen einen dritten
    trugen. Es gibt jetzt genau einen. */
 /* Spieler als Glaskugel — statt farbiger Kreise. Klar wie GLASS,
-   farblos: oben links ein Glanzpunkt, unten rechts ein heller Saum,
-   innen ein dunkler Gegenschatten, der die Kugel rund macht. Darin die
+   farblos, ohne Glanz: 7 % Weiss, Haarlinie, weicher Schatten. Der
+   Glanzpunkt oben links und der helle Saum unten rechts sind raus —
+   bei 30 px las sich das als Plastikperle, nicht als Glas. Darin die
    Nummer des Spielers (`label`), sonst seine Initiale. Sie steht
    still — eine atmende Kontur lenkte im Turnier vom Spielstand ab.
-   `ring` legt einen Ring darum (die eigene
-   Kugel in der Teilnehmeransicht). */
+   `ring` legt einen Ring darum (die eigene Kugel). */
 function GlassOrb({name='',label,size=28,ring}){
   const txt=label!=null?String(label):(name.trim()[0]||'?').toUpperCase();
   return(
     <span aria-hidden="true" style={{width:size,height:size,flexShrink:0,
       display:'inline-flex',alignItems:'center',justifyContent:'center',position:'relative',
-      borderRadius:'50%',
-      background:`radial-gradient(circle at 32% 26%, rgba(255,255,255,.8) 0, rgba(255,255,255,.2) ${size*.17}px, transparent ${size*.42}px),
-        radial-gradient(circle at 70% 84%, rgba(255,255,255,.22) 0, transparent 58%),
-        rgba(255,255,255,.07)`,
-      border:'1px solid rgba(255,255,255,.38)',
-      boxShadow:`inset 0 0 ${size*.18}px rgba(255,255,255,.26), inset ${-size*.1}px ${-size*.14}px ${size*.3}px rgba(0,0,0,.42), 0 3px 10px rgba(0,0,0,.35)${ring?`, 0 0 0 2px ${ring}, 0 4px 16px var(--oGlow)`:''}`,
+      borderRadius:'50%',background:'rgba(255,255,255,.07)',
+      border:'1px solid rgba(255,255,255,.34)',
+      boxShadow:`0 3px 10px rgba(0,0,0,.3)${ring?`, 0 0 0 2px ${ring}, 0 4px 16px var(--oGlow)`:''}`,
       color:'#fff',fontSize:size*(txt.length>1?.36:.42),fontWeight:700,lineHeight:1,
-      fontVariantNumeric:'tabular-nums',
-      textShadow:'0 1px 3px rgba(0,0,0,.55)'}}>{txt}</span>
+      fontVariantNumeric:'tabular-nums'}}>{txt}</span>
   );
 }
 /* Nummer eines Spielers = seine Stelle in der Turnierliste. Die id ist
@@ -8083,48 +8079,21 @@ function ScanGlyph({size=18,color}){
 /* ═══════════════════════════════════════════════════════════════
    TURNIER-TABELLE
 
-   Eine Zeile, drei Zonen: Farbkante + Platz + Name links, die
-   Zahlenspalten in der Mitte, die Wertung rechts auf dunklerem Grund.
+   Ruhig, grosse Zahlen: links der Platz als duenne Ziffer (1–3 in
+   Medaillenfarbe), die Glaskugel mit der Spielernummer, der Name mit
+   „4 S · 0 N · 1 P" darunter, rechts die Wertung gross und duenn.
+   Keine Spalten, keine Farbkante, kein Kopf.
 
-   Die Spielerfarbe steht als Kante an der Kartenaussenkante. Sie war
-   vorher ein Punkt neben dem Namen — zweimal dieselbe Information
-   braucht niemand, und die durchgehende Kante laesst sich beim
-   Ueberfliegen der Tabelle schneller scannen als ein Punkt, der
-   hinter unterschiedlich langen Platzziffern sitzt.
-
-   Die Wertungsspalte liegt auf einer dunkleren Flaeche. Ein
-   schwarzer Schleier und kein hellerer Farbtoken: --card ist im
-   Glass-Theme halbtransparent, eine hellere Flaeche wuerde den Grund
-   aufhellen statt die Spalte abzusetzen — dieselbe Falle wie beim
-   Netz in MatchSlotGrid.
-
-   Der Erste traegt KEINEN orangen Zeilengrund mehr. Die Goldmedaille
-   sagt dasselbe, und mit der Farbkante daneben standen drei Signale
-   fuer eine Aussage in derselben Zeile.
+   Die SP/S/N/P-Spalten standen vorher als eigene Spalten mit
+   Haarlinien da. Senkrecht verglichen hat sie niemand — gelesen wird
+   eine Turniertabelle von der Wertung her, und die steht jetzt so
+   gross, wie sie wichtig ist.
 ═══════════════════════════════════════════════════════════════ */
-const LB_BAR=3;                    // Farbkante links
-const LB_BADGE=27;                 // Platz-Medaille bzw. Kreis
-const LB_PKT_W=62;                 /* Breite der Wertungsspalte: bemessen
-                                      nach drei Ziffern neben dem Stift —
-                                      mit 50 klebte eine 100 an beiden Raendern. */
-const LB_PKT_BG='rgba(0,0,0,.22)';
-const LB_ROW_H=58;                 // Wertungsspalte: Zahl + Label + Pausen-Chip
-
-/* Platz: Medaille fuer 1–3, sonst ein Kreis mit der Ziffer. Der
-   Kreis haelt die Spalte optisch gleich breit — eine nackte Ziffer
-   neben drei Medaillen sah aus, als fehlte etwas. */
-function RankBadge({rank,size=LB_BADGE}){
-  if(rank<=3) return(
-    <span style={{width:size,height:size,flexShrink:0,display:'flex',
-      alignItems:'center',justifyContent:'center'}}>
-      <MedalIcon size={size} rank={rank}/>
-    </span>);
-  return(
-    <span style={{width:size,height:size,flexShrink:0,borderRadius:'50%',
-      border:`1px solid ${T.border}`,display:'flex',alignItems:'center',
-      justifyContent:'center',color:T.t2,fontSize:12.5,fontWeight:700,
-      fontVariantNumeric:'tabular-nums'}}>{rank}</span>);
-}
+const LB_BAR=3;                    // Farbkante (nur noch LbHead/Ligatabelle)
+const LB_BADGE=27;
+const LB_PKT_W=62;
+/* Medaillenfarben wie MedalIcon — sie gehoeren zu keinem Theme. */
+const LB_MEDAL=['#FFC83D','#C9CDD2','#D9883F'];
 
 /* Tabellen-Spalten wie in einer Fußball-Tabelle: Spiele, Siege,
    Niederlagen, Pausen. Als echte Spalten statt als Fließtext-Subline —
@@ -8189,35 +8158,43 @@ function LbHead({withPauses=true,trail='PKT',lead='SPIELER',
   );
 }
 
-/* Eine Tabellenzeile. Die Wertungszelle kommt als children herein —
-   im laufenden Turnier ist sie ein Knopf (Punkte anpassen), im
-   Endstand und in der Teilnehmeransicht nur Text. */
-function LbRow({rank,color,name,suffix='',played=0,wins=0,losses=0,pauses=0,
+/* Eine Tabellenzeile. Die Wertung kommt als children herein —
+   im laufenden Turnier ein Knopf (Punkte anpassen), sonst LbScore. */
+function LbRow({rank,num,name,suffix='',wins=0,losses=0,pauses=0,
   withPauses=true,highlight=false,last=false,children}){
+  const sub=`${wins} S · ${losses} N`+(withPauses?` · ${pauses} P`:'');
   return(
-    <div style={{display:'flex',alignItems:'stretch',minHeight:LB_ROW_H,
+    <div style={{display:'flex',alignItems:'center',gap:12,padding:'12px 16px 12px 14px',
       borderBottom:last?'none':`1px solid ${T.glassSep}`,
       background:highlight?T.oSoft:'transparent'}}>
-      <span aria-hidden="true" style={{width:LB_BAR,flexShrink:0,
-        background:color||'transparent'}}/>
-      <div style={{flex:1,minWidth:0,display:'flex',alignItems:'center',gap:10,
-        padding:'8px 10px 8px 8px'}}>
-        <RankBadge rank={rank}/>
-        <div style={{flex:1,minWidth:0,color:T.t1,fontSize:15,
-          fontWeight:rank===1?700:600,overflow:'hidden',
+      <span style={{width:24,flexShrink:0,textAlign:'center',fontSize:24,fontWeight:300,
+        lineHeight:1,fontVariantNumeric:'tabular-nums',
+        color:rank<=3?LB_MEDAL[rank-1]:T.t3}}>{rank}</span>
+      <GlassOrb name={name} label={num} size={30} ring={highlight?T.o:undefined}/>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{color:T.t1,fontSize:16,fontWeight:600,overflow:'hidden',
           textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{name}{suffix}</div>
+        <div style={{color:T.t3,fontSize:12.5,marginTop:2,
+          fontVariantNumeric:'tabular-nums'}}>{sub}</div>
       </div>
-      <LbStats played={played} wins={wins} losses={losses} pauses={pauses}
-        withPauses={withPauses}/>
-      {/* Die Polsterung haelt den Pausen-Chip von der Trennlinie weg —
-          ohne sie stiess der Stapel aus Zahl, Label und Chip unten an. */}
-      <div style={{width:LB_PKT_W,flexShrink:0,background:LB_PKT_BG,
-        display:'flex',flexDirection:'column',alignItems:'center',
-        justifyContent:'center',gap:1,padding:'5px 0'}}>
+      <div style={{flexShrink:0,minWidth:52,display:'flex',flexDirection:'column',
+        alignItems:'flex-end',justifyContent:'center',gap:2}}>
         {children}
       </div>
     </div>
   );
+}
+
+/* Die Wertung einer Zeile: gross und duenn (Inter 300), der Fuehrende
+   orange. `note` ersetzt die Einheit darunter (z. B. „angepasst"). */
+function LbScore({value,lead=false,unit,note,bonus}){
+  return(<>
+    <span style={{color:lead||note?T.o:T.t1,fontSize:28,fontWeight:300,lineHeight:1,
+      fontVariantNumeric:'tabular-nums'}}>{value}</span>
+    <span style={{color:note?T.o:T.t3,fontSize:10,fontWeight:600,lineHeight:1}}>
+      {note||unit}</span>
+    <PauseBonusChip value={bonus} size={8}/>
+  </>);
 }
 
 /* Namen bleiben kurz — sonst sprengen sie Court-Karten, Tabelle und
@@ -10904,22 +10881,16 @@ function TournamentParticipantView({session,participantId,pin}){
       {/* Full Leaderboard */}
       <div style={{...GLASS,borderRadius:16,
         overflow:'hidden'}}>
-        <LbHead trail={ts.winMode==='wins'?'SIEGE':'PKT'}/>
         {sortedLb.map((p,i)=>{
           const isMe=myRow&&p.id===myRow.id;
           return(
-            <LbRow key={p.id} rank={i+1} color={p.color} name={p.name}
+            <LbRow key={p.id} rank={i+1} num={pNum(ts.players,p.id)} name={p.name}
               suffix={isMe?' (Du)':''} highlight={isMe}
-              played={p.played} wins={p.wins} losses={p.losses} pauses={p.sitOut}
+              wins={p.wins} losses={p.losses} pauses={p.sitOut}
               last={i===sortedLb.length-1}>
-              <div style={{color:i===0?T.o:T.t1,fontSize:17,fontWeight:800,
-                lineHeight:1,fontVariantNumeric:'tabular-nums'}}>
-                {ts.winMode==='wins'?p.totalWins:p.totalPts}
-              </div>
-              <div style={{color:T.t3,fontSize:9.5,fontWeight:600}}>
-                {ts.winMode==='wins'?'Siege':'Punkte'}
-              </div>
-              <PauseBonusChip value={ts.winMode==='wins'?p.bonusWins:p.bonusPts} size={8}/>
+              <LbScore lead={i===0} value={ts.winMode==='wins'?p.totalWins:p.totalPts}
+                unit={ts.winMode==='wins'?'Siege':'Punkte'}
+                bonus={ts.winMode==='wins'?p.bonusWins:p.bonusPts}/>
             </LbRow>
           );
         })}
@@ -13336,19 +13307,13 @@ function EndReviewSheet({tourney,onClose,onHistory,onConfirm}){
               Gestalt. */}
           <div style={{...GLASS,
             borderRadius:15,overflow:'hidden',marginBottom:12}}>
-            <LbHead trail={tourney.winMode==='wins'?'SIEGE':'PKT'}/>
             {sorted.slice(0,5).map((p,i)=>(
-              <LbRow key={p.id} rank={i+1} color={p.color} name={p.name}
-                played={p.played} wins={p.wins} losses={p.losses} pauses={p.sitOut}
+              <LbRow key={p.id} rank={i+1} num={pNum(tourney.players,p.id)} name={p.name}
+                wins={p.wins} losses={p.losses} pauses={p.sitOut}
                 last={i===Math.min(5,sorted.length)-1&&sorted.length<=5}>
-                <div style={{color:i===0?T.o:T.t1,fontSize:17,fontWeight:800,
-                  lineHeight:1,fontVariantNumeric:'tabular-nums'}}>
-                  {tourney.winMode==='wins'?p.totalWins:p.totalPts}
-                </div>
-                <div style={{color:T.t3,fontSize:9.5,fontWeight:600}}>
-                  {tourney.winMode==='wins'?'Siege':'Punkte'}
-                </div>
-                <PauseBonusChip value={tourney.winMode==='wins'?p.bonusWins:p.bonusPts} size={8}/>
+                <LbScore lead={i===0} value={tourney.winMode==='wins'?p.totalWins:p.totalPts}
+                  unit={tourney.winMode==='wins'?'Siege':'Punkte'}
+                  bonus={tourney.winMode==='wins'?p.bonusWins:p.bonusPts}/>
               </LbRow>
             ))}
             {sorted.length>5&&(
@@ -14469,39 +14434,26 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
         {tab==='board'&&(
           <div style={{...GLASS,borderRadius:16,
             overflow:'hidden',display:'flex',flexDirection:'column',maxHeight:'100%'}}>
-            <LbHead trail={tourney.winMode==='wins'?'SIEGE':'PKT'}/>
             <div style={{overflowY:'auto',WebkitOverflowScrolling:'touch'}}>
               {sortedLb.map((p,i)=>{
                 const adj=tourney.winMode==='wins'?p.adjWins:p.adjPts;
                 return(
-                <LbRow key={p.id} rank={i+1} color={p.color} name={p.name}
-                  played={p.played} wins={p.wins} losses={p.losses} pauses={p.sitOut}
+                <LbRow key={p.id} rank={i+1} num={pNum(tourney.players,p.id)} name={p.name}
+                  wins={p.wins} losses={p.losses} pauses={p.sitOut}
                   last={i===sortedLb.length-1}>
-                  {/* Die ganze Wertungsspalte ist der Knopf zum Anpassen —
-                      der Stift allein war ein 12-px-Ziel. */}
+                  {/* Die ganze Wertung ist der Knopf zum Anpassen — der Stift
+                      allein war ein 12-px-Ziel. Er steht klein vor der Einheit,
+                      neben der Zahl schob er sie aus der Flucht. */}
                   <button onClick={()=>setEditPtsId(p.id)}
                     title="Punkte anpassen" aria-label={`Punkte von ${p.name} anpassen`}
-                    style={{width:'100%',flex:1,minHeight:0,background:'none',border:'none',
-                      cursor:'pointer',padding:0,display:'flex',flexDirection:'column',
-                      alignItems:'center',justifyContent:'center',gap:1}}>
-                    {/* Der Stift haengt links an der Zelle statt neben der
-                        Zahl: inline schob er die Zahl aus der Mitte, und
-                        dreistellig fiel das gegen das zentrierte Label auf. */}
-                    <div style={{position:'relative',width:'100%',display:'flex',
-                      alignItems:'center',justifyContent:'center'}}>
-                      <span style={{position:'absolute',left:4,top:'50%',
-                        transform:'translateY(-50%)',display:'flex'}}>
-                        <EditIcon size={10} color={T.t4}/>
-                      </span>
-                      <span style={{color:adj?T.o:T.t1,fontSize:17,fontWeight:800,
-                        lineHeight:1,fontVariantNumeric:'tabular-nums'}}>
-                        {tourney.winMode==='wins'?p.totalWins:p.totalPts}
-                      </span>
-                    </div>
-                    <span style={{color:adj?T.o:T.t3,fontSize:9.5,fontWeight:600}}>
-                      {adj?'angepasst':(tourney.winMode==='wins'?'Siege':'Punkte')}
-                    </span>
-                    <PauseBonusChip value={tourney.winMode==='wins'?p.bonusWins:p.bonusPts} size={8}/>
+                    style={{background:'none',border:'none',cursor:'pointer',
+                      margin:'-10px -16px -10px 0',padding:'10px 16px 10px 12px',
+                      display:'flex',flexDirection:'column',alignItems:'flex-end',gap:2}}>
+                    <LbScore lead={i===0} value={tourney.winMode==='wins'?p.totalWins:p.totalPts}
+                      unit={<span style={{display:'inline-flex',alignItems:'center',gap:4}}>
+                        <EditIcon size={9} color={T.t4}/>{tourney.winMode==='wins'?'Siege':'Punkte'}</span>}
+                      note={adj?'angepasst':null}
+                      bonus={tourney.winMode==='wins'?p.bonusWins:p.bonusPts}/>
                   </button>
                 </LbRow>
                 );
@@ -14753,20 +14705,14 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
 
         {tableOpen&&(
           <div className="fu" style={{...GLASS,borderRadius:20,overflow:'hidden',flexShrink:0,marginTop:12}}>
-            <LbHead trail={tourney.winMode==='wins'?'SIEGE':'PKT'}/>
             <div>
               {sortedLb.map((p,i)=>(
-                <LbRow key={p.id} rank={i+1} color={p.color} name={p.name}
-                  played={p.played} wins={p.wins} losses={p.losses} pauses={p.sitOut}
+                <LbRow key={p.id} rank={i+1} num={pNum(tourney.players,p.id)} name={p.name}
+                  wins={p.wins} losses={p.losses} pauses={p.sitOut}
                   last={i===sortedLb.length-1}>
-                  <div style={{color:i===0?T.o:T.t1,fontSize:17,fontWeight:800,
-                    lineHeight:1,fontVariantNumeric:'tabular-nums'}}>
-                    {tourney.winMode==='wins'?p.totalWins:p.totalPts}
-                  </div>
-                  <div style={{color:T.t3,fontSize:9.5,fontWeight:600}}>
-                    {tourney.winMode==='wins'?'Siege':'Punkte'}
-                  </div>
-                  <PauseBonusChip value={tourney.winMode==='wins'?p.bonusWins:p.bonusPts} size={8}/>
+                  <LbScore lead={i===0} value={tourney.winMode==='wins'?p.totalWins:p.totalPts}
+                    unit={tourney.winMode==='wins'?'Siege':'Punkte'}
+                    bonus={tourney.winMode==='wins'?p.bonusWins:p.bonusPts}/>
                 </LbRow>
               ))}
             </div>

@@ -2515,33 +2515,39 @@ function BibelTabIcon({active,size=22}){
    eigener, zweiter Schläger — ein Kreis mit drei Punkten und einem
    Strich dran —, während die Bibel und die Match-Zeilen einen dritten
    trugen. Es gibt jetzt genau einen. */
-/* Spieler als Glaskugel — statt farbiger Kreise mit Initiale. Klar
-   wie GLASS, oben links ein Glanzpunkt, unten rechts ein Hauch der
-   Spielerfarbe, innen ein dunkler Gegenschatten, der die Kugel rund
-   macht. Die Kontur morpht langsam (.orb, orbMorph), versetzt je
-   Kugel, damit ein Stapel nicht im Gleichtakt atmet. */
-function GlassOrb({name='',color,size=28,i=0,ring}){
-  const tint=color||'rgba(255,255,255,.4)';
+/* Spieler als Glaskugel — statt farbiger Kreise. Klar wie GLASS,
+   farblos: oben links ein Glanzpunkt, unten rechts ein heller Saum,
+   innen ein dunkler Gegenschatten, der die Kugel rund macht. Darin die
+   Nummer des Spielers (`label`), sonst seine Initiale. Die Kontur
+   morpht langsam (.orb, orbMorph), versetzt je Kugel, damit ein Stapel
+   nicht im Gleichtakt atmet. `ring` legt einen Ring darum (die eigene
+   Kugel in der Teilnehmeransicht). */
+function GlassOrb({name='',label,size=28,i=0,ring}){
+  const txt=label!=null?String(label):(name.trim()[0]||'?').toUpperCase();
   return(
     <span className="orb" aria-hidden="true" style={{width:size,height:size,flexShrink:0,
       display:'inline-flex',alignItems:'center',justifyContent:'center',position:'relative',
       borderRadius:'50%',animationDelay:`${-i*1.7}s`,
-      background:`radial-gradient(circle at 32% 26%, rgba(255,255,255,.85) 0, rgba(255,255,255,.22) ${size*.18}px, transparent ${size*.42}px),
-        radial-gradient(circle at 72% 82%, color-mix(in srgb, ${tint} 62%, transparent) 0, transparent 62%),
+      background:`radial-gradient(circle at 32% 26%, rgba(255,255,255,.8) 0, rgba(255,255,255,.2) ${size*.17}px, transparent ${size*.42}px),
+        radial-gradient(circle at 70% 84%, rgba(255,255,255,.22) 0, transparent 58%),
         rgba(255,255,255,.07)`,
       border:'1px solid rgba(255,255,255,.38)',
-      boxShadow:`inset 0 0 ${size*.18}px rgba(255,255,255,.28), inset ${-size*.1}px ${-size*.14}px ${size*.3}px rgba(0,0,0,.42), 0 3px 10px rgba(0,0,0,.35)${ring?`, 0 0 0 2px ${ring}`:''}`,
-      color:'#fff',fontSize:size*.4,fontWeight:700,lineHeight:1,
-      textShadow:'0 1px 3px rgba(0,0,0,.55)'}}>{(name.trim()[0]||'?').toUpperCase()}</span>
+      boxShadow:`inset 0 0 ${size*.18}px rgba(255,255,255,.26), inset ${-size*.1}px ${-size*.14}px ${size*.3}px rgba(0,0,0,.42), 0 3px 10px rgba(0,0,0,.35)${ring?`, 0 0 0 2px ${ring}, 0 4px 16px var(--oGlow)`:''}`,
+      color:'#fff',fontSize:size*(txt.length>1?.36:.42),fontWeight:700,lineHeight:1,
+      fontVariantNumeric:'tabular-nums',
+      textShadow:'0 1px 3px rgba(0,0,0,.55)'}}>{txt}</span>
   );
 }
+/* Nummer eines Spielers = seine Stelle in der Turnierliste. Die id ist
+   im Setup ein Zaehler mit Luecken, die Stelle nicht. */
+const pNum=(list,id)=>{const i=(list||[]).findIndex(p=>p.id===id);return i<0?null:i+1;};
 function OrbStack({players=[],max=4,size=28}){
   const shown=players.slice(0,max), rest=players.length-shown.length;
   return(
     <span style={{display:'inline-flex',alignItems:'center'}}>
       {shown.map((p,i)=>(
         <span key={p.id??i} style={{marginLeft:i?-size*.3:0,display:'inline-flex'}}>
-          <GlassOrb name={p.name} color={p.color} size={size} i={i}/>
+          <GlassOrb name={p.name} size={size} i={i}/>
         </span>
       ))}
       {rest>0&&<span style={{marginLeft:6,color:T.t2,fontSize:12.5,fontWeight:600,
@@ -8633,6 +8639,57 @@ function PadelIntro({onDone}){
   );
 }
 
+/* Listen, die per Plus/Minus wachsen und schrumpfen (Spieler, Courts
+   im Assistenten): neue Eintraege fliegen von links ein, gehende nach
+   rechts hinaus. `useFlyIn` merkt sich, wann ein Schluessel zum
+   ersten Mal da war — was beim Betreten des Schritts schon stand,
+   fliegt nicht. `useFlyOut` haelt den Eintrag fuer die Dauer der
+   Animation noch fest und loescht ihn erst danach wirklich. */
+const FLY_OUT_MS=400;
+function useFlyIn(keys,reset){
+  const r=useRef({reset:{},t:new Map()});
+  const now=Date.now();
+  if(r.current.reset!==reset) r.current={reset,t:new Map(keys.map(k=>[k,0]))};
+  keys.forEach(k=>{ if(!r.current.t.has(k)) r.current.t.set(k,now); });
+  return k=>{ const t=r.current.t.get(k); return !!t&&now-t<440; };
+}
+function useFlyOut(){
+  const[gone,setGone]=useState(()=>new Set());
+  const go=(k,fn)=>{
+    if(gone.has(k)) return;
+    setGone(g=>new Set(g).add(k));
+    setTimeout(()=>{ fn(); setGone(g=>{const n=new Set(g);n.delete(k);return n;}); },FLY_OUT_MS);
+  };
+  return [k=>gone.has(k),go];
+}
+/* Wertung im Assistenten — Zeichen in 30 % Weiss wie hinter den
+   Ueberschriften der Startseite (HomeDeco): Punkte als Punktmatrix
+   „21" wie auf einer Anzeigetafel, Siege als Haken aus drei Knoten
+   in der Strichstaerke des Events-Zeichens. */
+function WinModeDeco({kind,on}){
+  const f=on?'rgba(255,255,255,.42)':'rgba(255,255,255,.26)';
+  if(kind==='points'){
+    const G={'2':['01110','10001','00001','00010','00100','01000','11111'],
+      '1':['00100','01100','00100','00100','00100','00100','01110']};
+    const dots=[];
+    ['2','1'].forEach((d,di)=>G[d].forEach((row,y)=>[...row].forEach((c,x)=>{
+      if(c==='1') dots.push([di*40+x*7+4,y*7+4]);
+    })));
+    return(<svg width="76" height="52" viewBox="0 0 76 52" aria-hidden="true"
+      style={{position:'absolute',right:42,top:'50%',translate:'0 -50%',pointerEvents:'none'}}>
+      {dots.map(([x,y],i)=><circle key={i} cx={x} cy={y} r="2.7" fill={f}/>)}
+    </svg>);
+  }
+  return(<svg width="78" height="66" viewBox="0 0 78 66" aria-hidden="true"
+    style={{position:'absolute',right:50,top:'50%',translate:'0 -50%',pointerEvents:'none'}}>
+    <g stroke={f} strokeWidth="9" strokeLinecap="round" strokeLinejoin="round" fill="none">
+      <polyline points="12,34 30,52 66,14"/>
+    </g>
+    <circle cx="12" cy="34" r="10" fill={f}/><circle cx="30" cy="52" r="10" fill={f}/>
+    <circle cx="66" cy="14" r="10" fill={f}/>
+  </svg>);
+}
+
 function TournamentWizard({onClose,onFinish,canStart,entrance=true,
   format,setFormat,winMode,setWinMode,name,setName,
   players,addPlayer,addPlayerNamed,addScannedPlayers,removePlayer,renamePlayer,setPlayerGroup,
@@ -8644,6 +8701,11 @@ function TournamentWizard({onClose,onFinish,canStart,entrance=true,
   suggest,pauseStats,nameHistory}){
   const[step,setStep]=useState(0);
   const inputRefs=useRef({});
+  const plIn=useFlyIn(players.map(p=>p.id),step);
+  const[plOut,plGo]=useFlyOut();
+  const dropPlayer=id=>{buzz(6);plGo(id,()=>removePlayer(id));};
+  const ctIn=useFlyIn(Array.from({length:numCourts},(_,i)=>i),step);
+  const[ctOut,ctGo]=useFlyOut();
   // Screenshot-Scan im Spieler-Schritt (gleiche Funktion wie im Formular).
   const[scanOpen,setScanOpen]=useState(false);
   /* Der Dateidialog geht direkt aus dem Knopf auf — nur dort liegt die
@@ -8775,39 +8837,49 @@ function TournamentWizard({onClose,onFinish,canStart,entrance=true,
           {step===0&&(<>
             <div style={stepTitle}>Welches Format passt zu euch?</div>
             <div style={stepSub}>7 klassische Modi — von locker gemischt bis K.-o.-Bracket.</div>
-            {Object.entries(FORMATS).map(([id,f],i)=>(
-              <button key={id} onClick={()=>setFormat(id)}
-                aria-pressed={format===id}
-                style={{...card(format===id),marginTop:i?10:0}}>
-                <span style={{flex:1,minWidth:0}}>
-                  <span style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
-                    <span style={{fontFamily:T.fontSerif,color:T.t1,fontSize:21,fontWeight:700,
-                      lineHeight:1.15}}>{f.name}</span>
-                    {id==='americano'&&(
-                      <span style={{padding:'2px 8px',borderRadius:999,background:T.oSoft,
-                        color:T.o,fontSize:10,fontWeight:800,letterSpacing:.5}}>BELIEBT</span>
-                    )}
-                    {f.team&&(
-                      <span style={{padding:'2px 8px',borderRadius:999,background:T.glassHi,
-                        border:`1px solid ${T.glassLine}`,color:T.t2,fontSize:10,fontWeight:800,
-                        letterSpacing:.5}}>FESTE TEAMS</span>
-                    )}
-                    {f.groups&&(
-                      <span style={{padding:'2px 8px',borderRadius:999,background:T.glassHi,
-                        border:`1px solid ${T.glassLine}`,color:T.t2,fontSize:10,fontWeight:800,
-                        letterSpacing:.5}}>MIXED</span>
-                    )}
+            {/* Kacheln im Zweierraster statt Karten untereinander:
+                sieben Modi passen so auf einen Blick, und das Zeichen
+                steht oben, wo man zuerst hinsieht. */}
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+            {Object.entries(FORMATS).map(([id,f],i)=>{
+              const sel=format===id;
+              const tag=id==='americano'?'BELIEBT':f.team?'FESTE TEAMS':f.groups?'MIXED':null;
+              return(
+              <button key={id} onClick={()=>{buzz(6);setFormat(id);}}
+                aria-pressed={sel}
+                style={{...GLASS,borderRadius:22,padding:'14px 14px 13px',textAlign:'left',
+                  color:T.t1,cursor:'pointer',display:'flex',flexDirection:'column',
+                  minHeight:158,position:'relative',
+                  border:`1.5px solid ${sel?T.o:T.glassLine}`,
+                  boxShadow:sel?`0 0 22px var(--oGlow), ${GLASS.boxShadow}`:GLASS.boxShadow,
+                  transition:'border-color .2s, box-shadow .2s',
+                  ...(i===6?{gridColumn:'1 / -1',minHeight:112}:{})}}>
+                <span style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:6}}>
+                  <span style={{width:46,height:46,borderRadius:'50%',flexShrink:0,
+                    background:sel?T.oSoft:T.glassHi,border:`1px solid ${sel?T.o:T.glassLine}`,
+                    display:'inline-flex',alignItems:'center',justifyContent:'center',
+                    transition:'background .2s, border-color .2s'}}>
+                    <TournamentModeIcon mode={id} active={sel} size={28}/>
                   </span>
-                  <span style={{display:'block',color:T.t3,fontSize:12.5,lineHeight:1.55,marginTop:4}}>
-                    {f.short}
-                  </span>
+                  {tag&&(
+                    <span style={{padding:'3px 7px',borderRadius:999,fontSize:9,fontWeight:800,
+                      letterSpacing:.5,whiteSpace:'nowrap',
+                      background:id==='americano'?T.oSoft:T.glassHi,
+                      color:id==='americano'?T.o:T.t2,
+                      border:`1px solid ${id==='americano'?'transparent':T.glassLine}`}}>{tag}</span>
+                  )}
                 </span>
-                {/* Rechts stand ein Haken, der nur wiederholte, was die
-                    orange Kontur schon sagt. Jetzt steht dort, worum es
-                    geht: welcher Modus das ist. */}
-                <TournamentModeIcon mode={id} active={format===id} size={30}/>
+                <span style={{marginTop:'auto',paddingTop:12,fontFamily:T.fontSerif,
+                  fontSize:f.name.length>12?16.5:19,fontWeight:700,lineHeight:1.1,
+                  whiteSpace:'nowrap'}}>{f.name}</span>
+                <span style={{color:T.t3,fontSize:11.5,lineHeight:1.45,marginTop:4,
+                  overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical'}}>
+                  {f.short}
+                </span>
               </button>
-            ))}
+              );
+            })}
+            </div>
           </>)}
 
           {step===1&&(<>
@@ -8820,8 +8892,9 @@ function TournamentWizard({onClose,onFinish,canStart,entrance=true,
             <div style={{position:'relative',display:'flex',alignItems:'center',
               justifyContent:'center',gap:20,margin:'6px 0 14px'}}>
               <button onClick={()=>{
-                  if(players.length<=4) return;
-                  buzz(6);removePlayer(players[players.length-1].id);
+                  const left=players.filter(p=>!plOut(p.id));
+                  if(left.length<=4) return;
+                  dropPlayer(left[left.length-1].id);
                 }}
                 disabled={players.length<=4}
                 aria-label="Einen Spieler weniger"
@@ -8874,16 +8947,15 @@ function TournamentWizard({onClose,onFinish,canStart,entrance=true,
             {players.map((p,idx)=>(
               // Nach links wischen legt „Löschen" frei — unter 5 Spielern
               // inaktiv, weil das Turnier sonst unter die Mindestzahl fällt.
-              <SwipeableRow key={p.id} disabled={players.length<=4}
-                onDelete={()=>removePlayer(p.id)}>
+              <div key={p.id} className={plOut(p.id)?'fly-out':plIn(p.id)?'fly-in':undefined}>
+              <SwipeableRow disabled={players.length<=4}
+                onDelete={()=>dropPlayer(p.id)}>
               {/* Eine Zeile pro Spieler, aber ohne Kasten: Ressort,
                   darunter der Name auf einer Linie. Der gefuellte Block
                   liess sieben Zeilen wie ein Formular aussehen — hier
                   sollen sie wie eine Aufstellung aussehen. */}
               <div style={{display:'flex',alignItems:'center',gap:13,padding:'9px 0 4px'}}>
-                <span style={{width:32,height:32,borderRadius:'50%',background:p.color,flexShrink:0,
-                  display:'flex',alignItems:'center',justifyContent:'center',
-                  color:'#000',fontSize:14,fontWeight:900}}>{idx+1}</span>
+                <GlassOrb label={idx+1} size={32} i={idx}/>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontFamily:T.fontDisplay,color:T.t3,fontSize:9.5,
                     letterSpacing:1.6,marginBottom:1}}>SPIELER</div>
@@ -8914,11 +8986,12 @@ function TournamentWizard({onClose,onFinish,canStart,entrance=true,
                   </button>
                 )}
                 {players.length>4&&(
-                  <button onClick={()=>removePlayer(p.id)} aria-label="Spieler entfernen"
+                  <button onClick={()=>dropPlayer(p.id)} aria-label="Spieler entfernen"
                     style={{...stepBtn,width:34,height:34,color:T.t3}}>×</button>
                 )}
               </div>
               </SwipeableRow>
+              </div>
             ))}
             {/* Noch einer — in derselben Spalte wie die Nummern, damit
                 die Liste unten weitergeht statt oben am Zaehler. */}
@@ -8980,19 +9053,25 @@ function TournamentWizard({onClose,onFinish,canStart,entrance=true,
                 sonst klebt der Zaehler am Titel. */}
             <div style={{...stepTitle,marginBottom:18}}>Wie viele Courts?</div>
             <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:20,margin:'6px 0 22px'}}>
-              <button onClick={()=>setNumCourts(Math.max(1,numCourts-1))}
+              <button onClick={()=>{
+                  if(numCourts<=1||ctOut(numCourts-1)) return;
+                  buzz(6);ctGo(numCourts-1,()=>setNumCourts(n=>Math.max(1,n-1)));
+                }}
+                aria-label="Einen Court weniger"
                 style={{...stepBtn,width:52,height:52,borderRadius:'50%',fontSize:24}}>−</button>
               <div style={{textAlign:'center',minWidth:84}}>
                 <div style={{color:T.t1,fontSize:52,fontWeight:800,lineHeight:1,fontVariantNumeric:'tabular-nums',letterSpacing:-1}}>{numCourts}</div>
                 <div style={{...HEAD_SERIF,fontSize:21
                   ,marginTop:5}}>Court{numCourts>1?'s':''}</div>
               </div>
-              <button onClick={()=>setNumCourts(Math.min(maxCourts,numCourts+1))}
+              <button onClick={()=>{buzz(6);setNumCourts(Math.min(maxCourts,numCourts+1));}}
+                aria-label="Einen Court mehr"
                 style={{...stepBtn,width:52,height:52,borderRadius:'50%',fontSize:24}}>+</button>
             </div>
             {labelRow(<CourtIcon size={13}/>,'Court-Namen (optional)')}
             {Array.from({length:numCourts}).map((_,i)=>(
-              <div key={i} style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
+              <div key={i} className={ctOut(i)?'fly-out':ctIn(i)?'fly-in':undefined}
+                style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
                 <input value={courtNames[i]??''} onChange={e=>setCourtName(i,e.target.value)}
                   maxLength={NAME_MAX}
                   placeholder={`Court ${i+1}`} autoCapitalize="words" autoCorrect="off" spellCheck={false}
@@ -9145,8 +9224,10 @@ function TournamentWizard({onClose,onFinish,canStart,entrance=true,
           {step===5&&(<>
             <div style={stepTitle}>Wie wird gewertet?</div>
             <div style={stepSub}>Bestimmt, wonach das Leaderboard sortiert.</div>
-            <button onClick={()=>setWinMode('points')} style={card(winMode==='points')}>
-              <span style={{flex:1,minWidth:0}}>
+            <button onClick={()=>setWinMode('points')}
+              style={{...card(winMode==='points'),position:'relative',overflow:'hidden',minHeight:112}}>
+              <WinModeDeco kind="points" on={winMode==='points'}/>
+              <span style={{flex:1,minWidth:0,paddingRight:104,position:'relative'}}>
                 <span style={{fontFamily:T.fontSerif,color:T.t1,fontSize:21,fontWeight:700}}>Punkte zählen</span>
                 <span style={{display:'block',color:T.t3,fontSize:12.5,lineHeight:1.55,marginTop:4}}>
                   Jeder gewonnene Punkt zählt fürs Ranking — der Americano-Klassiker.
@@ -9157,8 +9238,10 @@ function TournamentWizard({onClose,onFinish,canStart,entrance=true,
                 boxShadow:winMode==='points'?`inset 0 0 0 3px ${T.bg}`:'none'}}/>
             </button>
             <div style={{height:10}}/>
-            <button onClick={()=>setWinMode('wins')} style={card(winMode==='wins')}>
-              <span style={{flex:1,minWidth:0}}>
+            <button onClick={()=>setWinMode('wins')}
+              style={{...card(winMode==='wins'),position:'relative',overflow:'hidden',minHeight:112}}>
+              <WinModeDeco kind="wins" on={winMode==='wins'}/>
+              <span style={{flex:1,minWidth:0,paddingRight:104,position:'relative'}}>
                 <span style={{fontFamily:T.fontSerif,color:T.t1,fontSize:21,fontWeight:700}}>Siege zählen</span>
                 <span style={{display:'block',color:T.t3,fontSize:12.5,lineHeight:1.55,marginTop:4}}>
                   Nur Match-Siege zählen — einfach & klar.
@@ -10093,14 +10176,12 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
             // inaktiv, weil das Turnier sonst unter die Mindestzahl fällt.
             <SwipeableRow key={p.id} disabled={players.length<=4}
               onDelete={()=>removePlayer(p.id)}>
-            {/* Gleiche Zeile wie im Assistenten: Nummernkreis in der
-                Spielerfarbe, Ressort, Name auf einer Linie. Der fruehere
+            {/* Gleiche Zeile wie im Assistenten: Glaskugel mit der
+                Nummer, Ressort, Name auf einer Linie. Der fruehere
                 Farbpunkt neben einem Textfeld sagte weniger und stand
                 dafuer in der Spalte, in der jetzt die Nummer steht. */}
             <div style={{display:'flex',alignItems:'center',gap:13,padding:'9px 0 4px'}}>
-              <span style={{width:32,height:32,borderRadius:'50%',background:p.color,flexShrink:0,
-                display:'flex',alignItems:'center',justifyContent:'center',
-                color:'#000',fontSize:14,fontWeight:900}}>{i+1}</span>
+              <GlassOrb label={i+1} size={32} i={i}/>
               <div style={{flex:1,minWidth:0}}>
               <div style={{fontFamily:T.fontDisplay,color:T.t3,fontSize:9.5,
                 letterSpacing:1.6,marginBottom:1}}>SPIELER</div>
@@ -10980,6 +11061,7 @@ function TournamentParticipantView({session,participantId,pin}){
           court={myCourt}
           next={nextInfo}
           playerById={playerById}
+          numOf={id=>pNum(ts.players,id)}
           meName={myName}
           roundIndex={roundIndex}
           courtLabel={myCourt?courtLabel(round,myCourt):'Pause'}/>
@@ -11377,12 +11459,7 @@ function RosterNamePicker({roster=[],taken,suggest,busy,err,onPick,onFree,onBack
                   border:`1px solid ${isMe?T.o:T.border}`,borderRadius:14,
                   padding:'10px 11px',cursor:isTaken?'not-allowed':'pointer',
                   opacity:isTaken?.42:1}}>
-                <div style={{width:30,height:30,borderRadius:'50%',flexShrink:0,
-                  ...GLASS,border:`1.5px solid ${p.color||T.border}`,
-                  color:T.t1,fontSize:11,fontWeight:800,display:'flex',
-                  alignItems:'center',justifyContent:'center'}}>
-                  {getInitials(p.name)||'?'}
-                </div>
+                <GlassOrb name={p.name} label={pNum(roster,p.id)} size={30}/>
                 <div style={{minWidth:0,flex:1}}>
                   <div style={{color:T.t1,fontSize:13.5,fontWeight:700,overflow:'hidden',
                     textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.name}</div>
@@ -11487,25 +11564,18 @@ function PadelCourtBlue({t1=[],t2=[],playerById,meName,single=false}){
    Die Netzspalte kann Inhalt tragen (`net`): in der Turnieruebersicht
    haengen dort die beiden Punktestaende, in der Spieleransicht bleibt
    sie eine blosse Linie. `meName` hebt den eigenen Platz hervor. */
-function MatchSlotGrid({court,playerById,meName,net=null,avatar=52,innerA=null,innerB=null,
+function MatchSlotGrid({court,playerById,numOf,meName,net=null,avatar=52,innerA=null,innerB=null,
   /* Breite der Netzspalte. 32 reicht fuer eine Plakette; der
      Bestaetigen-Knopf im laufenden Turnier braucht mehr, weil man
      ihn trifft und nicht nur liest. */
   netW=32}){
   const nm=id=>playerById?.(id)?.name||'?';
-  const col=id=>playerById?.(id)?.color||T.border;
   const isMe=id=>meName&&nm(id).toLowerCase()===meName.toLowerCase();
   const slot=(id,pos)=>(
     <div key={pos} style={{display:'flex',flexDirection:'column',alignItems:'center',
       justifyContent:'center',gap:7,padding:'14px 6px',minWidth:0,height:'100%'}}>
-      <div style={{width:avatar,height:avatar,borderRadius:'50%',flexShrink:0,
-        background:isMe(id)?T.oSoft:T.card2,
-        border:`2px solid ${isMe(id)?T.o:col(id)}`,
-        color:T.t1,fontSize:avatar*.33,fontWeight:800,display:'flex',
-        alignItems:'center',justifyContent:'center',
-        boxShadow:isMe(id)?'0 4px 16px var(--oGlow)':`0 0 10px ${col(id)}33`}}>
-        {getInitials(nm(id))||'?'}
-      </div>
+      <GlassOrb name={nm(id)} label={numOf?.(id)??undefined} size={avatar}
+        i={pos} ring={isMe(id)?T.o:undefined}/>
       <div style={{color:isMe(id)?T.o:T.t1,fontSize:13,fontWeight:isMe(id)?800:600,
         maxWidth:'100%',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
         textAlign:'center'}}>
@@ -11628,7 +11698,7 @@ function MatchRoles({court,playerById,meName}){
   );
 }
 
-function MatchPager({court,next,playerById,meName,roundIndex,courtLabel}){
+function MatchPager({court,next,playerById,numOf,meName,roundIndex,courtLabel}){
   const ref=useRef(null);
   const[page,setPage]=useState(0);
   const onScroll=()=>{
@@ -11658,7 +11728,8 @@ function MatchPager({court,next,playerById,meName,roundIndex,courtLabel}){
             </div>
           </div>
           {court
-            ?<MatchSlotGrid court={court} playerById={playerById} meName={meName}/>
+            ?<MatchSlotGrid court={court} playerById={playerById} meName={meName}
+              numOf={numOf}/>
             :<div style={{border:`1px solid ${T.border}`,borderRadius:16,padding:'28px 18px',
                 textAlign:'center',color:T.t3,fontSize:13,background:T.card2}}>
                 Du pausierst diese Runde.
@@ -12295,10 +12366,7 @@ function LineupEditSheet({court,courtIndex,players,round,onAssign,onClose}){
         style={{display:'flex',alignItems:'center',gap:10,width:'100%',
           background:T.card2,border:`1px solid ${T.border}`,borderRadius:13,
           padding:'11px 12px',cursor:'pointer',textAlign:'left'}}>
-        <div style={{width:26,height:26,borderRadius:'50%',flexShrink:0,
-          background:`${p?.color||T.t3}22`,border:`1.5px solid ${p?.color||T.border}`,
-          color:p?.color||T.t1,display:'flex',alignItems:'center',justifyContent:'center',
-          fontSize:10,fontWeight:800}}>{getInitials(p?.name||'?')}</div>
+        <GlassOrb name={p?.name||'?'} label={p?pNum(players,p.id):'?'} size={28} i={idx}/>
         <div style={{flex:1,minWidth:0,color:T.t1,fontSize:16,fontWeight:600,
           overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p?.name||'—'}</div>
         <EditIcon size={14} color={T.t3}/>
@@ -12358,10 +12426,7 @@ function LineupEditSheet({court,courtIndex,players,round,onAssign,onClose}){
                     background:isCurrent?T.oSoft:T.card2,
                     border:`1px solid ${isCurrent?T.o:T.border}`,borderRadius:13,
                     padding:'10px 12px',cursor:'pointer',textAlign:'left'}}>
-                  <div style={{width:24,height:24,borderRadius:'50%',flexShrink:0,
-                    background:`${p.color||T.t3}22`,border:`1.5px solid ${p.color||T.border}`,
-                    color:p.color||T.t1,display:'flex',alignItems:'center',justifyContent:'center',
-                    fontSize:10,fontWeight:800}}>{getInitials(p.name||'?')}</div>
+                  <GlassOrb name={p.name||'?'} label={pNum(players,p.id)} size={26}/>
                   <div style={{flex:1,minWidth:0,color:T.t1,fontSize:16,fontWeight:600,
                     overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.name}</div>
                   <span style={{color:st.color,fontSize:10,fontWeight:700,letterSpacing:.5,
@@ -12471,7 +12536,7 @@ function ScoreWheel({value,onChange,max=40,color=T.o,w=52,h=34}){
   );
 }
 
-function TournamentCourtCard({court,courtIndex,courtName,playerById,onScoreChange,onConfirm,onEditLineup,scoreMax=40}){
+function TournamentCourtCard({court,courtIndex,courtName,playerById,numOf,onScoreChange,onConfirm,onEditLineup,scoreMax=40}){
   // Score-Werte aus dem Court ziehen. null/undefined = noch nicht
   // eingegeben → Input rendert leer, damit Tippen "5" auch wirklich
   // "5" wird und nicht "05". Beim Abschluss zählt 0 als gültiger
@@ -12605,6 +12670,7 @@ function TournamentCourtCard({court,courtIndex,courtName,playerById,onScoreChang
         <MatchSlotGrid
           court={court}
           playerById={playerById}
+          numOf={numOf}
           avatar={44}
           innerA={scoreSlot('A',s1,s1Raw,v=>onScoreChange('s1',v))}
           innerB={scoreSlot('B',s2,s2Raw,v=>onScoreChange('s2',v))}
@@ -14639,6 +14705,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
               court={court} courtIndex={ci}
               courtName={courtLabel(tourney.courtNames,ci)}
               playerById={playerById}
+              numOf={id=>pNum(tourney.players,id)}
               onScoreChange={(field,val)=>updateScore(court.id,field,val)}
               onConfirm={()=>confirmCourt(court.id)}
               onEditLineup={()=>setEditLineupCourtId(court.id)}/>

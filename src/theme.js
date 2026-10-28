@@ -826,6 +826,15 @@ input[type="time"]::-webkit-datetime-edit{padding:0;text-align:center;}
   66%{border-radius:46% 54% 47% 53% / 54% 45% 55% 46%;background-position:-1px 2px,1px -1px,0 0}
   100%{border-radius:50% 50% 50% 50% / 50% 50% 50% 50%;background-position:0 0,0 0,0 0}}
 .orb{animation:orbMorph 7s ease-in-out infinite}
+/* Listen im Assistenten: was dazukommt, fliegt von links ein; was
+   geht, fliegt nach rechts hinaus und klappt dabei seine Hoehe zu. */
+@keyframes flyIn{from{opacity:0;translate:-56px 0}to{opacity:1;translate:none}}
+.fly-in{animation:flyIn .42s var(--ease-out-quint) both}
+@keyframes flyOut{
+  0%{opacity:1;translate:none;max-height:96px}
+  55%{opacity:0;translate:84px 0;max-height:96px}
+  100%{opacity:0;translate:84px 0;max-height:0;margin-top:0;margin-bottom:0;padding-top:0;padding-bottom:0}}
+.fly-out{animation:flyOut .4s var(--ease-ios) forwards;overflow:hidden;pointer-events:none}
 @keyframes netPop{
   0%   {transform:scale(.35) rotate(-120deg); opacity:0;}
   55%  {transform:scale(1.18) rotate(8deg);   opacity:1;}

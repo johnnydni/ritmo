@@ -1365,9 +1365,31 @@ der Antiqua als Fliesstext und ein Plus, das erst zwei Knoepfe
 aufklappte.
 
 **Spieler als Glaskugel** (`GlassOrb`, `OrbStack` in App.jsx) statt
-farbiger Kreise: klares Glas mit Glanzpunkt oben links, einem Hauch
-Spielerfarbe unten rechts und dunklem Gegenschatten; die Kontur morpht
-langsam (`.orb`/`orbMorph` in theme.js), je Kugel versetzt.
+farbiger Kreise — **farblos**: klares Glas mit Glanzpunkt oben links,
+hellem Saum unten rechts und dunklem Gegenschatten; die Kontur morpht
+langsam (`.orb`/`orbMorph` in theme.js), je Kugel versetzt. Darin
+steht die **Nummer** des Spielers (`label`; `pNum(list,id)` = Stelle
+in der Turnierliste — die id ist im Setup ein Zaehler mit Luecken),
+auf der Live-Karte die Initiale. Ueberall im Turnier: Spielerliste im
+Assistenten und im Formular, `MatchSlotGrid` (Court-Karte und
+Teilnehmeransicht, `numOf`), Aufstellungs-Sheet, Namenswahl beim
+Beitreten. Die eigene Kugel traegt `ring` (orange). Die
+Spielerfarbe lebt nur noch als Farbkante in der Tabelle.
+
+**Assistent**:
+
+- **Schritt 1** zeigt die Formate als **Kacheln** im Zweierraster
+  (Modus-Glyph im Kreis oben, Plakette rechts, Name unten, Kurztext
+  zweizeilig), die siebte ueber die volle Breite. Lange Namen
+  („Team-Americano") stehen kleiner statt umzubrechen.
+- **Schritt 2 und 3**: was per Plus dazukommt, fliegt von links ein
+  (`useFlyIn`, `.fly-in`), was per Minus, × oder Wischen geht, fliegt
+  nach rechts hinaus und klappt dabei zu (`useFlyOut`, `.fly-out`,
+  `FLY_OUT_MS`). Geloescht wird erst nach der Animation; was beim
+  Betreten des Schritts schon stand, fliegt nicht.
+- **Schritt 6** (Wertung): hinter den beiden Karten ein Zeichen in
+  der Sprache der Home-Deko (`WinModeDeco`, 26 % Weiss, gewaehlt
+  42 %): Punkte als Punktmatrix „21", Siege als Haken aus drei Knoten.
 
 Two shared components carry the pattern; prefer extending them over
 re-inventing a header:

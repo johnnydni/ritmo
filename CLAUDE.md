@@ -1345,6 +1345,13 @@ Unterzeilen sind aufrecht). Ein Schnitt, gemeldet fuer 100–900: ein
   darunter „Sieger X · Datum" bzw. „Entwurf · Format · n Spieler".
 - Match und Online-Turnier behalten ihre alte Karte samt Unterzeile.
 
+**Leere Live-Liste**: Standfirst „Hier erscheinen deine laufenden
+Matches und Turniere." und zwei gestrichelte Platzhalter in Kartenform
+— „Neues Turnier" (startet wie der Hub direkt den Assistenten,
+`onNewTourney`) und „Einzelnes Match". Vorher stand dort ein Satz in
+der Antiqua als Fliesstext und ein Plus, das erst zwei Knoepfe
+aufklappte.
+
 **Spieler als Glaskugel** (`GlassOrb`, `OrbStack` in App.jsx) statt
 farbiger Kreise: klares Glas mit Glanzpunkt oben links, einem Hauch
 Spielerfarbe unten rechts und dunklem Gegenschatten; die Kontur morpht

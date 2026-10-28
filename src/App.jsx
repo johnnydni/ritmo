@@ -14283,7 +14283,6 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
   const editPtsEntry=editPtsId!=null?sortedLb.find(p=>p.id===editPtsId):null;
 
   const totalSecs=(tourney.roundDurationMin||10)*60;
-  const progress=totalSecs?(tourney.timerSecsLeft||0)/totalSecs:0;
 
   return(
     <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
@@ -14314,22 +14313,48 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
       {/* Timer + Leaderboard Toggle */}
       <div style={{padding:'0 22px 14px'}}>
       <div style={{display:'flex',gap:10}}>
-        {/* Timer Card */}
-        <div style={{flex:1,minWidth:0,
-          ...GLASS,
-          border:`1px solid ${tourney.timerFinished?T.r:T.glassLine}`,
-          borderRadius:20,padding:'10px 12px 10px 16px',
+        {/* Timer Card — die Mini-Fassung der Kapsel aus dem Single
+            Match. Knopf links, Zeit rechts, in allen Zustaenden; beim
+            Start morpht die Karte darum herum: schwarz, ganz rund, der
+            Knopf getoent mit orangem Glyph, „Timer" blendet vor die
+            Zahl, die Ziffern werden duenn und orange. Kein
+            Fortschrittsbalken mehr — die Zahl sagt es. Aufgeklappt
+            („Danach") bleibt sie Glas: dort steht keine Uhr. */}
+        {(()=>{
+          const tFin=!!tourney.timerFinished, tRun=!!tourney.timerRunning;
+          const started=tRun||tFin||(tourney.timerSecsLeft||0)<totalSecs;
+          const cap=started&&!nextOpen;
+          const D='.5s var(--ease-out-quint)';
+          const fade=on=>({opacity:on?1:0,transition:`opacity .26s ease ${on?.12:0}s`});
+          const g=(on,el)=>(<span style={{position:'absolute',inset:0,display:'flex',
+            alignItems:'center',justifyContent:'center',...fade(on)}}>{el}</span>);
+          const lbl=nextOpen?'Rundenzeit anzeigen':tFin?'Rundenzeit neu starten'
+            :tRun?'Rundenzeit pausieren':'Rundenzeit starten';
+          return(
+        <div style={{flex:1,minWidth:0,position:'relative',overflow:'hidden',
+          borderRadius:cap?999:20,
+          backgroundColor:cap?'#000':GLASS.background,
+          border:GLASS.border,borderColor:cap?'transparent':undefined,
+          boxShadow:cap?'none':GLASS.boxShadow,
+          padding:'10px 12px 10px 10px',
           display:'flex',alignItems:'center',gap:10,
-          position:'relative',overflow:'hidden'}}>
-          {/* Progress fill — nur solange die Uhr auch zu sehen ist:
-              ein halb gefuellter Balken hinter "Runde 2" misst nichts,
-              was dort steht. */}
-          {!nextOpen&&(
-            <div style={{position:'absolute',left:0,top:0,bottom:0,
-              width:`${progress*100}%`,
-              background:tourney.timerFinished?'rgba(232,69,69,0.12)':'var(--oSoft)',
-              transition:'width 1s linear'}}/>
-          )}
+          transition:`border-radius ${D}, background-color .4s ease, border-color .4s ease, box-shadow .4s ease`}}>
+          {/* Aufgeklappt tritt die Uhr beiseite — und mit ihr ihr Knopf:
+              Start/Pause ohne sichtbare Zeit steuert man blind. Der
+              Platz traegt dann den Weg zurueck. */}
+          <button onClick={nextOpen?()=>{buzz(6);setNextOpen(false);}:toggleTimer}
+            aria-label={lbl} title={lbl}
+            style={{position:'relative',width:40,height:40,borderRadius:'50%',flexShrink:0,
+              border:'none',padding:0,cursor:'pointer',
+              background:!cap?T.o:tFin?'rgba(255,255,255,.2)'
+                :'color-mix(in srgb, var(--o) 34%, transparent)',
+              transition:'background .4s ease'}}>
+            {g(nextOpen,<StopwatchIcon size={18} color="#000"/>)}
+            {g(!nextOpen&&!cap,<PlayGlyph size={15} color="#000"/>)}
+            {g(cap&&!tFin&&tRun,<PauseGlyph size={16} color={T.o}/>)}
+            {g(cap&&!tFin&&!tRun,<PlayGlyph size={16} color={T.o}/>)}
+            {g(cap&&tFin,<span style={{color:'#fff',display:'inline-flex'}}><RefreshGlyph size={17}/></span>)}
+          </button>
           {/* Die Karte ist zugleich der Aufklapper: tippen tauscht die
               Uhr gegen die naechste Auslosung. Der Caret ist die Zusage,
               dass da noch etwas liegt. */}
@@ -14337,9 +14362,9 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
             aria-expanded={nextOpen}
             aria-label={nextOpen?'Rundenzeit anzeigen':'Nächste Runde anzeigen'}
             title={nextOpen?'Rundenzeit anzeigen':'Nächste Runde anzeigen'}
-            style={{flex:1,minWidth:0,display:'flex',alignItems:'center',gap:8,
+            style={{flex:1,minWidth:0,display:'flex',alignItems:'center',gap:6,
               background:'none',border:'none',padding:0,margin:0,textAlign:'left',
-              cursor:'pointer',color:'inherit',position:'relative',zIndex:1}}>
+              cursor:'pointer',color:'inherit'}}>
             {nextOpen?(
               <div style={{flex:1,minWidth:0}}>
                 <div className="display" style={{fontSize:10,letterSpacing:2,
@@ -14350,38 +14375,29 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
                 </div>
               </div>
             ):(
-              <div style={{flex:1,minWidth:0,fontSize:32,fontWeight:800,lineHeight:1,
-                color:tourney.timerFinished?T.r:tourney.timerRunning?T.o:T.t1,
-                fontVariantNumeric:'tabular-nums',letterSpacing:-.5}}>
-                {fmtT(tourney.timerSecsLeft||0)}
+              <div style={{flex:1,minWidth:0,display:'flex',alignItems:'baseline',
+                justifyContent:'flex-end',gap:6,
+                color:tFin?T.r:cap?T.o:T.t1,opacity:cap&&!tRun&&!tFin?.6:1,
+                transition:'color .35s ease, opacity .25s ease'}}>
+                <span style={{fontSize:13,fontWeight:500,whiteSpace:'nowrap',...fade(cap)}}>
+                  {tFin?'Zeit um':'Timer'}
+                </span>
+                <span style={{fontSize:cap?32:30,fontWeight:cap?300:800,lineHeight:1,
+                  letterSpacing:-.5,fontVariantNumeric:'tabular-nums',
+                  transition:`font-size ${D}`}}>
+                  {fmtT(tourney.timerSecsLeft||0)}
+                </span>
               </div>
             )}
             <span style={{flexShrink:0,display:'flex',
               transform:nextOpen?'rotate(-90deg)':'rotate(90deg)',
               transition:'transform .28s cubic-bezier(.2,.8,.2,1)'}}>
-              <ChevronRightIcon size={15} color={T.t3}/>
+              <ChevronRightIcon size={15} color={cap?'rgba(255,255,255,.45)':T.t3}/>
             </span>
           </button>
-          {/* Aufgeklappt tritt die Uhr beiseite — und mit ihr ihr Knopf:
-              Start/Pause ohne sichtbare Zeit steuert man blind. Der
-              Platz traegt dann den Weg zurueck. */}
-          <button onClick={nextOpen?()=>{buzz(6);setNextOpen(false);}:toggleTimer}
-            aria-label={nextOpen?'Rundenzeit anzeigen'
-              :tourney.timerFinished?'Rundenzeit neu starten'
-              :tourney.timerRunning?'Rundenzeit pausieren':'Rundenzeit starten'}
-            title={nextOpen?'Rundenzeit anzeigen'
-              :tourney.timerFinished?'Rundenzeit neu starten'
-              :tourney.timerRunning?'Rundenzeit pausieren':'Rundenzeit starten'}
-            style={{width:40,height:40,borderRadius:'50%',
-              background:!nextOpen&&tourney.timerFinished?T.r:T.o,border:'none',
-              color:T.bg,fontSize:16,fontWeight:800,
-              cursor:'pointer',position:'relative',zIndex:1,
-              display:'flex',alignItems:'center',justifyContent:'center'}}>
-            {nextOpen?<StopwatchIcon size={18} color={T.bg}/>
-              :tourney.timerFinished?'↺'
-              :tourney.timerRunning?<PauseGlyph size={15} color={T.bg}/>:<PlayGlyph size={15} color={T.bg}/>}
-          </button>
         </div>
+          );
+        })()}
 
         {/* Courts ⇄ Leaderboard — Icon-Umschalter */}
         <button onClick={()=>setTab(tab==='board'?'round':'board')}

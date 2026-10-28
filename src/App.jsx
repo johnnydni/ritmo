@@ -15188,7 +15188,7 @@ function LiveTourneyCard({item}){
   );
 }
 
-function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
+function Live({hasMatch,tourneys=[],matchCfg,nav,onNewTourney,activeTab,setActiveTab,
   onDeleteMatch,onDeleteTourney,onOpenTourney,joinedSession,onLeaveJoined,onDeleteAll,
   trash=[],onRestoreTrash,onPurgeTrash,onEmptyTrash}){
   const[moreItem,setMoreItem]=useState(null); // Item fürs "… mehr"-Sheet
@@ -15201,7 +15201,6 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
     try{ await exportTourneyPdf(t); }catch(e){/* still, das Sheet ist schon zu */}
     finally{ setPdfFor(null); }
   };
-  const[plusOpen,setPlusOpen]=useState(false); // Plus-Menü im Leer-Zustand
 
   // ── Teilen über die native Share-API (WhatsApp & Co.);
   // Desktop-Fallback Zwischenablage. Abbruch des Dialogs ist kein Fehler.
@@ -15297,7 +15296,8 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
       <div style={{position:'relative',flexShrink:0}}>
         <ScreenHeader pad={24}
           title={items.length===0?'Keine laufenden Spiele.':'Laufende Spiele und Turniere.'}
-          subtitle={items.length>0?'← Wische nach links für Optionen':null}
+          subtitle={items.length>0?'← Wische nach links für Optionen'
+            :'Hier erscheinen deine laufenden Matches und Turniere.'}
           icon={<LiveTabIcon size={34}/>}/>
 
         {/* "Alle löschen" — Icon-Button im Stil der Turnier-Screen-Buttons
@@ -15320,48 +15320,33 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
 
       <div style={{flex:1,padding:'0 22px',display:'flex',flexDirection:'column',gap:14,overflowY:'auto'}}>
 
-        {items.length===0&&(
-          <div className="fi" style={{display:'flex',flexDirection:'column',
-            alignItems:'center',gap:20,padding:'34px 20px'}}>
-            <div style={{textAlign:'center',color:T.t1,fontFamily:T.fontSerif,fontSize:19,
-              lineHeight:1.5,textShadow:'0 1px 8px rgba(0,0,0,.45)'}}>
-              Noch nichts los — starte direkt hier ein neues Match oder Turnier.
-            </div>
-            {/* Plus-Button (Liquid Glass) → klappt die zwei Start-Optionen auf. */}
-            <button onClick={()=>{buzz(8);setPlusOpen(v=>!v);}}
-              aria-label="Neues Match oder Turnier starten" aria-expanded={plusOpen}
-              style={{width:62,height:62,borderRadius:'50%',cursor:'pointer',
-                display:'flex',alignItems:'center',justifyContent:'center',
-                background:'color-mix(in srgb, var(--card2) 72%, transparent)',
-                border:'1px solid color-mix(in srgb, var(--t1) 18%, transparent)',
-                WebkitBackdropFilter:'blur(14px) saturate(160%)',
-                backdropFilter:'blur(14px) saturate(160%)'}}>
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"
-                style={{transform:plusOpen?'rotate(45deg)':'none',transition:'transform .25s ease'}}>
-                <path d="M12 5v14M5 12h14" stroke={T.o} strokeWidth="2.4" strokeLinecap="round"/>
-              </svg>
-            </button>
-            {plusOpen&&(
-              <div className="fi" style={{display:'flex',flexDirection:'column',gap:10,
-                width:'100%',maxWidth:300}}>
-                {[
-                  {lab:'Einzelnes Match',icon:<SingleMatchIcon size={26}/>,to:'single-setup'},
-                  {lab:'Turnier',icon:<TrophyIcon size={26}/>,to:'tournament-hub'},
-                ].map(o=>(
-                  <button key={o.to} onClick={()=>{buzz(6);nav(o.to);}}
-                    style={{display:'flex',alignItems:'center',gap:14,padding:'14px 18px',
-                      borderRadius:16,cursor:'pointer',color:T.t1,fontSize:15,fontWeight:700,
-                      background:'color-mix(in srgb, var(--card2) 72%, transparent)',
-                      border:`1px solid ${T.border}`,textAlign:'left',
-                      WebkitBackdropFilter:'blur(14px) saturate(160%)',
-                      backdropFilter:'blur(14px) saturate(160%)'}}>
-                    {o.icon}{o.lab}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+        {/* Leer: zwei Platzhalter in der Form, die ein Eintrag hier
+            spaeter hat — gestrichelt, wie die „+"-Karte bei den
+            Schnellstarts und die Papierkorb-Zeile. Man sieht, wo etwas
+            erscheinen wird, und tippt gleich hinein. Vorher stand hier
+            ein Satz in der Antiqua (einer Ueberschriften-Schrift als
+            Fliesstext) und ein Plus, das erst zwei Knoepfe aufklappte. */}
+        {items.length===0&&[
+          {lab:'Neues Turnier',sub:'Assistent · in 7 Schritten startklar',
+            icon:<LineIcon name="plus" size={22} color={T.o}/>,go:()=>onNewTourney?onNewTourney():nav('tournament-hub')},
+          {lab:'Einzelnes Match',sub:'Best of Three oder Americano',
+            icon:<LineIcon name="match" size={22} color={T.t1}/>,go:()=>nav('single-setup'),dim:true},
+        ].map((o,k)=>(
+          <button key={o.lab} className="fu" onClick={()=>{buzz(6);o.go();}}
+            style={{width:'100%',display:'flex',alignItems:'center',gap:14,padding:16,
+              borderRadius:22,background:'none',cursor:'pointer',color:T.t1,textAlign:'left',
+              border:`1.5px dashed ${o.dim?'rgba(255,255,255,.2)':'rgba(255,255,255,.32)'}`,
+              marginTop:k?-4:4,animationDelay:`${.06+k*.06}s`}}>
+            <span style={{width:48,height:48,borderRadius:'50%',flexShrink:0,
+              border:`1.5px dashed ${o.dim?'rgba(255,255,255,.28)':'rgba(255,255,255,.36)'}`,
+              display:'inline-flex',alignItems:'center',justifyContent:'center'}}>{o.icon}</span>
+            <span style={{flex:1,minWidth:0,opacity:o.dim?.85:1}}>
+              <span style={{display:'block',fontFamily:T.fontCard,fontSize:21,lineHeight:1.15}}>{o.lab}</span>
+              <span style={{display:'block',color:T.t2,fontSize:12.5,marginTop:3}}>{o.sub}</span>
+            </span>
+            <ChevronRightIcon size={16} color={T.t3}/>
+          </button>
+        ))}
 
         {renderList.map((item,i)=> item.header?(
           <div key={item.id} className="fi" style={{...HEAD_SERIF,fontSize:24,
@@ -22853,7 +22838,7 @@ export default function App(){
         schlaeger:JourneySchlaeger,baelle:JourneyBaelle}[id];
       return Comp?<Comp {...nav}/>:null;
     })()}
-    <KeepTab on={scr==='live'} alive={loggedIn}><Live nav={nav} hasMatch={hasMatch} tourneys={tourneys}
+    <KeepTab on={scr==='live'} alive={loggedIn}><Live nav={nav} onNewTourney={newTourney} hasMatch={hasMatch} tourneys={tourneys}
       matchCfg={cfg}
       activeTab={activeTab} setActiveTab={handleTab}
       onDeleteMatch={deleteMatch} onDeleteTourney={deleteTourney} onOpenTourney={openTourney}

@@ -1330,10 +1330,25 @@ Spiele" auf Home, Schnellstarts im Turnier-Bereich — auch deren
 Unterzeilen sind aufrecht). Ein Schnitt, gemeldet fuer 100–900: ein
 `fontWeight:700` wuerde sonst eine Fett-Attrappe erzeugen.
 
-Die Live-Karte eines Turniers traegt **nur den Namen** (21 px, bis zu
-zwei Zeilen). Format, Runde und Spielerzahl stehen im Turnier selbst,
-der Zustand rechts in der Pille. Match und Online-Turnier behalten
-ihre Unterzeile — dort sagt sie etwas, das nirgends sonst steht.
+**Turniere in der Live-Liste** (`LiveTourneyCard`, Variante „Buehne"):
+
+- **Laufend** ist eine grosse Karte: Format als Ressort, „läuft"
+  rechts, der Name gross in Caslon, darunter „Runde n" mit einem
+  Segment **je Court der laufenden Runde** (orange = Ergebnis
+  bestaetigt) — eine Rundenzahl gesamt gibt es nicht, die Courts
+  schon. Unten die Spieler als `OrbStack` (vier Kugeln + „+n"), die
+  Court-Zahl und „Weiter ›". Die Karte ist der Knopf; „Weiter" ist
+  nur die Zusage.
+- **Kein Timer auf der Karte**: die Rundenzeit tickt nur in
+  `TournamentPlay`. Auf der Live-Liste stuende eine eingefrorene Zahl.
+- **Beendet / Entwurf** sind schlanke Zeilen: Pokal bzw. Stift, Name,
+  darunter „Sieger X · Datum" bzw. „Entwurf · Format · n Spieler".
+- Match und Online-Turnier behalten ihre alte Karte samt Unterzeile.
+
+**Spieler als Glaskugel** (`GlassOrb`, `OrbStack` in App.jsx) statt
+farbiger Kreise: klares Glas mit Glanzpunkt oben links, einem Hauch
+Spielerfarbe unten rechts und dunklem Gegenschatten; die Kontur morpht
+langsam (`.orb`/`orbMorph` in theme.js), je Kugel versetzt.
 
 Two shared components carry the pattern; prefer extending them over
 re-inventing a header:

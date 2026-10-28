@@ -2518,16 +2518,16 @@ function BibelTabIcon({active,size=22}){
 /* Spieler als Glaskugel — statt farbiger Kreise. Klar wie GLASS,
    farblos: oben links ein Glanzpunkt, unten rechts ein heller Saum,
    innen ein dunkler Gegenschatten, der die Kugel rund macht. Darin die
-   Nummer des Spielers (`label`), sonst seine Initiale. Die Kontur
-   morpht langsam (.orb, orbMorph), versetzt je Kugel, damit ein Stapel
-   nicht im Gleichtakt atmet. `ring` legt einen Ring darum (die eigene
+   Nummer des Spielers (`label`), sonst seine Initiale. Sie steht
+   still — eine atmende Kontur lenkte im Turnier vom Spielstand ab.
+   `ring` legt einen Ring darum (die eigene
    Kugel in der Teilnehmeransicht). */
-function GlassOrb({name='',label,size=28,i=0,ring}){
+function GlassOrb({name='',label,size=28,ring}){
   const txt=label!=null?String(label):(name.trim()[0]||'?').toUpperCase();
   return(
-    <span className="orb" aria-hidden="true" style={{width:size,height:size,flexShrink:0,
+    <span aria-hidden="true" style={{width:size,height:size,flexShrink:0,
       display:'inline-flex',alignItems:'center',justifyContent:'center',position:'relative',
-      borderRadius:'50%',animationDelay:`${-i*1.7}s`,
+      borderRadius:'50%',
       background:`radial-gradient(circle at 32% 26%, rgba(255,255,255,.8) 0, rgba(255,255,255,.2) ${size*.17}px, transparent ${size*.42}px),
         radial-gradient(circle at 70% 84%, rgba(255,255,255,.22) 0, transparent 58%),
         rgba(255,255,255,.07)`,
@@ -2547,7 +2547,7 @@ function OrbStack({players=[],max=4,size=28}){
     <span style={{display:'inline-flex',alignItems:'center'}}>
       {shown.map((p,i)=>(
         <span key={p.id??i} style={{marginLeft:i?-size*.3:0,display:'inline-flex'}}>
-          <GlassOrb name={p.name} size={size} i={i}/>
+          <GlassOrb name={p.name} size={size}/>
         </span>
       ))}
       {rest>0&&<span style={{marginLeft:6,color:T.t2,fontSize:12.5,fontWeight:600,
@@ -8955,7 +8955,7 @@ function TournamentWizard({onClose,onFinish,canStart,entrance=true,
                   liess sieben Zeilen wie ein Formular aussehen — hier
                   sollen sie wie eine Aufstellung aussehen. */}
               <div style={{display:'flex',alignItems:'center',gap:13,padding:'9px 0 4px'}}>
-                <GlassOrb label={idx+1} size={32} i={idx}/>
+                <GlassOrb label={idx+1} size={32}/>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontFamily:T.fontDisplay,color:T.t3,fontSize:9.5,
                     letterSpacing:1.6,marginBottom:1}}>SPIELER</div>
@@ -10181,7 +10181,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
                 Farbpunkt neben einem Textfeld sagte weniger und stand
                 dafuer in der Spalte, in der jetzt die Nummer steht. */}
             <div style={{display:'flex',alignItems:'center',gap:13,padding:'9px 0 4px'}}>
-              <GlassOrb label={i+1} size={32} i={i}/>
+              <GlassOrb label={i+1} size={32}/>
               <div style={{flex:1,minWidth:0}}>
               <div style={{fontFamily:T.fontDisplay,color:T.t3,fontSize:9.5,
                 letterSpacing:1.6,marginBottom:1}}>SPIELER</div>
@@ -11575,7 +11575,7 @@ function MatchSlotGrid({court,playerById,numOf,meName,net=null,avatar=52,innerA=
     <div key={pos} style={{display:'flex',flexDirection:'column',alignItems:'center',
       justifyContent:'center',gap:7,padding:'14px 6px',minWidth:0,height:'100%'}}>
       <GlassOrb name={nm(id)} label={numOf?.(id)??undefined} size={avatar}
-        i={pos} ring={isMe(id)?T.o:undefined}/>
+        ring={isMe(id)?T.o:undefined}/>
       <div style={{color:isMe(id)?T.o:T.t1,fontSize:13,fontWeight:isMe(id)?800:600,
         maxWidth:'100%',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
         textAlign:'center'}}>
@@ -12366,7 +12366,7 @@ function LineupEditSheet({court,courtIndex,players,round,onAssign,onClose}){
         style={{display:'flex',alignItems:'center',gap:10,width:'100%',
           background:T.card2,border:`1px solid ${T.border}`,borderRadius:13,
           padding:'11px 12px',cursor:'pointer',textAlign:'left'}}>
-        <GlassOrb name={p?.name||'?'} label={p?pNum(players,p.id):'?'} size={28} i={idx}/>
+        <GlassOrb name={p?.name||'?'} label={p?pNum(players,p.id):'?'} size={28}/>
         <div style={{flex:1,minWidth:0,color:T.t1,fontSize:16,fontWeight:600,
           overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p?.name||'—'}</div>
         <EditIcon size={14} color={T.t3}/>

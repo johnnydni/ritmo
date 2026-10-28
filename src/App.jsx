@@ -6831,7 +6831,7 @@ const RL_TIME_FS=41;     // Ziffernhoehe 29,7 (89)
 const RL_DIM=.4;         // Deckkraft hinter dem Zeiger (94/234)
 const RL_MASK='linear-gradient(to right, transparent 0, #000 12%, #000 88%, transparent 100%)';
 
-function MinuteRuler({value,onChange,min=1,max=60,label='Rundendauer'}){
+function MinuteRuler({value,onChange,min=1,max=60,label='Rundendauer',hideTime=false,onLive}){
   const ref=useRef(null);
   const settle=useRef(null);            // Debounce bis das Momentum steht
   const lastUser=useRef(0);             // Zeitstempel der letzten Nutzer-Scrollung
@@ -6842,6 +6842,8 @@ function MinuteRuler({value,onChange,min=1,max=60,label='Rundendauer'}){
   // Setup-Screen bei jedem Scroll-Event neu.
   const[live,setLive]=useState(value);
   useEffect(()=>{setLive(value);},[value]);
+  // Wer die Zeit selbst zeigt (hideTime), bekommt sie waehrend des Wischens.
+  useEffect(()=>{ if(onLive) onLive(live); },[live]);// eslint-disable-line
 
   const vals=useMemo(()=>Array.from({length:max-min+1},(_,i)=>min+i),[min,max]);
   const idx=value-min;
@@ -6929,12 +6931,14 @@ function MinuteRuler({value,onChange,min=1,max=60,label='Rundendauer'}){
 
       {/* Die Dauer als mm:ss — bei ganzen Minuten immer :00, genau wie
           in der Vorlage. */}
-      <div style={{textAlign:'right',marginTop:RL_GAP_TIME,
-        fontFamily:T.fontSans,fontSize:RL_TIME_FS,fontWeight:400,
-        lineHeight:1,letterSpacing:-.5,color:T.o,
-        fontVariantNumeric:'tabular-nums'}}>
-        {live}:00
-      </div>
+      {hideTime
+        ?<div style={{height:RL_TIME_FS,marginTop:RL_GAP_TIME}}/>
+        :<div style={{textAlign:'right',marginTop:RL_GAP_TIME,
+          fontFamily:T.fontSans,fontSize:RL_TIME_FS,fontWeight:400,
+          lineHeight:1,letterSpacing:-.5,color:T.o,
+          fontVariantNumeric:'tabular-nums'}}>
+          {live}:00
+        </div>}
     </div>
   );
 }
@@ -7237,82 +7241,112 @@ function TimerCard({minutes,setMinutes,running,secsLeft,finished,onStart,onPause
       hasStarted={hasStarted}
       onStart={onStart} onPause={onPause} onReset={onReset}/>;
   }
+  return <TimerCapsule minutes={minutes} setMinutes={setMinutes} running={running}
+    secsLeft={secsLeft} finished={finished} hasStarted={hasStarted}
+    onStart={onStart} onPause={onPause} onReset={onReset}/>;
+}
+/* Eigene Komponente, weil sie Hooks traegt — hinter dem frueheren
+   Rueckgabezweig fuer Wimbledon waeren sie bedingt. */
+function TimerCapsule({minutes,setMinutes,running,secsLeft,finished,onStart,onPause,onReset,
+  hasStarted}){
   const fmtTime=(s)=>`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+  /* EIN Rahmen fuer alle Zustaende — der Start ist ein Morph, kein
+     Wechsel: Start-Knopf und Zeit stehen schon im Ruhezustand genau
+     dort, wo die laufende Kapsel sie braucht (links der Knopf, rechts
+     die Zahl). Beim Start bleiben die beiden stehen, und um sie herum
+     passiert der Rest: Titel und Skala blenden nach oben weg, der
+     Rahmen schrumpft auf Kapselhoehe, rundet sich, wird schwarz; der
+     Knopf wechselt Fuellung und Glyph, der Abbrechen-Kreis waechst
+     daneben heraus, „Timer" blendet vor die Zahl, die Ziffern werden
+     groesser und duenner. Abbrechen laeuft denselben Weg zurueck.
+     Die Hoehe wird gemessen (Titel + Skala), nicht geschaetzt — nur
+     zwischen zwei Zahlen laesst sie sich animieren. */
+  const mode=finished?'done':hasStarted?'run':'idle';
+  const cap=mode!=='idle';
+  const CAP_H=80;
+  const topRef=useRef(null);
+  const[idleH,setIdleH]=useState(186);
+  const[live,setLive]=useState(minutes);
+  useLayoutEffect(()=>{
+    const el=topRef.current; if(!el) return;
+    const m=()=>setIdleH(el.offsetHeight+16);
+    m();
+    if(typeof ResizeObserver==='undefined') return;
+    const ro=new ResizeObserver(m); ro.observe(el);
+    return()=>ro.disconnect();
+  },[]);
+  const D='.52s var(--ease-out-quint)';
+  const fade=(on,delay=0)=>({opacity:on?1:0,
+    transition:`opacity .28s ease ${on?delay:0}s`});
+  const leftClick=mode==='idle'?onStart:mode==='run'?(running?onPause:onStart):onReset;
+  const leftLabel=mode==='idle'?'Timer starten':mode==='done'?'Timer neu':running?'Timer pausieren':'Timer fortsetzen';
+  const glyph=(on,el)=>(
+    <span style={{position:'absolute',inset:0,display:'flex',alignItems:'center',
+      justifyContent:'center',...fade(on,.12)}}>{el}</span>
+  );
 
-  // 3 states: idle (picker visible), running/paused (countdown), finished
   return(
-    <div style={{...(hasStarted&&!finished?{borderRadius:999}:{...GLASS,borderRadius:22}),
-      padding:'14px 16px'}}>
+    <div style={{position:'relative',overflow:'hidden',
+      height:cap?CAP_H:idleH,borderRadius:cap?CAP_H/2:22,
+      backgroundColor:cap?'#000':GLASS.background,
+      border:GLASS.border,borderColor:cap?'transparent':undefined,
+      boxShadow:cap?'none':GLASS.boxShadow,
+      transition:`height ${D}, border-radius ${D}, background-color .4s ease, border-color .4s ease, box-shadow .4s ease`}}>
 
-      {/* Eingestellt wird wie die Rundendauer im Turnier-Konfigurator:
-          dieselbe Skala, dieselbe Ablesung. Start sitzt links auf der
-          Hoehe der Zeit — rechts steht sie selbst. */}
-      {!hasStarted&&!finished&&(
-        <div style={{padding:'0 2px 2px'}}>
-          <div style={{fontFamily:T.fontSerif,color:T.t1,fontSize:21,fontWeight:700,
-            marginBottom:10}}>Timer</div>
-          <div style={{position:'relative'}}>
-            <MinuteRuler value={minutes} onChange={setMinutes} label="Timer"/>
-            <button onClick={onStart} aria-label="Timer starten" title="Timer starten"
-              style={{position:'absolute',left:0,bottom:-4,width:50,height:50,
-                borderRadius:'50%',background:T.o,border:'none',cursor:'pointer',
-                display:'flex',alignItems:'center',justifyContent:'center',
-                boxShadow:'0 4px 16px var(--oGlow)'}}>
-              <PlayGlyph size={19} color="#000"/>
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Oben: Titel und Skala — die Zeit darunter zeichnet die Zeile
+          unten, damit sie beim Start stehen bleiben kann. */}
+      <div ref={topRef} aria-hidden={cap||undefined}
+        style={{padding:'14px 16px 0',pointerEvents:cap?'none':'auto',
+          opacity:cap?0:1,translate:cap?'0 -14px':'none',
+          transition:`opacity .22s ease, translate ${D}`}}>
+        <div style={{fontFamily:T.fontSerif,color:T.t1,fontSize:21,fontWeight:700,
+          marginBottom:10}}>Timer</div>
+        <MinuteRuler value={minutes} onChange={setMinutes} label="Timer"
+          hideTime onLive={setLive}/>
+      </div>
 
-      {/* Laufend wie der iOS-Timer (Live-Aktivitaet): schwarze Kapsel,
-          links Pause/Weiter im orange getoenten Kreis und Abbrechen im
-          grauen, rechts „Timer" und die Zeit in duennen orangen
-          Ziffern. Kein Fortschrittsbalken — die Zahl sagt es. Die
-          Kapsel ist schwarz und nicht --bg: sie richtet sich nach dem
-          Vorbild, nicht nach dem Theme (wie die Tinte im Weiter-Knopf). */}
-      {hasStarted&&!finished&&(
-        <div style={{margin:'-14px -16px',padding:'14px 22px 14px 14px',borderRadius:999,
-          background:'#000',display:'flex',alignItems:'center',gap:10}}>
-          <button onClick={running?onPause:onStart}
-            aria-label={running?'Timer pausieren':'Timer fortsetzen'}
-            title={running?'Timer pausieren':'Timer fortsetzen'}
-            style={{width:52,height:52,borderRadius:'50%',flexShrink:0,border:'none',
-              background:'color-mix(in srgb, var(--o) 34%, transparent)',cursor:'pointer',
-              display:'flex',alignItems:'center',justifyContent:'center'}}>
-            {running?<PauseGlyph size={22} color={T.o}/>:<PlayGlyph size={22} color={T.o}/>}
-          </button>
-          <button onClick={onReset} aria-label="Timer abbrechen" title="Timer abbrechen"
-            style={{width:52,height:52,borderRadius:'50%',flexShrink:0,border:'none',
-              background:'rgba(255,255,255,.2)',cursor:'pointer',
-              display:'flex',alignItems:'center',justifyContent:'center'}}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff"
-              strokeWidth="2.6" strokeLinecap="round" aria-hidden="true">
-              <path d="M5 5l14 14M19 5L5 19"/>
-            </svg>
-          </button>
-          <div style={{flex:1,minWidth:0,display:'flex',alignItems:'baseline',
-            justifyContent:'flex-end',gap:8,color:T.o,opacity:running?1:.6,
-            transition:'opacity .25s'}}>
-            <span style={{fontSize:16,fontWeight:500}}>Timer</span>
-            <span style={{fontSize:46,fontWeight:300,lineHeight:1,letterSpacing:-.5,
-              fontVariantNumeric:'tabular-nums'}}>{fmtTime(secsLeft)}</span>
-          </div>
+      {/* Unten: die Zeile, die zur Kapsel wird. */}
+      <div style={{position:'absolute',left:cap?13:16,right:cap?22:16,
+        bottom:cap?13:16,height:52,display:'flex',alignItems:'center',
+        transition:`left ${D}, right ${D}, bottom ${D}`}}>
+        <button onClick={leftClick} aria-label={leftLabel} title={leftLabel}
+          style={{position:'relative',width:52,height:52,borderRadius:'50%',flexShrink:0,
+            border:'none',cursor:'pointer',
+            background:mode==='idle'?T.o:mode==='run'
+              ?'color-mix(in srgb, var(--o) 34%, transparent)':'rgba(255,255,255,.2)',
+            boxShadow:mode==='idle'?'0 4px 16px var(--oGlow)':'none',
+            transition:'background .4s ease, box-shadow .4s ease'}}>
+          {glyph(mode==='idle',<PlayGlyph size={20} color="#000"/>)}
+          {glyph(mode==='run'&&running,<PauseGlyph size={22} color={T.o}/>)}
+          {glyph(mode==='run'&&!running,<PlayGlyph size={22} color={T.o}/>)}
+          {glyph(mode==='done',<span style={{color:'#fff',display:'inline-flex'}}><RefreshGlyph size={22}/></span>)}
+        </button>
+        <button onClick={onReset} aria-label="Timer abbrechen" title="Timer abbrechen"
+          tabIndex={mode==='run'?0:-1} aria-hidden={mode!=='run'||undefined}
+          style={{width:mode==='run'?52:0,height:52,marginLeft:mode==='run'?10:0,
+            borderRadius:'50%',flexShrink:0,border:'none',padding:0,overflow:'hidden',
+            background:'rgba(255,255,255,.2)',cursor:'pointer',
+            display:'flex',alignItems:'center',justifyContent:'center',
+            scale:mode==='run'?'1':'.4',...fade(mode==='run',.16),
+            transition:`width ${D}, margin-left ${D}, scale ${D}, opacity .28s ease ${mode==='run'?.16:0}s`}}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff"
+            strokeWidth="2.6" strokeLinecap="round" aria-hidden="true">
+            <path d="M5 5l14 14M19 5L5 19"/>
+          </svg>
+        </button>
+        <div style={{flex:1,minWidth:0,display:'flex',alignItems:'baseline',
+          justifyContent:'flex-end',gap:8,color:mode==='done'?T.r:T.o,
+          opacity:mode==='run'&&!running?.6:1,transition:'opacity .25s, color .3s'}}>
+          <span style={{fontSize:16,fontWeight:500,whiteSpace:'nowrap',...fade(cap,.2)}}>
+            {mode==='done'?'Zeit um':'Timer'}
+          </span>
+          <span style={{fontSize:cap?46:RL_TIME_FS,fontWeight:cap?300:400,lineHeight:1,
+            letterSpacing:-.5,fontVariantNumeric:'tabular-nums',
+            transition:`font-size ${D}`}}>
+            {mode==='idle'?`${live}:00`:fmtTime(secsLeft)}
+          </span>
         </div>
-      )}
-
-      {finished&&(
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-          <div>
-            <div style={{color:T.r,fontSize:16,fontWeight:800}}>Zeit abgelaufen</div>
-            <div style={{color:T.t3,fontSize:12,marginTop:2}}>Spiel beendet</div>
-          </div>
-          <button onClick={onReset}
-            style={{padding:'10px 18px',borderRadius:20,border:'none',
-              background:T.o,color:T.bg,fontSize:13,fontWeight:700,cursor:'pointer'}}>
-            ↺ Neu
-          </button>
-        </div>
-      )}
+      </div>
     </div>
   );
 }

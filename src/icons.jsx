@@ -191,17 +191,7 @@ export function BestOfThreeIcon({size=22}){
 
 /* ─── Trophy ──────────────────────────────────────────────────── */
 export function TrophyIcon({size=42,color}){
-  const c=color||T.o;
-  return(
-    <svg width={size} height={size} viewBox="0 0 42 42" fill="none">
-      <path d="M13 9 L29 9 L28 22 Q28 26 21 26 Q14 26 14 22 Z"
-        fill="none" stroke={c} strokeWidth="1.8"/>
-      <path d="M13 11 Q6 11 6 16 Q6 21 13 21" stroke={c} strokeWidth="1.6" fill="none"/>
-      <path d="M29 11 Q36 11 36 16 Q36 21 29 21" stroke={c} strokeWidth="1.6" fill="none"/>
-      <line x1="21" y1="26" x2="21" y2="33" stroke={c} strokeWidth="1.8"/>
-      <rect x="15" y="33" width="12" height="2.5" rx="1" fill={c}/>
-    </svg>
-  );
+  return <LineIcon name="turnier" size={size} color={color||T.o}/>;
 }
 
 /* ─── Person mit Pfeil (Beitreten) ────────────────────────────── */
@@ -216,15 +206,63 @@ export function JoinIcon({size=32}){
   );
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   LINIEN-PALETTE („Haarlinie") — die Glyphen der App
+   Ein Satz, eine Hand: 24er-Raster, 1,25er Strich, runde Enden,
+   nichts gefuellt. So fein wie die Antiqua daneben; Masse kommt vom
+   Glaskreis, nicht vom Glyph. Die alten Komponenten (HomeIcon,
+   TrophyIcon, …) behalten ihre Namen und zeichnen nur noch hiermit —
+   die Aufrufer bleiben, wie sie sind.
+   - Unter ~19 px wuerde 1,25 auf dem Raster unter einen Geraetepixel
+     fallen; der Strich waechst dort mit (`24/size`), damit er nicht
+     grau wird.
+   - `d` ist ein Pfad, `c` ein Kreis [cx,cy,r], `r` ein Rechteck
+     [x,y,w,h,rx], `dot` ein gefuellter Punkt [cx,cy,r].
+   - Wer einen Glyph aendert, prueft ihn im Satz (Tab-Leiste,
+     Glaskreis, Werkzeug-Fach) — nicht einzeln. */
+const LN={
+  home:{d:['M4 10.6 12 4l8 6.6V19a1 1 0 0 1-1 1h-4.6v-5.6H9.6V20H5a1 1 0 0 1-1-1z']},
+  profil:{c:[[12,8.4,3.6]],d:['M5 20c.8-3.7 3.6-5.6 7-5.6s6.2 1.9 7 5.6']},
+  suche:{c:[[10.8,10.8,6.3]],d:['M15.4 15.4 20 20']},
+  bibel:{d:['M12 6.6C10 5.1 7.1 4.6 4 5.1v13.2c3.1-.5 6 0 8 1.5 2-1.5 4.9-2 8-1.5V5.1c-3.1-.5-6 0-8 1.5z','M12 6.6v13.2']},
+  match:{c:[[12,12,8]],d:['M4.6 9.2c3.6.4 6 3.2 6 6.8 0 1.4-.3 2.7-1 3.8','M19.4 14.8c-3.6-.4-6-3.2-6-6.8 0-1.4.3-2.7 1-3.8']},
+  turnier:{d:['M8 4h8v5.2a4 4 0 0 1-8 0z','M8 5.6H5.6a2.6 2.6 0 0 0 2.8 3.8M16 5.6h2.4a2.6 2.6 0 0 1-2.8 3.8','M12 13.2V17M9 20h6M10 17h4']},
+  glocke:{d:['M6 16.2v-5a6 6 0 0 1 12 0v5l1.4 1.9H4.6z','M10 20.6a2 2 0 0 0 4 0']},
+  menu:{d:['M5 9h14M5 15h14']},
+  timer:{c:[[12,13.6,7]],d:['M12 10v3.6l2.6 1.6','M9.8 3h4.4M12 3v3.6']},
+  historie:{d:['M4.6 12a7.4 7.4 0 1 0 2.2-5.3L4.4 9','M4.4 4.8V9h4.2','M12 8.2V12l2.8 1.8']},
+  teilen:{d:['M12 3.8v11','M8.2 7.4 12 3.8l3.8 3.6','M8 10.6H6.4a1.4 1.4 0 0 0-1.4 1.4v6.6A1.4 1.4 0 0 0 6.4 20h11.2a1.4 1.4 0 0 0 1.4-1.4V12a1.4 1.4 0 0 0-1.4-1.4H16']},
+  bearbeiten:{d:['M4.6 19.4l1-4.1L15.6 5.3a1.5 1.5 0 0 1 2.1 0l1 1a1.5 1.5 0 0 1 0 2.1l-10 10z','M14.2 6.7l3.1 3.1']},
+  papierkorb:{d:['M6.6 7.2l.9 11.8a1.2 1.2 0 0 0 1.2 1.1h6.6a1.2 1.2 0 0 0 1.2-1.1l.9-11.8','M4.6 7.2h14.8M9.6 7.2V4.8h4.8v2.4M10.6 11v5.4M13.4 11v5.4']},
+  werkzeuge:{r:[[4.5,4.5,6,6,1.8],[13.5,4.5,6,6,1.8],[4.5,13.5,6,6,1.8],[13.5,13.5,6,6,1.8]]},
+  liveTeilen:{dot:[[12,12,1.9]],d:['M8.6 8.6a4.8 4.8 0 0 0 0 6.8M15.4 8.6a4.8 4.8 0 0 1 0 6.8','M5.7 5.7a8.9 8.9 0 0 0 0 12.6M18.3 5.7a8.9 8.9 0 0 1 0 12.6']},
+  ansagen:{d:['M4.4 10.2v3.6a1 1 0 0 0 1 1h2.2l7.8 4.2V5L7.6 9.2H5.4a1 1 0 0 0-1 1z','M18.2 9.4a3.6 3.6 0 0 1 0 5.2']},
+  kalender:{r:[[4,5.4,16,14.6,2.4]],d:['M4 10h16M8.4 3.4v4M15.6 3.4v4']},
+  route:{d:['M12 21s-6.4-5.5-6.4-10.8a6.4 6.4 0 0 1 12.8 0C18.4 15.5 12 21 12 21z'],c:[[12,10.2,2.3]]},
+  start:{d:['M8.2 5.6v12.8l10.2-6.4z']},
+  pause:{d:['M9 5.6v12.8M15 5.6v12.8']},
+  zurueck:{d:['M9 6.6 4.6 11 9 15.4','M4.6 11h9.6a4.6 4.6 0 0 1 0 9.2H12']},
+  regler:{d:['M4 7h9M17.4 7H20M4 17h2.6M11 17h9'],c:[[15.2,7,2.2],[8.8,17,2.2]]},
+  scan:{d:['M4 8.4V5.6A1.6 1.6 0 0 1 5.6 4h2.8M15.6 4h2.8A1.6 1.6 0 0 1 20 5.6v2.8M20 15.6v2.8a1.6 1.6 0 0 1-1.6 1.6h-2.8M8.4 20H5.6A1.6 1.6 0 0 1 4 18.4v-2.8','M8 9.6h8M8 12h8M8 14.4h5']},
+  spieler:{c:[[9,8.6,3.2]],d:['M3.4 19.4c.7-3.3 3-5 5.6-5s4.9 1.7 5.6 5','M15.2 5.6a3.2 3.2 0 0 1 0 6.1M17.4 14.6c1.6.6 2.8 2.2 3.2 4.8']},
+  plus:{d:['M12 5v14M5 12h14']},
+};
+export const LINE_SW=1.25;
+export function LineIcon({name,size=22,color='currentColor',sw,style}){
+  const g=LN[name]; if(!g) return null;
+  const w=sw||Math.max(LINE_SW,24/size);
+  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color}
+    strokeWidth={w} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={style}>
+    {(g.d||[]).map((d,i)=><path key={'d'+i} d={d}/>)}
+    {(g.c||[]).map(([cx,cy,r],i)=><circle key={'c'+i} cx={cx} cy={cy} r={r}/>)}
+    {(g.r||[]).map(([x,y,w2,h,rx],i)=><rect key={'r'+i} x={x} y={y} width={w2} height={h} rx={rx}/>)}
+    {(g.dot||[]).map(([cx,cy,r],i)=><circle key={'o'+i} cx={cx} cy={cy} r={r} fill={color} stroke="none"/>)}
+  </svg>);
+}
+
 /* ─── Tab-Bar Icons ───────────────────────────────────────────── */
 export function HomeIcon({active,size=22}){
-  // aktiv = filled in Textfarbe (weiß im Dark-Theme), kein Blau mehr;
-  // die Tür bleibt durch die konkave Pfadform ausgespart.
-  return(<svg width={size} height={size} viewBox="0 0 22 22" fill="none">
-    <path d="M3 10 L11 3 L19 10 L19 19 L13.5 19 L13.5 13 L8.5 13 L8.5 19 L3 19 Z"
-      stroke={T.t1} strokeWidth="1.7" strokeLinejoin="round"
-      fill={active?T.t1:'none'}/>
-  </svg>);
+  return <LineIcon name="home" size={size} color={T.t1} sw={active?1.75:undefined}/>;
 }
 export function LiveIcon({active,size=22}){
   // Padel-Schläger-Logo (PNG): weiß = inaktiv, blau = aktiv.
@@ -241,18 +279,7 @@ export function GearIcon({active,size=22}){
   </svg>);
 }
 export function SearchIcon({size=22,filled=false}){
-  // filled = aktiv (z.B. Search-Mode mit Text). Lupe wird komplett orange
-  // ausgefüllt statt nur Outline.
-  if(filled){
-    return(<svg width={size} height={size} viewBox="0 0 22 22" fill="none">
-      <circle cx="9.5" cy="9.5" r="6" stroke="var(--o)" strokeWidth="1.9" fill="var(--o)"/>
-      <line x1="14" y1="14" x2="19" y2="19" stroke="var(--o)" strokeWidth="2.3" strokeLinecap="round"/>
-    </svg>);
-  }
-  return(<svg width={size} height={size} viewBox="0 0 22 22" fill="none">
-    <circle cx="9.5" cy="9.5" r="6" stroke="var(--t1)" strokeWidth="1.7" fill="none"/>
-    <line x1="14" y1="14" x2="19" y2="19" stroke="var(--t1)" strokeWidth="1.9" strokeLinecap="round"/>
-  </svg>);
+  return <LineIcon name="suche" size={size} color={filled?'var(--o)':'var(--t1)'} sw={filled?1.75:undefined}/>;
 }
 
 /* ─── Highlight helper ────────────────────────────────────────── */
@@ -294,13 +321,7 @@ export function FullscreenIcon({size=18}){
   </svg>);
 }
 export function EditIcon({size=20,color=T.t1}){
-  return(<svg width={size} height={size} viewBox="0 0 22 22" fill="none">
-    {/* Pencil/edit shape */}
-    <path d="M3 19 L3 14 L14 3 L19 8 L8 19 L3 19 Z"
-      stroke={color} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-    {/* Eraser separator line */}
-    <line x1="12" y1="5" x2="17" y2="10" stroke={color} strokeWidth="1.6" strokeLinecap="round"/>
-  </svg>);
+  return <LineIcon name="bearbeiten" size={size} color={color}/>;
 }
 export function ExitFullscreenIcon({size=18}){
   return(<svg width={size} height={size} viewBox="0 0 18 18" fill="none">
@@ -396,19 +417,7 @@ export function FunkyFruitsRow({size=16,gap=7}){
 /* color: Vorgabe orange; auf den Foto-Screens weiss (T.t1), wie die
    Glyphen auf der Startseite. */
 export function BookIcon({size=28,color='var(--o)'}){
-  const c=color;
-  return(<svg width={size} height={size} viewBox="0 0 32 32" fill="none">
-    {/* Open book silhouette */}
-    <path d="M4 7 L4 25 L15 27 L15 9 Z" fill="none" stroke={c} strokeWidth="1.6" strokeLinejoin="round"/>
-    <path d="M28 7 L28 25 L17 27 L17 9 Z" fill="none" stroke={c} strokeWidth="1.6" strokeLinejoin="round"/>
-    <line x1="15" y1="9" x2="15" y2="27" stroke={c} strokeWidth="1.6"/>
-    <line x1="17" y1="9" x2="17" y2="27" stroke={c} strokeWidth="1.6"/>
-    {/* Page lines */}
-    <line x1="7" y1="13" x2="12" y2="13.5" stroke={c} strokeWidth=".9" opacity=".55"/>
-    <line x1="7" y1="17" x2="12" y2="17.5" stroke={c} strokeWidth=".9" opacity=".55"/>
-    <line x1="20" y1="13.5" x2="25" y2="13" stroke={c} strokeWidth=".9" opacity=".55"/>
-    <line x1="20" y1="17.5" x2="25" y2="17" stroke={c} strokeWidth=".9" opacity=".55"/>
-  </svg>);
+  return <LineIcon name="bibel" size={size} color={color}/>;
 }
 
 export function JourneyIcon({size=28,color='var(--o)'}){
@@ -528,21 +537,12 @@ export function PauseIcon({size=22,color='currentColor'}){
    Benachrichtigungs-Icon liefert das bestehende BellIcon weiter
    unten in der Datei. */
 export function MenuIcon({size=22,color='currentColor'}){
-  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color}
-    strokeWidth="1.9" strokeLinecap="round" aria-hidden="true">
-    <line x1="4" y1="7" x2="20" y2="7"/>
-    <line x1="4" y1="12" x2="20" y2="12"/>
-    <line x1="4" y1="17" x2="20" y2="17"/>
-  </svg>);
+  return <LineIcon name="menu" size={size} color={color}/>;
 }
 
 /* ─── Person glyph (avatar fallback) ──────────────────────────── */
 export function PersonGlyph({size=22}){
-  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <circle cx="12" cy="8" r="3.6" stroke="currentColor" strokeWidth="1.8"/>
-    <path d="M 4.5 20 Q 4.5 14 12 14 Q 19.5 14 19.5 20"
-      stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" fill="none"/>
-  </svg>);
+  return <LineIcon name="profil" size={size}/>;
 }
 
 /* ─── Hero visuals (Rules / Journey landings) ─────────────────── */
@@ -602,11 +602,7 @@ export function EyeIcon({size=24,color='currentColor'}){
 
 // Glocke — Benachrichtigungen
 export function BellIcon({size=24,color='currentColor'}){
-  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M6 8a6 6 0 1 1 12 0c0 4 2 5 2 7H4c0-2 2-3 2-7z"/>
-    <path d="M10 20a2 2 0 0 0 4 0"/>
-  </svg>);
+  return <LineIcon name="glocke" size={size} color={color}/>;
 }
 
 // Schloss — Sicherheit
@@ -866,13 +862,7 @@ export function ScrollIcon({size=24,color='currentColor'}){
 }
 // Stoppuhr (Pausen & Rotation)
 export function StopwatchIcon({size=24,color='currentColor'}){
-  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color}
-    strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <circle cx="12" cy="13.5" r="7.5"/>
-    <line x1="12" y1="13.5" x2="12" y2="9.6"/>
-    <line x1="9.5" y1="2.5" x2="14.5" y2="2.5"/><line x1="12" y1="2.5" x2="12" y2="6"/>
-    <line x1="18.6" y1="6.9" x2="20" y2="5.5"/>
-  </svg>);
+  return <LineIcon name="timer" size={size} color={color}/>;
 }
 // Maske (Spielstile / Personalities)
 export function MaskIcon({size=24,color='currentColor'}){
@@ -885,13 +875,7 @@ export function MaskIcon({size=24,color='currentColor'}){
 }
 // Zwei Personen (Aufstellungen)
 export function PeopleIcon({size=24,color='currentColor'}){
-  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color}
-    strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <circle cx="8.5" cy="8" r="3"/>
-    <path d="M2.5 19c0-4 3-5.6 6-5.6s6 1.6 6 5.6"/>
-    <circle cx="17" cy="8.5" r="2.5"/>
-    <path d="M16.2 13.5c3 .2 5.3 1.8 5.3 5.5"/>
-  </svg>);
+  return <LineIcon name="spieler" size={size} color={color}/>;
 }
 // Hand / Handfläche (Hand-Seiten)
 export function HandIcon({size=24,color='currentColor'}){
@@ -935,12 +919,7 @@ export function MonitorIcon({size=22,color='currentColor'}){
 
 // Lautsprecher — Platz-Ansagen im laufenden Turnier
 export function SpeakerIcon({size=24,color='currentColor'}){
-  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M4 9.5h3.2L12 5.4v13.2L7.2 14.5H4a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1z"/>
-    <path d="M15.8 9.2a4 4 0 0 1 0 5.6"/>
-    <path d="M18.4 6.6a7.6 7.6 0 0 1 0 10.8"/>
-  </svg>);
+  return <LineIcon name="ansagen" size={size} color={color}/>;
 }
 
 // Sprechblase — Club-Chat. Die Glocke stand dort fuer eine
@@ -1157,28 +1136,13 @@ export function CourtsIcon({size=24,color='currentColor'}){
 /* Turnier-Tools — vier Kacheln im Quadrat. Steht in der Knopfleiste
    des laufenden Turniers und faehrt die Werkzeuge aus, die sonst
    dauerhaft daneben lagen. Vier Kacheln, weil vier Werkzeuge darin
-   liegen: das Zeichen zaehlt, was es oeffnet. Geschlossene, gefuellte
-   Formen — eine Kontur zerfaellt bei 20 px in acht Striche. */
+   liegen: das Zeichen zaehlt, was es oeffnet. */
 export function ToolsIcon({size=22,color='currentColor'}){
-  const r=2.2,s=8.2,g=1.9;
-  return(<svg width={size} height={size} viewBox="0 0 24 24" fill={color}
-    aria-hidden="true">
-    <rect x={12-g/2-s} y={12-g/2-s} width={s} height={s} rx={r}/>
-    <rect x={12+g/2}   y={12-g/2-s} width={s} height={s} rx={r}/>
-    <rect x={12-g/2-s} y={12+g/2}   width={s} height={s} rx={r}/>
-    <rect x={12+g/2}   y={12+g/2}   width={s} height={s} rx={r}/>
-  </svg>);
+  return <LineIcon name="werkzeuge" size={size} color={color}/>;
 }
 
 /* Papierkorb — Deckel, Griff, Korpus mit zwei Rillen. Die Rillen
-   sind das, was ihn von einem Becher unterscheidet; ohne sie liest
-   sich der Glyph bei 20 px als Glas. */
+   sind das, was ihn von einem Becher unterscheidet. */
 export function TrashIcon({size=20,color='currentColor'}){
-  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke={color} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"
-    aria-hidden="true">
-    <path d="M4 7h16M9 7V5h6v2"/>
-    <path d="M7 7l1 13h8l1-13"/>
-    <path d="M10.5 11v5.5M13.5 11v5.5" opacity=".6"/>
-  </svg>);
+  return <LineIcon name="papierkorb" size={size} color={color}/>;
 }

@@ -49,7 +49,7 @@ import {
   SteeringWheelIcon, PaletteIcon, EyeIcon, BellIcon, LockIcon, DoorOutIcon,
   SpeakerIcon,
   ChevronRightIcon, AirPlayIcon, TrashIcon,
-  ArchetypeGlyph, PauseIcon, TournamentModeIcon, ClockIcon, CourtsIcon, ToolsIcon,
+  ArchetypeGlyph, PauseIcon, LineIcon, TournamentModeIcon, ClockIcon, CourtsIcon, ToolsIcon,
   // Emoji-Ersatz-Glyphen
   HeartIcon, MedalIcon, PhoneIcon, KeyboardIcon, RingIcon, WatchIcon, FlicIcon,
   MoonIcon, LeafIcon, TargetIcon, ScrollIcon, StopwatchIcon, MaskIcon,
@@ -2480,31 +2480,13 @@ function Welcome({profile,setProfile,onComplete}){
 /* Tab-Icons — Auswahl-Logik: aktiv = Icon wird FILLED in der normalen
    Textfarbe (T.t1, „bleibt weiß"), KEIN Blau. Inaktiv = Outline. */
 function ProfilTabIcon({active,size=22}){
-  if(active){
-    return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <circle cx="12" cy="8" r="4.3" fill={T.t1}/>
-      <path d="M 4 20.6 Q 4 13.4 12 13.4 Q 20 13.4 20 20.6 Z" fill={T.t1}/>
-    </svg>);
-  }
-  return(<span style={{display:'inline-flex',color:T.t1}}>
-    <PersonGlyph size={size}/>
-  </span>);
+  return <LineIcon name="profil" size={size} color={T.t1} sw={active?1.75:undefined}/>;
 }
 function SucheTabIcon({active,size=22}){
-  return(<svg width={size} height={size} viewBox="0 0 22 22" fill="none">
-    <circle cx="9.5" cy="9.5" r="6" stroke={T.t1} strokeWidth="1.7"
-      fill={active?T.t1:'none'}/>
-    <line x1="14" y1="14" x2="19" y2="19" stroke={T.t1}
-      strokeWidth={active?2.4:1.9} strokeLinecap="round"/>
-  </svg>);
+  return <LineIcon name="suche" size={size} color={T.t1} sw={active?1.75:undefined}/>;
 }
 function BibelTabIcon({active,size=22}){
-  return(<svg width={size} height={size} viewBox="0 0 32 32" fill="none">
-    <path d="M4 7 L4 25 L15 27 L15 9 Z" stroke={T.t1} strokeWidth="2.2"
-      strokeLinejoin="round" fill={active?T.t1:'none'}/>
-    <path d="M28 7 L28 25 L17 27 L17 9 Z" stroke={T.t1} strokeWidth="2.2"
-      strokeLinejoin="round" fill={active?T.t1:'none'}/>
-  </svg>);
+  return <LineIcon name="bibel" size={size} color={T.t1} sw={active?1.75:undefined}/>;
 }
 /* Live-Tab: der Schläger aus icons.jsx. Vorher stand hier ein
    eigener, zweiter Schläger — ein Kreis mit drei Punkten und einem
@@ -4743,27 +4725,9 @@ function GlassCircle({size=54,onClick,label,children,style}){
   );
 }
 
-const HomeBallGlyph=({size=26})=>(
-  <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
-    <circle cx="12" cy="12" r="10" fill="currentColor"/>
-    <path d="M4.2 6.2c3.6 1.6 5.4 4.6 5.4 7.8 0 2.4-.9 4.6-2.6 6.4M19.8 17.8c-3.6-1.6-5.4-4.6-5.4-7.8 0-2.4.9-4.6 2.6-6.4"
-      fill="none" stroke="rgba(0,0,0,.72)" strokeWidth="1.9" strokeLinecap="round"/>
-  </svg>
-);
-const HomeCalGlyph=({size=20})=>(
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
-    strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>
-    <path d="M12 13.2v4M10 15.2h4"/>
-  </svg>
-);
-const HomeMapGlyph=({size=20})=>(
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
-    strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M9 4.5 3.5 6.5v13l5.5-2 6 2 5.5-2v-5"/><path d="M9 4.5v13M15 13.5v6"/>
-    <path d="M19 9.6c0 2.4-3 4.9-3 4.9s-3-2.5-3-4.9a3 3 0 0 1 6 0z"/><circle cx="16" cy="9.6" r=".9"/>
-  </svg>
-);
+const HomeBallGlyph=({size=26})=><LineIcon name="match" size={size}/>;
+const HomeCalGlyph=({size=20})=><LineIcon name="kalender" size={size}/>;
+const HomeMapGlyph=({size=20})=><LineIcon name="route" size={size}/>;
 
 function HomeEventCard({ev,delay}){
   const{day,month,line}=eventLabel(ev);
@@ -4905,14 +4869,7 @@ function Home({nav,activeTab,setActiveTab,onboarded,
             <div style={{display:'flex',gap:30,paddingRight:8}}>
               {playBtn('Match',<HomeBallGlyph/>,()=>nav('single-setup'),'.04s')}
               {playBtn('Turnier',
-                <span style={{display:'inline-flex',alignItems:'flex-end'}}>
-                  <span style={{transform:'rotate(-28deg)',display:'inline-flex'}}>
-                    <PadelRacketIcon size={24} color={T.t1} active/>
-                  </span>
-                  <span style={{marginLeft:-6,display:'inline-flex'}}>
-                    <TrophyIcon size={20} color={T.t1}/>
-                  </span>
-                </span>,
+                <TrophyIcon size={26} color={T.t1}/>,
                 ()=>nav('tournament-hub'),'.08s')}
             </div>
           </div>
@@ -4957,7 +4914,7 @@ function Home({nav,activeTab,setActiveTab,onboarded,
                       <span style={{display:'block',fontSize:15.5,fontWeight:700,
                         whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{g.title}</span>
                       <span className="txt" style={{display:'block',color:T.t2,fontSize:12.5,
-                        fontStyle:'italic',marginTop:2}}>{g.sub}</span>
+                        marginTop:2}}>{g.sub}</span>
                     </span>
                     <ChevronRightIcon size={16} color={T.t2}/>
                   </button>
@@ -8023,16 +7980,7 @@ function QuickSheet({kicker,onClose,children}){
 
 /* Scan-Glyph — Bild im Sucherrahmen, passend zum Icon-Set der App. */
 function ScanGlyph({size=18,color}){
-  const c=color||T.o;
-  return(
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M3 8V5.5A2.5 2.5 0 0 1 5.5 3H8M16 3h2.5A2.5 2.5 0 0 1 21 5.5V8M21 16v2.5a2.5 2.5 0 0 1-2.5 2.5H16M8 21H5.5A2.5 2.5 0 0 1 3 18.5V16"
-        stroke={c} strokeWidth="1.9" strokeLinecap="round"/>
-      <circle cx="9.5" cy="10" r="1.5" fill={c}/>
-      <path d="M7 16l3.2-3.2a1.2 1.2 0 0 1 1.7 0L14 15l1.1-1.1a1.2 1.2 0 0 1 1.7 0L18 15"
-        stroke={c} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  );
+  return <LineIcon name="scan" size={size} color={color||T.o}/>;
 }
 
 
@@ -12646,19 +12594,10 @@ function PauseBonusChip({value,size=9.5}){
 /* iOS-Share-Glyph: Kasten mit Pfeil nach oben. Was hinten rauskommt,
    ist ein PDF — das Icon zeigt aber die Handlung, nicht das Format. */
 function ShareIcon({size=22,color='currentColor'}){
-  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M8 10H6a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1h-2"/>
-    <path d="M12 14V3m0 0L8.5 6.5M12 3l3.5 3.5"/>
-  </svg>);
+  return <LineIcon name="teilen" size={size} color={color}/>;
 }
 function HistoryIcon({size=22,color=T.o}){
-  return(<svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke={color} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M20.5 12a8.5 8.5 0 1 1-2.6-6.1"/>
-    <path d="M18.5 2.5v3.6h-3.6"/>
-    <path d="M12 8v4.3l2.9 1.7"/>
-  </svg>);
+  return <LineIcon name="historie" size={size} color={color}/>;
 }
 
 /* Court/Leaderboard-Umschalter — ANIMIERT: die beiden Mini-Glyphs
@@ -14734,12 +14673,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
                Runde steuert; Teilen ist eine Aktion am Turnier. */
             {
               icon:(<>
-                <svg width="21" height="21" viewBox="0 0 24 24" fill="none"
-                  stroke={tourney.onlinePin?T.o:T.t1} strokeWidth="1.9" strokeLinecap="round" aria-hidden="true">
-                  <circle cx="12" cy="12" r="1.8" fill={tourney.onlinePin?T.o:T.t1} stroke="none"/>
-                  <path d="M8.5 15.5a5 5 0 0 1 0-7M15.5 8.5a5 5 0 0 1 0 7"/>
-                  <path d="M6 18a8.5 8.5 0 0 1 0-12M18 6a8.5 8.5 0 0 1 0 12"/>
-                </svg>
+                <LineIcon name="liveTeilen" size={21} color={tourney.onlinePin?T.o:T.t1}/>
                 {tourney.onlinePin&&(
                   <span className="court-live-dot" style={{position:'absolute',top:4,right:4,
                     width:7,height:7,borderRadius:'50%',background:T.r,
@@ -15288,13 +15222,13 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,activeTab,setActiveTab,
                 </span>
                 <div style={{flex:1,minWidth:0}}>
                   {/* Ein Turnier traegt nur seinen Namen, in Libre Caslon
-                      kursiv (die einzige Stelle mit dieser Schrift) — Format, Runde und
+                      aufrecht (die einzige Stelle mit dieser Schrift) — Format, Runde und
                       Spielerzahl stehen im Turnier selbst; der Zustand
                       (laeuft / fertig / Entwurf) steht rechts in der Pille.
                       Lange Namen duerfen in eine zweite Zeile. */}
                   <div style={{color:item.draft?T.t2:T.t1,
                     ...(item.type==='tourney'
-                      ?{fontFamily:T.fontCard,fontStyle:'italic',fontWeight:400,fontSize:21}
+                      ?{fontFamily:T.fontCard,fontStyle:'normal',fontWeight:400,fontSize:21}
                       :{fontFamily:T.fontSerif,fontWeight:700,fontSize:19}),lineHeight:1.15,
                     marginBottom:item.type==='tourney'?0:3,overflow:'hidden',
                     ...(item.type==='tourney'
@@ -19755,7 +19689,7 @@ function TournamentHub({onHome,onStart,onJoin,onCup,
                     whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
                     {q.label}
                   </div>
-                  <div className="txt" style={{color:T.t2,fontSize:12.5,fontStyle:'italic',
+                  <div className="txt" style={{color:T.t2,fontSize:12.5,
                     marginTop:4,lineHeight:1.4}}>{quickStartSub(q,true)}</div>
                 </div>
               </button>
@@ -19780,7 +19714,7 @@ function TournamentHub({onHome,onStart,onJoin,onCup,
               <div style={{fontFamily:T.fontSerif,color:T.t1,fontSize:17,fontWeight:700,marginTop:10}}>
                 Schnellstart
               </div>
-              <div className="txt" style={{color:T.t2,fontSize:11.5,fontStyle:'italic',
+              <div className="txt" style={{color:T.t2,fontSize:11.5,
                 marginTop:3,lineHeight:1.4}}>Eigenes Format</div>
             </button>
           )}

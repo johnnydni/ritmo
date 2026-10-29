@@ -347,6 +347,16 @@ in 104 px duenn —, darunter drei Kennzahlen (Matches, Siege, Turniere;
 Unterseiten. Die Health-Karten (Angepinnt, Highlights, Wochen-Chart)
 sind raus, mit ihnen `AvatarWithUpload` und `BarChart`.
 
+- **Das Level dreht wie eine Slot-Machine** (`SlotNumber`/`SlotReel`):
+  jede Ziffer eine Walze (0–9 viermal untereinander, 1em sichtbar),
+  beim ersten Einblenden zwei Runden, bei einer Aenderung dreht nur die
+  Walze, deren Ziffer sich aendert, und immer vorwaerts. Die Walzen
+  halten von links nach rechts nacheinander an (1,1 s + 0,28 s je
+  Stelle). Nach dem Anhalten springt die Walze unsichtbar in den
+  mittleren Durchlauf zurueck, damit der Streifen nicht ausgeht. Bei
+  reduzierter Bewegung steht die Zahl sofort. Weil das Profil per
+  `KeepTab` stehen bleibt, laeuft das Eindrehen beim ersten Besuch des
+  Tabs, nicht bei jedem Tab-Wechsel.
 - **Unterseiten** teilen `ProfileSub`: Schriftzug, Ressort, Schlagzeile
   (52–64 px), Haarlinie; unten Home links, Person rechts (zurueck).
   Routen `profile-dna`, `profile-history`, `profile-about`.

@@ -453,18 +453,25 @@ Neu gebaut als Magazin, nicht nur umgefaerbt.
   Schriftzug „SWEETSPOT“ weiss uebermalt, Schwelle, potrace auf
   doppelter Aufloesung) — gefuellte Konturen, kein Text darin.
   Dieselben Dateien traegt die Szene oben im Kapitel (`SceneRacket`):
-  die Zeichnung liegt als CSS-Maske UEBER der Buehne, das SVG darunter
+  die Zeichnung liegt als Bild UEBER der Buehne, das SVG darunter
   malt nur den Sweet Spot (`RK_SPOT`, in Buehnen-Einheiten gemessen),
   der durch die leere Flaeche leuchtet. Der Formwechsel ist ein
   Kartendreher (`scaleX`), der Regler laeuft Kontrolle → Power mit. `ShotArt` steht dort in einem festen Rahmen (Breite
   100 %, Hoehe 132): in einer zentrierten Spalte faellt sein `flex:1`
   sonst auf Breite 0 zusammen, und die Zeichnung ist unsichtbar.
-  **Die Maske bekommt eine Box im Seitenverhaeltnis der Datei**
-  (`ratio`, `RACKET_RATIO`, Maske `100% 100%`) statt `contain` in einer
-  breiteren Box — auf dem iPhone standen die Schlaeger sonst in der
-  Breite gestaucht (Diamant 0,46 statt 0,57). Dasselbe gilt fuer die
-  Szene: ihr Rahmen traegt `aspectRatio:'160 / 150'`, die Box exakt
-  56,8 x 100 Einheiten.
+  **Die Schlaeger sind keine Maske, sondern `<img>` in festen
+  Pixeln** (`ratio` an `ShotArt`, `RACKET_RATIO`; Breite = Hoehe x
+  Verhaeltnis), schwarz → weiss per `filter:invert(1)`. Als CSS-Maske
+  standen sie auf dem iPhone in der Breite gestaucht — mit `contain`
+  in einer breiteren Box und auch noch mit `100% 100%` in einer Box mit
+  `aspect-ratio`. Die Szene rechnet ihre Bildbreite genauso je Datei
+  (`RK_RATIO`).
+- **Dateien ohne Hash im Namen liefert der Service Worker
+  cache-first** (`public/sw.js`): eine geaenderte Zeichnung unter
+  demselben Namen bleibt auf dem Telefon alt. Deshalb haengt an den
+  Schlaeger-URLs `?v=` (`RACKET_V` bzw. `?v=2` in der Szene) — wer die
+  Dateien neu liefert, zaehlt hoch, und beim Deploy steigt `CACHE`
+  (jetzt `ritmo-v7`).
 - **Das Regelwerk hat zehn Kapitel** (`RULES_CHAPTERS`, daraus auch
   `RULES_ORDER` fuer das Blaettern in `App()`): Court & Ausrüstung,
   Aufschlag, Wände & Ballwechsel, Zählweise, Americano, Mexicano,

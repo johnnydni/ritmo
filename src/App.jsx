@@ -5860,7 +5860,7 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
   const handleHWKey=(e)=>{
     const D=380;
 
-    // ── SMART RING: direct mappings (1, 2, 4, Space) ──
+    // ── SMART RING: direct mappings (2, 4, 1 = Rückgängig, Space = Reset) ──
     if(inputMode==='ring'){
       if(e.key==='2'){
         punkt('A');
@@ -5870,18 +5870,20 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
         punkt('B');
         return;
       }
-      if(e.key===' '||e.code==='Space'){
+      // 1 = letzten Punkt zuruecknehmen, Leertaste = Spiel zuruecksetzen
+      // (bis hierher umgekehrt belegt).
+      if(e.key==='1'){
         undo();
         showHint('↩ Rückgängig');
         return;
       }
-      if(e.key==='1'){
+      if(e.key===' '||e.code==='Space'){
         // First press: reset (saves state). Second press within 1.5s: undo reset.
         if(undoReset(1500)){
           showHint('↺ Reset rückgängig gemacht');
         } else {
           reset();
-          showHint('↺ Zurückgesetzt, 1 erneut für Rückgängig');
+          showHint('↺ Zurückgesetzt, Leertaste erneut für Rückgängig');
         }
         return;
       }
@@ -16063,11 +16065,11 @@ function SettingsSteuerung({onBack,onHome,inputMode,setInputMode,voiceOn,setVoic
             <div style={{color:T.t1,fontWeight:700,marginBottom:6}}>Tasten-Belegung:</div>
             <div><span style={{color:T.t1,fontWeight:700,fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace'}}>2</span> → Punkt Team A</div>
             <div><span style={{color:T.t1,fontWeight:700,fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace'}}>4</span> → Punkt Team B</div>
-            <div><span style={{color:T.t1,fontWeight:700,fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace'}}>Leertaste</span> → Letzten Punkt rückgängig</div>
-            <div><span style={{color:T.t1,fontWeight:700,fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace'}}>1</span> → Spiel zurücksetzen</div>
+            <div><span style={{color:T.t1,fontWeight:700,fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace'}}>1</span> → Letzten Punkt rückgängig</div>
+            <div><span style={{color:T.t1,fontWeight:700,fontFamily:'ui-monospace,SFMono-Regular,Menlo,monospace'}}>Leertaste</span> → Spiel zurücksetzen</div>
             <div style={{color:T.t1,fontWeight:700,marginTop:10,marginBottom:4}}>Reset rückgängig:</div>
             <div style={{color:T.t3}}>
-              Nach Reset hast du 1.5 Sekunden Zeit, durch erneutes Drücken von 1 den vorherigen Spielstand wiederherzustellen.
+              Nach Reset hast du 1,5 Sekunden Zeit, durch erneutes Drücken der Leertaste den vorherigen Spielstand wiederherzustellen.
             </div>
             <div style={{marginTop:10,color:T.t3,fontStyle:'italic',fontSize:11}}>
               Setup: Ring per Bluetooth koppeln, RITMO Padel öffnen, drücken — funktioniert sofort.

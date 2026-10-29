@@ -44,6 +44,7 @@ Pure / side-effect-free modules have been extracted from the original mega-file.
 | [src/courtLayout.js](src/courtLayout.js) | Raeumliche Anordnung der Courts: `defaultLayout`, `normLayout`, `layoutBounds`, `moveTo`, `rotateCourt`, `compactLayout`. | Reines Raster (4 x 5), keine React-Abhaengigkeit. Gezeichnet wird in `CourtMap` (App.jsx). |
 | [src/events.js](src/events.js) | `EVENTS` (die Termine der Startseite, von Hand gepflegt) + `upcomingEvents`, `eventLabel`, `eventIcs` (Kalenderdatei), `eventMapsUrl`. | Nur kommende Events werden gezeigt; neue Termine einfach anhaengen. |
 | [src/whatsNew.js](src/whatsNew.js) | `RELEASES` (die Ausgaben des Update-Newsletters) + `unseenRelease(seen)`. | Inhalt/Daten; die Regeln fuer neue Ausgaben stehen im Dateikopf. |
+| [src/wallpapers.js](src/wallpapers.js) | `WALLPAPERS` (Profil-Hintergruende: Foto + Verlaeufe mit Korn), `wallpaperById`, `GRAIN_URL`. | Reine Daten; gezeichnet von `ProfileBackdrop` in App.jsx. |
 | [src/tactics3d.js](src/tactics3d.js) | Das 3D-Taktik-Board der Bibel (three.js): `PLAYS`, `WEATHERS`, `createBoard(canvas,opts)`, `webglOk()`. | Wird per `import()` erst beim Oeffnen geladen (eigener Chunk, ~142 kB gz). UI-Schale ist `TacticsBoard` in App.jsx. |
 | [src/scenes.jsx](src/scenes.jsx) | Die bewegten Grafiken der Bibel: `useSceneClock` (Zeitleiste, spielt nur im Bild), Bausteine (`Court`, `Orb`, `Ball`, `Tag`, `Steps`) und je Kapitel eine `Scene*`. | Siehe „Die Bibel“. Reine Darstellung, kein App-State. |
 | [src/skillDescriptions.js](src/skillDescriptions.js) | `SKILL_DESCRIPTIONS` — text for the RITMO DNA Skill tier card. | Translation-ready content. |
@@ -328,14 +329,59 @@ Ein Mass fuer alle Screens, damit nichts beim Tab-Wechsel springt:
   (Mitte bei Safe-Area + 38 px). Die Screens mit `ScreenHeader`
   beginnen bei `safe-area-inset-top + 18px`, nicht mehr + 60 — vorher
   sprang der Kopf beim Wechsel von Home um gut 40 px nach unten.
-  Profil (ohne Schriftzug) setzt sein Ressort auf dieselbe Zeile wie
-  die anderen (+ 76).
+  Das Profil und seine Unterseiten tragen denselben Schriftzug an
+  derselben Stelle.
 - **Kopf**: Ressort → Titel 9, Titel → Haarlinie 12, Haarlinie →
   Vorspann 10, danach 24 bis zum Inhalt.
 - **`SectionRule`**: 30 davor, 16 danach, Haarlinie 10 unter dem
   Label.
-- **Karten** atmen mindestens 16 px innen (Kennzahl-Kacheln im Profil
-  16/16/15, `HubBigCard` 20/18); Eyebrow → Zahl 12.
+- **Karten** atmen mindestens 16 px innen (`HubBigCard` 20/18,
+  Match-Karten im Verlauf 16/18).
+
+### Das Profil (`Profile`, `ProfileDNA`, `ProfileHistory`, `ProfileAbout`)
+
+Ein Magazin, kein Armaturenbrett (Entwurf „G“): links gesetzt, der
+Name gross mit Punkt, **eine** Zahl im Mittelpunkt — das RITMO-Level
+in 104 px duenn —, darunter drei Kennzahlen (Matches, Siege, Turniere;
+`ProfileTrio`, linksbuendig mit Haarlinien) und drei Zeilen in die
+Unterseiten. Die Health-Karten (Angepinnt, Highlights, Wochen-Chart)
+sind raus, mit ihnen `AvatarWithUpload` und `BarChart`.
+
+- **Unterseiten** teilen `ProfileSub`: Schriftzug, Ressort, Schlagzeile
+  (52–64 px), Haarlinie; unten Home links, Person rechts (zurueck).
+  Routen `profile-dna`, `profile-history`, `profile-about`.
+  `profile-ritmodna` (die alte, ausfuehrliche DNA-Seite) bleibt als
+  „Alles über <Stil>“ hinter der neuen DNA-Seite, `profile-edit`
+  hinter „Über mich“.
+- **RITMO DNA** zeigt „Dein Mix“: wie sich die Quiz-Antworten auf die
+  Stile verteilen. Echte Werte aus `quizAnswers` — keine erfundenen
+  Staerke-Prozente.
+- **Match-Verlauf**: Siege, Niederlagen, Serie; das Level-Diagramm
+  (`LevelChart`) mit Zeitraum-Schalter (Rechteck mit runden Ecken,
+  reihum 3 → 6 → 12 Wochen); Tabs Alle / Single Match / Turnier;
+  Matches nach Monat als `MatchCard` (Anzeigetafel: beide Teams, je
+  ihr Ergebnis, eigenes Team mit „DU“). **Satz-Matches zeigen immer
+  drei Satzspalten** — ein nicht gespielter dritter Satz steht als
+  gedimmter Strich da.
+- **Level-Verlauf braucht ein Log**: das Level steht im Profil nur als
+  aktueller Wert. `pushLevel` (utils.js) schreibt `ritmo_level_log`
+  bei jeder Aenderung, ausgeloest von einem Effekt in `App()`. Ohne
+  zwei Punkte im Fenster steht unter der Linie ein Hinweis, ohne Level
+  gar keine Linie.
+- **Match-Log mit Namen**: `logMatchLocal` speichert jetzt auch
+  `player_names`, `score_a/b`, `user_team` und `event`
+  (Turniername bzw. „Single Match“); `loadMatchHistory()` liest
+  Supabase zuerst, sonst das lokale Log. Aeltere Eintraege ohne Namen
+  zeigen „Dein Team“ / „Gegner“.
+- **Hintergrund** (`profile.wallpaper`, [src/wallpapers.js](src/wallpapers.js)):
+  Tipp aufs Profilbild oeffnet ein Menue (Foto waehlen, Hintergrund
+  ändern, Foto entfernen) — vorher ging direkt der Dateidialog auf. Im
+  `WallpaperSheet` uebernimmt ein Tipp sofort, „Fertig“ schliesst.
+  `ProfileBackdrop` zeichnet das Foto der Startseite oder Verlauf +
+  Korn (SVG-Rauschen als data-URL, `mix-blend-mode:overlay`). Gilt fuer
+  das Profil und alle drei Unterseiten.
+- Der Schalter „Öffentliches Profil“ ist nicht mitgekommen: er zeigte
+  auf die Spielersuche, und die gibt es nicht mehr.
 
 ### Turniere in der Sprache der Startseite (Runde 5)
 

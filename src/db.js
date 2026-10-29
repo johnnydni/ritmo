@@ -225,6 +225,14 @@ export function logMatchLocal(match) {
       user_won: match.user_won ?? null,
       sets: match.sets ?? null,
       tournament_id: match.tournament_id ?? null,
+      // Fuer den Match-Verlauf im Profil: wer, wie, wo. Aeltere
+      // Eintraege haben das nicht — der Verlauf zeigt dort nur Sieg/
+      // Niederlage und Datum.
+      player_names: match.player_names ?? null,
+      score_a: match.score_a ?? null,
+      score_b: match.score_b ?? null,
+      user_team: match.user_team ?? null,
+      event: match.event ?? null,
       finished_at: new Date().toISOString(),
     });
     localStorage.setItem(MATCHLOG_KEY, JSON.stringify(log.slice(-200)));
@@ -235,6 +243,29 @@ export function loadMatchStatsLocal() {
   if (!log.length) return null;
   // computeStats erwartet neueste zuerst (slice(0,12) = jüngste Matches).
   return computeStats([...log].reverse());
+}
+/**
+ * Die einzelnen Matches fuer den Match-Verlauf, neueste zuerst.
+ * Supabase zuerst (wie loadMatchStats), sonst das lokale Log.
+ * Supabase kennt keinen Turniernamen — dort steht nur das Format.
+ */
+export async function loadMatchHistory() {
+  const c = sb();
+  const uid = c ? await currentUserId() : null;
+  if (c && uid) {
+    try {
+      const { data, error } = await c
+        .from('ritmo_matches')
+        .select('format,player_names,score_a,score_b,sets,user_team,user_won,finished_at,tournament_id')
+        .eq('user_id', uid)
+        .order('finished_at', { ascending: false })
+        .limit(200);
+      if (!error && data && data.length) return data;
+    } catch (e) {
+      console.warn('[db] loadMatchHistory exception:', e?.message || e);
+    }
+  }
+  return [...readMatchLog()].reverse();
 }
 export function clearMatchLog() {
   try { localStorage.removeItem(MATCHLOG_KEY); } catch (e) {}

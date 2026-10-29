@@ -7767,15 +7767,17 @@ function SwipeableRow({children,onDelete,disabled=false,label='Löschen'}){
 function SwipeableCard({children,onDelete,onShare,onMore}){
   const[tx,setTx]=useState(0);
   const[swiping,setSwiping]=useState(false);
-  const startX=useRef(0);
-  const startTx=useRef(0);
+  const rootRef=useRef(null);
+  /* Geste in Refs, nicht im State (wie SwipeableRow): kaeme touchmove
+     oder touchend im selben Frame, saehe der State noch den alten Wert. */
+  const g=useRef({x:0,y:0,tx:0,axis:null,active:false,end:0,armed:false});
   const moved=useRef(false);
+  const gone=useRef(false);
 
   // Offene/halb offene Action-Leiste nach 3 s automatisch wieder
-  // einfahren — außer während des Wischens und beim Lösch-Flyout
-  // (tx<=-400), das von doDelete() selbst abgeräumt wird.
+  // einfahren — außer während des Wischens und beim Löschen.
   useEffect(()=>{
-    if(swiping||tx===0||tx<=-400) return;
+    if(swiping||tx===0||gone.current) return;
     const t=setTimeout(()=>setTx(0),3000);
     return()=>clearTimeout(t);
   },[tx,swiping]);
@@ -7787,29 +7789,69 @@ function SwipeableCard({children,onDelete,onShare,onMore}){
     onShare&&{key:'share',label:'Teilen', glyph:'↗', bg:T.o,      run:onShare},
     onDelete&&{key:'del', label:'Löschen',glyph:null,bg:T.r,      run:null},
   ].filter(Boolean);
-  const BTN=74, W=acts.length*BTN, MAX=W+120;
+  const BTN=74, W=acts.length*BTN, DEL=W+60, SOFT=DEL+50;
 
-  const doDelete=()=>{setTx(-460);setTimeout(()=>onDelete(),200);};
+  /* Loeschen in zwei Schritten statt eines Sprungs: erst gleitet die
+     Karte ganz hinaus, dann schliesst sich ihr Platz — Hoehe UND die
+     Luecke der Liste (gap) laufen auf null, die Karten darunter
+     ruecken weich nach. Vorher verschwand die Karte nach 200 ms
+     schlagartig, und der Rest der Liste sprang hoch. Erst danach
+     wird wirklich geloescht. */
+  const doDelete=()=>{
+    if(gone.current) return;
+    gone.current=true;
+    const el=rootRef.current, box=el?.parentElement;
+    const w=el?.offsetWidth||400;
+    setTx(-w-40);
+    if(!box){setTimeout(()=>onDelete(),320);return;}
+    const gap=parseFloat(getComputedStyle(box.parentElement||box).rowGap)||0;
+    box.style.height=`${box.offsetHeight}px`;
+    box.style.overflow='hidden';
+    setTimeout(()=>{
+      box.style.transition='height .3s cubic-bezier(.32,.72,0,1), margin .3s cubic-bezier(.32,.72,0,1), opacity .2s ease';
+      box.style.height='0px';
+      box.style.marginBottom=`${-gap}px`;
+      box.style.opacity='0';
+    },260);
+    setTimeout(()=>onDelete(),260+320);
+  };
 
   const onStart=(e)=>{
-    const x=e.touches?e.touches[0].clientX:e.clientX;
-    startX.current=x;
-    startTx.current=tx;
+    if(gone.current) return;
+    const p=e.touches?e.touches[0]:e;
+    g.current={x:p.clientX,y:p.clientY,tx,axis:null,active:true,end:tx,armed:false};
     moved.current=false;
-    setSwiping(true);
   };
   const onMove=(e)=>{
-    if(!swiping)return;
-    const x=e.touches?e.touches[0].clientX:e.clientX;
-    const dx=x-startX.current;
-    if(Math.abs(dx)>4) moved.current=true;
-    const newTx=Math.min(0,Math.max(-MAX,startTx.current+dx));
-    setTx(newTx);
+    const s=g.current; if(!s.active) return;
+    const p=e.touches?e.touches[0]:e;
+    const dx=p.clientX-s.x, dy=p.clientY-s.y;
+    if(s.axis===null){
+      if(Math.abs(dx)<8&&Math.abs(dy)<8) return;
+      // Nur eindeutig waagerechte Gesten — sonst gehoert sie dem Scroller.
+      s.axis=Math.abs(dx)>Math.abs(dy)*1.4?'x':'y';
+      if(s.axis==='x'){moved.current=true;setSwiping(true);}
+    }
+    if(s.axis!=='x') return;
+    let raw=Math.min(0,s.tx+dx);
+    // Bis knapp hinter die Loesch-Schwelle folgt die Karte dem Finger
+    // 1:1, erst danach zieht es sich schwerer (Gummiband, hoechstens
+    // 70 px mehr) — eine fruehere Bremse verlangte fast die ganze
+    // Bildschirmbreite bis zum Loeschen.
+    if(raw<-SOFT) raw=-SOFT-(1-Math.exp((raw+SOFT)/180))*70;
+    const armed=onDelete&&raw<-DEL;
+    if(armed!==s.armed){ s.armed=armed; buzz(armed?12:4); }
+    s.end=raw;
+    setTx(raw);
   };
   const onEnd=()=>{
+    const s=g.current; if(!s.active) return;
+    s.active=false;
+    if(s.axis!=='x') return;
     setSwiping(false);
-    if(onDelete&&tx<-(W+80)) doDelete();       // voll durchgezogen → löschen
-    else if(tx<-W*0.45) setTx(-W);             // Snap: Leiste offen
+    const end=s.end;
+    if(onDelete&&end<-DEL) doDelete();         // voll durchgezogen → löschen
+    else if(end<-W*0.45) setTx(-W);            // Snap: Leiste offen
     else setTx(0);
   };
 
@@ -7826,9 +7868,13 @@ function SwipeableCard({children,onDelete,onShare,onMore}){
   // j·reveal/n von rechts (j = Abstand zur Kante) → bei reveal=W exakt
   // gekachelt, beim Overdrag dehnen sich die Spalten proportional mit.
   const n=acts.length, reveal=-tx, bw=Math.max(BTN,reveal/n||0);
+  /* Ueber der Loesch-Schwelle uebernimmt Loeschen den ganzen Streifen,
+     die anderen blenden aus (iOS Mail) — man sieht, dass Loslassen
+     loescht. */
+  const armed=!!onDelete&&(reveal>DEL||gone.current);
 
   return(
-    <div style={{position:'relative',overflow:'hidden',borderRadius:20}}>
+    <div ref={rootRef} style={{position:'relative',overflow:'hidden',borderRadius:20}}>
       {/* Action-Leiste — freistehende Pills nach iOS-Mail-Vorbild:
           farbige Kapsel mit Glyph, Label darunter, KEIN durchgehender
           Farbblock an der Kartenkante — hinter den Pills schimmert der
@@ -7840,11 +7886,18 @@ function SwipeableCard({children,onDelete,onShare,onMore}){
           return(
             <div key={a.key}
               onClick={(e)=>{e.stopPropagation();if(isDel)doDelete();else{setTx(0);a.run();}}}
-              style={{position:'absolute',top:0,bottom:0,right:0,width:bw,
-                transform:`translateX(${-j*reveal/n}px)`,
-                transition:swiping?'none':'transform .38s cubic-bezier(.32,.72,0,1), width .38s cubic-bezier(.32,.72,0,1)',
-                opacity:Math.min(1,Math.max(0,(reveal/W)*n-j)),
+              style={{position:'absolute',top:0,bottom:0,right:0,
+                width:isDel&&armed?Math.max(BTN,reveal):bw,
+                transform:`translateX(${isDel&&armed?0:-j*reveal/n}px)`,
+                transition:swiping
+                  ?'width .22s cubic-bezier(.32,.72,0,1), opacity .15s ease'
+                  :'transform .38s cubic-bezier(.32,.72,0,1), width .38s cubic-bezier(.32,.72,0,1), opacity .2s ease',
+                opacity:!isDel&&armed?0:Math.min(1,Math.max(0,(reveal/W)*n-j)),
                 zIndex:n-j,cursor:'pointer',userSelect:'none',
+                /* Unsichtbare Pills nehmen keine Beruehrung an: vorher lag
+                   „Löschen“ mit Deckkraft 0 ueber den rechten 74 px der
+                   Karte — ein Tipp auf den Pfeil loeschte das Turnier. */
+                pointerEvents:reveal>8?'auto':'none',
                 display:'flex',flexDirection:'column',alignItems:'center',
                 justifyContent:'center',gap:6}}>
               <div className="pressable"
@@ -7868,11 +7921,12 @@ function SwipeableCard({children,onDelete,onShare,onMore}){
       {/* Card content — eigener Radius, damit die führende Kante beim
           Swipen rund bleibt und nicht eckig über dem Rot absteht. */}
       <div onTouchStart={onStart} onTouchMove={onMove} onTouchEnd={onEnd}
-        onMouseDown={onStart} onMouseMove={swiping?onMove:undefined} onMouseUp={onEnd} onMouseLeave={swiping?onEnd:undefined}
+        onMouseDown={onStart} onMouseMove={onMove} onMouseUp={onEnd} onMouseLeave={onEnd}
         onClickCapture={handleCardClick}
         style={{transform:`translateX(${tx}px)`,
           transition:swiping?'none':'transform .38s cubic-bezier(.32,.72,0,1)',
-          willChange:'transform',background:'transparent',borderRadius:20,position:'relative'}}>
+          willChange:'transform',background:'transparent',borderRadius:20,position:'relative',
+          zIndex:5}}>
         {children}
       </div>
     </div>
@@ -9831,7 +9885,8 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
   };
 
   return(
-    <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
+    <div className={isEdit?'push-in':undefined}
+      style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 18px)',position:'relative',overflow:'hidden'}}>
       <PhotoBackdrop/>
 
@@ -14277,6 +14332,19 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
   // Vor dem Rundenwechsel: Pausen-Ausgleich transparent bestätigen
   // lassen (Popup mit Mittelwert + Empfängern). Ohne Pausierte geht
   // es direkt weiter.
+  /* „Turnier bearbeiten“: erst faehrt das Werkzeug-Fach ein, dann
+     wechselt der Screen. Vorher passierte beides im selben Moment —
+     das Fach wurde mitten im Zugehen abgeschnitten, und die
+     Einstellungen standen schlagartig da. Der neue Screen schiebt sich
+     von rechts herein (.push-in). */
+  const editPending=useRef(false);
+  const goEdit=()=>{
+    if(editPending.current) return;
+    editPending.current=true;
+    buzz(6);
+    setToolsOpen(false);
+    setTimeout(()=>{editPending.current=false;onEdit();},240);
+  };
   const requestNextRound=()=>{
     const so=round.sitOut||[];
     if(so.length===0){ nextRound(); return; }
@@ -14784,7 +14852,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
             },
             {
               icon:<EditIcon size={20} color={T.t1}/>,
-              onClick:()=>{setToolsOpen(false);onEdit();},
+              onClick:goEdit,
               label:'Turnier bearbeiten',
             },
           ],

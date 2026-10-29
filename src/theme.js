@@ -1347,6 +1347,16 @@ a:focus-visible{
 :where(#root > .keep-tab > div > :not([aria-hidden="true"])){
   animation:screenIn .5s var(--ease-out-quint) backwards;
 }
+/* Ein Screen, der wie eine Seite von rechts hereingeschoben wird
+   (Turnier bearbeiten aus dem Werkzeug-Fach). Die Kinder gleiten,
+   nicht der Screen selbst: ein translate auf dem Rahmen machte ihn
+   waehrend der Animation zum Bezugsrahmen fuer das fixe Foto, und
+   das Foto rutschte mit. Spezifitaet schlaegt das screenIn oben. */
+@keyframes pushIn{from{opacity:0;translate:36px 0;}}
+.push-in > :not([aria-hidden="true"]){
+  animation:pushIn .46s var(--ease-ios) backwards;
+}
+.push-in > :nth-child(n+3):not([aria-hidden="true"]){animation-delay:40ms;}
 /* Bezugsrahmen fuer .keep-tab (position:absolute; inset:0). */
 #root{position:relative;}
 

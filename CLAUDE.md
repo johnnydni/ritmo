@@ -316,6 +316,27 @@ Die Bausteine stehen in App.jsx direkt vor `ScreenHeader`:
   Titel in der Antiqua, Felder aus Glas, Knoepfe als Pillen. Offen:
   das Onboarding (`Welcome`).
 
+### Raster und Abstaende
+
+Ein Mass fuer alle Screens, damit nichts beim Tab-Wechsel springt:
+
+- **Seitenrand 22 px.** Inhalt, Karten und Ueberschriften stehen auf
+  derselben Kante. `ScreenHeader` setzt seine Texte deshalb auf
+  9 + 13 = 22 px (vorher 19 — die Schlagzeile stand 3 px links neben
+  den Karten darunter).
+- **Der Schriftzug steht auf allen Tabs auf Hoehe der Startseite**
+  (Mitte bei Safe-Area + 38 px). Die Screens mit `ScreenHeader`
+  beginnen bei `safe-area-inset-top + 18px`, nicht mehr + 60 — vorher
+  sprang der Kopf beim Wechsel von Home um gut 40 px nach unten.
+  Profil (ohne Schriftzug) setzt sein Ressort auf dieselbe Zeile wie
+  die anderen (+ 76).
+- **Kopf**: Ressort → Titel 9, Titel → Haarlinie 12, Haarlinie →
+  Vorspann 10, danach 24 bis zum Inhalt.
+- **`SectionRule`**: 30 davor, 16 danach, Haarlinie 10 unter dem
+  Label.
+- **Karten** atmen mindestens 16 px innen (Kennzahl-Kacheln im Profil
+  16/16/15, `HubBigCard` 20/18); Eyebrow → Zahl 12.
+
 ### Turniere in der Sprache der Startseite (Runde 5)
 
 Assistent, Konfigurator, Beitreten, Lobby, Teilnehmeransicht, laufendes
@@ -469,6 +490,10 @@ Neu gebaut als Magazin, nicht nur umgefaerbt.
   umbenennt, sucht hier mit.
 
 ### Das Taktik-Board (`TacticsBoard`, [src/tactics3d.js](src/tactics3d.js))
+
+**Derzeit ausgeblendet** (`TACTICS_ON=false` vor `RitmoBibel`): Code,
+Route und Engine bleiben, nur die Karte in der Bibel fehlt. Auf `true`
+stellen, und sie ist wieder da.
 
 Ein 3D-Court in der Bibel (Karte „Taktik-Board“, Route `tactics`), im
 Stil eines Indie-Spiels: Toon-Shading mit drei Stufen, schwarze

@@ -640,6 +640,44 @@ ist schnell gemacht.
   endgültig**. Kein Wischen dort — im Papierkorb ist ein Fehlwisch
   nicht mehr rückgängig zu machen.
 
+### Wischen in der Live-Liste (`SwipeableCard`)
+
+Nach links wischen legt drei Aktionen frei (mehr, Teilen, Löschen),
+ganz durchziehen loescht.
+
+- **Achse zuerst**: erst ab 8 px und eindeutig waagerecht (|dx| >
+  1,4·|dy|) wird es ein Wischen, sonst gehoert die Geste dem Scroller.
+  Die Geste steht in Refs, nicht im State — schnelle Wischer enden im
+  selben Frame wie das letzte touchmove.
+- **Folgt dem Finger 1:1** bis knapp hinter die Loesch-Schwelle
+  (`DEL` = Leiste + 60 px), erst dann Gummiband (hoechstens 70 px).
+  Eine fruehere Bremse ab der Leiste verlangte fast die ganze
+  Bildschirmbreite bis zum Loeschen.
+- **Ueber der Schwelle** uebernimmt „Löschen“ den ganzen Streifen, die
+  anderen blenden aus, und es gibt einen kurzen Haptik-Tick (auch beim
+  Zuruecknehmen) — man sieht und spuert, dass Loslassen loescht.
+- **Loeschen in zwei Schritten**: die Karte gleitet ganz hinaus, dann
+  schliesst sich ihr Platz — Hoehe auf 0 und die Luecke der Liste per
+  `marginBottom: -gap` —, erst danach `onDelete`. Vorher verschwand
+  sie nach 200 ms schlagartig, und die Liste sprang.
+- **Die Pills liegen unter der Karte** (`zIndex` der Karte 5) und
+  nehmen erst ab 8 px Freilegung Beruehrungen an. Vorher lag
+  „Löschen“ unsichtbar (Deckkraft 0, aber mit z-index) ueber den
+  rechten 74 px der Karte: ein Tipp auf den Pfeil loeschte.
+- Testen in Playwright: CDP-Touch und Maus erreichen die Karte, seit
+  die Pills nicht mehr darueber liegen; im Zweifel `new Touch(...)` /
+  `TouchEvent` im Page-Kontext auf das Element unter dem Finger.
+
+### „Turnier bearbeiten“ aus dem Werkzeug-Fach
+
+Erst faehrt das Fach ein (240 ms), dann wechselt der Screen, und die
+Einstellungen schieben sich von rechts herein (`.push-in` in theme.js:
+die Kinder gleiten 36 px, `--ease-ios`, 0,46 s). Vorher passierte
+beides im selben Moment. Animiert werden die **Kinder**, nicht der
+Screen: ein `translate` auf dem Rahmen machte ihn waehrend der
+Animation zum Bezugsrahmen fuer das fixe Foto, und das Foto rutschte
+mit.
+
 ### Die Timer-Karte — und was danach kommt
 
 Die Karte links in der Kopfzeile des laufenden Turniers zeigt die

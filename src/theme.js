@@ -82,6 +82,8 @@ export const CSS = `
 }
 /* Utility-Klassen für die Screen-Überarbeitung. */
 .txt{font-family:var(--font-text);letter-spacing:var(--track);}
+.auth-in:focus{border-color:var(--o)!important;}
+.auth-in::placeholder{color:var(--t3);}
 .display{font-family:var(--font-display);letter-spacing:0;}
 /* Die -4 % gehoeren nur der Textschrift. Antiqua und Centauri werden
    inline per T.fontSerif / T.fontDisplay gesetzt — der Wert steht als

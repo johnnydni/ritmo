@@ -312,10 +312,19 @@ Die Bausteine stehen in App.jsx direkt vor `ScreenHeader`:
   **Runde 5** (der ganze Turnierbereich, siehe „Turniere in der
   Sprache der Startseite“) und **Runde 6** (Splash, Beta-Landing,
   Beta-Pause, Hinweis beim ersten Start, Login, Registrierung,
-  Bestaetigungs- und Passwort-Screens) umgestellt. Die Auth-Screens
-  tragen statt des runden Splash-Logos den Schriftzug (`AuthMark`),
-  Titel in der Antiqua, Felder aus Glas, Knoepfe als Pillen. Offen:
-  das Onboarding (`Welcome`).
+  Bestaetigungs- und Passwort-Screens) umgestellt. Offen: das
+  Onboarding (`Welcome`).
+- **Die Anmeldeseiten sehen aus wie bei ChatGPT** (Login,
+  Registrierung, Mail-Bestaetigung, Passwort, Verified-Landing):
+  schlichter `T.bg` statt Foto, kleiner Schriftzug (`AuthMark`, ohne
+  Schatten), Titel in Space Grotesk 600 mit **-11 % Laufweite**
+  (`AUTH_H`) statt kursiver Antiqua, nirgends Kursive. Felder sind
+  Pillen mit Haarlinie und Platzhalter statt Label darueber
+  (`AUTH_IN`, Fokus orange per `.auth-in`), der Hauptweg ist eine
+  **weisse** Pille (`AUTH_BTN`), Google/Apple stehen als
+  Konturpillen unter „ODER" (`AuthSoon`, `AuthOr`), Links orange
+  (`AuthLink`). Nur die Beta-Landing behaelt ihr Foto, traegt aber
+  dieselben Knoepfe (Registrieren weiss, Anmelden Kontur).
 
 ### Raster und Abstaende
 

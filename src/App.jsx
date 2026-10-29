@@ -217,7 +217,7 @@ function BetaPause(){
       <PhotoBackdrop dim={.35}/>
       <div className="fi" style={{display:'flex',flexDirection:'column',alignItems:'center',
         maxWidth:340,width:'100%'}}>
-        <AuthMark w={190}/>
+        <AuthMark w={190} shadow/>
         <div className="display" style={{color:T.o,fontSize:12,letterSpacing:3,
           lineHeight:1,marginTop:34}}>Beta-Programm</div>
         <div style={{...HEAD_SERIF,fontSize:46,marginTop:10}}>Danke!</div>
@@ -263,12 +263,11 @@ function BetaLanding({onLogin,onRegister}){
 
       <div className="fi" style={{flex:1,display:'flex',flexDirection:'column',
         alignItems:'center',justifyContent:'center',textAlign:'center'}}>
-        <AuthMark w={220}/>
+        <AuthMark w={220} shadow/>
         <div className="display" style={{color:T.o,fontSize:12,letterSpacing:3,marginTop:40}}>
           Coming Soon</div>
-        <div style={{...HEAD_SERIF,fontSize:36,lineHeight:1.12,marginTop:12,maxWidth:330}}>
+        <div style={{...AUTH_H,fontSize:36,lineHeight:1.12,marginTop:12,maxWidth:330}}>
           Bald im App Store und bei Google Play.</div>
-        <div style={{height:1,width:34,marginTop:16,background:T.o}}/>
 
         {/* Store-Pillen — keine offiziellen Badges: die App liegt noch
             in keinem Store, das hier ist eine Ankuendigung. */}
@@ -320,20 +319,16 @@ function BetaLanding({onLogin,onRegister}){
       <div className="fu" style={{flexShrink:0,display:'flex',flexDirection:'column',
         alignItems:'center',gap:16,paddingTop:24,animationDelay:'.18s'}}>
         <div className="txt" style={{maxWidth:320,textAlign:'center',color:T.t2,fontSize:15,
-          fontStyle:'italic',lineHeight:1.5}}>
+          lineHeight:1.5}}>
           Du hast einen Beta-Zugang? Dann teste schon jetzt.
         </div>
-        <div style={{display:'flex',gap:10,width:'100%',maxWidth:360}}>
-          <button onClick={onLogin}
-            style={{flex:1,height:54,...GLASS,borderRadius:999,
-              color:T.t1,fontSize:16,fontWeight:700,cursor:'pointer'}}>
-            Anmelden
-          </button>
-          <button onClick={onRegister}
-            style={{flex:1,height:54,background:T.o,border:'none',borderRadius:999,
-              color:'#000',fontSize:16,fontWeight:800,
-              cursor:'pointer',boxShadow:'0 8px 26px var(--oGlow)'}}>
+        <div style={{display:'flex',flexDirection:'column',gap:10,width:'100%',maxWidth:360}}>
+          <button onClick={onRegister} style={{...AUTH_BTN,cursor:'pointer'}}>
             Registrieren
+          </button>
+          <button onClick={onLogin}
+            style={{...AUTH_ALT,justifyContent:'center',cursor:'pointer',fontWeight:500}}>
+            Anmelden
           </button>
         </div>
       </div>
@@ -588,19 +583,56 @@ function FlagIcon({code,size=20}){
    ohne den Ueberlauf zu kappen. Genau daran hing der Registrier-
    Screen fest, sobald die Tastatur den Viewport verkleinerte. */
 const AUTH_SCREEN={
-  height:'100%',overflowY:'auto',WebkitOverflowScrolling:'touch',
+  height:'100%',background:T.bg,overflowY:'auto',WebkitOverflowScrolling:'touch',
   display:'flex',flexDirection:'column',alignItems:'center',
   padding:'calc(env(safe-area-inset-top,0px) + 40px) 22px calc(env(safe-area-inset-bottom,0px) + 40px)',
 };
 const AUTH_BOX={width:'100%',maxWidth:380,margin:'auto',
   display:'flex',flexDirection:'column'};
+/* Anmeldeseiten wie bei ChatGPT: schlichter Grund statt Foto, Titel
+   in Space Grotesk (-11 %) statt kursiver Antiqua, Felder und Knoepfe
+   als Pillen mit Haarlinie, der Hauptweg weiss. Fokus faerbt die
+   Kontur orange (.auth-in in theme.js). */
+const AUTH_H={fontFamily:T.fontSans,fontWeight:600,fontSize:32,lineHeight:1.1,
+  letterSpacing:'-0.11em',textAlign:'center',color:T.t1};
+const AUTH_IN={width:'100%',background:'transparent',border:`1px solid ${T.glassLine}`,
+  borderRadius:999,padding:'16px 22px',color:T.t1,fontSize:16,fontWeight:400,
+  outline:'none',boxSizing:'border-box'};
+const AUTH_BTN={width:'100%',background:T.t1,border:'none',borderRadius:999,
+  padding:'16px',color:'#000',fontSize:16,fontWeight:500};
+const AUTH_ALT={display:'flex',alignItems:'center',gap:14,width:'100%',
+  background:'transparent',border:`1px solid ${T.glassLine}`,borderRadius:999,
+  padding:'15px 22px',color:T.t1,fontSize:16,fontWeight:400,position:'relative'};
+function AuthOr(){
+  return(
+    <div style={{display:'flex',alignItems:'center',gap:12,margin:'22px 0'}}>
+      <div style={{flex:1,height:1,background:T.glassSep}}/>
+      <div style={{color:T.t3,fontSize:12,fontWeight:500,letterSpacing:1}}>ODER</div>
+      <div style={{flex:1,height:1,background:T.glassSep}}/>
+    </div>
+  );
+}
+function AuthSoon({icon,children}){
+  return(
+    <button disabled style={{...AUTH_ALT,marginBottom:10,cursor:'not-allowed',color:T.t2}}>
+      {icon}<span>{children}</span>
+      <span style={{marginLeft:'auto',fontSize:11,color:T.t3}}>bald</span>
+    </button>
+  );
+}
+function AuthLink({onClick,children}){
+  return(
+    <button onClick={onClick} style={{background:'none',border:'none',color:T.o,
+      fontSize:14,fontWeight:500,cursor:'pointer',padding:'4px 2px'}}>{children}</button>
+  );
+}
 /* Kopf der Auth-Screens: der reine Schriftzug wie auf Home — das
    runde Splash-Logo darueber war eine zweite Marke neben der ersten. */
-function AuthMark({w=176}){
+function AuthMark({w=176,shadow=false}){
   return(
     <img src={`${getAssetBase()}assets/ritmo-lettering.png`} alt="RITMO" draggable={false}
       style={{width:w,height:'auto',display:'block',userSelect:'none',
-        filter:'drop-shadow(0 2px 14px rgba(0,0,0,.45))'}}/>
+        filter:shadow?'drop-shadow(0 2px 14px rgba(0,0,0,.45))':'none'}}/>
   );
 }
 
@@ -676,8 +708,7 @@ function Login({onSuccess,onRegister}){
   const onKeyDown=(e)=>{ if(e.key==='Enter'&&!locked) tryLogin(); };
 
   return(
-    <div style={{...AUTH_SCREEN,...PHOTO_ROOT,position:'relative'}}>
-      <PhotoBackdrop dim={.3}/>
+    <div style={AUTH_SCREEN}>
       <style>{`
         @keyframes shakeBox {
           0%,100%{transform:translateX(0)}
@@ -692,139 +723,82 @@ function Login({onSuccess,onRegister}){
       <div className={`fi ${shake?'login-shake':''}`}
         style={{...AUTH_BOX,alignItems:'stretch'}}>
 
-        {/* Logo + Title */}
-        <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:14,marginBottom:32}}>
-          <AuthMark/>
-          <div style={{...HEAD_SERIF,fontSize:34,lineHeight:1.1,textAlign:'center'}}>Anmelden</div>
-          <div className="txt" style={{color:T.t2,fontSize:14,fontStyle:'italic',marginTop:-6}}>
-            Schön, dass du wieder da bist.</div>
+        <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:12,marginBottom:30}}>
+          <AuthMark w={120}/>
+          <div style={{...AUTH_H,marginTop:18}}>Willkommen zurück</div>
+          <div style={{color:T.t2,fontSize:15}}>Schön, dass du wieder da bist.</div>
         </div>
 
-        {/* Google — disabled (OAuth folgt) */}
-        <button disabled
-          style={{display:'flex',alignItems:'center',justifyContent:'center',gap:10,
-            ...GLASS,border:`1px solid ${T.glassLine}`,borderRadius:999,
-            padding:'15px 16px',color:T.t2,fontSize:15,fontWeight:600,
-            cursor:'not-allowed',marginBottom:10,position:'relative'}}>
-          <GoogleGlyph size={18}/>
-          <span>Mit Google anmelden</span>
-          <span style={{position:'absolute',top:6,right:10,fontSize:9,fontWeight:700,
-            letterSpacing:.5,color:T.t3,textTransform:'uppercase'}}>bald</span>
-        </button>
-
-        {/* Apple — disabled bis Apple Dev Program aktiv */}
-        <button disabled
-          style={{display:'flex',alignItems:'center',justifyContent:'center',gap:10,
-            background:'#000',border:'1px solid rgba(255,255,255,.08)',borderRadius:999,
-            padding:'15px 16px',color:'rgba(255,255,255,.4)',fontSize:15,fontWeight:600,
-            cursor:'not-allowed',marginBottom:22,position:'relative'}}>
-          <AppleGlyph size={18}/>
-          <span>Mit Apple anmelden</span>
-          <span style={{position:'absolute',top:6,right:10,fontSize:9,fontWeight:700,
-            letterSpacing:.5,color:T.t1,textTransform:'uppercase'}}>bald</span>
-        </button>
-
-        {/* Divider */}
-        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:18}}>
-          <div style={{flex:1,height:1,background:T.glassSep}}/>
-          <div className="txt" style={{color:T.t3,fontSize:13,fontStyle:'italic'}}>oder mit RITMO</div>
-          <div style={{flex:1,height:1,background:T.glassSep}}/>
-        </div>
-
-        {/* Email */}
-        <div style={{marginBottom:10}}>
-          <div style={{color:T.t2,fontSize:13,fontWeight:600,marginBottom:6,paddingLeft:4}}>E-Mail</div>
-          <input value={username} onChange={e=>{setUsername(e.target.value);setError('');}}
-            onKeyDown={onKeyDown} autoComplete="email" type="email"
-            autoCapitalize="off" autoCorrect="off" spellCheck={false}
-            placeholder="du@example.com"
-            style={{width:'100%',background:T.glassHi,border:`1px solid ${T.glassLine}`,
-              borderRadius:16,padding:'14px 16px',color:T.t1,fontSize:16,fontWeight:500,
-              outline:'none',boxSizing:'border-box'}}/>
-        </div>
-
-        {/* Password */}
-        <div style={{marginBottom:16}}>
-          <div style={{color:T.t2,fontSize:13,fontWeight:600,marginBottom:6,paddingLeft:4}}>Passwort</div>
-          <input type="password" value={password} onChange={e=>{setPassword(e.target.value);setError('');}}
-            onKeyDown={onKeyDown} autoComplete="current-password"
-            placeholder="••••••••"
-            style={{width:'100%',background:T.glassHi,border:`1px solid ${T.glassLine}`,
-              borderRadius:16,padding:'14px 16px',color:T.t1,fontSize:16,fontWeight:500,
-              outline:'none',boxSizing:'border-box'}}/>
-        </div>
+        <input value={username} onChange={e=>{setUsername(e.target.value);setError('');}}
+          onKeyDown={onKeyDown} autoComplete="email" type="email" aria-label="E-Mail-Adresse"
+          autoCapitalize="off" autoCorrect="off" spellCheck={false}
+          placeholder="E-Mail-Adresse" className="auth-in" style={{...AUTH_IN,marginBottom:12}}/>
+        <input type="password" value={password} onChange={e=>{setPassword(e.target.value);setError('');}}
+          onKeyDown={onKeyDown} autoComplete="current-password" aria-label="Passwort"
+          placeholder="Passwort" className="auth-in" style={{...AUTH_IN,marginBottom:16}}/>
 
         {/* Error */}
         {error&&(
           <div style={{background:'rgba(232,69,69,.12)',border:'1px solid rgba(232,69,69,.4)',
-            borderRadius:8,padding:'9px 12px',marginBottom:12,
-            color:'#FF6B6B',fontSize:12,fontWeight:600,letterSpacing:.2}}>
+            borderRadius:16,padding:'11px 16px',marginBottom:12,
+            color:'#FF6B6B',fontSize:13,fontWeight:500}}>
             {error}
           </div>
         )}
 
         {/* Submit — bei aktiver Sperre disabled + Live-Countdown */}
         <button onClick={tryLogin} disabled={busy||locked}
-          style={{background:locked?T.glassHi:T.o,border:locked?`1px solid ${T.glassLine}`:'none',
-            borderRadius:999,
-            padding:'15px 16px',color:locked?T.t2:'#000',fontSize:15,fontWeight:800,letterSpacing:.2,
-            cursor:(busy||locked)?'not-allowed':'pointer',opacity:busy?.6:1,
-            boxShadow:locked?'none':'0 4px 14px var(--oGlow)'}}>
-          {locked?`Gesperrt, ${fmtLockRemain(lockRemain)}`:(busy?'…':'Anmelden')}
+          style={{...AUTH_BTN,...(locked?{background:'transparent',border:`1px solid ${T.glassLine}`,color:T.t2}:{}),
+            cursor:(busy||locked)?'not-allowed':'pointer',opacity:busy?.6:1}}>
+          {locked?`Gesperrt, ${fmtLockRemain(lockRemain)}`:(busy?'…':'Weiter')}
         </button>
 
-        {/* Passwort vergessen */}
-        <div style={{display:'flex',justifyContent:'center',marginTop:12}}>
+        <div style={{display:'flex',justifyContent:'center',marginTop:14}}>
           <button onClick={()=>{setResetMode(m=>!m);setResetError('');setResetSent(false);}}
-            style={{background:'none',border:'none',color:T.t2,fontSize:12,
-              fontWeight:600,cursor:'pointer',padding:'4px 8px',textDecoration:'underline'}}>
+            style={{background:'none',border:'none',color:T.t2,fontSize:14,
+              cursor:'pointer',padding:'4px 8px'}}>
             Passwort vergessen?
           </button>
         </div>
 
         {resetMode&&(
-          <div className="fi" style={{marginTop:10,background:T.glassHi,
-            border:`1px solid ${T.glassLine}`,borderRadius:15,padding:'14px 14px 12px'}}>
+          <div className="fi" style={{marginTop:10,border:`1px solid ${T.glassLine}`,
+            borderRadius:24,padding:'16px 16px 14px'}}>
             {resetSent?(
               <div style={{color:T.g,fontSize:13,fontWeight:600,textAlign:'center',
                 padding:'6px 0'}}>
                 ✓ Reset-Mail gesendet — prüfe dein Postfach.
               </div>
             ):(<>
-              <div style={{color:T.t2,fontSize:13,fontWeight:600,marginBottom:6,paddingLeft:4}}>E-Mail für Reset</div>
-              <input value={resetEmail}
+              <div style={{color:T.t2,fontSize:14,marginBottom:10,paddingLeft:6}}>Wir schicken dir einen Link zum Zurücksetzen.</div>
+              <input value={resetEmail} aria-label="E-Mail für Reset" className="auth-in"
                 onChange={e=>{setResetEmail(e.target.value);setResetError('');}}
                 onKeyDown={e=>{if(e.key==='Enter') submitReset();}}
                 autoComplete="email" type="email"
                 autoCapitalize="off" autoCorrect="off" spellCheck={false}
-                placeholder="du@example.com"
-                style={{width:'100%',background:T.glassHi,border:`1px solid ${T.glassLine}`,
-                  borderRadius:14,padding:'11px 12px',color:T.t1,fontSize:14,fontWeight:500,
-                  outline:'none',boxSizing:'border-box',marginBottom:10}}/>
+                placeholder="E-Mail-Adresse"
+                style={{...AUTH_IN,marginBottom:10}}/>
               {resetError&&(
                 <div style={{color:'#FF6B6B',fontSize:11,fontWeight:600,
                   marginBottom:8,paddingLeft:2}}>{resetError}</div>
               )}
               <button onClick={submitReset} disabled={resetBusy}
-                style={{width:'100%',background:T.o,border:'none',borderRadius:999,
-                  padding:'11px 14px',color:'#000',fontSize:13.5,fontWeight:800,
-                  cursor:resetBusy?'not-allowed':'pointer',opacity:resetBusy?.6:1}}>
+                style={{...AUTH_BTN,cursor:resetBusy?'not-allowed':'pointer',opacity:resetBusy?.6:1}}>
                 {resetBusy?'Sende…':'Reset-Mail anfordern'}
               </button>
             </>)}
           </div>
         )}
 
-        {/* Register */}
-        <div style={{display:'flex',alignItems:'center',gap:8,marginTop:18,
-          justifyContent:'center'}}>
-          <div style={{color:T.t3,fontSize:12}}>Noch kein Account?</div>
-          <button onClick={onRegister}
-            style={{background:'none',border:'none',color:T.t1,fontSize:13,
-              fontWeight:700,cursor:'pointer',padding:'4px 8px',textDecoration:'underline'}}>
-            Registrieren
-          </button>
+        <div style={{display:'flex',alignItems:'center',gap:6,marginTop:8,
+          justifyContent:'center',fontSize:14,color:T.t2}}>
+          Noch kein Account?<AuthLink onClick={onRegister}>Registrieren</AuthLink>
         </div>
+
+        <AuthOr/>
+        {/* Google/Apple — OAuth folgt */}
+        <AuthSoon icon={<GoogleGlyph size={18}/>}>Weiter mit Google</AuthSoon>
+        <AuthSoon icon={<AppleGlyph size={18}/>}>Weiter mit Apple</AuthSoon>
 
       </div>
     </div>
@@ -934,8 +908,7 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
   };
 
   return(
-    <div style={{...AUTH_SCREEN,...PHOTO_ROOT,position:'relative'}}>
-      <PhotoBackdrop dim={.3}/>
+    <div style={AUTH_SCREEN}>
       <style>{`
         @keyframes shakeBox {
           0%,100%{transform:translateX(0)}
@@ -949,10 +922,10 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
 
         <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:14,marginBottom:28}}>
           <AuthMark/>
-          <div style={{...HEAD_SERIF,fontSize:34,lineHeight:1.1,textAlign:'center'}}>
+          <div style={{...AUTH_H,fontSize:34,lineHeight:1.1,textAlign:'center'}}>
             {step==='key'?'Beta-Zugang':'Account erstellen'}
           </div>
-          <div className="txt" style={{color:T.t2,fontSize:14,fontStyle:'italic',lineHeight:1.5,
+          <div className="txt" style={{color:T.t2,fontSize:14,lineHeight:1.5,
             textAlign:'center',maxWidth:300}}>
             {step==='key'
               ?'Die App ist aktuell in einer geschlossenen Beta. Mit deinem Beta-Key kannst du dich registrieren.'
@@ -963,32 +936,26 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
         {step==='key'?(
           /* ───── STEP 1: Beta-Key prüfen ───── */
           <Fragment>
-            <div style={{marginBottom:14}}>
-              <div style={{color:T.t2,fontSize:13,fontWeight:600,marginBottom:6,paddingLeft:4}}>Beta-Key</div>
-              <input value={betaInput}
+            <div style={{marginBottom:14}}>              <input value={betaInput}
                 onChange={e=>{setBetaInput(e.target.value.toUpperCase());setError('');}}
                 onKeyDown={onKeyDown}
                 autoCapitalize="characters" autoCorrect="off" spellCheck={false}
-                placeholder="RITMO-XXXX-XXXX"
-                style={{width:'100%',background:T.glassHi,border:`1px solid ${T.glassLine}`,
-                  borderRadius:16,padding:'14px 16px',color:T.t1,fontSize:16,fontWeight:700,
-                  letterSpacing:1,outline:'none',boxSizing:'border-box',
-                  fontFamily:'-apple-system,SFMono-Regular,Menlo,monospace'}}/>
+                placeholder="Beta-Key (RITMO-XXXX-XXXX)" aria-label="Beta-Key"
+                className="auth-in" style={{...AUTH_IN,fontWeight:500,letterSpacing:1,
+                  fontVariantNumeric:'tabular-nums'}}/>
             </div>
 
             {error&&(
               <div style={{background:'rgba(232,69,69,.12)',border:'1px solid rgba(232,69,69,.4)',
-                borderRadius:8,padding:'9px 12px',marginBottom:12,
+                borderRadius:16,padding:'11px 16px',marginBottom:12,
                 color:'#FF6B6B',fontSize:12,fontWeight:600,letterSpacing:.2}}>
                 {error}
               </div>
             )}
 
             <button onClick={tryCheckKey} disabled={busy}
-              style={{background:T.o,border:'none',borderRadius:999,
-                padding:'15px 16px',color:'#000',fontSize:15,fontWeight:800,letterSpacing:.2,
-                cursor:busy?'not-allowed':'pointer',opacity:busy?.6:1,
-                boxShadow:'0 4px 14px var(--oGlow)'}}>
+              style={{...AUTH_BTN,
+                cursor:busy?'not-allowed':'pointer',opacity:busy?.6:1}}>
               {busy?'…':'Beta-Key prüfen'}
             </button>
 
@@ -998,14 +965,9 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
               {' '}<span style={{color:T.t2}}>hallo@ritmopadel.app</span>.
             </div>
 
-            <div style={{display:'flex',alignItems:'center',gap:8,marginTop:20,
-              justifyContent:'center'}}>
-              <div style={{color:T.t3,fontSize:12}}>Hast du schon einen Account?</div>
-              <button onClick={onLogin}
-                style={{background:'none',border:'none',color:T.t1,fontSize:13,
-                  fontWeight:700,cursor:'pointer',padding:'4px 8px',textDecoration:'underline'}}>
-                Anmelden
-              </button>
+            <div style={{display:'flex',alignItems:'center',gap:6,marginTop:20,
+              justifyContent:'center',fontSize:14,color:T.t2}}>
+              Schon einen Account?<AuthLink onClick={onLogin}>Anmelden</AuthLink>
             </div>
           </Fragment>
         ):(
@@ -1014,7 +976,7 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
             {/* Beta-Key Quittung (read-only) + Zurück */}
             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',
               gap:8,marginBottom:16,padding:'10px 12px',
-              background:T.oSoft,border:`1px solid ${T.o}`,borderRadius:13}}>
+              border:`1px solid ${T.glassLine}`,borderRadius:999,paddingLeft:22}}>
               <div>
                 <div style={{color:T.t3,fontSize:9,fontWeight:800,letterSpacing:1.4,
                   textTransform:'uppercase'}}>Beta-Key bestätigt</div>
@@ -1029,59 +991,26 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
               </button>
             </div>
 
-            {/* Google — disabled (OAuth folgt) */}
-            <button disabled
-              style={{display:'flex',alignItems:'center',justifyContent:'center',gap:10,
-                ...GLASS,border:`1px solid ${T.glassLine}`,borderRadius:999,
-                padding:'15px 16px',color:T.t2,fontSize:15,fontWeight:600,
-                cursor:'not-allowed',marginBottom:10,position:'relative'}}>
-              <GoogleGlyph size={18}/>
-              <span>Mit Google registrieren</span>
-              <span style={{position:'absolute',top:6,right:10,fontSize:9,fontWeight:700,
-                letterSpacing:.5,color:T.t3,textTransform:'uppercase'}}>bald</span>
-            </button>
-
-            {/* Apple disabled */}
-            <button disabled
-              style={{display:'flex',alignItems:'center',justifyContent:'center',gap:10,
-                background:'#000',border:'1px solid rgba(255,255,255,.08)',borderRadius:999,
-                padding:'15px 16px',color:'rgba(255,255,255,.4)',fontSize:15,fontWeight:600,
-                cursor:'not-allowed',marginBottom:22,position:'relative'}}>
-              <AppleGlyph size={18}/>
-              <span>Mit Apple registrieren</span>
-              <span style={{position:'absolute',top:6,right:10,fontSize:9,fontWeight:700,
-                letterSpacing:.5,color:T.t1,textTransform:'uppercase'}}>bald</span>
-            </button>
-
-            {/* Divider */}
-            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:18}}>
-              <div style={{flex:1,height:1,background:T.glassSep}}/>
-              <div className="txt" style={{color:T.t3,fontSize:13,fontStyle:'italic'}}>oder mit E-Mail</div>
-              <div style={{flex:1,height:1,background:T.glassSep}}/>
-            </div>
+            <AuthSoon icon={<GoogleGlyph size={18}/>}>Weiter mit Google</AuthSoon>
+            <AuthSoon icon={<AppleGlyph size={18}/>}>Weiter mit Apple</AuthSoon>
+            <AuthOr/>
 
             {/* Email */}
-            <div style={{marginBottom:10}}>
-              <div style={{color:T.t2,fontSize:13,fontWeight:600,marginBottom:6,paddingLeft:4}}>E-Mail</div>
-              <input value={email} onChange={e=>{setEmail(e.target.value);setError('');}}
+            <div style={{marginBottom:10}}>              <input value={email} onChange={e=>{setEmail(e.target.value);setError('');}}
                 onKeyDown={onKeyDown} autoComplete="email" type="email"
                 autoCapitalize="off" autoCorrect="off" spellCheck={false}
-                placeholder="du@example.com"
-                style={{width:'100%',background:T.glassHi,border:`1px solid ${T.glassLine}`,
-                  borderRadius:16,padding:'14px 16px',color:T.t1,fontSize:16,fontWeight:500,
-                  outline:'none',boxSizing:'border-box'}}/>
+                placeholder="E-Mail-Adresse" aria-label="E-Mail"
+                className="auth-in" style={AUTH_IN}/>
             </div>
 
             {/* Telefon — Pflichtfeld, nur Format-Check; Länder-Vorwahl
                 (DACH) mit Flagge im Dropdown davor. */}
-            <div style={{marginBottom:10}}>
-              <div style={{color:T.t2,fontSize:13,fontWeight:600,marginBottom:6,paddingLeft:4}}>Telefon</div>
-              <div style={{display:'flex',gap:8,position:'relative'}}>
+            <div style={{marginBottom:10}}>              <div style={{display:'flex',gap:8,position:'relative'}}>
                 <button type="button" onClick={()=>setCcOpen(o=>!o)}
                   aria-label="Ländervorwahl wählen" aria-expanded={ccOpen}
                   style={{display:'flex',alignItems:'center',gap:7,flexShrink:0,
-                    background:T.glassHi,border:`1px solid ${T.glassLine}`,borderRadius:13,
-                    padding:'12px 12px',color:T.t1,fontSize:16,fontWeight:700,cursor:'pointer'}}>
+                    background:'transparent',border:`1px solid ${T.glassLine}`,borderRadius:999,
+                    padding:'12px 16px',color:T.t1,fontSize:16,fontWeight:500,cursor:'pointer'}}>
                   <FlagIcon code={phoneCountry} size={20}/>
                   <span>{PHONE_COUNTRIES.find(c=>c.code===phoneCountry)?.dial}</span>
                   <span style={{display:'inline-flex',transform:ccOpen?'rotate(90deg)':'none',
@@ -1089,10 +1018,8 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
                 </button>
                 <input value={phone} onChange={e=>{setPhone(e.target.value);setError('');}}
                   onKeyDown={onKeyDown} type="tel" inputMode="tel" autoComplete="tel"
-                  placeholder="170 1234567"
-                  style={{flex:1,minWidth:0,background:T.glassHi,border:`1px solid ${T.glassLine}`,
-                    borderRadius:16,padding:'14px 16px',color:T.t1,fontSize:16,fontWeight:500,
-                    outline:'none',boxSizing:'border-box'}}/>
+                  placeholder="Telefonnummer" aria-label="Telefon"
+                  className="auth-in" style={{...AUTH_IN,flex:1,minWidth:0,width:'auto'}}/>
                 {ccOpen&&(
                   <div className="fi" style={{position:'absolute',top:'calc(100% + 6px)',left:0,
                     zIndex:20,...GLASS,border:`1px solid ${T.glassLine}`,borderRadius:13,
@@ -1114,53 +1041,38 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
             </div>
 
             {/* Password */}
-            <div style={{marginBottom:10}}>
-              <div style={{color:T.t2,fontSize:13,fontWeight:600,marginBottom:6,paddingLeft:4}}>Passwort</div>
-              <input type="password" value={password}
+            <div style={{marginBottom:10}}>              <input type="password" value={password}
                 onChange={e=>{setPassword(e.target.value);setError('');}}
                 onKeyDown={onKeyDown} autoComplete="new-password"
-                placeholder="Min. 10 Zeichen, mit Ziffer"
-                style={{width:'100%',background:T.glassHi,border:`1px solid ${T.glassLine}`,
-                  borderRadius:16,padding:'14px 16px',color:T.t1,fontSize:16,fontWeight:500,
-                  outline:'none',boxSizing:'border-box'}}/>
+                placeholder="Passwort (mind. 10 Zeichen, 1 Ziffer)" aria-label="Passwort"
+                className="auth-in" style={AUTH_IN}/>
             </div>
 
             {/* Confirm Password */}
-            <div style={{marginBottom:16}}>
-              <div style={{color:T.t2,fontSize:13,fontWeight:600,marginBottom:6,paddingLeft:4}}>Passwort bestätigen</div>
-              <input type="password" value={password2}
+            <div style={{marginBottom:16}}>              <input type="password" value={password2}
                 onChange={e=>{setPassword2(e.target.value);setError('');}}
                 onKeyDown={onKeyDown} autoComplete="new-password"
-                placeholder="••••••••"
-                style={{width:'100%',background:T.glassHi,border:`1px solid ${T.glassLine}`,
-                  borderRadius:16,padding:'14px 16px',color:T.t1,fontSize:16,fontWeight:500,
-                  outline:'none',boxSizing:'border-box'}}/>
+                placeholder="Passwort bestätigen" aria-label="Passwort bestätigen"
+                className="auth-in" style={AUTH_IN}/>
             </div>
 
             {error&&(
               <div style={{background:'rgba(232,69,69,.12)',border:'1px solid rgba(232,69,69,.4)',
-                borderRadius:8,padding:'9px 12px',marginBottom:12,
+                borderRadius:16,padding:'11px 16px',marginBottom:12,
                 color:'#FF6B6B',fontSize:12,fontWeight:600,letterSpacing:.2}}>
                 {error}
               </div>
             )}
 
             <button onClick={tryRegister} disabled={busy}
-              style={{background:T.o,border:'none',borderRadius:999,
-                padding:'15px 16px',color:'#000',fontSize:15,fontWeight:800,letterSpacing:.2,
-                cursor:busy?'not-allowed':'pointer',opacity:busy?.6:1,
-                boxShadow:'0 4px 14px var(--oGlow)'}}>
+              style={{...AUTH_BTN,
+                cursor:busy?'not-allowed':'pointer',opacity:busy?.6:1}}>
               {busy?'…':'Registrieren'}
             </button>
 
-            <div style={{display:'flex',alignItems:'center',gap:8,marginTop:18,
-              justifyContent:'center'}}>
-              <div style={{color:T.t3,fontSize:12}}>Hast du schon einen Account?</div>
-              <button onClick={onLogin}
-                style={{background:'none',border:'none',color:T.t1,fontSize:13,
-                  fontWeight:700,cursor:'pointer',padding:'4px 8px',textDecoration:'underline'}}>
-                Anmelden
-              </button>
+            <div style={{display:'flex',alignItems:'center',gap:6,marginTop:18,
+              justifyContent:'center',fontSize:14,color:T.t2}}>
+              Schon einen Account?<AuthLink onClick={onLogin}>Anmelden</AuthLink>
             </div>
           </Fragment>
         )}
@@ -1267,8 +1179,7 @@ function EmailVerification({email,onBack,onSignIn,onVerified}){
   /* Bestätigt: kurzer Moment mit dem grünen Haken, dann routet die
      App weiter. Kein Button — hier gibt es nichts zu entscheiden. */
   if(confirmed) return(
-    <div style={{...AUTH_SCREEN,...PHOTO_ROOT,position:'relative'}}>
-      <PhotoBackdrop dim={.3}/>
+    <div style={AUTH_SCREEN}>
       <div className="fi" style={{...AUTH_BOX,alignItems:'center',textAlign:'center'}}>
         <div style={{width:88,height:88,borderRadius:'50%',marginBottom:22,
           background:`${T.g}22`,border:`2px solid ${T.g}`,
@@ -1279,10 +1190,10 @@ function EmailVerification({email,onBack,onSignIn,onVerified}){
             <polyline points="20 6 9 17 4 12"/>
           </svg>
         </div>
-        <div style={{...HEAD_SERIF,fontSize:34,lineHeight:1.1,textAlign:'center',marginBottom:8}}>
+        <div style={{...AUTH_H,fontSize:34,lineHeight:1.1,textAlign:'center',marginBottom:8}}>
           E-Mail bestätigt
         </div>
-        <div className="txt" style={{color:T.t3,fontSize:15,fontStyle:'italic'}}>
+        <div className="txt" style={{color:T.t3,fontSize:15}}>
           Wir richten dein Konto ein …
         </div>
       </div>
@@ -1290,8 +1201,7 @@ function EmailVerification({email,onBack,onSignIn,onVerified}){
   );
 
   return(
-    <div style={{...AUTH_SCREEN,...PHOTO_ROOT,position:'relative'}}>
-      <PhotoBackdrop dim={.3}/>
+    <div style={AUTH_SCREEN}>
       <div className="fi" style={{...AUTH_BOX,alignItems:'center'}}>
 
         {/* Mail icon */}
@@ -1305,7 +1215,7 @@ function EmailVerification({email,onBack,onSignIn,onVerified}){
           </svg>
         </div>
 
-        <div style={{...HEAD_SERIF,fontSize:34,lineHeight:1.1,textAlign:'center',
+        <div style={{...AUTH_H,fontSize:34,lineHeight:1.1,textAlign:'center',
           textAlign:'center',marginBottom:10}}>
           Bestätige deine E-Mail
         </div>
@@ -1318,7 +1228,7 @@ function EmailVerification({email,onBack,onSignIn,onVerified}){
           {email}
         </div>
         <div className="txt" style={{color:T.t3,fontSize:14,lineHeight:1.5,
-          fontStyle:'italic',textAlign:'center',maxWidth:320,marginBottom:18}}>
+          textAlign:'center',maxWidth:320,marginBottom:18}}>
           Tippe darauf — dieser Screen merkt es und macht von allein weiter.
         </div>
 
@@ -1335,7 +1245,7 @@ function EmailVerification({email,onBack,onSignIn,onVerified}){
 
         {error&&(
           <div style={{background:'rgba(232,69,69,.12)',border:'1px solid rgba(232,69,69,.4)',
-            borderRadius:8,padding:'9px 12px',marginBottom:14,
+            borderRadius:16,padding:'11px 16px',marginBottom:14,
             color:'#FF6B6B',fontSize:12,fontWeight:600,width:'100%',textAlign:'center'}}>
             {error}
           </div>
@@ -1343,14 +1253,13 @@ function EmailVerification({email,onBack,onSignIn,onVerified}){
 
         {mail&&(
           <button onClick={()=>window.open(mail[1],'_blank','noopener,noreferrer')}
-            style={{...btn,background:T.o,border:'none',color:'#000',fontSize:15,
-              fontWeight:800,boxShadow:'0 4px 14px var(--oGlow)'}}>
+            style={{...btn,...AUTH_BTN}}>
             {mail[0]} →
           </button>
         )}
 
         <button onClick={resend} disabled={busy||cool>0}
-          style={{...btn,...GLASS,border:`1px solid ${T.glassLine}`,color:T.t1,
+          style={{...btn,background:'transparent',border:`1px solid ${T.glassLine}`,color:T.t1,
             cursor:(busy||cool>0)?'not-allowed':'pointer',opacity:(busy||cool>0)?.55:1}}>
           {busy?'…'
             :cool>0?`Erneut senden in ${cool} s`
@@ -1364,7 +1273,7 @@ function EmailVerification({email,onBack,onSignIn,onVerified}){
         )}
 
         <div className="txt" style={{color:T.t4,fontSize:12.5,lineHeight:1.5,
-          fontStyle:'italic',textAlign:'center',maxWidth:300,margin:'6px 0 18px'}}>
+          textAlign:'center',maxWidth:300,margin:'6px 0 18px'}}>
           Nichts angekommen? Schau im Spam-Ordner nach — Bestätigungsmails
           landen dort gern.
         </div>
@@ -1410,12 +1319,11 @@ function PasswordRecovery({onDone}){
   };
 
   return(
-    <div style={{...AUTH_SCREEN,...PHOTO_ROOT,position:'relative'}}>
-      <PhotoBackdrop dim={.3}/>
+    <div style={AUTH_SCREEN}>
       <div className="fi" style={AUTH_BOX}>
         <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:14,marginBottom:24}}>
           <AuthMark/>
-          <div style={{...HEAD_SERIF,fontSize:34,lineHeight:1.1,textAlign:'center'}}>
+          <div style={{...AUTH_H,fontSize:34,lineHeight:1.1,textAlign:'center'}}>
             Neues Passwort setzen
           </div>
           <div style={{color:T.t3,fontSize:12,textAlign:'center',maxWidth:300,lineHeight:1.5}}>
@@ -1423,42 +1331,32 @@ function PasswordRecovery({onDone}){
           </div>
         </div>
 
-        <div style={{marginBottom:10}}>
-          <div style={{color:T.t2,fontSize:13,fontWeight:600,marginBottom:6,paddingLeft:4}}>Neues Passwort</div>
-          <input type="password" value={pw}
+        <div style={{marginBottom:10}}>          <input type="password" value={pw}
             onChange={e=>{setPw(e.target.value);setError('');}}
             autoComplete="new-password"
-            placeholder="Min. 10 Zeichen, mit Ziffer"
-            style={{width:'100%',background:T.glassHi,border:`1px solid ${T.glassLine}`,
-              borderRadius:16,padding:'14px 16px',color:T.t1,fontSize:16,fontWeight:500,
-              outline:'none',boxSizing:'border-box'}}/>
+            placeholder="Neues Passwort (mind. 10 Zeichen, 1 Ziffer)" aria-label="Neues Passwort"
+            className="auth-in" style={AUTH_IN}/>
         </div>
 
-        <div style={{marginBottom:16}}>
-          <div style={{color:T.t2,fontSize:13,fontWeight:600,marginBottom:6,paddingLeft:4}}>Passwort bestätigen</div>
-          <input type="password" value={pw2}
+        <div style={{marginBottom:16}}>          <input type="password" value={pw2}
             onChange={e=>{setPw2(e.target.value);setError('');}}
             onKeyDown={e=>{if(e.key==='Enter') submit();}}
             autoComplete="new-password"
-            placeholder="••••••••"
-            style={{width:'100%',background:T.glassHi,border:`1px solid ${T.glassLine}`,
-              borderRadius:16,padding:'14px 16px',color:T.t1,fontSize:16,fontWeight:500,
-              outline:'none',boxSizing:'border-box'}}/>
+            placeholder="Passwort bestätigen" aria-label="Passwort bestätigen"
+            className="auth-in" style={AUTH_IN}/>
         </div>
 
         {error&&(
           <div style={{background:'rgba(232,69,69,.12)',border:'1px solid rgba(232,69,69,.4)',
-            borderRadius:8,padding:'9px 12px',marginBottom:12,
+            borderRadius:16,padding:'11px 16px',marginBottom:12,
             color:'#FF6B6B',fontSize:12,fontWeight:600}}>
             {error}
           </div>
         )}
 
         <button onClick={submit} disabled={busy}
-          style={{background:T.o,border:'none',borderRadius:999,
-            padding:'15px 16px',color:'#000',fontSize:15,fontWeight:800,letterSpacing:.2,
-            cursor:busy?'not-allowed':'pointer',opacity:busy?.6:1,
-            boxShadow:'0 4px 14px var(--oGlow)'}}>
+          style={{...AUTH_BTN,
+            cursor:busy?'not-allowed':'pointer',opacity:busy?.6:1}}>
           {busy?'…':'Passwort speichern'}
         </button>
       </div>
@@ -1494,11 +1392,10 @@ function VerifiedLanding({onContinue}){
   },[]);
 
   return(
-    <div style={{position:'fixed',inset:0,zIndex:900,...PHOTO_ROOT,
+    <div style={{position:'fixed',inset:0,zIndex:900,background:T.bg,
       height:'100%',overflowY:'auto',WebkitOverflowScrolling:'touch',
       display:'flex',flexDirection:'column',alignItems:'center',
       padding:'calc(env(safe-area-inset-top,0px) + 40px) 22px calc(env(safe-area-inset-bottom,0px) + 40px)'}}>
-      <PhotoBackdrop dim={.3}/>
       <div className="fi" style={{...AUTH_BOX,alignItems:'center'}}>
 
         {/* Check-Icon */}
@@ -1514,24 +1411,22 @@ function VerifiedLanding({onContinue}){
 
         <AuthMark/>
 
-        <div style={{...HEAD_SERIF,fontSize:34,lineHeight:1.1,textAlign:'center',
+        <div style={{...AUTH_H,fontSize:34,lineHeight:1.1,textAlign:'center',
           textAlign:'center',marginTop:20,marginBottom:12,maxWidth:320,lineHeight:1.45}}>
           Deine E-Mail ist bestätigt.
         </div>
 
         <div className="txt" style={{color:T.t3,fontSize:15,lineHeight:1.55,
-          fontStyle:'italic',textAlign:'center',maxWidth:320,marginBottom:26}}>
+          textAlign:'center',maxWidth:320,marginBottom:26}}>
           {hasSession===false
             ?'Melde dich jetzt an — dein Konto ist freigeschaltet.'
             :'Willkommen bei RITMO. Es kann losgehen.'}
         </div>
 
         <button onClick={()=>onContinue?.(hasSession)} disabled={hasSession===null}
-          style={{width:'100%',background:T.o,border:'none',borderRadius:999,
-            padding:'15px 16px',color:'#000',fontSize:16,fontWeight:800,
+          style={{width:'100%',...AUTH_BTN,
             letterSpacing:.3,cursor:hasSession===null?'wait':'pointer',
-            opacity:hasSession===null?.6:1,
-            boxShadow:'0 4px 14px var(--oGlow)'}}>
+            opacity:hasSession===null?.6:1}}>
           {hasSession===false?'Zum Login →':"Los geht's →"}
         </button>
 

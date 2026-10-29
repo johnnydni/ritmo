@@ -134,59 +134,49 @@ function JourneyLanding({onHome,onContinue,onMarkRead,alreadyRead}){
 }
 
 /* ───────────────────────────────────────────────────────────────
-   ServiceIndicator — top-down court showing serve direction.
-   In padel: ball must land in the diagonally opposite service box.
-   - servingTeam: 'A' (bottom) or 'B' (top)
-   - isDeuce: true → server's right (Einstand-Seite), false → ad/left
-─────────────────────────────────────────────────────────────── */
-function ServiceIndicator({servingTeam,isDeuce}){
-  // Diagonals across the net: BR↔TL, BL↔TR.
-  let stanceX,stanceY,targetBoxX,targetBoxY,ballX,ballY;
-  if(servingTeam==='A'){
-    stanceY=114;
-    if(isDeuce){stanceX=60;targetBoxX=4;targetBoxY=32;ballX=22;ballY=46;}
-    else{stanceX=20;targetBoxX=40;targetBoxY=32;ballX=58;ballY=46;}
-  } else {
-    stanceY=6;
-    if(isDeuce){stanceX=20;targetBoxX=40;targetBoxY=60;ballX=58;ballY=74;}
-    else{stanceX=60;targetBoxX=4;targetBoxY=60;ballX=22;ballY=74;}
-  }
-  const teamColor=servingTeam==='A'?T.o:T.blue;
-  const lineCol='rgba(255,255,255,0.55)';
+   ServeOrb — der Aufschlag im Vollbild: ein oranger Ring mit Pfeil
+   in der Haelfte des aufschlagenden Teams, rechts neben dessen Games.
+   Der Pfeil zeigt aus Sicht des Aufschlaegers (oben = zum Netz):
+   von rechts (Einstand-Seite) diagonal nach links vorn ↖, von links
+   nach rechts vorn ↗. Wechselt das Team, gleitet der Ring in die
+   andere Haelfte; wechselt die Seite, dreht sich nur der Pfeil.
 
+   Gemessen wird an der Games-Zeile selbst (data-serve-row), nicht
+   geschaetzt: Zoom, Vorteil/Einstand und zweistellige Stände
+   verschieben sie. Die Messung laeuft nach jedem Rendern und setzt
+   nur bei echter Aenderung — sonst rendert sie sich im Kreis.
+─────────────────────────────────────────────────────────────── */
+function ServeOrb({servingTeam,isDeuce,hidden}){
+  const ref=useRef(null);
+  const[pos,setPos]=useState(null);
+  const measure=useCallback(()=>{
+    const el=ref.current,box=el?.parentElement;if(!box) return;
+    const row=box.querySelector(`[data-serve-row="${servingTeam}"]`);
+    const col=box.querySelector(`[data-serve-col="${servingTeam}"]`);
+    if(!row||!col) return;
+    const b=box.getBoundingClientRect(),r=row.getBoundingClientRect(),c=col.getBoundingClientRect();
+    const d=Math.round(Math.min(window.innerHeight*.36,c.width*.4));
+    const x=Math.round(c.right-b.left-d-c.width*.03),y=Math.round(r.top+r.height/2-b.top-d/2);
+    setPos(p=>p&&p.x===x&&p.y===y&&p.d===d?p:{x,y,d,anim:!!p});
+  },[servingTeam]);
+  useLayoutEffect(()=>{measure();});
+  useEffect(()=>{
+    const box=ref.current?.parentElement;if(!box||typeof ResizeObserver==='undefined') return;
+    const ro=new ResizeObserver(measure);ro.observe(box);return()=>ro.disconnect();
+  },[measure]);
   return(
-    <svg viewBox="0 0 80 120" style={{width:'100%',height:'100%',display:'block'}}>
-      <defs>
-        <marker id="svArrow" markerWidth="5" markerHeight="5" refX="2.5" refY="2.5" orient="auto">
-          <polygon points="0 0, 5 2.5, 0 5" fill="#FFE600"/>
-        </marker>
-      </defs>
-      {/* Court outline */}
-      <rect x="3" y="3" width="74" height="114" rx="2"
-        fill="rgba(255,255,255,0.04)" stroke={lineCol} strokeWidth="1.4"/>
-      {/* Net */}
-      <line x1="3" y1="60" x2="77" y2="60" stroke={lineCol} strokeWidth="2"
-        strokeDasharray="2 1.5"/>
-      {/* Service lines */}
-      <line x1="3" y1="32" x2="77" y2="32" stroke={lineCol} strokeWidth=".9"/>
-      <line x1="3" y1="88" x2="77" y2="88" stroke={lineCol} strokeWidth=".9"/>
-      {/* Center service line */}
-      <line x1="40" y1="32" x2="40" y2="88" stroke={lineCol} strokeWidth=".9"/>
-      {/* Target service box highlight */}
-      <rect x={targetBoxX} y={targetBoxY} width="36" height="28"
-        fill={teamColor} fillOpacity="0.20"
-        stroke={teamColor} strokeWidth="1.5"/>
-      {/* Server stance */}
-      <circle cx={stanceX} cy={stanceY} r="2.8" fill={teamColor}/>
-      {/* Trajectory */}
-      <line x1={stanceX} y1={stanceY} x2={ballX} y2={ballY}
-        stroke="#FFE600" strokeWidth="1.4" strokeLinecap="round"
-        strokeDasharray="3 2" markerEnd="url(#svArrow)" opacity="0.85"/>
-      {/* Tennis ball */}
-      <circle cx={ballX} cy={ballY} r="3" fill="#E8FF3D" stroke="rgba(0,0,0,.4)" strokeWidth="0.4"/>
-      <path d={`M${ballX-2.4} ${ballY-1} Q${ballX} ${ballY-2.5} ${ballX+2.4} ${ballY-1}`}
-        stroke="rgba(255,255,255,.6)" strokeWidth=".35" fill="none"/>
-    </svg>
+    <div ref={ref} aria-label={`Aufschlag Team ${servingTeam}, ${isDeuce?'von rechts':'von links'}`}
+      style={{position:'absolute',left:pos?.x||0,top:pos?.y||0,width:pos?.d||0,height:pos?.d||0,
+        borderRadius:'50%',border:`3px solid ${T.o}`,boxSizing:'border-box',pointerEvents:'none',
+        display:'flex',alignItems:'center',justifyContent:'center',
+        opacity:pos&&!hidden?1:0,
+        transition:pos?.anim?'left .7s var(--ease-ios), top .7s var(--ease-ios), width .4s, height .4s, opacity .3s':'opacity .3s'}}>
+      <svg viewBox="0 0 100 100" style={{width:'50%',height:'50%',overflow:'visible',
+        transform:`rotate(${isDeuce?-38:38}deg)`,transition:'transform .55s var(--ease-out-soft)'}}>
+        <path d="M50 82V20M28 40L50 18L72 40" fill="none" stroke={T.t1} strokeWidth="9"
+          strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    </div>
   );
 }
 
@@ -266,7 +256,7 @@ function BetaLanding({onLogin,onRegister}){
         <AuthMark w={220} shadow/>
         <div className="display" style={{color:T.o,fontSize:12,letterSpacing:3,marginTop:40}}>
           Coming Soon</div>
-        <div style={{...AUTH_H,fontSize:36,lineHeight:1.12,marginTop:12,maxWidth:330}}>
+        <div style={{...AUTH_H,marginTop:12,maxWidth:330}}>
           Bald im App Store und bei Google Play.</div>
 
         {/* Store-Pillen — keine offiziellen Badges: die App liegt noch
@@ -593,8 +583,8 @@ const AUTH_BOX={width:'100%',maxWidth:380,margin:'auto',
    in Space Grotesk (-11 %) statt kursiver Antiqua, Felder und Knoepfe
    als Pillen mit Haarlinie, der Hauptweg weiss. Fokus faerbt die
    Kontur orange (.auth-in in theme.js). */
-const AUTH_H={fontFamily:T.fontSans,fontWeight:600,fontSize:32,lineHeight:1.1,
-  letterSpacing:'-0.11em',textAlign:'center',color:T.t1};
+const AUTH_H={fontFamily:T.fontDisplay,fontWeight:400,fontSize:22,lineHeight:1.25,
+  letterSpacing:'0.02em',wordSpacing:'0.12em',textAlign:'center',color:T.t1};
 const AUTH_IN={width:'100%',background:'transparent',border:`1px solid ${T.glassLine}`,
   borderRadius:999,padding:'16px 22px',color:T.t1,fontSize:16,fontWeight:400,
   outline:'none',boxSizing:'border-box'};
@@ -922,7 +912,7 @@ function Register({onSuccess,onLogin,onNeedsVerification}){
 
         <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:14,marginBottom:28}}>
           <AuthMark/>
-          <div style={{...AUTH_H,fontSize:34,lineHeight:1.1,textAlign:'center'}}>
+          <div style={{...AUTH_H,textAlign:'center'}}>
             {step==='key'?'Beta-Zugang':'Account erstellen'}
           </div>
           <div className="txt" style={{color:T.t2,fontSize:14,lineHeight:1.5,
@@ -1190,7 +1180,7 @@ function EmailVerification({email,onBack,onSignIn,onVerified}){
             <polyline points="20 6 9 17 4 12"/>
           </svg>
         </div>
-        <div style={{...AUTH_H,fontSize:34,lineHeight:1.1,textAlign:'center',marginBottom:8}}>
+        <div style={{...AUTH_H,textAlign:'center',marginBottom:8}}>
           E-Mail bestätigt
         </div>
         <div className="txt" style={{color:T.t3,fontSize:15}}>
@@ -1215,7 +1205,7 @@ function EmailVerification({email,onBack,onSignIn,onVerified}){
           </svg>
         </div>
 
-        <div style={{...AUTH_H,fontSize:34,lineHeight:1.1,textAlign:'center',
+        <div style={{...AUTH_H,textAlign:'center',
           textAlign:'center',marginBottom:10}}>
           Bestätige deine E-Mail
         </div>
@@ -1323,7 +1313,7 @@ function PasswordRecovery({onDone}){
       <div className="fi" style={AUTH_BOX}>
         <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:14,marginBottom:24}}>
           <AuthMark/>
-          <div style={{...AUTH_H,fontSize:34,lineHeight:1.1,textAlign:'center'}}>
+          <div style={{...AUTH_H,textAlign:'center'}}>
             Neues Passwort setzen
           </div>
           <div style={{color:T.t3,fontSize:12,textAlign:'center',maxWidth:300,lineHeight:1.5}}>
@@ -1411,7 +1401,7 @@ function VerifiedLanding({onContinue}){
 
         <AuthMark/>
 
-        <div style={{...AUTH_H,fontSize:34,lineHeight:1.1,textAlign:'center',
+        <div style={{...AUTH_H,textAlign:'center',
           textAlign:'center',marginTop:20,marginBottom:12,maxWidth:320,lineHeight:1.45}}>
           Deine E-Mail ist bestätigt.
         </div>
@@ -5973,7 +5963,7 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
         </div>
 
         {/* Scores */}
-        <div style={{flex:1,display:'flex',padding:'0 24px',minHeight:0,overflow:'hidden'}}>
+        <div style={{flex:1,display:'flex',padding:'0 24px',minHeight:0,overflow:'hidden',position:'relative'}}>
           {['A','B'].map((team,ti)=>{
             const isA=team==='A';
             const fl=isA?flA:flB;
@@ -5987,7 +5977,7 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
             const isSpecial = isAdv || isDeuce || isDash;
             return(
               <Fragment key={team}>
-              <button onClick={()=>punkt(team)}
+              <button onClick={()=>punkt(team)} data-serve-col={team}
                 style={{flex:1,minWidth:0,overflow:'hidden',
                   display:'flex',flexDirection:'column',justifyContent:'center',
                   background:fl?'var(--oFlash)':'transparent',
@@ -6043,7 +6033,7 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
                   <div aria-hidden="true" style={{alignSelf:'stretch',height:2,
                     background:T.border,borderRadius:1,
                     marginTop:`clamp(${1.4*m}rem,${vh(3.5,5)}vh,${2.4*m}rem)`}}/>
-                  <div style={{display:'flex',alignItems:'center',gap:`clamp(${1.5*m}rem,${vh(4,5)}vw,${3*m}rem)`,
+                  <div data-serve-row={team} style={{display:'flex',alignItems:'center',gap:`clamp(${1.5*m}rem,${vh(4,5)}vw,${3*m}rem)`,
                     marginTop:`clamp(${.9*m}rem,${vh(2.4,3.4)}vh,${1.6*m}rem)`}}>
                     <div style={{display:'flex',gap:`clamp(${.7*m}rem,${vh(1.5,2.2)}vw,${1.2*m}rem)`}}>
                       {[0,1,2].map(i=>{
@@ -6102,16 +6092,7 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
               </Fragment>
             );
           })}
-          {isB&&(
-            <div style={{flexShrink:0,display:'flex',alignItems:'flex-start',
-              padding:'2vh 4px 0 12px'}}>
-              {/* Service-Indikator: vw-Anteil gedämpft, damit er die Score-
-                  Spalten bei m=2 nicht verdrängt. min() mit Cap auf 18vw. */}
-              <div style={{width:`min(${Math.min(12*m,18)}vw,${130*m}px)`,aspectRatio:'2/3'}}>
-                <ServiceIndicator servingTeam={servingTeam} isDeuce={isDeuce}/>
-              </div>
-            </div>
-          )}
+          {isB&&<ServeOrb servingTeam={servingTeam} isDeuce={isDeuce} hidden={!!win}/>}
         </div>
 
         {/* Padelhaus-Sponsor-Banner — nur im Padelhaus-Blue-Theme.

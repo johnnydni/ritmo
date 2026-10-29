@@ -3480,36 +3480,49 @@ const HAND_SHORT={right:'Rechts',left:'Links'}, SIDE_SHORT={left:'Links',right:'
 const fmtDec=(v,d=2)=>v==null?'—':v.toFixed(d).replace('.',',');
 
 /* Das Level dreht wie eine Slot-Machine: jede Ziffer ist eine Walze
-   (0–9 viermal untereinander, eine Zeile sichtbar), die beim ersten
-   Einblenden zwei Runden und bei jeder Aenderung eine Runde dreht und
-   bremsend auf ihrer Ziffer stehen bleibt. Die Walzen halten von
-   links nach rechts nacheinander an; Komma und Satzzeichen stehen.
+   (0–9 viermal untereinander, eine Zeile sichtbar). Gewollt, nicht
+   zufaellig: beim ersten Einblenden dreht die erste Walze eine Runde,
+   die zweite zwei, die dritte drei — immer gleich —, und sie halten
+   langsam und ohne Nachfedern von links nach rechts an. Bei einer
+   Aenderung dreht nur die betroffene Walze, hoechstens eine Runde.
+   Komma und Satzzeichen stehen.
    Nach dem Anhalten springt die Walze unsichtbar zurueck in den
    mittleren Durchlauf (Index 10–19), damit der Streifen nie ausgeht.
    Bei reduzierter Bewegung steht die Zahl sofort. */
 const SLOT_REDUCE=typeof window!=='undefined'&&window.matchMedia
   &&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 function SlotReel({d,i}){
-  const[pos,setPos]=useState(SLOT_REDUCE?10+d:d);   // Start: erster Durchlauf
+  const start=SLOT_REDUCE?10+d:0;                    // Start: die Null im ersten Durchlauf
+  const[pos,setPos]=useState(start);
+  const posRef=useRef(start);
   const[anim,setAnim]=useState(false);
+  const[dur,setDur]=useState(1.3);
   const first=useRef(true);
   useEffect(()=>{
-    if(SLOT_REDUCE){setAnim(false);setPos(10+d);return;}
+    if(SLOT_REDUCE){setAnim(false);posRef.current=10+d;setPos(10+d);return;}
     let raf2;
     const raf=requestAnimationFrame(()=>{raf2=requestAnimationFrame(()=>{
-      setAnim(true);
-      setPos(p=>first.current?20+d:(p<20?20:30)+d);   // immer vorwaerts, Streifen reicht bis 39
+      /* Ziel hier ausrechnen, nicht in einem setPos-Updater: der laeuft
+         erst beim Rendern, wenn first schon zurueckgesetzt ist — dann
+         nahm schon das erste Eindrehen den Weg einer Aenderung. */
+      const from=posRef.current;
+      const to=first.current?(Math.min(i,2)+1)*10+d    // Walze i: i+1 Runden
+        :(from>=20&&from%10===d)?from                   // laeuft schon dorthin
+        :(from<20?20:30)+d;                             // vorwaerts, unter einer Runde
+      setDur(first.current?1.4+i*.55:1.3);              // erstes Eindrehen: 1,4 / 1,95 / 2,5 s
       first.current=false;
+      posRef.current=to;
+      setAnim(true);setPos(to);
     });});
     return()=>{cancelAnimationFrame(raf);cancelAnimationFrame(raf2);};
   },[d]);
-  const settle=()=>{setAnim(false);setPos(10+d);};
+  const settle=()=>{setAnim(false);posRef.current=10+d;setPos(10+d);};
   return(
     <span aria-hidden="true" style={{display:'inline-block',height:'1em',overflow:'hidden',
       verticalAlign:'top'}}>
       <span onTransitionEnd={settle} style={{display:'flex',flexDirection:'column',
         transform:`translateY(${-pos}em)`,
-        transition:anim?`transform ${1.1+i*.28}s cubic-bezier(.16,.84,.24,1.04)`:'none'}}>
+        transition:anim?`transform ${dur}s cubic-bezier(.3,.05,.12,1)`:'none'}}>
         {Array.from({length:40},(_,k)=><span key={k} style={{height:'1em',lineHeight:'1em'}}>{k%10}</span>)}
       </span>
     </span>

@@ -347,16 +347,22 @@ in 104 px duenn —, darunter drei Kennzahlen (Matches, Siege, Turniere;
 Unterseiten. Die Health-Karten (Angepinnt, Highlights, Wochen-Chart)
 sind raus, mit ihnen `AvatarWithUpload` und `BarChart`.
 
-- **Das Level dreht wie eine Slot-Machine** (`SlotNumber`/`SlotReel`):
-  jede Ziffer eine Walze (0–9 viermal untereinander, 1em sichtbar),
-  beim ersten Einblenden zwei Runden, bei einer Aenderung dreht nur die
-  Walze, deren Ziffer sich aendert, und immer vorwaerts. Die Walzen
-  halten von links nach rechts nacheinander an (1,1 s + 0,28 s je
-  Stelle). Nach dem Anhalten springt die Walze unsichtbar in den
-  mittleren Durchlauf zurueck, damit der Streifen nicht ausgeht. Bei
-  reduzierter Bewegung steht die Zahl sofort. Weil das Profil per
-  `KeepTab` stehen bleibt, laeuft das Eindrehen beim ersten Besuch des
-  Tabs, nicht bei jedem Tab-Wechsel.
+- **Das Level dreht wie eine Slot-Machine** (`SlotNumber`/`SlotReel`),
+  **gewollt, nicht zufaellig**: jede Ziffer eine Walze (0–9 viermal
+  untereinander, 1em sichtbar). Beim ersten Einblenden startet jede
+  Walze auf der Null und dreht eine feste Zahl Runden — die erste
+  eine, die zweite zwei, die dritte drei —, langsam und ohne
+  Nachfedern (1,4 / 1,95 / 2,5 s, `cubic-bezier(.3,.05,.12,1)`), also
+  von links nach rechts nacheinander stehend. Bei einer Aenderung
+  dreht nur die betroffene Walze, vorwaerts und unter einer Runde.
+  Nach dem Anhalten springt sie unsichtbar in den mittleren Durchlauf
+  zurueck. Bei reduzierter Bewegung steht die Zahl sofort.
+  **Das Ziel wird synchron ueber `posRef` gerechnet, nicht in einem
+  `setPos`-Updater**: der laeuft erst beim Rendern, wenn `first` schon
+  zurueckgesetzt ist — dann nahm schon das erste Eindrehen den Weg
+  einer Aenderung, und eine Aenderung drehte eine Runde zu viel.
+  Weil das Profil per `KeepTab` stehen bleibt, laeuft das Eindrehen
+  beim ersten Besuch des Tabs, nicht bei jedem Tab-Wechsel.
 - **Unterseiten** teilen `ProfileSub`: Schriftzug, Ressort, Schlagzeile
   (52–64 px), Haarlinie; unten Home links, Person rechts (zurueck).
   Routen `profile-dna`, `profile-history`, `profile-about`.

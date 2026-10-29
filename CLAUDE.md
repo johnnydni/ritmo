@@ -451,7 +451,12 @@ Neu gebaut als Magazin, nicht nur umgefaerbt.
   Kontrolle → Power, gesetzt mit `ShotArt` (`dir="rackets"`). Die SVGs
   sind 1:1 aus der Vorlage des Teams vektorisiert (Ausschnitt,
   Schriftzug „SWEETSPOT“ weiss uebermalt, Schwelle, potrace auf
-  doppelter Aufloesung) — gefuellte Konturen, kein Text darin. `ShotArt` steht dort in einem festen Rahmen (Breite
+  doppelter Aufloesung) — gefuellte Konturen, kein Text darin.
+  Dieselben Dateien traegt die Szene oben im Kapitel (`SceneRacket`):
+  die Zeichnung liegt als CSS-Maske UEBER der Buehne, das SVG darunter
+  malt nur den Sweet Spot (`RK_SPOT`, in Buehnen-Einheiten gemessen),
+  der durch die leere Flaeche leuchtet. Der Formwechsel ist ein
+  Kartendreher (`scaleX`), der Regler laeuft Kontrolle → Power mit. `ShotArt` steht dort in einem festen Rahmen (Breite
   100 %, Hoehe 168): in einer zentrierten Spalte faellt sein `flex:1`
   sonst auf Breite 0 zusammen, und die Zeichnung ist unsichtbar.
 - **Das Regelwerk hat zehn Kapitel** (`RULES_CHAPTERS`, daraus auch

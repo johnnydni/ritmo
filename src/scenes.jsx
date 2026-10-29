@@ -21,6 +21,7 @@
 ═══════════════════════════════════════════════════════════════ */
 import { useEffect, useRef, useState } from "react";
 import { T } from "./theme.js";
+import { getAssetBase } from "./utils.js";
 
 /* ── Zeit ─────────────────────────────────────────────────────── */
 export const ez={
@@ -734,57 +735,54 @@ export function SceneShotChoice(){
   );
 }
 
-/* Schläger — die Kopfform morpht: Rund → Tropfen → Diamant; der
-   Sweet Spot wandert mit nach oben. */
-const RK_N=72;
-const rkShape=(kind,a)=>{
-  // a: Winkel, 0 = oben. Radius des Kopfes je Form.
-  const c=Math.cos(a), s=Math.abs(Math.sin(a));
-  if(kind===0) return 30;
-  if(kind===1) return 30+5*Math.max(0,c)-3*Math.max(0,-c)*s;
-  return 30+11*Math.pow(Math.max(0,c),3)-4*Math.max(0,-c);
-};
+/* Schläger — Rund → Tropfen → Diamant, der Sweet Spot wandert mit
+   nach oben, der Regler von Kontrolle nach Power. */
+/* Die Zeichnungen sind dieselben wie im Kapitel darunter
+   (public/assets/rackets/, aus der Vorlage des Teams vektorisiert).
+   Sie liegen als CSS-Maske UEBER der Buehne — das SVG darunter malt
+   nur den Sweet Spot, der durch die leere Flaeche der Zeichnung
+   leuchtet. Box: 28/4, 68 x 120 Einheiten (Seitenverhaeltnis der
+   Dateien, 384 x 676). Sweet Spot je Form in diesen Einheiten. */
+const RK_IDS=['rund','tropfen','diamant'];
+const RK_BOX={x:28,y:4,w:68,h:120};
+const RK_SPOT=[{cy:37.6,rx:21,ry:21},{cy:37.6,rx:16,ry:25},{cy:20.8,rx:20,ry:6.6}];
 export function SceneRacket(){
   const D=3;
   const[ref,t]=useSceneClock(D*3,{still:4});
-  const i=Math.floor(t/D), lt=t%D, j=(i+1)%3;
+  const i=Math.floor(t/D)%3, lt=t%D, j=(i+1)%3;
   const u=seg(lt,D-.9,D-.05,ez.io);
-  const cx=80, cy=58;
-  const pts=Array.from({length:RK_N}).map((_,k)=>{
-    const a=k/RK_N*Math.PI*2;
-    const r=lerp(rkShape(i,a),rkShape(j,a),u);
-    return[cx+Math.sin(a)*r*.86, cy-Math.cos(a)*r];
-  });
-  const d='M'+pts.map(p=>p[0].toFixed(1)+' '+p[1].toFixed(1)).join('L')+'Z';
-  const spot=[cy+4,cy-6,cy-14];
-  const sy=lerp(spot[i],spot[j],u);
+  const cx=RK_BOX.x+RK_BOX.w/2;
+  const sp=k=>lerp(RK_SPOT[i][k],RK_SPOT[j][k],u);
+  const pulse=.55+.25*Math.sin(t*Math.PI*1.3);
   const names=['Rund','Tropfen','Diamant'], sub=['Kontrolle','Allround','Power'];
   const bar=lerp(i/2,j/2,u);
+  /* Wechsel als Kartendreher: die alte Form klappt zur Kante weg,
+     die neue klappt auf. */
+  const cur=u<.5?i:j, sx=u<.5?1-2*u:2*u-1;
+  const url=`url(${getAssetBase()}assets/rackets/${RK_IDS[cur]}.svg)`;
+  const pc=v=>`${v}%`;
   return(
     <div ref={ref} style={{width:'100%',display:'flex',justifyContent:'center'}}>
-      <Stage vb="0 0 160 150" label="Schlägerformen: rund, Tropfen, Diamant">
-        <defs><clipPath id="rk-clip"><path d={d}/></clipPath></defs>
-        <path d={d} fill={T.t1} fillOpacity=".05" stroke={T.t1} strokeWidth="1.4"/>
-        <g clipPath="url(#rk-clip)">
-          {Array.from({length:9}).map((_,r)=>Array.from({length:8}).map((_,c)=>(
-            <circle key={r+'-'+c} cx={cx-22+c*6.3+(r%2)*3.1} cy={cy-30+r*7.4} r="1.1"
-              fill={T.t1} opacity=".22"/>
-          )))}
-          <circle cx={cx} cy={sy} r="13" fill={T.o} opacity=".28"/>
-          <circle cx={cx} cy={sy} r="5" fill={T.o} opacity=".8"/>
-        </g>
-        <path d={`M${cx-7} ${cy+28}L${cx-4} ${cy+48}H${cx+4}L${cx+7} ${cy+28}`} fill="none"
-          stroke={T.t1} strokeWidth="1.4"/>
-        <rect x={cx-4} y={cy+48} width="8" height="18" rx="2.5" fill={T.t1} opacity=".18"
-          stroke={T.t1} strokeWidth="1"/>
-        <Tag x={130} y={48} u={1-seg(lt,D-.9,D-.5)} size={11} serif>{names[i]}</Tag>
-        <Tag x={130} y={48} u={seg(lt,D-.5,D-.05)} size={11} serif>{names[j]}</Tag>
-        <Tag x={130} y={60} u={1} size={6.4} col={T.t2}>{u>.5?sub[j]:sub[i]}</Tag>
-        <line x1={10} y1={140} x2={150} y2={140} stroke={T.t1} strokeOpacity=".2" strokeWidth="2" strokeLinecap="round"/>
-        <circle cx={lerp(14,146,bar)} cy={140} r="3.4" fill={T.o}/>
-        <text x={10} y={133} fontSize="5.6" fill={T.t3} style={{fontFamily:T.fontDisplay,letterSpacing:1.4}}>Kontrolle</text>
-        <text x={150} y={133} textAnchor="end" fontSize="5.6" fill={T.t3} style={{fontFamily:T.fontDisplay,letterSpacing:1.4}}>Power</text>
-      </Stage>
+      <div style={{position:'relative',width:'100%',maxWidth:340}}>
+        <Stage vb="0 0 160 150" label="Schlägerformen: Rund, Tropfen, Diamant">
+          <ellipse cx={cx} cy={sp('cy')} rx={sp('rx')+4} ry={sp('ry')+4} fill={T.o} opacity={pulse*.16}/>
+          <ellipse cx={cx} cy={sp('cy')} rx={sp('rx')} ry={sp('ry')} fill={T.o} opacity={pulse*.55}/>
+          <Tag x={128} y={48} u={1-seg(lt,D-.9,D-.5)} size={11} serif>{names[i]}</Tag>
+          <Tag x={128} y={48} u={seg(lt,D-.5,D-.05)} size={11} serif>{names[j]}</Tag>
+          <Tag x={128} y={60} u={1} size={6.4} col={T.t2}>{u>.5?sub[j]:sub[i]}</Tag>
+          <line x1={10} y1={140} x2={150} y2={140} stroke={T.t1} strokeOpacity=".2" strokeWidth="2" strokeLinecap="round"/>
+          <circle cx={lerp(14,146,bar)} cy={140} r="3.4" fill={T.o}/>
+          <text x={10} y={133} fontSize="5.6" fill={T.t3} style={{fontFamily:T.fontDisplay,letterSpacing:1.4}}>Kontrolle</text>
+          <text x={150} y={133} textAnchor="end" fontSize="5.6" fill={T.t3} style={{fontFamily:T.fontDisplay,letterSpacing:1.4}}>Power</text>
+        </Stage>
+        <div aria-hidden="true" style={{position:'absolute',
+          left:pc(RK_BOX.x/160*100),top:pc(RK_BOX.y/150*100),
+          width:pc(RK_BOX.w/160*100),height:pc(RK_BOX.h/150*100),
+          background:T.t1,transform:`scaleX(${Math.max(.02,sx)})`,
+          WebkitMaskImage:url,maskImage:url,WebkitMaskRepeat:'no-repeat',maskRepeat:'no-repeat',
+          WebkitMaskPosition:'center',maskPosition:'center',
+          WebkitMaskSize:'contain',maskSize:'contain'}}/>
+      </div>
     </div>
   );
 }

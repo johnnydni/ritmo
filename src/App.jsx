@@ -3479,6 +3479,53 @@ const SIDE_LABEL={left:'Linke Seite',right:'Rechte Seite',any:'Beide Seiten'};
 const HAND_SHORT={right:'Rechts',left:'Links'}, SIDE_SHORT={left:'Links',right:'Rechts',any:'Beide'};
 const fmtDec=(v,d=2)=>v==null?'—':v.toFixed(d).replace('.',',');
 
+/* Das Level dreht wie eine Slot-Machine: jede Ziffer ist eine Walze
+   (0–9 viermal untereinander, eine Zeile sichtbar), die beim ersten
+   Einblenden zwei Runden und bei jeder Aenderung eine Runde dreht und
+   bremsend auf ihrer Ziffer stehen bleibt. Die Walzen halten von
+   links nach rechts nacheinander an; Komma und Satzzeichen stehen.
+   Nach dem Anhalten springt die Walze unsichtbar zurueck in den
+   mittleren Durchlauf (Index 10–19), damit der Streifen nie ausgeht.
+   Bei reduzierter Bewegung steht die Zahl sofort. */
+const SLOT_REDUCE=typeof window!=='undefined'&&window.matchMedia
+  &&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function SlotReel({d,i}){
+  const[pos,setPos]=useState(SLOT_REDUCE?10+d:d);   // Start: erster Durchlauf
+  const[anim,setAnim]=useState(false);
+  const first=useRef(true);
+  useEffect(()=>{
+    if(SLOT_REDUCE){setAnim(false);setPos(10+d);return;}
+    let raf2;
+    const raf=requestAnimationFrame(()=>{raf2=requestAnimationFrame(()=>{
+      setAnim(true);
+      setPos(p=>first.current?20+d:(p<20?20:30)+d);   // immer vorwaerts, Streifen reicht bis 39
+      first.current=false;
+    });});
+    return()=>{cancelAnimationFrame(raf);cancelAnimationFrame(raf2);};
+  },[d]);
+  const settle=()=>{setAnim(false);setPos(10+d);};
+  return(
+    <span aria-hidden="true" style={{display:'inline-block',height:'1em',overflow:'hidden',
+      verticalAlign:'top'}}>
+      <span onTransitionEnd={settle} style={{display:'flex',flexDirection:'column',
+        transform:`translateY(${-pos}em)`,
+        transition:anim?`transform ${1.1+i*.28}s cubic-bezier(.16,.84,.24,1.04)`:'none'}}>
+        {Array.from({length:40},(_,k)=><span key={k} style={{height:'1em',lineHeight:'1em'}}>{k%10}</span>)}
+      </span>
+    </span>
+  );
+}
+function SlotNumber({text}){
+  let di=0;
+  return(
+    <span role="img" aria-label={text} style={{display:'inline-flex',height:'1em',lineHeight:'1em'}}>
+      {text.split('').map((c,k)=>/\d/.test(c)
+        ?<SlotReel key={k} d={+c} i={di++}/>
+        :<span key={k} aria-hidden="true" style={{height:'1em',lineHeight:'1em'}}>{c}</span>)}
+    </span>
+  );
+}
+
 /* Hintergrund des Profils: das Foto der Startseite oder ein Verlauf
    mit Korn. Gleiche Lage wie PhotoBackdrop (fixed, unter dem Inhalt). */
 function ProfileBackdrop({id}){
@@ -3704,7 +3751,7 @@ function Profile({profile,setProfile,onHome,onTab,onOpenDNA,onOpenHistory,onOpen
               border:'none',color:T.t1,cursor:isEstimated?'pointer':'default',textAlign:'left'}}>
             {lvl!=null
               ?<span style={{fontWeight:300,fontSize:104,lineHeight:.9,letterSpacing:'-.05em',
-                fontVariantNumeric:'tabular-nums'}}>{fmtDec(lvl)}</span>
+                fontVariantNumeric:'tabular-nums'}}><SlotNumber text={fmtDec(lvl)}/></span>
               /* Ohne Level kein Strich in 104 px — der stand als Balken da. */
               :<span style={{fontFamily:T.fontSerif,fontStyle:'italic',fontSize:26,color:T.t2,lineHeight:1.3}}>
                 Noch nicht bestimmt — es ergibt sich aus deinen ersten Matches.</span>}

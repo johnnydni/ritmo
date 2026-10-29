@@ -7,7 +7,7 @@
    load PNGs with an inline SVG fallback if the asset is missing.
 ═══════════════════════════════════════════════════════════════ */
 
-import { useState, useId } from "react";
+import { useState } from "react";
 import { T } from "./theme.js";
 import { getAssetBase } from "./utils.js";
 
@@ -500,27 +500,25 @@ export function AppleGlyph({size=20}){
   </svg>);
 }
 
-/* App-Store-Icon (Marke) — blaues Squircle mit weißem stilisiertem „A".
-   Eigenständiges Store-Symbol, NICHT das Apple-Logo (AppleGlyph). Der
-   Gradient bekommt eine via useId() garantiert eindeutige ID, damit
-   mehrere Instanzen sich nicht gegenseitig die Füllung klauen. */
-export function AppStoreIcon({size=22}){
-  const uid=useId().replace(/:/g,'');
-  const gid=`ritmo-appstore-${uid}`;
-  return(<svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" style={{display:'block'}}>
-    <defs>
-      <linearGradient id={gid} x1="12" y1="1.5" x2="12" y2="22.5" gradientUnits="userSpaceOnUse">
-        <stop offset="0" stopColor="#1FB6FF"/>
-        <stop offset="1" stopColor="#1187FB"/>
-      </linearGradient>
-    </defs>
-    {/* Squircle-Hintergrund */}
-    <rect x="1.5" y="1.5" width="21" height="21" rx="5.2" fill={`url(#${gid})`}/>
-    {/* Weißes „A" — zwei Beine + Querstrich, runde Kappen */}
-    <g fill="none" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M7.4 16.9 12 7.1 16.6 16.9"/>
-      <path d="M9.3 13.7h5.4"/>
-    </g>
+/* Store-Zeichen der Beta-Landing — einfarbig in currentColor, ohne
+   Badge drumherum: die App liegt noch in keinem Store, das ist eine
+   Ankuendigung, kein Knopf. App Store als Ring mit „A" (Querstrich
+   ueber die Beine hinaus), Google Play als Dreieck aus vier Teilen
+   mit schmalen Fugen. Beide im 24er-Raster, `size` ist die Hoehe. */
+export function AppStoreLine({size=32}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" style={{display:'block'}}
+    fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10.6" strokeWidth="1.25"/>
+    <path d="M8 17.4 12.6 7.2M11.4 7.2 16 17.4M6.2 14.2h11.6" strokeWidth="1.5"/>
+  </svg>);
+}
+export function PlayStoreGlyph({size=32}){
+  return(<svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" style={{display:'block'}}
+    fill="currentColor">
+    <path d="M4.2 3.4v17.2L12.6 12z"/>
+    <path d="M5.6 2.6 13.7 11l2.7-2.7z"/>
+    <path d="M5.6 21.4 13.7 13l2.7 2.7z"/>
+    <path d="M17.6 9.4 20.8 12l-3.2 2.6L15 12z"/>
   </svg>);
 }
 

@@ -47,7 +47,7 @@ import {
   HomeIcon, LiveIcon, GearIcon, SearchIcon, Hl, DNAIcon, FullscreenIcon, EditIcon,
   ExitFullscreenIcon, KiwiIcon, PineappleIcon, CoconutIcon, TennisBallIcon, ParrotIcon,
   FunkyFruitsRow, BookIcon, JourneyIcon, ArrowRightCircleIcon, WandIcon,
-  MiniBall, BallSpinner, GoogleGlyph, AppleGlyph, AppStoreIcon, PersonGlyph,
+  MiniBall, BallSpinner, GoogleGlyph, AppleGlyph, AppStoreLine, PlayStoreGlyph, PersonGlyph,
   HeroRulesVisual, HeroJourneyVisual,
   // Settings + RITMO Post line-art icons
   SteeringWheelIcon, PaletteIcon, EyeIcon, BellIcon, LockIcon, DoorOutIcon,
@@ -259,50 +259,13 @@ function BetaLanding({onLogin,onRegister}){
         <div style={{...AUTH_H,marginTop:12,maxWidth:330}}>
           Bald im App Store und bei Google Play.</div>
 
-        {/* Store-Pillen — keine offiziellen Badges: die App liegt noch
+        {/* Store-Zeichen — keine offiziellen Badges: die App liegt noch
             in keinem Store, das hier ist eine Ankuendigung. */}
-        <div className="fu" style={{display:'flex',gap:10,flexWrap:'wrap',
-          justifyContent:'center',marginTop:26,animationDelay:'.1s'}}>
-          <div style={{display:'flex',alignItems:'center',gap:10,padding:'9px 16px 9px 12px',
-            ...GLASS,borderRadius:999}}>
-            {/* Google Play Dreieck — multi-stop gradient als Hommage */}
-            <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
-              <defs>
-                <linearGradient id="ritmo-play-a" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0" stopColor="#FFC107"/>
-                  <stop offset="1" stopColor="#FF7A1A"/>
-                </linearGradient>
-                <linearGradient id="ritmo-play-b" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0" stopColor="#0A84FF"/>
-                  <stop offset="1" stopColor="#7DD3FC"/>
-                </linearGradient>
-                <linearGradient id="ritmo-play-c" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0" stopColor="#34C759"/>
-                  <stop offset="1" stopColor="#A7F3D0"/>
-                </linearGradient>
-                <linearGradient id="ritmo-play-d" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0" stopColor="#FF375F"/>
-                  <stop offset="1" stopColor="#E84545"/>
-                </linearGradient>
-              </defs>
-              <path d="M4.5 2.5v19l8-9.5z" fill="url(#ritmo-play-b)"/>
-              <path d="M12.5 12L4.5 2.5l13.2 7.6z" fill="url(#ritmo-play-c)"/>
-              <path d="M12.5 12L4.5 21.5l13.2-7.6z" fill="url(#ritmo-play-d)"/>
-              <path d="M17.7 10.1l3.3 1.9-3.3 1.9-5.2-2z" fill="url(#ritmo-play-a)"/>
-            </svg>
-            <div style={{textAlign:'left'}}>
-              <div style={{fontSize:10.5,fontWeight:600,color:T.t3,lineHeight:1.2}}>Bald auf</div>
-              <div style={{fontSize:13.5,fontWeight:800,color:T.t1}}>Google Play</div>
-            </div>
-          </div>
-          <div style={{display:'flex',alignItems:'center',gap:10,padding:'9px 16px 9px 12px',
-            ...GLASS,borderRadius:999}}>
-            <AppStoreIcon size={22}/>
-            <div style={{textAlign:'left'}}>
-              <div style={{fontSize:10.5,fontWeight:600,color:T.t3,lineHeight:1.2}}>Bald im</div>
-              <div style={{fontSize:13.5,fontWeight:800,color:T.t1}}>App Store</div>
-            </div>
-          </div>
+        <div className="fu" role="img" aria-label="Bald bei Google Play und im App Store"
+          style={{display:'flex',gap:18,alignItems:'center',justifyContent:'center',
+            marginTop:30,color:T.t1,animationDelay:'.1s'}}>
+          <PlayStoreGlyph size={34}/>
+          <AppStoreLine size={34}/>
         </div>
       </div>
 

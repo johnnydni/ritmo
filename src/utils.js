@@ -204,3 +204,22 @@ export function trashDaysLeft(deletedAt){
   const ms=(deletedAt||0)+TRASH_DAYS*86400000-Date.now();
   return Math.max(0,Math.ceil(ms/86400000));
 }
+
+/* ───── Level-Verlauf (ritmo_level_log) ─────
+   [{t,v}] — Zeitpunkt und RITMO-Level, ein Eintrag je Aenderung. Das
+   Level selbst steht nur als aktueller Wert im Profil; ohne dieses
+   Log gaebe es keinen Verlauf. Geschrieben wird von App(), sobald sich
+   der Wert aendert, gelesen vom Diagramm im Match-Verlauf. */
+export const LEVEL_LOG_KEY='ritmo_level_log';
+const LEVEL_LOG_MAX=400;
+export function readLevelLog(){
+  const r=lsGet(LEVEL_LOG_KEY,[]);
+  return Array.isArray(r)?r.filter(e=>e&&typeof e.t==='number'&&typeof e.v==='number'):[];
+}
+export function pushLevel(v){
+  if(typeof v!=='number'||!isFinite(v)) return;
+  const log=readLevelLog(), last=log[log.length-1];
+  if(last&&Math.abs(last.v-v)<0.005) return;
+  log.push({t:Date.now(),v:Math.round(v*100)/100});
+  lsSet(LEVEL_LOG_KEY,log.slice(-LEVEL_LOG_MAX));
+}

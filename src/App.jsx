@@ -5,7 +5,7 @@ import { loadProfile as dbLoadProfile, saveProfile as dbSaveProfile, logMatch as
   createOnlineTournament, joinOnlineTournament, leaveOnlineTournament, fetchOnlineTournament, updateOnlineTournament, endOnlineTournament, subscribeToTournament,
   publishTournamentState, submitScore, approveScore, rejectScore, sendReadyCheck, confirmReady, clearReadyCheck,
   checkBetaKey, redeemBetaKey, deleteMyMatches as dbDeleteMyMatches,
-  logMatchLocal, loadMatchStatsLocal as dbLoadMatchStatsLocal, clearMatchLog,
+  logMatchLocal, loadMatchStatsLocal as dbLoadMatchStatsLocal, clearMatchLog, loadMatchHistory as dbLoadMatchHistory,
   // DNA Cup Cloud-Sync
   createCupSync, fetchCupSync, pushCupSync, subscribeCupSync,
   // DNA Liga
@@ -22,7 +22,8 @@ import { LIGA_PHASES, LIGA_GROUPS, initialLigaState, ligaAddParticipant,
    Components, screens and routing remain colocated here for now;
    only side-effect-free units are split out. See CLAUDE.md. */
 import { T, CSS, rgba } from "./theme.js";
-import { lsGet, lsSet, wipeLocalData, getAssetBase, getInitials, processImageUpload, safeImageSrc, buzz, purgeTrash, trashDaysLeft, TRASH_DAYS } from "./utils.js";
+import { lsGet, lsSet, wipeLocalData, getAssetBase, getInitials, processImageUpload, safeImageSrc, buzz, purgeTrash, trashDaysLeft, TRASH_DAYS, readLevelLog, pushLevel } from "./utils.js";
+import { WALLPAPERS, wallpaperById, GRAIN_URL } from "./wallpapers.js";
 import { getLevelLabel, getLevelTier, getLevelColor, estimateLevel } from "./levels.js";
 import { B0, A0, PL, ptD, wG, bo3R, amR, DEFCFG } from "./game.js";
 import { PCOLS, shuffle, genAmericanoRound, genMexicanoRound, calcLeaderboard, FORMATS, FORMAT_RULES, genRound,
@@ -2044,27 +2045,6 @@ function RingChart({value,total=100,size=80,color,trackColor,label,subLabel}){
   );
 }
 
-function BarChart({values,labels,color,height=80}){
-  const max=Math.max(...values,1);
-  return(
-    <div style={{display:'flex',alignItems:'flex-end',gap:6,height,paddingTop:4}}>
-      {values.map((v,i)=>{
-        const h=Math.max(2,(v/max)*(height-22));
-        return(
-          <div key={i} style={{flex:1,display:'flex',flexDirection:'column',
-            alignItems:'center',gap:4}}>
-            <div style={{color,fontSize:9,fontWeight:700,letterSpacing:.3}}>{v}</div>
-            <div style={{width:'100%',height:h,background:color,borderRadius:'4px 4px 0 0',
-              opacity:0.85,transition:'height .35s ease'}}/>
-            <div style={{color:T.t3,fontSize:9,fontWeight:600,letterSpacing:.3,textTransform:'uppercase'}}>
-              {labels?.[i]||''}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
 
 function StatTile({label,value,unit,trend,color,sparklineData}){
   return(
@@ -3422,50 +3402,6 @@ function ProfileAvatar({name,avatar,size=40,onClick,emphasize=false}){
   );
 }
 
-/* Avatar im Profile-Screen: zeigt profile.avatar (Base64), wenn
-   vorhanden, sonst Initials. Klick öffnet File-Picker und
-   resampled das Bild auf 256x256 als JPEG-DataURL → ins Profil.
-   Kleines Edit-Badge in der unteren rechten Ecke. */
-function AvatarWithUpload({profile,setProfile,size=72}){
-  const inputRef=useRef(null);
-  const onPick=async(e)=>{
-    const file=e.target.files?.[0];
-    e.target.value='';
-    if(!file) return;
-    try{
-      // Gehärteter Upload-Pfad: Magic-Byte-Check + Limits + JPEG-Re-Encode.
-      const resized=await processImageUpload(file,256);
-      setProfile(p=>({...p,avatar:resized}));
-    }catch(err){
-      console.warn('[avatar] upload failed:',err);
-      alert(err?.message||'Bild konnte nicht geladen werden.');
-    }
-  };
-  return(
-    <div style={{position:'relative',width:size,height:size,flexShrink:0}}>
-      <ProfileAvatar name={profile.name} avatar={profile.avatar}
-        size={size} emphasize
-        onClick={()=>inputRef.current?.click()}/>
-      {/* Edit-Badge im Outline-Look: dunkler Kreis, oranger Ring +
-          oranger Stift — sitzt auf dem Avatar-Ring (vgl. Mock). */}
-      <button onClick={()=>inputRef.current?.click()} aria-label="Profilbild ändern"
-        style={{position:'absolute',right:size*0.02,bottom:size*0.02,
-          width:Math.max(26,size*0.2),height:Math.max(26,size*0.2),borderRadius:'50%',
-          background:T.bg,border:`1.5px solid ${T.o}`,color:T.o,
-          fontSize:13,fontWeight:800,cursor:'pointer',
-          display:'flex',alignItems:'center',justifyContent:'center',
-          boxShadow:'0 2px 8px rgba(0,0,0,.45)'}}>
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-        </svg>
-      </button>
-      <input ref={inputRef} type="file" accept="image/png,image/jpeg,image/webp"
-        onChange={onPick} style={{display:'none'}}/>
-    </div>
-  );
-}
 
 
 /* Dezente Gradient-Töne für die Stil-Buttons im Profil (User-Spec):
@@ -3510,480 +3446,729 @@ function CountUp({value,dur=750,suffix=''}){
   return <>{n}{suffix}</>;
 }
 
-/* ═══ PROFIL — von Grund auf im Apple-Health-Muster ═══
-   Aufbau wie die Health-App: Large Title mit Avatar rechts,
-   „Angepinnt"-Grid aus Kennzahl-Karten, Highlight-Karte mit Chart,
-   gruppierte Listen für Details + Verwaltung. Jede Metrik trägt
-   ihre Kategorie-Farbe im Karten-Eyebrow (Level=Orange, Form=Rot,
-   Aktivität=Grün, Community=Blau) — Content auf soliden Karten,
-   Glas nur in der Top-Bar beim Scrollen. */
-function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRitmoDNA,
-  currentUid,onTab,onOpenSettings,onOpenEdit,onResetStats}){
-  const handLabels={right:'Rechts',left:'Links'};
-  const sideLabels={left:'Links (Ad)',right:'Rechts (Deuce)',any:'Beide Seiten'};
+/* ═══ PROFIL — Magazin statt Armaturenbrett ═══
+   Der Entwurf „G“: links gesetzt, eine Zahl im Mittelpunkt (das
+   Level), darunter drei Kennzahlen und drei Zeilen, die in die
+   Unterseiten fuehren (RITMO DNA, Match-Verlauf, Über mich). Die
+   Health-Karten von vorher sind raus — zu viele Zahlen auf einmal,
+   und nichts davon sagte mehr als die Zahl daneben.
 
-  const[editingLevel,setEditingLevel]=useState(false);
-  const[confirmReset,setConfirmReset]=useState(false);
-
-  // Statistiken (ritmo_matches): Supabase zuerst, sonst lokales Log.
-  const STATS_EMPTY={matches:0,wins:0,losses:0,winRate:0,formTrend:[],
-    weeklyMatches:[0,0,0,0,0,0,0],weekDays:['M','D','M','D','F','S','S'],avgSets:'0',
-    singleMatches:0,tournamentMatches:0,tournaments:0};
+   - Der Hintergrund ist waehlbar (Menue am Profilbild → „Hintergrund
+     ändern“, `profile.wallpaper`, src/wallpapers.js) und gilt fuer
+     das Profil samt Unterseiten.
+   - Die Kennzahlen kommen aus ritmo_matches (Supabase) bzw. dem
+     lokalen Match-Log — dieselbe Quelle wie vorher. */
+const PROFILE_STATS_EMPTY={matches:0,wins:0,losses:0,winRate:0,formTrend:[],
+  weeklyMatches:[0,0,0,0,0,0,0],weekDays:['M','D','M','D','F','S','S'],avgSets:'0',
+  singleMatches:0,tournamentMatches:0,tournaments:0};
+function useProfileStats(profile){
   const[stats,setStats]=useState(null);
   useEffect(()=>{
     let alive=true;
-    dbLoadMatchStats().then(s=>{if(alive)setStats(s||dbLoadMatchStatsLocal()||STATS_EMPTY);})
-      .catch(()=>{if(alive)setStats(dbLoadMatchStatsLocal()||STATS_EMPTY);});
+    dbLoadMatchStats().then(s=>{if(alive)setStats(s||dbLoadMatchStatsLocal()||PROFILE_STATS_EMPTY);})
+      .catch(()=>{if(alive)setStats(dbLoadMatchStatsLocal()||PROFILE_STATS_EMPTY);});
     return()=>{alive=false;};
-  // Neu laden nach Reset (statsResetAt wird pro Reset neu gestempelt —
-  // greift auch, wenn matchesPlayed schon 0 war) bzw. neuen Matches.
+  // Neu laden nach Reset bzw. neuen Matches.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[profile.matchesPlayed,profile.statsResetAt]);
-  const safeStats=stats||STATS_EMPTY;
+  return stats||PROFILE_STATS_EMPTY;
+}
+const profileLevel=p=>p.playtomicLevel??p.estimatedLevel??estimateLevel(p);
+const HAND_LABEL={right:'Rechtshänder',left:'Linkshänder'};
+const SIDE_LABEL={left:'Linke Seite',right:'Rechte Seite',any:'Beide Seiten'};
+const HAND_SHORT={right:'Rechts',left:'Links'}, SIDE_SHORT={left:'Links',right:'Rechts',any:'Beide'};
+const fmtDec=(v,d=2)=>v==null?'—':v.toFixed(d).replace('.',',');
 
-  // Bio — Inline-Editing in der „Über dich"-Karte.
-  const[bioEdit,setBioEdit]=useState(false);
-  const[bioVal,setBioVal]=useState(profile.bio||'');
-  const bio=(profile.bio||'').trim();
-  const saveBio=()=>{ setProfile(p=>({...p,bio:bioVal.trim().slice(0,200)})); setBioEdit(false); };
+/* Hintergrund des Profils: das Foto der Startseite oder ein Verlauf
+   mit Korn. Gleiche Lage wie PhotoBackdrop (fixed, unter dem Inhalt). */
+function ProfileBackdrop({id}){
+  const w=wallpaperById(id);
+  if(w.id==='foto') return <PhotoBackdrop/>;
+  return(
+    <div aria-hidden="true" style={{position:'fixed',top:0,left:0,right:0,
+      bottom:'calc(-1 * (env(safe-area-inset-top,0px) + env(safe-area-inset-bottom,0px)))',
+      zIndex:-1,overflow:'hidden',pointerEvents:'none',background:w.bg}}>
+      {w.grain>0&&<div style={{position:'absolute',inset:0,backgroundImage:GRAIN_URL,
+        mixBlendMode:'overlay',opacity:w.grain}}/>}
+    </div>
+  );
+}
 
-  const lvl=profile.playtomicLevel??profile.estimatedLevel??estimateLevel(profile);
+/* Kleine Bausteine der Profilseiten. */
+const PKick=({children,style})=>(
+  <div style={{fontFamily:T.fontDisplay,color:T.o,fontSize:11,letterSpacing:3,lineHeight:1,...style}}>{children}</div>
+);
+const PRule=({style})=>(
+  <div style={{height:1,width:34,borderRadius:1,background:`linear-gradient(90deg,${T.o},transparent)`,...style}}/>
+);
+/* Drei Kennzahlen, linksbuendig, mit Haarlinien dazwischen. */
+function ProfileTrio({items,style}){
+  return(
+    <div style={{display:'flex',...style}}>
+      {items.map(([n,l,col],i)=>(
+        <div key={l} style={{flex:1,minWidth:0,display:'flex'}}>
+          {i>0&&<span aria-hidden="true" style={{width:1,background:T.glassSep,marginRight:18}}/>}
+          <div style={{minWidth:0}}>
+            <div style={{fontWeight:300,fontSize:30,lineHeight:1,color:col||T.t1,
+              fontVariantNumeric:'tabular-nums',whiteSpace:'nowrap'}}>{n}</div>
+            <div style={{fontSize:12.5,color:T.t2,marginTop:8,whiteSpace:'nowrap'}}>{l}</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+/* Eine Zeile mit Haarlinie: Label, optional Wert, optional Pfeil. */
+function ProfileLink({label,value,onClick,danger,first,last}){
+  const Tag=onClick?'button':'div';
+  return(
+    <Tag onClick={onClick} style={{width:'100%',display:'flex',alignItems:'center',gap:10,
+      padding:'19px 0',background:'none',border:'none',textAlign:'left',
+      borderTop:first===false?'none':`1px solid ${T.glassSep}`,
+      borderBottom:last?`1px solid ${T.glassSep}`:'none',
+      color:danger?T.r:T.t1,fontSize:16,fontWeight:500,cursor:onClick?'pointer':'default'}}>
+      <span style={{flex:1,minWidth:0,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{label}</span>
+      {value!=null&&<span style={{color:T.t2,fontWeight:400,fontVariantNumeric:'tabular-nums',
+        whiteSpace:'nowrap'}}>{value}</span>}
+      {onClick&&<ChevronRightIcon size={15} color={T.t3}/>}
+    </Tag>
+  );
+}
+const ProfileLinks=({rows})=>(
+  <div>{rows.map((r,i)=><ProfileLink key={r.label} {...r} last={i===rows.length-1}/>)}</div>
+);
+
+/* Menue am Profilbild: Foto, Foto entfernen, Hintergrund. Vorher
+   oeffnete der Avatar direkt den Dateidialog — fuer den Hintergrund
+   braucht es eine Auswahl davor. */
+function AvatarMenu({profile,setProfile,onClose,onPickBg}){
+  const inputRef=useRef(null);
+  const sheet=useSheetDrag(onClose);
+  const onPick=async(e)=>{
+    const file=e.target.files?.[0];
+    e.target.value='';
+    if(!file) return;
+    try{
+      const resized=await processImageUpload(file,256);
+      setProfile(p=>({...p,avatar:resized}));
+      onClose();
+    }catch(err){
+      console.warn('[avatar] upload failed:',err);
+      alert(err?.message||'Bild konnte nicht geladen werden.');
+    }
+  };
+  const row=(label,onClick,danger,first)=>(
+    <button onClick={()=>{buzz(6);onClick();}} style={{width:'100%',padding:'17px 4px',
+      background:'none',border:'none',borderTop:first?'none':`1px solid ${T.glassSep}`,
+      color:danger?T.r:T.t1,fontSize:16,fontWeight:500,textAlign:'left',cursor:'pointer'}}>{label}</button>
+  );
+  return createPortal(
+    <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:300,
+      background:'rgba(0,0,0,.6)',display:'flex',alignItems:'flex-end',justifyContent:'center',
+      animation:'fadeIn .15s ease'}}>
+      <div onClick={e=>e.stopPropagation()} className="slide-up" ref={sheet.ref} {...sheet.handlers}
+        style={{background:`linear-gradient(0deg, ${T.card}, ${T.card}), ${T.bg}`,
+          borderTopLeftRadius:24,borderTopRightRadius:24,borderTop:`1px solid ${T.glassLine}`,
+          width:'100%',maxWidth:480,padding:'14px 22px calc(env(safe-area-inset-bottom,0px) + 18px)',
+          ...sheet.style}}>
+        <div style={{width:36,height:4,borderRadius:2,background:T.border,margin:'0 auto 16px'}}/>
+        <PKick>Profilbild</PKick>
+        <div style={{...HEAD_SERIF,fontSize:26,margin:'10px 0 8px'}}>Was möchtest du ändern?</div>
+        {row(profile.avatar?'Neues Foto wählen':'Foto wählen',()=>inputRef.current?.click(),false,true)}
+        {row('Hintergrund ändern',()=>{onClose();onPickBg();})}
+        {profile.avatar&&row('Foto entfernen',()=>{setProfile(p=>({...p,avatar:null}));onClose();},true)}
+        <input ref={inputRef} type="file" accept="image/png,image/jpeg,image/webp"
+          onChange={onPick} style={{display:'none'}}/>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+/* Auswahl des Hintergrunds: eine Kachel je Verlauf, im Seiten-
+   verhaeltnis eines Telefons, darauf das eigene Level — so sieht man,
+   wie Schrift darauf steht. Tippen uebernimmt sofort (man sieht es
+   hinter dem Sheet), „Fertig“ schliesst. */
+function WallpaperSheet({profile,setProfile,onClose}){
+  const sheet=useSheetDrag(onClose);
+  const cur=wallpaperById(profile.wallpaper).id;
+  const lv=profileLevel(profile);
+  return createPortal(
+    <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:300,
+      background:'rgba(0,0,0,.35)',display:'flex',alignItems:'flex-end',justifyContent:'center',
+      animation:'fadeIn .15s ease'}}>
+      <div onClick={e=>e.stopPropagation()} className="slide-up" ref={sheet.ref} {...sheet.handlers}
+        style={{background:`linear-gradient(0deg, ${T.card}, ${T.card}), ${T.bg}`,
+          borderTopLeftRadius:24,borderTopRightRadius:24,borderTop:`1px solid ${T.glassLine}`,
+          width:'100%',maxWidth:480,maxHeight:'82vh',overflowY:'auto',
+          padding:'14px 22px calc(env(safe-area-inset-bottom,0px) + 18px)',...sheet.style}}>
+        <div style={{width:36,height:4,borderRadius:2,background:T.border,margin:'0 auto 16px'}}/>
+        <div style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',gap:12}}>
+          <div>
+            <PKick>Profil</PKick>
+            <div style={{...HEAD_SERIF,fontSize:28,marginTop:10}}>Hintergrund</div>
+          </div>
+          <button onClick={onClose} style={{padding:'10px 18px',borderRadius:22,border:'none',
+            background:T.t1,color:T.bg,fontSize:14,fontWeight:700,cursor:'pointer'}}>Fertig</button>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'14px 12px',marginTop:20}}>
+          {WALLPAPERS.map(w=>{
+            const on=w.id===cur;
+            return(
+              <button key={w.id} onClick={()=>{buzz(6);setProfile(p=>({...p,wallpaper:w.id}));}}
+                aria-pressed={on} aria-label={`Hintergrund ${w.name}`}
+                style={{position:'relative',height:200,borderRadius:20,overflow:'hidden',padding:0,
+                  cursor:'pointer',textAlign:'left',color:T.t1,
+                  border:`1px solid ${on?T.o:T.glassLine}`,
+                  boxShadow:on?`0 0 0 2px ${T.o}, 0 8px 24px var(--oGlow)`:'none',
+                  background:w.bg||`linear-gradient(180deg,rgba(0,0,0,.5),rgba(0,0,0,.3) 40%,rgba(0,0,0,.75)),url(${getAssetBase()}assets/home-bg.jpg) 50% 30%/cover`}}>
+                {w.grain>0&&<span aria-hidden="true" style={{position:'absolute',inset:0,
+                  backgroundImage:GRAIN_URL,mixBlendMode:'overlay',opacity:w.grain}}/>}
+                <span style={{position:'absolute',left:14,top:14,fontWeight:300,fontSize:30,lineHeight:1,
+                  fontVariantNumeric:'tabular-nums'}}>{fmtDec(lv)}</span>
+                <span style={{position:'absolute',left:14,bottom:32,fontFamily:T.fontSerif,fontStyle:'italic',
+                  fontWeight:700,fontSize:22}}>{w.name}</span>
+                <span style={{position:'absolute',left:14,bottom:14,fontSize:11.5,color:T.t2}}>{w.sub}</span>
+                {on&&<span style={{position:'absolute',right:12,top:12,width:24,height:24,borderRadius:'50%',
+                  background:T.o,color:'#000',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+function Profile({profile,setProfile,onHome,onTab,onOpenDNA,onOpenHistory,onOpenAbout}){
+  const safeStats=useProfileStats(profile);
+  const[menu,setMenu]=useState(false);
+  const[bgOpen,setBgOpen]=useState(false);
+  const[editingLevel,setEditingLevel]=useState(false);
+
+  const lvl=profileLevel(profile);
   const isEstimated=profile.playtomicLevel==null&&lvl!=null;
-  const isPublic=!profile.private;
-  const togglePublic=()=>setProfile(p=>({...p,private:!p.private?true:false}));
+  const style=profile.styleType&&PADEL_STYLES[profile.styleType];
+  const name=displayName(profile)||'Profil';
+  const nameFs=name.length<=8?64:name.length<=12?52:42;
+  const meta=[style?.name,SIDE_LABEL[profile.courtSide]].filter(Boolean).join(' · ');
+  const hand=HAND_LABEL[profile.handPreference];
 
-  const hasStyle=!!(profile.styleType&&PADEL_STYLES[profile.styleType]);
-  // Zweiter Spielstil: gespeichert (styleType2) oder lazy aus den
-  // Quiz-Antworten abgeleitet (ältere Profile ohne Feld).
-  const style2=(profile.styleType2&&PADEL_STYLES[profile.styleType2])
-    ?profile.styleType2
-    :(profile.quizAnswers?computeStyles(profile.quizAnswers).secondary:null);
-
-  // Form-Trend für die Herz-Karte (letzte 4 vs. Gesamtschnitt).
-  const trend=(()=>{
-    const f=safeStats.formTrend;
-    if(f.length<3) return {sym:'→',txt:'Neu',c:T.t2};
-    const n=Math.min(4,f.length);
-    const last=f.slice(-n).reduce((a,b)=>a+b,0)/n;
-    const all=f.reduce((a,b)=>a+b,0)/f.length;
-    if(last>all+.3) return {sym:'↑',txt:'Steigend',c:T.g};
-    if(last<all-.3) return {sym:'↓',txt:'Fallend',c:T.r};
-    return {sym:'→',txt:'Stabil',c:T.t2};
-  })();
-  const weekSum=safeStats.weeklyMatches.reduce((a,b)=>a+b,0);
-
-  // Scroll → Glas-Top-Bar + Inline-Titel (iOS-Large-Title-Kollaps).
+  // Scroll → Glas-Top-Bar mit dem Namen (wie bisher).
   const scrollRef=useRef(null);
   const[scrollY,setScrollY]=useState(0);
   const barGlass=Math.min(1,Math.max(0,(scrollY-8)/56));
-  const titleIn=Math.min(1,Math.max(0,(scrollY-52)/34));
-
-  // Health-Bausteine.
-  const tint=(c,p)=>`color-mix(in srgb, ${c} ${p}%, transparent)`;
-  const card={...GLASS,borderRadius:20};
-  const capSty={color:T.t2,fontSize:11.5,fontWeight:500,lineHeight:1.4};
-  const SecTitle=({children,top=26})=>(
-    <SectionRule top={top}>{children}</SectionRule>
-  );
-  // Karten-Eyebrow: Kategorie-Farbe + Icon, wie die Health-Karten.
-  const Eyebrow=({color,icon,children,chev})=>(
-    <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:12}}>
-      <span style={{color,display:'inline-flex',flexShrink:0}}>{icon}</span>
-      <span style={{color,fontSize:12.5,fontWeight:700,letterSpacing:.2,flex:1,minWidth:0,
-        whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{children}</span>
-      {chev&&<ChevronRightIcon size={13} color={T.t3}/>}
-    </div>
-  );
-  // Aktivitäts-Ring (Fitness-Zitat) für die Win-Rate.
-  const Ring=({value=0,size=46,stroke=5.5,color})=>{
-    const r=(size-stroke)/2,C=2*Math.PI*r,p=Math.min(1,Math.max(0,value));
-    return(
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true"
-        style={{transform:'rotate(-90deg)',flexShrink:0}}>
-        <circle cx={size/2} cy={size/2} r={r} fill="none" strokeWidth={stroke}
-          stroke={tint(color,16)}/>
-        <circle cx={size/2} cy={size/2} r={r} fill="none" strokeWidth={stroke}
-          stroke={color} strokeLinecap="round" strokeDasharray={C}
-          strokeDashoffset={C*(1-p)}
-          style={{transition:'stroke-dashoffset .9s var(--ease-out-expo)'}}/>
-      </svg>
-    );
-  };
-  // Gruppierte Liste — iOS-Settings-Zelle mit Farb-Chip.
-  const Row=({chip,chipColor,label,value,trailing,onClick,top=false,danger=false})=>{
-    const sty={width:'100%',display:'flex',alignItems:'center',gap:12,padding:'13px 0',
-      background:'none',border:'none',textAlign:'left',color:T.t1,
-      borderTop:top?'none':`1px solid ${T.glassSep}`};
-    const inner=(<>
-      <span style={{width:29,height:29,borderRadius:8,flexShrink:0,
-        background:tint(chipColor,13),color:chipColor,
-        display:'inline-flex',alignItems:'center',justifyContent:'center'}}>{chip}</span>
-      <span style={{flex:1,minWidth:0,color:danger?T.r:T.t1,fontSize:15,fontWeight:600,
-        whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{label}</span>
-      {value!=null&&<span style={{color:T.t2,fontSize:14.5,fontWeight:500,flexShrink:0}}>{value}</span>}
-      {trailing!==undefined?trailing:(onClick?<ChevronRightIcon size={15} color={T.t3}/>:null)}
-    </>);
-    return onClick
-      ?<button onClick={onClick} style={{...sty,cursor:'pointer'}}>{inner}</button>
-      :<div style={sty}>{inner}</div>;
-  };
+  const titleIn=Math.min(1,Math.max(0,(scrollY-120)/34));
+  const setLvl=v=>setProfile(p=>({...p,estimatedLevel:Math.min(7,Math.max(.3,Math.round(v*100)/100))}));
 
   return(
     <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden'}}>
-      <PhotoBackdrop/>
+      <ProfileBackdrop id={profile.wallpaper}/>
 
       <div ref={scrollRef} onScroll={()=>setScrollY(scrollRef.current?.scrollTop||0)}
         style={{position:'absolute',inset:0,zIndex:2,overflowY:'auto',
           WebkitOverflowScrolling:'touch',overscrollBehavior:'contain'}}>
-
-        {/* Kopf: Large Title + Avatar rechts (Health-Muster). Blendet
-            beim Scrollen aus, während der Inline-Titel in der Bar
-            einblendet (iOS-Title-Crossfade). Tap auf den Avatar =
-            Foto ändern (AvatarWithUpload). */}
-        <div className="fi" style={{padding:'calc(env(safe-area-inset-top,0px) + 76px) 22px 0',
-          display:'flex',alignItems:'center',justifyContent:'space-between',gap:14,
-          opacity:1-titleIn}}>
-          <div style={{minWidth:0,flex:1}}>
-            <div style={{fontFamily:T.fontDisplay,color:T.o,fontSize:11,letterSpacing:3,
-              lineHeight:1}}>Profil</div>
-            <div style={{...HEAD_SERIF,fontSize:38,lineHeight:1.08,marginTop:8,
-              overflowWrap:'anywhere',paddingBottom:2}}>
-              {displayName(profile)}
-            </div>
+        <div style={{padding:'calc(env(safe-area-inset-top,0px) + 18px) 22px 0'}}>
+          <div className="fi" style={{display:'flex',alignItems:'center',justifyContent:'space-between',
+            minHeight:40,margin:'0 -9px 0 -11px'}}>
+            <img src={`${getAssetBase()}assets/ritmo-lettering.png`} alt="RITMO"
+              draggable={false} style={{width:150,height:'auto',display:'block',marginLeft:2,userSelect:'none'}}/>
+            <GlassCircle size={44} label="Profil bearbeiten" onClick={onOpenAbout}>
+              <EditIcon size={18}/>
+            </GlassCircle>
           </div>
-          <AvatarWithUpload profile={profile} setProfile={setProfile} size={56}/>
-        </div>
 
-        <div style={{padding:'0 22px',display:'flex',flexDirection:'column'}}>
-
-          {/* ── ANGEPINNT — 2×2-Grid der Kern-Metriken. */}
-          <SecTitle top={20}>Angepinnt</SecTitle>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-            {/* Level — Tap öffnet den Editor (nur geschätzte Level). */}
-            <button onClick={()=>{if(isEstimated)setEditingLevel(e=>!e);}}
-              className="fu" data-lift={isEstimated||undefined}
-              style={{...card,padding:'16px 16px 15px',textAlign:'left',color:T.t1,
-                cursor:isEstimated?'pointer':'default'}}>
-              <Eyebrow color={T.o} icon={<DNAIcon size={14} color="currentColor"/>}
-                chev={isEstimated}>RITMO Level</Eyebrow>
-              <div style={{display:'flex',alignItems:'baseline',gap:7,flexWrap:'wrap'}}>
-                <span style={{fontSize:30,fontWeight:800,letterSpacing:-1.2,lineHeight:1,
-                  fontVariantNumeric:'tabular-nums'}}>
-                  {lvl!=null?lvl.toFixed(2):'—'}
-                </span>
-                {lvl!=null&&(
-                  <span style={{color:T.o,fontSize:10.5,fontWeight:800,letterSpacing:.5,
-                    padding:'2px 6px',border:`1px solid ${tint(T.o,45)}`,borderRadius:6,
-                    background:tint(T.o,10)}}>{getLevelTier(lvl)}</span>
-                )}
-              </div>
-              <div style={{...capSty,marginTop:8}}>
-                {lvl!=null?`${getLevelLabel(lvl)}${isEstimated?', geschätzt':''}`:'Noch nicht bestimmt'}
-              </div>
-            </button>
-            {/* Form — Herz-rot mit Mini-Sparkline (Health-Zitat). */}
-            <div className="fu" style={{...card,padding:'16px 16px 15px',animationDelay:'.05s'}}>
-              <Eyebrow color={T.r} icon={<HeartIcon size={14}/>}>Form</Eyebrow>
-              {safeStats.formTrend.length>=2?(<>
-                <div style={{display:'flex',alignItems:'baseline',gap:6}}>
-                  <span style={{color:trend.c,fontSize:21,fontWeight:800,lineHeight:1}}>{trend.sym}</span>
-                  <span style={{color:T.t1,fontSize:19,fontWeight:800,letterSpacing:-.4}}>{trend.txt}</span>
-                </div>
-                <div style={{marginTop:7}}>
-                  <Sparkline data={safeStats.formTrend} color={T.r} height={30}/>
-                </div>
-              </>):(<>
-                <div style={{color:T.t1,fontSize:21,fontWeight:800,lineHeight:1}}>—</div>
-                <div style={{...capSty,marginTop:8}}>Ab 2 Matches sichtbar</div>
-              </>)}
-            </div>
-            {/* Win-Rate — Aktivitäts-Ring in Grün. */}
-            <div className="fu" style={{...card,padding:'16px 16px 15px',animationDelay:'.1s'}}>
-              <Eyebrow color={T.g} icon={<TrophyIcon size={15} color="currentColor"/>}>Win-Rate</Eyebrow>
-              <div style={{display:'flex',alignItems:'center',gap:12}}>
-                <Ring value={(safeStats.winRate||0)/100} color={T.g}/>
-                <div style={{minWidth:0}}>
-                  <div style={{color:T.t1,fontSize:25,fontWeight:800,letterSpacing:-1,
-                    lineHeight:1,fontVariantNumeric:'tabular-nums'}}>
-                    <CountUp value={safeStats.winRate} suffix="%"/>
-                  </div>
-                  <div style={{...capSty,marginTop:5,whiteSpace:'nowrap',overflow:'hidden',
-                    textOverflow:'ellipsis'}}>
-                    {safeStats.wins} Siege, {safeStats.losses} Niederl.
-                  </div>
-                </div>
-              </div>
-            </div>
-            {/* Matches gesamt — Blau. */}
-            <div className="fu" style={{...card,padding:'16px 16px 15px',animationDelay:'.15s'}}>
-              <Eyebrow color={T.blue} icon={<RacketMini size={15} color="currentColor"/>}>Matches</Eyebrow>
-              <div style={{color:T.t1,fontSize:30,fontWeight:800,letterSpacing:-1.2,
-                lineHeight:1,fontVariantNumeric:'tabular-nums'}}>
-                <CountUp value={safeStats.matches}/>
-              </div>
-              <div style={{...capSty,marginTop:8}}>insgesamt geloggt</div>
-            </div>
-            {/* Einzel vs. Turnier — volle Breite, beide Zähler getrennt:
-                Single Matches links, verschiedene Turniere rechts. */}
-            <div className="fu" style={{...card,gridColumn:'1 / -1',
-              padding:'16px 16px 15px',animationDelay:'.2s'}}>
-              <Eyebrow color={T.o} icon={<TrophyIcon size={15} color="currentColor"/>}>
-                Single Matches, Turniere
-              </Eyebrow>
-              <div style={{display:'flex',alignItems:'stretch'}}>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{color:T.t1,fontSize:30,fontWeight:800,letterSpacing:-1.2,
-                    lineHeight:1,fontVariantNumeric:'tabular-nums'}}>
-                    <CountUp value={safeStats.singleMatches??0}/>
-                  </div>
-                  <div style={{...capSty,marginTop:8}}>Single Matches</div>
-                </div>
-                <div style={{width:1,background:T.sep,margin:'2px 14px'}}/>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{color:T.t1,fontSize:30,fontWeight:800,letterSpacing:-1.2,
-                    lineHeight:1,fontVariantNumeric:'tabular-nums'}}>
-                    <CountUp value={safeStats.tournaments??0}/>
-                  </div>
-                  <div style={{...capSty,marginTop:8,whiteSpace:'nowrap',overflow:'hidden',
-                    textOverflow:'ellipsis'}}>
-                    Turniere, {safeStats.tournamentMatches??0} Match{(safeStats.tournamentMatches??0)===1?'':'es'}
-                  </div>
-                </div>
-              </div>
+          {/* Avatar + Kurzangaben */}
+          <div className="fu" style={{display:'flex',alignItems:'center',gap:14,marginTop:26}}>
+            <ProfileAvatar name={profile.name} avatar={profile.avatar} size={52}
+              onClick={()=>{buzz(6);setMenu(true);}}/>
+            <div style={{color:T.t2,fontSize:14,lineHeight:1.4,minWidth:0}}>
+              {meta&&<div>{meta}</div>}
+              {hand&&<div>{hand}</div>}
+              {!meta&&!hand&&<div>Tipp aufs Bild: Foto und Hintergrund</div>}
             </div>
           </div>
 
-          {/* Inline-Editor fürs geschätzte Level (Tap auf die Karte). */}
-          {isEstimated&&editingLevel&&lvl!=null&&(
-            <div className="fi" style={{...card,marginTop:12,padding:'14px 16px',
-              display:'flex',flexDirection:'column',gap:10}}>
-              <div style={capSty}>RITMO-Level anpassen — Schätzwert, bis genug Matches geloggt sind.</div>
-              <div style={{display:'flex',alignItems:'center',gap:6,minWidth:0}}>
-                <button onClick={()=>setProfile(p=>({...p,estimatedLevel:Math.max(0.30,Math.round((lvl-0.03)*100)/100)}))}
-                  style={{width:30,height:30,borderRadius:'50%',background:T.card2,
-                    border:`1px solid ${T.border}`,color:T.o,fontSize:15,fontWeight:700,
-                    cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>−</button>
-                <input key={lvl.toFixed(2)} type="text" inputMode="decimal" defaultValue={lvl.toFixed(2)}
-                  onBlur={e=>{
-                    const v=parseFloat(e.target.value.replace(',','.'));
-                    if(!isNaN(v)) setProfile(p=>({...p,estimatedLevel:Math.min(7.0,Math.max(0.3,Math.round(v*100)/100))}));
-                    else e.target.value=lvl.toFixed(2);
-                  }}
-                  onKeyDown={e=>{if(e.key==='Enter') e.target.blur();}}
-                  style={{flex:1,minWidth:0,width:0,textAlign:'center',background:T.card2,
-                    border:`1px solid ${T.o}`,borderRadius:8,padding:'5px 4px',
-                    color:T.o,fontSize:22,fontWeight:900,outline:'none',boxSizing:'border-box'}}/>
-                <button onClick={()=>setProfile(p=>({...p,estimatedLevel:Math.min(7.00,Math.round((lvl+0.03)*100)/100)}))}
-                  style={{width:30,height:30,borderRadius:'50%',background:T.card2,
-                    border:`1px solid ${T.border}`,color:T.o,fontSize:15,fontWeight:700,
-                    cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>+</button>
-              </div>
-              <button onClick={()=>setEditingLevel(false)}
-                style={{padding:'9px',background:T.o,border:'none',borderRadius:10,
-                  color:'#000',fontSize:12,fontWeight:800,cursor:'pointer'}}>Fertig</button>
-            </div>
-          )}
+          <div className="fu" style={{...HEAD_SERIF,fontSize:nameFs,lineHeight:1.02,marginTop:22,
+            animationDelay:'.04s',overflowWrap:'anywhere'}}>{name}.</div>
+          <PRule style={{marginTop:22}}/>
 
-          {/* ── RITMO DNA — Highlight-Karte mit Stil-Verlauf. */}
-          <SecTitle>RITMO DNA</SecTitle>
-          <button onClick={hasStyle?()=>onOpenRitmoDNA&&onOpenRitmoDNA():onResetOnboarding}
-            className="fu" data-lift
-            style={{...card,background:hasStyle?`${styleGrad(profile.styleType)}, ${T.glass}`:T.glass,
-              padding:'14px 16px',textAlign:'left',cursor:'pointer',color:T.t1,
-              animationDelay:'.12s',width:'100%'}}>
-            <Eyebrow color={T.o} icon={<DNAIcon size={14} color="currentColor"/>} chev>
-              Spielstil
-            </Eyebrow>
-            {hasStyle?(
-              <div style={{display:'flex',alignItems:'center',gap:14}}>
-                <span style={{width:52,height:52,borderRadius:14,flexShrink:0,
-                  background:tint(STYLE_GRAD[profile.styleType],16),
-                  border:`1px solid ${tint(STYLE_GRAD[profile.styleType],35)}`,
-                  display:'inline-flex',alignItems:'center',justifyContent:'center'}}>
-                  <ArchetypeGlyph type={profile.styleType} size={30} active
-                    color={STYLE_GRAD[profile.styleType]}/>
-                </span>
-                <div style={{minWidth:0,flex:1}}>
-                  <div style={{color:T.t1,fontSize:20,fontWeight:800,letterSpacing:-.4,lineHeight:1.15}}>
-                    {PADEL_STYLES[profile.styleType].name}
-                  </div>
-                  <div style={{...capSty,marginTop:3}}>{PADEL_STYLES[profile.styleType].subtitle}</div>
-                  {style2&&(
-                    <div style={{marginTop:8,display:'inline-flex',alignItems:'center',gap:6,
-                      padding:'3px 9px',borderRadius:999,background:tint(STYLE_GRAD[style2],14),
-                      border:`1px solid ${tint(STYLE_GRAD[style2],32)}`}}>
-                      <span style={{color:T.t2,fontSize:10,fontWeight:700,letterSpacing:.4}}>2. STIL</span>
-                      <span style={{color:T.t1,fontSize:11,fontWeight:700}}>{PADEL_STYLES[style2].name}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ):(
-              <div>
-                <div style={{color:T.t1,fontSize:20,fontWeight:800,letterSpacing:-.4}}>
-                  Spielstil bestimmen
-                </div>
-                <div style={{...capSty,marginTop:4}}>
-                  Vier Fragen — dann kennt RITMO dein Spiel.
-                </div>
-              </div>
-            )}
+          {/* Das Level — die eine grosse Zahl */}
+          <PKick style={{marginTop:40}}>RITMO Level</PKick>
+          <button onClick={()=>{if(isEstimated){buzz(6);setEditingLevel(e=>!e);}}}
+            aria-label={isEstimated?'RITMO Level anpassen':undefined}
+            style={{display:'flex',alignItems:'baseline',gap:14,marginTop:14,padding:0,background:'none',
+              border:'none',color:T.t1,cursor:isEstimated?'pointer':'default',textAlign:'left'}}>
+            {lvl!=null
+              ?<span style={{fontWeight:300,fontSize:104,lineHeight:.9,letterSpacing:'-.05em',
+                fontVariantNumeric:'tabular-nums'}}>{fmtDec(lvl)}</span>
+              /* Ohne Level kein Strich in 104 px — der stand als Balken da. */
+              :<span style={{fontFamily:T.fontSerif,fontStyle:'italic',fontSize:26,color:T.t2,lineHeight:1.3}}>
+                Noch nicht bestimmt — es ergibt sich aus deinen ersten Matches.</span>}
+            {lvl!=null&&<span style={{color:T.t2,fontSize:14,lineHeight:1.4}}>
+              {getLevelTier(lvl)}<br/>{getLevelLabel(lvl)}{isEstimated?', geschätzt':''}</span>}
           </button>
-
-          {/* ── HIGHLIGHTS — Aktivität mit Wochen-Chart. */}
-          <SecTitle>Highlights</SecTitle>
-          {safeStats.matches>0?(
-            <div className="fu" style={{...card,padding:'14px 16px',animationDelay:'.16s'}}>
-              <Eyebrow color={T.g} icon={<StopwatchIcon size={14}/>}>Aktivität</Eyebrow>
-              <div style={{color:T.t1,fontSize:15,fontWeight:600,lineHeight:1.45,marginBottom:10}}>
-                {weekSum>0
-                  ?`Diese Woche ${weekSum} ${weekSum===1?'Match':'Matches'} — weiter so!`
-                  :'Diese Woche noch kein Match — Zeit für den Court!'}
-              </div>
-              <BarChart values={safeStats.weeklyMatches} labels={safeStats.weekDays}
-                color={T.g} height={74}/>
-              <div style={{...capSty,marginTop:10,display:'flex',justifyContent:'space-between'}}>
-                <span>Matches pro Wochentag</span>
-                <span>{safeStats.matches} gesamt</span>
-              </div>
-            </div>
-          ):(
-            <div className="fu" style={{...card,padding:'18px 16px',textAlign:'center',
-              animationDelay:'.16s'}}>
-              <div style={{color:T.t2,fontSize:14,fontWeight:700,marginBottom:4}}>
-                Noch keine Matches geloggt
-              </div>
-              <div style={capSty}>
-                Spiel ein Single Match oder ein Turnier — deine Auswertungen
-                erscheinen automatisch hier.
-              </div>
+          {isEstimated&&editingLevel&&(
+            <div className="fi" style={{display:'flex',alignItems:'center',gap:10,marginTop:18}}>
+              {[-.03,.03].map((d,i)=>(
+                <button key={i} onClick={()=>{buzz(6);setLvl(lvl+d);}}
+                  aria-label={d<0?'Level senken':'Level erhöhen'}
+                  style={{...GLASS,order:i?2:0,width:44,height:44,borderRadius:'50%',color:T.t1,
+                    fontSize:20,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  {d<0?'−':'+'}</button>
+              ))}
+              <span style={{order:1,flex:1,color:T.t2,fontSize:13,lineHeight:1.4}}>
+                Geschätzt — bis genug Matches geloggt sind, stellst du es selbst.</span>
+              <button onClick={()=>setEditingLevel(false)} style={{order:3,padding:'11px 16px',
+                borderRadius:22,border:'none',background:T.o,color:'#000',fontSize:13,fontWeight:700,
+                cursor:'pointer'}}>Fertig</button>
             </div>
           )}
 
-          {/* ── ÜBER DICH — Bio-Karte mit Inline-Editor. */}
-          <SecTitle>Über dich</SecTitle>
-          {bioEdit?(
-            <div className="fi" style={{...card,padding:'14px 16px'}}>
-              <textarea value={bioVal} onChange={e=>setBioVal(e.target.value.slice(0,200))}
-                maxLength={200} rows={3} autoFocus
-                placeholder="Dein Spruch fürs Profil … (max. 200 Zeichen)"
-                style={{width:'100%',background:T.card2,border:`1px solid ${T.o}`,borderRadius:12,
-                  padding:'12px 14px',color:T.t1,fontSize:15,lineHeight:1.5,fontWeight:500,
-                  outline:'none',boxSizing:'border-box',resize:'none',fontFamily:'inherit'}}/>
-              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',
-                marginTop:10}}>
-                <span style={{color:bioVal.length>=200?T.r:T.t3,fontSize:11,fontWeight:700,
-                  fontVariantNumeric:'tabular-nums'}}>{bioVal.length}/200</span>
-                <div style={{display:'flex',gap:8}}>
-                  <button onClick={()=>{setBioVal(profile.bio||'');setBioEdit(false);}}
-                    style={{padding:'7px 14px',background:'none',border:`1px solid ${T.border}`,
-                      borderRadius:10,color:T.t2,fontSize:12,fontWeight:700,cursor:'pointer'}}>
-                    Abbrechen
-                  </button>
-                  <button onClick={saveBio}
-                    style={{padding:'7px 16px',background:T.o,border:'none',borderRadius:10,
-                      color:'#000',fontSize:12,fontWeight:800,cursor:'pointer'}}>
-                    Speichern
-                  </button>
-                </div>
-              </div>
-            </div>
-          ):(
-            <button onClick={()=>{setBioVal(profile.bio||'');setBioEdit(true);}}
-              className="fu" data-lift
-              style={{...card,padding:'14px 16px',width:'100%',textAlign:'left',cursor:'pointer',
-                display:'flex',alignItems:'center',gap:12,animationDelay:'.28s'}}>
-              <span style={{flex:1,minWidth:0,color:bio?T.t1:T.t3,fontSize:15,
-                fontWeight:bio?600:500,fontStyle:bio?'italic':'normal',lineHeight:1.5}}>
-                {bio?`„${bio}"`:'Bio hinzufügen — dein Spruch fürs Profil'}
-              </span>
-              <span style={{color:T.o,display:'inline-flex',flexShrink:0}}><EditIcon size={15}/></span>
-            </button>
-          )}
+          <ProfileTrio style={{marginTop:40}} items={[
+            [safeStats.matches,'Matches'],
+            [`${safeStats.winRate} %`,'Siege'],
+            [safeStats.tournaments,'Turniere'],
+          ]}/>
 
-          {/* ── DETAILS — gruppierte Liste (Hand, Seite, Sichtbarkeit). */}
-          <SecTitle>Details</SecTitle>
-          <div className="fu" style={{...card,padding:'2px 16px',animationDelay:'.32s'}}>
-            <Row top chip={<HandIcon size={16}/>} chipColor={T.gold} label="Schlaghand"
-              value={handLabels[profile.handPreference]||'—'}/>
-            <Row chip={<TargetIcon size={16}/>} chipColor={T.blue} label="Court-Seite"
-              value={sideLabels[profile.courtSide]||'—'}/>
-            <Row chip={<EyeIcon size={16}/>} chipColor={T.g} label="Öffentliches Profil"
-              trailing={
-                <span onClick={togglePublic} role="switch" aria-checked={isPublic}
-                  aria-label={isPublic?'Profil öffentlich':'Profil privat'}
-                  style={{width:40,height:24,borderRadius:14,flexShrink:0,
-                    background:isPublic?T.g:'rgba(120,120,128,.32)',position:'relative',
-                    cursor:'pointer',transition:'background .25s',display:'inline-block'}}>
-                  <span style={{width:20,height:20,borderRadius:'50%',background:'#fff',
-                    position:'absolute',top:2,left:isPublic?18:2,transition:'left .25s',
-                    boxShadow:'0 1px 3px rgba(0,0,0,.35)',display:'block'}}/>
-                </span>
-              }/>
+          <div style={{marginTop:48}}>
+            <ProfileLinks rows={[
+              {label:'RITMO DNA',value:style?style.name:'bestimmen',onClick:onOpenDNA},
+              {label:'Match-Verlauf',value:safeStats.matches||null,onClick:onOpenHistory},
+              {label:'Über mich & Details',onClick:onOpenAbout},
+            ]}/>
           </div>
-
-          {/* ── VERWALTEN — Profil bearbeiten, Onboarding, Stats-Reset. */}
-          <SecTitle>Verwalten</SecTitle>
-          <div className="fu" style={{...card,padding:'2px 16px',animationDelay:'.36s'}}>
-            <Row top chip={<EditIcon size={15}/>} chipColor={T.blue}
-              label="Profil bearbeiten" onClick={onOpenEdit}/>
-            <Row chip={<RefreshGlyph size={15}/>} chipColor={T.o}
-              label="Onboarding wiederholen" onClick={onResetOnboarding}/>
-            <Row chip={<RefreshGlyph size={15}/>} chipColor={T.r} danger
-              label="Statistik zurücksetzen" onClick={()=>setConfirmReset(true)}/>
-          </div>
-          {confirmReset&&(
-            <div className="fi" style={{marginTop:12,background:tint(T.r,8),
-              border:`1px solid ${tint(T.r,35)}`,borderRadius:16,padding:'14px 16px'}}>
-              <div style={{color:T.t1,fontSize:13,fontWeight:600,lineHeight:1.5,marginBottom:12}}>
-                Alle Statistiken auf 0 setzen? Geloggte Matches und das laufende
-                Scoreboard werden gelöscht — das lässt sich nicht rückgängig machen.
-              </div>
-              <div style={{display:'flex',gap:8}}>
-                <button onClick={()=>setConfirmReset(false)}
-                  style={{flex:1,padding:'11px',background:'none',border:`1px solid ${T.border}`,
-                    borderRadius:11,color:T.t2,fontSize:13,fontWeight:700,cursor:'pointer'}}>
-                  Abbrechen
-                </button>
-                <button onClick={()=>{onResetStats&&onResetStats();setConfirmReset(false);}}
-                  style={{flex:1,padding:'11px',background:T.r,border:'none',
-                    borderRadius:11,color:'#fff',fontSize:13,fontWeight:800,cursor:'pointer'}}>
-                  Auf 0 setzen
-                </button>
-              </div>
-            </div>
-          )}
-
-          <div style={{height:120,flexShrink:0}}/>
+          <div style={{height:140,flexShrink:0}}/>
         </div>
       </div>
 
-      {/* Fixe Top-Bar: transparent auf Ruhelage, Milchglas beim
-          Scrollen; der Name blendet als Inline-Titel ein (iOS-
-          Large-Title-Kollaps). */}
+      {/* Glas-Top-Bar beim Scrollen, Name blendet ein */}
       <div style={{position:'absolute',top:0,left:0,right:0,zIndex:5,
         height:'calc(env(safe-area-inset-top,0px) + 56px)',pointerEvents:'none'}}>
         <div aria-hidden="true" style={{position:'absolute',inset:0,opacity:barGlass,
           background:'color-mix(in srgb, var(--card) 55%, transparent)',
-          WebkitBackdropFilter:'blur(18px) saturate(160%)',
-          backdropFilter:'blur(18px) saturate(160%)',
+          WebkitBackdropFilter:'blur(18px) saturate(160%)',backdropFilter:'blur(18px) saturate(160%)',
           borderBottom:'1px solid color-mix(in srgb, var(--t1) 10%, transparent)'}}/>
-        <div style={{position:'absolute',left:56,right:56,
-          top:'calc(env(safe-area-inset-top,0px) + 18px)',textAlign:'center',
-          opacity:titleIn,transform:`translateY(${(1-titleIn)*6}px)`}}>
-          <span style={{color:T.t1,fontSize:17,fontWeight:600,letterSpacing:-.2,
-            display:'inline-block',maxWidth:'100%',whiteSpace:'nowrap',
-            overflow:'hidden',textOverflow:'ellipsis',verticalAlign:'top'}}>
-            {displayName(profile)}
-          </span>
+        <div style={{position:'absolute',left:56,right:56,top:'calc(env(safe-area-inset-top,0px) + 18px)',
+          textAlign:'center',opacity:titleIn,transform:`translateY(${(1-titleIn)*6}px)`}}>
+          <span style={{color:T.t1,fontSize:17,fontWeight:600,display:'inline-block',maxWidth:'100%',
+            whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',verticalAlign:'top'}}>{name}</span>
         </div>
       </div>
 
-      {/* Profil ist ein Haupt-Tab → Navbar; Fallback MatchBar für
-          alte Aufrufer ohne onTab. */}
+      {menu&&<AvatarMenu profile={profile} setProfile={setProfile}
+        onClose={()=>setMenu(false)} onPickBg={()=>setBgOpen(true)}/>}
+      {bgOpen&&<WallpaperSheet profile={profile} setProfile={setProfile} onClose={()=>setBgOpen(false)}/>}
+
       {onTab?<TabBar active="profil" onTab={onTab}/>:<MatchBar onHome={onHome}/>}
     </div>
+  );
+}
+
+/* Rahmen der drei Unterseiten: Hintergrund des Profils, Schriftzug,
+   Ressort, grosse Schlagzeile, Haarlinie. Unten Home links und die
+   Person rechts (zurueck ins Profil) — wie „Profil bearbeiten“. */
+function ProfileSub({profile,kicker,title,titleFs=52,onBack,onHome,children}){
+  return(
+    <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
+      position:'relative',overflow:'hidden'}}>
+      <ProfileBackdrop id={profile.wallpaper}/>
+      <div style={{flex:1,overflowY:'auto',WebkitOverflowScrolling:'touch',overscrollBehavior:'contain',
+        padding:'calc(env(safe-area-inset-top,0px) + 18px) 22px 0'}}>
+        <div className="fi" style={{minHeight:40,display:'flex',alignItems:'center',margin:'0 0 0 -11px'}}>
+          <img src={`${getAssetBase()}assets/ritmo-lettering.png`} alt="RITMO"
+            draggable={false} style={{width:150,height:'auto',display:'block',marginLeft:2,userSelect:'none'}}/>
+        </div>
+        <PKick style={{marginTop:22}}>{kicker}</PKick>
+        <div className="fu" style={{...HEAD_SERIF,fontSize:titleFs,lineHeight:1.04,marginTop:14,
+          overflowWrap:'anywhere'}}>{title}</div>
+        <PRule style={{marginTop:20}}/>
+        {children}
+        <div style={{height:130,flexShrink:0}}/>
+      </div>
+      {onHome&&(
+        <button onClick={onHome} aria-label="Zurück zur Startseite"
+          className="glass-bar" style={{...FAB_BASE,left:22}}>
+          <HomeIcon size={22}/>
+        </button>
+      )}
+      <button onClick={onBack} aria-label="Zurück zum Profil"
+        className="glass-bar" style={{...FAB_BASE,right:22}}>
+        <PersonGlyph size={22}/>
+      </button>
+    </div>
+  );
+}
+
+/* ── RITMO DNA ──
+   Stil, Satz, Bild, und „Dein Mix“: wie sich die Quiz-Antworten auf
+   die Stile verteilen. Das sind echte Werte aus den Antworten — keine
+   erfundenen Staerke-Prozente. */
+function ProfileDNA({profile,onBack,onHome,onMore,onRetake}){
+  const id=profile.styleType&&PADEL_STYLES[profile.styleType]?profile.styleType:null;
+  const s=id&&PADEL_STYLES[id];
+  const id2=(profile.styleType2&&PADEL_STYLES[profile.styleType2])?profile.styleType2
+    :(profile.quizAnswers?computeStyles(profile.quizAnswers).secondary:null);
+  const mix=(()=>{
+    const qa=profile.quizAnswers; if(!qa) return [];
+    const MAP={a:'chico',b:'toro',c:'individuoso',d:'muro',e:'fantasma',f:'motor',g:'hysterica'};
+    const c={}; let n=0;
+    Object.values(qa).forEach(v=>{if(MAP[v]){c[MAP[v]]=(c[MAP[v]]||0)+1;n++;}});
+    return Object.entries(c).sort((a,b)=>b[1]-a[1]).map(([k,v])=>[k,Math.round(v/n*100)]);
+  })();
+  const img=id&&STYLE_IMAGES[id];
+  if(!s) return(
+    <ProfileSub profile={profile} kicker="RITMO DNA" title="Noch offen." titleFs={64} onBack={onBack} onHome={onHome}>
+      <div className="txt" style={{color:T.t2,fontSize:16,fontStyle:'italic',lineHeight:1.45,marginTop:12}}>
+        Vier Fragen — dann kennt RITMO dein Spiel.</div>
+      <button onClick={onRetake} style={{marginTop:32,width:'100%',padding:'16px',borderRadius:30,
+        border:'none',background:T.o,color:'#000',fontSize:15,fontWeight:700,cursor:'pointer'}}>
+        Spielstil bestimmen</button>
+    </ProfileSub>
+  );
+  return(
+    <ProfileSub profile={profile} kicker="RITMO DNA" title={`${s.name}.`}
+      titleFs={s.name.length<=8?64:48} onBack={onBack} onHome={onHome}>
+      <div className="txt" style={{color:T.t2,fontSize:16,fontStyle:'italic',lineHeight:1.45,marginTop:12}}>
+        {s.subtitle}. {s.tagline}</div>
+      {img&&<div className="fu" style={{height:250,borderRadius:22,marginTop:32,border:`1px solid ${T.glassLine}`,
+        background:`${s.accent} url(${getAssetBase()}assets/${img}) 50% 42%/120% auto no-repeat`}}/>}
+
+      {mix.length>0&&(<>
+        <PKick style={{marginTop:44}}>Dein Mix</PKick>
+        {mix.map(([k,pc],i)=>(
+          <div key={k} style={{marginTop:20}}>
+            <div style={{display:'flex',justifyContent:'space-between',fontSize:14.5}}>
+              <span>{PADEL_STYLES[k]?.name||k}</span>
+              <span style={{color:T.t2,fontVariantNumeric:'tabular-nums'}}>{pc} %</span>
+            </div>
+            <div style={{height:2,background:T.glassSep,marginTop:10,position:'relative'}}>
+              <i style={{position:'absolute',left:0,top:0,bottom:0,width:`${pc}%`,
+                background:i===0?T.t1:'rgba(255,255,255,.45)'}}/>
+            </div>
+          </div>
+        ))}
+      </>)}
+
+      <PKick style={{marginTop:44}}>Kernwerte</PKick>
+      <div style={{fontFamily:T.fontSerif,fontWeight:700,fontSize:24,marginTop:12,lineHeight:1.3}}>
+        {(s.kernwerte||[]).join(' · ')}</div>
+
+      {id2&&PADEL_STYLES[id2]&&(<>
+        <PKick style={{marginTop:44}}>Zweitstil</PKick>
+        <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',gap:12,marginTop:12}}>
+          <span style={{fontFamily:T.fontSerif,fontWeight:700,fontSize:26}}>{PADEL_STYLES[id2].name}</span>
+          <span style={{color:T.t2,fontSize:14,textAlign:'right'}}>{PADEL_STYLES[id2].subtitle}</span>
+        </div>
+      </>)}
+
+      <div style={{marginTop:40}}>
+        <ProfileLinks rows={[
+          {label:`Alles über ${s.name}`,onClick:onMore},
+          {label:'Spielstil-Test wiederholen',onClick:onRetake},
+        ]}/>
+      </div>
+    </ProfileSub>
+  );
+}
+
+/* ── Match-Verlauf: Diagramm ──
+   Das RITMO-Level ueber 3, 6 oder 12 Wochen — der Schalter oben
+   rechts ist ein Rechteck mit runden Ecken und schaltet reihum.
+   Eine Linie, eine Farbe, kein Legendenkasten (der Titel sagt, was
+   es ist). Antippen/Ziehen zeigt Datum und Wert. Werte vor dem
+   Fenster setzen den Startpunkt, damit die Linie nicht in der Luft
+   beginnt. */
+const LV_RANGES=[3,6,12];
+function LevelChart({log,cur}){
+  const[wk,setWk]=useState(12);
+  const[hi,setHi]=useState(null);
+  const W=346,H=170,L=30,R=10,TP=14,B=26;
+  const now=Date.now(), from=now-wk*7*864e5;
+  const pts=(()=>{
+    const all=[...log].sort((a,b)=>a.t-b.t);
+    const before=all.filter(e=>e.t<from).pop();
+    const inside=all.filter(e=>e.t>=from);
+    const p=[];
+    if(before) p.push({t:from,v:before.v});
+    p.push(...inside);
+    if(cur!=null&&(!p.length||Math.abs(p[p.length-1].v-cur)>=.005)) p.push({t:now,v:cur});
+    if(p.length===1) p.unshift({t:from,v:p[0].v});
+    return p;
+  })();
+  const head=(
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+      <PKick>Level-Verlauf</PKick>
+    </div>
+  );
+  /* Noch gar kein Level (frisches Profil ohne Schaetzung): keine
+     Linie, nur der Hinweis — eine leere Achse sagt nichts. */
+  if(!pts.length) return(
+    <div style={{marginTop:34}}>{head}
+      <div style={{color:T.t3,fontSize:13.5,fontStyle:'italic',lineHeight:1.5}}>
+        Sobald du ein RITMO Level hast, siehst du hier, wie es sich entwickelt.</div>
+    </div>
+  );
+  const vals=pts.map(p=>p.v);
+  const lo0=Math.min(...vals), hi0=Math.max(...vals);
+  const mid=(lo0+hi0)/2, span=Math.max(.3,hi0-lo0+.1);
+  const lo=Math.floor((mid-span/2)*10)/10, top=Math.ceil((mid+span/2)*10)/10;
+  const x=t=>L+(t-from)/(now-from)*(W-L-R);
+  const y=v=>TP+(top-v)/(top-lo)*(H-TP-B);
+  const line=pts.map(p=>`${x(p.t).toFixed(1)},${y(p.v).toFixed(1)}`).join(' ');
+  const area=`M${x(pts[0].t).toFixed(1)},${H-B} L`+pts.map(p=>`${x(p.t).toFixed(1)},${y(p.v).toFixed(1)}`).join(' L')
+    +` L${x(pts[pts.length-1].t).toFixed(1)},${H-B} Z`;
+  const step=(top-lo)>1?.5:(top-lo)>.5?.2:.1;
+  const grid=[]; for(let g=Math.ceil(lo/step)*step;g<=top+1e-9;g+=step) grid.push(Math.round(g*10)/10);
+  const months=[]; {const d=new Date(from); d.setDate(1); d.setMonth(d.getMonth()+1);
+    for(;d.getTime()<now;d.setMonth(d.getMonth()+1)) months.push(d.getTime());}
+  const delta=pts[pts.length-1].v-pts[0].v;
+  const real=log.filter(e=>e.t>=from).length;
+  const svgRef=useRef(null);
+  const pick=e=>{
+    const r=svgRef.current?.getBoundingClientRect(); if(!r) return;
+    const px=(e.clientX-r.left)/r.width*W;
+    let best=0; pts.forEach((p,i)=>{if(Math.abs(x(p.t)-px)<Math.abs(x(pts[best].t)-px)) best=i;});
+    setHi(best);
+  };
+  const hp=hi!=null?pts[hi]:null;
+  const dfmt=t=>new Date(t).toLocaleDateString('de-DE',{day:'numeric',month:'short'});
+  return(
+    <div style={{marginTop:34}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+        <div>
+          <PKick>Level-Verlauf</PKick>
+          <div style={{fontSize:12.5,color:T.t2,marginTop:8,fontVariantNumeric:'tabular-nums'}}>
+            {Math.abs(delta)<.005?'unverändert':<span style={{color:delta>0?T.g:T.r,fontWeight:600}}>
+              {delta>0?'+':'−'}{fmtDec(Math.abs(delta))}</span>} in {wk} Wochen</div>
+        </div>
+        <button onClick={()=>{buzz(6);setHi(null);setWk(w=>LV_RANGES[(LV_RANGES.indexOf(w)+1)%LV_RANGES.length]);}}
+          aria-label={`Zeitraum ${wk} Wochen, tippen zum Wechseln`}
+          style={{...GLASS,borderRadius:12,padding:'9px 14px',color:T.t1,fontSize:14,fontWeight:600,
+            cursor:'pointer',fontVariantNumeric:'tabular-nums',minWidth:58}}>{wk} W</button>
+      </div>
+      <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} width="100%" style={{display:'block',overflow:'visible',touchAction:'pan-y'}}
+        onPointerDown={pick} onPointerMove={e=>{if(e.buttons||e.pointerType==='mouse') pick(e);}}
+        onPointerLeave={()=>setHi(null)} role="img"
+        aria-label={`RITMO Level der letzten ${wk} Wochen, aktuell ${fmtDec(cur)}`}>
+        <defs><linearGradient id="lvArea" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="var(--o)" stopOpacity=".28"/><stop offset="1" stopColor="var(--o)" stopOpacity="0"/>
+        </linearGradient></defs>
+        {grid.map(g=>(
+          <g key={g}>
+            <line x1={L} x2={W-R} y1={y(g)} y2={y(g)} stroke="rgba(255,255,255,.1)"/>
+            <text x={0} y={y(g)+4} fontSize="11" fill="rgba(255,255,255,.45)" style={{fontFamily:T.fontSans}}>{fmtDec(g,1)}</text>
+          </g>
+        ))}
+        {months.map(m=>(
+          <text key={m} x={x(m)} y={H-6} fontSize="11" textAnchor="middle" fill="rgba(255,255,255,.45)"
+            style={{fontFamily:T.fontSans}}>{new Date(m).toLocaleDateString('de-DE',{month:'short'})}</text>
+        ))}
+        <path d={area} fill="url(#lvArea)"/>
+        <polyline points={line} fill="none" stroke={T.o} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"/>
+        <circle cx={x(pts[pts.length-1].t)} cy={y(pts[pts.length-1].v)} r="5" fill={T.o} stroke="#0b0b0c" strokeWidth="2"/>
+        {hp&&(<g pointerEvents="none">
+          <line x1={x(hp.t)} x2={x(hp.t)} y1={TP} y2={H-B} stroke="rgba(255,255,255,.35)" strokeDasharray="2 3"/>
+          <circle cx={x(hp.t)} cy={y(hp.v)} r="4" fill="#fff"/>
+          <g transform={`translate(${Math.min(W-R-68,Math.max(L,x(hp.t)-34))},${Math.max(0,y(hp.v)-44)})`}>
+            <rect width="68" height="30" rx="8" fill="rgba(20,20,22,.92)" stroke="rgba(255,255,255,.2)"/>
+            <text x="34" y="13" textAnchor="middle" fontSize="10" fill="rgba(255,255,255,.6)" style={{fontFamily:T.fontSans}}>{dfmt(hp.t)}</text>
+            <text x="34" y="25" textAnchor="middle" fontSize="12" fontWeight="600" fill="#fff" style={{fontFamily:T.fontSans}}>{fmtDec(hp.v)}</text>
+          </g>
+        </g>)}
+      </svg>
+      {real<2&&<div style={{color:T.t3,fontSize:12.5,marginTop:10,fontStyle:'italic'}}>
+        Der Verlauf füllt sich mit jedem gespielten Match.</div>}
+    </div>
+  );
+}
+
+/* Ein Match als kleine Anzeigetafel: oben Sieg/Niederlage, Ort und
+   Datum, darunter beide Teams mit ihrem Ergebnis. Satz-Matches
+   zeigen IMMER drei Satzspalten (1 2 3) — ein nicht gespielter
+   dritter Satz steht als gedimmter Strich da, damit alle Karten
+   gleich gebaut sind. */
+const FORMAT_SHORT={americano:'Americano',mexicano:'Mexicano',teamamericano:'Team-Americano',
+  teammexicano:'Team-Mexicano',mixicano:'Mixicano',kingofcourt:'King of the Court',knockout:'K.-o.'};
+function normMatch(r){
+  const n=Array.isArray(r.player_names)?r.player_names.filter(x=>x!=null):[];
+  const half=Math.floor(n.length/2);
+  const a=n.slice(0,half), b=n.slice(half);
+  const ub=r.user_team==='B';
+  const fmt=String(r.format||'');
+  const single=!fmt.startsWith('tournament-')&&r.tournament_id==null;
+  const sets=Array.isArray(r.sets)&&r.sets.length?r.sets.map(st=>ub?[st.gB,st.gA]:[st.gA,st.gB]):null;
+  return {
+    at:r.finished_at?new Date(r.finished_at).getTime():0,
+    won:r.user_won, single, sets,
+    mine:(ub?b:a).filter(Boolean), opp:(ub?a:b).filter(Boolean),
+    sm:ub?r.score_b:r.score_a, so:ub?r.score_a:r.score_b,
+    event:r.event||(single?'Single Match':(FORMAT_SHORT[fmt.replace('tournament-','')]||'Turnier')),
+  };
+}
+function MatchCard({m}){
+  const res=m.won===true?['Sieg',T.g]:m.won===false?['Niederlage',T.r]:['Gespielt',T.t3];
+  const date=m.at?new Date(m.at).toLocaleDateString('de-DE',{day:'numeric',month:'short'}):'';
+  const cols=m.sets?[0,1,2]:null;
+  const cell=(v,dim,k)=>(
+    <span key={k} style={{width:34,textAlign:'right',fontWeight:300,fontSize:22,
+      fontVariantNumeric:'tabular-nums',color:dim?'rgba(255,255,255,.22)':'inherit'}}>{v}</span>
+  );
+  const team=(names,isMe,score,setIdx,dim)=>(
+    <div style={{display:'flex',alignItems:'center',padding:'9px 0',color:dim?T.t3:T.t1,
+      borderTop:isMe?'none':`1px solid ${T.glassSep}`}}>
+      <span style={{flex:1,minWidth:0,fontSize:15.5,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
+        {names.length?names.join(' & '):(isMe?'Dein Team':'Gegner')}
+        {isMe&&<span style={{fontSize:10.5,fontWeight:600,color:T.o,marginLeft:8}}>DU</span>}
+      </span>
+      {cols?cols.map(i=>m.sets[i]?cell(m.sets[i][setIdx],false,i):cell('–',true,i))
+        :cell(score??'–',score==null,0)}
+    </div>
+  );
+  const meLost=m.won===false, oppLost=m.won===true;
+  return(
+    <div className="fu" style={{...GLASS,borderRadius:20,padding:'16px 18px 12px',marginTop:12}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,
+        fontSize:12.5,color:T.t2}}>
+        <span style={{display:'inline-flex',alignItems:'center',gap:6,color:res[1],fontWeight:600,fontSize:12}}>
+          <i style={{width:6,height:6,borderRadius:'50%',background:res[1],display:'inline-block'}}/>{res[0]}</span>
+        <span style={{whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{[m.event,date].filter(Boolean).join(' · ')}</span>
+      </div>
+      {cols&&<div style={{display:'flex',justifyContent:'flex-end',fontSize:10.5,color:T.t3,marginTop:8}}>
+        {cols.map(i=><span key={i} style={{width:34,textAlign:'right'}}>{i+1}</span>)}</div>}
+      <div style={{marginTop:cols?2:8}}>
+        {team(m.mine,true,m.sm,0,meLost)}
+        {team(m.opp,false,m.so,1,oppLost)}
+      </div>
+    </div>
+  );
+}
+
+function ProfileHistory({profile,onBack,onHome}){
+  const safeStats=useProfileStats(profile);
+  const[rows,setRows]=useState(null);
+  const[tab,setTab]=useState('alle');
+  useEffect(()=>{
+    let alive=true;
+    dbLoadMatchHistory().then(r=>{if(alive)setRows((r||[]).map(normMatch));}).catch(()=>{if(alive)setRows([]);});
+    return()=>{alive=false;};
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[profile.matchesPlayed,profile.statsResetAt]);
+  const list=(rows||[]).filter(m=>tab==='alle'||(tab==='single'?m.single:!m.single));
+  // Serie: gleiche Ergebnisse am Stueck, vom juengsten Match an.
+  const streak=(()=>{
+    const r=(rows||[]).filter(m=>m.won!=null); if(!r.length) return null;
+    let k=0; while(k<r.length&&r[k].won===r[0].won) k++;
+    return [(r[0].won?'S':'N')+k,r[0].won?T.g:T.r];
+  })();
+  const groups=[]; list.forEach(m=>{
+    const key=m.at?new Date(m.at).toLocaleDateString('de-DE',{month:'long',year:'numeric'}):'Ohne Datum';
+    const g=groups[groups.length-1];
+    if(g&&g.key===key) g.items.push(m); else groups.push({key,items:[m]});
+  });
+  const thisYear=String(new Date().getFullYear());
+  return(
+    <ProfileSub profile={profile} kicker="Profil" title="Match-Verlauf" onBack={onBack} onHome={onHome}>
+      <ProfileTrio style={{marginTop:34}} items={[
+        [safeStats.wins,'Siege'],
+        [safeStats.losses,'Niederlagen'],
+        [streak?streak[0]:'—','Serie',streak?.[1]],
+      ]}/>
+      <LevelChart log={readLevelLog()} cur={profileLevel(profile)}/>
+      <div role="tablist" style={{display:'flex',gap:22,marginTop:34,fontSize:15,fontWeight:500}}>
+        {[['alle','Alle'],['single','Single Match'],['turnier','Turnier']].map(([k,l])=>(
+          <button key={k} role="tab" aria-selected={tab===k} onClick={()=>{buzz(6);setTab(k);}}
+            style={{background:'none',border:'none',padding:'0 0 6px',cursor:'pointer',fontSize:15,fontWeight:500,
+              color:tab===k?T.t1:T.t3,borderBottom:`1.5px solid ${tab===k?T.o:'transparent'}`}}>{l}</button>
+        ))}
+      </div>
+      {rows&&!list.length&&(
+        <div style={{color:T.t2,fontSize:15,fontStyle:'italic',lineHeight:1.5,marginTop:30}}>
+          {rows.length?'Hier ist noch nichts dabei.':'Noch keine Matches — spiel ein Single Match oder ein Turnier, dann steht es hier.'}
+        </div>
+      )}
+      {groups.map(g=>(
+        <div key={g.key}>
+          <div style={{...HEAD_SERIF,fontSize:25,margin:'38px 0 2px'}}>{g.key.replace(` ${thisYear}`,'')}</div>
+          {g.items.slice(0,60).map((m,i)=><MatchCard key={i} m={m}/>)}
+        </div>
+      ))}
+    </ProfileSub>
+  );
+}
+
+/* ── Über mich ── Spruch (antippen = bearbeiten), Angaben vom Platz,
+   Konto. Der Schalter „Öffentliches Profil“ ist nicht mitgekommen:
+   er zeigte auf die Spielersuche, und die gibt es nicht mehr. */
+function ProfileAbout({profile,setProfile,onBack,onHome,onOpenEdit,onOpenPrefs,onResetOnboarding,onResetStats}){
+  const[bioEdit,setBioEdit]=useState(false);
+  const[bioVal,setBioVal]=useState(profile.bio||'');
+  const[confirmReset,setConfirmReset]=useState(false);
+  const bio=(profile.bio||'').trim();
+  return(
+    <ProfileSub profile={profile} kicker="Profil" title="Über mich" onBack={onBack} onHome={onHome}>
+      {bioEdit?(
+        <div className="fi" style={{marginTop:30}}>
+          <textarea value={bioVal} onChange={e=>setBioVal(e.target.value.slice(0,200))}
+            maxLength={200} rows={3} autoFocus placeholder="Dein Spruch fürs Profil … (max. 200 Zeichen)"
+            style={{...GLASS,width:'100%',borderRadius:16,padding:'14px 16px',color:T.t1,fontSize:17,
+              lineHeight:1.45,fontFamily:T.fontSerif,fontStyle:'italic',outline:'none',boxSizing:'border-box',resize:'none'}}/>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginTop:12}}>
+            <span style={{color:bioVal.length>=200?T.r:T.t3,fontSize:12,fontVariantNumeric:'tabular-nums'}}>{bioVal.length}/200</span>
+            <div style={{display:'flex',gap:8}}>
+              <button onClick={()=>{setBioVal(profile.bio||'');setBioEdit(false);}}
+                style={{padding:'10px 16px',borderRadius:22,background:'none',border:`1px solid ${T.glassLine}`,
+                  color:T.t2,fontSize:13,fontWeight:600,cursor:'pointer'}}>Abbrechen</button>
+              <button onClick={()=>{setProfile(p=>({...p,bio:bioVal.trim().slice(0,200)}));setBioEdit(false);}}
+                style={{padding:'10px 18px',borderRadius:22,background:T.o,border:'none',
+                  color:'#000',fontSize:13,fontWeight:700,cursor:'pointer'}}>Speichern</button>
+            </div>
+          </div>
+        </div>
+      ):(
+        <button onClick={()=>{setBioVal(profile.bio||'');setBioEdit(true);}}
+          style={{display:'block',width:'100%',textAlign:'left',background:'none',border:'none',padding:0,
+            marginTop:34,cursor:'pointer',fontFamily:T.fontSerif,fontStyle:'italic',
+            fontSize:bio?30:22,lineHeight:1.25,color:bio?T.t1:T.t3}}>
+          {bio?`„${bio}“`:'Dein Spruch fürs Profil — tippen zum Schreiben.'}
+        </button>
+      )}
+
+      <PKick style={{marginTop:48}}>Auf dem Platz</PKick>
+      <div style={{marginTop:14}}>
+        <ProfileLinks rows={[
+          {label:'Schlaghand',value:HAND_SHORT[profile.handPreference]||'—'},
+          {label:'Court-Seite',value:SIDE_SHORT[profile.courtSide]||'—'},
+        ]}/>
+      </div>
+
+      <PKick style={{marginTop:44}}>Konto</PKick>
+      <div style={{marginTop:14}}>
+        <ProfileLinks rows={[
+          {label:'Profil bearbeiten',onClick:onOpenEdit},
+          {label:'Match-Präferenzen',onClick:onOpenPrefs},
+          {label:'Onboarding wiederholen',onClick:onResetOnboarding},
+          {label:'Statistik zurücksetzen',onClick:()=>setConfirmReset(true),danger:true},
+        ]}/>
+      </div>
+      {confirmReset&&(
+        <div className="fi" style={{marginTop:16,background:'color-mix(in srgb, var(--r) 8%, transparent)',
+          border:'1px solid color-mix(in srgb, var(--r) 35%, transparent)',borderRadius:16,padding:'14px 16px'}}>
+          <div style={{color:T.t1,fontSize:13.5,lineHeight:1.5,marginBottom:12}}>
+            Alle Statistiken auf 0 setzen? Geloggte Matches und das laufende Scoreboard
+            werden gelöscht — das lässt sich nicht rückgängig machen.</div>
+          <div style={{display:'flex',gap:8}}>
+            <button onClick={()=>setConfirmReset(false)} style={{flex:1,padding:'12px',borderRadius:22,
+              background:'none',border:`1px solid ${T.glassLine}`,color:T.t2,fontSize:13,fontWeight:600,cursor:'pointer'}}>Abbrechen</button>
+            <button onClick={()=>{onResetStats&&onResetStats();setConfirmReset(false);}} style={{flex:1,padding:'12px',
+              borderRadius:22,background:T.r,border:'none',color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer'}}>Auf 0 setzen</button>
+          </div>
+        </div>
+      )}
+    </ProfileSub>
   );
 }
 
@@ -5146,6 +5331,8 @@ const APP_FAQ=[
      a:'Matches und Turniere laufen komplett offline auf deinem Gerät. „Live teilen“ und der Profil-Sync brauchen eine Verbindung.'},
     {q:'Kann ich das Design ändern?',
      a:'RITMO hat ein Erscheinungsbild: Liquid Glass. Unter Einstellungen → Anpassung schaltest du den Tablet-Modus für große Bildschirme ein.'},
+    {q:'Wie ändere ich den Hintergrund meines Profils?',
+     a:'Im Profil auf dein Profilbild tippen → Hintergrund ändern. Zur Wahl stehen das Foto der Startseite und mehrere Verläufe mit Korn; der Hintergrund gilt auch für RITMO DNA, Match-Verlauf und Über mich.'},
   ]},
   {group:'Konto & Daten',items:[
     {q:'Wer sieht mein Profil und meine Statistiken?',
@@ -5723,7 +5910,9 @@ function Match({cfg,setCfg,bo3,dBo3,am,dAm,onHome,inputMode='smartphone',ringId=
       }).catch(()=>{});
       // Lokales Match-Log (Fallback ohne Supabase) → fliesst in die
       // Profil-Statistik ein, auch wenn kein Backend verbunden ist.
-      logMatchLocal({format:isB?'bo3':'americano',user_won:userWon,sets:isB?sets:null});
+      logMatchLocal({format:isB?'bo3':'americano',user_won:userWon,sets:isB?sets:null,
+        player_names:cfg.players||[cfg.nameA,cfg.nameB],score_a:isB?sA:am.pA,score_b:isB?sB:am.pB,
+        user_team:'A',event:'Single Match'});
       // Counter im Profil hochzählen (matchesPlayed + ggf. winsCount),
       // damit App-Matches in den Spielniveau-Estimate einfließen.
       onMatchLogged?.({userWon});
@@ -13834,7 +14023,9 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
         // nur wenn der User identifizierbar ist (sonst kein userWon).
         if(userTeam){
           logMatchLocal({format:'tournament-'+(tourney.format||'americano'),user_won:userWon,sets:null,
-            tournament_id:tourney.id||tourney.createdAt||null});
+            tournament_id:tourney.id||tourney.createdAt||null,
+            player_names:[...(c.t1||[]),...(c.t2||[])].map(pid=>tourney.players.find(p=>p.id===pid)?.name||''),
+            score_a:c.s1??0,score_b:c.s2??0,user_team:userTeam,event:tourney.name||null});
           onMatchLogged?.({userWon});
         }
         return {...c,logged:true};
@@ -22001,6 +22192,10 @@ export default function App(){
   useEffect(()=>lsSet('ritmo_journey_read',journeyRead),[journeyRead]);
   useEffect(()=>lsSet('ritmo_welcome_seen',welcomeSeen),[welcomeSeen]);
   useEffect(()=>lsSet('ritmo_profile',profile),[profile]);
+  // Level-Verlauf fuer das Diagramm im Match-Verlauf: ein Eintrag je
+  // Aenderung (pushLevel ignoriert gleiche Werte).
+  const curLevel=profileLevel(profile);
+  useEffect(()=>{ if(loggedIn) pushLevel(curLevel); },[curLevel,loggedIn]);
 
   // onboarded ist die Source-of-Truth im React-State, profile.onboarded
   // ist die DB-Persistenz. Spiegel das eine ins andere, damit der
@@ -22330,27 +22525,27 @@ export default function App(){
       tourneys={tourneys} hasMatch={hasMatch} matchCfg={cfg}
       onOpenTourney={openTourney}/></KeepTab>
     <KeepTab on={scr==='profile'} alive={loggedIn}><Profile profile={profile} setProfile={setProfile}
-      onHome={goHome} currentUid={currentUid} onTab={handleTab}
-      onOpenSettings={()=>setScr('settings')}
+      onHome={goHome} onTab={handleTab}
+      onOpenDNA={()=>setScr('profile-dna')}
+      onOpenHistory={()=>setScr('profile-history')}
+      onOpenAbout={()=>setScr('profile-about')}/></KeepTab>
+    {scr==='profile-dna'&&<ProfileDNA profile={profile}
+      onBack={()=>setScr('profile')} onHome={goHome}
+      onMore={()=>setScr('profile-ritmodna')}
+      onRetake={()=>{setOnboarded(false);nav('welcome');}}/>}
+    {scr==='profile-history'&&<ProfileHistory profile={profile}
+      onBack={()=>setScr('profile')} onHome={goHome}/>}
+    {scr==='profile-about'&&<ProfileAbout profile={profile} setProfile={setProfile}
+      onBack={()=>setScr('profile')} onHome={goHome}
       onOpenEdit={()=>setScr('profile-edit')}
-      onResetStats={resetStats}
-      onOpenRitmoDNA={()=>setScr('profile-ritmodna')}
+      onOpenPrefs={()=>setScr('match-prefs')}
       onResetOnboarding={()=>{setOnboarded(false);nav('welcome');}}
-      onLogout={async()=>{
-        try{await auth.signOut();}catch(e){}
-        setLoggedIn(false);
-        lsSet('ritmo_skip_intro',false); // Abmeldung → Splash läuft wieder in voller Länge
-        // onboarded NICHT zurücksetzen — bleibt persistiert, damit
-        // ein erneuter Login desselben Users nicht ins Onboarding
-        // läuft. Bei User-Wechsel auf demselben Gerät korrigiert der
-        // Auth-Listener (DB-Profil-Load) den Status nach Login.
-        nav('login');
-      }}/></KeepTab>
+      onResetStats={resetStats}/>}
     {scr==='profile-ritmodna'&&<ProfileRitmoDNA profile={profile}
-      onBack={()=>setScr('profile')}
+      onBack={()=>setScr('profile-dna')}
       onHome={goHome}/>}
     {scr==='profile-edit'&&<ProfileEdit profile={profile} setProfile={setProfile}
-      onBack={()=>setScr('profile')} onHome={goHome}
+      onBack={()=>setScr('profile-about')} onHome={goHome}
       onResetStats={resetStats}/>}
     {scr==='rules'&&<RulesLanding onHome={goHome}
       onContinue={()=>setScr('rules-overview')}

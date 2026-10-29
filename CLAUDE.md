@@ -457,8 +457,14 @@ Neu gebaut als Magazin, nicht nur umgefaerbt.
   malt nur den Sweet Spot (`RK_SPOT`, in Buehnen-Einheiten gemessen),
   der durch die leere Flaeche leuchtet. Der Formwechsel ist ein
   Kartendreher (`scaleX`), der Regler laeuft Kontrolle → Power mit. `ShotArt` steht dort in einem festen Rahmen (Breite
-  100 %, Hoehe 168): in einer zentrierten Spalte faellt sein `flex:1`
+  100 %, Hoehe 132): in einer zentrierten Spalte faellt sein `flex:1`
   sonst auf Breite 0 zusammen, und die Zeichnung ist unsichtbar.
+  **Die Maske bekommt eine Box im Seitenverhaeltnis der Datei**
+  (`ratio`, `RACKET_RATIO`, Maske `100% 100%`) statt `contain` in einer
+  breiteren Box — auf dem iPhone standen die Schlaeger sonst in der
+  Breite gestaucht (Diamant 0,46 statt 0,57). Dasselbe gilt fuer die
+  Szene: ihr Rahmen traegt `aspectRatio:'160 / 150'`, die Box exakt
+  56,8 x 100 Einheiten.
 - **Das Regelwerk hat zehn Kapitel** (`RULES_CHAPTERS`, daraus auch
   `RULES_ORDER` fuer das Blaettern in `App()`): Court & Ausrüstung,
   Aufschlag, Wände & Ballwechsel, Zählweise, Americano, Mexicano,

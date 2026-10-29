@@ -20101,7 +20101,11 @@ function RulesDetailLayout({icon,title,sub,visual,children,onBackToRules,onHome,
    faerbt sie T.t1 und sie folgen dem Theme, statt als schwarze Linie
    auf dunklem Glas zu verschwinden.
 ─────────────────────────────────────────────────────────────────── */
-function ShotArt({src,h=170,label,delay=0,dir='shots'}){
+/* ratio: Seitenverhaeltnis der Datei. Mit ratio bekommt die Maske
+   eine Box in genau diesen Proportionen und fuellt sie (100 % 100 %),
+   statt per contain in einer breiteren Box zu sitzen — WebKit hat die
+   Schlaeger dort in der Breite gestaucht. */
+function ShotArt({src,h=170,label,delay=0,dir='shots',ratio}){
   const url=`url(${getAssetBase()}assets/${dir}/${src}.svg)`;
   const[ref,seen]=useInView();
   return(
@@ -20109,10 +20113,12 @@ function ShotArt({src,h=170,label,delay=0,dir='shots'}){
       {/* Auftritt wie eine Feder, die die Linie zieht: ein weicher Rand
           wandert einmal von links nach rechts. Maske auf Maske geht
           nicht (die Zeichnung IST schon die Maske), deshalb clip-path. */}
-      <div role="img" aria-label={label||src} style={{width:'100%',height:h,background:T.t1,
+      <div role="img" aria-label={label||src} style={{
+        ...(ratio?{height:h,width:'auto',aspectRatio:ratio,maxWidth:'100%'}:{width:'100%',height:h}),
+        background:T.t1,
         WebkitMaskImage:url,maskImage:url,WebkitMaskRepeat:'no-repeat',maskRepeat:'no-repeat',
         WebkitMaskPosition:'center',maskPosition:'center',
-        WebkitMaskSize:'contain',maskSize:'contain',
+        WebkitMaskSize:ratio?'100% 100%':'contain',maskSize:ratio?'100% 100%':'contain',
         clipPath:seen?'inset(0 0 0 0)':'inset(0 100% 0 0)',
         transition:`clip-path 1.4s var(--ease-out-quint) ${delay}ms`}}/>
       {label&&<div className="display" style={{fontSize:10,letterSpacing:1.8,color:T.t3,
@@ -21148,6 +21154,8 @@ function JourneySchlagwahl({onBackToJourney,onHome,onNext,onPrev,currentIdx,tota
 /* Die drei Schlaegerformen nebeneinander, auf einer Achse von
    Kontrolle nach Power. Zeichnungen unter public/assets/rackets/,
    gesetzt wie die Schlagarten (ShotArt, Maske in T.t1). */
+/* Seitenverhaeltnis der Dateien (Breite / Hoehe des Ausschnitts). */
+const RACKET_RATIO={rund:'384 / 676',tropfen:'372 / 676',diamant:'382 / 676'};
 const RACKET_SHAPES=[
   {id:'rund',name:'Rund',pts:['Größter Sweet Spot','Meiste Kontrolle','Einsteiger']},
   {id:'tropfen',name:'Tropfen',pts:['Power & Kontrolle','Allrounder']},
@@ -21168,8 +21176,8 @@ function RacketShapes(){
       <div style={{display:'flex',gap:6,marginTop:16}}>
         {RACKET_SHAPES.map((r,i)=>(
           <div key={r.id} style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',alignItems:'center'}}>
-            <div style={{width:'100%',height:168,display:'flex'}}>
-              <ShotArt dir="rackets" src={r.id} h={168} label={null} delay={i*160}/>
+            <div style={{width:'100%',height:132,display:'flex'}}>
+              <ShotArt dir="rackets" src={r.id} h={132} ratio={RACKET_RATIO[r.id]} label={null} delay={i*160}/>
             </div>
             <div style={{fontFamily:T.fontSerif,fontWeight:700,fontSize:19,marginTop:10}}>{r.name}</div>
             <div style={{marginTop:6,display:'flex',flexDirection:'column',gap:3,alignItems:'center'}}>

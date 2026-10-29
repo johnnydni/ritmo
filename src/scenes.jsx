@@ -741,11 +741,11 @@ export function SceneShotChoice(){
    (public/assets/rackets/, aus der Vorlage des Teams vektorisiert).
    Sie liegen als CSS-Maske UEBER der Buehne — das SVG darunter malt
    nur den Sweet Spot, der durch die leere Flaeche der Zeichnung
-   leuchtet. Box: 28/4, 68 x 120 Einheiten (Seitenverhaeltnis der
+   leuchtet. Box: 33.6/14, 56.8 x 100 Einheiten (Seitenverhaeltnis der
    Dateien, 384 x 676). Sweet Spot je Form in diesen Einheiten. */
 const RK_IDS=['rund','tropfen','diamant'];
-const RK_BOX={x:28,y:4,w:68,h:120};
-const RK_SPOT=[{cy:37.6,rx:21,ry:21},{cy:37.6,rx:16,ry:25},{cy:20.8,rx:20,ry:6.6}];
+const RK_BOX={x:33.6,y:14,w:56.8,h:100};
+const RK_SPOT=[{cy:42,rx:17.5,ry:17.5},{cy:42,rx:13.3,ry:20.8},{cy:28,rx:16.7,ry:5.5}];
 export function SceneRacket(){
   const D=3;
   const[ref,t]=useSceneClock(D*3,{still:4});
@@ -763,7 +763,7 @@ export function SceneRacket(){
   const pc=v=>`${v}%`;
   return(
     <div ref={ref} style={{width:'100%',display:'flex',justifyContent:'center'}}>
-      <div style={{position:'relative',width:'100%',maxWidth:340}}>
+      <div style={{position:'relative',width:'100%',maxWidth:340,aspectRatio:'160 / 150'}}>
         <Stage vb="0 0 160 150" label="Schlägerformen: Rund, Tropfen, Diamant">
           <ellipse cx={cx} cy={sp('cy')} rx={sp('rx')+4} ry={sp('ry')+4} fill={T.o} opacity={pulse*.16}/>
           <ellipse cx={cx} cy={sp('cy')} rx={sp('rx')} ry={sp('ry')} fill={T.o} opacity={pulse*.55}/>
@@ -781,7 +781,7 @@ export function SceneRacket(){
           background:T.t1,transform:`scaleX(${Math.max(.02,sx)})`,
           WebkitMaskImage:url,maskImage:url,WebkitMaskRepeat:'no-repeat',maskRepeat:'no-repeat',
           WebkitMaskPosition:'center',maskPosition:'center',
-          WebkitMaskSize:'contain',maskSize:'contain'}}/>
+          WebkitMaskSize:'100% 100%',maskSize:'100% 100%'}}/>
       </div>
     </div>
   );

@@ -449,8 +449,9 @@ Neu gebaut als Magazin, nicht nur umgefaerbt.
   Tropfen und Diamant als Strichzeichnungen unter
   [public/assets/rackets/](public/assets/rackets/), auf einer Achse
   Kontrolle → Power, gesetzt mit `ShotArt` (`dir="rackets"`). Die SVGs
-  sind nach der Vorlage des Teams nachgezeichnet, nur Striche, kein
-  Text darin. `ShotArt` steht dort in einem festen Rahmen (Breite
+  sind 1:1 aus der Vorlage des Teams vektorisiert (Ausschnitt,
+  Schriftzug „SWEETSPOT“ weiss uebermalt, Schwelle, potrace auf
+  doppelter Aufloesung) — gefuellte Konturen, kein Text darin. `ShotArt` steht dort in einem festen Rahmen (Breite
   100 %, Hoehe 168): in einer zentrierten Spalte faellt sein `flex:1`
   sonst auf Breite 0 zusammen, und die Zeichnung ist unsichtbar.
 - **Das Regelwerk hat zehn Kapitel** (`RULES_CHAPTERS`, daraus auch

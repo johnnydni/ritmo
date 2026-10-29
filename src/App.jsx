@@ -82,7 +82,7 @@ function WissenLanding({title,subtitle,hero,headline,text,cta,ctaLabel,
   onHome,onContinue,onMarkRead,alreadyRead}){
   return(
     <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
-      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 18px)',position:'relative',overflow:'hidden'}}>
       <PhotoBackdrop/>
       <ScreenHeader kicker="Bibel" title={title} subtitle={subtitle} pad={18}
         right={<QuestionToggle filled={alreadyRead} onClick={onMarkRead}/>}/>
@@ -2109,7 +2109,7 @@ function ProfileRitmoDNA({profile,onBack,onHome}){
 
       {/* HEADER ZONE — colored with style accent */}
       <div style={{
-        padding:'calc(env(safe-area-inset-top,0px) + 60px) 22px 36px',
+        padding:'calc(env(safe-area-inset-top,0px) + 18px) 22px 36px',
         background:style?`linear-gradient(135deg, ${accent}55 0%, ${T.bg} 100%)`:'var(--headerGrad)',
         display:'flex',alignItems:'flex-start',gap:12,position:'relative',zIndex:1,
       }}>
@@ -2660,7 +2660,7 @@ function PhotoBackdrop({dim=0}){
 /* Screen-Kopf: Schriftzug (wie auf Home), Ressort (Centauri, orange),
    Schlagzeile in der Antiqua der Startseite, Haarlinie, Vorspann.
    kicker ist optional. */
-function ScreenHeader({title,subtitle,icon,right,pad=22,ellipsis=false,kicker,rule=true,
+function ScreenHeader({title,subtitle,icon,right,pad=24,ellipsis=false,kicker,rule=true,
   /* Die Unterzeile ist normalerweise ein Standfirst — ein Satz, und
      der steht kursiv. Wo sie stattdessen eine Statuszeile ist
      (Format | Runde | Endzeit), ist Kursiv falsch: das sind Angaben,
@@ -2681,10 +2681,10 @@ function ScreenHeader({title,subtitle,icon,right,pad=22,ellipsis=false,kicker,ru
       </div>
       {kicker&&(
         <div style={{fontFamily:T.fontDisplay,color:T.o,fontSize:11,letterSpacing:3,
-          lineHeight:1,marginTop:18,marginLeft:10}}>{kicker}</div>
+          lineHeight:1,marginTop:18,marginLeft:13}}>{kicker}</div>
       )}
       {title!=null&&(
-        <div style={{...HEAD_SERIF,fontSize:38,marginTop:kicker?9:16,marginLeft:10,
+        <div style={{...HEAD_SERIF,fontSize:38,marginTop:kicker?9:16,marginLeft:13,
           lineHeight:1.08,paddingBottom:2,
           ...(ellipsis?{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}:{})}}>
           {title}
@@ -2692,11 +2692,11 @@ function ScreenHeader({title,subtitle,icon,right,pad=22,ellipsis=false,kicker,ru
       )}
       {subtitle&&(<>
         {rule&&(
-          <div style={{height:1,width:34,marginTop:11,marginLeft:10,borderRadius:1,
+          <div style={{height:1,width:34,marginTop:12,marginLeft:13,borderRadius:1,
             background:`linear-gradient(90deg,${T.o},transparent)`}}/>
         )}
-        <div className="txt" style={{color:T.t2,fontSize:15,marginTop:rule?9:5,
-          marginLeft:10,fontStyle:subtitleItalic?'italic':'normal',lineHeight:1.45,
+        <div className="txt" style={{color:T.t2,fontSize:15,marginTop:rule?10:6,
+          marginLeft:13,fontStyle:subtitleItalic?'italic':'normal',lineHeight:1.45,
           textShadow:'0 1px 8px rgba(0,0,0,.45)'}}>
           {subtitle}
         </div>
@@ -2718,7 +2718,7 @@ function ScreenHeader({title,subtitle,icon,right,pad=22,ellipsis=false,kicker,ru
 /* Seit der neuen Startseite traegt die Zeile deren Antiqua (kursiv,
    fett) statt Centauri — dieselbe Stimme wie „Spielen“ / „Events“,
    nur kleiner, weil hier ein Abschnitt beginnt und kein Screen. */
-function SectionRule({children,trailing,top=26,bottom=13,mx=0}){
+function SectionRule({children,trailing,top=30,bottom=16,mx=0}){
   return(
     <div style={{margin:`${top}px ${mx}px ${bottom}px`}}>
       <div style={{display:'flex',alignItems:'flex-end',gap:12,minHeight:28}}>
@@ -2727,7 +2727,7 @@ function SectionRule({children,trailing,top=26,bottom=13,mx=0}){
           overflow:'hidden',textOverflow:'ellipsis'}}>{children}</div>
         {trailing}
       </div>
-      <div style={{height:1,background:T.glassSep,marginTop:8}}/>
+      <div style={{height:1,background:T.glassSep,marginTop:10}}/>
     </div>
   );
 }
@@ -3583,11 +3583,11 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
   const card={...GLASS,borderRadius:20};
   const capSty={color:T.t2,fontSize:11.5,fontWeight:500,lineHeight:1.4};
   const SecTitle=({children,top=26})=>(
-    <SectionRule top={top} mx={2}>{children}</SectionRule>
+    <SectionRule top={top}>{children}</SectionRule>
   );
   // Karten-Eyebrow: Kategorie-Farbe + Icon, wie die Health-Karten.
   const Eyebrow=({color,icon,children,chev})=>(
-    <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:10}}>
+    <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:12}}>
       <span style={{color,display:'inline-flex',flexShrink:0}}>{icon}</span>
       <span style={{color,fontSize:12.5,fontWeight:700,letterSpacing:.2,flex:1,minWidth:0,
         whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{children}</span>
@@ -3611,7 +3611,7 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
   };
   // Gruppierte Liste — iOS-Settings-Zelle mit Farb-Chip.
   const Row=({chip,chipColor,label,value,trailing,onClick,top=false,danger=false})=>{
-    const sty={width:'100%',display:'flex',alignItems:'center',gap:12,padding:'12px 0',
+    const sty={width:'100%',display:'flex',alignItems:'center',gap:12,padding:'13px 0',
       background:'none',border:'none',textAlign:'left',color:T.t1,
       borderTop:top?'none':`1px solid ${T.glassSep}`};
     const inner=(<>
@@ -3641,7 +3641,7 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
             beim Scrollen aus, während der Inline-Titel in der Bar
             einblendet (iOS-Title-Crossfade). Tap auf den Avatar =
             Foto ändern (AvatarWithUpload). */}
-        <div className="fi" style={{padding:'calc(env(safe-area-inset-top,0px) + 84px) 22px 0',
+        <div className="fi" style={{padding:'calc(env(safe-area-inset-top,0px) + 76px) 22px 0',
           display:'flex',alignItems:'center',justifyContent:'space-between',gap:14,
           opacity:1-titleIn}}>
           <div style={{minWidth:0,flex:1}}>
@@ -3663,7 +3663,7 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
             {/* Level — Tap öffnet den Editor (nur geschätzte Level). */}
             <button onClick={()=>{if(isEstimated)setEditingLevel(e=>!e);}}
               className="fu" data-lift={isEstimated||undefined}
-              style={{...card,padding:'13px 14px 12px',textAlign:'left',color:T.t1,
+              style={{...card,padding:'16px 16px 15px',textAlign:'left',color:T.t1,
                 cursor:isEstimated?'pointer':'default'}}>
               <Eyebrow color={T.o} icon={<DNAIcon size={14} color="currentColor"/>}
                 chev={isEstimated}>RITMO Level</Eyebrow>
@@ -3683,7 +3683,7 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
               </div>
             </button>
             {/* Form — Herz-rot mit Mini-Sparkline (Health-Zitat). */}
-            <div className="fu" style={{...card,padding:'13px 14px 12px',animationDelay:'.05s'}}>
+            <div className="fu" style={{...card,padding:'16px 16px 15px',animationDelay:'.05s'}}>
               <Eyebrow color={T.r} icon={<HeartIcon size={14}/>}>Form</Eyebrow>
               {safeStats.formTrend.length>=2?(<>
                 <div style={{display:'flex',alignItems:'baseline',gap:6}}>
@@ -3699,7 +3699,7 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
               </>)}
             </div>
             {/* Win-Rate — Aktivitäts-Ring in Grün. */}
-            <div className="fu" style={{...card,padding:'13px 14px 12px',animationDelay:'.1s'}}>
+            <div className="fu" style={{...card,padding:'16px 16px 15px',animationDelay:'.1s'}}>
               <Eyebrow color={T.g} icon={<TrophyIcon size={15} color="currentColor"/>}>Win-Rate</Eyebrow>
               <div style={{display:'flex',alignItems:'center',gap:12}}>
                 <Ring value={(safeStats.winRate||0)/100} color={T.g}/>
@@ -3716,7 +3716,7 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
               </div>
             </div>
             {/* Matches gesamt — Blau. */}
-            <div className="fu" style={{...card,padding:'13px 14px 12px',animationDelay:'.15s'}}>
+            <div className="fu" style={{...card,padding:'16px 16px 15px',animationDelay:'.15s'}}>
               <Eyebrow color={T.blue} icon={<RacketMini size={15} color="currentColor"/>}>Matches</Eyebrow>
               <div style={{color:T.t1,fontSize:30,fontWeight:800,letterSpacing:-1.2,
                 lineHeight:1,fontVariantNumeric:'tabular-nums'}}>
@@ -3727,7 +3727,7 @@ function Profile({profile,setProfile,onHome,onLogout,onResetOnboarding,onOpenRit
             {/* Einzel vs. Turnier — volle Breite, beide Zähler getrennt:
                 Single Matches links, verschiedene Turniere rechts. */}
             <div className="fu" style={{...card,gridColumn:'1 / -1',
-              padding:'13px 14px 12px',animationDelay:'.2s'}}>
+              padding:'16px 16px 15px',animationDelay:'.2s'}}>
               <Eyebrow color={T.o} icon={<TrophyIcon size={15} color="currentColor"/>}>
                 Single Matches, Turniere
               </Eyebrow>
@@ -4018,7 +4018,7 @@ function ProfileEdit({profile,setProfile,onBack,onHome,onResetStats}){
   const fabBase=FAB_BASE;
   return(
     <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
-      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 18px)',
       position:'relative',overflow:'hidden'}}>
       <PhotoBackdrop/>
       <div style={{padding:'0 22px 18px'}}>
@@ -4258,7 +4258,7 @@ function MatchPrefs({profile,setProfile,currentUid,onHome}){
   const sub={color:T.t3,fontSize:11,fontWeight:500,lineHeight:1.5,marginBottom:12};
   return(
     <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
-      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 18px)',position:'relative',overflow:'hidden'}}>
       <PhotoBackdrop/>
       <ScreenHeader title="Matches für dich" kicker="Entdecken"
         subtitle="Sag uns, wie du spielen willst — wir schlagen passende Matches vor."
@@ -5052,7 +5052,7 @@ function SearchHub({nav,onTab}){
   return(
     <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden',
-      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 18px)'}}>
       <PhotoBackdrop/>
       <ScreenHeader title="Suche" kicker="Entdecken"
         icon={<SearchIcon size={34}/>}/>
@@ -5085,7 +5085,7 @@ function ComingSoon({icon,title,desc,bullets=[],onHome}){
   return(
     <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden',
-      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 18px)'}}>
       <PhotoBackdrop/>
       <div style={{flex:1,padding:'0 22px 140px',overflowY:'auto',
         WebkitOverflowScrolling:'touch'}}>
@@ -5166,7 +5166,7 @@ function AppFAQ({onBack,onHome}){
   return(
     <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden',
-      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 18px)'}}>
       <PhotoBackdrop/>
       <ScreenHeader pad={14} kicker="Bibel" title="App FAQ" subtitle="Häufige Fragen, kurze Antworten."
         icon={<BookIcon size={34} color={T.t1}/>}/>
@@ -5343,7 +5343,7 @@ function SingleSetup({nav,onHome,cfg,setCfg,profile}){
      kleine gruene „Start“-Kreis unten rechts war leicht zu uebersehen. */
   return(
     <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
-      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 18px)',position:'relative',overflow:'hidden'}}>
       <PhotoBackdrop/>
 
       <ScreenHeader title="Single Match" kicker="Spielen"
@@ -9583,7 +9583,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
 
   return(
     <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
-      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 18px)',position:'relative',overflow:'hidden'}}>
       <PhotoBackdrop/>
 
       {/* Der Titel sagt, was hier passiert. Darunter stand bis vor
@@ -10508,7 +10508,7 @@ function OnlineTournamentLobby({pin,onHome,onStart,onCancel}){
 
   return(
     <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
-      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 18px)',position:'relative',overflow:'hidden'}}>
       <PhotoBackdrop/>
 
       <ScreenHeader title="Online-Lobby" kicker="Turnier" icon={<TrophyIcon size={36} color={T.t1}/>}/>
@@ -11828,7 +11828,7 @@ function JoinTournament({initialPin,profile,onHome,onJoin,onLeave,restored}){
 
   return(
     <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
-      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 18px)',position:'relative',overflow:'hidden'}}>
       <PhotoBackdrop dim={.25}/>
 
       {/* Der Einstiegssatz steht als Standfirst unter dem Titel — als
@@ -14073,7 +14073,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
 
   return(
     <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
-      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 18px)',position:'relative',overflow:'hidden'}}>
       <PhotoBackdrop dim={.32}/>
 
       <ScreenHeader pad={14} ellipsis rule={false} subtitleItalic={false}
@@ -14662,7 +14662,7 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
   })();
   return(
     <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
-      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 18px)',position:'relative',overflow:'hidden'}}>
       <PhotoBackdrop dim={.3}/>
 
       {/* Kopf ohne Ueberschrift: die Ueberschrift IST der Siegername. */}
@@ -15053,7 +15053,7 @@ function Live({hasMatch,tourneys=[],matchCfg,nav,onNewTourney,activeTab,setActiv
 
   return(
     <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
-      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 18px)',position:'relative',overflow:'hidden'}}>
       <PhotoBackdrop/>
 
       {/* Header als relativer Anker: der "Alle löschen"-Button hängt
@@ -15514,7 +15514,7 @@ function Settings({onHome,onBack,nav,onLogout}){
 
   return(
     <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
-      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 18px)',position:'relative',overflow:'hidden'}}>
       <PhotoBackdrop/>
 
       <ScreenHeader pad={0} title={<Hl text="Einstellungen" q={q}/>}
@@ -15627,7 +15627,7 @@ function SettingsSubLayout({title,desc,icon,onBack,onHome,children}){
   const fabBase=FAB_BASE;
   return(
     <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
-      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 18px)',
       position:'relative',overflow:'hidden'}}>
       <PhotoBackdrop/>
 
@@ -16600,7 +16600,7 @@ function RitmoPost({onHome,profile}){
 
   return(
     <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
-      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 18px)',
       position:'relative',overflow:'hidden'}}>
       <PhotoBackdrop/>
 
@@ -19512,7 +19512,7 @@ function HubBigCard({icon,title,desc,onClick,accent,delay='0s'}){
   return(
     <button onClick={onClick} className="fu" data-lift
       style={{...GLASS,borderRadius:20,
-        padding:'18px 18px',display:'flex',alignItems:'center',gap:16,
+        padding:'20px 18px',display:'flex',alignItems:'center',gap:16,
         cursor:'pointer',color:T.t1,textAlign:'left',
         animationDelay:delay,width:'100%'}}
       onPointerDown={e=>e.currentTarget.style.background=T.glassHi}
@@ -19526,7 +19526,7 @@ function HubBigCard({icon,title,desc,onClick,accent,delay='0s'}){
       </div>
       <div style={{flex:1,minWidth:0}}>
         <div style={{fontFamily:T.fontSerif,color:T.t1,fontSize:22,fontWeight:700,
-          lineHeight:1.1,marginBottom:4}}>
+          lineHeight:1.1,marginBottom:5}}>
           {title}
         </div>
         <div className="txt" style={{color:T.t2,fontSize:13,fontStyle:'italic',
@@ -19558,7 +19558,7 @@ function TournamentHub({onHome,onStart,onJoin,onCup,
   return(
     <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden',
-      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 18px)'}}>
       <PhotoBackdrop/>
       <ScreenHeader title="Turnier" kicker="Spielen" subtitle="Starten oder beitreten."
         icon={<TrophyIcon size={32} color={T.t1}/>}/>
@@ -19650,11 +19650,15 @@ function TournamentHub({onHome,onStart,onJoin,onCup,
   );
 }
 
+/* Taktik-Board vorerst ausgeblendet: Code und Route bleiben, nur der
+   Einstieg in der Bibel fehlt. Auf true, und die Karte ist wieder da. */
+const TACTICS_ON=false;
+
 function RitmoBibel({onHome,onRules,onJourney,onFaq,onTactics,onTab}){
   return(
     <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       position:'relative',overflow:'hidden',
-      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)'}}>
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 18px)'}}>
       <PhotoBackdrop/>
       <ScreenHeader title="Bibel" kicker="Wissen"
         subtitle="Regeln, Taktik und alles dazwischen."
@@ -19672,11 +19676,11 @@ function RitmoBibel({onHome,onRules,onJourney,onFaq,onTactics,onTab}){
           title="Journey"
           desc="Tipps & Tricks, Taktik, Material."
           onClick={onJourney} delay=".06s"/>
-        <HubBigCard
+        {TACTICS_ON&&<HubBigCard
           icon={<CourtsIcon size={28} color={T.t1}/>}
           title="Taktik-Board"
           desc="Spielzüge in 3D — ziehen, abspielen, Wetter wechseln."
-          onClick={onTactics} delay=".08s"/>
+          onClick={onTactics} delay=".08s"/>}
         <HubBigCard
           icon={<BookIcon size={28} color={T.t1}/>}
           title="App FAQ"
@@ -20153,7 +20157,7 @@ function Rules({onHome,onSelect,alreadyRead,onToggleRead,onBibel}){
 function WissenList({title,subtitle,icon,sections,onSelect,alreadyRead,onToggleRead,onHome,onBibel}){
   return(
     <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
-      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 18px)',position:'relative',overflow:'hidden'}}>
       <PhotoBackdrop/>
       <ScreenHeader kicker="Bibel" title={title} subtitle={subtitle}
         right={onToggleRead?<QuestionToggle filled={alreadyRead} onClick={onToggleRead}/>:icon}/>
@@ -20535,7 +20539,7 @@ function JourneySpielstileList({onBack,onHome,onSelect}){
 
   return(
     <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
-      paddingTop:'calc(env(safe-area-inset-top,0px) + 60px)',position:'relative',overflow:'hidden'}}>
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 18px)',position:'relative',overflow:'hidden'}}>
       <PhotoBackdrop/>
       <div style={{padding:'0 22px 8px'}}>
         <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>

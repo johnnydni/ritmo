@@ -326,7 +326,10 @@ Die Bausteine stehen in App.jsx direkt vor `ScreenHeader`:
   **weisse** Pille (`AUTH_BTN`), Google/Apple stehen als
   Konturpillen unter „ODER" (`AuthSoon`, `AuthOr`), Links orange
   (`AuthLink`). Nur die Beta-Landing behaelt ihr Foto, traegt aber
-  dieselben Knoepfe (Registrieren weiss, Anmelden Kontur).
+  dieselben Knoepfe (Registrieren weiss, Anmelden Kontur). Unter ihrer
+  Schlagzeile stehen statt der Store-Pillen nur noch zwei weisse
+  Zeichen (`PlayStoreGlyph`, `AppStoreLine` in icons.jsx, beide in
+  `currentColor`) — eine Ankuendigung, kein Knopf.
 
 ### Raster und Abstaende
 

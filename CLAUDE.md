@@ -445,6 +445,14 @@ Neu gebaut als Magazin, nicht nur umgefaerbt.
   Ausholbewegung ueber Kopf die Víbora) — wer neue liefert, prueft das
   Bild, nicht den Dateinamen. Die alten Strichmaennchen (`ShotBase`
   samt sieben `*Figure`) sind raus.
+- **Schlaegerformen** (Journey → Schläger, `RacketShapes`): Rund,
+  Tropfen und Diamant als Strichzeichnungen unter
+  [public/assets/rackets/](public/assets/rackets/), auf einer Achse
+  Kontrolle → Power, gesetzt mit `ShotArt` (`dir="rackets"`). Die SVGs
+  sind nach der Vorlage des Teams nachgezeichnet, nur Striche, kein
+  Text darin. `ShotArt` steht dort in einem festen Rahmen (Breite
+  100 %, Hoehe 168): in einer zentrierten Spalte faellt sein `flex:1`
+  sonst auf Breite 0 zusammen, und die Zeichnung ist unsichtbar.
 - **Das Regelwerk hat zehn Kapitel** (`RULES_CHAPTERS`, daraus auch
   `RULES_ORDER` fuer das Blaettern in `App()`): Court & Ausrüstung,
   Aufschlag, Wände & Ballwechsel, Zählweise, Americano, Mexicano,

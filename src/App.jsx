@@ -20101,8 +20101,8 @@ function RulesDetailLayout({icon,title,sub,visual,children,onBackToRules,onHome,
    faerbt sie T.t1 und sie folgen dem Theme, statt als schwarze Linie
    auf dunklem Glas zu verschwinden.
 ─────────────────────────────────────────────────────────────────── */
-function ShotArt({src,h=170,label,delay=0}){
-  const url=`url(${getAssetBase()}assets/shots/${src}.svg)`;
+function ShotArt({src,h=170,label,delay=0,dir='shots'}){
+  const url=`url(${getAssetBase()}assets/${dir}/${src}.svg)`;
   const[ref,seen]=useInView();
   return(
     <div ref={ref} style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',alignItems:'center',gap:6}}>
@@ -20520,7 +20520,7 @@ function Journey({onHome,onSelect,alreadyRead,onToggleRead,onBibel}){
     {id:'aufstellungen',icon:<PeopleIcon size={24} color={T.o}/>,title:'Aufstellungen', sub:'Netz, Hinten, Verteidigung, Angriff'},
     {id:'haende',       icon:<HandIcon size={24} color={T.o}/>,title:'Hand-Seiten',   sub:'Links-/Rechtshänder am Court'},
     {id:'schlagwahl',   icon:<TennisBallIcon size={24}/>,title:'Schlagwahl',    sub:'Wann welche Schlagart?'},
-    {id:'schlaeger',    icon:<RacketMini size={24} color={T.o}/>,title:'Schläger',      sub:'Rund, Diamant, Tropfen — Materialkunde'},
+    {id:'schlaeger',    icon:<RacketMini size={24} color={T.o}/>,title:'Schläger',      sub:'Rund, Tropfen, Diamant — Materialkunde'},
     {id:'baelle',       icon:<TennisBallIcon size={24}/>,title:'Bälle',         sub:'Tennis vs Padel — die Unterschiede'},
   ];
   return(
@@ -21145,19 +21145,59 @@ function JourneySchlagwahl({onBackToJourney,onHome,onNext,onPrev,currentIdx,tota
   );
 }
 
+/* Die drei Schlaegerformen nebeneinander, auf einer Achse von
+   Kontrolle nach Power. Zeichnungen unter public/assets/rackets/,
+   gesetzt wie die Schlagarten (ShotArt, Maske in T.t1). */
+const RACKET_SHAPES=[
+  {id:'rund',name:'Rund',pts:['Größter Sweet Spot','Meiste Kontrolle','Einsteiger']},
+  {id:'tropfen',name:'Tropfen',pts:['Power & Kontrolle','Allrounder']},
+  {id:'diamant',name:'Diamant',pts:['Meiste Power','Sweet Spot oben','Fortgeschrittene']},
+];
+function RacketShapes(){
+  return(
+    <div className="fu" style={{...GLASS,borderRadius:20,padding:'18px 14px 18px',margin:'4px 0 18px'}}>
+      <div style={{display:'flex',alignItems:'center',gap:10,padding:'0 4px'}}>
+        <span className="display" style={{fontSize:10,letterSpacing:2,color:T.t2}}>Kontrolle</span>
+        <span aria-hidden="true" style={{flex:1,height:1,position:'relative',
+          background:`linear-gradient(90deg,${T.t3},${T.o})`}}>
+          <i style={{position:'absolute',right:-1,top:-3,width:7,height:7,borderTop:`1px solid ${T.o}`,
+            borderRight:`1px solid ${T.o}`,transform:'rotate(45deg)'}}/>
+        </span>
+        <span className="display" style={{fontSize:10,letterSpacing:2,color:T.o}}>Power</span>
+      </div>
+      <div style={{display:'flex',gap:6,marginTop:16}}>
+        {RACKET_SHAPES.map((r,i)=>(
+          <div key={r.id} style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',alignItems:'center'}}>
+            <div style={{width:'100%',height:168,display:'flex'}}>
+              <ShotArt dir="rackets" src={r.id} h={168} label={null} delay={i*160}/>
+            </div>
+            <div style={{fontFamily:T.fontSerif,fontWeight:700,fontSize:19,marginTop:10}}>{r.name}</div>
+            <div style={{marginTop:6,display:'flex',flexDirection:'column',gap:3,alignItems:'center'}}>
+              {r.pts.map(p=>(
+                <span key={p} style={{fontSize:11.5,color:T.t2,lineHeight:1.3,textAlign:'center'}}>{p}</span>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function JourneySchlaeger({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalSections}){
   return(
     <RulesDetailLayout icon={<RacketMini size={30} color={T.o}/>} title="Schläger"
-      sub="Rund, Diamant, Tropfen — Materialkunde"
+      sub="Rund, Tropfen, Diamant — Materialkunde"
       visual={<SceneRacket/>}
       onBackToRules={onBackToJourney} onHome={onHome}
       onNext={onNext} onPrev={onPrev}
       currentIdx={currentIdx} totalSections={totalSections}
       {...J_BACK}>
       <RulesH>Drei Hauptformen</RulesH>
-      <RulesDef term="Rund">Sweet Spot zentriert, maximale Kontrolle. Ideal für Anfänger und defensives Spiel.</RulesDef>
-      <RulesDef term="Diamant">Sweet Spot oben, kopflastig, maximale Power. Für Smash-orientierte Spieler.</RulesDef>
-      <RulesDef term="Tropfen">Sweet Spot oben-mittig, ausgewogen. Beliebte Allround-Wahl für Fortgeschrittene.</RulesDef>
+      <RacketShapes/>
+      <RulesDef term="Rund">Größter Sweet Spot, mittig — die meiste Kontrolle. Ideal für Einsteiger und defensives Spiel.</RulesDef>
+      <RulesDef term="Tropfen">Sweet Spot oben-mittig, Power und Kontrolle im Gleichgewicht. Die Wahl der Allrounder.</RulesDef>
+      <RulesDef term="Diamant">Sweet Spot weit oben, kopflastig — die meiste Power. Für Fortgeschrittene, die vom Netz aus abschließen.</RulesDef>
       <RulesH>Gewicht</RulesH>
       <RulesUl items={[
         'Männer: 360-380 g',

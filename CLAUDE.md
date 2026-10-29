@@ -317,8 +317,10 @@ Die Bausteine stehen in App.jsx direkt vor `ScreenHeader`:
 - **Die Anmeldeseiten sehen aus wie bei ChatGPT** (Login,
   Registrierung, Mail-Bestaetigung, Passwort, Verified-Landing):
   schlichter `T.bg` statt Foto, kleiner Schriftzug (`AuthMark`, ohne
-  Schatten), Titel in Space Grotesk 600 mit **-11 % Laufweite**
-  (`AUTH_H`) statt kursiver Antiqua, nirgends Kursive. Felder sind
+  Schatten), Titel in **Centauri** (`AUTH_H`, 22 px) statt kursiver
+  Antiqua, nirgends Kursive. Die Laufweite steht dort auf +2 % plus
+  Wortabstand: mit den zuerst gewuenschten -11 % klebten die Woerter
+  in Centauri zusammen („BALDIMAPP"). Felder sind
   Pillen mit Haarlinie und Platzhalter statt Label darueber
   (`AUTH_IN`, Fokus orange per `.auth-in`), der Hauptweg ist eine
   **weisse** Pille (`AUTH_BTN`), Google/Apple stehen als
@@ -487,6 +489,16 @@ Team A unten — wie im Setup.
   „Startseite“) statt eines Banners am Seitenende.
 - Vollbild (`bigScreen`) behaelt sein Layout; es bekommt nur das Foto
   mit `dim .62` — dort zaehlen auf dem Fernseher nur die Zahlen.
+- **Der Aufschlag im Vollbild ist ein oranger Ring mit Pfeil**
+  (`ServeOrb`), rechts neben den Games des aufschlagenden Teams — er
+  ersetzt die kleine Court-Skizze (`ServiceIndicator`) in der Ecke,
+  die man am Court aus ein paar Metern nicht mehr las. Der Pfeil zeigt
+  aus Sicht des Aufschlaegers (oben = zum Netz): von rechts ↖, von
+  links ↗. Wechselt das Team, **gleitet** der Ring in die andere
+  Haelfte (0,7 s, `--ease-ios`); wechselt die Seite, dreht sich nur
+  der Pfeil. Die Position wird an der Games-Zeile gemessen
+  (`data-serve-row`/`data-serve-col`), weil Zoom und Vorteil/Einstand
+  sie verschieben.
 
 ### Die Bibel: Regelwerk, Journey, App-FAQ
 

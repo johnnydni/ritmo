@@ -739,11 +739,12 @@ export function SceneShotChoice(){
    nach oben, der Regler von Kontrolle nach Power. */
 /* Die Zeichnungen sind dieselben wie im Kapitel darunter
    (public/assets/rackets/, aus der Vorlage des Teams vektorisiert).
-   Sie liegen als CSS-Maske UEBER der Buehne — das SVG darunter malt
+   Sie liegen als Bild (invertiert, schwarz → weiss) UEBER der Buehne — das SVG darunter malt
    nur den Sweet Spot, der durch die leere Flaeche der Zeichnung
    leuchtet. Box: 33.6/14, 56.8 x 100 Einheiten (Seitenverhaeltnis der
    Dateien, 384 x 676). Sweet Spot je Form in diesen Einheiten. */
 const RK_IDS=['rund','tropfen','diamant'];
+const RK_RATIO=[384/676,372/676,382/676];
 const RK_BOX={x:33.6,y:14,w:56.8,h:100};
 const RK_SPOT=[{cy:42,rx:17.5,ry:17.5},{cy:42,rx:13.3,ry:20.8},{cy:28,rx:16.7,ry:5.5}];
 export function SceneRacket(){
@@ -759,7 +760,9 @@ export function SceneRacket(){
   /* Wechsel als Kartendreher: die alte Form klappt zur Kante weg,
      die neue klappt auf. */
   const cur=u<.5?i:j, sx=u<.5?1-2*u:2*u-1;
-  const url=`url(${getAssetBase()}assets/rackets/${RK_IDS[cur]}.svg)`;
+  /* Breite je Datei aus ihrem Seitenverhaeltnis — Breite und Hoehe
+     stehen fest, das Bild muss nichts deuten. */
+  const bw=RK_BOX.h*RK_RATIO[cur];
   const pc=v=>`${v}%`;
   return(
     <div ref={ref} style={{width:'100%',display:'flex',justifyContent:'center'}}>
@@ -775,13 +778,12 @@ export function SceneRacket(){
           <text x={10} y={133} fontSize="5.6" fill={T.t3} style={{fontFamily:T.fontDisplay,letterSpacing:1.4}}>Kontrolle</text>
           <text x={150} y={133} textAnchor="end" fontSize="5.6" fill={T.t3} style={{fontFamily:T.fontDisplay,letterSpacing:1.4}}>Power</text>
         </Stage>
-        <div aria-hidden="true" style={{position:'absolute',
-          left:pc(RK_BOX.x/160*100),top:pc(RK_BOX.y/150*100),
-          width:pc(RK_BOX.w/160*100),height:pc(RK_BOX.h/150*100),
-          background:T.t1,transform:`scaleX(${Math.max(.02,sx)})`,
-          WebkitMaskImage:url,maskImage:url,WebkitMaskRepeat:'no-repeat',maskRepeat:'no-repeat',
-          WebkitMaskPosition:'center',maskPosition:'center',
-          WebkitMaskSize:'100% 100%',maskSize:'100% 100%'}}/>
+        <img aria-hidden="true" alt="" draggable={false}
+          src={`${getAssetBase()}assets/rackets/${RK_IDS[cur]}.svg?v=2`}
+          style={{position:'absolute',display:'block',
+            left:pc((cx-bw/2)/160*100),top:pc(RK_BOX.y/150*100),
+            width:pc(bw/160*100),height:pc(RK_BOX.h/150*100),
+            filter:'invert(1)',transform:`scaleX(${Math.max(.02,sx)})`,userSelect:'none'}}/>
       </div>
     </div>
   );

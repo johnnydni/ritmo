@@ -20101,24 +20101,34 @@ function RulesDetailLayout({icon,title,sub,visual,children,onBackToRules,onHome,
    faerbt sie T.t1 und sie folgen dem Theme, statt als schwarze Linie
    auf dunklem Glas zu verschwinden.
 ─────────────────────────────────────────────────────────────────── */
-/* ratio: Seitenverhaeltnis der Datei. Mit ratio bekommt die Maske
-   eine Box in genau diesen Proportionen und fuellt sie (100 % 100 %),
-   statt per contain in einer breiteren Box zu sitzen — WebKit hat die
-   Schlaeger dort in der Breite gestaucht. */
+/* ratio (Breite/Hoehe der Datei): dann KEINE Maske, sondern ein
+   <img> in festen Pixeln, schwarz → weiss per invert. Als Maske
+   standen die Schlaeger auf dem iPhone in der Breite gestaucht — mit
+   contain und auch mit 100 % 100 % in einer Box mit aspect-ratio. Ein
+   Bild mit width/height in px hat nichts mehr zu deuten. */
 function ShotArt({src,h=170,label,delay=0,dir='shots',ratio}){
   const url=`url(${getAssetBase()}assets/${dir}/${src}.svg)`;
   const[ref,seen]=useInView();
+  const reveal={clipPath:seen?'inset(0 0 0 0)':'inset(0 100% 0 0)',
+    transition:`clip-path 1.4s var(--ease-out-quint) ${delay}ms`};
+  if(ratio) return(
+    <div ref={ref} style={{display:'flex',justifyContent:'center',width:'100%'}}>
+      <img src={`${getAssetBase()}assets/${dir}/${src}.svg?v=${RACKET_V}`} alt={label||src}
+        width={Math.round(h*ratio)} height={h} draggable={false}
+        style={{display:'block',width:Math.round(h*ratio),height:h,flexShrink:0,
+          filter:'invert(1)',userSelect:'none',...reveal}}/>
+    </div>
+  );
   return(
     <div ref={ref} style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',alignItems:'center',gap:6}}>
       {/* Auftritt wie eine Feder, die die Linie zieht: ein weicher Rand
           wandert einmal von links nach rechts. Maske auf Maske geht
           nicht (die Zeichnung IST schon die Maske), deshalb clip-path. */}
       <div role="img" aria-label={label||src} style={{
-        ...(ratio?{height:h,width:'auto',aspectRatio:ratio,maxWidth:'100%'}:{width:'100%',height:h}),
-        background:T.t1,
+        width:'100%',height:h,background:T.t1,
         WebkitMaskImage:url,maskImage:url,WebkitMaskRepeat:'no-repeat',maskRepeat:'no-repeat',
         WebkitMaskPosition:'center',maskPosition:'center',
-        WebkitMaskSize:ratio?'100% 100%':'contain',maskSize:ratio?'100% 100%':'contain',
+        WebkitMaskSize:'contain',maskSize:'contain',
         clipPath:seen?'inset(0 0 0 0)':'inset(0 100% 0 0)',
         transition:`clip-path 1.4s var(--ease-out-quint) ${delay}ms`}}/>
       {label&&<div className="display" style={{fontSize:10,letterSpacing:1.8,color:T.t3,
@@ -21155,7 +21165,10 @@ function JourneySchlagwahl({onBackToJourney,onHome,onNext,onPrev,currentIdx,tota
    Kontrolle nach Power. Zeichnungen unter public/assets/rackets/,
    gesetzt wie die Schlagarten (ShotArt, Maske in T.t1). */
 /* Seitenverhaeltnis der Dateien (Breite / Hoehe des Ausschnitts). */
-const RACKET_RATIO={rund:'384 / 676',tropfen:'372 / 676',diamant:'382 / 676'};
+const RACKET_RATIO={rund:384/676,tropfen:372/676,diamant:382/676};
+/* Version an der URL: der Service Worker liefert Dateien ohne Hash im
+   Namen cache-first — ohne ?v= bliebe eine geaenderte Zeichnung alt. */
+const RACKET_V=2;
 const RACKET_SHAPES=[
   {id:'rund',name:'Rund',pts:['Größter Sweet Spot','Meiste Kontrolle','Einsteiger']},
   {id:'tropfen',name:'Tropfen',pts:['Power & Kontrolle','Allrounder']},

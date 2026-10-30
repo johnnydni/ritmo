@@ -471,18 +471,42 @@ export function MiniBall({size=10,color=T.o}){
   </svg>;
 }
 
-export function BallSpinner(){
+/* Der Ladebalken der App: Pille mit Haarlinie, darin schraege
+   Segmente mit schmalen Fugen — wie eine Ladeanzeige im Spiel. Eine
+   Komponente fuer alle Stellen (Splash, Screenshot-Scan, Warten auf
+   die Session), Breite wie der Schriftzug daneben.
+   - pct: 0..1 zeigt den Stand; null laeuft unbestimmt (ein Stueck
+     wandert durch); dur (ms) fuellt einmal von 0 auf voll (Splash).
+   - Die Fuellung waechst ueber ihre BREITE, nicht per scaleX: sonst
+     wuerden die Segmente mitgestreckt. Weil sie links verankert ist,
+     stehen die Segmente still, waehrend sie waechst.
+   - Das rechte Ende ist schraeg geschnitten (clip-path), im selben
+     Winkel wie die Fugen. */
+export function LoadBar({pct=null,dur=0,w=176,h,label='Wird geladen'}){
+  const H=h||Math.max(12,Math.round(w*.072)),seg=Math.round(H*1.25),gap=Math.max(2,Math.round(H*.18));
+  const cut=Math.round(H*.55),pad=Math.max(2,Math.round(H*.16));
+  const ind=pct==null&&!dur;
+  const stripes={background:`repeating-linear-gradient(115deg, ${T.t1} 0 ${seg}px, transparent ${seg}px ${seg+gap}px)`,
+    clipPath:`polygon(0 0, 100% 0, calc(100% - ${cut}px) 100%, 0 100%)`};
   return(
-    <div style={{position:'relative',width:80,height:80,animation:'spin 4s linear infinite'}}>
-      {[0,1,2,3,4,5,6,7].map(i=>(
-        <div key={i} style={{position:'absolute',top:'50%',left:'50%',marginTop:-5,marginLeft:-5,
-          transform:`rotate(${i*45}deg) translateX(28px)`,
-          opacity: 0.25 + (i/7)*0.75}}>
-          <MiniBall size={10}/>
-        </div>
-      ))}
+    <div role="progressbar" aria-label={label}
+      aria-valuenow={pct==null?undefined:Math.round(pct*100)} aria-valuemin={0} aria-valuemax={100}
+      style={{width:w,maxWidth:'100%',height:H,boxSizing:'border-box',borderRadius:H,
+        border:`${Math.max(1.5,H*.12)}px solid ${T.t1}`,padding:pad,flexShrink:0}}>
+      <div style={{position:'relative',width:'100%',height:'100%',borderRadius:H,overflow:'hidden'}}>
+        <div style={{position:'absolute',top:0,bottom:0,left:0,...stripes,
+          ...(ind?{width:'42%',animation:'ldRun 1.25s cubic-bezier(.45,0,.55,1) infinite'}
+            :dur?{width:'100%',animation:`ldFill ${dur}ms cubic-bezier(.65,0,.35,1) both`}
+            :{width:`${Math.max(0,Math.min(1,pct))*100}%`,transition:'width .3s ease'})}}/>
+      </div>
     </div>
   );
+}
+
+/* Alter Name, neues Bild: wo frueher die Ball-Rosette kreiste, laeuft
+   jetzt der Ladebalken (unbestimmt). Die Aufrufer bleiben, wie sie sind. */
+export function BallSpinner({w=176}){
+  return <LoadBar w={w}/>;
 }
 
 /* ─── Provider glyphs (Login / Register) ──────────────────────── */

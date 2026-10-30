@@ -11,20 +11,23 @@
    und hat im Startpfad der App nichts verloren. Gleiches Muster wie
    tesseract.js beim Screenshot-Import.
 
-   Aussehen: heller Dokumentstil wie die RITMO-Angebote — weisser
-   Grund, schwarzes Kopfband, Orange als einzige Akzentfarbe. Die
-   Glasoptik der App waere auf Papier eine Tonerwueste.
+   Aussehen: wie der Endstand in der App. Dunkle Seiten, der
+   Schriftzug oben, „Sieger" als Ressort und darunter der Name als
+   Schlagzeile in der kursiven Antiqua, ein Satz zum Ausgang, drei
+   Zahlen in Glaskacheln, dann die Tabelle in der Zeile der App
+   (Platz duenn, Kugel mit Spielernummer, Name mit „S · N · P",
+   Wertung duenn und gross) und der Rundenverlauf. Das PDF wird
+   geteilt, nicht gedruckt — der dunkle Grund ist gewollt.
 
-   Schriften: Centauri fuer Ressorts und Tabellenkoepfe (die Marke),
-   Inter fuer alles andere. Die Regeln aus CLAUDE.md gelten hier
-   genauso — Centauri nie fuer Zahlen (die 0 ist ein leeres Rechteck)
-   und nie fuer Spielernamen (Akzentbuchstaben fehlen der Schrift).
-
-   Inter wird eingebettet statt die eingebaute Helvetica zu nehmen,
-   weil die 14 PDF-Standardschriften nur WinAnsi koennen: aus
-   „Wisniewska" mit s-acute wurde dort ein „Wi[niewska". Den Namen
-   eines Siegers auf seiner Urkunde zu verstuemmeln geht nicht. Die
-   beiden Schnitte kommen aus tools/make-pdf-fonts.py, zusammen 51 kB.
+   Schriften wie in der App:
+   - Space Grotesk (300/400/700) fuer alles, eingebettet aus
+     tools/make-pdf-fonts.py. Die 14 PDF-Standardschriften koennen nur
+     WinAnsi: aus „Wisniewska" mit s-acute wurde dort ein „Wi[niewska".
+   - Centauri fuer Ressorts — nie fuer Zahlen, nie fuer Namen.
+   - Times (die eingebaute) fuer Ueberschriften. Sie kann nur WinAnsi,
+     deshalb laeuft ein NAME nur dann in Times, wenn jedes Zeichen
+     darin vorkommt (serifOk) — sonst in Space Grotesk fett. Den
+     Namen eines Siegers zu verstuemmeln geht nicht.
 
    Faellt das Nachladen einer Schrift oder der Wortmarke aus, entsteht
    das PDF trotzdem — dann eben in Helvetica und ohne Logo.
@@ -32,21 +35,23 @@
 import { calcLeaderboard, FORMATS, roundMeanBonus } from './tournament.js';
 import { getAssetBase } from './utils.js';
 import centauriUrl from './fonts/centauri.ttf';
-import interRegularUrl from './fonts/pdf/inter-regular.ttf';
-import interBoldUrl from './fonts/pdf/inter-bold.ttf';
+import sgLightUrl from './fonts/pdf/sg-light.ttf';
+import sgRegularUrl from './fonts/pdf/sg-regular.ttf';
+import sgBoldUrl from './fonts/pdf/sg-bold.ttf';
 
 /* ── Papier & Raster (mm) ─────────────────────────────────────── */
-const PW=210, PH=297, M=15, CW=PW-2*M;
+const PW=210, PH=297, M=16, CW=PW-2*M;
 const FOOT=16;                 // Reserve unten fuer die Fusszeile
 
-/* ── Farben ───────────────────────────────────────────────────── */
-const NIGHT=[11,11,14], INK=[17,17,20], MUTED=[110,110,118], FAINT=[154,154,162];
-const LINE=[228,228,232], ZEBRA=[247,247,249], WHITE=[255,255,255];
-const O=[255,122,26], OSOFT=[255,241,230];
-const GOLD=[200,168,120], SILVER=[168,168,176], BRONZE=[176,130,86], BLUE=[10,132,255];
-const MEDALS=[GOLD,SILVER,BRONZE];
+/* ── Farben: die App auf dunklem Grund ────────────────────────── */
+const BG=[8,8,10], T1=[255,255,255], T2=[196,196,202], T3=[128,128,136], T4=[84,84,90];
+const GLASSF=[21,21,25], GLASSL=[62,62,68], SEP=[40,40,45], ORB=[28,28,32];
+const O=[255,122,26], BLUE=[64,156,255];
+const MEDALS=[[212,175,55],[192,192,200],[196,132,80]];
 
 const DE=(ts,opt)=>new Date(ts).toLocaleDateString('de-DE',opt);
+/* Kann Times (WinAnsi) diesen Text setzen? */
+const serifOk=s=>/^[\x20-\x7E\xA0-\xFF–—‘-„…]*$/.test(String(s||''));
 
 /* Laedt eine Datei als Base64. Gibt null zurueck statt zu werfen —
    Schrift und Logo sind Kuer, das Dokument ist Pflicht. */
@@ -63,11 +68,12 @@ async function asBase64(url){
 
 export async function buildTourneyPdf(tourney){
   const { jsPDF }=await import('jspdf');
-  const [centauri,regular,bold,markB64]=await Promise.all([
+  const [centauri,light,regular,bold,markB64]=await Promise.all([
     asBase64(centauriUrl),
-    asBase64(interRegularUrl),
-    asBase64(interBoldUrl),
-    asBase64(`${getAssetBase()}assets/ritmowide.png`),
+    asBase64(sgLightUrl),
+    asBase64(sgRegularUrl),
+    asBase64(sgBoldUrl),
+    asBase64(`${getAssetBase()}assets/ritmo-lettering.png`),
   ]);
 
   const doc=new jsPDF({unit:'mm',format:'a4',compress:true});
@@ -77,11 +83,12 @@ export async function buildTourneyPdf(tourney){
     catch(e){ return false; }
   };
   const DISPLAY=reg(centauri,'Centauri.ttf','Centauri','normal')?'Centauri':'helvetica';
-  /* Beide Schnitte muessen da sein — mit nur einem waere jeder fette
-     Text still wieder Helvetica und damit wieder ohne Latin-Extended. */
-  const okReg=reg(regular,'Inter.ttf','Inter','normal');
-  const okBold=reg(bold,'Inter-Bold.ttf','Inter','bold');
-  const BODY=(okReg&&okBold)?'Inter':'helvetica';
+  /* Regular und Bold muessen beide da sein — mit nur einem waere jeder
+     fette Text still wieder Helvetica und damit ohne Latin-Extended. */
+  const okReg=reg(regular,'SG.ttf','SG','normal');
+  const okBold=reg(bold,'SG-Bold.ttf','SG','bold');
+  const BODY=(okReg&&okBold)?'SG':'helvetica';
+  const THIN=(BODY==='SG'&&reg(light,'SG-Light.ttf','SGLight','normal'))?'SGLight':BODY;
   const mark=markB64?`data:image/png;base64,${markB64}`:null;
 
   /* ── Schreibhelfer ─────────────────────────────────────────── */
@@ -91,19 +98,12 @@ export async function buildTourneyPdf(tourney){
   const draw=c=>doc.setDrawColor(c[0],c[1],c[2]);
   const size=n=>doc.setFontSize(n);
   const put=(s,x,y,o)=>doc.text(String(s),x,y,o);
+  /* Ueberschrift: kursive Antiqua, wenn der Text es zulaesst. */
+  const serif=(s,st='bolditalic')=>font(serifOk(s)?'times':BODY,serifOk(s)?st:'bold');
   /* Ressort-Zeile: Centauri, weit gesperrt, immer Versalien. */
-  const kicker=(s,x,y,c=O,fs=8.5,sp=1.9)=>{
+  const kicker=(s,x,y,c=O,fs=8.5,sp=.9)=>{
     font(DISPLAY); size(fs); col(c);
     put(s.toUpperCase(),x,y,{charSpace:sp});
-    return doc.getTextWidth(s.toUpperCase())+sp*s.length;
-  };
-  /* Rechtsbuendig MIT Sperrung. jsPDF berechnet die Breite fuer
-     align:'right' OHNE charSpace — gesperrter Text laeuft damit ueber
-     den Anker hinaus, im ersten Entwurf schob sich so „PUNKTE" ueber
-     die Pausenspalte. Deshalb den Anker selbst ausrechnen. */
-  const putRS=(s,x,y,sp)=>{
-    const w=doc.getTextWidth(s)+sp*Math.max(0,s.length-1);
-    put(s,x-w,y,{charSpace:sp});
   };
   /* Kuerzt auf die verfuegbare Breite statt in die Nachbarspalte zu laufen. */
   const fit=(s,w)=>{
@@ -114,11 +114,16 @@ export async function buildTourneyPdf(tourney){
       if(doc.getTextWidth(s.slice(0,mid)+'…')<=w) lo=mid; else hi=mid-1; }
     return s.slice(0,lo)+'…';
   };
-  const hair=(y,x0=M,x1=PW-M,c=LINE)=>{ draw(c); doc.setLineWidth(.2); doc.line(x0,y,x1,y); };
+  const hair=(y,x0=M,x1=PW-M,c=SEP,w=.25)=>{ draw(c); doc.setLineWidth(w); doc.line(x0,y,x1,y); };
+  /* Glasflaeche: dunkler Grund, Haarlinie, runde Ecken. */
+  const glass=(x,y,w,h,r=4)=>{ fill(GLASSF); draw(GLASSL); doc.setLineWidth(.25); doc.roundedRect(x,y,w,h,r,r,'FD'); };
+  const paint=()=>{ fill(BG); doc.rect(0,0,PW,PH,'F'); };
 
   let y=0;
-  const newPage=()=>{ doc.addPage(); y=M+6; };
-  const need=h=>{ if(y+h>PH-FOOT) newPage(); };
+  /* SectionRule wie in der App: Antiqua kursiv, Haarlinie darunter. */
+  const section=t=>{ serif(t); size(17); col(T1); put(t,M,y); hair(y+3.6); y+=11; };
+  const newPage=cont=>{ doc.addPage(); paint(); y=M+8; if(cont) section(cont); };
+  const need=(h,cont)=>{ if(y+h>PH-FOOT) newPage(cont); };
 
   /* ── Daten ─────────────────────────────────────────────────── */
   const P=tourney.players||[], R=tourney.rounds||[];
@@ -126,176 +131,150 @@ export async function buildTourneyPdf(tourney){
   const lb=calcLeaderboard(P,R,tourney.winMode,tourney.pauseMode,tourney.pausePts)
     .sort((a,b)=>wins?(b.totalWins-a.totalWins||b.totalPts-a.totalPts)
                     :(b.totalPts-a.totalPts||b.totalWins-a.totalWins));
-  const win=lb[0];
+  const win=lb[0], second=lb[1];
   const nameOf=id=>P.find(p=>p.id===id)?.name||'?';
+  const numOf=id=>Math.max(1,P.findIndex(p=>p.id===id)+1);
   const team=ids=>(ids||[]).map(nameOf).join(' & ');
   const score=p=>wins?p.totalWins:p.totalPts;
-  const unit=n=>wins?(n===1?'Sieg':'Siege'):'Punkte';
   const fmt=FORMATS[tourney.format]?.name||'Turnier';
   const played=R.reduce((a,r)=>a+(r.courts||[]).filter(c=>c.done).length,0);
 
-  /* ══ KOPFBAND ══════════════════════════════════════════════ */
-  /* Erst den Namen umbrechen, dann das Band darum legen: bei einem
-     zweizeiligen Turniernamen stand die Metazeile sonst mitten im
-     Namen, weil die Bandhoehe fest war. */
+  /* ══ KOPF ══════════════════════════════════════════════════ */
+  paint();
+  if(mark){ try{ doc.addImage(mark,'PNG',M,12,42,42*120/720); }catch(e){} }
+  else { font(BODY,'bold'); size(15); col(T1); put('RITMO',M,19); }
+  font(BODY,'normal'); size(8.5); col(T3);
+  put(DE(tourney.createdAt||Date.now(),{day:'2-digit',month:'long',year:'numeric'}),PW-M,17.5,{align:'right'});
+
+  y=36;
+  /* Nur ein Wort: Centauri hat keinen Mittelpunkt, und jsPDF bricht
+     an einem fehlenden Glyph den Rest der Zeile ab. */
+  kicker('Endstand',M,y,O,8);
   const title=tourney.name||'RITMO Turnier';
-  font(BODY,'bold');
-  let nameSize=23;
-  let lines=doc.setFontSize(nameSize).splitTextToSize(title,CW);
-  if(lines.length>2){
-    nameSize=17;
-    lines=doc.setFontSize(nameSize).splitTextToSize(title,CW).slice(0,2);
-  }
-  const lineH=nameSize*.42;
-  const metaY=45+(lines.length-1)*lineH+11;
-  const HEAD=metaY+7;
+  serif(title); size(22);
+  const tl=doc.splitTextToSize(title,CW).slice(0,2);
+  col(T1); tl.forEach((l,i)=>put(l,M,y+10+i*8.6));
+  y+=10+(tl.length-1)*8.6+7;
+  font(BODY,'normal'); size(9.5); col(T2);
+  put([fmt,`${P.length} Spieler`,`${R.length} ${R.length===1?'Runde':'Runden'}`,
+    `${played} ${played===1?'Match':'Matches'}`].join('   |   '),M,y);
+  y+=5; draw(O); doc.setLineWidth(.5); doc.line(M,y,M+12,y);
 
-  fill(NIGHT); doc.rect(0,0,PW,HEAD,'F');
-  if(mark){ try{ doc.addImage(mark,'PNG',M,11,34,34*426/869); }catch(e){} }
-  else { font(BODY,'bold'); size(15); col(WHITE); put('RITMO',M,21); }
-
-  font(BODY,'normal'); size(8); col([150,150,158]);
-  put(DE(tourney.createdAt||Date.now(),{day:'2-digit',month:'long',year:'numeric'}),PW-M,17,{align:'right'});
-
-  kicker('Endstand',M,36,O);
-  font(BODY,'bold'); size(nameSize); col(WHITE);
-  lines.forEach((l,i)=>put(l,M,45+i*lineH));
-
-  font(BODY,'normal'); size(9); col([160,160,168]);
-  const meta=[fmt,`${P.length} Spieler`,`${R.length} ${R.length===1?'Runde':'Runden'}`,
-    `${played} ${played===1?'Match':'Matches'}`].join('   ·   ');
-  put(meta,M,metaY);
-
-  /* ══ GRATULATION ═══════════════════════════════════════════ */
-  y=HEAD+11;
+  /* ══ SIEGER — die Schlagzeile ist der Name ═══════════════════ */
   if(win){
-    const H=40;
-    fill(OSOFT); draw(O); doc.setLineWidth(.4);
-    doc.roundedRect(M,y,CW,H,3,3,'FD');
+    y+=18;
+    kicker('Sieger',M,y,O,9);
+    const nm=`${win.name}.`;
+    serif(nm);
+    let fs=win.name.length<=6?64:win.name.length<=9?52:win.name.length<=13?40:32;
+    size(fs); while(doc.getTextWidth(nm)>CW&&fs>22){ fs-=2; size(fs); }
+    y+=fs*.3528*1.02+2;
+    col(T1); put(win.name,M-.6,y);
+    col(O); put('.',M-.6+doc.getTextWidth(win.name),y);
 
-    /* Medaille: goldener Ring mit der Eins. Ein gezeichnetes Band
-       hatte ich versucht — die zwei Dreiecke standen als Hoerner
-       ueber dem Ring, ohne dass man sie als Band gelesen haette. */
-    const cx=M+21, cy=y+H/2;
-    fill(GOLD); doc.circle(cx,cy,9.4,'F');
-    fill(OSOFT); doc.circle(cx,cy,7.2,'F');
-    font(BODY,'bold'); size(16); col(GOLD);
-    put('1',cx,cy+2.9,{align:'center'});
+    /* Ein Satz zum Ausgang — gleiche Rechnung wie in der App. */
+    const what=tourney.name?`„${tourney.name}“`:'das Turnier';
+    let story=`gewinnt ${what}.`;
+    if(second){
+      const a=score(win), b=score(second);
+      if(a>b){ const d=a-b;
+        story=`gewinnt ${what} — mit ${d} ${wins?(d===1?'Sieg':'Siegen'):(d===1?'Punkt':'Punkten')} Vorsprung vor ${second.name}.`; }
+      else{
+        const tb=wins?(win.totalPts>second.totalPts?' — mehr Punkte':''):(win.totalWins>second.totalWins?' — mehr Siege':'');
+        story=`gewinnt ${what} — ${wins?'siegegleich':'punktgleich'} mit ${second.name}${tb}.`;
+      }
+    }
+    font(BODY,'normal'); size(11); col(T2);
+    const sl=doc.splitTextToSize(story,CW);
+    y+=9; sl.forEach((l,i)=>put(l,M,y+i*5.4)); y+=(sl.length-1)*5.4;
 
-    const tx=M+38, tw=CW-38-8;
-    kicker('Gratulation',tx,y+11,O,8);
-    font(BODY,'bold'); size(19); col(INK);
-    put(fit(win.name,tw),tx,y+22.5);
-    font(BODY,'bold'); size(11.5); col(O);
-    put(`${score(win)} ${unit(score(win))}`,tx,y+30);
-    font(BODY,'normal'); size(8.5); col(MUTED);
-    put([`${win.played} ${win.played===1?'Spiel':'Spiele'}`,
-         `${win.wins} ${win.wins===1?'Sieg':'Siege'}`,
-         `${win.losses} ${win.losses===1?'Niederlage':'Niederlagen'}`,
-         `${win.sitOut} ${win.sitOut===1?'Pause':'Pausen'}`].join('   ·   '),tx,y+35.5);
-    y+=H+7;
-  }
-
-  /* ══ PODEST 2 + 3 ══════════════════════════════════════════ */
-  const podium=lb.slice(1,3);
-  if(podium.length){
-    const gap=6, w=(CW-gap*(podium.length-1))/podium.length, H=21;
-    podium.forEach((p,i)=>{
-      const x=M+i*(w+gap);
-      fill(WHITE); draw(LINE); doc.setLineWidth(.3);
-      doc.roundedRect(x,y,w,H,2.5,2.5,'FD');
-      fill(MEDALS[i+1]); doc.circle(x+10,y+H/2,5.4,'F');
-      font(BODY,'bold'); size(9.5); col(WHITE);
-      put(String(i+2),x+10,y+H/2+1.6,{align:'center'});
-      font(BODY,'bold'); size(11); col(INK);
-      put(fit(p.name,w-26),x+19,y+H/2-.5);
-      font(BODY,'normal'); size(8.5); col(MUTED);
-      put(`${score(p)} ${unit(score(p))}`,x+19,y+H/2+5);
-    });
-    y+=H+9;
-  }
-
-  /* ══ ENDSTAND-TABELLE ══════════════════════════════════════ */
-  /* Spalten. charSpace rechnet in der Dokumenteinheit, also in
-     MILLIMETERN — mit den 1,1 mm eines ersten Entwurfs schob sich
-     der Kopf ineinander („PLASTZELER"). Im Kopf daher 0,45 mm, und
-     die Zahlenspalten stehen rechtsbuendig auf festen Achsen. */
-  const C={dot:M+4, rank:M+7.6, name:M+15,
-    sp:PW-M-66, s:PW-M-50, n:PW-M-34, p:PW-M-18, pts:PW-M};
-  const NUMW=C.sp-8-C.name;   // Platz fuer den Namen
-  const tableHead=()=>{
-    fill(NIGHT); doc.rect(M,y,CW,8,'F');
-    font(DISPLAY); size(6.8); col(WHITE);
-    put('SPIELER',C.name,y+5.3,{charSpace:.45});
-    [['SP',C.sp],['S',C.s],['N',C.n],['P',C.p],
-     [wins?'SIEGE':'PKT',C.pts]].forEach(([h,x])=>putRS(h,x,y+5.3,.45));
+    /* Drei Zahlen in Glaskacheln; die der Wertung steht orange. */
     y+=8;
-  };
-  need(30);
-  kicker('Tabelle',M,y,O); y+=5;
-  tableHead();
+    const tiles=[[win.totalPts,'Punkte'],[win.totalWins,'Siege'],[win.played,'Matches']];
+    const g=4, tw=(CW-2*g)/3, th=23;
+    tiles.forEach(([v,l],i)=>{
+      const x=M+i*(tw+g);
+      glass(x,y,tw,th);
+      font(THIN); size(28); col(l===(wins?'Siege':'Punkte')?O:T1);
+      put(String(v??0),x+5,y+12.5);
+      font(BODY,'bold'); size(8.5); col(T2);
+      put(l,x+5,y+18.6);
+    });
+    y+=th+16;
+  }
+
+  /* ══ TABELLE — die Zeile der App (LbRow) ═══════════════════ */
+  need(40);
+  section('Tabelle');
+  const RH=13.2;
   lb.forEach((p,i)=>{
-    const H=8.4;
-    if(y+H>PH-FOOT){ newPage(); kicker('Tabelle (Fortsetzung)',M,y,O); y+=5; tableHead(); }
-    fill(i===0?OSOFT:(i%2?ZEBRA:WHITE)); doc.rect(M,y,CW,H,'F');
-    if(i<3){ fill(MEDALS[i]); doc.circle(C.dot,y+H/2,2.4,'F'); }
-    font(BODY,'bold'); size(8.5); col(i<3?INK:MUTED);
-    put(String(i+1),C.rank,y+H/2+1.1);
-    font(BODY,i===0?'bold':'normal'); size(9.5); col(INK);
-    put(fit(p.name,NUMW),C.name,y+H/2+1.2);
-    font(BODY,'normal'); size(8.5); col(MUTED);
-    [[C.sp,p.played],[C.s,p.wins],[C.n,p.losses],[C.p,p.sitOut]].forEach(([x,v])=>
-      put(String(v),x,y+H/2+1.1,{align:'right'}));
-    font(BODY,'bold'); size(10.5); col(i===0?O:INK);
-    put(String(score(p)),C.pts,y+H/2+1.3,{align:'right'});
-    y+=H;
+    if(y+RH>PH-FOOT) newPage('Tabelle (Fortsetzung)');
+    const cy=y+RH/2;
+    /* Platz: duenne Ziffer, 1–3 in den Medaillenfarben. */
+    font(THIN); size(17); col(i<3?MEDALS[i]:T3);
+    put(String(i+1),M+1,cy+2.2);
+    /* Kugel mit der Spielernummer. */
+    const ox=M+17;
+    fill(ORB); draw(GLASSL); doc.setLineWidth(.25); doc.circle(ox,cy,4.3,'FD');
+    font(BODY,'bold'); size(8); col(T1);
+    put(String(numOf(p.id)),ox,cy+1.05,{align:'center'});
+    /* Name und „4 S · 0 N · 1 P". */
+    const nx=ox+8;
+    font(BODY,'bold'); size(11); col(T1);
+    put(fit(p.name,PW-M-nx-34),nx,cy-.6);
+    font(BODY,'normal'); size(7.8); col(T3);
+    put(`${p.wins} S  ·  ${p.losses} N  ·  ${p.sitOut} P`,nx,cy+4.1);
+    /* Wertung: duenn und gross, der Fuehrende orange. */
+    font(THIN); size(21); col(i===0?O:T1);
+    put(String(score(p)),PW-M,cy+1.6,{align:'right'});
+    const bonus=wins?p.bonusWins:p.bonusPts;
+    font(BODY,'normal'); size(7); col(bonus?BLUE:T3);
+    put(bonus?`inkl. +${bonus} Pause`:(wins?'Siege':'Punkte'),PW-M,cy+5.4,{align:'right'});
+    if(i<lb.length-1) hair(y+RH,nx);
+    y+=RH;
   });
-  hair(y); y+=4.5;
-  font(BODY,'normal'); size(7.5); col(FAINT);
-  const bonusSum=lb.reduce((a,p)=>a+(wins?p.bonusWins:p.bonusPts),0);
-  put('SP Spiele   ·   S Siege   ·   N Niederlagen   ·   P Pausen'
-    +(bonusSum?`   ·   ${wins?'Siege':'Punkte'} inklusive Pausen-Ausgleich`:''),M,y);
-  y+=13;
+  y+=6;
+  font(BODY,'normal'); size(7.5); col(T4);
+  put('S Siege   ·   N Niederlagen   ·   P Pausen   ·   Kugel = Spielernummer',M,y);
+  y+=15;
 
   /* ══ RUNDENVERLAUF ═════════════════════════════════════════ */
   if(R.length){
-    need(34);
-    kicker('Rundenverlauf',M,y,O); y+=3;
-    hair(y); y+=7;
-
+    need(40);
+    section('Rundenverlauf');
     const MID=M+CW*.5;
     R.forEach((r,ri)=>{
       const courts=r.courts||[];
       const sit=(r.sitOut||[]).length;
       /* Kopf + erste Courtzeile gehoeren zusammen — eine Runden-
          ueberschrift allein am Seitenfuss waere eine Waise. */
-      need(7+6.6+(sit?6:0));
-      font(BODY,'bold'); size(10); col(INK);
+      need(9+7+(sit?6:0),'Rundenverlauf (Fortsetzung)');
+      font('times','bold'); size(13); col(T1);
       put(`Runde ${ri+1}`,M,y);
       const offen=courts.length-courts.filter(c=>c.done).length;
       if(offen){
-        font(BODY,'normal'); size(7.5); col(FAINT);
+        font(BODY,'normal'); size(7.5); col(T3);
         put(`${offen} ${offen===1?'Match':'Matches'} ohne Ergebnis`,PW-M,y,{align:'right'});
       }
-      y+=2.4; hair(y); y+=5.2;
+      y+=2.8; hair(y); y+=6;
 
       courts.forEach((c,ci)=>{
-        need(6.6);
+        need(7,'Rundenverlauf (Fortsetzung)');
         const cn=(tourney.courtNames?.[ci]||'').trim()||`Court ${ci+1}`;
-        font(BODY,'normal'); size(7.5); col(FAINT);
-        put(fit(cn,20)+(c.single?' · 1v1':''),M,y+.2);
+        font(BODY,'normal'); size(7.5); col(T3);
+        put(fit(cn,22)+(c.single?' · 1v1':''),M,y+.2);
         const a1=c.done&&c.s1>c.s2, a2=c.done&&c.s2>c.s1;
-        font(BODY,a1?'bold':'normal'); size(9); col(a1?INK:MUTED);
-        put(fit(team(c.t1),MID-M-24-14),MID-14,y,{align:'right'});
-        font(BODY,'bold'); size(9.5); col(c.done?O:FAINT);
+        font(BODY,a1?'bold':'normal'); size(9.5); col(a1?T1:T2);
+        put(fit(team(c.t1),MID-M-26-15),MID-15,y,{align:'right'});
+        font(BODY,'bold'); size(10.5); col(c.done?O:T4);
         put(c.done?`${c.s1??0} : ${c.s2??0}`:'– : –',MID,y,{align:'center'});
-        font(BODY,a2?'bold':'normal'); size(9); col(a2?INK:MUTED);
-        put(fit(team(c.t2),PW-M-MID-14),MID+14,y);
-        y+=6.6;
+        font(BODY,a2?'bold':'normal'); size(9.5); col(a2?T1:T2);
+        put(fit(team(c.t2),PW-M-MID-15),MID+15,y);
+        y+=7;
       });
 
       if(sit){
-        need(6);
+        need(6,'Rundenverlauf (Fortsetzung)');
         /* Der ausgewiesene Bonus muss zur eingestellten Regel passen:
            'fixed' gibt einen festen Wert je Pause, 'mean' den
            aufgerundeten Rundenmittelwert (nur in der Punktewertung —
@@ -305,14 +284,13 @@ export async function buildTourneyPdf(tourney){
           ?(Math.max(0,Math.round(Number(tourney.pausePts)||0))||null)
           :tourney.pauseMode==='none'?null
           :(wins?null:roundMeanBonus(r));
-        font(BODY,'normal'); size(7.5); col(MUTED);
-        const txt=`Pause: ${(r.sitOut||[]).map(nameOf).join(', ')}`;
-        put(fit(txt,CW-26),M,y+.4);
+        font(BODY,'normal'); size(7.8); col(T3);
+        put(fit(`Pause: ${(r.sitOut||[]).map(nameOf).join(', ')}`,CW-26),M,y+.4);
         if(bonus){ col(BLUE); font(BODY,'bold');
           put(`+${bonus}`,PW-M,y+.4,{align:'right'}); }
         y+=6;
       }
-      y+=4.5;
+      y+=6;
     });
   }
 
@@ -321,7 +299,7 @@ export async function buildTourneyPdf(tourney){
   for(let i=1;i<=N;i++){
     doc.setPage(i);
     hair(PH-11.5);
-    font(BODY,'normal'); size(7.5); col(FAINT);
+    font(BODY,'normal'); size(7.5); col(T4);
     put(fit(`RITMO   ·   ${tourney.name||'Turnier'}`,CW-40),M,PH-7.5);
     put(`Seite ${i} von ${N}`,PW-M,PH-7.5,{align:'right'});
   }

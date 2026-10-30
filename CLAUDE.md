@@ -40,7 +40,7 @@ Pure / side-effect-free modules have been extracted from the original mega-file.
 | [src/db.js](src/db.js) | Profile load/save + match logging + online tournament helpers (publish/subscribe/score-submit/ready-check). | Talks to Supabase via `window.supabase`. |
 | [src/ocr.js](src/ocr.js) | On-device OCR (tesseract.js, lazy-loaded) plus the name-extraction heuristic (`lineToName`, `namesFromText`) behind "Aus Screenshot übernehmen" in the tournament setup. | Worker, WASM core and language data are all same-origin — the CDN defaults would fail the CSP. Der Dateidialog geht im **Aufrufer** auf (Assistent bzw. Formular), nicht im `PlayerScanSheet`: ein programmatischer Klick auf ein `file`-Input braucht die Nutzergeste, und die ist nach Mount + Effekt nicht mehr sicher da. Das Sheet bekommt die Auswahl als `initialFiles` und startet direkt in `work`. |
 | [src/legal.js](src/legal.js) | Impressum, Datenschutzerklärung, Nutzungsbedingungen, Haftung und Lizenzhinweise als Datenblöcke; `OPERATOR` / `PROCESSORS` halten die vor dem Launch auszufüllenden Betreiberangaben. | Rendered by `SettingsRechtliches`. Keep in sync when data processing changes. |
-| [src/tourneyPdf.js](src/tourneyPdf.js) | Turnier-Export als A4-PDF (Endstand, Sieger, Rundenverlauf) und `exportTourneyPdf` (Share-Sheet bzw. Download). | jsPDF wird per `import()` nachgeladen; eigene Schriften unter [src/fonts/pdf/](src/fonts/pdf/). |
+| [src/tourneyPdf.js](src/tourneyPdf.js) | Turnier-Export als A4-PDF im Stil des Endstands der App (Sieger, Tabelle, Rundenverlauf) und `exportTourneyPdf` (Share-Sheet bzw. Download). | jsPDF wird per `import()` nachgeladen; eigene Schriften unter [src/fonts/pdf/](src/fonts/pdf/). |
 | [src/courtLayout.js](src/courtLayout.js) | Raeumliche Anordnung der Courts: `defaultLayout`, `normLayout`, `layoutBounds`, `moveTo`, `rotateCourt`, `compactLayout`. | Reines Raster (4 x 5), keine React-Abhaengigkeit. Gezeichnet wird in `CourtMap` (App.jsx). |
 | [src/events.js](src/events.js) | `EVENTS` (die Termine der Startseite, von Hand gepflegt) + `upcomingEvents`, `eventLabel`, `eventIcs` (Kalenderdatei), `eventMapsUrl`. | Nur kommende Events werden gezeigt; neue Termine einfach anhaengen. |
 | [src/whatsNew.js](src/whatsNew.js) | `RELEASES` (die Ausgaben des Update-Newsletters) + `unseenRelease(seen)`. | Inhalt/Daten; die Regeln fuer neue Ausgaben stehen im Dateikopf. |
@@ -89,10 +89,15 @@ When changing scoring rules, edit the reducer — the `Match` screen is a thin s
 
 ### Turnier-PDF (`src/tourneyPdf.js`)
 
-"Teilen" an einem beendeten Turnier erzeugt ein PDF: schwarzes
-Kopfband mit Wortmarke, ein Gratulationsblock fuer den Sieger, Podest
-2/3, die vollstaendige Tabelle und danach jede Runde mit Paarungen,
-Ergebnissen und Pausen. Einstiege sind der Endstand-Screen und die
+"Teilen" an einem beendeten Turnier erzeugt ein PDF **im Stil des
+Endstands der App**: dunkle Seiten, Schriftzug oben, „Endstand" mit
+Turniername in der kursiven Antiqua, dann „Sieger" und der Name als
+Schlagzeile mit orangem Punkt, der Satz zum Ausgang (dieselbe Rechnung
+wie `story` in `TournamentLeaderboard`), drei Glaskacheln (Punkte,
+Siege, Matches), die Tabelle in der Zeile von `LbRow` (Platz duenn,
+Kugel mit Spielernummer, Name mit „S · N · P", Wertung duenn) und
+danach jede Runde mit Paarungen, Ergebnissen und Pausen. Einstiege
+sind der Endstand-Screen und die
 Live-Liste (Swipe-Aktion und "... mehr"-Sheet).
 
 Es gibt genau EINEN Weg nach draussen. Der fruehere Textversand stand
@@ -115,12 +120,23 @@ Drei Dinge, an denen ein erster Entwurf scheiterte:
   tesseract.js. `html2canvas`/`dompurify` zieht jsPDF selbst dynamisch
   und nur fuer `doc.html()`, das hier niemand aufruft.
 - **Die 14 PDF-Standardschriften koennen nur WinAnsi.** Aus
-  "Wisniewska" (mit s-acute) wurde ein "Wi[niewska". Deshalb ist Inter
-  eingebettet, auf Latin-1 + Latin Extended-A beschnitten, erzeugt von
-  [tools/make-pdf-fonts.py](tools/make-pdf-fonts.py) (25 kB je Schnitt,
-  beide Schnitte noetig - sonst faellt fetter Text still auf Helvetica
-  zurueck). Centauri kommt als TTF aus derselben Quelle wie der Webfont
-  und gilt mit denselben Regeln: nie Zahlen, nie Namen.
+  "Wisniewska" (mit s-acute) wurde ein "Wi[niewska". Deshalb ist
+  **Space Grotesk** eingebettet (300/400/700, vorher Inter), auf
+  Latin-1 + Latin Extended-A beschnitten, erzeugt von
+  [tools/make-pdf-fonts.py](tools/make-pdf-fonts.py) (rund 24 kB je
+  Schnitt; Regular und Bold beide noetig - sonst faellt fetter Text
+  still auf Helvetica zurueck). Centauri kommt als TTF aus derselben
+  Quelle wie der Webfont und gilt mit denselben Regeln: nie Zahlen,
+  nie Namen — und nur ein Wort je Ressort: Centauri hat keinen
+  Mittelpunkt, und jsPDF bricht an einem fehlenden Glyph den Rest
+  der Zeile ab („Endstand · Americano" stand als „ENDSTAND" da).
+- **Die Ueberschriften sind die eingebaute Times** und koennen damit
+  auch nur WinAnsi. Ein Name (Sieger, Turniername) laeuft deshalb nur
+  dann in Times, wenn jedes Zeichen darin vorkommt (`serifOk`), sonst
+  in Space Grotesk fett.
+- **Der dunkle Grund ist gewollt**: das PDF wird geteilt, nicht
+  gedruckt. Frueher stand dort ein heller Dokumentstil mit Rücksicht
+  auf den Toner.
 - **`charSpace` rechnet in der Dokumenteinheit**, hier also in
   Millimetern, und `align:'right'` beruecksichtigt es nicht. Gesperrter
   rechtsbuendiger Text lief dadurch ueber seinen Anker hinaus; dafuer
@@ -1536,8 +1552,8 @@ plus the `.txt` / `.display` utility classes:
   Code fallen auf 700 zurueck, ohne Fett-Attrappe.
 - **Keine Kursive im Schnitt.** Kursive Standfirsts werden vom Browser
   schraeggestellt.
-- Das **Turnier-PDF** bettet weiter Inter ein (eigene TTFs unter
-  `src/fonts/pdf/`) — unabhaengig von der App-Schrift.
+- Das **Turnier-PDF** bettet dieselbe Space Grotesk ein (eigene TTFs
+  unter `src/fonts/pdf/`, weil jsPDF kein woff2 liest).
 
 Bundled fonts are self-hosted via npm + Vite, never a CDN — the CSP in
 `index.html` allows `font-src 'self' data:` only. Use the tokens instead of

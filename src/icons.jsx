@@ -472,25 +472,28 @@ export function MiniBall({size=10,color=T.o}){
 }
 
 /* Der Ladebalken der App — nach einer Tacho-Grafik: links steigt er
-   schraeg an, knickt scharf ab und laeuft dann gerade weiter. Er
-   besteht aus Segmenten mit Fugen, nur in Weiss. Es gibt EINE
-   Komponente fuer alle Stellen (Splash, Screenshot-Scan, Warten auf
-   die Session), so breit wie der Schriftzug daneben.
+   schraeg an, biegt in einem Bogen ab und laeuft dann gerade weiter.
+   Er besteht aus acht langen Balken mit schmalen Fugen, nur in Weiss,
+   nach rechts heller. Es gibt EINE Komponente fuer alle Stellen
+   (Splash, Screenshot-Scan, Warten auf die Session), so breit wie der
+   Schriftzug daneben.
    - pct: 0..1 zeigt den Stand; dur (ms) fuellt einmal von 0 auf voll
      (Splash); ohne beides laeuft ein Stueck unbestimmt durch.
-   - Die Segmente sind EIN Strich mit Strichmuster. Gefuellt wird ueber
-     eine Maske mit eigenem Strichmuster (pathLength 100). So stehen
-     die Segmente still, waehrend die Maske waechst, und der Knick
-     bleibt ein Knick: miter-Ecke, keine runden Enden. */
+   - Die Balken sind EIN Strich mit Strichmuster (pathLength 100).
+     Gefuellt wird ueber eine Maske mit eigenem Strichmuster. So stehen
+     die Balken still, waehrend die Maske waechst. */
 export function LoadBar({pct=null,dur=0,w=176,label='Wird geladen'}){
   const id=useId().replace(/:/g,'');
   const H=Math.round(w*.2),t=Math.max(5,Math.round(w*.042));
   const x0=t*.5,y0=H-t*.5,x1=x0+(H-t)*.5,y1=t*.5;
-  const d=`M${x0} ${y0}L${x1} ${y1}H${w}`;
-  // Die Schraege traegt eine ganze Zahl Segmente, damit eine Fuge genau
-  // im Knick liegt — sonst bricht dort ein Segment um die Ecke.
-  const dg=Math.hypot(x1-x0,y0-y1),L=dg+(w-x1),k=Math.max(2,Math.round(dg/(t*1.15)));
-  const P=dg/k/L*100,seg=(P*.74).toFixed(3),gap=(P*.26).toFixed(3),off=(P*.74+P*.13).toFixed(3);
+  // Der Knick ist ein Bogen (r), keine Ecke: kurz davor wird die
+  // Schraege verlassen, kurz danach die Gerade erreicht.
+  const dg=Math.hypot(x1-x0,y0-y1),ux=(x1-x0)/dg,uy=(y1-y0)/dg,r=Math.min(dg*.5,H*.55);
+  const ax=x1-ux*r,ay=y1-uy*r,bx=x1+r;
+  const d=`M${x0} ${y0}L${ax.toFixed(2)} ${ay.toFixed(2)}Q${x1.toFixed(2)} ${y1} ${bx.toFixed(2)} ${y1}H${w}`;
+  // Wenige lange Balken (SEGS) mit schmaler Fuge, nach rechts heller.
+  const L=dg-r+r*1.15+(w-bx),SEGS=8,G=Math.max(2.5,t*.45)/L*100;
+  const seg=(100/SEGS-G).toFixed(3),gap=G.toFixed(3);
   const ind=pct==null&&!dur;
   const mask=ind?{strokeDasharray:'38 200',animation:'ldRun 1.3s cubic-bezier(.45,0,.55,1) infinite'}
     :dur?{strokeDasharray:'100 100',animation:`ldFill ${dur}ms cubic-bezier(.65,0,.35,1) both`}
@@ -501,12 +504,16 @@ export function LoadBar({pct=null,dur=0,w=176,label='Wird geladen'}){
       aria-valuenow={pct==null?undefined:Math.round(pct*100)} aria-valuemin={0} aria-valuemax={100}
       width={w} height={H} viewBox={`0 0 ${w} ${H}`} style={{display:'block',overflow:'visible',maxWidth:'100%',flexShrink:0}}>
       <defs>
+        <linearGradient id={`lg${id}`} gradientUnits="userSpaceOnUse" x1="0" y1="0" x2={w} y2="0">
+          <stop offset="0" stopColor={T.t1} stopOpacity=".38"/>
+          <stop offset="1" stopColor={T.t1} stopOpacity="1"/>
+        </linearGradient>
         <mask id={`ld${id}`} maskUnits="userSpaceOnUse" x={-t} y={-t} width={w+2*t} height={H+2*t}>
           <path d={d} pathLength="100" stroke="#fff" {...line} strokeWidth={t+4} style={mask}/>
         </mask>
       </defs>
-      <path d={d} pathLength="100" stroke={T.t1} strokeOpacity=".14" strokeDasharray={`${seg} ${gap}`} strokeDashoffset={off} {...line}/>
-      <path d={d} pathLength="100" stroke={T.t1} strokeDasharray={`${seg} ${gap}`} strokeDashoffset={off} {...line}
+      <path d={d} pathLength="100" stroke={T.t1} strokeOpacity=".12" strokeDasharray={`${seg} ${gap}`} {...line}/>
+      <path d={d} pathLength="100" stroke={`url(#lg${id})`} strokeDasharray={`${seg} ${gap}`} {...line}
         mask={`url(#ld${id})`} style={{filter:'drop-shadow(0 0 5px rgba(255,255,255,.55))'}}/>
     </svg>
   );

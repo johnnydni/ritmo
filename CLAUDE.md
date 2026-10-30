@@ -328,8 +328,17 @@ Die Bausteine stehen in App.jsx direkt vor `ScreenHeader`:
   **Runde 5** (der ganze Turnierbereich, siehe „Turniere in der
   Sprache der Startseite“) und **Runde 6** (Splash, Beta-Landing,
   Beta-Pause, Hinweis beim ersten Start, Login, Registrierung,
-  Bestaetigungs- und Passwort-Screens) umgestellt. Offen: das
-  Onboarding (`Welcome`).
+  Bestaetigungs- und Passwort-Screens) und **Runde 7** (Onboarding
+  `Welcome` und der Turnier-Start-Vorhang) umgestellt.
+- **Onboarding** (`Welcome` samt Kapiteln) traegt den Aufbau des
+  Turnier-Assistenten: Foto (`dim .45`), Ressort „Einrichten",
+  „Schritt n von 4", ein Segment je Kapitel, Titel in der Antiqua,
+  Standfirst kursiv, Fusszeile `‹ Zurück` gelb / `Weiter ›` orange.
+  Optionen sind Glas mit oranger Kontur, Schein und Radio-Punkt
+  (`obOpt`, `ObRadio`), Felder `OB_INP`, Zwischenzeilen `obLabel()`
+  — eine **Funktion**, weil `HEAD_SERIF` erst weiter unten im Modul
+  steht und eine Konstante beim Laden ins Leere griffe. Im Quiz
+  traegt die Auswahl die Farbe des Spielstils statt Orange.
 - **Die Anmeldeseiten sehen aus wie bei ChatGPT** (Login,
   Registrierung, Mail-Bestaetigung, Passwort, Verified-Landing):
   schlichter `T.bg` statt Foto, kleiner Schriftzug (`AuthMark`, ohne
@@ -858,7 +867,10 @@ Aufrufer (Lobby, Beitreten) blieben.
 
 Zwischen „Start" und der ersten Runde liegt ein kurzer Vorhang
 (`TournamentStartSplash`): ein Ball dreht sich, holt aus und schiesst
-auf den Betrachter zu. Der Screenwechsel passiert dabei **sofort** —
+auf den Betrachter zu. Er steht auf dem Foto der Startseite (`dim .5`)
+mit dem Schriftzug oben, darunter „Aufschlag", der Turniername als
+Schlagzeile in der Antiqua (hoechstens zwei Zeilen) und der
+`LoadBar`, der sich ueber die Drehphase (`SPLASH_SPIN`) fuellt. Der Screenwechsel passiert dabei **sofort** —
 der Vorhang deckt ihn nur zu, statt die App künstlich langsamer zu
 machen.
 

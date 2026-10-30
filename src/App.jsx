@@ -1377,38 +1377,42 @@ function VerifiedLanding({onContinue}){
   );
 }
 
-function OnboardProgress({total,current}){
+/* ── Onboarding in der Sprache der Startseite ─────────────────────
+   Gleicher Aufbau wie der Turnier-Assistent: Foto, Ressort, „Schritt
+   n von N", Segmente, Titel in der Antiqua, Glas, gelbe Zurueck- und
+   orange Weiter-Pille. Auswahl = Glas mit oranger Kontur, Schein und
+   Radio-Punkt (wie die Karten im Assistenten). */
+const OB_INP={width:'100%',height:52,borderRadius:16,background:T.glassHi,
+  border:`1px solid ${T.glassLine}`,color:T.t1,fontSize:16,fontWeight:500,
+  padding:'0 16px',outline:'none',boxSizing:'border-box'};
+// Funktion statt Konstante: HEAD_SERIF steht weiter unten im Modul.
+const obLabel=()=>({...HEAD_SERIF,fontSize:21,marginBottom:10,paddingLeft:2});
+const obOpt=sel=>({...GLASS,borderRadius:16,border:`1px solid ${sel?T.o:T.glassLine}`,
+  boxShadow:sel?`${GLASS.boxShadow}, 0 0 0 1px ${T.o}, 0 6px 22px var(--oGlow)`:GLASS.boxShadow,
+  color:T.t1,cursor:'pointer',textAlign:'left',transition:'border-color .2s, box-shadow .2s'});
+function ObRadio({on,color=T.o}){
   return(
-    <div style={{display:'flex',gap:6,justifyContent:'center',padding:'10px 0',alignItems:'center'}}>
-      {Array.from({length:total}).map((_,i)=>(
-        <div key={i} style={{
-          width:i===current?22:6,height:6,borderRadius:3,
-          background:i<=current?T.o:T.t4,
-          transition:'all .25s ease'
-        }}/>
-      ))}
-    </div>
+    <span style={{width:18,height:18,borderRadius:'50%',flexShrink:0,boxSizing:'border-box',
+      border:`1.5px solid ${on?color:T.glassLine}`,display:'flex',alignItems:'center',justifyContent:'center'}}>
+      {on&&<span className="dot-pop" style={{width:8,height:8,borderRadius:'50%',background:color}}/>}
+    </span>
   );
 }
 
 function ChapterWelcome(){
   return(
-    <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:20,padding:'30px 0'}}>
-      <RitmoSplashLogo size={130}/>
-      <div style={{color:T.t2,fontSize:16,textAlign:'center',maxWidth:300,lineHeight:1.6}}>
+    <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:26,padding:'26px 0'}}>
+      <AuthMark w={210} shadow/>
+      <div className="txt" style={{color:T.t2,fontSize:16,fontStyle:'italic',textAlign:'center',
+        maxWidth:300,lineHeight:1.6}}>
         Lass uns RITMO kurz für dich einrichten — dauert keine Minute.
       </div>
       {/* Beruhigungs-Hinweis: Onboarding ist nicht "jetzt oder nie" — nimmt
           beim ersten Start den Druck raus und senkt die Abbruchrate. */}
-      <div className="fu" style={{animationDelay:'.18s',display:'flex',alignItems:'flex-start',
-        gap:10,maxWidth:300,background:T.card,border:`1px solid ${T.border}`,
-        borderRadius:15,padding:'11px 13px'}}>
-        <span style={{flexShrink:0,marginTop:1,width:17,height:17,borderRadius:'50%',
-          background:T.oSoft,color:T.o,fontSize:11,fontWeight:900,fontStyle:'italic',
-          display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1}}>i</span>
-        <div style={{color:T.t3,fontSize:12.5,lineHeight:1.5,textAlign:'left'}}>
-          Du kannst auch später in deinem Profil das Onboarding nachholen. Keine Sorge.
-        </div>
+      <div className="fu" style={{animationDelay:'.18s',maxWidth:320,padding:'12px 16px',
+        borderRadius:16,...GLASS,borderLeft:`2px solid ${T.o}`,
+        color:T.t2,fontSize:13,lineHeight:1.55}}>
+        Du kannst das Onboarding auch später in deinem Profil nachholen. Keine Sorge.
       </div>
     </div>
   );
@@ -1417,20 +1421,15 @@ function ChapterWelcome(){
 function ChapterName({profile,setProfile,onEnter}){
   return(
     <div>
-      <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
-        textTransform:'uppercase',marginBottom:8,paddingLeft:4}}>
-        Name oder Spitzname
-      </div>
+      <div style={obLabel()}>Name oder Spitzname</div>
       <input value={profile.name}
         onChange={e=>setProfile(p=>({...p,name:e.target.value}))}
         onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();onEnter&&onEnter();}}}
         placeholder="z.B. Alex"
         autoFocus autoCapitalize="words" autoCorrect="off" spellCheck={false}
         enterKeyHint="next"
-        style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-          borderRadius:13,padding:'14px 16px',color:T.t1,fontSize:16,fontWeight:500,
-          outline:'none',boxSizing:'border-box'}}/>
-      <div style={{color:T.t3,fontSize:11,marginTop:8,lineHeight:1.5,paddingLeft:4}}>
+        style={OB_INP}/>
+      <div style={{color:T.t3,fontSize:12,marginTop:10,lineHeight:1.5,paddingLeft:2}}>
         Wird beim Match-Setup voreingetragen und in Turnieren angezeigt.
       </div>
     </div>
@@ -1440,22 +1439,18 @@ function ChapterName({profile,setProfile,onEnter}){
 /* Question helper: stacked option buttons with selected highlight */
 function QuestionGroup({label,value,onChange,options,sub}){
   return(
-    <div style={{marginBottom:18}}>
-      <div style={{color:T.t1,fontSize:16,fontWeight:700,marginBottom:sub?2:8,paddingLeft:2}}>{label}</div>
-      {sub&&<div style={{color:T.t3,fontSize:11,marginBottom:8,paddingLeft:2,lineHeight:1.4}}>{sub}</div>}
+    <div style={{marginBottom:24}}>
+      <div style={{...obLabel(),marginBottom:sub?4:10}}>{label}</div>
+      {sub&&<div style={{color:T.t3,fontSize:12,marginBottom:10,paddingLeft:2,lineHeight:1.4}}>{sub}</div>}
       <div style={{display:'flex',flexDirection:'column',gap:8}}>
         {options.map(o=>{
           const sel=value===o.id;
           return(
             <button key={o.id} onClick={()=>onChange(o.id)}
-              style={{padding:'14px 16px',textAlign:'left',
-                background:sel?T.oSoft:T.card,
-                border:`1.5px solid ${sel?T.o:T.border}`,
-                borderRadius:13,color:T.t1,fontSize:13,fontWeight:sel?700:500,
-                cursor:'pointer',transition:'all .15s',
-                display:'flex',alignItems:'center',gap:10}}>
+              style={{...obOpt(sel),padding:'14px 16px',fontSize:14,fontWeight:sel?700:500,
+                display:'flex',alignItems:'center',gap:12}}>
               <span style={{flex:1}}>{o.label}</span>
-              {sel&&<span style={{color:T.o,fontSize:16}}>✓</span>}
+              <ObRadio on={sel}/>
             </button>
           );
         })}
@@ -1479,39 +1474,32 @@ function ChapterPlaytomic({profile,setProfile}){
 
   return(
     <div>
-      {/* Toggle */}
-      <div style={{display:'flex',gap:8,marginBottom:18}}>
-        <button onClick={()=>setProfile(p=>({...p,playtomicLevel:p.playtomicLevel??2.50}))}
-          style={{flex:1,padding:'11px 10px',
-            background:hasPlaytomic?T.oSoft:T.card,
-            border:`1.5px solid ${hasPlaytomic?T.o:T.border}`,
-            borderRadius:13,color:T.t1,fontSize:12,fontWeight:hasPlaytomic?700:500,
-            cursor:'pointer',transition:'all .15s',lineHeight:1.3,textAlign:'center'}}>
-          Habe Playtomic-Level
-        </button>
-        <button onClick={()=>setProfile(p=>({...p,playtomicLevel:null}))}
-          style={{flex:1,padding:'11px 10px',
-            background:!hasPlaytomic?T.oSoft:T.card,
-            border:`1.5px solid ${!hasPlaytomic?T.o:T.border}`,
-            borderRadius:13,color:T.t1,fontSize:12,fontWeight:!hasPlaytomic?700:500,
-            cursor:'pointer',transition:'all .15s',lineHeight:1.3,textAlign:'center'}}>
-          {'Habe ich nicht —\nGib mir ein RITMO Level'}
-        </button>
+      {/* Umschalter: Pillen wie die Auswahl im Assistenten (weiss = gewaehlt). */}
+      <div style={{display:'flex',gap:8,marginBottom:20}}>
+        {[[true,'Habe Playtomic-Level',()=>setProfile(p=>({...p,playtomicLevel:p.playtomicLevel??2.50}))],
+          [false,'RITMO-Level schätzen',()=>setProfile(p=>({...p,playtomicLevel:null}))]].map(([v,l,fn])=>{
+          const sel=hasPlaytomic===v;
+          return(
+            <button key={l} onClick={fn}
+              style={{flex:1,height:46,borderRadius:999,cursor:'pointer',
+                background:sel?T.t1:'transparent',border:`1px solid ${sel?T.t1:T.glassLine}`,
+                color:sel?'#000':T.t1,fontSize:13.5,fontWeight:sel?700:500,
+                transition:'background .2s, color .2s'}}>{l}</button>
+          );
+        })}
       </div>
 
       {hasPlaytomic?(
         /* ── Playtomic Level — 0.01-Schritte ── */
-        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,
-          padding:'20px 18px 16px'}}>
-          <div style={{color:T.t2,fontSize:11,fontWeight:700,letterSpacing:1.2,
-            textTransform:'uppercase',textAlign:'center',marginBottom:14}}>
+        <div style={{...GLASS,borderRadius:20,padding:'20px 18px 18px'}}>
+          <div className="display" style={{color:T.o,fontSize:11,letterSpacing:2.4,
+            textAlign:'center',marginBottom:14}}>
             Playtomic Level
           </div>
           <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:12}}>
             <button onClick={()=>setPlaytomicLevel(-0.01)}
-              style={{width:42,height:42,borderRadius:'50%',
-                background:T.card2,border:`1px solid ${T.border}`,
-                color:T.o,fontSize:22,fontWeight:700,cursor:'pointer',flexShrink:0}}>−</button>
+              style={{width:44,height:44,borderRadius:'50%',...GLASS,
+                color:T.t1,fontSize:22,fontWeight:500,cursor:'pointer',flexShrink:0}}>−</button>
             <input
               type="number" min="0" max="7" step="0.01"
               value={(profile.playtomicLevel??2.50).toFixed(2)}
@@ -1519,14 +1507,13 @@ function ChapterPlaytomic({profile,setProfile}){
                 const v=parseFloat(e.target.value);
                 if(!isNaN(v)) setProfile(p=>({...p,playtomicLevel:Math.min(7,Math.max(0,Math.round(v*100)/100))}));
               }}
-              style={{width:110,textAlign:'center',
-                color:T.o,fontSize:42,fontWeight:900,letterSpacing:-1,lineHeight:1,
+              style={{width:130,textAlign:'center',fontVariantNumeric:'tabular-nums',
+                color:T.o,fontSize:48,fontWeight:300,letterSpacing:-1,lineHeight:1,
                 background:'transparent',border:'none',outline:'none',
                 fontFamily:'inherit'}}/>
             <button onClick={()=>setPlaytomicLevel(+0.01)}
-              style={{width:42,height:42,borderRadius:'50%',
-                background:T.card2,border:`1px solid ${T.border}`,
-                color:T.o,fontSize:22,fontWeight:700,cursor:'pointer',flexShrink:0}}>+</button>
+              style={{width:44,height:44,borderRadius:'50%',...GLASS,
+                color:T.t1,fontSize:22,fontWeight:500,cursor:'pointer',flexShrink:0}}>+</button>
           </div>
           <div style={{color:T.t3,fontSize:11,textAlign:'center',marginTop:6}}>
             Skala 0.00 – 7.00
@@ -1540,7 +1527,7 @@ function ChapterPlaytomic({profile,setProfile}){
       ):(
         /* ── RITMO Level Fragebogen — 6 Fragen ── */
         <div>
-          <div style={{color:T.t2,fontSize:13,lineHeight:1.55,marginBottom:16,padding:'0 2px'}}>
+          <div className="txt" style={{color:T.t2,fontSize:14,fontStyle:'italic',lineHeight:1.55,marginBottom:20,padding:'0 2px'}}>
             Beantworte 6 kurze Fragen — wir schätzen dein RITMO-Level. Je mehr du angibst, desto genauer.
           </div>
 
@@ -1592,7 +1579,7 @@ function ChapterPlaytomic({profile,setProfile}){
 
           {/* Matches — Zahlen-Input */}
           <div style={{marginBottom:18}}>
-            <div style={{color:T.t1,fontSize:16,fontWeight:700,marginBottom:8,paddingLeft:2}}>
+            <div style={obLabel()}>
               Wettbewerbsfähige Matches gespielt?
             </div>
             <input
@@ -1603,14 +1590,12 @@ function ChapterPlaytomic({profile,setProfile}){
                 const v=e.target.value;
                 setProfile(p=>({...p,matchesPlayed:v===''?'':Math.max(0,parseInt(v)||0)}));
               }}
-              style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-                borderRadius:13,padding:'14px 16px',color:T.t1,fontSize:16,fontWeight:600,
-                outline:'none',boxSizing:'border-box'}}/>
+              style={{...OB_INP,fontVariantNumeric:'tabular-nums'}}/>
           </div>
 
           {m>0&&(
             <div style={{marginBottom:18}}>
-              <div style={{color:T.t1,fontSize:16,fontWeight:700,marginBottom:8,paddingLeft:2}}>
+              <div style={obLabel()}>
                 Davon Siege?
               </div>
               <input
@@ -1622,9 +1607,7 @@ function ChapterPlaytomic({profile,setProfile}){
                   const wins=Math.min(m,Math.max(0,parseInt(v)||0));
                   setProfile(p=>({...p,winsCount:v===''?'':wins}));
                 }}
-                style={{width:'100%',background:T.card2,border:`1px solid ${T.border}`,
-                  borderRadius:13,padding:'14px 16px',color:T.t1,fontSize:16,fontWeight:600,
-                  outline:'none',boxSizing:'border-box'}}/>
+                style={{...OB_INP,fontVariantNumeric:'tabular-nums'}}/>
               {profile.winsCount!==''&&profile.winsCount!=null&&(
                 <div style={{color:T.t3,fontSize:12,marginTop:6,paddingLeft:2}}>
                   Siegquote: {Math.round((parseInt(profile.winsCount)||0)/m*100)}%
@@ -1635,21 +1618,22 @@ function ChapterPlaytomic({profile,setProfile}){
 
           {/* Live estimate */}
           {estimated!=null&&(
-            <div className="fi" style={{background:T.oSoft,
-              border:`1px solid ${T.o}`,borderRadius:15,padding:'16px 18px',
+            <div className="fi" style={{...GLASS,border:`1px solid ${T.o}`,
+              boxShadow:`${GLASS.boxShadow}, 0 6px 22px var(--oGlow)`,borderRadius:20,padding:'16px 18px',
               display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:12}}>
               <div>
-                <div style={{color:T.t3,fontSize:10,fontWeight:700,letterSpacing:1.3,
-                  textTransform:'uppercase',marginBottom:4}}>RITMO Level (Schätzung)</div>
-                <div style={{color:T.o,fontSize:40,fontWeight:900,letterSpacing:-.5,lineHeight:1}}>
+                <div className="display" style={{color:T.o,fontSize:10.5,letterSpacing:2.2,
+                  marginBottom:8}}>Dein Level</div>
+                <div style={{color:T.o,fontSize:46,fontWeight:300,letterSpacing:-1,lineHeight:1,
+                  fontVariantNumeric:'tabular-nums'}}>
                   {estimated.toFixed(2)}
                 </div>
                 <div style={{color:T.o,fontSize:12,fontWeight:700,marginTop:4}}>
                   {getLevelLabel(estimated)}
                 </div>
               </div>
-              <div style={{color:T.t3,fontSize:11,textAlign:'right',lineHeight:1.5}}>
-                Im Profil<br/>anpassbar
+              <div style={{color:T.t3,fontSize:11.5,textAlign:'right',lineHeight:1.5}}>
+                Geschätzt —<br/>im Profil anpassbar
               </div>
             </div>
           )}
@@ -2099,15 +2083,15 @@ function ChapterPlaystyle({profile,setProfile}){
     <div>
       {/* Personality Quiz */}
       <div style={{marginBottom:6}}>
-        <div style={{color:T.t1,fontSize:15,fontWeight:800,marginBottom:4}}>
+        <div style={{...obLabel(),marginBottom:4}}>
           Padel Personality Quiz
         </div>
-        <div style={{color:T.t3,fontSize:12,marginBottom:16,lineHeight:1.5}}>
+        <div className="txt" style={{color:T.t2,fontSize:13.5,fontStyle:'italic',marginBottom:18,lineHeight:1.5,paddingLeft:2}}>
           4 kurze Fragen — dein Spieltyp wird automatisch erkannt.
         </div>
         {PADEL_QUIZ.map(q=>(
-          <div key={q.key} style={{marginBottom:14}}>
-            <div style={{color:T.t1,fontSize:13,fontWeight:700,marginBottom:8}}>{q.label}</div>
+          <div key={q.key} style={{marginBottom:18}}>
+            <div style={{color:T.t1,fontSize:14.5,fontWeight:700,marginBottom:9,paddingLeft:2}}>{q.label}</div>
             <div style={{display:'flex',flexDirection:'column',gap:6}}>
               {q.options.map(o=>{
                 const sel=qa[q.key]===o.id;
@@ -2120,15 +2104,14 @@ function ChapterPlaystyle({profile,setProfile}){
                     const styles=computeStyles(newQa);
                     setProfile(p=>({...p,quizAnswers:newQa,
                       styleType:styles.primary,styleType2:styles.secondary}));
-                  }} style={{display:'flex',alignItems:'center',gap:11,padding:'9px 11px',
-                    background:sel?rgba(accent,0.14):T.card,
-                    border:`1.5px solid ${sel?accent:T.border}`,
-                    borderRadius:9,color:T.t1,fontSize:12,fontWeight:sel?700:500,
-                    cursor:'pointer',textAlign:'left',transition:'all .2s var(--ease-out-expo)'}}>
+                  }} style={{...GLASS,display:'flex',alignItems:'center',gap:12,padding:'11px 14px',
+                    borderRadius:16,border:`1px solid ${sel?accent:T.glassLine}`,
+                    boxShadow:sel?`${GLASS.boxShadow}, 0 0 0 1px ${accent}, 0 6px 22px ${rgba(accent,0.3)}`:GLASS.boxShadow,
+                    color:T.t1,fontSize:13.5,fontWeight:sel?700:500,
+                    cursor:'pointer',textAlign:'left',transition:'border-color .2s, box-shadow .2s'}}>
                     <ArchetypeGlyph type={aType} active={sel} color={accent} size={22}/>
                     <span style={{flex:1}}>{o.label}</span>
-                    {sel&&<span className="dot-pop" style={{width:7,height:7,borderRadius:'50%',
-                      flexShrink:0,background:accent,boxShadow:`0 0 0 3px ${rgba(accent,0.22)}`}}/>}
+                    <ObRadio on={sel} color={accent}/>
                   </button>
                 );
               })}
@@ -2140,11 +2123,11 @@ function ChapterPlaystyle({profile,setProfile}){
         {result&&(
           <div className="fi" style={{background:PADEL_STYLES[result].card,
             border:`1.5px solid ${PADEL_STYLES[result].accent}`,
-            borderRadius:15,padding:'14px 16px',marginBottom:16,
+            borderRadius:20,padding:'14px 16px',marginBottom:16,
             display:'flex',alignItems:'center',gap:12}}>
             <ArchetypeGlyph type={result} active color={PADEL_STYLES[result].accent} size={34}/>
             <div>
-              <div style={{color:PADEL_STYLES[result].accent,fontSize:16,fontWeight:900}}>
+              <div style={{color:PADEL_STYLES[result].accent,fontFamily:T.fontSerif,fontSize:21,fontWeight:700}}>
                 {PADEL_STYLES[result].name}
               </div>
               <div style={{color:PADEL_STYLES[result].text,fontSize:12,opacity:0.7,marginTop:2}}>
@@ -2155,7 +2138,7 @@ function ChapterPlaystyle({profile,setProfile}){
         )}
       </div>
 
-      <div style={{height:1,background:T.sep,margin:'8px 0 18px'}}/>
+      <div style={{height:1,background:T.glassSep,margin:'10px 0 24px'}}/>
 
       {/* Technical questions */}
       <QuestionGroup
@@ -2247,70 +2230,74 @@ function Welcome({profile,setProfile,onComplete}){
   const goNext=()=>{ if(isLast) onComplete(); else setStep(s=>s+1); };
   const goBack=()=>{ if(step>0) setStep(s=>s-1); };
 
+  const ok=current.canContinue();
   return(
-    <div style={{height:'100%',background:T.bgGrad,display:'flex',flexDirection:'column',
-      paddingTop:'calc(env(safe-area-inset-top,0px) + 30px)',position:'relative',overflow:'hidden'}}>
+    <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 18px)',position:'relative',overflow:'hidden'}}>
+      <PhotoBackdrop dim={.45}/>
 
-      {/* Header: chapter counter + skip */}
-      <div style={{padding:'0 22px',display:'flex',alignItems:'center',
-        justifyContent:'space-between',minHeight:24}}>
-        <div style={{color:T.t3,fontSize:11,fontWeight:700,letterSpacing:1.5}}>
-          {String(step+1).padStart(2,'0')} / {String(chapters.length).padStart(2,'0')}
+      {/* Kopf wie im Turnier-Assistenten: Ressort, Schritt, Ueberspringen,
+          darunter ein Segment je Kapitel. */}
+      <div style={{padding:'0 22px 14px',flexShrink:0}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14,minHeight:40}}>
+          <div>
+            <div className="display" style={{color:T.o,fontSize:12,letterSpacing:2.4}}>Einrichten</div>
+            <div style={{color:T.t2,fontSize:12.5,fontWeight:600,marginTop:3,
+              fontVariantNumeric:'tabular-nums'}}>Schritt {step+1} von {chapters.length}</div>
+          </div>
+          {current.skippable&&(
+            <button onClick={goNext}
+              style={{height:36,padding:'0 14px',borderRadius:999,...GLASS,color:T.t2,
+                fontSize:13,fontWeight:600,cursor:'pointer'}}>
+              Überspringen
+            </button>
+          )}
         </div>
-        {current.skippable?(
-          <button onClick={goNext}
-            style={{background:'none',border:'none',color:T.t3,fontSize:12,
-              fontWeight:600,cursor:'pointer',padding:'4px 8px',letterSpacing:.3}}>
-            Überspringen
-          </button>
-        ):<div style={{width:1,height:1}}/>}
+        <div style={{display:'flex',gap:5}}>
+          {chapters.map((c,i)=>(
+            <span key={c.id} style={{flex:1,height:3,borderRadius:2,
+              background:i<=step?T.o:T.glassLine,transition:'background .3s'}}/>
+          ))}
+        </div>
       </div>
 
-      <OnboardProgress total={chapters.length} current={step}/>
-
       {/* Body — re-mount on step change for fresh fade animations */}
-      <div key={step} style={{flex:1,padding:'24px 22px 16px',
+      <div key={step} style={{flex:1,padding:'8px 22px 20px',
         overflowY:'auto',WebkitOverflowScrolling:'touch',
         display:'flex',flexDirection:'column'}}>
 
-        <div className="fi" style={{marginBottom:24}}>
-          <div style={{color:T.t1,fontSize:28,fontWeight:900,letterSpacing:-.5,lineHeight:1.15}}>
+        <div className="fi" style={{marginBottom:22}}>
+          <div style={{...HEAD_SERIF,fontSize:34,lineHeight:1.05}}>
             {current.title}
           </div>
-          <div style={{color:T.t2,fontSize:16,marginTop:10,lineHeight:1.55,fontWeight:400}}>
+          <div className="txt" style={{color:T.t2,fontSize:14.5,fontStyle:'italic',marginTop:10,lineHeight:1.5}}>
             {current.subtitle}
           </div>
         </div>
 
         <div className="fu" style={{animationDelay:'.1s'}}>
-          <Content {...current.contentProps} onEnter={()=>{if(current.canContinue())goNext();}}/>
+          <Content {...current.contentProps} onEnter={()=>{if(ok)goNext();}}/>
         </div>
       </div>
 
-      {/* Footer: back + primary CTA */}
-      <div style={{padding:'14px 22px calc(env(safe-area-inset-bottom,0px) + 22px)',
-        display:'flex',gap:10,alignItems:'center',background:T.bg,
-        borderTop:`1px solid ${T.sep}`}}>
+      {/* Fusszeile wie im Assistenten: Pillen direkt auf dem Foto,
+          Zurueck gelb, Weiter orange. */}
+      <div style={{flexShrink:0,display:'flex',gap:10,
+        padding:'12px 22px calc(env(safe-area-inset-bottom,0px) + 18px)'}}>
         {step>0&&(
           <button onClick={goBack}
-            style={{padding:'14px 18px',background:T.card,
-              border:`1px solid ${T.border}`,borderRadius:15,
-              color:T.t1,fontSize:16,fontWeight:600,cursor:'pointer'}}>
-            Zurück
+            style={{flex:1,height:54,borderRadius:999,...GLASS,
+              border:`1px solid ${T.yellow}`,color:T.yellow,fontSize:16,fontWeight:700,cursor:'pointer'}}>
+            ‹ Zurück
           </button>
         )}
-        <button onClick={goNext} disabled={!current.canContinue()}
-          style={{flex:1,padding:'14px 18px',
-            background:current.canContinue()?T.o:T.card2,
-            border:current.canContinue()?'none':`1px solid ${T.border}`,
-            borderRadius:15,
-            color:current.canContinue()?'#000':T.t4,
-            fontSize:15,fontWeight:800,letterSpacing:.2,
-            cursor:current.canContinue()?'pointer':'not-allowed',
-            boxShadow:current.canContinue()?'0 4px 14px var(--oGlow)':'none',
-            opacity:current.canContinue()?1:0.7,
-            transition:'all .2s ease'}}>
-          {current.cta}
+        <button onClick={goNext} disabled={!ok}
+          style={{flex:2,height:54,borderRadius:999,border:'none',
+            background:ok?T.o:T.glassHi,color:ok?'#000':T.t3,
+            boxShadow:ok?'0 8px 26px var(--oGlow)':'none',
+            fontSize:16,fontWeight:800,cursor:ok?'pointer':'not-allowed',
+            transition:'background .2s, box-shadow .2s'}}>
+          {current.cta} ›
         </button>
       </div>
     </div>
@@ -13185,13 +13172,19 @@ function TournamentStartSplash({name,onDone}){
   },[onDone]);
   const flying=phase==='fly';
   return(
-    <div aria-hidden="true" style={{position:'fixed',inset:0,zIndex:800,
-      background:T.bg,backgroundImage:'var(--bgGrad)',
+    <div aria-hidden="true" style={{position:'fixed',inset:0,zIndex:800,...PHOTO_ROOT,
       display:'flex',flexDirection:'column',alignItems:'center',
       justifyContent:'center',gap:26,pointerEvents:'none',
       /* Die Blende muss VOR dem Unmount fertig sein, sonst reisst der
          Vorhang halbtransparent ab: 190 + 336 = 526 ms < 560 ms. */
       animation:flying?`splashFade ${Math.round(SPLASH_FLY*0.60)}ms ease-in ${Math.round(SPLASH_FLY*0.34)}ms both`:'none'}}>
+      {/* Wie Splash und Startseite: das Foto, kraeftig abgedunkelt, und
+          oben der Schriftzug auf Hoehe der Startseite. */}
+      <PhotoBackdrop dim={.5}/>
+      <img src={`${getAssetBase()}assets/ritmo-lettering.png`} alt="" draggable={false}
+        style={{position:'absolute',left:'50%',transform:'translateX(-50%)',
+          top:'calc(env(safe-area-inset-top,0px) + 30px)',width:150,height:'auto',
+          opacity:flying?0:1,transition:'opacity .2s'}}/>
 
       <div style={{position:'relative',display:'flex',alignItems:'center',
         justifyContent:'center',width:120,height:120}}>
@@ -13212,18 +13205,21 @@ function TournamentStartSplash({name,onDone}){
       </div>
 
       {!flying&&(
-        <div className="fi" style={{textAlign:'center',padding:'0 32px'}}>
-          <div style={{fontFamily:T.fontDisplay,color:T.o,fontSize:11,
-            letterSpacing:3,lineHeight:1}}>Aufschlag</div>
-          <div style={{fontFamily:T.fontSerif,color:T.t1,fontSize:24,fontWeight:700,lineHeight:1.15,
-            marginTop:9,overflow:'hidden',textOverflow:'ellipsis',
-            whiteSpace:'nowrap',maxWidth:300}}>
+        <div className="fi" style={{textAlign:'center',padding:'0 32px',
+          display:'flex',flexDirection:'column',alignItems:'center'}}>
+          <div className="display" style={{color:T.o,fontSize:12,letterSpacing:2.8,lineHeight:1}}>Aufschlag</div>
+          {/* Der Turniername als Schlagzeile in der Antiqua, wie der
+              Siegername im Endstand — hoechstens zwei Zeilen. */}
+          <div style={{...HEAD_SERIF,fontSize:36,lineHeight:1.05,marginTop:12,maxWidth:320,
+            display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',overflow:'hidden'}}>
             {name||'Turnier'}
           </div>
-          <div className="txt" style={{color:T.t3,fontSize:13.5,fontStyle:'italic',
-            marginTop:5}}>
+          <div className="txt" style={{color:T.t2,fontSize:14.5,fontStyle:'italic',marginTop:10}}>
             Runde 1 wird ausgelost …
           </div>
+          {/* Derselbe Ladebalken wie ueberall, gefuellt ueber die
+              Drehphase des Balls. */}
+          <div style={{marginTop:22}}><LoadBar dur={SPLASH_SPIN} w={150} label="Runde 1 wird ausgelost"/></div>
         </div>
       )}
     </div>

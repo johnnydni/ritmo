@@ -792,11 +792,22 @@ Rueckgabe nur Splash und diese Seite — kein Login, kein Home, kein
 
 Das Intro-Video (`assets/splash-intro.mp4`, Handschlag am Netz von
 oben, 8,4 s) laeuft vollflaechig unter einem leichten Verlauf, darauf
-mittig der Schriftzug und darunter der Ladebalken — **5 px hoch und
-bis 300 px breit**, wie die Leiste einer Sportuebertragung. Er fuellt
-sich ueber die Laenge des Videos (`SPL_MS` = 8400, `splFill`, vorn ein
-oranger Kopf, ein Glanz `splGlint` laeuft darueber). Der Splash endet
-mit dem Video (`ended`), Tippen startet sofort.
+mittig der Schriftzug und darunter der Ladebalken, **genau so breit
+wie der Schriftzug** (`lw`, min(58vw, 250px)). Er fuellt sich ueber die
+Laenge des Videos (`SPL_MS` = 8400). Der Splash endet mit dem Video
+(`ended`), Tippen startet sofort.
+
+**Der Ladebalken ist einer fuer die ganze App** (`LoadBar` in
+icons.jsx): Pille mit Haarlinie, darin schraege Segmente mit schmalen
+Fugen, das rechte Ende im selben Winkel geschnitten — nach einer
+Vorlage des Teams. `pct` zeigt einen Stand (Screenshot-Scan), `dur`
+fuellt einmal durch (Splash, `ldFill`), ohne beides laeuft ein Stueck
+unbestimmt hindurch (`ldRun`). `BallSpinner` zeichnet nur noch diesen
+Balken, die Aufrufer (Lobby, Beitreten) blieben. Die Fuellung waechst
+ueber ihre **Breite**, nicht per `scaleX` — sonst wuerden die Segmente
+mitgestreckt; links verankert stehen sie still, waehrend sie waechst.
+Breite: die des Schriftzugs auf demselben Screen (Vorgabe 176 wie
+`AuthMark`).
 
 - **Das Video ist heruntergerechnet**: 720p, H.264, ohne Ton,
   `+faststart` — 0,7 MB statt 15,7 MB im Original. Wer ein neues

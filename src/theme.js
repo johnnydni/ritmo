@@ -742,8 +742,8 @@ input[type="time"]::-webkit-datetime-edit{padding:0;text-align:center;}
 /* Splash: der Ladebalken fuellt sich einmal ueber --spl-ms, ein
    Glanz laeuft darueber. Bei reduzierter Bewegung kuerzt der
    Killswitch beides — der Balken steht dann sofort voll da. */
-@keyframes splFill{from{transform:scaleX(0)}to{transform:scaleX(1)}}
-@keyframes splGlint{from{transform:translateX(-100%)}to{transform:translateX(260%)}}
+@keyframes ldFill{from{width:0}to{width:100%}}
+@keyframes ldRun{from{left:-42%}to{left:100%}}
 /* Einmaliger Orange-Ring um eine Karte — Hinweis, dass sich an ihr
    gerade etwas geändert hat (Spielerkarte ab dem 5. Spieler: ab da
    lassen sich Zeilen per Wisch löschen). Läuft genau einmal. */

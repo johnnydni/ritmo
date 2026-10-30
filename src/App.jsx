@@ -47,7 +47,7 @@ import {
   HomeIcon, LiveIcon, GearIcon, SearchIcon, Hl, DNAIcon, FullscreenIcon, EditIcon,
   ExitFullscreenIcon, KiwiIcon, PineappleIcon, CoconutIcon, TennisBallIcon, ParrotIcon,
   FunkyFruitsRow, BookIcon, JourneyIcon, ArrowRightCircleIcon, WandIcon,
-  MiniBall, BallSpinner, GoogleGlyph, AppleGlyph, AppStoreLine, PlayStoreGlyph, PersonGlyph,
+  MiniBall, BallSpinner, LoadBar, GoogleGlyph, AppleGlyph, AppStoreLine, PlayStoreGlyph, PersonGlyph,
   HeroRulesVisual, HeroJourneyVisual,
   // Settings + RITMO Post line-art icons
   SteeringWheelIcon, PaletteIcon, EyeIcon, BellIcon, LockIcon, DoorOutIcon,
@@ -321,6 +321,8 @@ function Splash({onDone}){
     setNoIntro(v=>{ lsSet('ritmo_skip_intro',!v); return !v; });
   };
   const ms=skip?SPL_MS_SKIP:SPL_MS;
+  // Schriftzug und Ladebalken teilen eine Breite (vorher min(58vw,250px)).
+  const lw=Math.min(Math.round((typeof window!=='undefined'?window.innerWidth:390)*.58),250);
   const vidRef=useRef(null);
   useEffect(()=>{
     const t=setTimeout(finish,ms+(skip?150:1600));
@@ -369,23 +371,10 @@ function Splash({onDone}){
         display:'flex',flexDirection:'column',alignItems:'center',gap:30,pointerEvents:'none'}}>
         <img className="si" src={`${getAssetBase()}assets/ritmo-lettering.png`} alt="RITMO"
           draggable={false}
-          style={{width:'min(58vw, 250px)',height:'auto',display:'block',
+          style={{width:lw,height:'auto',display:'block',
             filter:'drop-shadow(0 4px 24px rgba(0,0,0,.5))'}}/>
-        {/* Der Balken: breit wie die Leiste einer Sportuebertragung,
-            fuellt sich mit einer weichen S-Kurve; vorn ein orange
-            Kopf, darueber ein Glanz. */}
-        <div role="progressbar" aria-label="RITMO wird geladen"
-          style={{position:'relative',width:'min(76vw, 300px)',height:5,borderRadius:3,
-            background:'rgba(255,255,255,.18)',overflow:'hidden'}}>
-          <div style={{position:'absolute',inset:0,borderRadius:3,transformOrigin:'left center',
-            background:`linear-gradient(90deg, rgba(255,255,255,.85) 0%, #fff 78%, ${T.o} 100%)`,
-            boxShadow:`0 0 10px ${T.o}`,
-            animation:`splFill ${ms}ms cubic-bezier(.65,0,.35,1) both`}}/>
-          <div style={{position:'absolute',top:0,bottom:0,left:0,width:'38%',
-            background:'linear-gradient(90deg, transparent, rgba(255,255,255,.9), transparent)',
-            mixBlendMode:'overlay',
-            animation:'splGlint 1.1s ease-in-out .2s infinite'}}/>
-        </div>
+        {/* Der Ladebalken, so breit wie der Schriftzug darueber. */}
+        <LoadBar dur={ms} w={lw} label="RITMO wird geladen"/>
       </div>
       {/* „Skip Intro" — Glas-Pille mit Haken, wie bisher. */}
       <button onClick={toggleNoIntro}
@@ -8031,11 +8020,7 @@ function PlayerScanSheet({existing,onAdd,onClose,initialFiles=null}){
                   fontVariantNumeric:'tabular-nums'}}>Bild {prog.file}/{prog.total}</span>
               )}
             </div>
-            <div style={{height:8,borderRadius:4,background:T.card2,overflow:'hidden'}}>
-              <div style={{height:'100%',borderRadius:4,background:T.o,
-                width:`${Math.max(3,Math.round((prog.pct||0)*100))}%`,
-                transition:'width .25s ease'}}/>
-            </div>
+            <LoadBar pct={Math.max(.03,prog.pct||0)} label="Namen werden gelesen"/>
             <div className="txt" style={{color:T.t4,fontSize:12,lineHeight:1.65,marginTop:14,
               fontStyle:'italic',paddingBottom:'calc(env(safe-area-inset-bottom,0px) + 12px)'}}>
               Gelesen wird auf dem Gerät — die Bilder verlassen es nicht.

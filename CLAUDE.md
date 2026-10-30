@@ -798,16 +798,23 @@ Laenge des Videos (`SPL_MS` = 8400). Der Splash endet mit dem Video
 (`ended`), Tippen startet sofort.
 
 **Der Ladebalken ist einer fuer die ganze App** (`LoadBar` in
-icons.jsx): Pille mit Haarlinie, darin schraege Segmente mit schmalen
-Fugen, das rechte Ende im selben Winkel geschnitten — nach einer
-Vorlage des Teams. `pct` zeigt einen Stand (Screenshot-Scan), `dur`
-fuellt einmal durch (Splash, `ldFill`), ohne beides laeuft ein Stueck
-unbestimmt hindurch (`ldRun`). `BallSpinner` zeichnet nur noch diesen
-Balken, die Aufrufer (Lobby, Beitreten) blieben. Die Fuellung waechst
-ueber ihre **Breite**, nicht per `scaleX` — sonst wuerden die Segmente
-mitgestreckt; links verankert stehen sie still, waehrend sie waechst.
-Breite: die des Schriftzugs auf demselben Screen (Vorgabe 176 wie
-`AuthMark`).
+icons.jsx), nach einer Tacho-Grafik: links steigt er schraeg an, knickt
+scharf ab und laeuft gerade weiter — Segmente mit Fugen, **nur Weiss**.
+`pct` zeigt einen Stand (Screenshot-Scan), `dur` fuellt einmal durch
+(Splash, `ldFill`), ohne beides laeuft ein Stueck unbestimmt hindurch
+(`ldRun`). `BallSpinner` zeichnet nur noch diesen Balken, die Aufrufer
+(Lobby, Beitreten) blieben.
+
+- Die Segmente sind **ein** SVG-Strich mit Strichmuster
+  (`pathLength="100"`), gefuellt wird ueber eine Maske mit eigenem
+  Muster. So stehen die Segmente still, waehrend die Fuellung waechst.
+- **Die Schraege traegt eine ganze Zahl Segmente** und das Muster ist
+  so verschoben, dass eine Fuge genau im Knick liegt. Sonst bricht
+  dort ein Segment um die Ecke.
+- `miter`-Ecke und `butt`-Enden — „kantig" war der Wunsch, eine
+  runde Kurve war der erste Entwurf.
+- Breite: die des Schriftzugs auf demselben Screen (Vorgabe 176 wie
+  `AuthMark`), die Hoehe folgt daraus.
 
 - **Das Video ist heruntergerechnet**: 720p, H.264, ohne Ton,
   `+faststart` — 0,7 MB statt 15,7 MB im Original. Wer ein neues

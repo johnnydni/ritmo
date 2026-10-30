@@ -7,7 +7,7 @@
    load PNGs with an inline SVG fallback if the asset is missing.
 ═══════════════════════════════════════════════════════════════ */
 
-import { useState } from "react";
+import { useState, useId } from "react";
 import { T } from "./theme.js";
 import { getAssetBase } from "./utils.js";
 
@@ -471,35 +471,44 @@ export function MiniBall({size=10,color=T.o}){
   </svg>;
 }
 
-/* Der Ladebalken der App: Pille mit Haarlinie, darin schraege
-   Segmente mit schmalen Fugen — wie eine Ladeanzeige im Spiel. Eine
+/* Der Ladebalken der App — nach einer Tacho-Grafik: links steigt er
+   schraeg an, knickt scharf ab und laeuft dann gerade weiter. Er
+   besteht aus Segmenten mit Fugen, nur in Weiss. Es gibt EINE
    Komponente fuer alle Stellen (Splash, Screenshot-Scan, Warten auf
-   die Session), Breite wie der Schriftzug daneben.
-   - pct: 0..1 zeigt den Stand; null laeuft unbestimmt (ein Stueck
-     wandert durch); dur (ms) fuellt einmal von 0 auf voll (Splash).
-   - Die Fuellung waechst ueber ihre BREITE, nicht per scaleX: sonst
-     wuerden die Segmente mitgestreckt. Weil sie links verankert ist,
-     stehen die Segmente still, waehrend sie waechst.
-   - Das rechte Ende ist schraeg geschnitten (clip-path), im selben
-     Winkel wie die Fugen. */
-export function LoadBar({pct=null,dur=0,w=176,h,label='Wird geladen'}){
-  const H=h||Math.max(12,Math.round(w*.072)),seg=Math.round(H*1.25),gap=Math.max(2,Math.round(H*.18));
-  const cut=Math.round(H*.55),pad=Math.max(2,Math.round(H*.16));
+   die Session), so breit wie der Schriftzug daneben.
+   - pct: 0..1 zeigt den Stand; dur (ms) fuellt einmal von 0 auf voll
+     (Splash); ohne beides laeuft ein Stueck unbestimmt durch.
+   - Die Segmente sind EIN Strich mit Strichmuster. Gefuellt wird ueber
+     eine Maske mit eigenem Strichmuster (pathLength 100). So stehen
+     die Segmente still, waehrend die Maske waechst, und der Knick
+     bleibt ein Knick: miter-Ecke, keine runden Enden. */
+export function LoadBar({pct=null,dur=0,w=176,label='Wird geladen'}){
+  const id=useId().replace(/:/g,'');
+  const H=Math.round(w*.2),t=Math.max(5,Math.round(w*.042));
+  const x0=t*.5,y0=H-t*.5,x1=x0+(H-t)*.5,y1=t*.5;
+  const d=`M${x0} ${y0}L${x1} ${y1}H${w}`;
+  // Die Schraege traegt eine ganze Zahl Segmente, damit eine Fuge genau
+  // im Knick liegt — sonst bricht dort ein Segment um die Ecke.
+  const dg=Math.hypot(x1-x0,y0-y1),L=dg+(w-x1),k=Math.max(2,Math.round(dg/(t*1.15)));
+  const P=dg/k/L*100,seg=(P*.74).toFixed(3),gap=(P*.26).toFixed(3),off=(P*.74+P*.13).toFixed(3);
   const ind=pct==null&&!dur;
-  const stripes={background:`repeating-linear-gradient(115deg, ${T.t1} 0 ${seg}px, transparent ${seg}px ${seg+gap}px)`,
-    clipPath:`polygon(0 0, 100% 0, calc(100% - ${cut}px) 100%, 0 100%)`};
+  const mask=ind?{strokeDasharray:'38 200',animation:'ldRun 1.3s cubic-bezier(.45,0,.55,1) infinite'}
+    :dur?{strokeDasharray:'100 100',animation:`ldFill ${dur}ms cubic-bezier(.65,0,.35,1) both`}
+    :{strokeDasharray:'100 100',strokeDashoffset:100-Math.max(0,Math.min(1,pct))*100,transition:'stroke-dashoffset .3s ease'};
+  const line={fill:'none',strokeWidth:t,strokeLinejoin:'miter',strokeMiterlimit:10,strokeLinecap:'butt'};
   return(
-    <div role="progressbar" aria-label={label}
+    <svg role="progressbar" aria-label={label}
       aria-valuenow={pct==null?undefined:Math.round(pct*100)} aria-valuemin={0} aria-valuemax={100}
-      style={{width:w,maxWidth:'100%',height:H,boxSizing:'border-box',borderRadius:H,
-        border:`${Math.max(1.5,H*.12)}px solid ${T.t1}`,padding:pad,flexShrink:0}}>
-      <div style={{position:'relative',width:'100%',height:'100%',borderRadius:H,overflow:'hidden'}}>
-        <div style={{position:'absolute',top:0,bottom:0,left:0,...stripes,
-          ...(ind?{width:'42%',animation:'ldRun 1.25s cubic-bezier(.45,0,.55,1) infinite'}
-            :dur?{width:'100%',animation:`ldFill ${dur}ms cubic-bezier(.65,0,.35,1) both`}
-            :{width:`${Math.max(0,Math.min(1,pct))*100}%`,transition:'width .3s ease'})}}/>
-      </div>
-    </div>
+      width={w} height={H} viewBox={`0 0 ${w} ${H}`} style={{display:'block',overflow:'visible',maxWidth:'100%',flexShrink:0}}>
+      <defs>
+        <mask id={`ld${id}`} maskUnits="userSpaceOnUse" x={-t} y={-t} width={w+2*t} height={H+2*t}>
+          <path d={d} pathLength="100" stroke="#fff" {...line} strokeWidth={t+4} style={mask}/>
+        </mask>
+      </defs>
+      <path d={d} pathLength="100" stroke={T.t1} strokeOpacity=".14" strokeDasharray={`${seg} ${gap}`} strokeDashoffset={off} {...line}/>
+      <path d={d} pathLength="100" stroke={T.t1} strokeDasharray={`${seg} ${gap}`} strokeDashoffset={off} {...line}
+        mask={`url(#ld${id})`} style={{filter:'drop-shadow(0 0 5px rgba(255,255,255,.55))'}}/>
+    </svg>
   );
 }
 

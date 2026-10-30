@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
-"""Erzeugt die beiden Inter-Schnitte, die der Turnier-PDF-Export einbettet.
+"""Erzeugt die drei Space-Grotesk-Schnitte, die der Turnier-PDF-Export einbettet.
 
-Warum ueberhaupt eine eigene Datei, wo die App Inter doch schon laedt:
+Space Grotesk ist die Textschrift der App; das PDF traegt sie, damit es
+aussieht wie der Endstand in der App (vorher Inter).
+
+Warum ueberhaupt eine eigene Datei, wo die App Space Grotesk doch schon laedt:
 @fontsource liefert nur woff2/woff, jsPDF braucht aber TTF. Und die
 14 Standardschriften eines PDF (Helvetica & Co.) koennen nur WinAnsi —
 damit wird aus „Wisniewska" mit s-acute ein „Wi[niewska". Auf einer
@@ -10,11 +13,11 @@ Urkunde den Namen des Siegers zu verstuemmeln ist keine Option.
 Der Umfang ist deshalb Latin-1 plus Latin Extended-A: das deckt jede
 Sprache ab, aus der in einem DACH-Padelclub Namen auftauchen (pl, cz,
 hu, tr, hr, ro, skandinavisch). Alles andere fliegt raus, damit die
-Dateien klein bleiben — rund 25 kB je Schnitt statt 150 kB.
+Dateien klein bleiben.
 
     python3 tools/make-pdf-fonts.py
 
-Schreibt src/fonts/pdf/inter-regular.ttf und inter-bold.ttf.
+Schreibt src/fonts/pdf/sg-light.ttf, sg-regular.ttf und sg-bold.ttf.
 Braucht: pip install fonttools brotli
 """
 import os
@@ -24,12 +27,13 @@ from fontTools.merge import Merger
 from fontTools import subset
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SRC = os.path.join(ROOT, 'node_modules', '@fontsource', 'inter', 'files')
+SRC = os.path.join(ROOT, 'node_modules', '@fontsource', 'space-grotesk', 'files')
 DST = os.path.join(ROOT, 'src', 'fonts', 'pdf')
 
 # latin + latin-ext zusammen; einzeln fehlen die osteuropaeischen Zeichen.
 SUBSETS = ('latin', 'latin-ext')
-WEIGHTS = ((400, 'inter-regular'), (700, 'inter-bold'))
+# 300 fuer die duennen Zahlen (Wertung, Platz), wie in der App.
+WEIGHTS = ((300, 'sg-light'), (400, 'sg-regular'), (700, 'sg-bold'))
 
 UNICODES = ','.join([
     'U+0020-007E',   # ASCII
@@ -46,7 +50,7 @@ UNICODES = ','.join([
 def build(weight, name):
     tmp = []
     for sub in SUBSETS:
-        src = os.path.join(SRC, f'inter-{sub}-{weight}-normal.woff2')
+        src = os.path.join(SRC, f'space-grotesk-{sub}-{weight}-normal.woff2')
         if not os.path.exists(src):
             sys.exit(f'fehlt: {src}\nVorher `npm install` laufen lassen.')
         f = TTFont(src)

@@ -32,7 +32,7 @@
    Faellt das Nachladen einer Schrift oder der Wortmarke aus, entsteht
    das PDF trotzdem — dann eben in Helvetica und ohne Logo.
 ═══════════════════════════════════════════════════════════════ */
-import { calcLeaderboard, FORMATS, roundMeanBonus, winLine } from './tournament.js';
+import { calcLeaderboard, FORMATS, roundPauseBonus, winLine } from './tournament.js';
 import { getAssetBase } from './utils.js';
 import centauriUrl from './fonts/centauri.ttf';
 import sgLightUrl from './fonts/pdf/sg-light.ttf';
@@ -264,10 +264,7 @@ export async function buildTourneyPdf(tourney){
            aufgerundeten Rundenmittelwert (nur in der Punktewertung —
            im Siegemodus ist der Ausgleich kein Rundenwert, sondern
            +1 Sieg fuer die untere Tabellenhaelfte). 'none' gibt nichts. */
-        const bonus=tourney.pauseMode==='fixed'
-          ?(Math.max(0,Math.round(Number(tourney.pausePts)||0))||null)
-          :tourney.pauseMode==='none'?null
-          :(wins?null:roundMeanBonus(r));
+        const bonus=roundPauseBonus(tourney,r);
         font(BODY,'normal'); size(7.8); col(T3);
         put(fit(`Pause: ${(r.sitOut||[]).map(nameOf).join(', ')}`,CW-26),M,y+.4);
         if(bonus){ col(BLUE); font(BODY,'bold');

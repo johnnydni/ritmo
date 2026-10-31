@@ -8102,7 +8102,7 @@ function LbHead({withPauses=true,trail='PKT',lead='SPIELER',
 
 /* Eine Tabellenzeile. Die Wertung kommt als children herein —
    im laufenden Turnier ein Knopf (Punkte anpassen), sonst LbScore. */
-function LbRow({rank,num,name,suffix='',wins=0,losses=0,pauses=0,
+function LbRow({rank,name,suffix='',wins=0,losses=0,pauses=0,
   withPauses=true,highlight=false,last=false,children}){
   const sub=`${wins} S · ${losses} N`+(withPauses?` · ${pauses} P`:'');
   return(
@@ -8112,7 +8112,6 @@ function LbRow({rank,num,name,suffix='',wins=0,losses=0,pauses=0,
       <span style={{width:24,flexShrink:0,textAlign:'center',fontSize:24,fontWeight:300,
         lineHeight:1,fontVariantNumeric:'tabular-nums',
         color:rank<=3?LB_MEDAL[rank-1]:T.t3}}>{rank}</span>
-      <GlassOrb name={name} label={num} size={30} ring={highlight?T.o:undefined}/>
       <div style={{flex:1,minWidth:0}}>
         <div style={{color:T.t1,fontSize:16,fontWeight:600,overflow:'hidden',
           textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{name}{suffix}</div>
@@ -10827,7 +10826,7 @@ function TournamentParticipantView({session,participantId,pin}){
         {sortedLb.map((p,i)=>{
           const isMe=myRow&&p.id===myRow.id;
           return(
-            <LbRow key={p.id} rank={i+1} num={pNum(ts.players,p.id)} name={p.name}
+            <LbRow key={p.id} rank={i+1} name={p.name}
               suffix={isMe?' (Du)':''} highlight={isMe}
               wins={p.wins} losses={p.losses} pauses={p.sitOut}
               last={i===sortedLb.length-1}>
@@ -13250,7 +13249,7 @@ function EndReviewSheet({tourney,onClose,onHistory,onConfirm}){
           <div style={{...GLASS,
             borderRadius:15,overflow:'hidden',marginBottom:12}}>
             {sorted.slice(0,5).map((p,i)=>(
-              <LbRow key={p.id} rank={i+1} num={pNum(tourney.players,p.id)} name={p.name}
+              <LbRow key={p.id} rank={i+1} name={p.name}
                 wins={p.wins} losses={p.losses} pauses={p.sitOut}
                 last={i===Math.min(5,sorted.length)-1&&sorted.length<=5}>
                 <LbScore lead={i===0} value={tourney.winMode==='wins'?p.totalWins:p.totalPts}
@@ -14419,7 +14418,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
               {sortedLb.map((p,i)=>{
                 const adj=tourney.winMode==='wins'?p.adjWins:p.adjPts;
                 return(
-                <LbRow key={p.id} rank={i+1} num={pNum(tourney.players,p.id)} name={p.name}
+                <LbRow key={p.id} rank={i+1} name={p.name}
                   wins={p.wins} losses={p.losses} pauses={p.sitOut}
                   last={i===sortedLb.length-1}>
                   {/* Die ganze Wertung ist der Knopf zum Anpassen — der Stift
@@ -14688,7 +14687,7 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
           <div className="fu" style={{...GLASS,borderRadius:20,overflow:'hidden',flexShrink:0,marginTop:12}}>
             <div>
               {sortedLb.map((p,i)=>(
-                <LbRow key={p.id} rank={i+1} num={pNum(tourney.players,p.id)} name={p.name}
+                <LbRow key={p.id} rank={i+1} name={p.name}
                   wins={p.wins} losses={p.losses} pauses={p.sitOut}
                   last={i===sortedLb.length-1}>
                   <LbScore lead={i===0} value={tourney.winMode==='wins'?p.totalWins:p.totalPts}

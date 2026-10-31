@@ -15,7 +15,7 @@
    Schriftzug oben, „Sieger" als Ressort und darunter der Name als
    Schlagzeile in der kursiven Antiqua, ein Satz zum Ausgang, drei
    Zahlen in Glaskacheln, dann die Tabelle in der Zeile der App
-   (Platz duenn, Kugel mit Spielernummer, Name mit „S · N · P",
+   (Platz duenn, Name mit „S · N · P",
    Wertung duenn und gross) und der Rundenverlauf. Das PDF wird
    geteilt, nicht gedruckt — der dunkle Grund ist gewollt.
 
@@ -133,7 +133,6 @@ export async function buildTourneyPdf(tourney){
                     :(b.totalPts-a.totalPts||b.totalWins-a.totalWins));
   const win=lb[0], second=lb[1];
   const nameOf=id=>P.find(p=>p.id===id)?.name||'?';
-  const numOf=id=>Math.max(1,P.findIndex(p=>p.id===id)+1);
   const team=ids=>(ids||[]).map(nameOf).join(' & ');
   const score=p=>wins?p.totalWins:p.totalPts;
   const fmt=FORMATS[tourney.format]?.name||'Turnier';
@@ -213,13 +212,8 @@ export async function buildTourneyPdf(tourney){
     /* Platz: duenne Ziffer, 1–3 in den Medaillenfarben. */
     font(THIN); size(17); col(i<3?MEDALS[i]:T3);
     put(String(i+1),M+1,cy+2.2);
-    /* Kugel mit der Spielernummer. */
-    const ox=M+17;
-    fill(ORB); draw(GLASSL); doc.setLineWidth(.25); doc.circle(ox,cy,4.3,'FD');
-    font(BODY,'bold'); size(8); col(T1);
-    put(String(numOf(p.id)),ox,cy+1.05,{align:'center'});
     /* Name und „4 S · 0 N · 1 P". */
-    const nx=ox+8;
+    const nx=M+12;
     font(BODY,'bold'); size(11); col(T1);
     put(fit(p.name,PW-M-nx-34),nx,cy-.6);
     font(BODY,'normal'); size(7.8); col(T3);
@@ -235,7 +229,7 @@ export async function buildTourneyPdf(tourney){
   });
   y+=6;
   font(BODY,'normal'); size(7.5); col(T4);
-  put('S Siege   ·   N Niederlagen   ·   P Pausen   ·   Kugel = Spielernummer',M,y);
+  put('S Siege   ·   N Niederlagen   ·   P Pausen',M,y);
   y+=15;
 
   /* ══ RUNDENVERLAUF ═════════════════════════════════════════ */

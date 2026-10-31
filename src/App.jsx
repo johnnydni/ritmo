@@ -2422,8 +2422,9 @@ function ExitGlyph({size=18}){
      umbauen.
    - GLASS ist klares Glas wie die Home-Karten in der installierten
      App: kein Blur, kein grauer Fill — das Foto bleibt scharf, darauf
-     ein Hauch Weiss (6 %), eine helle Haarlinie und innen ein heller
-     Lichtsaum (zwei inset-Schatten), aussen ein weicher Schlagschatten.
+     ein Hauch Weiss (6 %), eine helle Haarlinie und aussen ein weicher
+     Schlagschatten. Den inneren Lichtsaum (zwei inset-Schatten) gibt es
+     nicht mehr — er stand als Glow um jede Flaeche.
      So rendert iOS das GlassSurface-Material der Startseite: dort
      greift dessen SVG-Weg, und WebKit wendet den Verzerrungsfilter
      nicht an. Ohne backdrop-filter kostet die Flaeche beim Scrollen
@@ -2436,7 +2437,8 @@ function ExitGlyph({size=18}){
 const PHOTO_ROOT={background:T.bg,isolation:'isolate'};
 const GLASS={background:'rgba(255,255,255,.06)',
   border:'1px solid rgba(255,255,255,.22)',
-  boxShadow:'inset 0 0 2px 1px rgba(255,255,255,.35), inset 0 0 10px 4px rgba(255,255,255,.12), 0 4px 16px rgba(0,0,0,.18), 0 8px 28px rgba(0,0,0,.14)'};
+  // Kein innerer Lichtsaum mehr: Haarlinie und Schlagschatten reichen.
+  boxShadow:'0 4px 16px rgba(0,0,0,.18), 0 8px 28px rgba(0,0,0,.14)'};
 const HEAD_SERIF={fontFamily:T.fontSerif,fontStyle:'italic',fontWeight:700,
   fontSize:40,letterSpacing:-.6,lineHeight:1,color:T.t1,position:'relative',
   textShadow:'0 2px 14px rgba(0,0,0,.45)'};

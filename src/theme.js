@@ -942,95 +942,44 @@ button:disabled{cursor:not-allowed;opacity:.55;}
    Position+Größe werden in App.jsx via Refs auf den aktiven Tab
    gemessen und mit transform/width animiert. */
 .liquid-pill{
-  /* Explizit an die obere linke Ecke der offsetParent-Padding-Area
-     ankern — ohne top/left würde absolute Positionierung auf den
-     natürlichen Flow zurückfallen (≈ Start des Flex-Containers) und
-     transform: translate würde dann von einer browser-abhängigen
-     Position aus rechnen → Pill saß optisch off-center. */
-  position:absolute;
-  top:0;
-  left:0;
-  border-radius:999px; /* Kapsel — matcht die voll gerundete Bar */
-  background:linear-gradient(135deg,
-    rgba(255,255,255,.10) 0%,
-    rgba(255,255,255,.04) 50%,
-    rgba(255,255,255,.08) 100%);
-  border:1px solid rgba(255,255,255,.16);
-  backdrop-filter:blur(20px) saturate(180%);
-  -webkit-backdrop-filter:blur(20px) saturate(180%);
-  box-shadow:
-    0 4px 14px rgba(0,0,0,.25),
-    inset 0 1px 0 rgba(255,255,255,.28),
-    inset 0 -1px 0 rgba(0,0,0,.18);
+  /* Die Auswahl der Tab-Leiste wie unter iOS 26: eine helle Kapsel
+     HINTER dem Tab — kein zweites Glas, keine Kante, kein Schatten.
+     Lage und Breite setzt App.jsx (translate + width), gleiten tut sie
+     mit einer Feder, die knapp ueberschwingt. */
+  position:absolute;top:0;left:0;
+  border-radius:999px;
+  background:rgba(255,255,255,.13);
   pointer-events:none;
+  transform-origin:center;
   transition:
-    transform var(--anim-pill),
-    width var(--anim-pill),
-    height var(--anim-pill),
-    opacity 220ms var(--ease-out-expo),
-    box-shadow 260ms var(--ease-out-expo);
-  will-change:transform,width;
+    transform 520ms cubic-bezier(.3,1.32,.42,1),
+    width 520ms cubic-bezier(.3,1.32,.42,1),
+    scale 300ms cubic-bezier(.3,1.4,.5,1),
+    background-color 200ms ease,
+    box-shadow 260ms ease;
+  will-change:transform;
 }
-.liquid-pill[data-hover="true"]{
-  box-shadow:
-    0 6px 22px rgba(0,0,0,.32),
-    inset 0 1px 0 rgba(255,255,255,.42),
-    inset 0 -1px 0 rgba(0,0,0,.14);
+/* Finger liegt auf: die Kapsel hebt sich als Linse ab — groesser,
+   heller, mit Schatten — und folgt dem Finger fast ohne Verzug. */
+.liquid-pill[data-press="true"]{
+  scale:1.16;
+  background:rgba(255,255,255,.2);
+  box-shadow:0 10px 28px rgba(0,0,0,.35);
+  transition:
+    transform 110ms cubic-bezier(.2,.8,.3,1),
+    width 110ms cubic-bezier(.2,.8,.3,1),
+    scale 300ms cubic-bezier(.3,1.4,.5,1),
+    background-color 200ms ease,
+    box-shadow 260ms ease;
 }
-/* Themed tint — light themes brauchen einen dunkleren Tönungsanteil,
-   damit das Glas nicht weiß-auf-weiß wäre. Die App setzt data-theme
-   am html-Element; wir hängen den Tönungs-Override daran. */
+/* Erste Lage nach dem Mount: setzen, nicht animieren. */
+.liquid-pill[data-instant="true"]{transition:none;}
 :root[data-theme="light"] .liquid-pill,
 :root[data-theme="padel"] .liquid-pill,
 :root[data-theme="wimbledon"] .liquid-pill,
-:root[data-theme="funky"] .liquid-pill{
-  background:linear-gradient(135deg,
-    rgba(0,0,0,.06) 0%,
-    rgba(0,0,0,.02) 50%,
-    rgba(0,0,0,.06) 100%);
-  border:1px solid rgba(0,0,0,.10);
-  box-shadow:
-    0 4px 14px rgba(0,0,0,.10),
-    inset 0 1px 0 rgba(255,255,255,.55),
-    inset 0 -1px 0 rgba(0,0,0,.06);
-}
-
-/* Tab-TAP: die Pill remountet am Ziel (key in App.jsx) und
-   „kondensiert" dort — Opacity + eigener Blur klingen ab, während
-   der Backdrop-Blur hochrampt. Liest sich wie flüssiges Glas, das
-   sich am neuen Tab sammelt. transform bleibt unangetastet, das
-   inline-translate positioniert weiterhin. */
-@keyframes pillBlend{
-  0%{
-    opacity:0;
-    filter:blur(7px);
-    -webkit-backdrop-filter:blur(2px) saturate(105%);
-    backdrop-filter:blur(2px) saturate(105%);
-  }
-  55%{opacity:1;}
-  100%{
-    opacity:1;
-    filter:blur(0px);
-    -webkit-backdrop-filter:blur(20px) saturate(180%);
-    backdrop-filter:blur(20px) saturate(180%);
-  }
-}
-.liquid-pill[data-blend="true"]{
-  animation:pillBlend 600ms var(--ease-out-expo) both;
-}
-
-/* Greif-Zustand der Pill: solange der Finger sie führt, KEINE
-   Position/Größen-Transition (sonst „schwimmt" sie hinterher) —
-   dafür sichtbar „angehoben": hellere Kante, tieferer Schatten,
-   wie eine vom Glas gelöste Linse. */
-.liquid-pill[data-grab="true"]{
-  transition:
-    opacity 200ms var(--ease-out-expo),
-    box-shadow 200ms var(--ease-out-expo);
-  box-shadow:
-    0 16px 36px rgba(0,0,0,.45),
-    inset 0 1px 0 rgba(255,255,255,.55),
-    inset 0 -1px 0 rgba(0,0,0,.12);
+:root[data-theme="funky"] .liquid-pill{background:rgba(0,0,0,.08);}
+@media (prefers-reduced-motion: reduce){
+  .liquid-pill,.liquid-pill[data-press="true"]{transition:none;scale:1;}
 }
 
 /* ── Liquid-Glass-Material für Bottom-Bars & FABs ──

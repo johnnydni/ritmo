@@ -261,8 +261,8 @@ export function LineIcon({name,size=22,color='currentColor',sw,style}){
 }
 
 /* ─── Tab-Bar Icons ───────────────────────────────────────────── */
-export function HomeIcon({active,size=22}){
-  return <LineIcon name="home" size={size} color={T.t1} sw={active?1.75:undefined}/>;
+export function HomeIcon({active,size=22,color=T.t1}){
+  return <LineIcon name="home" size={size} color={color} sw={active?1.75:undefined}/>;
 }
 export function LiveIcon({active,size=22}){
   // Padel-Schläger-Logo (PNG): weiß = inaktiv, blau = aktiv.

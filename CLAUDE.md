@@ -1470,6 +1470,29 @@ Scrollposition weg. Das wirkte wie ein Neuladen bei jedem Tipp.
   dort einen teuren Effekt oder Timer einbaut, denkt daran, dass er
   auch laeuft, solange der Tab unsichtbar ist.
 
+### Tab-Leiste wie unter iOS 26 (`TabBar`)
+
+Nachgebaut ist das **Verhalten** der iOS-26-Leiste, nicht ihr Material
+oder ihre Symbole (eigene Glyphen, eigenes `GlassSurface`):
+
+- **Kapsel + Suchkreis**: Home, Profil, Live, Bibel in einer Glaskapsel;
+  die Suche steht als eigener Glaskreis rechts daneben, wie die
+  Such-Rolle unter iOS. Eingeklappt bleibt der Suchkreis rechts stehen.
+- **Auswahl** ist eine helle Kapsel *hinter* dem Tab (`.liquid-pill`,
+  13 % Weiss, kein Glas, keine Kante). Der gewaehlte Tab traegt die
+  Akzentfarbe — Symbol **und** Label (die Tab-Glyphen nehmen dafuer
+  `color`, die Leiste reicht `currentColor` durch) —, die anderen
+  Weiss. Alle Labels im selben Schnitt, nichts springt.
+- **Fingerauflegen macht eine Linse**: die Kapsel waechst (`scale`
+  1.16), wird heller, folgt dem Finger ueber die Tabs (Haptik-Tick je
+  Tab) und schnappt beim Loslassen mit einer Feder (`cubic-bezier(.3,
+  1.32,.42,1)`, 520 ms) auf den Tab darunter. Ein Tipp ist dieselbe
+  Geste ohne Ziehen; `onClick` bleibt nur fuer die Tastatur.
+- **Gleiten ueber den Screenwechsel**: jeder Tab-Screen hat seine
+  eigene Leiste (`KeepTab`). `navPillPrev` merkt sich die letzte Lage
+  der Kapsel; die neue Leiste startet dort (ohne Transition) und
+  faehrt per Feder an ihren Platz. Vorher blendete sie am Ziel ein.
+
 ### Tab-Leiste: einklappen wie iOS (`navStore`)
 
 Die Leiste verhaelt sich wie die iOS-26-Tab-Leiste mit „minimize on

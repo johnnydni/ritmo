@@ -2309,14 +2309,14 @@ function Welcome({profile,setProfile,onComplete}){
 ═══════════════════════════════════════════════════════════════ */
 /* Tab-Icons — Auswahl-Logik: aktiv = Icon wird FILLED in der normalen
    Textfarbe (T.t1, „bleibt weiß"), KEIN Blau. Inaktiv = Outline. */
-function ProfilTabIcon({active,size=22}){
-  return <LineIcon name="profil" size={size} color={T.t1} sw={active?1.75:undefined}/>;
+function ProfilTabIcon({active,size=22,color=T.t1}){
+  return <LineIcon name="profil" size={size} color={color} sw={active?1.75:undefined}/>;
 }
-function SucheTabIcon({active,size=22}){
-  return <LineIcon name="suche" size={size} color={T.t1} sw={active?1.75:undefined}/>;
+function SucheTabIcon({active,size=22,color=T.t1}){
+  return <LineIcon name="suche" size={size} color={color} sw={active?1.75:undefined}/>;
 }
-function BibelTabIcon({active,size=22}){
-  return <LineIcon name="bibel" size={size} color={T.t1} sw={active?1.75:undefined}/>;
+function BibelTabIcon({active,size=22,color=T.t1}){
+  return <LineIcon name="bibel" size={size} color={color} sw={active?1.75:undefined}/>;
 }
 /* Live-Tab: der Schläger aus icons.jsx. Vorher stand hier ein
    eigener, zweiter Schläger — ein Kreis mit drei Punkten und einem
@@ -2359,8 +2359,8 @@ function OrbStack({players=[],max=4,size=28}){
   );
 }
 
-function LiveTabIcon({active,size=22}){
-  return <PadelRacketIcon size={size} color={T.t1} active={active}/>;
+function LiveTabIcon({active,size=22,color=T.t1}){
+  return <PadelRacketIcon size={size} color={color} active={active}/>;
 }
 
 /* Fade-out-Blur am unteren Rand — ersetzt die früheren Fußzeilen.
@@ -2635,60 +2635,45 @@ function hookNavScroll(){
   },{capture:true,passive:true});
 }
 
+/* Die Tab-Leiste nach dem Vorbild der iOS-26-Leiste (eigene Glyphen,
+   eigenes Material — nachgebaut wird das Verhalten):
+   - Eine Glaskapsel mit Home, Profil, Live, Bibel; die Suche steht als
+     eigener Glaskreis rechts daneben (wie die Such-Rolle unter iOS).
+   - Die Auswahl ist eine helle Kapsel HINTER dem Tab, kein Glas auf
+     Glas. Der gewaehlte Tab traegt die Akzentfarbe, die anderen Weiss —
+     Labels alle im selben Schnitt, nichts springt.
+   - Fingerauflegen macht aus der Kapsel eine Linse: sie waechst, folgt
+     dem Finger ueber die Tabs (Haptik-Tick je Tab) und schnappt beim
+     Loslassen mit einer Feder auf den Tab darunter. Ein Tipp ist
+     dieselbe Geste ohne Ziehen.
+   - Jeder Tab-Screen hat seine EIGENE Leiste (KeepTab). Damit die
+     Kapsel trotzdem gleitet statt am Ziel aufzutauchen, merkt sich
+     navPillPrev ihre letzte Lage; die neue Leiste startet dort und
+     faehrt per Transition an ihren Platz. */
+let navPillPrev=null;
 function TabBar({active,onTab}){
-  // Such-FAB + Navbar-Suchmodus sind entfernt (Einstellungen haben ein
-  // eigenes Suchfeld im Screen). Die früheren searchable/rightAction-
-  // Codepfade bleiben inert über diese Konstanten.
-  const searchable=false, rightAction=null, onSearch=null;
   const tabs=[
     {id:'home',label:'Home',Icon:HomeIcon},
     {id:'profil',label:'Profil',Icon:ProfilTabIcon},
     {id:'live',label:'Live',Icon:LiveTabIcon},
-    {id:'suche',label:'Suche',Icon:SucheTabIcon},
     {id:'bibel',label:'Bibel',Icon:BibelTabIcon},
   ];
-  // Search-Mode: nur aktiv wenn searchable=true. Tab "Home" bleibt sichtbar,
-  // die anderen schrumpfen via maxWidth/opacity raus, ein Such-Input
-  // expandiert in den freigewordenen Platz.
-  const[searchMode,setSearchMode]=useState(false);
-  const[searchValue,setSearchValue]=useState('');
-  const inputRef=useRef(null);
-
-  // ── Liquid-Glass-Pill ──
-  // Refs auf jeden Tab-Button + Container, damit wir die exakte
-  // Position der aktiven Karte messen können. Mouse-Hover (NICHT
-  // Touch) zeigt eine Preview-Position der Pill, damit das Glas
-  // dem Finger/Cursor folgt — analog iOS 26.
+  const onSearch=active==='suche';
   const navRef=useRef(null);
   const tabRefs=useRef({});
-  const[hovered,setHovered]=useState(null);
-  const[pill,setPill]=useState({left:0,top:0,width:0,height:0,ready:false});
-  const targetTab=hovered||active;
-  // ── Greifbare Pill (Apple-style) ──
-  // grab=true solange der Finger die Pill hält und führt. grabFlag
-  // spiegelt den State als Ref, damit der Mess-Loop (rAF) nicht
-  // gegen den Finger kämpft. movedRef schluckt den Klick, der nach
-  // einem Drag auf dem darunterliegenden Tab-Button landen würde.
-  const[grab,setGrab]=useState(false);
-  const grabFlag=useRef(false);
-  const movedRef=useRef(false);
-  // ── Blend-in der Pill bei Tab-TAP ──
-  // Wurde dieser Mount durch einen Tab-Tap ausgelöst (__navBlendArm),
-  // „kondensiert" die Pill am aktiven Tab: Opacity + Blur klingen ab,
-  // der Backdrop-Blur rampt hoch (pillBlend-Keyframes). Beide
-  // StrictMode-Render-Pässe lesen das Flag nur; zurückgesetzt wird es
-  // erst im Mount-Effect → konsistenter Wert.
+  const[pill,setPill]=useState(null);       // {left,top,width,height}
+  const[press,setPress]=useState(false);    // Linse (Finger liegt auf)
+  const[under,setUnder]=useState(null);     // Tab unter dem Finger
+  const[instant,setInstant]=useState(false);// ohne Transition setzen
+  const pressRef=useRef(false), swallow=useRef(false);
   const[blendIn]=useState(()=>__navBlendArm);
   useEffect(()=>{__navBlendArm=false;},[]);
+
   // ── Eingeklappte Navbar (siehe navStore) ──
-  // want = was der gemeinsame Zustand verlangt; collapsed/closing/
-  // opening fahren die Animation dorthin: erst zieht sich die Bar
-  // zusammen (nav-pop-out), dann steht der Kreis — und umgekehrt.
   const[want,setWant]=useState(navStore.collapsed);
   const[collapsed,setCollapsed]=useState(navStore.collapsed);
-  const[popped,setPopped]=useState(false); // Bar kam aus dem Kreis
+  const[popped,setPopped]=useState(false);
   const[closing,setClosing]=useState(false);
-  const[opening,setOpening]=useState(false);
   useEffect(()=>{
     hookNavScroll();
     const f=v=>setWant(v); navStore.subs.add(f);
@@ -2696,335 +2681,171 @@ function TabBar({active,onTab}){
   },[]);
   useEffect(()=>{
     if(want&&!collapsed){
-      setOpening(false);setClosing(true);
+      setClosing(true);
       const t=setTimeout(()=>{setClosing(false);setCollapsed(true);},280);
       return()=>clearTimeout(t);
     }
-    // Aufklappen ohne Umweg: die Bar waechst direkt aus dem Kreis.
     if(!want&&collapsed){ setClosing(false);setPopped(true);setCollapsed(false); }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[want]);
 
-  // Tab-Geometrien relativ zur Padding-Box des Navbars (gleicher
-  // Bezugsrahmen wie die absolute Pill).
-  const tabRects=()=>{
-    const navEl=navRef.current; if(!navEl) return [];
-    const navRect=navEl.getBoundingClientRect();
-    const cs=window.getComputedStyle(navEl);
-    const bL=parseFloat(cs.borderLeftWidth)||0;
-    const bT=parseFloat(cs.borderTopWidth)||0;
-    return tabs.map(t=>{
-      const el=tabRefs.current[t.id]; if(!el) return null;
-      const r=el.getBoundingClientRect();
-      return {id:t.id,left:r.left-navRect.left-bL,top:r.top-navRect.top-bT,
-        width:r.width,height:r.height,center:r.left-navRect.left-bL+r.width/2};
-    }).filter(Boolean);
+  // Geometrie eines Tabs relativ zur Kapsel (Bezugsrahmen der Pill).
+  const rectOf=id=>{
+    const nav=navRef.current, el=tabRefs.current[id];
+    if(!nav||!el) return null;
+    const n=nav.getBoundingClientRect(), r=el.getBoundingClientRect();
+    return {left:r.left-n.left,top:r.top-n.top,width:r.width,height:r.height};
   };
-  const nearestTab=(x)=>{
-    const rs=tabRects(); if(!rs.length) return null;
-    let best=rs[0];
-    for(const r of rs){ if(Math.abs(r.center-x)<Math.abs(best.center-x)) best=r; }
+  const nearest=clientX=>{
+    let best=null,bd=1e9;
+    tabs.forEach(t=>{ const el=tabRefs.current[t.id]; if(!el) return;
+      const r=el.getBoundingClientRect(), d=Math.abs(r.left+r.width/2-clientX);
+      if(d<bd){bd=d;best=t.id;} });
     return best;
   };
-  const navX=(clientX)=>{
-    const navEl=navRef.current; if(!navEl) return 0;
-    return clientX-navEl.getBoundingClientRect().left;
-  };
 
-  // Pointer-Down auf der Bar: ab 6px Bewegung „löst" sich die Pill
-  // und folgt dem Finger (geclampt zwischen erstem/letztem Tab-Center);
-  // der nächstgelegene Tab bekommt eine Preview-Tönung. Loslassen
-  // snappt auf den nächsten Tab und committet ihn.
-  const onBarPointerDown=(e)=>{
-    if(searchable&&searchMode) return;          // im Such-Modus kein Drag
+  // Ruhelage: unter dem aktiven Tab. Kommt die Leiste per Tab-Tipp,
+  // startet die Kapsel an der Lage der vorigen Leiste und gleitet.
+  useLayoutEffect(()=>{
+    if(collapsed||onSearch){ setPill(null); return; }
+    const r=rectOf(active); if(!r) return;
+    if(blendIn&&navPillPrev){
+      setInstant(true); setPill(navPillPrev);
+      const id=requestAnimationFrame(()=>requestAnimationFrame(()=>{setInstant(false);setPill(r);}));
+      return()=>cancelAnimationFrame(id);
+    }
+    setInstant(true); setPill(r);
+    const id=requestAnimationFrame(()=>setInstant(false));
+    return()=>cancelAnimationFrame(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[active,collapsed,onSearch]);
+  useEffect(()=>{ if(pill&&!pressRef.current) navPillPrev=pill; },[pill]);
+  useEffect(()=>{
+    const f=()=>{ if(!pressRef.current&&!onSearch){ const r=rectOf(active); if(r) setPill(r);} };
+    window.addEventListener('resize',f); return()=>window.removeEventListener('resize',f);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[active,onSearch]);
+
+  // Finger auf der Kapsel: Linse an die Stelle, folgen, loslassen → Tab.
+  const follow=clientX=>{
+    const nav=navRef.current; if(!nav) return;
+    const id=nearest(clientX), r=rectOf(id); if(!r) return;
+    const n=nav.getBoundingClientRect();
+    const first=rectOf(tabs[0].id), last=rectOf(tabs[tabs.length-1].id);
+    const cx=Math.max(first.left+first.width/2,Math.min(last.left+last.width/2,clientX-n.left));
+    setPill({left:cx-r.width/2,top:r.top,width:r.width,height:r.height});
+    setUnder(u=>{ if(u!==id){ if(u!=null) buzz(4); } return id; });
+  };
+  const onDown=e=>{
     if(e.pointerType==='mouse'&&e.button!==0) return;
-    const startX=e.clientX; let moved=false;
-    const move=(ev)=>{
-      if(!moved&&Math.abs(ev.clientX-startX)<6) return;
-      if(!moved){ moved=true; movedRef.current=true; grabFlag.current=true; setGrab(true); }
-      const x=navX(ev.clientX);
-      const t=nearestTab(x);
-      if(!t) return;
-      setHovered(t.id);
-      const rs=tabRects();
-      const minC=rs[0].center, maxC=rs[rs.length-1].center;
-      const cx=Math.max(minC,Math.min(maxC,x));
-      setPill({left:cx-t.width/2,top:t.top,width:t.width,height:t.height,ready:true});
-    };
-    const up=(ev)=>{
+    pressRef.current=true; setPress(true); follow(e.clientX);
+    const move=ev=>follow(ev.clientX);
+    const up=ev=>{
       window.removeEventListener('pointermove',move);
       window.removeEventListener('pointerup',up);
       window.removeEventListener('pointercancel',up);
-      if(!moved) return;                         // Tap → Button-onClick übernimmt
-      grabFlag.current=false; setGrab(false); setHovered(null);
-      const t=nearestTab(navX(ev.clientX));
-      if(t&&t.id!==active){buzz(6);onTab(t.id);}
-      else { const m=measurePill(); if(m) setPill({...m,ready:true}); }
-      // Klick-Event des Buttons unter dem Finger schlucken (feuert
-      // direkt nach pointerup, vor dem Timeout).
-      setTimeout(()=>{movedRef.current=false;},0);
+      pressRef.current=false; setPress(false); setUnder(null);
+      swallow.current=true; setTimeout(()=>{swallow.current=false;},0);
+      if(ev.type==='pointercancel'){ const r=rectOf(active); if(r) setPill(r); return; }
+      const id=nearest(ev.clientX);
+      navStore.set(false);
+      if(id&&id!==active){ buzz(6); __navBlendArm=true; onTab(id); }
+      else { const r=rectOf(active); if(r) setPill(r); }
     };
     window.addEventListener('pointermove',move);
     window.addEventListener('pointerup',up);
     window.addEventListener('pointercancel',up);
   };
+  const goSearch=()=>{ if(!onSearch){ buzz(6); __navBlendArm=true; } navStore.set(false); onTab('suche'); };
 
-  // Mess-Helper: liefert die Position des Ziel-Tabs RELATIV zur
-  // Padding-Box des Navbar-Containers — das ist auch der Bezugsrahmen
-  // für absolute-positionierte Kinder mit top:0/left:0. Wir nutzen
-  // getBoundingClientRect statt offsetLeft/Top, weil das in jedem
-  // Browser konsistent verhält (offsetLeft ist je nach Engine vom
-  // Border- oder Padding-Rand gemessen → kann 1–5px off sein).
-  const measurePill=()=>{
-    const navEl=navRef.current;
-    const tabEl=tabRefs.current[targetTab];
-    if(!navEl||!tabEl) return null;
-    const navRect=navEl.getBoundingClientRect();
-    const tabRect=tabEl.getBoundingClientRect();
-    const cs=window.getComputedStyle(navEl);
-    // Border + (left:0 sitzt auf der Padding-Innenkante, also nur die
-    // Border der Box rausrechnen). Padding selbst gehört zum
-    // Bezugsrahmen, also NICHT abziehen.
-    const bL=parseFloat(cs.borderLeftWidth)||0;
-    const bT=parseFloat(cs.borderTopWidth)||0;
-    return {
-      left:tabRect.left-navRect.left-bL,
-      top:tabRect.top-navRect.top-bT,
-      width:tabRect.width,
-      height:tabRect.height,
-    };
-  };
+  const glass=(r)=>(<GlassSurface width="100%" height="100%" borderRadius={r}
+    className="nav-glass" brightness={58} opacity={0.92} blur={11}
+    displace={0.6} distortionScale={-130} redOffset={0} greenOffset={8} blueOffset={16}
+    style={{position:'absolute',inset:0,pointerEvents:'none'}}/>);
+  const searchBtn=(
+    <div className={closing?'':(popped||collapsed?'nav-pop':'')}
+      style={{position:'relative',width:NAV_H,height:NAV_H,flexShrink:0,pointerEvents:'auto',
+        ...(collapsed?{width:NAV_MINI,height:NAV_MINI}:{})}}>
+      {glass(NAV_H/2)}
+      <button onClick={goSearch} aria-label="Suche" aria-current={onSearch?'page':undefined}
+        style={{position:'relative',zIndex:1,width:'100%',height:'100%',borderRadius:'50%',
+          border:'none',background:'transparent',cursor:'pointer',padding:0,
+          display:'flex',alignItems:'center',justifyContent:'center',
+          color:onSearch?T.o:T.t1}}>
+        {onSearch&&<span aria-hidden="true" style={{position:'absolute',inset:4,borderRadius:'50%',
+          background:'rgba(255,255,255,.14)'}}/>}
+        <span style={{position:'relative',display:'inline-flex'}}><SucheTabIcon active={onSearch} size={collapsed?22:24} color="currentColor"/></span>
+      </button>
+    </div>
+  );
 
-  // useLayoutEffect, damit die Pill schon im ersten Frame korrekt
-  // sitzt — sonst sähe man sie 1 Tick lang an der falschen Stelle.
-  useLayoutEffect(()=>{
-    // Im Search-Mode wird die Pill ausgeblendet (siehe opacity
-    // unten), weil der aktive Tab (z. B. "settings") in Search-Mode
-    // auf width:0 kollabiert. Eine 0-Pixel-Pill mit Glow würde sonst
-    // als kleine graue Box am Rand stehenbleiben.
-    if(searchMode){
-      setPill(p=>({...p,ready:false}));
-      return;
-    }
-    // rAF-Follow statt Einmal-Messung: der aktive Tab animiert seine
-    // Breite (Label klappt auf), also läuft die Messung ~520ms mit,
-    // damit die Pill der wachsenden Kante folgt. Während eines Drags
-    // (grabFlag) führt der Finger — kein Auto-Snap dazwischenfunken.
-    let raf; const t0=performance.now();
-    const tick=()=>{
-      if(!grabFlag.current){
-        const m=measurePill();
-        if(m) setPill({...m,ready:true});
-      }
-      if(performance.now()-t0<520) raf=requestAnimationFrame(tick);
-    };
-    tick();
-    return()=>cancelAnimationFrame(raf);
-  // collapsed in den Deps: beim Ausklappen existiert der Nav-DOM erst
-  // jetzt — die Pill muss frisch gemessen werden.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[targetTab,searchMode,collapsed]);
-
-  // Resize: TabBar-Layout kann sich z. B. bei Theme-Wechsel oder
-  // Rotation ändern — Pill nachjustieren. ResizeObserver wäre sauberer,
-  // aber window-resize reicht für unser Inline-Layout.
-  useEffect(()=>{
-    const onResize=()=>{
-      if(searchMode) return;
-      const m=measurePill();
-      if(!m) return;
-      setPill(p=>({...p,...m}));
-    };
-    window.addEventListener('resize',onResize);
-    return()=>window.removeEventListener('resize',onResize);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[targetTab,searchMode]);
-
-  // Beim Verlassen des suchbaren Screens: Mode + Query zurücksetzen.
-  useEffect(()=>{
-    if(!searchable||active!=='settings'){
-      if(searchMode||searchValue){
-        setSearchMode(false);setSearchValue('');
-        onSearch?.('');
-      }
-    }
-    // eslint-disable-next-line
-  },[active,searchable]);
-
-  // Auto-focus auf den Input direkt beim Eintritt in Search-Mode.
-  useEffect(()=>{
-    if(searchMode) requestAnimationFrame(()=>inputRef.current?.focus());
-  },[searchMode]);
-
-  const exitSearch=()=>{setSearchMode(false);setSearchValue('');onSearch?.('');};
-  const submit=()=>{
-    if(!searchValue.trim()){exitSearch();return;}
-    onSearch?.(searchValue.trim());
-  };
-  const clearText=()=>{setSearchValue('');onSearch?.('');inputRef.current?.focus();};
-
-  const isSearching=searchable&&searchMode;
-  // Default-Action: passives Such-Icon. Screens dürfen rightAction
-  // überschreiben (z.B. Home → RITMO DNA Shortcut).
-  const action=rightAction||{icon:<SearchIcon size={20}/>,onClick:undefined,title:''};
-  // Klick-Handler des rechten Floating-Buttons:
-  //  - Im Search-Mode → submit() (oder exit wenn leer)
-  //  - Sonst suchbar → Search-Mode einschalten
-  //  - Sonst → rightAction.onClick
-  const rightClick=()=>{
-    if(isSearching) return submit();
-    if(searchable){setSearchMode(true);return;}
-    action.onClick?.();
-  };
-  const rightIcon=isSearching
-    ?<SearchIcon size={20} filled={!!searchValue}/>
-    :(searchable?<SearchIcon size={20}/>:action.icon);
-  const rightTitle=isSearching
-    ?(searchValue?'Suchen':'Suche schließen')
-    :(searchable?'Suchen':action.title);
-  const rightHighlight=isSearching?!!searchValue:!!action.highlight;
-
-  // Eingeklappt: wie die minimierte iOS-Tab-Leiste ein Kreis unten
-  // links mit dem Symbol des AKTIVEN Tabs (vorher immer Home — man sah
-  // nicht mehr, wo man ist). Antippen klappt auf.
-  const CurIcon=(tabs.find(t=>t.id===active)||tabs[0]).Icon;
+  // Eingeklappt: links ein Kreis mit dem aktiven Tab, rechts die Suche.
+  const CurIcon=(tabs.find(t=>t.id===active)||{Icon:SucheTabIcon}).Icon;
   if(collapsed) return(<><BarBlur/>
-    <div style={{position:'absolute',
-      bottom:BAR_BOTTOM,
-      left:0,right:0,display:'flex',alignItems:'center',justifyContent:'flex-start',
-      padding:'0 14px',pointerEvents:'none',zIndex:5,height:NAV_H}}>
-      <div className={opening?'nav-pop-out':'nav-pop'}
+    <div style={{position:'absolute',bottom:BAR_BOTTOM,left:0,right:0,height:NAV_H,
+      display:'flex',alignItems:'center',justifyContent:'space-between',
+      padding:'0 14px',pointerEvents:'none',zIndex:5}}>
+      <div className="nav-pop"
         style={{position:'relative',width:NAV_MINI,height:NAV_MINI,pointerEvents:'auto'}}>
-        <GlassSurface width="100%" height="100%" borderRadius={NAV_MINI/2}
-          className="nav-glass"
-          brightness={58} opacity={0.92} blur={11}
-          displace={0.6} distortionScale={-130}
-          redOffset={0} greenOffset={8} blueOffset={16}
-          style={{position:'absolute',inset:0,pointerEvents:'none'}}/>
-        <button disabled={opening} onClick={()=>{buzz(6);navStore.set(false);}}
+        {glass(NAV_MINI/2)}
+        <button onClick={()=>{buzz(6);navStore.set(false);}}
           aria-label="Navigation ausklappen" title="Navigation ausklappen"
           style={{position:'relative',zIndex:1,width:'100%',height:'100%',
             borderRadius:'50%',border:'none',background:'transparent',cursor:'pointer',
-            color:T.t1,display:'flex',alignItems:'center',justifyContent:'center'}}>
-          <CurIcon active size={24}/>
+            color:T.o,display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <CurIcon active size={24} color="currentColor"/>
         </button>
       </div>
+      {!onSearch&&searchBtn}
     </div></>
   );
 
   return(<><BarBlur/>
-    <div style={{position:'absolute',
-      bottom:BAR_BOTTOM,
-      left:0,right:0,display:'flex',alignItems:'center',justifyContent:'center',gap:10,
+    <div style={{position:'absolute',bottom:BAR_BOTTOM,left:0,right:0,
+      display:'flex',alignItems:'center',justifyContent:'center',gap:10,
       padding:'0 14px',pointerEvents:'none',zIndex:5}}>
-      {/* Liquid-Glass-Surface (reactbits GlassSurface) als Glas-
-          HINTERGRUND — echte SVG-Refraktion auf Chromium, Blur-Fallback
-          auf Safari/iOS. Die interaktive Bar (Pill + Tabs) liegt als
-          Geschwister DARUEBER: so bleibt die Pill-Messung unveraendert
-          und sie steckt nicht im gefilterten/geklippten Glas-Subtree
-          (das sonst die Transitions der Pill einfriert). */}
       <div className={closing?'nav-pop-out':(popped?'nav-pop-bar':'')}
-        style={{position:'relative',flex:1,maxWidth:440,height:NAV_H,pointerEvents:'auto'}}>
-      <GlassSurface width="100%" height="100%" borderRadius={NAV_H/2}
-        className="nav-glass"
-        brightness={58} opacity={0.92} blur={11}
-        displace={0.6} distortionScale={-130}
-        redOffset={0} greenOffset={8} blueOffset={16}
-        style={{position:'absolute',inset:0,pointerEvents:'none'}}/>
-      <div ref={navRef} onPointerDown={onBarPointerDown}
-        style={{position:'relative',zIndex:1,display:'flex',alignItems:'center',gap:2,
-        width:'100%',height:'100%',
-        /* Voll gerundete Enden (999), minimale vertikale Paddings —
-           die Bar liest sich als echte Pille. */
-        borderRadius:999,padding:'3px 5px',
-        // touchAction none: während des Pill-Drags darf der Browser
-        // die Pointer-Events nicht für Scroll/Swipe übernehmen.
-        touchAction:'none',
-        transition:'padding .25s ease'}}>
-
-        {/* Liquid-Glass-Pill — folgt dem aktiven (bzw. hovered) Tab.
-            Greifbar: pointerdown + Bewegung löst sie vom Raster, sie
-            folgt dem Finger (data-grab), Loslassen snappt mit Spring
-            auf den nächsten Tab (iOS-26-Gefühl). Nach Tab-Tap (blendIn)
-            kondensiert das Glas am Ziel weich ein statt zu sliden. */}
-        <div className="liquid-pill"
-          data-hover={hovered!=null?'true':'false'}
-          data-grab={grab?'true':'false'}
-          data-blend={blendIn?'true':'false'}
-          style={{
-            transform:`translate(${pill.left}px, ${pill.top}px)`,
-            width:pill.width,
-            height:pill.height,
-            opacity:pill.ready?1:0,
-          }}/>
-
-        {tabs.map(({id,label,Icon})=>{
-          const isActive=active===id;
-          const isPreview=hovered===id;       // Drag/Maus-Preview-Tönung
-          // Im Search-Mode bleibt nur Home sichtbar; die übrigen Tabs
-          // animieren weg (Breite/Padding/Opacity).
-          const hidden=isSearching&&id!=='home';
-          return(
-            <button key={id}
-              onClick={()=>{
-                // Nach einem Pill-Drag landet der synthetische Klick
-                // auf dem Button unterm Finger — schlucken, der Drag
-                // hat den Tab bereits committet.
-                if(movedRef.current) return;
-                // Tap auf einen ANDEREN Tab → Blend-in der Pill auf
-                // dem Ziel-Screen bewaffnen (siehe __navBlendArm).
-                if(id!==active){__navBlendArm=true;buzz(6);}
-                navStore.set(false);
-                onTab(id);
-              }}
-              ref={el=>{tabRefs.current[id]=el;}}
-              onPointerEnter={e=>{
-                // Nur Maus-Hover → Preview-Position der Pill.
-                // Touch-Devices triggern pointerEnter beim ersten
-                // Berühren — das wäre ein versehentlicher Preview.
-                if(e.pointerType==='mouse'&&!hidden&&!grabFlag.current) setHovered(id);
-              }}
-              onPointerLeave={e=>{
-                if(e.pointerType==='mouse'&&!grabFlag.current) setHovered(null);
-              }}
-              style={{display:'flex',flexDirection:'column',alignItems:'center',
-                justifyContent:'center',gap:2,
-                /* eBay-Style: Icon oben, Label IMMER darunter. Flach
-                   gehalten (kompakte Paddings) und per flex:1 über die
-                   volle Bar-Breite verteilt — alle Tabs gleich breit,
-                   die Pill bleibt damit konstant groß. */
-                padding:hidden?'6px 0':'6px 4px',
-                flex:hidden?'0 0 0':'1 1 0',
-                minWidth:0,
-                maxWidth:hidden?0:140,
-                opacity:hidden?0:1,
-                overflow:'hidden',
-                borderRadius:999,border:'none',cursor:'pointer',
-                /* Hintergrund ist transparent — die Pill übernimmt
-                   das "Active"-Indicator-Bild. */
-                background:'transparent',
-                color:isActive?T.t1:T.t2,
-                fontSize:10,fontWeight:600,
-                position:'relative',zIndex:1,
-                transition:'min-width .25s ease, max-width .25s ease, padding .25s ease, opacity .2s ease, color var(--anim-base)'}}>
-              {/* key=isActive zwingt das Icon-Wrapper-Element zum Remount
-                  beim Tab-Wechsel, sodass die Bounce-Animation jedes Mal
-                  neu durchläuft. */}
-              <span key={isActive?'on':'off'}
-                className={isActive?'nav-icon-active':''}
-                style={{display:'inline-flex',transformOrigin:'center'}}>
-                <Icon active={isActive||isPreview} size={23}/>
-              </span>
-              <span style={{fontSize:10,whiteSpace:'nowrap',letterSpacing:.1,
-                color:isActive?T.t1:T.t3,fontWeight:isActive?800:600,
-                transition:'color var(--anim-base)'}}>
-                {label}
-              </span>
-            </button>
-          );
-        })}
+        style={{position:'relative',flex:1,maxWidth:400,height:NAV_H,pointerEvents:'auto'}}>
+        {glass(NAV_H/2)}
+        <div ref={navRef} onPointerDown={onDown}
+          style={{position:'relative',zIndex:1,display:'flex',alignItems:'stretch',
+            width:'100%',height:'100%',padding:4,boxSizing:'border-box',
+            touchAction:'none',userSelect:'none',WebkitUserSelect:'none'}}>
+          {pill&&(
+            <div className="liquid-pill" aria-hidden="true"
+              data-press={press?'true':'false'}
+              data-instant={instant?'true':'false'}
+              style={{transform:`translate(${pill.left}px, ${pill.top}px)`,
+                width:pill.width,height:pill.height}}/>
+          )}
+          {tabs.map(({id,label,Icon})=>{
+            const on=active===id&&!press, lit=press?under===id:active===id;
+            return(
+              <button key={id} ref={el=>{tabRefs.current[id]=el;}}
+                aria-label={label} aria-current={active===id?'page':undefined}
+                onClick={()=>{
+                  // Zeiger-Gesten erledigt onDown; das hier ist nur der
+                  // Weg per Tastatur.
+                  if(swallow.current) return;
+                  if(id!==active){__navBlendArm=true;onTab(id);}
+                }}
+                style={{flex:'1 1 0',minWidth:0,display:'flex',flexDirection:'column',
+                  alignItems:'center',justifyContent:'center',gap:1,padding:0,
+                  border:'none',background:'transparent',cursor:'pointer',borderRadius:999,
+                  position:'relative',zIndex:1,
+                  color:lit?T.o:T.t1,transition:'color .18s'}}>
+                <span key={on?'on':'off'} className={on&&blendIn?'nav-icon-active':''}
+                  style={{display:'inline-flex'}}>
+                  <Icon active={lit} size={24} color="currentColor"/>
+                </span>
+                <span style={{fontSize:10,fontWeight:600,lineHeight:1.2,whiteSpace:'nowrap',
+                  letterSpacing:0}}>{label}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
-      </div>
+      {searchBtn}
     </div></>
   );
 }

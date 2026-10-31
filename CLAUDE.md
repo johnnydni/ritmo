@@ -92,8 +92,8 @@ When changing scoring rules, edit the reducer — the `Match` screen is a thin s
 "Teilen" an einem beendeten Turnier erzeugt ein PDF **im Stil des
 Endstands der App**: dunkle Seiten, Schriftzug oben, „Endstand" mit
 Turniername in der kursiven Antiqua, dann „Sieger" und der Name als
-Schlagzeile mit orangem Punkt, der Satz zum Ausgang (dieselbe Rechnung
-wie `story` in `TournamentLeaderboard`), drei Glaskacheln (Punkte,
+Schlagzeile mit orangem Punkt, der Spruch zum Sieg (`winLine`, derselbe
+wie im Endstand), drei Glaskacheln (Punkte,
 Siege, Matches), die Tabelle in der Zeile von `LbRow` (Platz duenn,
 Name mit „S · N · P", Wertung duenn) und
 danach jede Runde mit Paarungen, Ergebnissen und Pausen. Einstiege
@@ -1337,10 +1337,19 @@ Schlagzeile IST der Siegername — `SIEGER` als Ressort, darunter der
 Name mit Punkt in der kursiven Antiqua, so gross, wie er in die Zeile
 passt (`nameFs`: 88 px bis 6 Zeichen, dann 68 / 52 / 42).
 
-- Darunter **ein Satz zum Ausgang** (`story`), gerechnet und nie
-  getippt: Vorsprung vor dem Zweiten in der gewaehlten Wertung, oder
-  bei Gleichstand „punktgleich mit X — mehr Siege" (bzw.
-  „siegegleich … — mehr Punkte").
+- Darunter **ein Spruch** (`winLine` in tournament.js, Liste
+  `WIN_LINES`, `{n}` = Siegername) — „Wer nicht gewinnt, verliert.",
+  „Die Maschine hat gewonnen. Bitte Padelöl nachfüllen." … Gewaehlt
+  aus der Turnier-id, nicht bei jedem Rendern neu: dasselbe Turnier
+  traegt in App und PDF immer denselben Spruch. Vorher stand dort
+  eine Rechnung („mit 10 Punkten Vorsprung vor …").
+- **Auch nach dem Abschluss editierbar**: die Wertung in „Ganze
+  Tabelle" ist wie im laufenden Turnier ein Knopf zum Anpassen
+  (`PointsEditModal`, gespeichert als Korrektur ueber `withPoints` —
+  dieselbe Funktion wie im laufenden Turnier). „Turnier bearbeiten"
+  oeffnet es wieder (`finished:false`) und fuehrt in die letzte Runde;
+  dort sind Ergebnisse, Aufstellung und Einstellungen wie gewohnt
+  editierbar, „Beenden" schliesst es erneut ab.
 - **Drei Zahlen** in Glaskacheln: Punkte, Siege, Matches; die Zahl der
   gewaehlten Wertung steht orange. Duenne Ziffern (Space Grotesk 300) wie die
   laufende Timer-Kapsel.

@@ -28,7 +28,7 @@ import { getLevelLabel, getLevelTier, getLevelColor, estimateLevel } from "./lev
 import { B0, A0, PL, ptD, wG, bo3R, amR, DEFCFG } from "./game.js";
 import { PCOLS, shuffle, genAmericanoRound, genMexicanoRound, calcLeaderboard, FORMATS, FORMAT_RULES, genRound,
   DEFAULT_QUICK_STARTS, QS_MAX, normQuickStart, normQuickStarts, quickStartSub, quickStartPreset,
-  roundMeanBreakdown, roundMeanBonus, meetLogEntry, MEET_LOG_MAX } from "./tournament.js";
+  roundMeanBreakdown, roundMeanBonus, meetLogEntry, MEET_LOG_MAX, winLine } from "./tournament.js";
 import { RINGS, CUES, playRing, playCue, unlockAudio } from "./audio.js";
 import { CL_COLS, CL_ROWS, defaultLayout, normLayout, layoutBounds, moveTo,
   rotateCourt, compactLayout } from "./courtLayout.js";
@@ -12285,6 +12285,23 @@ function LineupEditSheet({court,courtIndex,players,round,onAssign,onClose}){
    Gesamtwert ein; intern wird die Differenz als adjustment auf dem
    Spieler gespeichert (adjPts/adjWins), damit weitere Matches normal
    weiterzählen. */
+/* Setzt den Gesamtwert eines Spielers, indem die Differenz als
+   Korrektur (adjPts/adjWins) gespeichert wird. Basis ist dieselbe wie
+   die angezeigte Tabelle: beendet alle Runden, laufend die bestaetigten.
+   Genutzt im laufenden Turnier UND im Endstand. */
+function withPoints(t,playerId,newTotal){
+  const lb=calcLeaderboard(t.players,t.finished?t.rounds:t.rounds.slice(0,t.current),t.winMode,t.pauseMode,t.pausePts);
+  const e=lb.find(x=>x.id===playerId);
+  if(!e) return t;
+  const players=t.players.map(p=>{
+    if(p.id!==playerId) return p;
+    return t.winMode==='wins'
+      ?{...p,adjWins:newTotal-(e.wins+e.bonusWins)}
+      :{...p,adjPts:newTotal-(e.pts+e.bonusPts)};
+  });
+  return {...t,players};
+}
+
 function PointsEditModal({entry,winMode,onSave,onClose}){
   const isWins=winMode==='wins';
   const current=isWins?entry.totalWins:entry.totalPts;
@@ -13846,21 +13863,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
   // newTotal = gewünschter Gesamtwert. Wir speichern die Differenz zur
   // berechneten Basis (echte Punkte + Pausen-Bonus) als adjPts/adjWins
   // auf dem Spieler, damit künftige Matches normal weiterzählen.
-  const savePlayerPoints=(playerId,newTotal)=>{
-    setTourney(t=>{
-      // Gleiche (bestätigte) Basis wie das angezeigte Leaderboard.
-      const lb=calcLeaderboard(t.players,t.finished?t.rounds:t.rounds.slice(0,t.current),t.winMode,t.pauseMode,t.pausePts);
-      const e=lb.find(x=>x.id===playerId);
-      if(!e) return t;
-      const players=t.players.map(p=>{
-        if(p.id!==playerId) return p;
-        return t.winMode==='wins'
-          ?{...p,adjWins:newTotal-(e.wins+e.bonusWins)}
-          :{...p,adjPts:newTotal-(e.pts+e.bonusPts)};
-      });
-      return {...t,players};
-    });
-  };
+  const savePlayerPoints=(playerId,newTotal)=>setTourney(t=>withPoints(t,playerId,newTotal));
 
   // ═══ TIMER LOGIC ═══
   useEffect(()=>{
@@ -14580,8 +14583,11 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
 /* ═══════════════════════════════════════════════════════════════
    TOURNAMENT LEADERBOARD (Endstand)
 ═══════════════════════════════════════════════════════════════ */
-function TournamentLeaderboard({tourney,onHome,onNew}){
+function TournamentLeaderboard({tourney,onHome,onNew,onSavePoints,onReopen}){
   const[showHistory,setShowHistory]=useState(false);
+  // Auch nach dem Abschluss editierbar: Punkte direkt in der Tabelle,
+  // alles andere ueber „Turnier wieder öffnen".
+  const[editPtsId,setEditPtsId]=useState(null);
   // PDF: jsPDF wird erst beim Klick nachgeladen, das dauert beim ersten
   // Mal spuerbar — deshalb ein eigener Busy-Zustand am Knopf.
   const[pdfBusy,setPdfBusy]=useState(false);
@@ -14595,24 +14601,13 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
   };
   const lb=calcLeaderboard(tourney.players,tourney.rounds,tourney.winMode,tourney.pauseMode,tourney.pausePts);
   const sortedLb=lb.sort((a,b)=>tourney.winMode==='points'?b.totalPts-a.totalPts||b.totalWins-a.totalWins:b.totalWins-a.totalWins||b.totalPts-a.totalPts);
-  const winner=sortedLb[0], second=sortedLb[1];
+  const winner=sortedLb[0];
   const[tableOpen,setTableOpen]=useState(false);
   // Die Schlagzeile ist der Name — so gross, wie er in die Zeile passt.
   const nl=(winner?.name||'').length;
   const nameFs=nl<=6?88:nl<=9?68:nl<=13?52:42;
-  /* Ein Satz zum Ausgang, gerechnet und nicht getippt: Vorsprung vor
-     dem Zweiten, oder — bei Gleichstand in der Wertung — woran es
-     hing. */
-  const story=(()=>{
-    const what=tourney.name?`„${tourney.name}“`:'das Turnier';
-    if(!winner||!second) return `gewinnt ${what}.`;
-    const byW=tourney.winMode==='wins';
-    const a=byW?winner.totalWins:winner.totalPts, b=byW?second.totalWins:second.totalPts;
-    if(a>b){ const d=a-b;
-      return `gewinnt ${what} — mit ${d} ${byW?(d===1?'Sieg':'Siegen'):(d===1?'Punkt':'Punkten')} Vorsprung vor ${second.name}.`; }
-    const tb=byW?(winner.totalPts>second.totalPts?' — mehr Punkte':''):(winner.totalWins>second.totalWins?' — mehr Siege':'');
-    return `gewinnt ${what} — ${byW?'siegegleich':'punktgleich'} mit ${second.name}${tb}.`;
-  })();
+  /* Statt einer Rechnung ein Spruch — derselbe wie im PDF (winLine). */
+  const story=winLine(tourney.id??tourney.name,winner?.name);
   return(
     <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 18px)',position:'relative',overflow:'hidden'}}>
@@ -14690,9 +14685,19 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
                 <LbRow key={p.id} rank={i+1} name={p.name}
                   wins={p.wins} losses={p.losses} pauses={p.sitOut}
                   last={i===sortedLb.length-1}>
-                  <LbScore lead={i===0} value={tourney.winMode==='wins'?p.totalWins:p.totalPts}
-                    unit={tourney.winMode==='wins'?'Siege':'Punkte'}
-                    bonus={tourney.winMode==='wins'?p.bonusWins:p.bonusPts}/>
+                  {/* Wie im laufenden Turnier: die Wertung ist der Knopf zum
+                      Anpassen — auch nach dem Abschluss. */}
+                  <button onClick={()=>onSavePoints&&setEditPtsId(p.id)}
+                    title="Punkte anpassen" aria-label={`Punkte von ${p.name} anpassen`}
+                    style={{background:'none',border:'none',cursor:onSavePoints?'pointer':'default',
+                      margin:'-10px -16px -10px 0',padding:'10px 16px 10px 12px',
+                      display:'flex',flexDirection:'column',alignItems:'flex-end',gap:2}}>
+                    <LbScore lead={i===0} value={tourney.winMode==='wins'?p.totalWins:p.totalPts}
+                      unit={<span style={{display:'inline-flex',alignItems:'center',gap:4}}>
+                        {onSavePoints&&<EditIcon size={9} color={T.t4}/>}{tourney.winMode==='wins'?'Siege':'Punkte'}</span>}
+                      note={(tourney.winMode==='wins'?p.adjWins:p.adjPts)?'angepasst':null}
+                      bonus={tourney.winMode==='wins'?p.bonusWins:p.bonusPts}/>
+                  </button>
                 </LbRow>
               ))}
             </div>
@@ -14713,11 +14718,30 @@ function TournamentLeaderboard({tourney,onHome,onNew}){
               fontWeight:700,cursor:'pointer'}}>Neues Turnier</button>
         </div>
         {pdfErr&&<div style={{marginTop:9,color:T.r,fontSize:12,fontWeight:600,textAlign:'center'}}>{pdfErr}</div>}
+        {/* Nach dem Abschluss noch etwas falsch? Wieder oeffnen fuehrt
+            zurueck in die letzte Runde: Ergebnisse, Aufstellung und
+            Einstellungen sind dort wie gewohnt editierbar; „Beenden"
+            schliesst es danach erneut ab. */}
+        {onReopen&&(
+          <button onClick={()=>{buzz(8);onReopen();}}
+            style={{marginTop:12,height:48,borderRadius:999,background:'transparent',
+              border:`1px solid ${T.glassLine}`,color:T.t1,fontSize:14.5,fontWeight:600,
+              cursor:'pointer',display:'inline-flex',alignItems:'center',justifyContent:'center',
+              gap:8,flexShrink:0}}>
+            <EditIcon size={15} color={T.t1}/>Turnier bearbeiten
+          </button>
+        )}
         <div style={{height:110,flexShrink:0}}/>
       </div>
 
       {showHistory&&<RoundHistorySheet tourney={tourney}
         onClose={()=>setShowHistory(false)}/>}
+
+      {editPtsId!=null&&(()=>{const e=sortedLb.find(x=>x.id===editPtsId);return e&&(
+        <PointsEditModal entry={e} winMode={tourney.winMode}
+          onSave={v=>{onSavePoints(editPtsId,v);setEditPtsId(null);}}
+          onClose={()=>setEditPtsId(null)}/>
+      );})()}
 
       <MatchBar onHome={onHome}/>
     </div>
@@ -22473,7 +22497,9 @@ export default function App(){
       onMatchLogged={onMatchLogged}
       onLive={()=>{setActiveTab('live');setScr('live');}}/>}
     {scr==='tournament-leaderboard'&&tourney&&<TournamentLeaderboard tourney={tourney}
-      onHome={goHome} onNew={newTourney}/>}
+      onHome={goHome} onNew={newTourney}
+      onSavePoints={(id,v)=>setTourney(t=>withPoints(t,id,v))}
+      onReopen={()=>{setTourney(t=>({...t,finished:false}));setScr('tournament-play');}}/>}
 
     {scr==='remote'&&<JoinTournament
       initialPin={joinPinFromUrl}

@@ -891,3 +891,30 @@ export function roundMeanBreakdown(round){
 export function roundMeanBonus(round){
   return roundMeanBreakdown(round)?.bonus??null;
 }
+
+/* ── Spruch zum Sieg ─────────────────────────────────────────────
+   Unter dem Siegernamen im Endstand (und im PDF) steht statt einer
+   Rechnung ein Spruch. Gewaehlt wird er aus der Turnier-id, nicht
+   zufaellig bei jedem Rendern: dasselbe Turnier traegt immer denselben
+   Spruch, in der App wie im PDF. `{n}` wird zum Siegernamen. */
+export const WIN_LINES=[
+  'Wer nicht gewinnt, verliert.',
+  'Ehre dem Sieger.',
+  'Die Maschine hat gewonnen. Bitte Padelöl nachfüllen.',
+  'Die erste Runde an der Bar geht auf {n}.',
+  'Glas gezittert, Ball getroffen, Pokal geholt.',
+  'Bandeja, Víbora, Sieg. Genau in dieser Reihenfolge.',
+  'Die anderen haben auch schön gespielt. Ehrlich.',
+  'Gegner sortiert, Pokal poliert.',
+  'Wer {n} schlagen will, muss früher aufstehen.',
+  'Kein Lob zu hoch, kein Ball zu weit.',
+  'Por tres, por cuatro, por favor.',
+  'Offiziell bestätigt: kein Zufall.',
+  'Schweiß, Glas, Glorie.',
+  'Heute zu stark für die Wand. Und für alle anderen.',
+];
+export function winLine(seed,name){
+  const s=String(seed??'');
+  let h=0; for(let i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))>>>0;
+  return WIN_LINES[h%WIN_LINES.length].replace('{n}',name||'der Sieger');
+}

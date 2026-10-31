@@ -918,3 +918,16 @@ export function winLine(seed,name){
   let h=0; for(let i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))>>>0;
   return WIN_LINES[h%WIN_LINES.length].replace('{n}',name||'der Sieger');
 }
+
+/* Der Pausen-Ausgleich EINER Runde, so wie die Wertung ihn rechnet —
+   fuer Anzeigen (Rundenverlauf, PDF). 'fixed' = fester Wert je Pause
+   (auch im Siegemodus), 'none' = nichts, 'mean' (Vorgabe) = der
+   aufgerundete Rundenmittelwert, nur in der Punktewertung (im
+   Siegemodus ist der Ausgleich kein Rundenwert, sondern +1 Sieg fuer
+   die untere Tabellenhaelfte). null = nichts anzeigen. */
+export function roundPauseBonus(t,r){
+  const mode=t.pauseMode||'mean';
+  if(mode==='none') return null;
+  if(mode==='fixed') return Math.max(0,Math.round(Number(t.pausePts)||0))||null;
+  return t.winMode==='wins'?null:roundMeanBonus(r);
+}

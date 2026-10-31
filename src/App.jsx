@@ -28,7 +28,7 @@ import { getLevelLabel, getLevelTier, getLevelColor, estimateLevel } from "./lev
 import { B0, A0, PL, ptD, wG, bo3R, amR, DEFCFG } from "./game.js";
 import { PCOLS, shuffle, genAmericanoRound, genMexicanoRound, calcLeaderboard, FORMATS, FORMAT_RULES, genRound,
   DEFAULT_QUICK_STARTS, QS_MAX, normQuickStart, normQuickStarts, quickStartSub, quickStartPreset,
-  roundMeanBreakdown, roundMeanBonus, meetLogEntry, MEET_LOG_MAX, winLine } from "./tournament.js";
+  roundMeanBreakdown, roundPauseBonus, meetLogEntry, MEET_LOG_MAX, winLine } from "./tournament.js";
 import { RINGS, CUES, playRing, playCue, unlockAudio } from "./audio.js";
 import { CL_COLS, CL_ROWS, defaultLayout, normLayout, layoutBounds, moveTo,
   rotateCourt, compactLayout } from "./courtLayout.js";
@@ -13386,7 +13386,9 @@ function RoundHistorySheet({tourney,onClose}){
           // Nach Turnierschluss läuft nichts mehr — sonst trüge die
           // letzte Runde im Endstand fälschlich das Laufend-Etikett.
           const isCurrent=!tourney.finished&&ri===tourney.current;
-          const bonus=tourney.winMode==='points'?roundMeanBonus(r):null;
+          // Derselbe Wert, den die Wertung gutschreibt — vorher stand hier
+          // immer der Rundenmittelwert, auch bei festem Pausenwert.
+          const bonus=roundPauseBonus(tourney,r);
           return(
             <div key={ri} style={{background:T.card2,borderRadius:15,marginBottom:10,
               border:`1px solid ${isCurrent?T.o:T.border}`,padding:'14px 16px'}}>

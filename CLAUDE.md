@@ -868,9 +868,9 @@ Aufrufer (Lobby, Beitreten) blieben.
 Zwischen „Start" und der ersten Runde liegt ein kurzer Vorhang
 (`TournamentStartSplash`): ein Ball dreht sich, holt aus und schiesst
 auf den Betrachter zu. Er steht auf dem Foto der Startseite (`dim .5`)
-mit dem Schriftzug oben, darunter „Aufschlag", der Turniername als
-Schlagzeile in der Antiqua (hoechstens zwei Zeilen) und der
-`LoadBar`, der sich ueber die Drehphase (`SPLASH_SPIN`) fuellt. Der Screenwechsel passiert dabei **sofort** —
+mit dem Schriftzug oben und unter dem Ball nur „Aufschlag" — kein
+Turniername, kein Satz, kein Ladebalken: fuer gut eine Sekunde war
+das zu viel. Der Screenwechsel passiert dabei **sofort** —
 der Vorhang deckt ihn nur zu, statt die App künstlich langsamer zu
 machen.
 

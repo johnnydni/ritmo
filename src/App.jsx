@@ -13165,7 +13165,7 @@ function ConfettiBurst({pieces=140,duration=4600,originY=0.38}){
 
 const SPLASH_SPIN=820;   // Ball dreht sich
 const SPLASH_FLY=560;    // Ball schießt heraus
-function TournamentStartSplash({name,onDone}){
+function TournamentStartSplash({onDone}){
   const[phase,setPhase]=useState('spin');
   useEffect(()=>{
     const a=setTimeout(()=>setPhase('fly'),SPLASH_SPIN);
@@ -13209,19 +13209,9 @@ function TournamentStartSplash({name,onDone}){
       {!flying&&(
         <div className="fi" style={{textAlign:'center',padding:'0 32px',
           display:'flex',flexDirection:'column',alignItems:'center'}}>
+          {/* Nur das Ressort: Name, Satz und Ladebalken darunter waren zu
+              viel fuer einen Vorhang von gut einer Sekunde. */}
           <div className="display" style={{color:T.o,fontSize:12,letterSpacing:2.8,lineHeight:1}}>Aufschlag</div>
-          {/* Der Turniername als Schlagzeile in der Antiqua, wie der
-              Siegername im Endstand — hoechstens zwei Zeilen. */}
-          <div style={{...HEAD_SERIF,fontSize:36,lineHeight:1.05,marginTop:12,maxWidth:320,
-            display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',overflow:'hidden'}}>
-            {name||'Turnier'}
-          </div>
-          <div className="txt" style={{color:T.t2,fontSize:14.5,fontStyle:'italic',marginTop:10}}>
-            Runde 1 wird ausgelost …
-          </div>
-          {/* Derselbe Ladebalken wie ueberall, gefuellt ueber die
-              Drehphase des Balls. */}
-          <div style={{marginTop:22}}><LoadBar dur={SPLASH_SPIN} w={150} label="Runde 1 wird ausgelost"/></div>
         </div>
       )}
     </div>

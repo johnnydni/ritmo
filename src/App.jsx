@@ -2651,6 +2651,13 @@ function hookNavScroll(){
      navPillPrev ihre letzte Lage; die neue Leiste startet dort und
      faehrt per Transition an ihren Platz. */
 let navPillPrev=null;
+/* Jeder Tab-Screen behaelt seine Leiste (KeepTab). Wechselt man den
+   Tab, muss die Leiste des ZIEL-Screens ihre Kapsel von der Lage der
+   alten Leiste her gleiten lassen — und alle anderen Leisten ihre
+   Kapsel wieder unter ihren eigenen Tab setzen. Sonst stand sie beim
+   naechsten Besuch dort, wo der Finger sie zuletzt losgelassen hatte
+   (Kapsel unter Home, Profil orange). */
+const navPillBus={subs:new Set(),go(to,from){navPillPrev=from||navPillPrev;this.subs.forEach(f=>f(to,from));}};
 function TabBar({active,onTab}){
   const tabs=[
     {id:'home',label:'Home',Icon:HomeIcon},
@@ -2665,7 +2672,28 @@ function TabBar({active,onTab}){
   const[press,setPress]=useState(false);    // Linse (Finger liegt auf)
   const[under,setUnder]=useState(null);     // Tab unter dem Finger
   const[instant,setInstant]=useState(false);// ohne Transition setzen
-  const pressRef=useRef(false), swallow=useRef(false);
+  const pressRef=useRef(false), swallow=useRef(false), pillRef=useRef(null), activeRef=useRef(active);
+  activeRef.current=active;
+  useEffect(()=>{pillRef.current=pill;},[pill]);
+  // Auf Tab-Wechsel hoeren (siehe navPillBus).
+  useEffect(()=>{
+    const f=(to,from)=>{
+      if(to!==active){
+        // Nicht mehr sichtbar: still zurueck unter den eigenen Tab.
+        // Den Tab erst JETZT lesen: manche Leisten (Home) bekommen den
+        // aktiven Tab als wechselnden Wert und stehen inzwischen woanders.
+        setTimeout(()=>{ if(pressRef.current) return; const r=rectOf(activeRef.current);
+          if(r){ setInstant(true); setPill(r); requestAnimationFrame(()=>setInstant(false)); } },60);
+        return;
+      }
+      const r=rectOf(active); if(!r) return;
+      if(from){ setInstant(true); setPill(from);
+        requestAnimationFrame(()=>requestAnimationFrame(()=>{ setInstant(false); setPill(rectOf(active)||r); })); }
+      else setPill(r);
+    };
+    navPillBus.subs.add(f); return()=>{navPillBus.subs.delete(f);};
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[active]);
   const[blendIn]=useState(()=>__navBlendArm);
   useEffect(()=>{__navBlendArm=false;},[]);
 
@@ -2729,6 +2757,9 @@ function TabBar({active,onTab}){
   // Finger auf der Kapsel: Linse an die Stelle, folgen, loslassen → Tab.
   const follow=clientX=>{
     const nav=navRef.current; if(!nav) return;
+    { const n=nav.getBoundingClientRect(), f=Math.max(0,Math.min(1,(clientX-n.left)/n.width));
+      const host=nav.parentElement; host.style.setProperty('--lg-a',`${150+f*130}deg`);
+      host.style.setProperty('--lg-x',`${Math.round(f*100)}%`); }
     const id=nearest(clientX), r=rectOf(id); if(!r) return;
     const n=nav.getBoundingClientRect();
     const first=rectOf(tabs[0].id), last=rectOf(tabs[tabs.length-1].id);
@@ -2749,19 +2780,25 @@ function TabBar({active,onTab}){
       if(ev.type==='pointercancel'){ const r=rectOf(active); if(r) setPill(r); return; }
       const id=nearest(ev.clientX);
       navStore.set(false);
-      if(id&&id!==active){ buzz(6); __navBlendArm=true; onTab(id); }
+      if(id&&id!==active){ buzz(6); __navBlendArm=true; navPillBus.go(id,pillRef.current); onTab(id); }
       else { const r=rectOf(active); if(r) setPill(r); }
     };
     window.addEventListener('pointermove',move);
     window.addEventListener('pointerup',up);
     window.addEventListener('pointercancel',up);
   };
-  const goSearch=()=>{ if(!onSearch){ buzz(6); __navBlendArm=true; } navStore.set(false); onTab('suche'); };
+  const goSearch=()=>{ if(!onSearch){ buzz(6); __navBlendArm=true; navPillBus.go('suche',null); } navStore.set(false); onTab('suche'); };
 
-  const glass=(r)=>(<GlassSurface width="100%" height="100%" borderRadius={r}
-    className="nav-glass" brightness={58} opacity={0.92} blur={11}
-    displace={0.6} distortionScale={-130} redOffset={0} greenOffset={8} blueOffset={16}
-    style={{position:'absolute',inset:0,pointerEvents:'none'}}/>);
+  const glass=(r)=>(<>
+    <GlassSurface width="100%" height="100%" borderRadius={r}
+      className="nav-glass" brightness={58} opacity={0.92} blur={11}
+      displace={0.6} distortionScale={-130} redOffset={0} greenOffset={8} blueOffset={16}
+      style={{position:'absolute',inset:0,pointerEvents:'none'}}/>
+    {/* Spiegelkante + Glanz (theme.js .lg-rim/.lg-spec) — in allen
+        Browsern, auch dort, wo GlassSurface nur Milchglas kann. */}
+    <span className="lg-spec" aria-hidden="true" style={{borderRadius:r}}/>
+    <span className="lg-rim" aria-hidden="true" style={{borderRadius:r}}/>
+  </>);
   const searchBtn=(
     <div className={closing?'':(popped||collapsed?'nav-pop':'')}
       style={{position:'relative',width:NAV_H,height:NAV_H,flexShrink:0,pointerEvents:'auto',
@@ -2827,7 +2864,7 @@ function TabBar({active,onTab}){
                   // Zeiger-Gesten erledigt onDown; das hier ist nur der
                   // Weg per Tastatur.
                   if(swallow.current) return;
-                  if(id!==active){__navBlendArm=true;onTab(id);}
+                  if(id!==active){__navBlendArm=true;navPillBus.go(id,pillRef.current);onTab(id);}
                 }}
                 style={{flex:'1 1 0',minWidth:0,display:'flex',flexDirection:'column',
                   alignItems:'center',justifyContent:'center',gap:1,padding:0,

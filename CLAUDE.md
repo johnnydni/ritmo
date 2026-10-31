@@ -95,7 +95,7 @@ Turniername in der kursiven Antiqua, dann „Sieger" und der Name als
 Schlagzeile mit orangem Punkt, der Satz zum Ausgang (dieselbe Rechnung
 wie `story` in `TournamentLeaderboard`), drei Glaskacheln (Punkte,
 Siege, Matches), die Tabelle in der Zeile von `LbRow` (Platz duenn,
-Kugel mit Spielernummer, Name mit „S · N · P", Wertung duenn) und
+Name mit „S · N · P", Wertung duenn) und
 danach jede Runde mit Paarungen, Ergebnissen und Pausen. Einstiege
 sind der Endstand-Screen und die
 Live-Liste (Swipe-Aktion und "... mehr"-Sheet).
@@ -1372,14 +1372,15 @@ Eine Zeile, vier Aufrufer: die Tabelle im laufenden Turnier (Tab
 und der Bestaetigungsschritt vor dem Beenden (`EndReviewSheet`).
 **Ruhig, grosse Zahlen** — keine Spalten, keine Farbkante, kein Kopf:
 
-`Platz | Kugel | Name + „4 S · 0 N · 1 P“ | Wertung`
+`Platz | Name + „4 S · 0 N · 1 P“ | Wertung`
 
 - Der **Platz** ist eine duenne Ziffer (Space Grotesk 300, 24 px), 1–3 in den
   Medaillenfarben (`LB_MEDAL`, dieselben wie `MedalIcon`), sonst
   gedimmt.
-- Die **Kugel** (`GlassOrb`, 30 px) traegt die Spielernummer (`num`,
-  per `pNum`); `highlight` (eigene Zeile in der Teilnehmeransicht)
-  gibt ihr den orangen Ring und der Zeile den `oSoft`-Grund.
+- **Keine Kugel mit Spielernummer** mehr zwischen Platz und Name — in
+  der Tabelle las sich die Nummer als zweiter Platz. `highlight`
+  (eigene Zeile in der Teilnehmeransicht) gibt der Zeile den
+  `oSoft`-Grund.
 - **Siege, Niederlagen, Pausen** stehen als Unterzeile unter dem
   Namen. Die SP/S/N/P-Spalten mit Haarlinien sind raus — senkrecht
   verglichen hat sie niemand, gelesen wird von der Wertung her.

@@ -1050,6 +1050,55 @@ button:disabled{cursor:not-allowed;opacity:.55;}
     inset 0 1px 0 color-mix(in srgb, #fff 20%, transparent),
     inset 0 -1px 0 color-mix(in srgb, #000 16%, transparent);
 }
+/* ── Liquid-Glass-Kante der Tab-Leiste (.lg-rim / .lg-spec) ──
+   Das Glas selbst kommt von GlassSurface (Brechung auf Chromium,
+   Milchglas auf iOS). Darueber liegt in ALLEN Browsern dieselbe Kante,
+   die das Material als Glas liest: eine duenne Spiegelkante, an zwei
+   Stellen hell (wo das Licht trifft), dazwischen ein Hauch Farbe wie
+   die Dispersion an einer Glaskante — chromatisch-metallisch statt
+   weissem Rand. --lg-a dreht das Licht; die Leiste setzt es beim
+   Ziehen nach der Fingerposition, so wandert die Spiegelung mit.
+   Die Kante ist eine Maske aus zwei Flaechen (content-box gegen
+   border-box), damit nur der Rand gefaerbt wird. */
+.lg-rim{
+  position:absolute;inset:0;border-radius:inherit;padding:1.25px;
+  pointer-events:none;z-index:2;
+  background:conic-gradient(from var(--lg-a,215deg) at 50% 50%,
+    rgba(255,255,255,.95) 0deg,
+    rgba(150,205,255,.55) 22deg,
+    rgba(255,255,255,.06) 70deg,
+    rgba(255,150,215,.38) 120deg,
+    rgba(255,255,255,.7) 172deg,
+    rgba(255,226,150,.45) 198deg,
+    rgba(255,255,255,.05) 250deg,
+    rgba(130,255,225,.4) 305deg,
+    rgba(255,255,255,.95) 360deg);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;
+  mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0);
+  opacity:.8;
+  transition:--lg-a .5s ease, opacity .3s ease;
+}
+/* Glanz auf der Flaeche: ein weiches Licht oben, ein schmaler Reflex
+   unten — wie gewoelbtes Glas, kein Glow nach aussen. */
+.lg-spec{
+  position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:2;
+  background:
+    radial-gradient(120% 70% at var(--lg-x,30%) -10%, rgba(255,255,255,.16), transparent 60%),
+    radial-gradient(90% 40% at calc(100% - var(--lg-x,30%)) 115%, rgba(255,255,255,.08), transparent 70%);
+  mix-blend-mode:screen;
+}
+@property --lg-a{syntax:'<angle>';inherits:true;initial-value:215deg;}
+/* Die Linse (Finger liegt auf) bekommt dieselbe Kante — kraeftiger. */
+.liquid-pill[data-press="true"]::before{
+  content:'';position:absolute;inset:0;border-radius:inherit;padding:1.25px;
+  background:conic-gradient(from var(--lg-a,215deg),
+    rgba(255,255,255,.95),rgba(150,205,255,.6) 25%,rgba(255,150,215,.45) 50%,
+    rgba(255,226,150,.5) 70%,rgba(130,255,225,.45) 85%,rgba(255,255,255,.95));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;
+  mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0);
+}
 /* Navbar-Variante: kein Content-Padding (die Bar fuellt die Flaeche). */
 .nav-glass .glass-surface__content{padding:0;}
 

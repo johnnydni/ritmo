@@ -1499,9 +1499,23 @@ oder ihre Symbole (eigene Glyphen, eigenes `GlassSurface`):
   1.32,.42,1)`, 520 ms) auf den Tab darunter. Ein Tipp ist dieselbe
   Geste ohne Ziehen; `onClick` bleibt nur fuer die Tastatur.
 - **Gleiten ueber den Screenwechsel**: jeder Tab-Screen hat seine
-  eigene Leiste (`KeepTab`). `navPillPrev` merkt sich die letzte Lage
-  der Kapsel; die neue Leiste startet dort (ohne Transition) und
-  faehrt per Feder an ihren Platz. Vorher blendete sie am Ziel ein.
+  eigene Leiste (`KeepTab`). Ein Tab-Wechsel geht ueber `navPillBus`:
+  die Leiste des Ziels startet an der Lage der alten Kapsel (ohne
+  Transition) und faehrt per Feder an ihren Platz; **alle anderen
+  Leisten setzen ihre Kapsel still unter ihren eigenen Tab zurueck.**
+  Ohne das stand sie beim naechsten Besuch dort, wo der Finger sie
+  losgelassen hatte (Kapsel unter Home, Profil orange — im Video
+  vom Telefon). Der Rueckweg liest den aktiven Tab per `activeRef`
+  erst beim Ausfuehren: die Home-Leiste bekommt ihn als wechselnden
+  Wert. Fuer frisch gebaute Leisten gilt `navPillPrev` beim Mount.
+- **Liquid-Glass-Kante** (`.lg-rim`, `.lg-spec` in theme.js) ueber
+  jeder Glasflaeche der Leiste, in allen Browsern: eine duenne
+  Spiegelkante als `conic-gradient` (zwei helle Lichtpunkte, dazwischen
+  ein Hauch Blau, Rosa, Gold, Mint wie Dispersion an einer Glaskante),
+  per Maske nur auf dem Rand; dazu ein weicher Glanz oben und ein
+  Reflex unten. Beim Ziehen setzt die Leiste `--lg-a`/`--lg-x` nach
+  der Fingerposition, das Licht wandert mit. Die Linse (Finger liegt
+  auf) traegt dieselbe Kante, kraeftiger.
 
 ### Tab-Leiste: einklappen wie iOS (`navStore`)
 

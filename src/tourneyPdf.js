@@ -32,7 +32,7 @@
    Faellt das Nachladen einer Schrift oder der Wortmarke aus, entsteht
    das PDF trotzdem — dann eben in Helvetica und ohne Logo.
 ═══════════════════════════════════════════════════════════════ */
-import { calcLeaderboard, FORMATS, roundMeanBonus } from './tournament.js';
+import { calcLeaderboard, FORMATS, roundMeanBonus, winLine } from './tournament.js';
 import { getAssetBase } from './utils.js';
 import centauriUrl from './fonts/centauri.ttf';
 import sgLightUrl from './fonts/pdf/sg-light.ttf';
@@ -131,7 +131,7 @@ export async function buildTourneyPdf(tourney){
   const lb=calcLeaderboard(P,R,tourney.winMode,tourney.pauseMode,tourney.pausePts)
     .sort((a,b)=>wins?(b.totalWins-a.totalWins||b.totalPts-a.totalPts)
                     :(b.totalPts-a.totalPts||b.totalWins-a.totalWins));
-  const win=lb[0], second=lb[1];
+  const win=lb[0];
   const nameOf=id=>P.find(p=>p.id===id)?.name||'?';
   const team=ids=>(ids||[]).map(nameOf).join(' & ');
   const score=p=>wins?p.totalWins:p.totalPts;
@@ -171,18 +171,8 @@ export async function buildTourneyPdf(tourney){
     col(T1); put(win.name,M-.6,y);
     col(O); put('.',M-.6+doc.getTextWidth(win.name),y);
 
-    /* Ein Satz zum Ausgang — gleiche Rechnung wie in der App. */
-    const what=tourney.name?`„${tourney.name}“`:'das Turnier';
-    let story=`gewinnt ${what}.`;
-    if(second){
-      const a=score(win), b=score(second);
-      if(a>b){ const d=a-b;
-        story=`gewinnt ${what} — mit ${d} ${wins?(d===1?'Sieg':'Siegen'):(d===1?'Punkt':'Punkten')} Vorsprung vor ${second.name}.`; }
-      else{
-        const tb=wins?(win.totalPts>second.totalPts?' — mehr Punkte':''):(win.totalWins>second.totalWins?' — mehr Siege':'');
-        story=`gewinnt ${what} — ${wins?'siegegleich':'punktgleich'} mit ${second.name}${tb}.`;
-      }
-    }
+    /* Derselbe Spruch wie im Endstand der App. */
+    const story=winLine(tourney.id??tourney.name,win.name);
     font(BODY,'normal'); size(11); col(T2);
     const sl=doc.splitTextToSize(story,CW);
     y+=9; sl.forEach((l,i)=>put(l,M,y+i*5.4)); y+=(sl.length-1)*5.4;

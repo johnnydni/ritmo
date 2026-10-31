@@ -1074,13 +1074,11 @@ button:disabled{cursor:not-allowed;opacity:.55;}
   -webkit-backdrop-filter:saturate(var(--glass-saturation, 1));
   backdrop-filter:var(--filter-id, url(#glass-filter)) saturate(var(--glass-saturation, 1));
   box-shadow:
-    0 0 2px 1px color-mix(in srgb, #fff 35%, transparent) inset,
-    0 0 10px 4px color-mix(in srgb, #fff 15%, transparent) inset,
     0 4px 16px rgba(0,0,0,.18),
     0 8px 28px rgba(0,0,0,.14);
 }
 /* Rueckweg (Safari/iOS, Firefox): klares Glas wie GLASS in App.jsx —
-   kein Blur, keine Toenung, nur 6 % Weiss und der innere Lichtsaum.
+   kein Blur, keine Toenung, nur 6 % Weiss — ohne inneren Lichtsaum.
    Vorher stand hier Blur 24 + Aufhellung + Toenung. Auf dem iPhone
    rechnet WebKit diese Unschaerfe erst, wenn das Einblenden der Seite
    vorbei ist: die Karten kamen klar herein und wurden eine halbe
@@ -1088,8 +1086,6 @@ button:disabled{cursor:not-allowed;opacity:.55;}
 .glass-surface--fallback{
   background:rgba(255,255,255,.06);
   box-shadow:
-    inset 0 0 2px 1px rgba(255,255,255,.35),
-    inset 0 0 10px 4px rgba(255,255,255,.12),
     0 4px 16px rgba(0,0,0,.18),
     0 8px 28px rgba(0,0,0,.14);
 }

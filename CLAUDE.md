@@ -265,7 +265,7 @@ Die Bausteine stehen in App.jsx direkt vor `ScreenHeader`:
 |---|---|
 | `PhotoBackdrop({dim})` | Das Foto der Startseite samt Verlauf, `zIndex:-1` hinter dem Inhalt. `dim` dunkelt fuer Arbeits-Screens nach. |
 | `PHOTO_ROOT` | In den Screen-Rahmen spreizen: `isolation:'isolate'` gibt ihm einen eigenen Stapelkontext — sonst rutscht das Foto hinter den Grund des Rahmens. |
-| `GLASS` | Klares Glas wie die Home-Karten in der installierten App: kein Blur, kein grauer Fill — 6 % Weiss, Haarlinie 22 %, innen ein heller Lichtsaum (zwei inset-Schatten), aussen weicher Schlagschatten. Gedrueckt `T.glassHi`, Trenner in Listen `T.glassSep`. |
+| `GLASS` | Klares Glas wie die Home-Karten in der installierten App: kein Blur, kein grauer Fill — 6 % Weiss, Haarlinie 22 %, aussen weicher Schlagschatten. **Kein Glow**: der innere Lichtsaum (zwei inset-Schatten) ist raus — auch im SVG-Weg und im Rueckweg von `GlassSurface`. Gedrueckt `T.glassHi`, Trenner in Listen `T.glassSep`. |
 | `HEAD_SERIF` | Die kursive Antiqua der Startseiten-Ueberschriften (40 px; `ScreenHeader` 38, `SectionRule` 25). |
 | `GlassCircle` | Runder Glasknopf (bei Home definiert). |
 
@@ -273,8 +273,8 @@ Die Bausteine stehen in App.jsx direkt vor `ScreenHeader`:
   ist klares Glas, nicht Milchglas. Grund: im Standalone-Modus fehlt
   „Safari" im User-Agent, `GlassSurface` waehlt deshalb seinen SVG-Weg
   (`.glass-surface--svg`) — und WebKit wendet den
-  `backdrop-filter: url(#…)` nicht an. Uebrig bleiben 6 % Weiss und der
-  innere Lichtsaum. Eine Zeit lang trug `GLASS` stattdessen Blur 24 und
+  `backdrop-filter: url(#…)` nicht an. Uebrig bleiben 6 % Weiss und
+  die Haarlinie. Eine Zeit lang trug `GLASS` stattdessen Blur 24 und
   eine Toenung; auf dem Telefon stand das als grauer Fill neben den
   klaren Home-Karten. Ohne `backdrop-filter` kostet eine Glasflaeche
   beim Scrollen ausserdem nichts mehr.
@@ -285,8 +285,8 @@ Die Bausteine stehen in App.jsx direkt vor `ScreenHeader`:
   Unschaerfe erst nach dem Einblenden der Seite, die Home-Karten kamen
   klar herein und wurden eine halbe Sekunde spaeter grau.
 - Wer `boxShadow` auf einer `GLASS`-Flaeche setzt (Auswahl-Schein),
-  haengt `GLASS.boxShadow` an, statt ihn zu ersetzen — sonst fehlen
-  Lichtkante und Schatten genau an der gewaehlten Karte.
+  haengt `GLASS.boxShadow` an, statt ihn zu ersetzen — sonst fehlt
+  der Schatten genau an der gewaehlten Karte.
 - **Kein `BottomFade` auf Foto-Screens**: er verlaeuft in `--bg` und
   stuende als dunkler Balken ueber der Tab-Bar.
 - **Die Hoehe der installierten iPhone-App misst `main.jsx` selbst**

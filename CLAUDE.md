@@ -817,27 +817,30 @@ Rueckgabe nur Splash und diese Seite — kein Login, kein Home, kein
 
 Das Intro-Video (`assets/splash-intro.mp4`, Handschlag am Netz von
 oben, 8,4 s) laeuft vollflaechig unter einem leichten Verlauf, darauf
-mittig der Schriftzug und darunter der Ladebalken, **genau so breit
-wie der Schriftzug** (`lw`, min(58vw, 250px)). Er fuellt sich ueber die
+mittig der Schriftzug und darunter der Ladebalken, gemessen an der
+Breite des Schriftzugs (`lw`, min(58vw, 250px)). Er fuellt sich ueber die
 Laenge des Videos (`SPL_MS` = 8400). Der Splash endet mit dem Video
 (`ended`), Tippen startet sofort.
 
 **Der Ladebalken ist einer fuer die ganze App** (`LoadBar` in
-icons.jsx), nach einer Tacho-Grafik: links steigt er schraeg an, biegt
-in einem **Bogen** ab und laeuft gerade weiter — **acht lange Balken**
-mit schmalen Fugen, **nur Weiss**, nach rechts heller (Verlauf 38 % →
-100 %). `pct` zeigt einen Stand (Screenshot-Scan), `dur` fuellt einmal
-durch (Splash, `ldFill`), ohne beides laeuft ein Stueck unbestimmt
-hindurch (`ldRun`). `BallSpinner` zeichnet nur noch diesen Balken, die
-Aufrufer (Lobby, Beitreten) blieben.
+icons.jsx), und er ist ein **Tennisnetz**: oben das weisse Band,
+links und rechts die Pfosten, dazwischen das Maschennetz, das sich von
+links nach rechts hell fuellt (nach rechts heller, Maske 45 % → 100 %).
+`pct` zeigt einen Stand (Screenshot-Scan), `dur` fuellt einmal durch
+(Splash, `ldNet`), ohne beides wischt das Helle unbestimmt hindurch
+(`ldNetRun`). `BallSpinner` zeichnet nur noch dieses Netz, die Aufrufer
+(Lobby, Beitreten) blieben.
 
-- Die Balken sind **ein** SVG-Strich mit Strichmuster
-  (`pathLength="100"`), gefuellt wird ueber eine Maske mit eigenem
-  Muster. So stehen die Balken still, waehrend die Fuellung waechst.
-- Erst stand dort eine kantige Ecke mit vielen kleinen Wuerfeln; der
-  Wunsch war Radius im Knick und wenige, graduelle Balken.
-- Breite: die des Schriftzugs auf demselben Screen (Vorgabe 176 wie
-  `AuthMark`), die Hoehe folgt daraus.
+- `w` ist die Breite des Schriftzugs daneben; das Netz steht **5 %
+  kleiner** (`NET_K`), alle Masse skalieren aus `w/226` (Band und
+  Pfosten 3, Netzhoehe 22, Masche 7 bei 226 px).
+- Gefuellt wird per **`clip-path`** auf der hellen Lage, nicht per
+  Breite: so stehen die Maschen still, statt mitzuwandern.
+- Die Maschen sind zwei gekreuzte `repeating-linear-gradient` in
+  `currentColor` (= `T.t1`); die Deckkraft sitzt auf der Lage.
+- Davor standen dort ein Tacho-Bogen aus acht Balken und F1-Entwuerfe
+  (Speed, Drehzahl, Startampel); gewaehlt wurde das Netz aus einer
+  Runde Tennis-Mocks.
 
 - **Das Video ist heruntergerechnet**: 720p, H.264, ohne Ton,
   `+faststart` — 0,7 MB statt 15,7 MB im Original. Wer ein neues

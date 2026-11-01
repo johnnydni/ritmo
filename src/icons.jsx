@@ -7,7 +7,7 @@
    load PNGs with an inline SVG fallback if the asset is missing.
 ═══════════════════════════════════════════════════════════════ */
 
-import { useState, useId } from "react";
+import { useState } from "react";
 import { T } from "./theme.js";
 import { getAssetBase } from "./utils.js";
 
@@ -471,51 +471,41 @@ export function MiniBall({size=10,color=T.o}){
   </svg>;
 }
 
-/* Der Ladebalken der App — nach einer Tacho-Grafik: links steigt er
-   schraeg an, biegt in einem Bogen ab und laeuft dann gerade weiter.
-   Er besteht aus acht langen Balken mit schmalen Fugen, nur in Weiss,
-   nach rechts heller. Es gibt EINE Komponente fuer alle Stellen
-   (Splash, Screenshot-Scan, Warten auf die Session), so breit wie der
-   Schriftzug daneben.
+/* Der Ladebalken der App ist ein Tennisnetz: oben das weisse Band,
+   links und rechts die Pfosten, dazwischen das Maschennetz, das sich
+   von links nach rechts hell fuellt. Es gibt EINE Komponente fuer
+   alle Stellen (Splash, Screenshot-Scan, Warten auf die Session).
+   - w ist die Breite des Schriftzugs daneben; das Netz steht 5 %
+     kleiner (NET_K), so wirkt es unter dem Schriftzug nicht gedrueckt.
    - pct: 0..1 zeigt den Stand; dur (ms) fuellt einmal von 0 auf voll
-     (Splash); ohne beides laeuft ein Stueck unbestimmt durch.
-   - Die Balken sind EIN Strich mit Strichmuster (pathLength 100).
-     Gefuellt wird ueber eine Maske mit eigenem Strichmuster. So stehen
-     die Balken still, waehrend die Maske waechst. */
+     (Splash); ohne beides wischt das Helle unbestimmt hindurch.
+   - Gefuellt wird per clip-path auf der hellen Lage, nicht per Breite:
+     so stehen die Maschen still, statt mitzuwandern.
+   - Die Maschen sind zwei gekreuzte repeating-linear-gradients in
+     currentColor, die Deckkraft sitzt auf der Lage (Theme-Token). */
+const NET_K=.95;
 export function LoadBar({pct=null,dur=0,w=176,label='Wird geladen'}){
-  const id=useId().replace(/:/g,'');
-  const H=Math.round(w*.2),t=Math.max(5,Math.round(w*.042));
-  const x0=t*.5,y0=H-t*.5,x1=x0+(H-t)*.5,y1=t*.5;
-  // Der Knick ist ein Bogen (r), keine Ecke: kurz davor wird die
-  // Schraege verlassen, kurz danach die Gerade erreicht.
-  const dg=Math.hypot(x1-x0,y0-y1),ux=(x1-x0)/dg,uy=(y1-y0)/dg,r=Math.min(dg*.5,H*.55);
-  const ax=x1-ux*r,ay=y1-uy*r,bx=x1+r;
-  const d=`M${x0} ${y0}L${ax.toFixed(2)} ${ay.toFixed(2)}Q${x1.toFixed(2)} ${y1} ${bx.toFixed(2)} ${y1}H${w}`;
-  // Wenige lange Balken (SEGS) mit schmaler Fuge, nach rechts heller.
-  const L=dg-r+r*1.15+(w-bx),SEGS=8,G=Math.max(2.5,t*.45)/L*100;
-  const seg=(100/SEGS-G).toFixed(3),gap=G.toFixed(3);
+  const k=w/226*NET_K,W=Math.round(w*NET_K),h=Math.round(22*k),bar=Math.max(2,Math.round(3*k)),
+    cell=Math.max(5,Math.round(7*k));
+  const mesh=`repeating-linear-gradient(90deg,currentColor 0 1px,transparent 1px ${cell}px),repeating-linear-gradient(0deg,currentColor 0 1px,transparent 1px ${cell}px)`;
   const ind=pct==null&&!dur;
-  const mask=ind?{strokeDasharray:'38 200',animation:'ldRun 1.3s cubic-bezier(.45,0,.55,1) infinite'}
-    :dur?{strokeDasharray:'100 100',animation:`ldFill ${dur}ms cubic-bezier(.65,0,.35,1) both`}
-    :{strokeDasharray:'100 100',strokeDashoffset:100-Math.max(0,Math.min(1,pct))*100,transition:'stroke-dashoffset .3s ease'};
-  const line={fill:'none',strokeWidth:t,strokeLinejoin:'miter',strokeMiterlimit:10,strokeLinecap:'butt'};
+  const fill=ind?{animation:'ldNetRun 1.6s cubic-bezier(.45,0,.55,1) infinite'}
+    :dur?{animation:`ldNet ${dur}ms cubic-bezier(.65,0,.35,1) both`}
+    :{clipPath:`inset(0 ${100-Math.max(0,Math.min(1,pct))*100}% 0 0)`,transition:'clip-path .3s ease'};
+  const post={width:bar,height:h+bar*2,background:T.t1,borderRadius:bar,flexShrink:0};
   return(
-    <svg role="progressbar" aria-label={label}
+    <div role="progressbar" aria-label={label}
       aria-valuenow={pct==null?undefined:Math.round(pct*100)} aria-valuemin={0} aria-valuemax={100}
-      width={w} height={H} viewBox={`0 0 ${w} ${H}`} style={{display:'block',overflow:'visible',maxWidth:'100%',flexShrink:0}}>
-      <defs>
-        <linearGradient id={`lg${id}`} gradientUnits="userSpaceOnUse" x1="0" y1="0" x2={w} y2="0">
-          <stop offset="0" stopColor={T.t1} stopOpacity=".38"/>
-          <stop offset="1" stopColor={T.t1} stopOpacity="1"/>
-        </linearGradient>
-        <mask id={`ld${id}`} maskUnits="userSpaceOnUse" x={-t} y={-t} width={w+2*t} height={H+2*t}>
-          <path d={d} pathLength="100" stroke="#fff" {...line} strokeWidth={t+4} style={mask}/>
-        </mask>
-      </defs>
-      <path d={d} pathLength="100" stroke={T.t1} strokeOpacity=".12" strokeDasharray={`${seg} ${gap}`} {...line}/>
-      <path d={d} pathLength="100" stroke={`url(#lg${id})`} strokeDasharray={`${seg} ${gap}`} {...line}
-        mask={`url(#ld${id})`} style={{filter:'drop-shadow(0 0 5px rgba(255,255,255,.55))'}}/>
-    </svg>
+      style={{width:W,maxWidth:'100%',display:'flex',alignItems:'flex-end',color:T.t1,flexShrink:0}}>
+      <span style={post}/>
+      <div style={{flex:1,height:h,position:'relative',borderTop:`${bar}px solid ${T.t1}`}}>
+        <div style={{position:'absolute',inset:0,background:mesh,opacity:.14}}/>
+        <div style={{position:'absolute',inset:0,background:mesh,opacity:.85,
+          WebkitMaskImage:'linear-gradient(90deg,rgba(0,0,0,.45),#000)',maskImage:'linear-gradient(90deg,rgba(0,0,0,.45),#000)',
+          ...fill}}/>
+      </div>
+      <span style={post}/>
+    </div>
   );
 }
 

@@ -1135,14 +1135,28 @@ Dieselbe Karte steht an drei Stellen und tut dort zwei Dinge:
   zuverlaessig, und ein Zug, der danebengeht, sieht aus wie ein
   kaputter Knopf. Ein belegtes Zielfeld *tauscht* die beiden Plaetze,
   statt den Zug zu verweigern.
-- **Laufendes Turnier** (ueber den Court-Karten, ab 2 Courts): zeigt je
-  Platz nur den Stand ("läuft", "21:14", "frei") und **filtert** die
-  Karten darunter auf einen Court. Keine Namen auf der Kachel — die
-  braucht man in Lesegroesse, und die passt auf 80 px nicht; wer sie
-  sehen will, tippt den Platz an. Der Filter faellt beim Rundenwechsel weg —
-  sonst steht der Host vor einer leeren Liste und sucht den Schalter.
-  Der Stift oben rechts schaltet dieselbe Karte in den Editiermodus,
-  damit sich die Anordnung vor Ort noch gerade ruecken laesst.
+- **Laufendes Turnier** (ueber den Court-Karten, ab 2 Courts):
+  **standardmaessig eingefahren** — nur die Zeile `PLATZKARTE` mit dem
+  Karten-Glyph (`LineIcon` „karte“, links neben dem Stift) und dem
+  Stift. Der Glyph klappt sie auf und zu (`mapOpen`), der Stift klappt
+  sie auf und schaltet den Editiermodus. Je Platz steht nur der
+  Zustand („läuft“, „fertig“, „frei“). Ein Tipp auf einen Platz
+  **rollt die Court-Reihe zu diesem Court** (`goCourt`); hervorgehoben
+  ist der Court, der gerade im Bild ist (`carIdx`). Den Filter auf
+  einen Court gibt es nicht mehr — mit der Reihe ist jeder Court einen
+  Wisch entfernt.
+
+**Die Court-Karten stehen nebeneinander** und werden von links nach
+rechts gewischt (Scroll-Snap, `carRef`): jede Karte `100% − 28px`
+breit, die naechste schaut herein, darunter Punkte je Court (aktiv
+orange und breit, bestaetigt hell, offen gedimmt; antippbar).
+Untereinander war bei fuenf Courts ein langer Weg bis zum letzten.
+Die Reihe greift bis an den Bildschirmrand (`margin: 0 -22px`) und
+rastet auf 22 px ein (`scrollPaddingLeft`). Weil die Karte dadurch
+schmaler ist, steht `Team A`/`Team B` im Raster in 8,5 px mit
+Laufweite 1 — mit 2,2 schnitt `overflow:hidden` das „A“ ab, und mit
+`overflow:visible` wuchs die Spielerspalte, bis Namen rechts aus der
+Karte liefen. Beim Rundenwechsel springt die Reihe auf Court 1.
 
 - `normLayout` laeuft **bei jeder Benutzung**, nie nur beim Speichern:
   so ueberleben Turniere von vor dieser Funktion, geaenderte

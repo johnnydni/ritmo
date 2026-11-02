@@ -209,7 +209,8 @@ Ladebalken):
   liess den orangen Regler eine Summe *teilen* und den weissen die
   Summe stellen — gemeint waren aber zwei Seiten, nicht Teilung und
   Summe. Vorher gab es zwei Scrollräder (`ScoreWheel`, gelöscht).
-- Striche je Punkt, lange alle 5.
+- Striche je Punkt, lange alle 5. Groesse: Zahlen 42 px duenn, Netz-Kreis 40,
+  Daumen 32, Leiste 7, Knopf ~48 hoch in 16 px.
 - **Ein Regler reicht zum Bestätigen**: der andere zählt dann als 0.
   Einen Regler, der schon auf 0 steht, kann man nicht „auf 0 ziehen“ —
   21:0 wäre sonst nur über einen Umweg einzutragen. Solange eine Seite
@@ -1135,28 +1136,39 @@ Dieselbe Karte steht an drei Stellen und tut dort zwei Dinge:
   zuverlaessig, und ein Zug, der danebengeht, sieht aus wie ein
   kaputter Knopf. Ein belegtes Zielfeld *tauscht* die beiden Plaetze,
   statt den Zug zu verweigern.
-- **Laufendes Turnier** (ueber den Court-Karten, ab 2 Courts):
-  **standardmaessig eingefahren** — nur die Zeile `PLATZKARTE` mit dem
-  Karten-Glyph (`LineIcon` „karte“, links neben dem Stift) und dem
-  Stift. Der Glyph klappt sie auf und zu (`mapOpen`), der Stift klappt
-  sie auf und schaltet den Editiermodus. Je Platz steht nur der
-  Zustand („läuft“, „fertig“, „frei“). Ein Tipp auf einen Platz
-  **rollt die Court-Reihe zu diesem Court** (`goCourt`); hervorgehoben
-  ist der Court, der gerade im Bild ist (`carIdx`). Den Filter auf
-  einen Court gibt es nicht mehr — mit der Reihe ist jeder Court einen
-  Wisch entfernt.
+- **Laufendes Turnier** (ab 2 Courts): **ein Knopf in der Mitte der
+  Knopfleiste** (`MatchBar` `center` — Pille mit Karten-Glyph und
+  „Platzkarte“, zwischen Home und Werkzeugen) legt die Platzkarte
+  **ueber den ganzen Turnier-Screen** (`mapOpen`, Overlay mit Foto,
+  `zIndex 4`, die Leiste bleibt darueber). Darin: Ressort, „Die
+  Anlage.“, grosse Plaetze (`glyphH 64`) mit Zustand („läuft“ /
+  „fertig“), die Pause-Leiste und eine Zaehlung (laufen / fertig /
+  Pause); oben Stift (Anordnung anpassen) und ✕. Ein Tipp auf einen
+  Platz schliesst die Karte und rollt die Court-Reihe dorthin
+  (`goCourt`); hervorgehoben ist der Court im Bild (`carIdx`). Der
+  Knopf wird weiss, solange die Karte offen ist, Home blendet dann
+  aus. Ist rechts der „Nächste Runde“-Pfeil da, schrumpft die Pille
+  auf den Glyph (`compact`) — sonst stossen sie bei 390 px an.
+  Vorher stand die Karte als eingefahrene Glaskarte ueber den Courts.
+
+**Auf einen Blick**: Kopf (Titel 28 statt 38, `titleFs`), Timer-Reihe,
+EINE Court-Karte mit Raster, beiden Reglern und Bestaetigen, die
+Punkte darunter und die Pause-Leiste (`pauseStrip`, Kugeln mit Nummer
+und Name, Fragezeichen fuer die Bonus-Erklaerung) — alles ueber der
+Knopfleiste bei 390 × 844. Gemessen: Pause-Leiste endet bei 756 px.
+Dafuer traegt das Raster der Court-Karte keine `Team A`/`Team B`-Zeile
+(`heads={false}` — die Regler darunter sind beschriftet) und knappere
+Plaetze (`avatar 38`, `slotPad 8px`). Wer etwas in die Karte packt,
+misst danach, ob die Pause-Leiste noch im Bild ist.
 
 **Die Court-Karten stehen nebeneinander** und werden von links nach
-rechts gewischt (Scroll-Snap, `carRef`): jede Karte `100% − 28px`
-breit, die naechste schaut herein, darunter Punkte je Court (aktiv
-orange und breit, bestaetigt hell, offen gedimmt; antippbar).
-Untereinander war bei fuenf Courts ein langer Weg bis zum letzten.
-Die Reihe greift bis an den Bildschirmrand (`margin: 0 -22px`) und
-rastet auf 22 px ein (`scrollPaddingLeft`). Weil die Karte dadurch
-schmaler ist, steht `Team A`/`Team B` im Raster in 8,5 px mit
-Laufweite 1 — mit 2,2 schnitt `overflow:hidden` das „A“ ab, und mit
-`overflow:visible` wuchs die Spielerspalte, bis Namen rechts aus der
-Karte liefen. Beim Rundenwechsel springt die Reihe auf Court 1.
+rechts gewischt (Scroll-Snap, `carRef`): jede Karte `100% − 22px`
+breit, 14 px Rand (`margin: 0 -22px`, `padding: 0 14px`,
+`scrollPaddingLeft 14`), die naechste schaut herein; darunter Punkte
+je Court (aktiv orange und breit, bestaetigt hell, offen gedimmt;
+antippbar). Untereinander war bei fuenf Courts ein langer Weg bis zum
+letzten. Beim Rundenwechsel springt die Reihe auf Court 1 und die
+Platzkarte geht zu.
 
 - `normLayout` laeuft **bei jeder Benutzung**, nie nur beim Speichern:
   so ueberleben Turniere von vor dieser Funktion, geaenderte

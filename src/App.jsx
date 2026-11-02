@@ -2466,7 +2466,7 @@ function PhotoBackdrop({dim=0}){
 /* Screen-Kopf: Schriftzug (wie auf Home), Ressort (Centauri, orange),
    Schlagzeile in der Antiqua der Startseite, Haarlinie, Vorspann.
    kicker ist optional. */
-function ScreenHeader({title,subtitle,icon,right,pad=24,ellipsis=false,kicker,rule=true,
+function ScreenHeader({title,subtitle,icon,right,pad=24,ellipsis=false,kicker,rule=true,titleFs=38,
   /* Die Unterzeile ist normalerweise ein Standfirst — ein Satz, und
      der steht kursiv. Wo sie stattdessen eine Statuszeile ist
      (Format | Runde | Endzeit), ist Kursiv falsch: das sind Angaben,
@@ -2490,7 +2490,7 @@ function ScreenHeader({title,subtitle,icon,right,pad=24,ellipsis=false,kicker,ru
           lineHeight:1,marginTop:18,marginLeft:13}}>{kicker}</div>
       )}
       {title!=null&&(
-        <div style={{...HEAD_SERIF,fontSize:38,marginTop:kicker?9:16,marginLeft:13,
+        <div style={{...HEAD_SERIF,fontSize:titleFs,marginTop:kicker?9:(titleFs<38?8:16),marginLeft:13,
           lineHeight:1.08,paddingBottom:2,
           ...(ellipsis?{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}:{})}}>
           {title}
@@ -2890,7 +2890,7 @@ function TabBar({active,onTab}){
 /* ═══════════════════════════════════════════════════════════════
    IN-MATCH BOTTOM BAR (Home + Search separat)
 ═══════════════════════════════════════════════════════════════ */
-function MatchBar({onHome,rightIcon,onRight,rightButtons,homeLabel='Zurück zur Startseite',
+function MatchBar({onHome,rightIcon,onRight,rightButtons,homeLabel='Zurück zur Startseite',center=null,
   /* Waehrend das Werkzeug-Fach offen ist, gehoert die Leiste den
      Werkzeugen: das Fach waechst nach links ueber den Home-Knopf
      hinweg, und ein halb verdeckter Knopf sieht kaputt aus. */
@@ -3044,6 +3044,24 @@ function MatchBar({onHome,rightIcon,onRight,rightButtons,homeLabel='Zurück zur 
           ...(homeHidden?{opacity:0,pointerEvents:'none'}:{})}}>
         <HomeIcon size={20}/>
       </button>
+      {/* Ein Knopf in der MITTE (Platzkarte im Turnier): eine Pille mit
+          Glyph und Wort, absolut zentriert, damit Home links und die
+          Werkzeuge rechts bleiben, wo sie sind. compact = nur der Glyph,
+          wenn rechts ein zweiter Knopf dazukommt. */}
+      {center&&(
+        <button onClick={center.onClick} className={center.active?undefined:'glass-bar'}
+          aria-label={center.label} aria-pressed={!!center.active}
+          aria-hidden={center.hidden||undefined} tabIndex={center.hidden?-1:undefined}
+          style={{position:'absolute',left:'50%',top:'50%',transform:'translate(-50%,-50%)',
+            height:48,minWidth:48,padding:center.compact?0:'0 18px',borderRadius:999,
+            display:'flex',alignItems:'center',justifyContent:'center',gap:8,
+            pointerEvents:center.hidden?'none':'auto',cursor:'pointer',
+            opacity:center.hidden?0:1,transition:'opacity .2s,padding .25s',
+            ...(center.active?{background:T.t1,border:'none',color:'#000'}:{color:T.t1})}}>
+          {center.icon}
+          {!center.compact&&<span style={{fontSize:14,fontWeight:700}}>{center.label}</span>}
+        </button>
+      )}
       <div style={{display:'flex',gap:10,alignItems:'center',pointerEvents:'auto'}}>
         {buttons.map((btn,i)=>btn.items?tray(btn,i):fab(btn,i))}
       </div>
@@ -11521,12 +11539,12 @@ function MatchSlotGrid({court,playerById,numOf,meName,net=null,avatar=52,innerA=
   /* Breite der Netzspalte. 32 reicht fuer eine Plakette; der
      Bestaetigen-Knopf im laufenden Turnier braucht mehr, weil man
      ihn trifft und nicht nur liest. */
-  netW=32}){
+  netW=32,slotPad='14px 6px',heads=true}){
   const nm=id=>playerById?.(id)?.name||'?';
   const isMe=id=>meName&&nm(id).toLowerCase()===meName.toLowerCase();
   const slot=(id,pos)=>(
     <div key={pos} style={{display:'flex',flexDirection:'column',alignItems:'center',
-      justifyContent:'center',gap:7,padding:'14px 6px',minWidth:0,height:'100%'}}>
+      justifyContent:'center',gap:7,padding:slotPad,minWidth:0,height:'100%'}}>
       <GlassOrb name={nm(id)} label={numOf?.(id)??undefined} size={avatar}
         ring={isMe(id)?T.o:undefined}/>
       <div style={{color:isMe(id)?T.o:T.t1,fontSize:13,fontWeight:isMe(id)?800:600,
@@ -11573,7 +11591,7 @@ function MatchSlotGrid({court,playerById,numOf,meName,net=null,avatar=52,innerA=
      wurde schmaler, als die Netzspalte den Bestaetigen-Knopf bekam. */
   const head=(txt,gc)=>(
     <div style={{gridColumn:gc,gridRow:1,fontFamily:T.fontDisplay,color:T.t3,
-      fontSize:8.5,letterSpacing:1,textAlign:'center',padding:'9px 0 0',minWidth:0,
+      fontSize:8.5,letterSpacing:.6,textAlign:'center',padding:'9px 0 0',minWidth:0,
       whiteSpace:'nowrap',overflow:'hidden'}}>{txt}</div>
   );
   // 5 Spalten: Spieler | Punkte A | Netz | Punkte B | Spieler. Ohne
@@ -11587,8 +11605,8 @@ function MatchSlotGrid({court,playerById,numOf,meName,net=null,avatar=52,innerA=
       gridTemplateColumns:`1fr ${innerA?'auto':'0'} ${nw}px ${innerB?'auto':'0'} 1fr`,
       border:`1px solid ${T.glassLine}`,borderRadius:18,overflow:'hidden',
       background:'transparent'}}>
-      {head('Team A',1)}
-      {head('Team B',5)}
+      {heads&&head('Team A',1)}
+      {heads&&head('Team B',5)}
       {/* Netz — laeuft ueber beide Reihen durch, damit es als eine
           Linie liest und die Reihentrennung daran endet. */}
       <div style={{gridColumn:3,gridRow:`2 / span ${rows}`,
@@ -12467,7 +12485,7 @@ function PointsEditModal({entry,winMode,onSave,onClose}){
    `ring` gibt dem Daumen die orange Kontur (der Teilungs-Regler). */
 function PtsSlider({value,min=0,max,onChange,color=T.o,ring=false,ticks=0,major=5,label,dim=false,disabled=false}){
   const f=max>min?(value-min)/(max-min):0;
-  const at=x=>`calc(15px + ${x*100}% - ${x*30}px)`;
+  const at=x=>`calc(16px + ${x*100}% - ${x*32}px)`;
   return(
     <div style={{position:'relative',opacity:dim?.55:1,transition:'opacity .2s'}}>
       <input type="range" className="pts-range" min={min} max={max} step={1} value={value}
@@ -12476,7 +12494,7 @@ function PtsSlider({value,min=0,max,onChange,color=T.o,ring=false,ticks=0,major=
         style={{'--trk':`linear-gradient(90deg,${color} 0 ${at(f)},rgba(255,255,255,.2) ${at(f)})`,
           '--ring':ring?'3px':'0px'}}/>
       {ticks>0&&ticks<=60&&(
-        <div aria-hidden="true" style={{position:'absolute',left:0,right:0,top:29,height:9,pointerEvents:'none'}}>
+        <div aria-hidden="true" style={{position:'absolute',left:0,right:0,top:28,height:9,pointerEvents:'none'}}>
           {Array.from({length:ticks+1},(_,i)=>(
             <span key={i} style={{position:'absolute',left:at(i/ticks),width:1,
               height:i%major===0||i===ticks?9:5,background:'rgba(255,255,255,.4)'}}/>
@@ -12538,15 +12556,15 @@ function TournamentCourtCard({court,courtIndex,courtName,playerById,numOf,onScor
       // sonst rueckt eine einstellige Zahl naeher ans Netz als eine
       // zweistellige und der Stand steht schief.
       <div key={`slot-${team}`}
-        style={{width:46,display:'flex',alignItems:'center',justifyContent:'center'}}>
+        style={{width:60,display:'flex',alignItems:'center',justifyContent:'center'}}>
         {done?(
           <div key={`${team}-${val}`} className="court-score-pop"
-            style={{fontSize:32,fontWeight:900,letterSpacing:-1,lineHeight:1,
+            style={{fontSize:42,fontWeight:300,letterSpacing:-1,lineHeight:1,
               padding:'2px 8px',color:winner?T.o:T.t2}}>
             {val}
           </div>
         ):(
-          <div style={{fontSize:32,fontWeight:300,letterSpacing:-1,lineHeight:1,
+          <div style={{fontSize:42,fontWeight:300,letterSpacing:-1,lineHeight:1,
             fontVariantNumeric:'tabular-nums',padding:'2px 4px',
             color:raw==null?T.t3:(ready&&raw>(team==='A'?s2:s1))?T.o:T.t1}}>
             {raw==null?'–':raw}
@@ -12562,7 +12580,7 @@ function TournamentCourtCard({court,courtIndex,courtName,playerById,numOf,onScor
         position:'relative',
         ...GLASS,
         border:`1px solid ${done?T.o:T.glassLine}`,
-        borderRadius:22,padding:'14px 16px 14px',
+        borderRadius:24,padding:'14px 16px 16px',
         animationDelay:`${courtIndex*60}ms`,
         overflow:'hidden',
         // Eltern-Container des Runden-Tabs ist ein Flex-Column mit
@@ -12576,12 +12594,12 @@ function TournamentCourtCard({court,courtIndex,courtName,playerById,numOf,onScor
 
       {/* Header: Court-Nummer + Status + Lineup-Edit */}
       <div style={{position:'relative',display:'flex',alignItems:'center',
-        justifyContent:'space-between',marginBottom:14}}>
+        justifyContent:'space-between',marginBottom:10}}>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
           {/* Der Court-Name als Kartentitel in der Antiqua — wie die
               Karten der Startseite. Die orange Plakette davor machte
               aus jedem Namen einen Status. */}
-          <div style={{fontFamily:T.fontSerif,color:T.t1,fontSize:22,fontWeight:700,
+          <div style={{fontFamily:T.fontSerif,color:T.t1,fontSize:24,fontWeight:700,
             lineHeight:1.1,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',maxWidth:190}}>
             {courtName||`Court ${courtIndex+1}`}
           </div>
@@ -12633,10 +12651,10 @@ function TournamentCourtCard({court,courtIndex,courtName,playerById,numOf,onScor
           court={court}
           playerById={playerById}
           numOf={numOf}
-          avatar={44}
+          avatar={38} slotPad="8px 6px" heads={false}
           innerA={scoreSlot('A',s1,s1Raw,v=>onScoreChange('s1',v))}
           innerB={scoreSlot('B',s2,s2Raw,v=>onScoreChange('s2',v))}
-          netW={44}
+          netW={48}
           net={[
             /* Auf der Kreuzung von Netz und Reihentrenner sitzt der
                Zustand des Matches — und zugleich der Knopf, der ihn
@@ -12661,7 +12679,7 @@ function TournamentCourtCard({court,courtIndex,courtName,playerById,numOf,onScor
                unter den Reglern. */
             <div key={`net-${netState}`} role="img" aria-label={netLabel} title={netLabel}
               className={netState==='done'?'court-net-pop':undefined}
-              style={{width:38,height:38,borderRadius:'50%',flexShrink:0,
+              style={{width:40,height:40,borderRadius:'50%',flexShrink:0,
                 background:netState==='done'?T.o:T.glassHi,
                 border:`1.5px solid ${netState==='done'||netState==='ready'?T.o:T.glassLine}`,
                 color:netState==='done'?'#000':netState==='ready'?T.o:T.t1,
@@ -12680,17 +12698,17 @@ function TournamentCourtCard({court,courtIndex,courtName,playerById,numOf,onScor
           gesperrt. Eingeklappt sprang die Liste bei jedem Bestaetigen um
           eine halbe Karte nach oben. Aendern geht ueber den Knopf. */}
       {(
-        <div style={{marginTop:14,marginBottom:tier?14:0}}>
+        <div style={{marginTop:10,marginBottom:tier?14:0}}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:-4}}>
-            <span className="display" style={{color:T.t2,fontSize:10,letterSpacing:2}}>Team A</span>
-            <span style={{fontVariantNumeric:'tabular-nums',color:s1Raw==null?T.t3:T.t1,fontSize:15,fontWeight:400}}>{s1Raw??'–'}</span>
+            <span className="display" style={{color:T.t2,fontSize:10.5,letterSpacing:2}}>Team A</span>
+            <span style={{fontVariantNumeric:'tabular-nums',color:s1Raw==null?T.t3:T.t1,fontSize:17,fontWeight:400}}>{s1Raw??'–'}</span>
           </div>
           <PtsSlider label="Punkte Team A" value={s1} max={PT_MAX} disabled={done}
             onChange={v=>onScoreChange('s1',v)} ring ticks={PT_MAX} major={5} dim={s1Raw==null}/>
-          <NetStrip style={{margin:'12px 0 14px'}}/>
+          <NetStrip style={{margin:'8px 0 10px'}}/>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:-4}}>
-            <span className="display" style={{color:T.t2,fontSize:10,letterSpacing:2}}>Team B</span>
-            <span style={{fontVariantNumeric:'tabular-nums',color:s2Raw==null?T.t3:T.t1,fontSize:15,fontWeight:400}}>{s2Raw??'–'}</span>
+            <span className="display" style={{color:T.t2,fontSize:10.5,letterSpacing:2}}>Team B</span>
+            <span style={{fontVariantNumeric:'tabular-nums',color:s2Raw==null?T.t3:T.t1,fontSize:17,fontWeight:400}}>{s2Raw??'–'}</span>
           </div>
           <PtsSlider label="Punkte Team B" value={s2} max={PT_MAX} disabled={done}
             onChange={v=>onScoreChange('s2',v)} color={T.t1} ticks={PT_MAX} major={5} dim={s2Raw==null}/>
@@ -12700,10 +12718,10 @@ function TournamentCourtCard({court,courtIndex,courtName,playerById,numOf,onScor
               {ready?s1+s2:'–'}<span style={{color:T.t3,fontSize:12,fontWeight:400}}> Punkte</span></span>
           </div>
           <button onClick={ready||done?onConfirm:undefined} disabled={!ready&&!done}
-            style={{width:'100%',marginTop:14,padding:'13px 16px',borderRadius:999,
+            style={{width:'100%',marginTop:12,padding:'14px 16px',borderRadius:999,
               border:done?`1px solid ${T.glassLine}`:'none',
               background:done?'transparent':ready?T.o:T.glassHi,color:done?T.t1:ready?'#000':T.t3,
-              fontSize:15,fontWeight:700,cursor:ready||done?'pointer':'default',
+              fontSize:16,fontWeight:700,cursor:ready||done?'pointer':'default',
               fontVariantNumeric:'tabular-nums',transition:'background .2s,color .2s'}}>
             {done?`✓ ${s1} : ${s2} bestätigt · ändern`
               :ready?`${s1} : ${s2} bestätigen ›`:'Regler ziehen, um einzutragen'}
@@ -13770,7 +13788,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
   const[carIdx,setCarIdx]=useState(0);
   const carRef=useRef(null);
   const goCourt=i=>{const c=carRef.current,el=c?.children[i];
-    if(el){buzz(6);c.scrollTo({left:el.offsetLeft-22,behavior:'smooth'});}};
+    if(el){buzz(6);c.scrollTo({left:el.offsetLeft-14,behavior:'smooth'});}};
   const onCarScroll=()=>{const c=carRef.current,f=c?.children[0],g=c?.children[1];
     if(!c||!f) return; const step=g?g.offsetLeft-f.offsetLeft:f.offsetWidth;
     const i=Math.max(0,Math.round(c.scrollLeft/step)); if(i!==carIdx) setCarIdx(i);};
@@ -13817,7 +13835,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
     [tourney.courtLayout,tourney.numCourts]);
   /* Ein Filter ueberlebt den Rundenwechsel nicht — sonst steht der
      Host vor einer leeren Liste und sucht den Schalter. */
-  useEffect(()=>{setCarIdx(0);carRef.current?.scrollTo({left:0});setNextOpen(false);},[tourney.current]);
+  useEffect(()=>{setCarIdx(0);carRef.current?.scrollTo({left:0});setNextOpen(false);setMapOpen(false);},[tourney.current]);
   const setLayout=l=>setTourney(t=>({...t,courtLayout:compactLayout(l)}));
 
   // ── Online-Sync (nur wenn dieses Turnier eine Online-Session hat) ──
@@ -14184,12 +14202,53 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
 
   const totalSecs=(tourney.roundDurationMin||10)*60;
 
+  /* Wer gerade aussetzt — als Leiste unter den Courts UND in der
+     Platzkarte. Kugeln mit Nummer + Name, die Bonus-Erklaerung klappt
+     hinter dem Fragezeichen auf. */
+  const pauseStrip=()=>round.sitOut?.length>0&&(
+    <div style={{...GLASS,borderRadius:16,flexShrink:0}}>
+      <div style={{display:'flex',alignItems:'center',gap:10,padding:'7px 12px'}}>
+        <span style={{width:26,height:26,borderRadius:'50%',flexShrink:0,border:`1px solid ${T.blue}`,
+          display:'flex',alignItems:'center',justifyContent:'center'}}><PauseIcon size={12} color={T.blue}/></span>
+        <span className="display" style={{color:T.t2,fontSize:10,letterSpacing:1.8,flexShrink:0}}>Pause</span>
+        <span style={{flex:1,minWidth:0,display:'flex',flexWrap:'wrap',gap:5,justifyContent:'flex-end'}}>
+          {round.sitOut.map(id=>(
+            <span key={id} style={{display:'inline-flex',alignItems:'center',gap:5,padding:'3px 9px 3px 3px',
+              borderRadius:999,background:T.glassHi,fontSize:12.5,color:T.t1,maxWidth:150}}>
+              <GlassOrb label={pNum(tourney.players,id)} size={22}/>
+              <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{playerById(id)?.name}</span>
+            </span>
+          ))}
+        </span>
+        <QuestionToggle filled={showSitOutInfo} onClick={()=>setShowSitOutInfo(v=>!v)}/>
+      </div>
+              {showSitOutInfo&&(
+                <div style={{padding:'0 14px 12px',borderTop:`1px solid ${T.glassSep}`,
+                  marginTop:2,paddingTop:10}}>
+                  <div style={{color:T.t1,fontSize:12,fontWeight:600,marginBottom:4}}>
+                    {tourney.pauseMode==='none'?'Kein Pausen-Ausgleich'
+                      :tourney.pauseMode==='fixed'?'Fester Pausen-Wert':'Pausen-Bonus'}
+                  </div>
+                  <div style={{color:T.t3,fontSize:11,lineHeight:1.5}}>
+                    {tourney.pauseMode==='none'
+                      ?'Für dieses Turnier ist kein Ausgleich eingestellt — eine Pause ist eine Runde ohne Punkte.'
+                      :tourney.pauseMode==='fixed'
+                      ?`Für dieses Turnier sind ${tourney.pausePts??0} Punkte je Pause eingestellt — unabhängig von den Ergebnissen der Runde.`
+                      :(tourney.winMode==='points'
+                        ?'Pausierte Spieler bekommen den aufgerundeten Mittelwert aller Punkte einer Runde gutgeschrieben — keine Benachteiligung durch erzwungene Pause.'
+                        :'Pausierte Spieler in der unteren Tabellenhälfte bekommen +1 Sieg pro Pause gutgeschrieben — damit niemand durch erzwungene Pause weiter zurückfällt.')}
+                  </div>
+                </div>
+              )}
+    </div>
+  );
+
   return(
     <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 18px)',position:'relative',overflow:'hidden'}}>
       <PhotoBackdrop dim={.32}/>
 
-      <ScreenHeader pad={14} ellipsis rule={false} subtitleItalic={false}
+      <ScreenHeader pad={8} titleFs={28} ellipsis rule={false} subtitleItalic={false}
         title={tourney.name||(FORMATS[tourney.format]||FORMATS.americano).name}
         /* Format, Runde, K.-o.-Phase, Endzeit — mit Trennstrichen statt
            Kommas: das sind vier gleichrangige Angaben und kein Satz,
@@ -14427,77 +14486,6 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
               onDismiss={dismissReady}/>
           )}
 
-          {/* ── Platzkarte ── Die Anlage als Bild: wo liegt der Platz,
-              wer steht drauf, was ist schon eingetragen. Ein Tipp
-              filtert die Karten darunter auf genau diesen Court —
-              bei sechs Plaetzen ist das der Unterschied zwischen
-              Suchen und Finden. */}
-          {(tourney.numCourts||1)>1&&(
-            <div style={{...GLASS,borderRadius:16,
-              padding:mapOpen?'12px 14px 14px':'10px 14px'}}>
-              <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:mapOpen?10:0}}>
-                <div style={{flex:1,minWidth:0,fontFamily:T.fontDisplay,color:T.t3,
-                  fontSize:10,letterSpacing:1.6}}>
-                  {layoutEdit?'ANORDNUNG ANPASSEN':'PLATZKARTE'}
-                </div>
-                {/* Die Platzkarte ist eingefahren: der Karten-Glyph klappt
-                    sie auf und zu, gleiche Masse wie der Stift daneben. */}
-                <button onClick={()=>{buzz(6);setMapOpen(v=>{if(v)setLayoutEdit(false);return !v;});}}
-                  title={mapOpen?'Platzkarte einfahren':'Platzkarte zeigen'}
-                  aria-label={mapOpen?'Platzkarte einfahren':'Platzkarte zeigen'}
-                  aria-expanded={mapOpen}
-                  style={{width:30,height:30,borderRadius:9,flexShrink:0,cursor:'pointer',
-                    background:mapOpen?T.glassHi:T.card2,
-                    border:`1px solid ${mapOpen?T.glassLine:T.border}`,
-                    display:'flex',alignItems:'center',justifyContent:'center'}}>
-                  <LineIcon name="karte" size={17} color={T.t1}/>
-                </button>
-                {/* Derselbe Stift wie auf der Court-Karte, gleiche
-                    Masse: es ist dieselbe Geste — antippen, aendern,
-                    wieder antippen. Dass man drin ist, sagt der
-                    gefuellte Knopf und das Ressort darueber
-                    ("ANORDNUNG ANPASSEN"), nicht ein zweites Wort. */}
-                <button onClick={()=>{buzz(6);setMapOpen(true);setLayoutEdit(v=>!v);setLayoutSel(null);}}
-                  title={layoutEdit?'Fertig':'Anordnung anpassen'}
-                  aria-label={layoutEdit?'Anordnung fertig anpassen':'Anordnung anpassen'}
-                  aria-pressed={layoutEdit}
-                  style={{width:30,height:30,borderRadius:9,flexShrink:0,cursor:'pointer',
-                    background:layoutEdit?T.o:T.card2,
-                    border:`1px solid ${layoutEdit?T.o:T.border}`,
-                    display:'flex',alignItems:'center',justifyContent:'center',
-                    transition:'background .2s'}}>
-                  <EditIcon size={15} color={layoutEdit?T.bg:T.t2}/>
-                </button>
-              </div>
-              {mapOpen&&<CourtMap layout={tLayout} names={i=>courtLabel(tourney.courtNames,i)}
-                singles={tourney.courtSingles} glyphH={30}
-                editable={layoutEdit}
-                sel={layoutSel} onSel={layoutEdit?setLayoutSel:goCourt}
-                onMove={(i,x,y)=>{setLayout(moveTo(tLayout,i,x,y));setLayoutSel(null);}}
-                onRotate={i=>setLayout(rotateCourt(tLayout,i))}
-                active={layoutEdit?null:carIdx}
-                canSel={i=>i<round.courts.length}
-                /* Unter dem Platz steht nur, was mit ihm los ist — die
-                   Aufstellung braucht Namen in Lesegroesse, und die
-                   passen auf eine Kachel von 80 px nicht. Wer sie
-                   sehen will, tippt den Platz an: dann steht genau
-                   diese eine Court-Karte darunter. */
-                sub={i=>{
-                  const c=round.courts[i];
-                  /* Nur der Zustand, kein Spielstand. Auf 80 px steht
-                     "16:8" so klein, dass man es eher errät als liest,
-                     und es steht ohnehin gross auf der Court-Karte
-                     darunter. Die Karte beantwortet "wo wird gespielt
-                     und ist der Platz durch", nicht "wie steht es". */
-                  return(
-                    <div style={{color:c?(c.done?T.o:T.t4):T.t4,fontSize:9.5,fontWeight:800}}>
-                      {!c?'frei':c.done?'fertig':'läuft'}
-                    </div>
-                  );
-                }}/>}
-            </div>
-          )}
-
           {/* Die Courts stehen NEBENEINANDER und werden gewischt: die
               naechste Karte schaut rechts herein, so sieht man, dass es
               weitergeht. Untereinander war bei fuenf Courts ein langer
@@ -14506,10 +14494,10 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
           <div ref={carRef} onScroll={onCarScroll}
             style={{position:'relative',display:'flex',gap:10,alignItems:'flex-start',
               overflowX:'auto',overflowY:'hidden',scrollSnapType:'x mandatory',
-              scrollPaddingLeft:22,margin:'0 -22px',padding:'0 22px',flexShrink:0,
+              scrollPaddingLeft:14,margin:'0 -22px',padding:'0 14px',flexShrink:0,
               scrollbarWidth:'none',WebkitOverflowScrolling:'touch',overscrollBehaviorX:'contain'}}>
           {round.courts.map((court,ci)=>(
-            <div key={court.id} style={{flex:round.courts.length>1?'0 0 calc(100% - 28px)':'0 0 100%',
+            <div key={court.id} style={{flex:round.courts.length>1?'0 0 calc(100% - 22px)':'0 0 100%',
               minWidth:0,scrollSnapAlign:'start'}}>
             <TournamentCourtCard
               court={court} courtIndex={ci}
@@ -14523,7 +14511,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
           ))}
           </div>
           {round.courts.length>1&&(
-            <div aria-hidden="true" style={{display:'flex',justifyContent:'center',gap:6,marginTop:-2,flexShrink:0}}>
+            <div aria-hidden="true" style={{display:'flex',justifyContent:'center',gap:6,marginTop:-4,marginBottom:-4,flexShrink:0}}>
               {round.courts.map((c,i)=>(
                 <span key={i} onClick={()=>goCourt(i)} style={{width:i===carIdx?18:6,height:6,borderRadius:3,cursor:'pointer',
                   background:i===carIdx?T.o:c.done?'rgba(255,255,255,.55)':'rgba(255,255,255,.2)',
@@ -14549,42 +14537,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
             </div>
           )}
 
-          {round.sitOut?.length>0&&(
-            <div style={{background:T.card2,borderRadius:13,
-              border:`1px solid ${T.border}`}}>
-              <div style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px'}}>
-                <div style={{width:26,height:26,borderRadius:'50%',flexShrink:0,background:T.oSoft,
-                  border:`1px solid ${T.o}`,display:'flex',alignItems:'center',justifyContent:'center'}}>
-                  <PauseIcon size={13} color={T.o}/>
-                </div>
-                <div style={{flex:1,minWidth:0,color:T.t3,fontSize:12,fontWeight:500}}>
-                  Pausiert: <span style={{color:T.t1,fontWeight:600}}>
-                    {round.sitOut.map(id=>playerById(id)?.name).join(', ')}
-                  </span>
-                </div>
-                <QuestionToggle filled={showSitOutInfo}
-                  onClick={()=>setShowSitOutInfo(v=>!v)}/>
-              </div>
-              {showSitOutInfo&&(
-                <div style={{padding:'0 14px 12px',borderTop:`1px solid ${T.glassSep}`,
-                  marginTop:2,paddingTop:10}}>
-                  <div style={{color:T.t1,fontSize:12,fontWeight:600,marginBottom:4}}>
-                    {tourney.pauseMode==='none'?'Kein Pausen-Ausgleich'
-                      :tourney.pauseMode==='fixed'?'Fester Pausen-Wert':'Pausen-Bonus'}
-                  </div>
-                  <div style={{color:T.t3,fontSize:11,lineHeight:1.5}}>
-                    {tourney.pauseMode==='none'
-                      ?'Für dieses Turnier ist kein Ausgleich eingestellt — eine Pause ist eine Runde ohne Punkte.'
-                      :tourney.pauseMode==='fixed'
-                      ?`Für dieses Turnier sind ${tourney.pausePts??0} Punkte je Pause eingestellt — unabhängig von den Ergebnissen der Runde.`
-                      :(tourney.winMode==='points'
-                        ?'Pausierte Spieler bekommen den aufgerundeten Mittelwert aller Punkte einer Runde gutgeschrieben — keine Benachteiligung durch erzwungene Pause.'
-                        :'Pausierte Spieler in der unteren Tabellenhälfte bekommen +1 Sieg pro Pause gutgeschrieben — damit niemand durch erzwungene Pause weiter zurückfällt.')}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+          {pauseStrip()}
 
           {/* Next round (when allDone) — öffnet erst das Transparenz-
               Popup zum Pausen-Ausgleich (wenn jemand pausiert hat). */}
@@ -14634,7 +14587,14 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
       {/* Werkzeuge liegen im Fach, nicht dauerhaft in der Leiste.
           Vier Knoepfe, die man pro Runde vielleicht einmal anfasst,
           standen ueber dem Turnier, das man staendig ansieht. */}
-      <MatchBar onHome={onHome} homeHidden={toolsOpen} rightButtons={[
+      <MatchBar onHome={onHome} homeHidden={toolsOpen||mapOpen}
+        center={(tourney.numCourts||1)>1?{
+          icon:<LineIcon name="karte" size={21} color="currentColor"/>,
+          label:'Platzkarte',active:mapOpen,hidden:toolsOpen,
+          compact:allDone&&tab==='round'&&!nextInView&&!mapOpen,
+          onClick:()=>{buzz(6);setToolsOpen(false);setLayoutEdit(false);setLayoutSel(null);setMapOpen(v=>!v);},
+        }:null}
+        rightButtons={[
         {
           items:[
             {
@@ -14705,6 +14665,57 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
           style:{background:T.o,border:'none',color:T.bg},
         },
       ]}/>
+
+      {/* ── Platzkarte im Vollbild ── Der Knopf in der Mitte der Leiste
+          legt die Anlage ueber den ganzen Turnier-Screen. Ein Tipp auf
+          einen Platz schliesst sie und rollt die Court-Reihe dorthin.
+          Die Leiste bleibt darueber stehen (zIndex 5), der Knopf ist
+          dann weiss und schliesst wieder. */}
+      {mapOpen&&(
+        <div className="fi" style={{position:'absolute',inset:0,zIndex:4,...PHOTO_ROOT,
+          display:'flex',flexDirection:'column',overflowY:'auto',
+          paddingTop:'calc(env(safe-area-inset-top,0px) + 18px)'}}>
+          <PhotoBackdrop dim={.5}/>
+          <div style={{padding:'0 22px 140px'}}>
+            <div style={{display:'flex',alignItems:'center',gap:8,minHeight:40}}>
+              <div className="display" style={{flex:1,color:T.o,fontSize:11,letterSpacing:3}}>
+                {layoutEdit?'Anordnung':'Platzkarte'}</div>
+              <button onClick={()=>{buzz(6);setLayoutEdit(v=>!v);setLayoutSel(null);}}
+                aria-label={layoutEdit?'Anordnung fertig':'Anordnung anpassen'} aria-pressed={layoutEdit}
+                style={{width:40,height:40,borderRadius:'50%',cursor:'pointer',flexShrink:0,
+                  background:layoutEdit?T.o:T.glassHi,border:`1px solid ${layoutEdit?T.o:T.glassLine}`,
+                  display:'flex',alignItems:'center',justifyContent:'center'}}>
+                <EditIcon size={16} color={layoutEdit?'#000':T.t1}/>
+              </button>
+              <button onClick={()=>{buzz(6);setLayoutEdit(false);setMapOpen(false);}} aria-label="Platzkarte schließen"
+                style={{width:40,height:40,borderRadius:'50%',cursor:'pointer',flexShrink:0,
+                  background:T.glassHi,border:`1px solid ${T.glassLine}`,color:T.t1,fontSize:16,
+                  display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
+            </div>
+            <div style={{...HEAD_SERIF,fontSize:36,marginTop:6}}>Die Anlage.</div>
+            <div style={{color:T.t2,fontSize:14,fontStyle:'italic',marginTop:6}}>
+              {layoutEdit?'Platz antippen, dann das Feld, wohin er soll.':'Tippe einen Platz — du springst zu seinem Match.'}</div>
+            <div style={{height:1,background:T.glassSep,margin:'16px 0 20px'}}/>
+            <CourtMap layout={tLayout} names={i=>courtLabel(tourney.courtNames,i)}
+              singles={tourney.courtSingles} glyphH={64}
+              editable={layoutEdit}
+              sel={layoutSel} onSel={layoutEdit?setLayoutSel:(i=>{if(i==null)i=carIdx;setMapOpen(false);goCourt(i);})}
+              onMove={(i,x,y)=>{setLayout(moveTo(tLayout,i,x,y));setLayoutSel(null);}}
+              onRotate={i=>setLayout(rotateCourt(tLayout,i))}
+              active={layoutEdit?null:carIdx}
+              canSel={i=>i<round.courts.length}
+              sub={i=>{const c=round.courts[i];
+                return <div style={{color:c?.done?T.o:T.t3,fontSize:12,fontWeight:600}}>
+                  {!c?'frei':c.done?'fertig':'läuft'}</div>;}}/>
+            <div style={{marginTop:22}}>{pauseStrip()}</div>
+            <div style={{display:'flex',gap:16,marginTop:12,color:T.t3,fontSize:12.5}}>
+              <span><b style={{color:T.t1}}>{round.courts.filter(c=>!c.done).length}</b> laufen</span>
+              <span><b style={{color:T.o}}>{round.courts.filter(c=>c.done).length}</b> fertig</span>
+              <span><b style={{color:T.t1}}>{round.sitOut?.length||0}</b> Pause</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {cueSheet&&<SoundCueSheet onClose={()=>setCueSheet(false)}/>}
 

@@ -742,13 +742,13 @@ input[type="time"]::-webkit-datetime-edit{padding:0;text-align:center;}
 /* Splash: der Ladebalken fuellt sich einmal ueber --spl-ms, ein
    Glanz laeuft darueber. Bei reduzierter Bewegung kuerzt der
    Killswitch beides — der Balken steht dann sofort voll da. */
-.pts-range{-webkit-appearance:none;appearance:none;display:block;width:100%;height:40px;margin:0;background:transparent;cursor:pointer;touch-action:pan-y}
+.pts-range{-webkit-appearance:none;appearance:none;display:block;width:100%;height:38px;margin:0;background:transparent;cursor:pointer;touch-action:pan-y}
 .pts-range:focus{outline:none}
 .pts-range:disabled{cursor:default}
-.pts-range::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:var(--trk)}
-.pts-range::-moz-range-track{height:6px;border-radius:3px;background:var(--trk)}
-.pts-range::-webkit-slider-thumb{-webkit-appearance:none;width:30px;height:30px;margin-top:-12px;border-radius:50%;border:none;background:#fff;box-shadow:0 0 0 var(--ring,0px) var(--o),0 2px 10px rgba(0,0,0,.4);transition:transform .15s var(--ease-out-soft)}
-.pts-range::-moz-range-thumb{width:30px;height:30px;border-radius:50%;border:none;background:#fff;box-shadow:0 0 0 var(--ring,0px) var(--o),0 2px 10px rgba(0,0,0,.4)}
+.pts-range::-webkit-slider-runnable-track{height:7px;border-radius:4px;background:var(--trk)}
+.pts-range::-moz-range-track{height:7px;border-radius:4px;background:var(--trk)}
+.pts-range::-webkit-slider-thumb{-webkit-appearance:none;width:32px;height:32px;margin-top:-12.5px;border-radius:50%;border:none;background:#fff;box-shadow:0 0 0 var(--ring,0px) var(--o),0 2px 10px rgba(0,0,0,.4);transition:transform .15s var(--ease-out-soft)}
+.pts-range::-moz-range-thumb{width:32px;height:32px;border-radius:50%;border:none;background:#fff;box-shadow:0 0 0 var(--ring,0px) var(--o),0 2px 10px rgba(0,0,0,.4)}
 .pts-range:active::-webkit-slider-thumb{transform:scale(1.12)}
 .pts-range:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 var(--ring,0px) var(--o),0 0 0 6px rgba(255,255,255,.25)}
 @keyframes ldNet{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}

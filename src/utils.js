@@ -223,3 +223,17 @@ export function pushLevel(v){
   log.push({t:Date.now(),v:Math.round(v*100)/100});
   lsSet(LEVEL_LOG_KEY,log.slice(-LEVEL_LOG_MAX));
 }
+
+/* ── TITELBILD EINES TURNIERS ─────────────────────────────────────
+   `tourney.cover` ist entweder der Dateiname eines mitgelieferten
+   Motivs (COVERS) oder ein eigenes Foto als JPEG-DataURL — das ist
+   vorher durch processImageUpload gelaufen (verkleinert, EXIF weg).
+   Alles andere wird ignoriert: ein Datensatz aus localStorage ist
+   keine vertrauenswuerdige Quelle fuer ein src-Attribut. */
+export const COVERS=['journeyhero.jpeg','home-bg.jpg','regelwerkhero.jpeg','splash-intro-poster.jpg'];
+export const COVER_MAX=800;
+export function coverSrc(c){
+  if(!c||typeof c!=='string') return null;
+  if(COVERS.includes(c)) return `${getAssetBase()}assets/${c}`;
+  return /^data:image\/jpeg;base64,/i.test(c)?c:null;
+}

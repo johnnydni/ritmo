@@ -33,7 +33,7 @@
    das PDF trotzdem — dann eben in Helvetica und ohne Logo.
 ═══════════════════════════════════════════════════════════════ */
 import { calcLeaderboard, FORMATS, roundPauseBonus, winLine } from './tournament.js';
-import { getAssetBase } from './utils.js';
+import { getAssetBase, coverSrc } from './utils.js';
 import centauriUrl from './fonts/centauri.ttf';
 import sgLightUrl from './fonts/pdf/sg-light.ttf';
 import sgRegularUrl from './fonts/pdf/sg-regular.ttf';
@@ -63,6 +63,23 @@ async function asBase64(url){
     let s='';
     for(let i=0;i<buf.length;i+=0x8000) s+=String.fromCharCode.apply(null,buf.subarray(i,i+0x8000));
     return btoa(s);
+  }catch(e){ return null; }
+}
+
+/* Titelbild als Band ueber dem Kopf: auf ein Canvas im Format des
+   Bands zugeschnitten (wie object-fit:cover), damit jsPDF nichts
+   ueber den Rand zeichnen muss. Kuer wie Schrift und Logo: scheitert
+   es, faellt das Band weg. */
+async function coverBand(src,ratio){
+  if(!src) return null;
+  try{
+    const img=new Image(); img.src=src; await img.decode();
+    const W=1240,H=Math.round(W/ratio);
+    const c=document.createElement('canvas'); c.width=W; c.height=H;
+    const k=Math.max(W/img.naturalWidth,H/img.naturalHeight);
+    const dw=img.naturalWidth*k, dh=img.naturalHeight*k;
+    c.getContext('2d').drawImage(img,(W-dw)/2,(H-dh)*.35,dw,dh);
+    return c.toDataURL('image/jpeg',.82);
   }catch(e){ return null; }
 }
 
@@ -140,6 +157,19 @@ export async function buildTourneyPdf(tourney){
 
   /* ══ KOPF ══════════════════════════════════════════════════ */
   paint();
+  /* Titelbild hinter Kopf und Sieger: abgedunkelt, unten in Streifen
+     in den Grund ausgeblendet (jsPDF kennt keine Verlaufsmaske). */
+  const BH=118, band=await coverBand(coverSrc(tourney.cover),PW/BH);
+  if(band){
+    try{
+      doc.addImage(band,'JPEG',0,0,PW,BH);
+      const GS=o=>doc.setGState(new doc.GState({opacity:o}));
+      fill(BG); GS(.42); doc.rect(0,0,PW,BH,'F');
+      const F=56,N=28;
+      for(let i=0;i<N;i++){ GS(Math.min(1,(i+1)/N)); doc.rect(0,BH-F+i*F/N,PW,F/N+.2,'F'); }
+      GS(1);
+    }catch(e){}
+  }
   if(mark){ try{ doc.addImage(mark,'PNG',M,12,42,42*120/720); }catch(e){} }
   else { font(BODY,'bold'); size(15); col(T1); put('RITMO',M,19); }
   font(BODY,'normal'); size(8.5); col(T3);

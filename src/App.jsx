@@ -22,7 +22,7 @@ import { LIGA_PHASES, LIGA_GROUPS, initialLigaState, ligaAddParticipant,
    Components, screens and routing remain colocated here for now;
    only side-effect-free units are split out. See CLAUDE.md. */
 import { T, CSS, rgba } from "./theme.js";
-import { lsGet, lsSet, wipeLocalData, getAssetBase, getInitials, processImageUpload, safeImageSrc, buzz, purgeTrash, trashDaysLeft, TRASH_DAYS, readLevelLog, pushLevel } from "./utils.js";
+import { lsGet, lsSet, wipeLocalData, getAssetBase, getInitials, processImageUpload, safeImageSrc, buzz, purgeTrash, trashDaysLeft, TRASH_DAYS, readLevelLog, pushLevel, COVERS, COVER_MAX, coverSrc } from "./utils.js";
 import { WALLPAPERS, wallpaperById, GRAIN_URL } from "./wallpapers.js";
 import { getLevelLabel, getLevelTier, getLevelColor, estimateLevel } from "./levels.js";
 import { B0, A0, PL, ptD, wG, bo3R, amR, DEFCFG } from "./game.js";
@@ -47,7 +47,7 @@ import {
   HomeIcon, LiveIcon, GearIcon, SearchIcon, Hl, DNAIcon, FullscreenIcon, EditIcon,
   ExitFullscreenIcon, KiwiIcon, PineappleIcon, CoconutIcon, TennisBallIcon, ParrotIcon,
   FunkyFruitsRow, BookIcon, JourneyIcon, ArrowRightCircleIcon, WandIcon,
-  MiniBall, BallSpinner, LoadBar, GoogleGlyph, AppleGlyph, AppStoreLine, PlayStoreGlyph, PersonGlyph,
+  MiniBall, BallSpinner, LoadBar, NetStrip, GoogleGlyph, AppleGlyph, AppStoreLine, PlayStoreGlyph, PersonGlyph,
   HeroRulesVisual, HeroJourneyVisual,
   // Settings + RITMO Post line-art icons
   SteeringWheelIcon, PaletteIcon, EyeIcon, BellIcon, LockIcon, DoorOutIcon,
@@ -8580,8 +8580,74 @@ function WinModeDeco({kind,on}){
   </svg>);
 }
 
+/* Titelbild eines Turniers: Vorschau im Kartenformat (16:9) mit dem
+   Namen darauf, darunter die mitgelieferten Motive und ein Feld fuer
+   ein eigenes Foto. Steht im Assistenten (Schritt Wertung, unter dem
+   Namen) und im Formular — dieselbe Komponente an beiden Stellen.
+   Der Dateidialog haengt am <label>, so bleibt die Nutzergeste beim
+   Tipp erhalten. Eigene Fotos laufen durch processImageUpload
+   (Magic Bytes, Canvas-Neukodierung, COVER_MAX px): ein Turnier
+   liegt in localStorage, und dort ist Platz knapp. */
+function CoverPicker({value,onChange,name}){
+  const[err,setErr]=useState('');
+  const[busy,setBusy]=useState(false);
+  const src=coverSrc(value);
+  const pick=async e=>{
+    const f=e.target.files?.[0]; e.target.value='';
+    if(!f) return;
+    setErr('');setBusy(true);
+    try{ onChange(await processImageUpload(f,COVER_MAX)); buzz(6); }
+    catch(x){ setErr(x?.message||'Bild konnte nicht geladen werden.'); }
+    finally{ setBusy(false); }
+  };
+  const tile={flex:1,aspectRatio:'1',borderRadius:12,cursor:'pointer',padding:0,
+    backgroundSize:'cover',backgroundPosition:'50% 40%'};
+  const own=value&&!COVERS.includes(value);
+  return(
+    <div>
+      {src?(
+        <div style={{position:'relative',aspectRatio:'16 / 9',borderRadius:20,overflow:'hidden',
+          border:`1px solid ${T.glassLine}`,background:`url("${src}") 50% 40% / cover`}}>
+          <div aria-hidden="true" style={{position:'absolute',inset:0,
+            background:'linear-gradient(transparent 45%, rgba(0,0,0,.72))'}}/>
+          {name&&<div style={{position:'absolute',left:14,right:60,bottom:12,color:'#fff',
+            fontFamily:T.fontCard,fontSize:22,lineHeight:1.15,whiteSpace:'nowrap',
+            overflow:'hidden',textOverflow:'ellipsis'}}>{name}</div>}
+          <button onClick={()=>onChange(null)} aria-label="Titelbild entfernen"
+            style={{position:'absolute',right:10,top:10,width:34,height:34,borderRadius:'50%',
+              background:'rgba(0,0,0,.45)',border:'1px solid rgba(255,255,255,.3)',color:'#fff',
+              cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontSize:15}}>✕</button>
+        </div>
+      ):(
+        <div style={{aspectRatio:'16 / 9',borderRadius:20,border:`1.5px dashed ${T.glassLine}`,
+          display:'flex',alignItems:'center',justifyContent:'center',color:T.t3,fontSize:13,
+          textAlign:'center',padding:20}}>Kein Titelbild — die Karte bleibt schlicht.</div>
+      )}
+      <div style={{display:'flex',gap:8,marginTop:10}}>
+        {COVERS.map(c=>(
+          <button key={c} onClick={()=>{buzz(4);onChange(value===c?null:c);}}
+            aria-label="Motiv wählen" aria-pressed={value===c}
+            style={{...tile,backgroundImage:`url("${coverSrc(c)}")`,
+              border:'none',opacity:value===c?1:.72,
+              boxShadow:value===c?`0 0 0 2px ${T.o}`:'none'}}/>
+        ))}
+        <label aria-label="Eigenes Foto wählen"
+          style={{...tile,display:'flex',alignItems:'center',justifyContent:'center',
+            border:`1.5px ${own?'solid':'dashed'} ${own?T.o:T.glassLine}`,color:T.t1,fontSize:22,
+            ...(own?{backgroundImage:`url("${value}")`}:{})}}>
+          {busy?'…':own?'':'+'}
+          <input type="file" accept="image/*" onChange={pick} style={{display:'none'}}/>
+        </label>
+      </div>
+      <div style={{color:err?T.r:T.t3,fontSize:12.5,marginTop:8}}>
+        {err||'Eigenes Foto oder eins der RITMO-Motive.'}
+      </div>
+    </div>
+  );
+}
+
 function TournamentWizard({onClose,onFinish,canStart,entrance=true,
-  format,setFormat,winMode,setWinMode,name,setName,
+  format,setFormat,winMode,setWinMode,name,setName,cover,setCover,
   players,addPlayer,addPlayerNamed,addScannedPlayers,removePlayer,renamePlayer,setPlayerGroup,
   numCourts,setNumCourts,maxCourts,courtNames,setCourtName,
   courtSingles,toggleCourtSingle,
@@ -9145,6 +9211,9 @@ function TournamentWizard({onClose,onFinish,canStart,entrance=true,
             {labelRow(<TrophyIcon size={13} color="currentColor"/>,'Turniername (optional)')}
             <input value={name} onChange={e=>setName(e.target.value)} maxLength={40}
               placeholder="z. B. Sunset Americano, Fr" style={inp}/>
+            <div style={{height:18}}/>
+            {labelRow(<TrophyIcon size={13} color="currentColor"/>,'Titelbild (optional)')}
+            <CoverPicker value={cover} onChange={setCover} name={name.trim()}/>
           </>)}
 
           {step===6&&(<>
@@ -9265,6 +9334,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
      heisst jeden Dienstag gleich. `saved` hat Vorrang — ein
      bestehendes Turnier behaelt seinen Namen. */
   const[name,setName]=useState(saved?.name||preset?.name||'');
+  const[cover,setCover]=useState(saved?.cover||null);
   const[startTime,setStartTime]=useState(seed?.startTime||'');
   const[endTime,setEndTime]=useState(seed?.endTime||'');
   // Priorität für den Rundenzeit-Vorschlag: 'length' = längere Runden
@@ -9310,6 +9380,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
     const trim=a=>(a||[]).map(x=>x??null);
     const roster=ps=>(ps||[]).map(x=>`${x.name||''}|${x.group||'A'}`).join(',');
     return name.trim()!==(saved.name||'')
+      ||(cover||null)!==(saved.cover||null)
       ||format!==saved.format
       ||winMode!==(saved.winMode||'points')
       ||pauseMode!==(saved.pauseMode||'mean')
@@ -9543,7 +9614,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
       // fällt weg, da es hier nicht mitgegeben wird).
       id:saved?.id,createdAt:saved?.createdAt,
       name:name.trim()||('Turnier '+new Date().toLocaleDateString('de-DE')),
-      startTime,endTime,roundPrio,
+      cover,startTime,endTime,roundPrio,
       players,format,winMode,pauseMode,pausePts,
       numCourts,courtNames,courtSingles:singles,courtLayout:layout,
       roundDurationMin:roundDur,
@@ -9675,6 +9746,12 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
             placeholder="z. B. Sunset Americano, Fr"
             style={{width:'100%',height:46,borderRadius:13,background:T.glassHi,border:`1px solid ${T.glassLine}`,
               color:T.t1,fontSize:16,fontWeight:600,padding:'0 14px',outline:'none',boxSizing:'border-box'}}/>
+        </div>
+
+        {/* Titelbild — dieselbe Auswahl wie im Assistenten. */}
+        <div style={{...GLASS,borderRadius:20,padding:'16px 18px'}}>
+          <div style={{fontFamily:T.fontSerif,color:T.t1,fontSize:21,fontWeight:700,marginBottom:10}}>Titelbild</div>
+          <CoverPicker value={cover} onChange={setCover} name={name.trim()}/>
         </div>
 
         {/* Modus: Lokal vs Online */}
@@ -10216,7 +10293,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
           title:'Als Entwurf speichern',
           onClick:()=>onSaveDraft?.({
             id:saved?.id,createdAt:saved?.createdAt,
-            name:name.trim(),startTime,endTime,roundPrio,
+            name:name.trim(),cover,startTime,endTime,roundPrio,
             players,format,winMode,pauseMode,pausePts,numCourts,roundDurationMin:roundDur,courtNames,courtSingles,
             courtLayout:layout,
           }),
@@ -10233,7 +10310,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
             // Änderungen am laufenden Turnier → erst fragen, ob sie für
             // die aktuelle oder die nächste Runde wirksam werden.
             setEditScopePrompt({players,format,winMode,pauseMode,pausePts,numCourts,roundDurationMin:roundDur,
-              name:name.trim(),startTime,endTime,roundPrio,courtNames,courtSingles:singles,
+              name:name.trim(),cover,startTime,endTime,roundPrio,courtNames,courtSingles:singles,
               courtLayout:layout});
             return;
           }
@@ -10278,6 +10355,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
           format={format} setFormat={setFormat}
           winMode={winMode} setWinMode={setWinMode}
           name={name} setName={setName}
+          cover={cover} setCover={setCover}
           players={players} addPlayer={addPlayer} addPlayerNamed={addPlayerNamed}
           addScannedPlayers={addScannedPlayers}
           removePlayer={removePlayer} renamePlayer={renamePlayer} setPlayerGroup={setPlayerGroup}
@@ -12382,53 +12460,34 @@ function PointsEditModal({entry,winMode,onSave,onClose}){
   );
 }
 
-/* Kompaktes Score-Wheel (iPhone-Wecker-Stil) für die Court-Übersicht —
-   3 sichtbare Reihen, Snap, statt Zahleneingabe. */
-function ScoreWheel({value,onChange,max=40,color=T.o,w=52,h=34}){
-  const ref=useRef(null);
-  // h steuert die Zeilenhoehe: im Court-Raster stehen zwei Wheels
-  // uebereinander auf dem Netz, da waeren 3x34 px zu hoch.
-  const ITEM_H=h, VISIBLE=3, HEIGHT=ITEM_H*VISIBLE, PAD=(HEIGHT-ITEM_H)/2;
-  /* Ganz oben steht ein Strich, erst darunter die 0. Der Strich ist
-     der Zustand "noch nichts eingetragen" (value === null) — vorher
-     stand dort die 0, und eine 0 sieht aus wie ein Ergebnis. Erst
-     wenn beide Raeder von ihm weg sind, gibt es ueberhaupt etwas zu
-     bestaetigen (siehe TournamentCourtCard). */
-  const opts=Array.from({length:max+2},(_,i)=>i===0?null:i-1);
-  const idxOf=x=>x==null?0:Math.max(0,Math.min(max,x))+1;
-  const cur=idxOf(value);
-  const init=useRef(false), toRef=useRef(null);
-  useEffect(()=>{ if(ref.current&&!init.current){ ref.current.scrollTop=cur*ITEM_H; init.current=true; } },[cur]);
-  const onScroll=e=>{ const el=e.target; if(toRef.current)clearTimeout(toRef.current);
-    toRef.current=setTimeout(()=>{ const k=Math.max(0,Math.min(max+1,Math.round(el.scrollTop/ITEM_H)));
-      const nv=k===0?null:k-1;
-      if(nv!==value) onChange(nv); },90); };
-  // Nachbarwerte per CSS-Maske auf dem Scroll-Container ausblenden —
-  // NICHT per Overlay in Card-Farbe: --card ist in manchen Themes
-  // halbtransparentes Weiß, das Overlay malte dann sichtbare graue
-  // Kästen über das Wheel statt sanft in die Karte auszublenden.
-  const fade=`linear-gradient(to bottom,transparent 0,#000 ${PAD}px,#000 ${HEIGHT-PAD}px,transparent 100%)`;
+/* Ein Regler fuer Punkte — nativer range-Input (Tastatur, Screenreader
+   und Ziehen gratis), gestaltet ueber .pts-range in theme.js. Die
+   Fuellung laeuft bis zur MITTE des Daumens: der wandert nur zwischen
+   15 px und Breite − 15 px, daher das calc in --trk und in den Strichen.
+   `ring` gibt dem Daumen die orange Kontur (der Teilungs-Regler). */
+function PtsSlider({value,min=0,max,onChange,color=T.o,ring=false,ticks=0,major=5,label,dim=false}){
+  const f=max>min?(value-min)/(max-min):0;
+  const at=x=>`calc(15px + ${x*100}% - ${x*30}px)`;
   return(
-    <div style={{position:'relative',width:w,height:HEIGHT,flexShrink:0}}>
-      <div style={{position:'absolute',top:PAD,left:0,right:0,height:ITEM_H,
-        background:`${color}1A`,border:`1.5px solid ${color}`,borderRadius:11,pointerEvents:'none'}}/>
-      <div ref={ref} onScroll={onScroll}
-        style={{height:HEIGHT,overflowY:'scroll',scrollSnapType:'y mandatory',
-          scrollPaddingTop:`${PAD}px`,WebkitOverflowScrolling:'touch',scrollbarWidth:'none',
-          maskImage:fade,WebkitMaskImage:fade}}>
-        <div style={{height:PAD}}/>
-        {opts.map((o,j)=>{ const active=j===cur;
-          return <div key={j} style={{height:ITEM_H,display:'flex',alignItems:'center',justifyContent:'center',
-            scrollSnapAlign:'start',fontSize:active?ITEM_H*.7:ITEM_H*.44,fontWeight:active?900:600,
-            color:active?(o==null?T.t3:T.t1):T.t3,transition:'color .15s,font-size .15s'}}>
-            {o==null?'–':o}</div>; })}
-        <div style={{height:PAD}}/>
-      </div>
+    <div style={{position:'relative',opacity:dim?.55:1,transition:'opacity .2s'}}>
+      <input type="range" className="pts-range" min={min} max={max} step={1} value={value}
+        aria-label={label}
+        onChange={e=>{const v=+e.target.value; if(v!==value){buzz(3);onChange(v);}}}
+        style={{'--trk':`linear-gradient(90deg,${color} 0 ${at(f)},rgba(255,255,255,.2) ${at(f)})`,
+          '--ring':ring?'3px':'0px'}}/>
+      {ticks>0&&ticks<=60&&(
+        <div aria-hidden="true" style={{position:'absolute',left:0,right:0,top:29,height:9,pointerEvents:'none'}}>
+          {Array.from({length:ticks+1},(_,i)=>(
+            <span key={i} style={{position:'absolute',left:at(i/ticks),width:1,
+              height:i%major===0||i===ticks?9:5,background:'rgba(255,255,255,.4)'}}/>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-function TournamentCourtCard({court,courtIndex,courtName,playerById,numOf,onScoreChange,onConfirm,onEditLineup,scoreMax=40}){
+function TournamentCourtCard({court,courtIndex,courtName,playerById,numOf,onScoreChange,onConfirm,onEditLineup,scoreMax=40,defTotal=21}){
   // Score-Werte aus dem Court ziehen. null/undefined = noch nicht
   // eingegeben → Input rendert leer, damit Tippen "5" auch wirklich
   // "5" wird und nicht "05". Beim Abschluss zählt 0 als gültiger
@@ -12439,6 +12498,22 @@ function TournamentCourtCard({court,courtIndex,courtName,playerById,numOf,onScor
   const s1=s1Raw??0;
   const s2=s2Raw??0;
   const done=!!court.done;
+
+  /* Eingetragen wird mit zwei Reglern: der orange TEILT die Punkte
+     (links Team A, rechts B), der weisse legt fest, wie viele es
+     insgesamt sind. Die Summe startet bei 21 und darf bis 40 (bzw.
+     scoreMax) gehen — so kommen beide Seiten ueber 21. Aendert sich
+     die Summe, bleibt das Verhaeltnis stehen. */
+  const TOT_MAX=Math.max(scoreMax,40);
+  const[tot,setTot]=useState(()=>s1Raw!=null&&s2Raw!=null?Math.max(1,s1Raw+s2Raw):defTotal);
+  const setSplit=a=>{onScoreChange('s1',a);onScoreChange('s2',tot-a);};
+  const setTotal=n=>{
+    setTot(n);
+    if(s1Raw!=null&&s2Raw!=null){
+      const a=Math.min(n,Math.round(s1Raw/((s1Raw+s2Raw)||1)*n));
+      onScoreChange('s1',a);onScoreChange('s2',n-a);
+    }
+  };
 
   // Match-Tier-Rating aus den Spielstilen der vier Spieler (RITMO DNA).
   // null, wenn nicht alle vier einen Stil gesetzt haben → kein Label.
@@ -12456,8 +12531,8 @@ function TournamentCourtCard({court,courtIndex,courtName,playerById,numOf,onScor
   const ready=s1Raw!=null&&s2Raw!=null;
   const netState=done?'done':ready?'ready':'vs';
   const netLabel=netState==='done'?'Ergebnis wieder öffnen'
-    :netState==='ready'?'Ergebnis bestätigen'
-    :'Erst beide Punktestände eintragen';
+    :netState==='ready'?'Ergebnis eingetragen — unten bestätigen'
+    :'Erst die Punkte eintragen';
 
   // Ein Punktestand auf dem Netz: Buchstabe der Mannschaft plus
   // Wert. Solange der Court offen ist, ist das ein Scrollrad; ist er
@@ -12480,7 +12555,11 @@ function TournamentCourtCard({court,courtIndex,courtName,playerById,numOf,onScor
             {val}
           </div>
         ):(
-          <ScoreWheel value={raw} onChange={onCh} max={scoreMax} w={46} h={28}/>
+          <div style={{fontSize:32,fontWeight:300,letterSpacing:-1,lineHeight:1,
+            fontVariantNumeric:'tabular-nums',padding:'2px 4px',
+            color:raw==null?T.t3:(ready&&raw>(team==='A'?s2:s1))?T.o:T.t1}}>
+            {raw==null?'–':raw}
+          </div>
         )}
       </div>
     );
@@ -12558,7 +12637,7 @@ function TournamentCourtCard({court,courtIndex,courtName,playerById,numOf,onScor
           zusammenreimen. */}
       {/* Ohne den Knopf darunter traegt das Raster den Abstand zum
           Kartenrand nicht mehr — nur noch den zum Tier-Chip. */}
-      <div style={{position:'relative',marginBottom:tier?14:0}}>
+      <div style={{position:'relative',marginBottom:tier&&done?14:0}}>
         <MatchSlotGrid
           court={court}
           playerById={playerById}
@@ -12586,14 +12665,14 @@ function TournamentCourtCard({court,courtIndex,courtName,playerById,numOf,onScor
                Neuaufbau — nur so laeuft netPop erneut. */
             <button key={`net-${netState}`}
               className={netState==='vs'?'court-vs':'court-net-pop'}
-              onClick={netState==='vs'?undefined:onConfirm}
-              disabled={netState==='vs'}
+              onClick={netState==='done'?onConfirm:undefined}
+              disabled={netState!=='done'}
               title={netLabel} aria-label={netLabel}
               style={{width:38,height:38,borderRadius:'50%',flexShrink:0,padding:0,
                 background:netState==='ready'?T.o:netState==='done'?T.card2:`${T.r}22`,
                 border:`1.5px solid ${netState==='vs'?T.r:netState==='ready'?T.o:T.border}`,
                 color:netState==='ready'?T.bg:netState==='done'?T.t2:T.r,
-                cursor:netState==='vs'?'default':'pointer',
+                cursor:netState==='done'?'pointer':'default',
                 display:'flex',alignItems:'center',justifyContent:'center',
                 fontSize:netState==='vs'?9:18,fontWeight:900,
                 letterSpacing:netState==='vs'?.4:0,lineHeight:1,
@@ -12602,6 +12681,32 @@ function TournamentCourtCard({court,courtIndex,courtName,playerById,numOf,onScor
             </button>,
           ]}/>
       </div>
+
+      {/* Eintragen: oben teilen (orange), dazwischen das Netz, unten die
+          Summe (weiss) und darunter, was sie ist. Bestaetigt wird mit dem
+          Knopf darunter; das Netz-Zeichen im Raster ist dann nur Status. */}
+      {!done&&(
+        <div style={{marginTop:14,marginBottom:tier?14:0}}>
+          <PtsSlider label="Punkte zwischen Team A und Team B teilen"
+            value={ready?Math.min(s1,tot):Math.round(tot/2)} max={tot}
+            onChange={setSplit} ring ticks={tot} major={tot===21?7:5} dim={!ready}/>
+          <NetStrip style={{margin:'12px 0 14px'}}/>
+          <PtsSlider label="Punkte insgesamt" value={tot} min={1} max={TOT_MAX}
+            onChange={setTotal} color={T.t1}/>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginTop:2}}>
+            <span className="display" style={{color:T.t2,fontSize:10,letterSpacing:2}}>Gesamt</span>
+            <span style={{fontVariantNumeric:'tabular-nums',color:T.t1,fontSize:22,fontWeight:300}}>
+              {tot}<span style={{color:T.t3,fontSize:12,fontWeight:400}}> Punkte</span></span>
+          </div>
+          <button onClick={ready?onConfirm:undefined} disabled={!ready}
+            style={{width:'100%',marginTop:14,padding:'13px 16px',borderRadius:999,border:'none',
+              background:ready?T.o:T.glassHi,color:ready?'#000':T.t3,fontSize:15,fontWeight:700,
+              cursor:ready?'pointer':'default',fontVariantNumeric:'tabular-nums',
+              transition:'background .2s,color .2s'}}>
+            {ready?`${s1} : ${s2} bestätigen ›`:'Regler ziehen, um einzutragen'}
+          </button>
+        </div>
+      )}
 
       {/* Match-Tier-Rating (RITMO DNA) — Stil-Chemie beider Teams */}
       {tier&&(
@@ -14651,6 +14756,14 @@ function TournamentLeaderboard({tourney,onHome,onNew,onSavePoints,onReopen}){
     <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 18px)',position:'relative',overflow:'hidden'}}>
       <PhotoBackdrop dim={.3}/>
+      {/* Titelbild des Turniers hinter dem Siegernamen. Es laeuft per
+          Maske nach unten aus — ein Verlauf in eine Farbe stuende als
+          Kante ueber dem Foto darunter. */}
+      {coverSrc(tourney.cover)&&(
+        <div aria-hidden="true" style={{position:'absolute',left:0,right:0,top:0,height:'64%',zIndex:-1,
+          background:`linear-gradient(rgba(0,0,0,.18), rgba(0,0,0,.45)), url("${coverSrc(tourney.cover)}") 50% 35% / cover`,
+          maskImage:'linear-gradient(#000 45%, transparent)',WebkitMaskImage:'linear-gradient(#000 45%, transparent)'}}/>
+      )}
 
       {/* Kopf ohne Ueberschrift: die Ueberschrift IST der Siegername. */}
       <div className="fi" style={{padding:'0 9px',display:'flex',alignItems:'center',
@@ -14906,11 +15019,11 @@ function LiveTourneyCard({item}){
   if(!item.finished&&!item.draft){
     const rd=(t.rounds||[])[t.current||0]||{};
     const cs=rd.courts||[]; const done=cs.filter(c=>c.done).length;
-    return(
-      <button onClick={item.onClick} {...press}
-        style={{width:'100%',...GLASS,borderRadius:26,padding:'18px 18px 16px',
-          cursor:'pointer',color:T.t1,textAlign:'left',display:'block',
-          transition:'background .15s'}}>
+    /* Mit Titelbild wird der Kopf der Karte zum Bild: Format und
+       „läuft" oben darauf, der Name unten auf einem Verlauf. Der Rest
+       der Karte bleibt, wie er ist. */
+    const cv=coverSrc(t.cover);
+    const head=(<>
         <span style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10}}>
           <span style={{fontFamily:T.fontDisplay,fontSize:10.5,letterSpacing:2.2,color:T.o,
             whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{fmt.toUpperCase()}</span>
@@ -14920,7 +15033,23 @@ function LiveTourneyCard({item}){
               boxShadow:`0 0 8px ${T.o}`}}/>läuft
           </span>
         </span>
-        <span style={{...name,fontSize:28,margin:'10px 0 8px'}}>{item.title}</span>
+        <span style={{...name,fontSize:28,margin:cv?'0':'10px 0 8px',color:cv?'#fff':undefined}}>{item.title}</span>
+    </>);
+    return(
+      <button onClick={item.onClick} {...press}
+        style={{width:'100%',...GLASS,borderRadius:26,padding:cv?0:'18px 18px 16px',
+          overflow:'hidden',cursor:'pointer',color:T.t1,textAlign:'left',display:'block',
+          transition:'background .15s'}}>
+        {cv?(
+          <span style={{position:'relative',display:'flex',flexDirection:'column',justifyContent:'space-between',
+            height:150,padding:'14px 18px 12px',background:`url("${cv}") 50% 40% / cover`}}>
+            <span aria-hidden="true" style={{position:'absolute',inset:0,
+              background:'linear-gradient(rgba(0,0,0,.3), transparent 40%, rgba(0,0,0,.75))'}}/>
+            <span style={{position:'relative',display:'flex',flexDirection:'column',
+              justifyContent:'space-between',height:'100%'}}>{head}</span>
+          </span>
+        ):head}
+        <span style={{display:'block',padding:cv?'14px 18px 16px':0}}>
         <span style={{display:'flex',alignItems:'center',gap:10,color:T.t2,fontSize:13}}>
           <span style={{flexShrink:0,fontVariantNumeric:'tabular-nums'}}>Runde {(t.current||0)+1}</span>
           {cs.length>0&&(
@@ -14941,6 +15070,7 @@ function LiveTourneyCard({item}){
           <span style={{flexShrink:0,padding:'9px 16px',borderRadius:999,background:T.o,
             color:'#000',fontSize:13,fontWeight:700}}>Weiter ›</span>
         </span>
+        </span>
       </button>
     );
   }
@@ -14957,9 +15087,14 @@ function LiveTourneyCard({item}){
       style={{width:'100%',...GLASS,borderRadius:20,padding:'13px 16px',display:'flex',
         alignItems:'center',gap:14,cursor:'pointer',color:T.t1,textAlign:'left',
         transition:'background .15s'}}>
-      <span style={{display:'inline-flex',flexShrink:0,opacity:item.draft?.7:1}}>
-        {item.draft?<EditIcon size={21} color={T.t1}/>:<TrophyIcon size={22} color={T.t1}/>}
-      </span>
+      {coverSrc(t.cover)?(
+        <span aria-hidden="true" style={{width:46,height:46,borderRadius:12,flexShrink:0,
+          background:`url("${coverSrc(t.cover)}") 50% 40% / cover`,opacity:item.draft?.7:1}}/>
+      ):(
+        <span style={{display:'inline-flex',flexShrink:0,opacity:item.draft?.7:1}}>
+          {item.draft?<EditIcon size={21} color={T.t1}/>:<TrophyIcon size={22} color={T.t1}/>}
+        </span>
+      )}
       <span style={{flex:1,minWidth:0}}>
         <span style={{...name,fontSize:19,color:item.draft?T.t2:T.t1}}>{item.title}</span>
         <span style={{display:'block',color:T.t2,fontSize:12.5,marginTop:3,whiteSpace:'nowrap',
@@ -22111,6 +22246,9 @@ export default function App(){
         courtSingles:updates.courtSingles,
         courtLayout:updates.courtLayout,
         name:updates.name||prev.name,
+        cover:'cover' in updates?updates.cover:prev.cover,
+        pauseMode:updates.pauseMode??prev.pauseMode,
+        pausePts:updates.pausePts??prev.pausePts,
         startTime:updates.startTime,
         endTime:updates.endTime,
         roundPrio:updates.roundPrio,

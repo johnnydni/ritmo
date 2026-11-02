@@ -179,16 +179,18 @@ keiner.
 Der Zustand des Matches sitzt **auf dem Netz**, auf der Kreuzung mit
 dem Reihentrenner, zwischen den beiden Zahlen, um die es geht:
 
-| Netz | Bedeutung | Tippen |
-|---|---|---|
-| `VS` rot, inert | noch nichts eingetragen | — |
-| `✓` orange, inert | beide Stände stehen | — (bestätigt wird unten) |
-| `↺` gedämpft | bestätigt | öffnet wieder |
+| Netz | Bedeutung |
+|---|---|
+| Tennisball weiss (`LineIcon` „match“) | noch nichts eingetragen |
+| Tennisball orange, oranger Rand | Regler stehen, noch nicht bestätigt |
+| `✓` schwarz auf Orange | bestätigt |
 
+- **Der Haken kommt erst mit dem Bestätigen.** Vorher stand er schon,
+  sobald beide Stände standen — und sah aus wie „erledigt“. Der Kreis
+  ist kein Knopf mehr (`role="img"`); bestätigt und wieder geöffnet
+  wird mit dem Knopf unter den Reglern.
 - Der **Schlüssel** (`key={\`net-${netState}\`}`) erzwingt beim
-  Zustandswechsel einen Neuaufbau; nur so läuft `netPop` erneut. Im
-  `vs`-Zustand trägt der Kreis stattdessen `court-vs` (Dauerpuls) als
-  Hinweis, dass dort noch etwas fehlt.
+  Zustandswechsel einen Neuaufbau; beim Bestätigen läuft so `netPop`.
 - `MatchSlotGrid` bekommt **`netW`** (Vorgabe 32, hier 44). Die
   Spielerspalten werden dadurch schmaler — deshalb trägt die
   `Team A`/`Team B`-Zeile `whiteSpace:'nowrap'`, sonst bricht sie in
@@ -226,8 +228,7 @@ Ladebalken):
 - Jeder Wert gibt einen Haptik-Tick (`buzz(3)`).
 - **Bestätigt klappt nichts ein.** Die Karte behält Regler, Netz und
   Gesamt — die Regler nur gesperrt (`disabled`) —, und der Knopf wird
-  zur Kontur „✓ 14 : 7 bestätigt · ändern“ (öffnet wieder, wie ↺ auf
-  dem Netz). Eingeklappt sprang die Liste bei jedem Bestätigen um eine
+  zur Kontur „✓ 14 : 7 bestätigt · ändern“ (öffnet wieder). Eingeklappt sprang die Liste bei jedem Bestätigen um eine
   halbe Karte nach oben.
 
 Weiteres am Kopf:

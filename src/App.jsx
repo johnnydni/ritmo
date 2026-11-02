@@ -12530,9 +12530,9 @@ function TournamentCourtCard({court,courtIndex,courtName,playerById,numOf,onScor
      und ein Knopf, der dann 0:0 festschreibt, waere eine Falle. */
   const ready=s1Raw!=null&&s2Raw!=null;
   const netState=done?'done':ready?'ready':'vs';
-  const netLabel=netState==='done'?'Ergebnis wieder öffnen'
+  const netLabel=netState==='done'?'Ergebnis bestätigt'
     :netState==='ready'?'Ergebnis eingetragen — unten bestätigen'
-    :'Erst die Punkte eintragen';
+    :'Noch kein Ergebnis';
 
   // Ein Punktestand auf dem Netz: Buchstabe der Mannschaft plus
   // Wert. Solange der Court offen ist, ist das ein Scrollrad; ist er
@@ -12663,22 +12663,22 @@ function TournamentCourtCard({court,courtIndex,courtName,playerById,numOf,onScor
 
                Der Schluessel erzwingt beim Zustandswechsel einen
                Neuaufbau — nur so laeuft netPop erneut. */
-            <button key={`net-${netState}`}
-              className={netState==='vs'?'court-vs':'court-net-pop'}
-              onClick={netState==='done'?onConfirm:undefined}
-              disabled={netState!=='done'}
-              title={netLabel} aria-label={netLabel}
-              style={{width:38,height:38,borderRadius:'50%',flexShrink:0,padding:0,
-                background:netState==='ready'?T.o:netState==='done'?T.card2:`${T.r}22`,
-                border:`1.5px solid ${netState==='vs'?T.r:netState==='ready'?T.o:T.border}`,
-                color:netState==='ready'?T.bg:netState==='done'?T.t2:T.r,
-                cursor:netState==='done'?'pointer':'default',
+            /* Auf dem Netz steht nur der Zustand, kein Knopf mehr: ein
+               Tennisball, solange das Ergebnis offen ist (weiss leer,
+               orange sobald die Regler stehen), der Haken ERST nach dem
+               Bestaetigen. Geoeffnet und bestaetigt wird mit dem Knopf
+               unter den Reglern. */
+            <div key={`net-${netState}`} role="img" aria-label={netLabel} title={netLabel}
+              className={netState==='done'?'court-net-pop':undefined}
+              style={{width:38,height:38,borderRadius:'50%',flexShrink:0,
+                background:netState==='done'?T.o:T.glassHi,
+                border:`1.5px solid ${netState==='done'||netState==='ready'?T.o:T.glassLine}`,
+                color:netState==='done'?'#000':netState==='ready'?T.o:T.t1,
                 display:'flex',alignItems:'center',justifyContent:'center',
-                fontSize:netState==='vs'?9:18,fontWeight:900,
-                letterSpacing:netState==='vs'?.4:0,lineHeight:1,
+                fontSize:18,fontWeight:900,lineHeight:1,
                 transition:'background .25s,color .25s,border-color .25s'}}>
-              {netState==='vs'?'VS':netState==='ready'?'✓':'↺'}
-            </button>,
+              {netState==='done'?'✓':<LineIcon name="match" size={22} color="currentColor"/>}
+            </div>,
           ]}/>
       </div>
 

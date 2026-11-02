@@ -697,7 +697,7 @@ keine vertrauenswürdige Quelle für ein `src`-Attribut.
   (800 px) — Magic Bytes, Canvas-Neukodierung, kein EXIF. Ein Turnier
   liegt in localStorage, und dort ist Platz knapp.
 - **Gezeigt** wird es auf der laufenden Live-Karte (das Bild ist der
-  Kopf, Format/„läuft“ oben, Name unten), als 46er-Vorschau statt
+  Kopf, Format oben, Name unten), als 46er-Vorschau statt
   Pokal/Stift auf den schlanken Zeilen, im Endstand hinter dem
   Siegernamen (per Maske nach unten ausgeblendet, nicht per Verlauf in
   eine Farbe) und im PDF als Band über Kopf und Sieger
@@ -1689,8 +1689,9 @@ Unterzeilen sind aufrecht). Ein Schnitt, gemeldet fuer 100–900: ein
 
 **Turniere in der Live-Liste** (`LiveTourneyCard`, Variante „Buehne"):
 
-- **Laufend** ist eine grosse Karte: Format als Ressort, „läuft"
-  rechts, der Name gross in Caslon, darunter „Runde n" mit einem
+- **Laufend** ist eine grosse Karte: Format als Ressort (kein
+  „läuft“-Punkt mehr — dass es laeuft, sagt schon der Abschnitt
+  „Laufend & anstehend“ und der Weiter-Knopf), der Name gross in Caslon, darunter „Runde n" mit einem
   Segment **je Court der laufenden Runde** (orange = Ergebnis
   bestaetigt) — eine Rundenzahl gesamt gibt es nicht, die Courts
   schon. Unten die Spieler als `OrbStack` (vier Kugeln + „+n"), die

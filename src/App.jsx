@@ -15027,11 +15027,6 @@ function LiveTourneyCard({item}){
         <span style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10}}>
           <span style={{fontFamily:T.fontDisplay,fontSize:10.5,letterSpacing:2.2,color:T.o,
             whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{fmt.toUpperCase()}</span>
-          <span style={{display:'inline-flex',alignItems:'center',gap:6,color:T.o,
-            fontSize:12,fontWeight:600,flexShrink:0}}>
-            <span style={{width:7,height:7,borderRadius:'50%',background:T.o,
-              boxShadow:`0 0 8px ${T.o}`}}/>läuft
-          </span>
         </span>
         <span style={{...name,fontSize:28,margin:cv?'0':'10px 0 8px',color:cv?'#fff':undefined}}>{item.title}</span>
     </>);

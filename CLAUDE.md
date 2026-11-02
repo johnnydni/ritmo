@@ -224,6 +224,11 @@ Ladebalken):
   Striche rechnen deshalb mit `calc(15px + x·(100% − 30px))`.
   `touch-action: pan-y` lässt senkrechtes Wischen beim Scroller.
 - Jeder Wert gibt einen Haptik-Tick (`buzz(3)`).
+- **Bestätigt klappt nichts ein.** Die Karte behält Regler, Netz und
+  Gesamt — die Regler nur gesperrt (`disabled`) —, und der Knopf wird
+  zur Kontur „✓ 14 : 7 bestätigt · ändern“ (öffnet wieder, wie ↺ auf
+  dem Netz). Eingeklappt sprang die Liste bei jedem Bestätigen um eine
+  halbe Karte nach oben.
 
 Weiteres am Kopf:
 

@@ -744,6 +744,7 @@ input[type="time"]::-webkit-datetime-edit{padding:0;text-align:center;}
    Killswitch beides — der Balken steht dann sofort voll da. */
 .pts-range{-webkit-appearance:none;appearance:none;display:block;width:100%;height:40px;margin:0;background:transparent;cursor:pointer;touch-action:pan-y}
 .pts-range:focus{outline:none}
+.pts-range:disabled{cursor:default}
 .pts-range::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:var(--trk)}
 .pts-range::-moz-range-track{height:6px;border-radius:3px;background:var(--trk)}
 .pts-range::-webkit-slider-thumb{-webkit-appearance:none;width:30px;height:30px;margin-top:-12px;border-radius:50%;border:none;background:#fff;box-shadow:0 0 0 var(--ring,0px) var(--o),0 2px 10px rgba(0,0,0,.4);transition:transform .15s var(--ease-out-soft)}

@@ -12465,13 +12465,13 @@ function PointsEditModal({entry,winMode,onSave,onClose}){
    Fuellung laeuft bis zur MITTE des Daumens: der wandert nur zwischen
    15 px und Breite − 15 px, daher das calc in --trk und in den Strichen.
    `ring` gibt dem Daumen die orange Kontur (der Teilungs-Regler). */
-function PtsSlider({value,min=0,max,onChange,color=T.o,ring=false,ticks=0,major=5,label,dim=false}){
+function PtsSlider({value,min=0,max,onChange,color=T.o,ring=false,ticks=0,major=5,label,dim=false,disabled=false}){
   const f=max>min?(value-min)/(max-min):0;
   const at=x=>`calc(15px + ${x*100}% - ${x*30}px)`;
   return(
     <div style={{position:'relative',opacity:dim?.55:1,transition:'opacity .2s'}}>
       <input type="range" className="pts-range" min={min} max={max} step={1} value={value}
-        aria-label={label}
+        aria-label={label} disabled={disabled}
         onChange={e=>{const v=+e.target.value; if(v!==value){buzz(3);onChange(v);}}}
         style={{'--trk':`linear-gradient(90deg,${color} 0 ${at(f)},rgba(255,255,255,.2) ${at(f)})`,
           '--ring':ring?'3px':'0px'}}/>
@@ -12637,7 +12637,7 @@ function TournamentCourtCard({court,courtIndex,courtName,playerById,numOf,onScor
           zusammenreimen. */}
       {/* Ohne den Knopf darunter traegt das Raster den Abstand zum
           Kartenrand nicht mehr — nur noch den zum Tier-Chip. */}
-      <div style={{position:'relative',marginBottom:tier&&done?14:0}}>
+      <div style={{position:'relative'}}>
         <MatchSlotGrid
           court={court}
           playerById={playerById}
@@ -12685,25 +12685,30 @@ function TournamentCourtCard({court,courtIndex,courtName,playerById,numOf,onScor
       {/* Eintragen: oben teilen (orange), dazwischen das Netz, unten die
           Summe (weiss) und darunter, was sie ist. Bestaetigt wird mit dem
           Knopf darunter; das Netz-Zeichen im Raster ist dann nur Status. */}
-      {!done&&(
+      {/* Bestaetigt bleibt die Karte so, wie sie war — mit Reglern, nur
+          gesperrt. Eingeklappt sprang die Liste bei jedem Bestaetigen um
+          eine halbe Karte nach oben. Aendern geht ueber den Knopf. */}
+      {(
         <div style={{marginTop:14,marginBottom:tier?14:0}}>
           <PtsSlider label="Punkte zwischen Team A und Team B teilen"
-            value={ready?Math.min(s1,tot):Math.round(tot/2)} max={tot}
+            value={ready?Math.min(s1,tot):Math.round(tot/2)} max={tot} disabled={done}
             onChange={setSplit} ring ticks={tot} major={tot===21?7:5} dim={!ready}/>
           <NetStrip style={{margin:'12px 0 14px'}}/>
-          <PtsSlider label="Punkte insgesamt" value={tot} min={1} max={TOT_MAX}
+          <PtsSlider label="Punkte insgesamt" value={tot} min={1} max={TOT_MAX} disabled={done}
             onChange={setTotal} color={T.t1}/>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginTop:2}}>
             <span className="display" style={{color:T.t2,fontSize:10,letterSpacing:2}}>Gesamt</span>
             <span style={{fontVariantNumeric:'tabular-nums',color:T.t1,fontSize:22,fontWeight:300}}>
               {tot}<span style={{color:T.t3,fontSize:12,fontWeight:400}}> Punkte</span></span>
           </div>
-          <button onClick={ready?onConfirm:undefined} disabled={!ready}
-            style={{width:'100%',marginTop:14,padding:'13px 16px',borderRadius:999,border:'none',
-              background:ready?T.o:T.glassHi,color:ready?'#000':T.t3,fontSize:15,fontWeight:700,
-              cursor:ready?'pointer':'default',fontVariantNumeric:'tabular-nums',
-              transition:'background .2s,color .2s'}}>
-            {ready?`${s1} : ${s2} bestätigen ›`:'Regler ziehen, um einzutragen'}
+          <button onClick={ready||done?onConfirm:undefined} disabled={!ready&&!done}
+            style={{width:'100%',marginTop:14,padding:'13px 16px',borderRadius:999,
+              border:done?`1px solid ${T.glassLine}`:'none',
+              background:done?'transparent':ready?T.o:T.glassHi,color:done?T.t1:ready?'#000':T.t3,
+              fontSize:15,fontWeight:700,cursor:ready||done?'pointer':'default',
+              fontVariantNumeric:'tabular-nums',transition:'background .2s,color .2s'}}>
+            {done?`✓ ${s1} : ${s2} bestätigt · ändern`
+              :ready?`${s1} : ${s2} bestätigen ›`:'Regler ziehen, um einzutragen'}
           </button>
         </div>
       )}

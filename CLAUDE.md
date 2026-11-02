@@ -166,7 +166,7 @@ The grid is five columns — `players | innerA | net | innerB | players` — and
 - `innerA` / `innerB` put content at the net side of a team's own half, spanning both rows. The host's court card puts the score there: 21 left of the net, 9 right of it, read like a scoreboard. Do **not** stack the two scores on the net instead — vertically stacked they need `A`/`B` markers and are still read as belonging to the upper/lower *row*.
 - `net` puts content **on** the net (the host's VS circle); pass an array and the component draws net segments between the items so the line never runs through it. Masking the line with a background does not work — `--card2` is semi-transparent in the glass theme and the strike-through stays visible.
 - Both score cells carry the same fixed width, otherwise a one-digit score sits closer to the net than a two-digit one.
-- Open courts show a `ScoreWheel` (its row height is the `h` prop — 28 in the grid, the default 34 elsewhere), confirmed courts a large number with the winner in the accent color.
+- Open courts show the current numbers (a dash while nothing is entered) — the input itself sits below the grid (see „Punkte eintragen: der Split-Regler“); confirmed courts a large number with the winner in the accent color.
 
 ### Die Court-Karte — der Zustand sitzt auf dem Netz
 
@@ -176,36 +176,54 @@ den Stift für die **Aufstellung**. Sonst nichts. Der Name stand bis
 Runde 5 als orange Plakette da — Orange ist Status, und ein Name ist
 keiner.
 
-Der Zustand des Matches — und der Knopf, der ihn weiterschaltet —
-sitzt **auf dem Netz**, auf der Kreuzung mit dem Reihentrenner,
-zwischen den beiden Zahlen, um die es geht:
+Der Zustand des Matches sitzt **auf dem Netz**, auf der Kreuzung mit
+dem Reihentrenner, zwischen den beiden Zahlen, um die es geht:
 
 | Netz | Bedeutung | Tippen |
 |---|---|---|
-| `VS` rot, inert | mindestens ein Rad steht auf `–` | — |
-| `✓` orange | beide Stände stehen | bestätigt |
+| `VS` rot, inert | noch nichts eingetragen | — |
+| `✓` orange, inert | beide Stände stehen | — (bestätigt wird unten) |
 | `↺` gedämpft | bestätigt | öffnet wieder |
 
-- **Der Knopf lag vorher oben rechts in der Kartenzeile** (und davor
-  als breiter Knopf unter der Karte). Oben rechts war er weit weg von
-  dem, was man gerade tut: man stellt zwei Räder in der Mitte und
-  soll dann in die Ecke greifen.
-- **`ready` verlangt beide Räder.** Solange eines auf `–` steht, ist
-  gar kein Ergebnis eingetragen — ein Knopf, der dann 0:0
-  festschreibt, wäre eine Falle.
 - Der **Schlüssel** (`key={\`net-${netState}\`}`) erzwingt beim
   Zustandswechsel einen Neuaufbau; nur so läuft `netPop` erneut. Im
   `vs`-Zustand trägt der Kreis stattdessen `court-vs` (Dauerpuls) als
   Hinweis, dass dort noch etwas fehlt.
-- `MatchSlotGrid` bekommt dafür **`netW`** (Vorgabe 32, hier 44): den
-  Knopf trifft man, die Plakette las man nur. Die Spielerspalten
-  werden dadurch schmaler — deshalb trägt die `Team A`/`Team B`-Zeile
-  jetzt `whiteSpace:'nowrap'`, sonst bricht sie in Centauri zu
-  `TEAM` / `A`.
+- `MatchSlotGrid` bekommt **`netW`** (Vorgabe 32, hier 44). Die
+  Spielerspalten werden dadurch schmaler — deshalb trägt die
+  `Team A`/`Team B`-Zeile `whiteSpace:'nowrap'`, sonst bricht sie in
+  Centauri zu `TEAM` / `A`.
 
-Im **`ScoreWheel`** steht ganz oben ein **Strich**, erst darunter die
-0: der Strich ist `value === null`, „noch nichts eingetragen". Vorher
-stand dort die 0 — und eine 0 sieht aus wie ein Ergebnis.
+### Punkte eintragen: der Split-Regler (`PtsSlider`)
+
+Unter dem Raster einer offenen Court-Karte stehen zwei Regler mit dem
+Netz dazwischen (`NetStrip` in icons.jsx — dasselbe Netz wie der
+Ladebalken):
+
+- **Oben, orange (Daumen mit oranger Kontur): teilt die Punkte.** Links
+  vom Daumen gehört Team A, rechts Team B. Eine Geste setzt beide
+  Zahlen — vorher waren es zwei Scrollräder (`ScoreWheel`, gelöscht).
+  Striche je Punkt, lange alle 7 bei 21, sonst alle 5.
+- **Unten, weiß: die Summe**, 1 bis 40 (bzw. `scoreMax`), Vorgabe 21.
+  Darunter — nicht darüber — steht `GESAMT` mit der Zahl. So kommen
+  beide Seiten über 21. Ändert sich die Summe, bleibt das Verhältnis
+  stehen (14:7 bei 21 → 21:11 bei 32). Die Summe ist lokaler State der
+  Karte, beim Öffnen aus `s1+s2` gelesen; gespeichert werden weiter nur
+  `s1`/`s2`. Untergrenze 1 statt der 11 aus dem Entwurf: Formate auf
+  Games (6:3) haben kleine Summen.
+- Solange nichts eingetragen ist (`s1`/`s2` null), steht der obere
+  Daumen gedimmt in der Mitte und die Zahlen sind Striche — ein 0:0
+  sähe aus wie ein Ergebnis.
+- **Bestätigt wird mit dem breiten Knopf darunter** („14 : 7
+  bestätigen ›“), nicht mehr auf dem Netz: der Daumen ist unten, und
+  dorthin gehört auch der Knopf. Ohne Eintrag ist er grau
+  („Regler ziehen, um einzutragen“).
+- Die Regler sind **native `range`-Inputs** (`.pts-range` in theme.js):
+  Tastatur, Screenreader und Ziehen gibt es geschenkt. Der Daumen
+  wandert nur zwischen 15 px und Breite − 15 px; Füllung (`--trk`) und
+  Striche rechnen deshalb mit `calc(15px + x·(100% − 30px))`.
+  `touch-action: pan-y` lässt senkrechtes Wischen beim Scroller.
+- Jeder Wert gibt einen Haptik-Tick (`buzz(3)`).
 
 Weiteres am Kopf:
 
@@ -477,7 +495,7 @@ unverändert.
   wie der Kopf) ist zum Standfirst geworden. QR-Scan ist eine weisse
   Pille, der PIN-Knopf in der Leiste orange.
 - Getestet mit einem durchgespielten Americano (8 Spieler, 2 Courts,
-  Ergebnisse über die Räder, Rundenwechsel, Beenden über beide Schritte,
+  Ergebnisse (damals über Scrollräder), Rundenwechsel, Beenden über beide Schritte,
   Endstand). Lobby und Teilnehmeransicht brauchen eine Supabase-Session
   und sind nur im Code umgestellt — wer dort etwas ändert, prüft sie an
   einer echten Session.
@@ -660,6 +678,35 @@ und Nachbarinseln. Wetter: Sonne, Regen, Nacht, Nebel, Schnee.
   in die Szene haengt, haengt es in dieselbe Aufraeumliste.
 - Testen in Playwright nur mit SwiftShader
   (`--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader`).
+
+### Titelbild eines Turniers (`tourney.cover`)
+
+Ein Turnier kann ein Titelbild tragen. `cover` ist **entweder der
+Dateiname eines mitgelieferten Motivs** (`COVERS` in utils.js:
+journeyhero, home-bg, regelwerkhero, splash-intro-poster) **oder ein
+eigenes Foto als JPEG-DataURL**. `coverSrc()` macht daraus ein `src`
+und lässt alles andere fallen — ein Datensatz aus localStorage ist
+keine vertrauenswürdige Quelle für ein `src`-Attribut.
+
+- **Gewählt** wird mit `CoverPicker`: im Assistenten im Schritt
+  Wertung unter dem Namen, im Formular als eigene Karte unter dem
+  Turniernamen. Vorschau 16:9 mit dem Namen darauf, vier Motive, ein
+  Feld für ein eigenes Foto, ✕ entfernt. Der Dateidialog hängt am
+  `<label>` (Nutzergeste).
+- **Eigene Fotos** laufen durch `processImageUpload` auf `COVER_MAX`
+  (800 px) — Magic Bytes, Canvas-Neukodierung, kein EXIF. Ein Turnier
+  liegt in localStorage, und dort ist Platz knapp.
+- **Gezeigt** wird es auf der laufenden Live-Karte (das Bild ist der
+  Kopf, Format/„läuft“ oben, Name unten), als 46er-Vorschau statt
+  Pokal/Stift auf den schlanken Zeilen, im Endstand hinter dem
+  Siegernamen (per Maske nach unten ausgeblendet, nicht per Verlauf in
+  eine Farbe) und im PDF als Band über Kopf und Sieger
+  (`coverBand`: auf Canvas zugeschnitten, abgedunkelt, unten in
+  Streifen ausgeblendet — jsPDF kennt keine Verlaufsmaske).
+- Wandert mit durch Entwurf, Start und „Turnier bearbeiten“
+  (`saveTourneyEdit` übernimmt `cover`, auch `null` zum Entfernen).
+  Dabei übernimmt es jetzt auch `pauseMode`/`pausePts` — die fielen
+  beim Bearbeiten bisher still weg.
 
 ### Papierkorb (`ritmo_trash`)
 
@@ -1152,7 +1199,7 @@ derselben Zeit, in der die Tastatur aufgeht.
   weiß noch niemand, wie hoch die Tastatur wird. Der Fokus-Anlauf ist
   der Fallback für Browser ohne `visualViewport`.
 - **Kein globales `scroll-behavior: smooth`.** Das würde auch
-  `ScoreWheel` und `MinuteRuler` treffen, die ihre Startposition per
+  den `MinuteRuler` treffen, der seine Startposition per
   `scrollTop` setzen — die würden beim Aufbau sichtbar dorthin fahren
   statt schon dort zu stehen.
 

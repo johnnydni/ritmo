@@ -509,6 +509,25 @@ export function LoadBar({pct=null,dur=0,w=176,label='Wird geladen'}){
   );
 }
 
+/* Das Netz ohne Ladestand: volle Breite, ganz hell — als Trenner
+   zwischen den beiden Reglern der Court-Karte. Gleiche Masse wie der
+   Ladebalken bei 226 px, damit beide als dasselbe Netz gelesen werden. */
+export function NetStrip({h=18,style}){
+  const mesh='repeating-linear-gradient(90deg,currentColor 0 1px,transparent 1px 7px),repeating-linear-gradient(0deg,currentColor 0 1px,transparent 1px 7px)';
+  const post={width:3,height:h+6,background:T.t1,borderRadius:3,flexShrink:0};
+  return(
+    <div aria-hidden="true" style={{display:'flex',alignItems:'flex-end',color:T.t1,...style}}>
+      <span style={post}/>
+      <div style={{flex:1,height:h,position:'relative',borderTop:`3px solid ${T.t1}`}}>
+        <div style={{position:'absolute',inset:0,background:mesh,opacity:.6,
+          WebkitMaskImage:'linear-gradient(90deg,rgba(0,0,0,.45),#000 50%,rgba(0,0,0,.45))',
+          maskImage:'linear-gradient(90deg,rgba(0,0,0,.45),#000 50%,rgba(0,0,0,.45))'}}/>
+      </div>
+      <span style={post}/>
+    </div>
+  );
+}
+
 /* Alter Name, neues Bild: wo frueher die Ball-Rosette kreiste, laeuft
    jetzt der Ladebalken (unbestimmt). Die Aufrufer bleiben, wie sie sind. */
 export function BallSpinner({w=176}){

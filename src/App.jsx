@@ -11573,7 +11573,7 @@ function MatchSlotGrid({court,playerById,numOf,meName,net=null,avatar=52,innerA=
      wurde schmaler, als die Netzspalte den Bestaetigen-Knopf bekam. */
   const head=(txt,gc)=>(
     <div style={{gridColumn:gc,gridRow:1,fontFamily:T.fontDisplay,color:T.t3,
-      fontSize:9,letterSpacing:2.2,textAlign:'center',padding:'9px 4px 0',
+      fontSize:8.5,letterSpacing:1,textAlign:'center',padding:'9px 0 0',minWidth:0,
       whiteSpace:'nowrap',overflow:'hidden'}}>{txt}</div>
   );
   // 5 Spalten: Spieler | Punkte A | Netz | Punkte B | Spieler. Ohne
@@ -13760,10 +13760,20 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
   const[roundEndInfo,setRoundEndInfo]=useState(null);
   const[editLineupCourtId,setEditLineupCourtId]=useState(null);
   const[editPtsId,setEditPtsId]=useState(null);
-  /* Platzkarte: Filter auf einen Court (null = alle) und der
-     Stell-Modus, mit dem der Host die Anordnung vor Ort noch gerade
-     rueckt — geplant wird am Kuechentisch, gespielt auf der Anlage. */
-  const[courtFilter,setCourtFilter]=useState(null);
+  /* Die Court-Karten stehen nebeneinander und werden gewischt
+     (carIdx = die Karte im Bild). Die Platzkarte ist eingefahren und
+     geht per Karten-Glyph auf; ein Tipp auf einen Platz rollt die
+     Reihe zu diesem Court. Der Stell-Modus rueckt die Anordnung vor
+     Ort noch gerade — geplant wird am Kuechentisch, gespielt auf der
+     Anlage. */
+  const[mapOpen,setMapOpen]=useState(false);
+  const[carIdx,setCarIdx]=useState(0);
+  const carRef=useRef(null);
+  const goCourt=i=>{const c=carRef.current,el=c?.children[i];
+    if(el){buzz(6);c.scrollTo({left:el.offsetLeft-22,behavior:'smooth'});}};
+  const onCarScroll=()=>{const c=carRef.current,f=c?.children[0],g=c?.children[1];
+    if(!c||!f) return; const step=g?g.offsetLeft-f.offsetLeft:f.offsetWidth;
+    const i=Math.max(0,Math.round(c.scrollLeft/step)); if(i!==carIdx) setCarIdx(i);};
   /* "Naechste Runde" steht als breiter Knopf am ENDE der Liste — wer
      oben steht, sieht ihn nicht und weiss nicht, dass die Runde fertig
      ist. Deshalb wandert er als runder Pfeil in die Knopfleiste, solange
@@ -13807,7 +13817,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
     [tourney.courtLayout,tourney.numCourts]);
   /* Ein Filter ueberlebt den Rundenwechsel nicht — sonst steht der
      Host vor einer leeren Liste und sucht den Schalter. */
-  useEffect(()=>{setCourtFilter(null);setNextOpen(false);},[tourney.current]);
+  useEffect(()=>{setCarIdx(0);carRef.current?.scrollTo({left:0});setNextOpen(false);},[tourney.current]);
   const setLayout=l=>setTourney(t=>({...t,courtLayout:compactLayout(l)}));
 
   // ── Online-Sync (nur wenn dieses Turnier eine Online-Session hat) ──
@@ -14424,26 +14434,30 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
               Suchen und Finden. */}
           {(tourney.numCourts||1)>1&&(
             <div style={{...GLASS,borderRadius:16,
-              padding:'12px 14px 14px'}}>
-              <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}>
+              padding:mapOpen?'12px 14px 14px':'10px 14px'}}>
+              <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:mapOpen?10:0}}>
                 <div style={{flex:1,minWidth:0,fontFamily:T.fontDisplay,color:T.t3,
                   fontSize:10,letterSpacing:1.6}}>
                   {layoutEdit?'ANORDNUNG ANPASSEN':'PLATZKARTE'}
                 </div>
-                {courtFilter!=null&&!layoutEdit&&(
-                  <button onClick={()=>{buzz(6);setCourtFilter(null);}}
-                    style={{padding:'5px 10px',borderRadius:999,background:T.oSoft,
-                      border:`1px solid ${T.o}`,color:T.o,fontSize:11,fontWeight:700,
-                      cursor:'pointer',flexShrink:0}}>
-                    Filter aus
-                  </button>
-                )}
+                {/* Die Platzkarte ist eingefahren: der Karten-Glyph klappt
+                    sie auf und zu, gleiche Masse wie der Stift daneben. */}
+                <button onClick={()=>{buzz(6);setMapOpen(v=>{if(v)setLayoutEdit(false);return !v;});}}
+                  title={mapOpen?'Platzkarte einfahren':'Platzkarte zeigen'}
+                  aria-label={mapOpen?'Platzkarte einfahren':'Platzkarte zeigen'}
+                  aria-expanded={mapOpen}
+                  style={{width:30,height:30,borderRadius:9,flexShrink:0,cursor:'pointer',
+                    background:mapOpen?T.glassHi:T.card2,
+                    border:`1px solid ${mapOpen?T.glassLine:T.border}`,
+                    display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  <LineIcon name="karte" size={17} color={T.t1}/>
+                </button>
                 {/* Derselbe Stift wie auf der Court-Karte, gleiche
                     Masse: es ist dieselbe Geste — antippen, aendern,
                     wieder antippen. Dass man drin ist, sagt der
                     gefuellte Knopf und das Ressort darueber
                     ("ANORDNUNG ANPASSEN"), nicht ein zweites Wort. */}
-                <button onClick={()=>{buzz(6);setLayoutEdit(v=>!v);setLayoutSel(null);}}
+                <button onClick={()=>{buzz(6);setMapOpen(true);setLayoutEdit(v=>!v);setLayoutSel(null);}}
                   title={layoutEdit?'Fertig':'Anordnung anpassen'}
                   aria-label={layoutEdit?'Anordnung fertig anpassen':'Anordnung anpassen'}
                   aria-pressed={layoutEdit}
@@ -14455,13 +14469,13 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
                   <EditIcon size={15} color={layoutEdit?T.bg:T.t2}/>
                 </button>
               </div>
-              <CourtMap layout={tLayout} names={i=>courtLabel(tourney.courtNames,i)}
+              {mapOpen&&<CourtMap layout={tLayout} names={i=>courtLabel(tourney.courtNames,i)}
                 singles={tourney.courtSingles} glyphH={30}
                 editable={layoutEdit}
-                sel={layoutSel} onSel={layoutEdit?setLayoutSel:setCourtFilter}
+                sel={layoutSel} onSel={layoutEdit?setLayoutSel:goCourt}
                 onMove={(i,x,y)=>{setLayout(moveTo(tLayout,i,x,y));setLayoutSel(null);}}
                 onRotate={i=>setLayout(rotateCourt(tLayout,i))}
-                active={layoutEdit?null:courtFilter}
+                active={layoutEdit?null:carIdx}
                 canSel={i=>i<round.courts.length}
                 /* Unter dem Platz steht nur, was mit ihm los ist — die
                    Aufstellung braucht Namen in Lesegroesse, und die
@@ -14480,12 +14494,24 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
                       {!c?'frei':c.done?'fertig':'läuft'}
                     </div>
                   );
-                }}/>
+                }}/>}
             </div>
           )}
 
-          {round.courts.map((court,ci)=>(courtFilter!=null&&courtFilter!==ci)?null:(
-            <TournamentCourtCard key={court.id}
+          {/* Die Courts stehen NEBENEINANDER und werden gewischt: die
+              naechste Karte schaut rechts herein, so sieht man, dass es
+              weitergeht. Untereinander war bei fuenf Courts ein langer
+              Weg nach unten bis zum letzten. Die Reihe greift bis an den
+              Bildschirmrand (−22 px) und rastet auf 22 px ein. */}
+          <div ref={carRef} onScroll={onCarScroll}
+            style={{position:'relative',display:'flex',gap:10,alignItems:'flex-start',
+              overflowX:'auto',overflowY:'hidden',scrollSnapType:'x mandatory',
+              scrollPaddingLeft:22,margin:'0 -22px',padding:'0 22px',flexShrink:0,
+              scrollbarWidth:'none',WebkitOverflowScrolling:'touch',overscrollBehaviorX:'contain'}}>
+          {round.courts.map((court,ci)=>(
+            <div key={court.id} style={{flex:round.courts.length>1?'0 0 calc(100% - 28px)':'0 0 100%',
+              minWidth:0,scrollSnapAlign:'start'}}>
+            <TournamentCourtCard
               court={court} courtIndex={ci}
               courtName={courtLabel(tourney.courtNames,ci)}
               playerById={playerById}
@@ -14493,7 +14519,18 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
               onScoreChange={(field,val)=>updateScore(court.id,field,val)}
               onConfirm={()=>confirmCourt(court.id)}
               onEditLineup={()=>setEditLineupCourtId(court.id)}/>
+            </div>
           ))}
+          </div>
+          {round.courts.length>1&&(
+            <div aria-hidden="true" style={{display:'flex',justifyContent:'center',gap:6,marginTop:-2,flexShrink:0}}>
+              {round.courts.map((c,i)=>(
+                <span key={i} onClick={()=>goCourt(i)} style={{width:i===carIdx?18:6,height:6,borderRadius:3,cursor:'pointer',
+                  background:i===carIdx?T.o:c.done?'rgba(255,255,255,.55)':'rgba(255,255,255,.2)',
+                  transition:'width .25s var(--ease-out-quint),background .2s'}}/>
+              ))}
+            </div>
+          )}
 
           {/* K.-o.: Wartende dieser Welle (Freilos / Warteschlange) —
               bewusst NICHT in sitOut (keine Pausen-Boni im Bracket). */}

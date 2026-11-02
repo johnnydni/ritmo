@@ -202,20 +202,19 @@ Unter dem Raster einer offenen Court-Karte stehen zwei Regler mit dem
 Netz dazwischen (`NetStrip` in icons.jsx — dasselbe Netz wie der
 Ladebalken):
 
-- **Oben, orange (Daumen mit oranger Kontur): teilt die Punkte.** Links
-  vom Daumen gehört Team A, rechts Team B. Eine Geste setzt beide
-  Zahlen — vorher waren es zwei Scrollräder (`ScoreWheel`, gelöscht).
-  Striche je Punkt, lange alle 7 bei 21, sonst alle 5.
-- **Unten, weiß: die Summe**, 1 bis 40 (bzw. `scoreMax`), Vorgabe 21.
-  Darunter — nicht darüber — steht `GESAMT` mit der Zahl. So kommen
-  beide Seiten über 21. Ändert sich die Summe, bleibt das Verhältnis
-  stehen (14:7 bei 21 → 21:11 bei 32). Die Summe ist lokaler State der
-  Karte, beim Öffnen aus `s1+s2` gelesen; gespeichert werden weiter nur
-  `s1`/`s2`. Untergrenze 1 statt der 11 aus dem Entwurf: Formate auf
-  Games (6:3) haben kleine Summen.
-- Solange nichts eingetragen ist (`s1`/`s2` null), steht der obere
-  Daumen gedimmt in der Mitte und die Zahlen sind Striche — ein 0:0
-  sähe aus wie ein Ergebnis.
+- **Ein Regler je Seite.** Oben orange (Daumen mit oranger Kontur) die
+  Punkte von **Team A**, unten weiss die von **Team B**, je 0 bis 40
+  (bzw. `scoreMax`), über jedem Regler `TEAM A`/`TEAM B` mit der Zahl.
+  Darunter `GESAMT` als reine Ablesung (`s1+s2`). Eine Zwischenfassung
+  liess den orangen Regler eine Summe *teilen* und den weissen die
+  Summe stellen — gemeint waren aber zwei Seiten, nicht Teilung und
+  Summe. Vorher gab es zwei Scrollräder (`ScoreWheel`, gelöscht).
+- Striche je Punkt, lange alle 5.
+- **Ein Regler reicht zum Bestätigen**: der andere zählt dann als 0.
+  Einen Regler, der schon auf 0 steht, kann man nicht „auf 0 ziehen“ —
+  21:0 wäre sonst nur über einen Umweg einzutragen. Solange eine Seite
+  `null` ist, steht ihr Daumen gedimmt auf 0 und die Zahl ist ein
+  Strich.
 - **Bestätigt wird mit dem breiten Knopf darunter** („14 : 7
   bestätigen ›“), nicht mehr auf dem Netz: der Daumen ist unten, und
   dorthin gehört auch der Knopf. Ohne Eintrag ist er grau

@@ -12487,7 +12487,7 @@ function PtsSlider({value,min=0,max,onChange,color=T.o,ring=false,ticks=0,major=
   );
 }
 
-function TournamentCourtCard({court,courtIndex,courtName,playerById,numOf,onScoreChange,onConfirm,onEditLineup,scoreMax=40,defTotal=21}){
+function TournamentCourtCard({court,courtIndex,courtName,playerById,numOf,onScoreChange,onConfirm,onEditLineup,scoreMax=40}){
   // Score-Werte aus dem Court ziehen. null/undefined = noch nicht
   // eingegeben → Input rendert leer, damit Tippen "5" auch wirklich
   // "5" wird und nicht "05". Beim Abschluss zählt 0 als gültiger
@@ -12499,22 +12499,11 @@ function TournamentCourtCard({court,courtIndex,courtName,playerById,numOf,onScor
   const s2=s2Raw??0;
   const done=!!court.done;
 
-  /* Eingetragen wird mit zwei Reglern: der orange TEILT die Punkte
-     (links Team A, rechts B), der weisse legt fest, wie viele es
-     insgesamt sind. Die Summe startet bei 21 und darf bis 40 (bzw.
-     scoreMax) gehen — so kommen beide Seiten ueber 21. Aendert sich
-     die Summe, bleibt das Verhaeltnis stehen. */
-  const TOT_MAX=Math.max(scoreMax,40);
-  const[tot,setTot]=useState(()=>s1Raw!=null&&s2Raw!=null?Math.max(1,s1Raw+s2Raw):defTotal);
-  const setSplit=a=>{onScoreChange('s1',a);onScoreChange('s2',tot-a);};
-  const setTotal=n=>{
-    setTot(n);
-    if(s1Raw!=null&&s2Raw!=null){
-      const a=Math.min(n,Math.round(s1Raw/((s1Raw+s2Raw)||1)*n));
-      onScoreChange('s1',a);onScoreChange('s2',n-a);
-    }
-  };
-
+  /* Eingetragen wird mit zwei Reglern, je einer pro Seite: der orange
+     stellt die Punkte von Team A (links), der weisse die von Team B
+     (rechts), jeweils 0 bis 40 (bzw. scoreMax). Die Summe steht darunter
+     nur als Ablesung. */
+  const PT_MAX=Math.max(scoreMax,40);
   // Match-Tier-Rating aus den Spielstilen der vier Spieler (RITMO DNA).
   // null, wenn nicht alle vier einen Stil gesetzt haben → kein Label.
   const tier=computeMatchTier(
@@ -12528,7 +12517,9 @@ function TournamentCourtCard({court,courtIndex,courtName,playerById,numOf,onScor
   /* Bestaetigen gibt es erst, wenn BEIDE Raeder vom Strich weg sind.
      Solange eines auf "–" steht, ist gar kein Ergebnis eingetragen —
      und ein Knopf, der dann 0:0 festschreibt, waere eine Falle. */
-  const ready=s1Raw!=null&&s2Raw!=null;
+  /* Ein Regler reicht: der andere zaehlt dann als 0 (21:0) — einen
+     Regler, der schon auf 0 steht, kann man nicht „auf 0 ziehen“. */
+  const ready=s1Raw!=null||s2Raw!=null;
   const netState=done?'done':ready?'ready':'vs';
   const netLabel=netState==='done'?'Ergebnis bestätigt'
     :netState==='ready'?'Ergebnis eingetragen — unten bestätigen'
@@ -12690,16 +12681,23 @@ function TournamentCourtCard({court,courtIndex,courtName,playerById,numOf,onScor
           eine halbe Karte nach oben. Aendern geht ueber den Knopf. */}
       {(
         <div style={{marginTop:14,marginBottom:tier?14:0}}>
-          <PtsSlider label="Punkte zwischen Team A und Team B teilen"
-            value={ready?Math.min(s1,tot):Math.round(tot/2)} max={tot} disabled={done}
-            onChange={setSplit} ring ticks={tot} major={tot===21?7:5} dim={!ready}/>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:-4}}>
+            <span className="display" style={{color:T.t2,fontSize:10,letterSpacing:2}}>Team A</span>
+            <span style={{fontVariantNumeric:'tabular-nums',color:s1Raw==null?T.t3:T.t1,fontSize:15,fontWeight:400}}>{s1Raw??'–'}</span>
+          </div>
+          <PtsSlider label="Punkte Team A" value={s1} max={PT_MAX} disabled={done}
+            onChange={v=>onScoreChange('s1',v)} ring ticks={PT_MAX} major={5} dim={s1Raw==null}/>
           <NetStrip style={{margin:'12px 0 14px'}}/>
-          <PtsSlider label="Punkte insgesamt" value={tot} min={1} max={TOT_MAX} disabled={done}
-            onChange={setTotal} color={T.t1}/>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginTop:2}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:-4}}>
+            <span className="display" style={{color:T.t2,fontSize:10,letterSpacing:2}}>Team B</span>
+            <span style={{fontVariantNumeric:'tabular-nums',color:s2Raw==null?T.t3:T.t1,fontSize:15,fontWeight:400}}>{s2Raw??'–'}</span>
+          </div>
+          <PtsSlider label="Punkte Team B" value={s2} max={PT_MAX} disabled={done}
+            onChange={v=>onScoreChange('s2',v)} color={T.t1} ticks={PT_MAX} major={5} dim={s2Raw==null}/>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginTop:4}}>
             <span className="display" style={{color:T.t2,fontSize:10,letterSpacing:2}}>Gesamt</span>
             <span style={{fontVariantNumeric:'tabular-nums',color:T.t1,fontSize:22,fontWeight:300}}>
-              {tot}<span style={{color:T.t3,fontSize:12,fontWeight:400}}> Punkte</span></span>
+              {ready?s1+s2:'–'}<span style={{color:T.t3,fontSize:12,fontWeight:400}}> Punkte</span></span>
           </div>
           <button onClick={ready||done?onConfirm:undefined} disabled={!ready&&!done}
             style={{width:'100%',marginTop:14,padding:'13px 16px',borderRadius:999,

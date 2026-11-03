@@ -46,6 +46,7 @@ Pure / side-effect-free modules have been extracted from the original mega-file.
 | [src/whatsNew.js](src/whatsNew.js) | `RELEASES` (die Ausgaben des Update-Newsletters) + `unseenRelease(seen)`. | Inhalt/Daten; die Regeln fuer neue Ausgaben stehen im Dateikopf. |
 | [src/wallpapers.js](src/wallpapers.js) | `WALLPAPERS` (Profil-Hintergruende: Foto + Verlaeufe mit Korn), `wallpaperById`, `GRAIN_URL`. | Reine Daten; gezeichnet von `ProfileBackdrop` in App.jsx. |
 | [src/tactics3d.js](src/tactics3d.js) | Das 3D-Taktik-Board der Bibel (three.js): `PLAYS`, `WEATHERS`, `createBoard(canvas,opts)`, `webglOk()`. | Wird per `import()` erst beim Oeffnen geladen (eigener Chunk, ~142 kB gz). UI-Schale ist `TacticsBoard` in App.jsx. |
+| [src/rules3d.js](src/rules3d.js) | Die 3D-Fassung der Regelwerk-Szenen (three.js): `createRuleScene(canvas,id,{onCap,reduced})`, `webglOk()`. | Per `import()` nachgeladen (eigener Chunk, ~10 kB gz plus three.js). Schalter `ritmo_rules3d`. Siehe „Regelwerk in 3D“. |
 | [src/scenes.jsx](src/scenes.jsx) | Die bewegten Grafiken der Bibel: `useSceneClock` (Zeitleiste, spielt nur im Bild), Bausteine (`Court`, `Orb`, `Ball`, `Tag`, `Steps`) und je Kapitel eine `Scene*`. | Siehe „Die Bibel“. Reine Darstellung, kein App-State. |
 | [src/skillDescriptions.js](src/skillDescriptions.js) | `SKILL_DESCRIPTIONS` — text for the RITMO DNA Skill tier card. | Translation-ready content. |
 | [src/supabase.js](src/supabase.js) | Older standalone tournament-sharing helper (legacy). | Currently unused by the active flow. |
@@ -650,6 +651,39 @@ Neu gebaut als Magazin, nicht nur umgefaerbt.
   `Hl`), Akkordeon mit Plus, das zum Kreuz kippt. Die Antworten nennen
   Wege in der App so, wie sie dort beschriftet sind — wer einen Screen
   umbenennt, sucht hier mit.
+
+### Regelwerk in 3D (`Rule3D`, [src/rules3d.js](src/rules3d.js))
+
+Die neun bewegten Grafiken des Regelwerks (alle Kapitel ausser
+Schlagarten) gibt es zusaetzlich als echte 3D-Szene: Court mit Glas,
+Gitter, Netz, Flutlicht, Spielern als Figuren, Ball mit Schatten und
+Schweif; ACES-Tonemapping, weiche Schatten, `RoomEnvironment` fuer die
+Glasreflexe. Ids: `court`, `aufschlag`, `waende`, `zaehlung`,
+`americano`, `mexicano`, `formate`, `rotation`, `fairplay`.
+
+- **Abschaltbar**: Einstellungen → Anpassung → „Regelwerk" →
+  „Animationen in 3D" (`ritmo_rules3d`, Vorgabe an). `RuleVisual`
+  zeigt die 2D-Szene aus scenes.jsx, wenn der Schalter aus ist, kein
+  WebGL da ist oder der Chunk nicht laedt — die 2D-Szenen bleiben
+  also die Rueckfallebene und werden nicht geloescht.
+- **Beschriftung ist HTML, nicht 3D**: die Szene meldet per `onCap`
+  `{kicker,text,tone,steps,board}`, und zwar nur bei Aenderung;
+  `Rule3D` setzt Ressort (Centauri), Satz (Antiqua) und Schritt-Chips
+  darueber. Text in WebGL waere unscharf und nicht lesbar fuer
+  Screenreader.
+- Gespielt wird nur im Bild (IntersectionObserver → `setActive`) und
+  nicht bei `document.hidden`; bei reduzierter Bewegung ein Standbild
+  (`still` je Szene).
+- **Ziehen dreht die Kamera** (±1,4 rad) und stoppt die Weitergabe —
+  sonst blaettert das Wischen das Kapitel um.
+- **Flutlichtmasten auf der Kameraseite blenden aus** (`masts` in
+  `setCam`), sonst steht einer mitten im Bild.
+- Ball und Spieler sind bewusst groesser als massstaeblich (Ball
+  r 0,15 m) — in 4:5 auf dem Telefon waere ein echter Ball ein Pixel.
+- Testen in Playwright mit SwiftShader (siehe Taktik-Board). Die Zeit
+  laeuft dort langsamer (dt gedeckelt auf 50 ms), fuer Bilder spaeter
+  Szenenmomente also laenger warten. `ritmo_rules_read=true` ueberspringt
+  die Landing.
 
 ### Das Taktik-Board (`TacticsBoard`, [src/tactics3d.js](src/tactics3d.js))
 

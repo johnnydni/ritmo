@@ -1152,14 +1152,23 @@ Dieselbe Karte steht an drei Stellen und tut dort zwei Dinge:
   Vorher stand die Karte als eingefahrene Glaskarte ueber den Courts.
 
 **Auf einen Blick**: Kopf (Titel 28 statt 38, `titleFs`), Timer-Reihe,
-EINE Court-Karte mit Raster, beiden Reglern und Bestaetigen, die
-Punkte darunter und die Pause-Leiste (`pauseStrip`, Kugeln mit Nummer
-und Name, Fragezeichen fuer die Bonus-Erklaerung) — alles ueber der
-Knopfleiste bei 390 × 844. Gemessen: Pause-Leiste endet bei 756 px.
-Dafuer traegt das Raster der Court-Karte keine `Team A`/`Team B`-Zeile
+EINE Court-Karte mit Raster, beiden Reglern und Bestaetigen, darunter
+die Punkte — alles ueber der Knopfleiste bei 390 × 844. Dafuer traegt
+das Raster der Court-Karte keine `Team A`/`Team B`-Zeile
 (`heads={false}` — die Regler darunter sind beschriftet) und knappere
-Plaetze (`avatar 38`, `slotPad 8px`). Wer etwas in die Karte packt,
-misst danach, ob die Pause-Leiste noch im Bild ist.
+Plaetze (`avatar 38`, `slotPad 8px`).
+
+**Die Pausierenden sind ein Knopf unten**, neben der Platzkarte
+(`MatchBar` `center` nimmt ein Array): runder Glasknopf mit blauem
+Pause-Glyph und blauer Zahl (`badge`, wie viele aussetzen); ohne
+Pause in der Runde fehlt er. Ein Tipp oeffnet einen **Dialog** in der
+Mitte (`pauseOpen`): `PAUSE` + „Runde n“, „Setzen aus.“ in der
+Antiqua, je Spieler Kugel und Name, darunter in Blau, was die Pause
+einbringt (nach `pauseMode`), „Alles klar“ schliesst, ebenso ein Tipp
+daneben. Vorher stand eine Pause-Leiste unter den Courts; die
+Platzkarte im Vollbild zeigt sie weiterhin (`pauseStrip`). Kommt der
+Weiter-Pfeil dazu, wird die Platzkarte-Pille zum Kreis — Pille,
+Pause-Knopf, Werkzeuge und Pfeil passen bei 390 px sonst nicht.
 
 **Die Court-Karten stehen nebeneinander** und werden von links nach
 rechts gewischt (Scroll-Snap, `carRef`): jede Karte `100% − 22px`

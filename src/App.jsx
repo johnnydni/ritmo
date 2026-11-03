@@ -3048,19 +3048,29 @@ function MatchBar({onHome,rightIcon,onRight,rightButtons,homeLabel='Zurück zur 
           Glyph und Wort, absolut zentriert, damit Home links und die
           Werkzeuge rechts bleiben, wo sie sind. compact = nur der Glyph,
           wenn rechts ein zweiter Knopf dazukommt. */}
-      {center&&(
-        <button onClick={center.onClick} className={center.active?undefined:'glass-bar'}
-          aria-label={center.label} aria-pressed={!!center.active}
-          aria-hidden={center.hidden||undefined} tabIndex={center.hidden?-1:undefined}
-          style={{position:'absolute',left:'50%',top:'50%',transform:'translate(-50%,-50%)',
-            height:48,minWidth:48,padding:center.compact?0:'0 18px',borderRadius:999,
-            display:'flex',alignItems:'center',justifyContent:'center',gap:8,
-            pointerEvents:center.hidden?'none':'auto',cursor:'pointer',
-            opacity:center.hidden?0:1,transition:'opacity .2s,padding .25s',
-            ...(center.active?{background:T.t1,border:'none',color:'#000'}:{color:T.t1})}}>
-          {center.icon}
-          {!center.compact&&<span style={{fontSize:14,fontWeight:700}}>{center.label}</span>}
-        </button>
+      {(Array.isArray(center)?center:[center]).filter(Boolean).length>0&&(
+        <div style={{position:'absolute',left:'50%',top:'50%',transform:'translate(-50%,-50%)',
+          display:'flex',gap:10,alignItems:'center'}}>
+          {(Array.isArray(center)?center:[center]).filter(Boolean).map((c,i)=>(
+            <button key={i} onClick={c.onClick} className={c.active?undefined:'glass-bar'}
+              aria-label={c.label} aria-pressed={!!c.active}
+              aria-hidden={c.hidden||undefined} tabIndex={c.hidden?-1:undefined}
+              style={{position:'relative',height:48,minWidth:48,padding:c.compact?0:'0 18px',borderRadius:999,
+                display:'flex',alignItems:'center',justifyContent:'center',gap:8,flexShrink:0,
+                pointerEvents:c.hidden?'none':'auto',cursor:'pointer',
+                opacity:c.hidden?0:1,transition:'opacity .2s,padding .25s',
+                ...(c.active?{background:T.t1,border:'none',color:'#000'}:{color:T.t1})}}>
+              {c.icon}
+              {!c.compact&&<span style={{fontSize:14,fontWeight:700}}>{c.label}</span>}
+              {c.badge!=null&&(
+                <span style={{position:'absolute',top:-3,right:-3,minWidth:18,height:18,padding:'0 5px',
+                  borderRadius:9,background:T.blue,color:'#fff',fontSize:11,fontWeight:700,
+                  display:'flex',alignItems:'center',justifyContent:'center',
+                  fontVariantNumeric:'tabular-nums'}}>{c.badge}</span>
+              )}
+            </button>
+          ))}
+        </div>
       )}
       <div style={{display:'flex',gap:10,alignItems:'center',pointerEvents:'auto'}}>
         {buttons.map((btn,i)=>btn.items?tray(btn,i):fab(btn,i))}
@@ -13785,6 +13795,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
      Ort noch gerade — geplant wird am Kuechentisch, gespielt auf der
      Anlage. */
   const[mapOpen,setMapOpen]=useState(false);
+  const[pauseOpen,setPauseOpen]=useState(false);
   const[carIdx,setCarIdx]=useState(0);
   const carRef=useRef(null);
   const goCourt=i=>{const c=carRef.current,el=c?.children[i];
@@ -13835,7 +13846,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
     [tourney.courtLayout,tourney.numCourts]);
   /* Ein Filter ueberlebt den Rundenwechsel nicht — sonst steht der
      Host vor einer leeren Liste und sucht den Schalter. */
-  useEffect(()=>{setCarIdx(0);carRef.current?.scrollTo({left:0});setNextOpen(false);setMapOpen(false);},[tourney.current]);
+  useEffect(()=>{setCarIdx(0);carRef.current?.scrollTo({left:0});setNextOpen(false);setMapOpen(false);setPauseOpen(false);},[tourney.current]);
   const setLayout=l=>setTourney(t=>({...t,courtLayout:compactLayout(l)}));
 
   // ── Online-Sync (nur wenn dieses Turnier eine Online-Session hat) ──
@@ -14537,7 +14548,6 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
             </div>
           )}
 
-          {pauseStrip()}
 
           {/* Next round (when allDone) — öffnet erst das Transparenz-
               Popup zum Pausen-Ausgleich (wenn jemand pausiert hat). */}
@@ -14588,12 +14598,20 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
           Vier Knoepfe, die man pro Runde vielleicht einmal anfasst,
           standen ueber dem Turnier, das man staendig ansieht. */}
       <MatchBar onHome={onHome} homeHidden={toolsOpen||mapOpen}
-        center={(tourney.numCourts||1)>1?{
+        center={[(tourney.numCourts||1)>1?{
           icon:<LineIcon name="karte" size={21} color="currentColor"/>,
           label:'Platzkarte',active:mapOpen,hidden:toolsOpen,
+          /* Kommt rechts der Weiter-Pfeil dazu, wird die Pille zum
+             Kreis — sonst stoesst sie (mit dem Pause-Knopf daneben) an
+             die Werkzeuge. */
           compact:allDone&&tab==='round'&&!nextInView&&!mapOpen,
           onClick:()=>{buzz(6);setToolsOpen(false);setLayoutEdit(false);setLayoutSel(null);setMapOpen(v=>!v);},
-        }:null}
+        }:null,
+        round.sitOut?.length>0?{
+          icon:<PauseIcon size={18} color={T.blue}/>,
+          label:'Pause',compact:true,hidden:toolsOpen||mapOpen,badge:round.sitOut.length,
+          onClick:()=>{buzz(6);setToolsOpen(false);setPauseOpen(true);},
+        }:null]}
         rightButtons={[
         {
           items:[
@@ -14713,6 +14731,54 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
               <span><b style={{color:T.o}}>{round.courts.filter(c=>c.done).length}</b> fertig</span>
               <span><b style={{color:T.t1}}>{round.sitOut?.length||0}</b> Pause</span>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Pause als Dialog ── Wer aussetzt, steht nicht mehr als Leiste
+          unter den Courts, sondern hinter dem Pause-Knopf in der Leiste
+          (blaue Zahl = wie viele). Ein Tipp oeffnet dieses Fenster:
+          Kugel, Name, und was die Pause einbringt. Tipp daneben oder
+          „Alles klar“ schliesst. */}
+      {pauseOpen&&round.sitOut?.length>0&&(
+        <div onClick={()=>setPauseOpen(false)} className="fi"
+          style={{position:'fixed',inset:0,zIndex:50,background:'rgba(0,0,0,.55)',
+            backdropFilter:'blur(6px)',WebkitBackdropFilter:'blur(6px)',
+            display:'flex',alignItems:'center',justifyContent:'center',padding:22}}>
+          <div role="dialog" aria-modal="true" aria-label="Pause" onClick={e=>e.stopPropagation()}
+            className="si" style={{width:'100%',maxWidth:360,borderRadius:26,padding:'20px 20px 18px',
+              background:`linear-gradient(${T.card},${T.card}), ${T.bg}`,
+              border:`1px solid ${T.glassLine}`,boxShadow:'0 20px 60px rgba(0,0,0,.5)'}}>
+            <div style={{display:'flex',alignItems:'center',gap:10}}>
+              <span style={{width:30,height:30,borderRadius:'50%',border:`1px solid ${T.blue}`,
+                display:'flex',alignItems:'center',justifyContent:'center'}}><PauseIcon size={14} color={T.blue}/></span>
+              <span className="display" style={{color:T.blue,fontSize:11,letterSpacing:2.4,flex:1}}>Pause</span>
+              <span style={{color:T.t3,fontSize:12.5,fontVariantNumeric:'tabular-nums'}}>Runde {tourney.current+1}</span>
+            </div>
+            <div style={{...HEAD_SERIF,fontSize:30,marginTop:12}}>
+              {round.sitOut.length===1?'Setzt aus.':'Setzen aus.'}</div>
+            <div style={{height:1,background:T.glassSep,margin:'14px 0 6px'}}/>
+            {round.sitOut.map((id,i)=>(
+              <div key={id} style={{display:'flex',alignItems:'center',gap:12,padding:'10px 0',
+                borderTop:i?`1px solid ${T.glassSep}`:'none'}}>
+                <GlassOrb label={pNum(tourney.players,id)} size={34}/>
+                <span style={{color:T.t1,fontSize:17,fontWeight:600,flex:1,minWidth:0,
+                  overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{playerById(id)?.name}</span>
+              </div>
+            ))}
+            <div style={{color:T.t2,fontSize:13,lineHeight:1.5,marginTop:10,padding:'12px 14px',
+              borderRadius:14,background:T.blueSoft,border:`1px solid ${T.blue}55`}}>
+              {tourney.pauseMode==='none'
+                ?'Für dieses Turnier ist kein Ausgleich eingestellt — eine Pause ist eine Runde ohne Punkte.'
+                :tourney.pauseMode==='fixed'
+                ?`Je Pause gibt es ${tourney.pausePts??0} Punkte gutgeschrieben.`
+                :(tourney.winMode==='points'
+                  ?'Wer pausiert, bekommt den aufgerundeten Mittelwert aller Punkte dieser Runde gutgeschrieben.'
+                  :'Wer pausiert und in der unteren Tabellenhälfte steht, bekommt +1 Sieg gutgeschrieben.')}
+            </div>
+            <button onClick={()=>setPauseOpen(false)}
+              style={{width:'100%',marginTop:16,padding:'14px',borderRadius:999,border:'none',cursor:'pointer',
+                background:T.t1,color:'#000',fontSize:15,fontWeight:700}}>Alles klar</button>
           </div>
         </div>
       )}

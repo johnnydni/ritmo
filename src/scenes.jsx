@@ -81,7 +81,7 @@ const K=9;                       // 1 m in SVG-Einheiten
 const SL=10-6.95;                // Aufschlaglinie, von der Rueckwand gemessen
 function Stage({vb,children,label,max=340}){
   return(
-    <svg viewBox={vb} role="img" aria-label={label}
+    <svg viewBox={vb} role="img" aria-label={label} data-stage=""
       style={{width:'100%',maxWidth:max,height:'auto',display:'block',overflow:'visible'}}>
       {children}
     </svg>
@@ -110,7 +110,8 @@ export function Court({ox=0,oy=0,k=K,draw=1,walls=1,mesh=1,glassHi=null,dim=1,ha
     `M${X(0)-g} ${Y(16)}V${Y(20)+g}`,`M${X(10)+g} ${Y(16)}V${Y(20)+g}`,
   ];
   return(
-    <g opacity={dim}>
+    <g opacity={dim} data-k="court" data-ox={ox} data-oy={oy} data-s={k} data-draw={draw}
+      data-walls={walls} data-mesh={mesh} data-gh={glassHi??''} data-half={half?1:0}>
       <rect x={X(0)} y={Y(y0)} width={W} height={H} rx="1.5"
         fill={T.t1} opacity={.035*o}/>
       {/* Gitter: feine Schraffur zwischen den Glasstuecken */}
@@ -141,7 +142,8 @@ export function Court({ox=0,oy=0,k=K,draw=1,walls=1,mesh=1,glassHi=null,dim=1,ha
 function Orb({x,y,label,team='a',r=6.2,op=1,ring}){
   const col=team==='a'?T.o:team==='b'?T.blue:T.t3;
   return(
-    <g opacity={op}>
+    <g opacity={op} data-k="orb" data-x={x} data-y={y} data-r={r} data-team={team}
+      data-label={label??''} data-ring={ring||0}>
       <ellipse cx={x} cy={y+r*.9} rx={r*.9} ry={r*.32} fill="#000" opacity=".28"/>
       <circle cx={x} cy={y} r={r} fill={T.t1} fillOpacity=".08" stroke={col} strokeWidth="1.2"/>
       {ring&&<circle cx={x} cy={y} r={r+2.6} fill="none" stroke={col} strokeWidth=".8" opacity={ring}/>}
@@ -158,7 +160,8 @@ function Ball({p,trail=[],k=K,op=1}){
   if(!p) return null;
   const lift=z=>z*k*.55;
   return(
-    <g opacity={op}>
+    <g opacity={op} data-k="ball" data-x={p.x} data-y={p.y} data-z={p.z} data-s={k}
+      data-trail={JSON.stringify(trail.map(q=>q&&[q.x,q.y,q.z]))}>
       {trail.map((q,i)=>q&&(
         <circle key={i} cx={q.x} cy={q.y-lift(q.z)} r={2.3*(1-i/(trail.length+1))}
           fill={T.ball} opacity={.32*(1-i/trail.length)}/>
@@ -391,7 +394,7 @@ export function SceneScore(){
         {[0,1].map(r=>(
           <g key={r}>
             <rect x={10} y={r?70:30} width={150} height={34} rx={9} fill={T.t1} opacity=".05"
-              stroke={T.t1} strokeOpacity=".16"/>
+              stroke={T.t1} strokeOpacity=".16" data-slab="1"/>
             <Orb x={30} y={r?87:47} label={r?'B':'A'} team={r?'b':'a'} r={8}/>
             <text x={46} y={r?91:51} fontSize="8" fontWeight="600" fill={T.t2}
               style={{fontFamily:T.fontSans}}>Team {r?'B':'A'}</text>
@@ -425,11 +428,13 @@ const MINI={w:36,h:64};
 function MiniCourt({x,y,label,hi=0}){
   return(
     <g>
+      <g data-k="mini" data-x={x} data-y={y} data-w={MINI.w} data-h={MINI.h} data-hi={hi} data-dir="v">
       <rect x={x} y={y} width={MINI.w} height={MINI.h} rx="2" fill={T.t1} fillOpacity={.05+hi*.06}
         stroke={hi?T.o:T.t1} strokeOpacity={hi?.8:.55} strokeWidth=".8"/>
       <line x1={x} y1={y+MINI.h*.17} x2={x+MINI.w} y2={y+MINI.h*.17} stroke={T.t1} strokeOpacity=".3" strokeWidth=".5"/>
       <line x1={x} y1={y+MINI.h*.83} x2={x+MINI.w} y2={y+MINI.h*.83} stroke={T.t1} strokeOpacity=".3" strokeWidth=".5"/>
       <line x1={x-2} y1={y+MINI.h/2} x2={x+MINI.w+2} y2={y+MINI.h/2} stroke={T.o} strokeWidth="1.1"/>
+      </g>
       {label&&<Kicker x={x+MINI.w/2} y={y-4}>{label}</Kicker>}
     </g>
   );
@@ -553,9 +558,11 @@ export function SceneKing(){
       <Stage vb="0 0 160 110" label="King of the Court: Sieger steigen auf">
         {[0,1,2].map(c=>(
           <g key={c}>
+            <g data-k="mini" data-x={cx[c]} data-y={cy} data-w={cw} data-h={chh} data-hi={c?0:1} data-dir="h">
             <rect x={cx[c]} y={cy} width={cw} height={chh} rx="2" fill={T.t1} opacity={c?.04:.09}
               stroke={c?T.t1:T.o} strokeOpacity={c?.35:.8} strokeWidth=".8"/>
             <line x1={cx[c]+cw/2} y1={cy-2} x2={cx[c]+cw/2} y2={cy+chh+2} stroke={T.o} strokeWidth="1"/>
+            </g>
             <Tag x={cx[c]+cw/2} y={cy+chh+10} u={1} size={6.6} col={c?T.t2:T.o}>{c?`Court ${c+1}`:'Court 1 · Thron'}</Tag>
           </g>
         ))}
@@ -843,9 +850,12 @@ export function SceneFairPlay(){
   return(
     <div ref={ref} style={{width:'100%',display:'flex',justifyContent:'center'}}>
       <Stage vb="0 0 160 142" label="Nach dem Match: Handschlag am Netz">
+        <g data-k="court" data-ox={ox} data-oy={oy} data-s={k} data-draw="1" data-walls="0" data-mesh="0"
+          data-gh="" data-half="0" data-bare="1">
         <rect x={X(0)} y={Y(0)} width={10*k} height={20*k} rx="1.5" fill={T.t1} fillOpacity=".035"
           stroke={T.t1} strokeOpacity=".7"/>
         <line x1={X(-.35)} y1={Y(10)} x2={X(10.35)} y2={Y(10)} stroke={T.o} strokeWidth="1.6"/>
+        </g>
         {[3.2,6.8].map(x=>(
           <g key={x} opacity={spark}>
             <ellipse cx={X(x)} cy={Y(10)} rx={3+pulse*8} ry={(3+pulse*8)*.5} fill="none"

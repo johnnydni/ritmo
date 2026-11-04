@@ -46,7 +46,7 @@ Pure / side-effect-free modules have been extracted from the original mega-file.
 | [src/whatsNew.js](src/whatsNew.js) | `RELEASES` (die Ausgaben des Update-Newsletters) + `unseenRelease(seen)`. | Inhalt/Daten; die Regeln fuer neue Ausgaben stehen im Dateikopf. |
 | [src/wallpapers.js](src/wallpapers.js) | `WALLPAPERS` (Profil-Hintergruende: Foto + Verlaeufe mit Korn), `wallpaperById`, `GRAIN_URL`. | Reine Daten; gezeichnet von `ProfileBackdrop` in App.jsx. |
 | [src/tactics3d.js](src/tactics3d.js) | Das 3D-Taktik-Board der Bibel (three.js): `PLAYS`, `WEATHERS`, `createBoard(canvas,opts)`, `webglOk()`. | Wird per `import()` erst beim Oeffnen geladen (eigener Chunk, ~142 kB gz). UI-Schale ist `TacticsBoard` in App.jsx. |
-| [src/rules3d.js](src/rules3d.js) | Die 3D-Fassung der Regelwerk-Szenen (three.js): `createRuleScene(canvas,id,{onCap,reduced})`, `webglOk()`. | Per `import()` nachgeladen (eigener Chunk, ~10 kB gz plus three.js). Schalter `ritmo_rules3d`. Siehe „Regelwerk in 3D“. |
+| [src/rules3d.js](src/rules3d.js) | Die Regelwerk-Szenen in 3D (three.js), gelesen aus dem SVG der 2D-Szene: `createRuleScene(canvas,root,{id,reduced})`, `webglOk()`. | Per `import()` nachgeladen (eigener Chunk, ~10 kB gz plus three.js). Schalter `ritmo_rules3d`. Siehe „Regelwerk in 3D“. |
 | [src/scenes.jsx](src/scenes.jsx) | Die bewegten Grafiken der Bibel: `useSceneClock` (Zeitleiste, spielt nur im Bild), Bausteine (`Court`, `Orb`, `Ball`, `Tag`, `Steps`) und je Kapitel eine `Scene*`. | Siehe „Die Bibel“. Reine Darstellung, kein App-State. |
 | [src/skillDescriptions.js](src/skillDescriptions.js) | `SKILL_DESCRIPTIONS` — text for the RITMO DNA Skill tier card. | Translation-ready content. |
 | [src/supabase.js](src/supabase.js) | Older standalone tournament-sharing helper (legacy). | Currently unused by the active flow. |
@@ -654,36 +654,45 @@ Neu gebaut als Magazin, nicht nur umgefaerbt.
 
 ### Regelwerk in 3D (`Rule3D`, [src/rules3d.js](src/rules3d.js))
 
-Die neun bewegten Grafiken des Regelwerks (alle Kapitel ausser
-Schlagarten) gibt es zusaetzlich als echte 3D-Szene: Court mit Glas,
-Gitter, Netz, Flutlicht, Spielern als Figuren, Ball mit Schatten und
-Schweif; ACES-Tonemapping, weiche Schatten, `RoomEnvironment` fuer die
-Glasreflexe. Ids: `court`, `aufschlag`, `waende`, `zaehlung`,
-`americano`, `mexicano`, `formate`, `rotation`, `fairplay`.
+Die 3D-Fassung ist **keine eigene Animation, sondern die 2D-Szene im
+Raum**. `Rule3D` rendert die Szene aus scenes.jsx unsichtbar mit
+(`opacity:0` — gleiche Uhr, gleicher Platz, das `aria-label` bleibt
+fuer Screenreader), und `createRuleScene(canvas, root)` liest je Bild
+deren SVG aus. Wer eine Szene aendert, aendert sie in scenes.jsx; die
+3D-Fassung zieht von selbst mit. Betroffen sind die neun animierten
+Kapitel (alle ausser Schlagarten).
 
+- **Semantik per `data-k`** in scenes.jsx wird zu echten Koerpern:
+  `court` (Boden, Linien, Netz, Glas, Gitter — mit denselben
+  Einsaetzen fuer `draw`/`walls`/`mesh` und `glassHi` wie `Court`),
+  `mini` (Mini-Court, `data-dir="h"` = Netz laengs wie bei King of
+  the Court), `orb` (Glaskugel, Teamfarbe als Randleuchten, Nummer
+  darin) und `ball` (echte Hoehe `z`, Schattenfleck, Schweif aus
+  `data-trail`). Wer einen Baustein neu baut, gibt ihm diese
+  Attribute mit.
+- **Alles andere wird flach auf den Boden gelegt**: Linien, Pfade
+  (M/L/H/V/Z), Rechtecke, Kreise, Text — in Farbe, Deckkraft,
+  Strichmuster und Zeichen-Fortschritt (`pathLength=1` + Dash-Offset)
+  des SVG, Text in seiner Schrift als Textur. Gekippte Ellipsen
+  (Aufpraller) werden wieder rund. `data-slab` macht aus einem
+  Rechteck eine Glasplatte, auf der Text und Kugeln stehen
+  (Anzeigetafel der Zaehlweise).
+- **Kamera rahmt den Inhalt** (`svg.getBBox()`), nicht die viewBox;
+  die Flaeche waechst nur und die Kamera folgt weich. Neigung je
+  Kapitel in `POL`.
+- **Kein eigener Hintergrund**: transparent, der Boden ist nur
+  Schattenfaenger (`ShadowMaterial`) — die Szene steht wie die
+  2D-Fassung auf der Karte.
 - **Abschaltbar**: Einstellungen → Anpassung → „Regelwerk" →
-  „Animationen in 3D" (`ritmo_rules3d`, Vorgabe an). `RuleVisual`
-  zeigt die 2D-Szene aus scenes.jsx, wenn der Schalter aus ist, kein
-  WebGL da ist oder der Chunk nicht laedt — die 2D-Szenen bleiben
-  also die Rueckfallebene und werden nicht geloescht.
-- **Beschriftung ist HTML, nicht 3D**: die Szene meldet per `onCap`
-  `{kicker,text,tone,steps,board}`, und zwar nur bei Aenderung;
-  `Rule3D` setzt Ressort (Centauri), Satz (Antiqua) und Schritt-Chips
-  darueber. Text in WebGL waere unscharf und nicht lesbar fuer
-  Screenreader.
-- Gespielt wird nur im Bild (IntersectionObserver → `setActive`) und
-  nicht bei `document.hidden`; bei reduzierter Bewegung ein Standbild
-  (`still` je Szene).
-- **Ziehen dreht die Kamera** (±1,4 rad) und stoppt die Weitergabe —
-  sonst blaettert das Wischen das Kapitel um.
-- **Flutlichtmasten auf der Kameraseite blenden aus** (`masts` in
-  `setCam`), sonst steht einer mitten im Bild.
-- Ball und Spieler sind bewusst groesser als massstaeblich (Ball
-  r 0,15 m) — in 4:5 auf dem Telefon waere ein echter Ball ein Pixel.
-- Testen in Playwright mit SwiftShader (siehe Taktik-Board). Die Zeit
-  laeuft dort langsamer (dt gedeckelt auf 50 ms), fuer Bilder spaeter
-  Szenenmomente also laenger warten. `ritmo_rules_read=true` ueberspringt
-  die Landing.
+  „Animationen in 3D" (`ritmo_rules3d`, Vorgabe an). Ohne WebGL oder
+  wenn der Chunk nicht laedt, steht die 2D-Szene sichtbar da.
+- Ziehen dreht die Kamera (±1,2 rad) und stoppt die Weitergabe, sonst
+  blaettert das Kapitel um. Gespielt wird nur im Bild; bei
+  reduzierter Bewegung zeigt 2D ein Standbild, 3D liest alle 400 ms.
+- Testen in Playwright mit SwiftShader (siehe Taktik-Board), dort
+  ~5–9 fps. `ritmo_rules_read=true` ueberspringt die Landing. Lange
+  Laeufe mit vielen Kapiteln in einer Seite haengen SwiftShader auf —
+  ein Kapitel je Browserstart.
 
 ### Das Taktik-Board (`TacticsBoard`, [src/tactics3d.js](src/tactics3d.js))
 

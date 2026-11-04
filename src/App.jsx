@@ -20508,18 +20508,20 @@ function RuleVisual({id,children}){
   const on=useRules3d();
   const[failed,setFailed]=useState(false);
   if(!on||failed||!canWebGL()) return children;
-  return <Rule3D id={id} onFail={()=>setFailed(true)}/>;
+  return <Rule3D id={id} onFail={()=>setFailed(true)}>{children}</Rule3D>;
 }
-function Rule3D({id,onFail}){
-  const cv=useRef(null),eng=useRef(null),drag=useRef(null);
-  const[cap,setCap]=useState(null);
+/* Die 2D-Szene laeuft unsichtbar mit (gleiche Uhr, gleicher Platz,
+   Screenreader lesen weiter ihr aria-label); die Engine liest je Bild
+   ihr SVG und stellt es in 3D darueber. */
+function Rule3D({id,onFail,children}){
+  const box=useRef(null),cv=useRef(null),eng=useRef(null),drag=useRef(null);
   const[ready,setReady]=useState(false);
   useEffect(()=>{
     let dead=false,io=null;
     const reduced=!!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     Promise.all([import('./rules3d.js'),document.fonts?.ready]).then(([m])=>{
       if(dead||!cv.current) return;
-      try{eng.current=m.createRuleScene(cv.current,id,{onCap:c=>!dead&&setCap(c),reduced});}
+      try{eng.current=m.createRuleScene(cv.current,box.current,{id,reduced});}
       catch(e){onFail();return;}
       setReady(true);
       io=new IntersectionObserver(([en])=>eng.current?.setActive(en.isIntersecting),{threshold:.15});
@@ -20533,47 +20535,16 @@ function Rule3D({id,onFail}){
   const move=e=>{if(drag.current==null)return;e.stopPropagation();
     const x=e.touches?e.touches[0].clientX:e.clientX;eng.current?.drag(x-drag.current);drag.current=x;};
   const up=e=>{e.stopPropagation();drag.current=null;};
-  const tone=c=>c==='o'?T.o:c==='r'?T.r:T.t1;
   return(
-    <div style={{position:'relative',width:'100%',aspectRatio:'4 / 5',borderRadius:16,overflow:'hidden',
-      background:'#07080b'}}
+    <div ref={box} style={{position:'relative',width:'100%'}}
       onTouchStart={down} onTouchMove={move} onTouchEnd={up}
       onMouseDown={down} onMouseMove={move} onMouseUp={up} onMouseLeave={up}>
-      <canvas ref={cv} aria-label="3D-Animation" role="img"
-        style={{position:'absolute',inset:0,width:'100%',height:'100%',display:'block',touchAction:'pan-y'}}/>
+      <div style={{opacity:0,pointerEvents:'none'}}>{children}</div>
+      <canvas ref={cv} aria-hidden="true"
+        style={{position:'absolute',inset:'-6% -4%',width:'108%',height:'112%',display:'block',touchAction:'pan-y'}}/>
       {!ready&&(
         <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
           <LoadBar w={140} label="3D wird geladen"/>
-        </div>
-      )}
-      {cap?.board&&(
-        <div style={{position:'absolute',left:12,right:12,top:12,display:'flex',gap:8,pointerEvents:'none'}}>
-          {[['A',cap.board.a,T.o],['B',cap.board.b,T.t1]].map(([k,v,c])=>(
-            <div key={k} style={{flex:1,display:'flex',alignItems:'center',gap:7,padding:'8px 10px',minWidth:0,borderRadius:14,
-              background:'rgba(10,11,14,.62)',border:'1px solid rgba(255,255,255,.18)',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)'}}>
-              <span style={{width:10,height:10,borderRadius:'50%',background:c}}/>
-              <span className="display" style={{color:T.t2,fontSize:8.5,letterSpacing:.8,whiteSpace:'nowrap'}}>Team {k}</span>
-              <span style={{marginLeft:'auto',color:v==='✓'||v==='AD'?T.o:T.t1,fontSize:26,fontWeight:300,
-                fontVariantNumeric:'tabular-nums',lineHeight:1}}>{v||'–'}</span>
-            </div>
-          ))}
-        </div>
-      )}
-      {cap&&(
-        <div style={{position:'absolute',left:0,right:0,bottom:0,padding:'34px 14px 12px',pointerEvents:'none',
-          background:'linear-gradient(transparent, rgba(5,6,8,.82))'}}>
-          {cap.kicker&&<div className="display" style={{color:T.t2,fontSize:9.5,letterSpacing:1.8,marginBottom:4}}>{cap.kicker}</div>}
-          {cap.text&&<div style={{fontFamily:T.fontSerif,fontStyle:'italic',fontWeight:700,fontSize:19,
-            color:tone(cap.tone),lineHeight:1.15}}>{cap.text}</div>}
-          {cap.steps&&(
-            <div style={{display:'flex',gap:5,marginTop:6,flexWrap:'wrap'}}>
-              {cap.steps.map((s,i)=>(
-                <span key={s} style={{fontSize:11.5,fontWeight:600,padding:'4px 9px',borderRadius:999,
-                  background:i===cap.active?T.o:i<cap.active?'rgba(255,255,255,.16)':'rgba(255,255,255,.07)',
-                  color:i===cap.active?'#000':i<cap.active?T.t1:T.t3}}>{i<cap.active?'✓ ':''}{s}</span>
-              ))}
-            </div>
-          )}
         </div>
       )}
     </div>

@@ -1,0 +1,49 @@
+name: RITMO abschalten (Kill-Switch)
+
+# Veroeffentlicht statt der App nur eine Abschalt-Seite plus einen
+# Service Worker, der die alte App auf den Geraeten loescht
+# (Caches weg, Worker abgemeldet). Siehe CLAUDE.md, "App abschalten".
+#
+# Laeuft, wenn die Repo-Variable APP_OFFLINE auf "true" steht — bei
+# jedem Push auf main und von Hand. deploy.yml laeuft dann NICHT.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  shutdown:
+    if: ${{ vars.APP_OFFLINE == 'true' }}
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Abschalt-Seite bauen
+        run: |
+          if [ -n "${{ vars.CUSTOM_DOMAIN }}" ]; then BASE=/; else BASE=/${{ github.event.repository.name }}/; fi
+          mkdir -p out
+          cp shutdown/* out/
+          sed -i "s#__BASE__#${BASE}#g" out/index.html out/404.html out/kill.js
+          if [ -n "${{ vars.CUSTOM_DOMAIN }}" ]; then printf "%s\n" "${{ vars.CUSTOM_DOMAIN }}" > out/CNAME; fi
+          ls -la out
+
+      - uses: actions/configure-pages@v4
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: out
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

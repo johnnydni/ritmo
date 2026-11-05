@@ -909,6 +909,50 @@ Rueckgabe nur Splash und diese Seite — kein Login, kein Home, kein
   App** — der Code liegt auf seinem Geraet, dagegen hilft kein
   Server.
 
+### App abschalten: der Kill-Switch (`shutdown/`, `APP_OFFLINE`)
+
+**Hosting ausschalten entfernt die App nicht von den Geraeten.** Der
+Service Worker liegt auf dem Telefon und liefert die gecachte App,
+sobald die Navigation am Netz scheitert (kein DNS, kein TLS, offline).
+Ein Browser entfernt einen Worker nie von selbst; er laesst sich nur
+ersetzen — und zwar ausschliesslich von **demselben Origin unter
+demselben Pfad** (`<base>sw.js`). Ist der Server weg, ist der Worker
+fuer immer da. Antwortet der Server nur mit 404, kommt die 404-Seite
+(gemessen) — gecacht gezeigt wird die alte App erst, wenn gar keine
+Antwort kommt.
+
+Deshalb gibt es den Kill-Switch, und die Reihenfolge ist zwingend:
+**erst Kill-Switch veroeffentlichen, lange stehen lassen, erst dann
+Hosting abschalten.**
+
+1. Repo-Variable `APP_OFFLINE` = `true` (Settings → Secrets and
+   variables → Actions → Variables). Ab dann laeuft `deploy.yml`
+   nicht mehr, und `shutdown.yml` veroeffentlicht bei jedem Push auf
+   main bzw. von Hand nur noch [shutdown/](shutdown/).
+2. GitHub Pages muss an sein (Source: GitHub Actions), unter
+   **derselben Adresse** wie bisher — beim eigenen Domainnamen also
+   `CUSTOM_DOMAIN` gesetzt und DNS wieder auf GitHub.
+3. Workflow „RITMO abschalten (Kill-Switch)" starten.
+
+Was dann passiert, sobald ein Geraet die App **einmal mit Netz**
+oeffnet: der neue `sw.js` (Abschalt-Worker, ohne fetch-Handler)
+loescht alle Caches, meldet sich ab und laedt die Fenster neu;
+`kill.js` in der Seite tut dasselbe noch einmal, falls die Seite
+schon unter dem alten Worker geladen wurde. Danach steht die
+Danke-Seite da, und offline kommt nichts mehr. `404.html` ist
+dieselbe Seite, damit auch tiefe Links (`?join=…`) aufraeumen.
+localStorage (Profil, Turniere) bleibt unangetastet.
+
+Gemessen mit echtem Worker (alte App gecacht → Server auf
+`shutdown/` umgestellt → neu geladen): Worker 1 → 0, Caches
+`ritmo-v7` → leer, offline danach `ERR_INTERNET_DISCONNECTED` statt
+alter App. **Geraete, die waehrend der Kill-Switch-Zeit nie online
+gehen, behalten die alte App** — dort hilft nur, die App vom
+Startbildschirm zu loeschen bzw. die Websitedaten zu loeschen.
+
+Zurueck zur App: `APP_OFFLINE` entfernen und `deploy.yml` laufen
+lassen; der neue `public/sw.js` registriert sich dann wieder.
+
 ### Der Splash: Intro-Video, Schriftzug, Ladebalken
 
 Das Intro-Video (`assets/splash-intro.mp4`, Handschlag am Netz von

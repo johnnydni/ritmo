@@ -25,6 +25,9 @@ concurrency:
 
 jobs:
   build-and-deploy:
+    # Steht APP_OFFLINE auf "true", veroeffentlicht shutdown.yml die
+    # Abschalt-Seite — dann darf hier nicht die App drueberlaufen.
+    if: ${{ vars.APP_OFFLINE != 'true' }}
     runs-on: ubuntu-latest
     environment:
       name: github-pages

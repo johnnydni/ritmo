@@ -273,6 +273,16 @@ Menue als runde Glasknoepfe (`GlassCircle`).
   (laufende vor beendeten, keine Entwuerfe), bis zu drei; „Alle in
   Live ›“, wenn es mehr gibt.
 - Hinter jeder Ueberschrift ein Zeichen in 30 % Weiss (`HomeDeco`).
+- **Die Zeichen bewegen sich beim Wischen** in ihrem eigenen Muster
+  (`useDecoSpring`): die Punktkreuze springen wie ein Ball, das
+  Teilen-Zeichen spreizt seine Knoten, das Punktdreieck steigt Spalte
+  fuer Spalte. Finger (touchmove) und Scroll-Schwung stossen EINE
+  Feder an; jeder Punkt liest sie mit eigener Verzoegerung aus einem
+  Ringpuffer, so laeuft eine Welle durch das Muster. Geschrieben wird
+  per `setAttribute`, nicht per State, und die Schleife laeuft nur,
+  solange sich etwas bewegt. Touchmove zaehlt mit, weil Home oft gar
+  nicht scrollt; Scroll-Ereignisse zaehlen nur ohne Finger (sonst
+  doppelt). Reduzierte Bewegung: alles steht.
 - **Zwei Hausregeln sind hier bewusst gebrochen**, weil der Entwurf
   es so will: eine vierte Schrift (`T.fontSerif`, nur hier) und
   Ziffern in Centauri auf der Event-Karte (Monat und Uhrzeit, ab

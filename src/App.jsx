@@ -4689,7 +4689,8 @@ function WhatsNewSheet({release,onClose}){
    - Die drei Ueberschriften tragen T.fontSerif (Times), kursiv und
      fett — die einzige Stelle der App mit einer Antiqua. Dahinter je
      ein Zeichen in 30 % Weiss (HomeDeco): Punktkreuz, Teilen-Glyph,
-     Punktdreieck. Es liegt HINTER der Schrift, nicht daneben.
+     Punktdreieck. Es liegt HINTER der Schrift, nicht daneben. Beim
+     Wischen bewegt es sich in seinem Muster (useDecoSpring).
    - Die Schnellstarts stehen nicht mehr hier, sondern im Turnier-
      Bereich (TournamentHub) — ein Tipp mehr, dafuer traegt Home nur
      noch die beiden Einstiege.
@@ -4698,36 +4699,111 @@ function WhatsNewSheet({release,onClose}){
      gross genug gesetzt (20 px) bleibt die 2 als 2 lesbar.
 ═══════════════════════════════════════════════════════════════ */
 
+/* Die Zeichen leben mit: wer auf der Startseite wischt (Finger oder
+   Scroll-Schwung), stoesst eine Feder an, und jedes Zeichen bewegt sich
+   in SEINEM Muster — die Punktkreuze springen wie ein Ball, das
+   Teilen-Zeichen spreizt seine Knoten, das Punktdreieck steigt Spalte
+   fuer Spalte. Jeder Punkt liest die Feder mit eigener Verzoegerung
+   (Ringpuffer, `lag` in Bildern), so laeuft eine Welle durchs Muster
+   statt eines Blocks. Gezeichnet wird per setAttribute am SVG, nicht
+   per State: kein Rendern der Startseite je Bild, und die Schleife
+   laeuft nur, solange sich etwas bewegt. Bei reduzierter Bewegung
+   bleibt alles stehen. */
+function useDecoSpring(ref,apply){
+  useEffect(()=>{
+    const el=ref.current;if(!el) return;
+    if(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    let sc=el.parentElement;
+    while(sc&&sc!==document.body){const o=getComputedStyle(sc).overflowY;if(o==='auto'||o==='scroll')break;sc=sc.parentElement;}
+    if(!sc||sc===document.body) return;
+    const N=64,buf=new Float32Array(N);let bi=0,p=0,v=0,raf=0,idle=0,ty=null,tx=null,touching=false,lastTop=sc.scrollTop;
+    const sample=lag=>buf[(bi-Math.min(lag,N-1)+N)%N];
+    const step=()=>{
+      v+=-.075*p-.16*v;p=Math.max(-1.4,Math.min(1.4,p+v));
+      bi=(bi+1)%N;buf[bi]=p;apply(sample);
+      idle=Math.abs(p)<.003&&Math.abs(v)<.003?idle+1:0;
+      if(idle>N){buf.fill(0);apply(sample);raf=0;return;}
+      raf=requestAnimationFrame(step);
+    };
+    const kick=d=>{v+=Math.max(-.35,Math.min(.35,d*.012));idle=0;if(!raf)raf=requestAnimationFrame(step);};
+    const ts=e=>{touching=true;ty=e.touches[0].clientY;tx=e.touches[0].clientX;};
+    const tm=e=>{const t=e.touches[0];if(ty==null)return;
+      const dy=t.clientY-ty,dx=t.clientX-tx;ty=t.clientY;tx=t.clientX;kick(dy+dx*.5);};
+    const te=()=>{touching=false;ty=tx=null;};
+    /* Scroll nur fuer den Schwung nach dem Loslassen (und Maus/Rad) —
+       unter dem Finger zaehlt schon touchmove, sonst doppelt. */
+    const scr=()=>{const d=sc.scrollTop-lastTop;lastTop=sc.scrollTop;if(!touching)kick(-d);};
+    sc.addEventListener('touchstart',ts,{passive:true});
+    sc.addEventListener('touchmove',tm,{passive:true});
+    sc.addEventListener('touchend',te,{passive:true});
+    sc.addEventListener('touchcancel',te,{passive:true});
+    sc.addEventListener('scroll',scr,{passive:true});
+    return()=>{cancelAnimationFrame(raf);
+      sc.removeEventListener('touchstart',ts);sc.removeEventListener('touchmove',tm);
+      sc.removeEventListener('touchend',te);sc.removeEventListener('touchcancel',te);
+      sc.removeEventListener('scroll',scr);};
+  },[]);
+}
+
 function HomeDeco({kind}){
   const f='rgba(255,255,255,.30)';
+  const ref=useRef(null);
+  useDecoSpring(ref,smp=>{
+    const svg=ref.current;if(!svg) return;
+    if(kind==='play'){
+      // Der Ball springt: jeder Punkt hebt ab, die Welle laeuft von links
+      // nach rechts; das kleine Kreuz oben folgt dem grossen nach.
+      svg.querySelectorAll('circle').forEach(c=>{
+        const x=+c.dataset.x,y=+c.dataset.y,top=y<50;
+        c.setAttribute('transform',`translate(0 ${(-smp(Math.round(x/9)+(top?6:0))*(top?9:7)).toFixed(2)})`);
+      });
+    }else if(kind==='events'){
+      // Teilen: die beiden rechten Knoten gehen entlang ihrer Linie
+      // nach aussen, der linke weicht etwas zurueck — die Linien dehnen sich.
+      const a=smp(0),b=smp(5),l=smp(2);
+      const L=[14-l*4,36],T=[56+a*5.6,13-a*3.1],B=[56+b*5.7,58+b*3];
+      const q=k=>svg.querySelector(`[data-n="${k}"]`);
+      q('l').setAttribute('cx',L[0]);q('t').setAttribute('cx',T[0]);q('t').setAttribute('cy',T[1]);
+      q('b').setAttribute('cx',B[0]);q('b').setAttribute('cy',B[1]);
+      const[l1,l2]=svg.querySelectorAll('line');
+      l1.setAttribute('x1',L[0]);l1.setAttribute('x2',T[0]);l1.setAttribute('y2',T[1]);
+      l2.setAttribute('x1',L[0]);l2.setAttribute('x2',B[0]);l2.setAttribute('y2',B[1]);
+    }else{
+      // Das Dreieck steigt: Spalte fuer Spalte, rechts hoeher als links.
+      svg.querySelectorAll('circle').forEach(c=>{
+        const col=+c.dataset.c,row=+c.dataset.r;
+        c.setAttribute('transform',`translate(0 ${(-smp(col*3+row)*(3+col*2.2)).toFixed(2)})`);
+      });
+    }
+  });
   if(kind==='play'){
     // Zwei Punktkreuze, wie ein Ball, der springt: oben klein, unten gross.
     const d=[[24,8,5],[2,30,4.5],[24,30,8.5],[45,30,5],[65,30,5],
       [44,73,5],[63,73,5],[84,73,9],[105,73,5],[124,73,5],[84,95,5]];
-    return(<svg width="132" height="104" viewBox="0 0 132 104" aria-hidden="true"
-      style={{position:'absolute',left:-6,top:-26,pointerEvents:'none'}}>
-      {d.map(([x,y,r],i)=><circle key={i} cx={x+4} cy={y+4} r={r} fill={f}/>)}
+    return(<svg ref={ref} width="132" height="104" viewBox="0 0 132 104" aria-hidden="true"
+      style={{position:'absolute',left:-6,top:-26,pointerEvents:'none',overflow:'visible'}}>
+      {d.map(([x,y,r],i)=><circle key={i} data-x={x} data-y={y} cx={x+4} cy={y+4} r={r} fill={f}/>)}
     </svg>);
   }
   if(kind==='events'){
     // Teilen-Glyph, zwei Knoten rechts, einer links unter der Schrift.
-    return(<svg width="80" height="70" viewBox="0 0 80 70" aria-hidden="true"
-      style={{position:'absolute',left:92,top:-16,pointerEvents:'none'}}>
+    return(<svg ref={ref} width="80" height="70" viewBox="0 0 80 70" aria-hidden="true"
+      style={{position:'absolute',left:92,top:-16,pointerEvents:'none',overflow:'visible'}}>
       <g stroke={f} strokeWidth="9" strokeLinecap="round">
         <line x1="14" y1="36" x2="56" y2="13"/><line x1="14" y1="36" x2="56" y2="58"/>
       </g>
-      <circle cx="56" cy="13" r="11" fill={f}/><circle cx="56" cy="58" r="11" fill={f}/>
-      <circle cx="14" cy="36" r="11" fill={f}/>
+      <circle data-n="t" cx="56" cy="13" r="11" fill={f}/><circle data-n="b" cx="56" cy="58" r="11" fill={f}/>
+      <circle data-n="l" cx="14" cy="36" r="11" fill={f}/>
     </svg>);
   }
   // 'games': Punktdreieck, nach rechts aufsteigend.
   const dots=[];
   [[0,2],[1,3],[2,4],[3,5],[4,5]].forEach(([c,n])=>{
-    for(let k=0;k<n;k++) dots.push([c*15+6,(5-n+k)*15+6]);
+    for(let k=0;k<n;k++) dots.push([c*15+6,(5-n+k)*15+6,c,k]);
   });
-  return(<svg width="72" height="80" viewBox="0 0 72 80" aria-hidden="true"
-    style={{position:'absolute',left:'calc(100% + 6px)',top:-20,pointerEvents:'none'}}>
-    {dots.map(([x,y],i)=><circle key={i} cx={x} cy={y} r="4.6" fill={f}/>)}
+  return(<svg ref={ref} width="72" height="80" viewBox="0 0 72 80" aria-hidden="true"
+    style={{position:'absolute',left:'calc(100% + 6px)',top:-20,pointerEvents:'none',overflow:'visible'}}>
+    {dots.map(([x,y,c,k],i)=><circle key={i} data-c={c} data-r={k} cx={x} cy={y} r="4.6" fill={f}/>)}
   </svg>);
 }
 

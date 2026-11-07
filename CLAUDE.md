@@ -576,6 +576,25 @@ Neu gebaut als Magazin, nicht nur umgefaerbt.
   Fortschrittsbalken aus Segmenten (statt 6-px-Punkten). Foto mit
   `dim .38` — hier wird gelesen. Am Ende „‹ Zurück“ / „Weiter ›“:
   das Wischen zum Blaettern bleibt, aber es kennt keiner.
+- **Blaettern ist eine Bahn, kein Screenwechsel** (`ChapterPager`).
+  Regelwerk und Journey haben je EINEN Rahmen, der stehen bleibt
+  (Foto, Kopf, Knopfleiste); die Kapitel liegen nebeneinander. Vorher
+  war jedes Kapitel ein eigener Screen: Weiter hiess Abbauen und
+  Neubauen, alles blendete von vorn ein. Jetzt:
+  - Gerendert werden das aktuelle Kapitel und seine Nachbarn,
+    **geschluesselt nach Kapitel-id** — der Nachbar wird zum aktuellen,
+    ohne neu gebaut zu werden (gemessen: dieselben DOM-Knoten).
+  - Die Bahn folgt dem Finger (Achse zuerst, Gummiband an den Enden,
+    Schwung zaehlt) und faehrt mit `--ease-ios` aus (`PG_MS` 440);
+    erst dann springt `scr`, im selben Bild steht dx wieder auf 0.
+  - Der Kopf rechnet mit `p = Kapitel − dx/Breite`: Segmente fuellen
+    sich stetig, Titel/Vorspann/Icon blenden ueber. Knopf und Wischen
+    laufen auf derselben Kurve.
+  - `RulesDetailLayout` erkennt den Blaetterer am Kontext (`PagerCtx`)
+    und liefert dann nur die Seite (eigener Scroller) und meldet
+    Titel/Vorspann/Icon. Ausserhalb (Spielstile) bleibt es der ganze
+    Screen wie bisher. Ein neues Kapitel kommt in `RULES_COMPS` bzw.
+    `JOURNEY_COMPS` und in die Reihenfolge.
 - **Textbausteine** `RulesH` (Antiqua mit kurzer oranger Haarlinie),
   `RulesP`/`RulesUl` (15 px statt 13, Punkte statt Striche),
   `RulesDef` (Begriff in der Antiqua, Erklaerung darunter, Haarlinie

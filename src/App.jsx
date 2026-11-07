@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useReducer, useCallback, useMemo, useRef, Fragment } from "react";
+import { useState, useEffect, useLayoutEffect, useReducer, useCallback, useMemo, useRef, Fragment, createContext, useContext } from "react";
 import { createPortal } from "react-dom";
 import { SKILL_DESCRIPTIONS } from "./skillDescriptions.js";
 import { loadProfile as dbLoadProfile, saveProfile as dbSaveProfile, logMatch as dbLogMatch, loadMatchStats as dbLoadMatchStats,
@@ -20298,9 +20298,139 @@ function RulesDef({term,children}){
   );
 }
 
+/* ───── Der Blaetterer fuer Regelwerk und Journey ─────
+   Vorher war jedes Kapitel ein eigener Screen: Weiter hiess Abbauen
+   und Neubauen — Kopf, Foto, Szene, 3D, alles blendete von vorn ein,
+   und beim Wischen glitt die Seite hinaus ins Leere, bevor die
+   naechste aus dem Nichts kam.
+   Jetzt bleibt EIN Rahmen stehen (Foto, Kopf, Knopfleiste), und die
+   Kapitel liegen nebeneinander auf einer Bahn:
+   - Gerendert werden das aktuelle Kapitel und seine beiden Nachbarn,
+     **geschluesselt nach Kapitel-id**. Beim Blaettern wird der Nachbar
+     zum aktuellen, ohne neu gebaut zu werden — er war ja schon da,
+     samt laufender Szene. Erst zwei Schritte weg faellt eine Seite raus.
+   - Die Bahn folgt dem Finger 1:1 (Achse zuerst, an den Enden
+     Gummiband) und faehrt mit `--ease-ios` aus; erst danach springt
+     `scr` um. In demselben Bild steht dx wieder auf 0 — die Seiten
+     liegen dann genau dort, wo sie schon waren, nichts zuckt.
+   - Der Kopf rechnet mit der Bahn: p = Kapitel − dx/Breite. Die
+     Fortschritts-Segmente fuellen sich stetig mit, Titel, Vorspann
+     und Icon blenden zwischen den beiden Kapiteln ueber, je nachdem
+     wie weit der Finger ist. Kommt der Wechsel per Knopf, laufen
+     Bahn und Kopf auf derselben Kurve.
+   - Jede Seite hat ihren eigenen Scroller: zurueckblaettern landet an
+     derselben Stelle, an der man war. */
+const PagerCtx=createContext(null);
+const PG_MS=440;
+function ChapterPager({ids,comps,idx,onGo,onBack,onHome,backIcon,backLabel}){
+  const n=ids.length;
+  const rootRef=useRef(null);
+  const[dx,setDx]=useState(0);
+  const[anim,setAnim]=useState(false);
+  const[heads,setHeads]=useState({});
+  const headsRef=useRef({});
+  const busy=useRef(false);
+  const drag=useRef(null);
+  const W=()=>rootRef.current?.offsetWidth||390;
+  const register=useCallback((id,h)=>{
+    const o=headsRef.current[id];
+    if(o&&o.title===h.title&&o.sub===h.sub) return;
+    headsRef.current={...headsRef.current,[id]:h};
+    setHeads(headsRef.current);
+  },[]);
+  const goDir=d=>{
+    const to=idx+d;
+    if(busy.current||to<0||to>=n) return;
+    busy.current=true;setAnim(true);setDx(-d*W());
+    setTimeout(()=>{onGo(to);setDx(0);setAnim(false);busy.current=false;},PG_MS);
+  };
+  const settle=()=>{busy.current=true;setAnim(true);setDx(0);
+    setTimeout(()=>{setAnim(false);busy.current=false;},PG_MS);};
+  const pt=e=>e.touches?e.touches[0]:e;
+  const down=e=>{if(busy.current)return;const t=pt(e);
+    drag.current={x:t.clientX,y:t.clientY,dir:null,t:performance.now(),lx:t.clientX,lt:performance.now(),v:0};};
+  const move=e=>{const g=drag.current;if(!g)return;const t=pt(e);
+    const ddx=t.clientX-g.x,ddy=t.clientY-g.y;
+    if(!g.dir){if(Math.abs(ddx)<8&&Math.abs(ddy)<8)return;g.dir=Math.abs(ddx)>Math.abs(ddy)*1.2?'h':'v';}
+    if(g.dir!=='h')return;
+    const now=performance.now();g.v=(t.clientX-g.lx)/Math.max(1,now-g.lt);g.lx=t.clientX;g.lt=now;
+    const edge=(ddx>0&&idx===0)||(ddx<0&&idx===n-1);
+    setDx(edge?ddx*.28:ddx);};
+  const up=()=>{const g=drag.current;drag.current=null;if(!g||g.dir!=='h')return;
+    const w=W(),fast=Math.abs(g.v)>.45;
+    if((dx<-w*.22||(fast&&g.v<0&&dx<-20))&&idx<n-1){buzz(6);goDir(1);}
+    else if((dx>w*.22||(fast&&g.v>0&&dx>20))&&idx>0){buzz(6);goDir(-1);}
+    else settle();};
+  const p=Math.max(0,Math.min(n-1,idx-dx/W()));
+  const tr=anim?`transform ${PG_MS}ms var(--ease-ios), opacity ${PG_MS}ms var(--ease-ios)`:'none';
+  const near=[idx-1,idx,idx+1].filter(i=>i>=0&&i<n);
+  const cur=Math.round(p);
+  return(
+    <div ref={rootRef} style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
+      paddingTop:'calc(env(safe-area-inset-top,0px) + 54px)',position:'relative',overflow:'hidden'}}
+      onTouchStart={down} onTouchMove={move} onTouchEnd={up} onTouchCancel={up}
+      onMouseDown={down} onMouseMove={e=>drag.current&&move(e)} onMouseUp={up}
+      onMouseLeave={()=>drag.current&&up()}>
+      <PhotoBackdrop dim={.38}/>
+      <div style={{padding:'0 22px 14px',flexShrink:0}}>
+        <div style={{display:'flex',alignItems:'center',gap:14}}>
+          <div style={{flex:1,minWidth:0}}>
+            <div className="txt" style={{color:T.t2,fontSize:13,fontStyle:'italic',
+              fontVariantNumeric:'tabular-nums'}}>Kapitel {cur+1} von {n}</div>
+            <div style={{display:'grid'}}>
+              {near.map(i=>{const h=heads[ids[i]]||{};const o=Math.max(0,1-Math.abs(p-i)*1.7);
+                return(
+                  <div key={ids[i]} aria-hidden={i!==cur} style={{gridArea:'1 / 1',opacity:o,
+                    transform:`translateX(${((i-p)*36).toFixed(1)}px)`,transition:tr,pointerEvents:'none'}}>
+                    <div style={{...HEAD_SERIF,fontSize:34,lineHeight:1.08,marginTop:6,paddingBottom:2}}>{h.title}</div>
+                    <div className="txt" style={{color:T.t2,fontSize:14,marginTop:6,fontStyle:'italic',
+                      lineHeight:1.4}}>{h.sub}</div>
+                  </div>);})}
+            </div>
+          </div>
+          <div style={{width:54,height:54,borderRadius:'50%',flexShrink:0,position:'relative',
+            background:T.glassHi,border:`1px solid ${T.glassLine}`}}>
+            {near.map(i=>{const h=heads[ids[i]]||{};const o=Math.max(0,1-Math.abs(p-i)*1.6);
+              return(<div key={ids[i]} style={{position:'absolute',inset:0,display:'flex',
+                alignItems:'center',justifyContent:'center',opacity:o,
+                transform:`scale(${(.7+.3*o).toFixed(3)})`,transition:tr}}>{h.icon}</div>);})}
+          </div>
+        </div>
+        <div style={{display:'flex',gap:4,marginTop:16}} aria-hidden="true">
+          {ids.map((id,i)=>{const f=Math.max(0,Math.min(1,p-i+1));
+            return(<div key={id} style={{flex:1,height:3,borderRadius:2,background:T.glassLine,overflow:'hidden'}}>
+              <div style={{height:'100%',background:T.o,transformOrigin:'left',
+                transform:`scaleX(${f.toFixed(3)})`,transition:tr}}/>
+            </div>);})}
+        </div>
+      </div>
+      <div style={{flex:1,position:'relative',minHeight:0}}>
+        {near.map(i=>{const Comp=comps[ids[i]];return(
+          <div key={ids[i]} aria-hidden={i!==idx} style={{position:'absolute',inset:0,
+            transform:`translateX(calc(${(i-idx)*100}% + ${dx}px))`,transition:tr,
+            visibility:Math.abs(i-p)>=1&&!anim&&dx===0&&i!==idx?'hidden':'visible'}}>
+            <PagerCtx.Provider value={{id:ids[i],register}}>
+              <Comp currentIdx={i} totalSections={n} onHome={onHome}
+                onBackToRules={onBack} onBackToJourney={onBack}
+                onNext={i<n-1?()=>goDir(1):null} onPrev={i>0?()=>goDir(-1):null}/>
+            </PagerCtx.Provider>
+          </div>);})}
+      </div>
+      <MatchBar onHome={onHome} rightButtons={[
+        {icon:backIcon||<BookIcon size={18}/>,onClick:onBack,label:backLabel||'Zurück zur Übersicht'}
+      ]}/>
+    </div>
+  );
+}
+
 /* ───── Shared shell for detail screens ───── */
 function RulesDetailLayout({icon,title,sub,visual,children,onBackToRules,onHome,
   onNext,onPrev,currentIdx,totalSections,backIcon,backLabel}){
+  /* Im Blaetterer (ChapterPager) ist dies nur noch eine SEITE: Kopf,
+     Foto und Knopfleiste gehoeren dem Blaetterer und bleiben stehen;
+     die Seite meldet ihm nur Titel, Vorspann und Icon. */
+  const pg=useContext(PagerCtx);
+  useLayoutEffect(()=>{if(pg)pg.register(pg.id,{icon,title,sub});});
   const[dx,setDx]=useState(0);
   const[animating,setAnimating]=useState(false);
   const dragRef=useRef({active:false,startX:0,startY:0,isHoriz:false,decided:false});
@@ -20350,6 +20480,39 @@ function RulesDetailLayout({icon,title,sub,visual,children,onBackToRules,onHome,
     }
     setDx(0);
   };
+
+  const pageNav=(onPrev||onNext)&&(
+    <div style={{display:'flex',gap:10,marginTop:30}}>
+      {onPrev?(
+        <button onClick={()=>{buzz(6);onPrev();}}
+          style={{flex:1,padding:'14px 16px',borderRadius:999,...GLASS,
+            color:T.t1,fontSize:15,fontWeight:700,cursor:'pointer'}}>
+          ‹ Zurück
+        </button>
+      ):<span style={{flex:1}}/>}
+      {onNext?(
+        <button onClick={()=>{buzz(6);onNext();}}
+          style={{flex:1,padding:'14px 16px',borderRadius:999,border:'none',
+            background:T.o,color:'#000',fontSize:15,fontWeight:800,cursor:'pointer'}}>
+          Weiter ›
+        </button>
+      ):<span style={{flex:1}}/>}
+    </div>
+  );
+  if(pg) return(
+    <div data-page-scroll="" style={{height:'100%',overflowY:'auto',WebkitOverflowScrolling:'touch',
+      padding:'0 22px',touchAction:'pan-y',overscrollBehavior:'contain'}}>
+      {visual&&(
+        <div style={{...GLASS,borderRadius:22,padding:16,marginBottom:6,
+          display:'flex',alignItems:'center',justifyContent:'center'}}>
+          {visual}
+        </div>
+      )}
+      <div>{children}</div>
+      {pageNav}
+      <div style={{height:130,flexShrink:0}}/>
+    </div>
+  );
 
   return(
     <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
@@ -20959,6 +21122,12 @@ function Journey({onHome,onSelect,alreadyRead,onToggleRead,onBibel}){
 }
 
 const J_BACK={backIcon:<JourneyIcon size={18}/>};
+/* Die Kapitel als Seiten des Blaetterers (ChapterPager). */
+const RULES_COMPS={court:RulesCourt,aufschlag:RulesAufschlag,waende:RulesWaende,
+  zaehlung:RulesZaehlung,americano:RulesAmericano,mexicano:RulesMexicano,
+  formate:RulesFormate,rotation:RulesRotation,glossar:RulesGlossar,fairplay:RulesFairPlay};
+const JOURNEY_COMPS={ritmodna:JourneyRitmoDNA,angaben:JourneyAngaben,aufstellungen:JourneyAufstellungen,
+  haende:JourneyHaende,schlagwahl:JourneySchlagwahl,schlaeger:JourneySchlaeger,baelle:JourneyBaelle};
 
 /* ── JourneySpielstileList — Overview of 6 styles ──────────────── */
 function JourneySpielstileList({onBack,onHome,onSelect}){
@@ -22786,19 +22955,8 @@ export default function App(){
       if(id==='overview') return null;
       const idx=id?order.indexOf(id):-1;
       if(idx<0) return null;
-      const nav={
-        onBackToRules:()=>setScr('rules-overview'),
-        onHome:goHome,
-        currentIdx:idx,
-        totalSections:order.length,
-        onNext:idx<order.length-1?()=>setScr(`rules-${order[idx+1]}`):null,
-        onPrev:idx>0?()=>setScr(`rules-${order[idx-1]}`):null,
-      };
-      const Comp={court:RulesCourt,aufschlag:RulesAufschlag,waende:RulesWaende,
-        zaehlung:RulesZaehlung,americano:RulesAmericano,mexicano:RulesMexicano,
-        formate:RulesFormate,rotation:RulesRotation,glossar:RulesGlossar,
-        fairplay:RulesFairPlay}[id];
-      return Comp?<Comp {...nav}/>:null;
+      return <ChapterPager key="rules" ids={order} comps={RULES_COMPS} idx={idx}
+        onGo={i=>setScr(`rules-${order[i]}`)} onBack={()=>setScr('rules-overview')} onHome={goHome}/>;
     })()}
     {scr==='journey'&&<JourneyLanding onHome={goHome}
       onContinue={()=>setScr('journey-overview')}
@@ -22834,18 +22992,9 @@ export default function App(){
       if(id==='overview'||id==='spielstile'||!id||scr.startsWith('journey-spielstil-')) return null;
       const idx=id?order.indexOf(id):-1;
       if(idx<0) return null;
-      const nav={
-        onBackToJourney:()=>setScr('journey-overview'),
-        onHome:goHome,
-        currentIdx:idx,
-        totalSections:order.length,
-        onNext:idx<order.length-1?()=>setScr(`journey-${order[idx+1]}`):null,
-        onPrev:idx>0?()=>setScr(`journey-${order[idx-1]}`):null,
-      };
-      const Comp={ritmodna:JourneyRitmoDNA,angaben:JourneyAngaben,aufstellungen:JourneyAufstellungen,
-        haende:JourneyHaende,schlagwahl:JourneySchlagwahl,
-        schlaeger:JourneySchlaeger,baelle:JourneyBaelle}[id];
-      return Comp?<Comp {...nav}/>:null;
+      return <ChapterPager key="journey" ids={order} comps={JOURNEY_COMPS} idx={idx}
+        onGo={i=>setScr(`journey-${order[i]}`)} onBack={()=>setScr('journey-overview')} onHome={goHome}
+        {...J_BACK}/>;
     })()}
     <KeepTab on={scr==='live'} alive={loggedIn}><Live nav={nav} onNewTourney={newTourney} hasMatch={hasMatch} tourneys={tourneys}
       matchCfg={cfg}

@@ -595,6 +595,26 @@ Neu gebaut als Magazin, nicht nur umgefaerbt.
     Titel/Vorspann/Icon. Ausserhalb (Spielstile) bleibt es der ganze
     Screen wie bisher. Ein neues Kapitel kommt in `RULES_COMPS` bzw.
     `JOURNEY_COMPS` und in die Reihenfolge.
+- **Spielstile** (Journey → Spielstile, sieben Typen): die Uebersicht
+  ist ein **Spektrum** — alle Typen auf einer Karte zwischen Abwehr
+  und Angriff (x), Kopf und Bauch (y), der eigene Typ
+  (`profile.styleType`) leuchtet orange; darunter dieselben sieben
+  als Zeilen. Die Detailseite hat **drei Reiter**: „Der Typ" (Poster
+  ganz, Leitspruch, Kernwerte, vier Skalen, Staerken/Schwaechen,
+  Lieblingsschlaege, Seite, Passt zu), „Als Partner" und „Als
+  Gegner" (je eine Ansage, zwei Saetze, drei nummerierte Punkte).
+  Geblaettert wird mit dem `ChapterPager` (`unit="Spielstil"`,
+  `STYLE_COMPS`); die Blaettern-Knoepfe nennen den Nachbarn
+  (`prevLabel`/`nextLabel`).
+  - Inhalte stehen in **`STYLE_GUIDE`** (padelStyles.js), angelehnt
+    an echte Padel-Rollen (Allrounder, Abschluss-Spieler links,
+    Aufbauspieler rechts, Verteidiger, Kreativer, Laeufer,
+    Momentum-Spieler). Die alten Felder `strengths`/`weaknesses`/
+    `shots`/`partners` in `PADEL_STYLES` werden daraus gespeist — eine
+    Quelle fuer Journey und Profil.
+  - `pos` und `scales` sind **redaktionell gesetzt**, keine Messung.
+  - Hysterica hat kein Poster: `StylePoster` zeichnet dann einen
+    Karton in Posterfarbe mit dem Zeichen des Typs.
 - **Textbausteine** `RulesH` (Antiqua mit kurzer oranger Haarlinie),
   `RulesP`/`RulesUl` (15 px statt 13, Punkte statt Striche),
   `RulesDef` (Begriff in der Antiqua, Erklaerung darunter, Haarlinie

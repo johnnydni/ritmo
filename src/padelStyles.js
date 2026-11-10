@@ -53,7 +53,7 @@ export const PADEL_STYLES={
     accent:'#C0392B', card:'#2A0808', text:'#FFE0DC', symbol:'▲',
   },
   individuoso:{
-    name:'Individuoso', subtitle:'Der Strategische',
+    name:'Individuoso', subtitle:'Der Stratege',
     tagline:'Ich gewinne den Punkt vor dem Schlag.',
     desc:'Individuoso denkt mehrere Schläge voraus, analysiert Räume und Rhythmen, kontrolliert Tempo und zwingt Gegner in unangenehme Entscheidungen. Schach auf Glas. Dieser Typ baut Punkte über mehrere Schläge auf — der entscheidende Ball ist oft die Folge von zwei Schlägen davor.',
     kernwerte:['Strategie','Antizipation','Präzision'],
@@ -119,7 +119,7 @@ export const PADEL_STYLES={
     accent:'#7D3C98', card:'#180828', text:'#EDD8FF', symbol:'●',
   },
   motor:{
-    name:'Motor', subtitle:'Der Ausdauernde',
+    name:'Motor', subtitle:'Der Dauerläufer',
     tagline:'Ich krieg noch einen Ball.',
     desc:'Motor gewinnt durch Bewegung, Reichweite und nie endende Energie. Er deckt enorme Flächen ab und bleibt auch in langen Rallyes gefährlich. Wer ihn schlagen will, muss einen Extra-Ball spielen. Motor zermürbt Gegner allein durch seine Präsenz auf jedem Quadratmeter des Courts.',
     kernwerte:['Ausdauer','Geschwindigkeit','Kampfgeist'],
@@ -163,6 +163,173 @@ export const PADEL_STYLES={
     accent:'#D81E5B', card:'#2A0614', text:'#FFDCEA', symbol:'♥',
   },
 };
+
+/* ═══════════════════════════════════════════════════════════════
+   STYLE_GUIDE — die Spielstile als Nachschlagewerk (Journey →
+   Spielstile). Drei Fragen je Typ, eine je Reiter:
+     typ   — wer ist das, wie spielt er?
+     mit   — wie spiele ich MIT ihm (als Partner)?
+     gegen — wie spiele ich GEGEN ihn?
+   Jede Antwort: eine Ansage (lead), zwei Saetze (text), drei Punkte.
+
+   Fachlich angelehnt an Rollen, die es im Padel wirklich gibt:
+   Allrounder (jugador completo), Abschluss-Spieler links (pegador),
+   Aufbauspieler rechts (constructor), Verteidiger (defensor),
+   Kreativspieler, Laeufer/Konterspieler und der Momentum-Spieler.
+   Wer hier ergaenzt, bleibt bei Dingen, die auf dem Court stimmen:
+   Lob holt das Netz zurueck, Bandeja haelt es, Chiquita auf die
+   Fuesse nimmt dem Gegner den Smash, durch die Mitte gibt es weniger
+   Winkel, langsame tiefe Baelle springen kaum von der Wand ab.
+
+   `scales` (0–100) und `pos` (Spektrum der Uebersicht: x = Abwehr →
+   Angriff, y = Kopf → Bauch) sind redaktionell gesetzt — eine
+   Charakterisierung, keine Messung. `side` nennt die Seite fuer
+   Rechtshaender.
+═══════════════════════════════════════════════════════════════ */
+export const STYLE_ORDER=['chico','toro','individuoso','muro','fantasma','motor','hysterica'];
+export const STYLE_SCALES=[['Abwehr','Angriff'],['Sicherheit','Risiko'],['Kopf','Bauch'],['Lange Punkte','Kurze Punkte']];
+export const STYLE_GUIDE={
+  chico:{
+    pos:[50,46], scales:[50,30,45,45], side:'Beide Seiten, meist rechts',
+    typ:{lead:'Spielt, was der Punkt verlangt.',
+      text:'Chico / Chica hat keinen Lieblingsschlag, sondern eine Lieblingsentscheidung: die richtige. Bandeja statt Smash, wenn der Lob tief kommt. Chiquita statt Lob, wenn das Netz offen ist.',
+      strengths:['Kaum unerzwungene Fehler','Spielt rechts wie links','Stellt sich auf Partner und Gegner ein'],
+      weaknesses:['Kein Schlag, der Punkte allein beendet','Überlässt Big Points gern dem Partner','Wird unter Dauerdruck passiv'],
+      shots:['Bandeja','Lob','Chiquita','Volley cross','Tiefer Return']},
+    mit:{lead:'Gib ihm die Rolle, die fehlt.',
+      text:'Chico füllt Lücken. Neben einem Angreifer baut er auf, neben einem Verteidiger macht er Druck. Sag ihm, was du brauchst.',
+      tips:[['Klärt die Mitte','Allrounder sind höflich. Legt vor dem Match fest, wer den Ball zwischen euch nimmt.'],
+        ['Lass ihn aufbauen','Von rechts bereitet er vor, du schließt links ab.'],
+        ['Fordere seinen Abschluss','Erinnere ihn bei 40:40 daran, selbst zu gehen.']],
+      partners:[['toro','Du baust auf, Toro macht den Punkt.'],['fantasma','Du bringst Ruhe in sein Risiko.']]},
+    gegen:{lead:'Zwing ihn zur Entscheidung.',
+      text:'Mit Zeit findet Chico jede Lösung. Ohne Zeit nimmt er die sichere, und die kannst du lesen.',
+      tips:[['Tempo auf den Körper','Schnelle Volleys auf Hüfte und Schulter lassen keine Wahl.'],
+        ['Rück bei Big Points auf','Bei 40:40 spielt er auf Nummer sicher. Steh am Netz und nimm den Ball früh.'],
+        ['Spiel einen an','Wer drei Bälle in Folge bekommt, kann nichts mehr ausgleichen.']]},
+  },
+  toro:{
+    pos:[86,60], scales:[90,80,65,90], side:'Links',
+    typ:{lead:'Sucht das Netz und den schnellen Punkt.',
+      text:'Toro wartet nicht. Er rückt auf, nimmt den Ball früh und macht jeden Ballwechsel kürzer, als dem Gegner lieb ist. Sein Spiel steht und fällt mit dem Überkopfball.',
+      strengths:['Beendet Punkte über Kopf','Hält das Netz mit Druckvolleys','Dreht ein Match in wenigen Minuten'],
+      weaknesses:['Smasht Bälle, die eine Bandeja wären','Verliert das Netz nach dem Fehlschlag','Ungeduldig in langen Ballwechseln'],
+      shots:['Smash','Víbora','Bajada','Druckvolley','Return und aufrücken']},
+    mit:{lead:'Bau ihm den Ball, den er schlagen will.',
+      text:'Toro braucht einen Partner, der vorbereitet: tief und geduldig spielen, bis der kurze Lob kommt. Dann gehört der Ball ihm.',
+      tips:[['Du rechts, er links','So liegen die Mitte und die meisten Lobs auf seiner Vorhand.'],
+        ['Lob statt Risiko','Steht ihr hinten, hol mit dem Lob das Netz zurück. Durchziehen ist sein Job.'],
+        ['Brems ihn nach Fehlern','Zwei Fehler in Folge: Der nächste Überkopfball ist eine Bandeja.']],
+      partners:[['muro','Sichert ab, was du riskierst.'],['chico','Bereitet vor und macht weniger Fehler.']]},
+    gegen:{lead:'Nimm ihm Netz und Tempo.',
+      text:'Toro lebt vom schnellen Punkt. Jeder Schlag mehr, den er spielen muss, arbeitet für dich.',
+      tips:[['Tiefe Lobs','Hoch und lang in die Ecke. Von dort wird aus dem Smash eine Bandeja.'],
+        ['Bälle auf die Füße','Chiquita und flache Returns: Ohne Höhe gibt es nichts zu smashen.'],
+        ['Bleib im Punkt','Bring seinen Smash einmal zurück. Den zweiten schlägt er härter und öfter ins Glas.']]},
+  },
+  individuoso:{
+    pos:[38,12], scales:[40,25,10,30], side:'Rechts',
+    typ:{lead:'Baut den Punkt, bevor er ihn gewinnt.',
+      text:'Individuoso spielt selten den schnellsten Ball, aber fast immer den unbequemsten: in die Mitte, auf die Füße, in die Ecke hinter dem Glas. Er wechselt Tempo und Höhe, bis eine Lücke aufgeht.',
+      strengths:['Platziert, statt zu prügeln','Wechselt Tempo und Höhe gezielt','Findet früh den schwächeren Gegner'],
+      weaknesses:['Zögert beim Abschluss','Verliert den Faden, wenn der Plan nicht greift','Wenig Wucht über Kopf'],
+      shots:['Platzierte Bandeja','Lob in die Ecke','Chiquita','Volley in die Mitte','Tempowechsel']},
+    mit:{lead:'Hör auf seinen Plan.',
+      text:'Er sieht, wo der Gegner wackelt, oft schon nach drei Spielen. Nutz das, statt dein eigenes Match zu spielen.',
+      tips:[['Redet zwischen den Punkten','Er sagt dir, wen ihr anspielt und warum.'],
+        ['Nimm die Abschlüsse','Er bereitet vor. Der kurze Ball danach ist deiner.'],
+        ['Bewegt euch zusammen','Sein Aufbau trägt nur, wenn ihr gemeinsam vor und zurück geht.']],
+      partners:[['motor','Setzt deine Pläne mit Tempo und Reichweite um.'],['toro','Macht aus deiner Vorarbeit Punkte.']]},
+    gegen:{lead:'Gib ihm kein Muster.',
+      text:'Individuoso liest dich. Wer immer gleich spielt, hat nach einem Satz keinen freien Ball mehr.',
+      tips:[['Wechsle selbst das Tempo','Mal hart, mal langsam, mal hoch. Was er nicht vorhersagen kann, kann er nicht planen.'],
+        ['Gib ihm Überkopfbälle','Hohe Lobs zwingen ihn zum Smash, und den mag er nicht.'],
+        ['Geh früh ans Netz','Unter Druck bleibt keine Zeit für den dritten Schlag im Voraus.']]},
+  },
+  muro:{
+    pos:[12,36], scales:[10,10,35,5], side:'Rechts',
+    typ:{lead:'Bringt jeden Ball zurück. Und den nächsten auch.',
+      text:'Muro ist hinten zu Hause. Er lässt den Ball von der Wand kommen, statt ihn zu erzwingen, und antwortet mit dem Lob, bis der Gegner überdreht.',
+      strengths:['Liest die Wände und hat dadurch Zeit','Lobs, die den Gegner vom Netz holen','Kaum unerzwungene Fehler'],
+      weaknesses:['Rückt nach dem guten Lob zu spät nach','Wenig Druck am Netz','Überlässt dem Gegner die Initiative'],
+      shots:['Lob','Verteidigung von der Rückwand','Doppelwand','Hohe Bandeja','Return cross']},
+    mit:{lead:'Mach aus seiner Abwehr deinen Angriff.',
+      text:'Muro hält euch in jedem Punkt. Gewinnen müsst ihr ihn trotzdem vorn, und dorthin nimmst du ihn mit.',
+      tips:[['Geh nach seinem Lob vor','Ein guter Lob ist die Einladung ans Netz. Nimm ihn mit.'],
+        ['Nimm die Überkopfbälle','Bandeja und Smash sind deine, die Wand ist seine.'],
+        ['Bleib geduldig','Wirf den Punkt nicht mit einem Risikoball weg, den er gerade gerettet hat.']],
+      partners:[['toro','Liefert die Offensive, die du absicherst.'],['hysterica','Du bleibst ruhig, wenn ihre Welle bricht.']]},
+    gegen:{lead:'Hol ihn nach vorn.',
+      text:'Hinten ist die Wand am dicksten, am Netz am dünnsten. Muro gewinnt den Punkt nicht, er wartet auf deinen Fehler.',
+      tips:[['Spiel kurz','Stopp und kurze Chiquita zwingen ihn aus seiner Zone.'],
+        ['Bandeja statt Smash','Halt das Netz, statt den Punkt zu erzwingen. Geduld schlägt Geduld.'],
+        ['Langsam und tief','Bälle ohne Tempo springen kaum von der Wand ab. Damit kann er nichts anfangen.']]},
+  },
+  fantasma:{
+    pos:[60,78], scales:[65,85,80,60], side:'Links',
+    typ:{lead:'Spielt den Ball, mit dem keiner rechnet.',
+      text:'Der Stopp, wo alle den Lob erwarten. Der Volley ans Gitter, der Schnitt, der an der Wand stirbt. Fantasma gewinnt Punkte, die es eigentlich nicht gibt.',
+      strengths:['Winkel und Schnitt, die schwer zu lesen sind','Stoppbälle und Bälle ans Gitter','Bringt eingespielte Paare aus dem Rhythmus'],
+      weaknesses:['Schwankt zwischen brillant und fehlerhaft','Wählt den schweren Ball, wo der einfache reicht','Auch für den Partner schwer zu lesen'],
+      shots:['Stopp','Winkelvolley','Víbora mit Schnitt','Chiquita','Ball ans Gitter']},
+    mit:{lead:'Halt ihm den Rücken frei.',
+      text:'Fantasma braucht Freiheit und jemanden, der dahinter aufräumt. Je sicherer du stehst, desto mutiger spielt er.',
+      tips:[['Sichere die Mitte','Wenn er den Winkel sucht, bleibt die Mitte offen. Die ist deine.'],
+        ['Bleib in Bewegung','Auch sein bester Stopp kommt manchmal zurück.'],
+        ['Regeln für enge Punkte','Vereinbart: Bei 40:40 kommt der einfache Ball.']],
+      partners:[['muro','Fängt auf, was du riskierst.'],['chico','Bringt Konstanz in dein Spiel.']]},
+    gegen:{lead:'Bleib bei deinem Plan.',
+      text:'Versuch nicht, ihn zu lesen. Nimm ihm die Winkel und lass ihn die schweren Bälle selbst verschlagen.',
+      tips:[['Durch die Mitte','Aus der Mitte gibt es weniger Winkel. Flach und tief zwischen beide.'],
+        ['Einen Schritt zentraler','Du gibst die Linie auf und deckst dafür fast alles andere.'],
+        ['Spiel den Partner an','Wer keinen Ball bekommt, kann nicht zaubern.']]},
+  },
+  motor:{
+    pos:[26,70], scales:[30,35,65,15], side:'Beide Seiten',
+    typ:{lead:'Kein Ball ist verloren.',
+      text:'Motor macht den Court groß. Er holt den Smash hinter der Wand, läuft den Stopp ab und steht danach wieder am Netz. Wer ihn schlagen will, muss den Punkt zweimal gewinnen.',
+      strengths:['Läuft Lobs und Stopps ab','Holt Smashes zurück, auch von draußen','Im dritten Satz so schnell wie im ersten'],
+      weaknesses:['Läuft Bälle, die dem Partner gehören','Macht wenig Punkte aus eigener Kraft','Verlässt seine Position zu früh'],
+      shots:['Konter-Lob','Volley aus dem Lauf','Bajada','Tiefer Return','Rettungsball']},
+    mit:{lead:'Sag ihm, welche Bälle deine sind.',
+      text:'Motor will helfen und läuft deshalb überall hin. Mit klaren Ansagen wird aus seinem Einsatz ein System.',
+      tips:[['Klare Kommandos','„Meiner“ und „Deiner“, laut und früh.'],
+        ['Rück mit seinen Lobs auf','Er holt den Ball, du holst das Netz.'],
+        ['Mach du den Punkt','Er hält euch im Ballwechsel. Der Abschluss ist deine Aufgabe.']],
+      partners:[['individuoso','Lenkt deine Energie dorthin, wo sie Punkte bringt.'],['toro','Du holst die Bälle, er beendet sie.']]},
+    gegen:{lead:'Mach den Punkt am Netz zu.',
+      text:'Gegen Motor ist kein Ball sicher. Halbe Abschlüsse kommen zurück, und dann steht ihr falsch.',
+      tips:[['Hinter ihn spielen','Gegen die Laufrichtung. Wer schon unterwegs ist, kommt nicht mehr zurück.'],
+        ['Smash nur, wenn er sitzt','Sonst Bandeja. Ein zurückgeholter Smash kostet euch das Netz.'],
+        ['Durch die Mitte','Er läuft gern in den Bereich des Partners. Dort entstehen Missverständnisse.']]},
+  },
+  hysterica:{
+    pos:[84,88], scales:[75,75,95,70], side:'Links',
+    typ:{lead:'Spielt so gut, wie es sich gerade anfühlt.',
+      text:'Läuft es, gewinnt Hysterica vier Punkte am Stück und nimmt Partner und Zuschauer mit. Kippt die Stimmung, wackelt kurz alles. Im Padel entscheiden oft genau diese Serien.',
+      strengths:['Reitet Serien wie kein anderer Typ','Reißt den Partner mit','Mutig bei Big Points'],
+      weaknesses:['Aus zwei Fehlern werden schnell vier','Hadert sichtbar, und Gegner lesen das','Verliert den Fokus in ruhigen Phasen'],
+      shots:['Smash','Druckvolley','Risiko-Return','Víbora','Konter']},
+    mit:{lead:'Sei der Ruhepol.',
+      text:'Ihre Energie ist eure Waffe. Deine Aufgabe ist, die Welle zu verlängern und die Spirale zu stoppen.',
+      tips:[['Kontakt nach jedem Punkt','Schläger abklatschen, ein Wort. Das hält die Welle und bremst das Tief.'],
+        ['Nimm nach Fehlern den nächsten Ball','Gib ihr einen Punkt Pause, ohne es anzusagen.'],
+        ['Feier mit','Wer ihre Winner mitfeiert, bekommt mehr davon.']],
+      partners:[['muro','Bleibt ruhig, wenn deine Welle bricht.'],['individuoso','Gibt deiner Energie eine Richtung.']]},
+    gegen:{lead:'Nimm ihr die Bühne.',
+      text:'Hysterica braucht Reibung, Tempo und Reaktion. Gib ihr nichts davon.',
+      tips:[['Lange, ruhige Punkte','Hoch, tief, ereignislos. Das ist Gift für diesen Typ.'],
+        ['Zeig keine Reaktion','Kein Jubel, kein Ärger, keine Diskussion.'],
+        ['Im Tief auf sie spielen','Wenn sie hadert, bekommt sie jeden Ball.']]},
+  },
+};
+/* Eine Quelle: Staerken, Schwaechen, Schlaege und Partner der alten
+   Felder (Profil, „Alles über <Stil>") kommen aus dem Guide. */
+Object.keys(STYLE_GUIDE).forEach(id=>{
+  const g=STYLE_GUIDE[id],s=PADEL_STYLES[id];
+  s.strengths=g.typ.strengths; s.weaknesses=g.typ.weaknesses; s.shots=g.typ.shots;
+  s.partners=g.mit.partners.map(([pid,why])=>({id:pid,why}));
+});
 
 export const PADEL_QUIZ=[
   {

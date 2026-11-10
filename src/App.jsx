@@ -60,7 +60,7 @@ import {
   PeopleIcon, HandIcon, WarnIcon, SkipIcon, LaptopIcon, MonitorIcon,
   MenuIcon,
 } from "./icons.jsx";
-import { PADEL_STYLES, PADEL_QUIZ, computeStyle, computeStyles, computeMatchTier, STYLE_IMAGES } from "./padelStyles.js";
+import { PADEL_STYLES, PADEL_QUIZ, computeStyle, computeStyles, computeMatchTier, STYLE_IMAGES, STYLE_GUIDE, STYLE_ORDER, STYLE_SCALES } from "./padelStyles.js";
 import { CUP_PIN, CUP_PHASES, CUP_ALERTS, CUP_WARN, initialCupState, cupLeaderboard, cupMatchTier,
   genCupKO, genCupCourageHF, genCupHF, genCupFinals, cupPlayerLabel, cupDuplicateNums } from "./dnaCup.js";
 import GlassSurface from "./GlassSurface.jsx";
@@ -20322,7 +20322,7 @@ function RulesDef({term,children}){
      derselben Stelle, an der man war. */
 const PagerCtx=createContext(null);
 const PG_MS=440;
-function ChapterPager({ids,comps,idx,onGo,onBack,onHome,backIcon,backLabel}){
+function ChapterPager({ids,comps,idx,onGo,onBack,onHome,backIcon,backLabel,unit='Kapitel',pageProps}){
   const n=ids.length;
   const rootRef=useRef(null);
   const[dx,setDx]=useState(0);
@@ -20376,7 +20376,7 @@ function ChapterPager({ids,comps,idx,onGo,onBack,onHome,backIcon,backLabel}){
         <div style={{display:'flex',alignItems:'center',gap:14}}>
           <div style={{flex:1,minWidth:0}}>
             <div className="txt" style={{color:T.t2,fontSize:13,fontStyle:'italic',
-              fontVariantNumeric:'tabular-nums'}}>Kapitel {cur+1} von {n}</div>
+              fontVariantNumeric:'tabular-nums'}}>{unit} {cur+1} von {n}</div>
             <div style={{display:'grid'}}>
               {near.map(i=>{const h=heads[ids[i]]||{};const o=Math.max(0,1-Math.abs(p-i)*1.7);
                 return(
@@ -20410,7 +20410,7 @@ function ChapterPager({ids,comps,idx,onGo,onBack,onHome,backIcon,backLabel}){
             transform:`translateX(calc(${(i-idx)*100}% + ${dx}px))`,transition:tr,
             visibility:Math.abs(i-p)>=1&&!anim&&dx===0&&i!==idx?'hidden':'visible'}}>
             <PagerCtx.Provider value={{id:ids[i],register}}>
-              <Comp currentIdx={i} totalSections={n} onHome={onHome}
+              <Comp {...pageProps} currentIdx={i} totalSections={n} onHome={onHome}
                 onBackToRules={onBack} onBackToJourney={onBack}
                 onNext={i<n-1?()=>goDir(1):null} onPrev={i>0?()=>goDir(-1):null}/>
             </PagerCtx.Provider>
@@ -20425,7 +20425,7 @@ function ChapterPager({ids,comps,idx,onGo,onBack,onHome,backIcon,backLabel}){
 
 /* ───── Shared shell for detail screens ───── */
 function RulesDetailLayout({icon,title,sub,visual,children,onBackToRules,onHome,
-  onNext,onPrev,currentIdx,totalSections,backIcon,backLabel}){
+  onNext,onPrev,currentIdx,totalSections,backIcon,backLabel,prevLabel,nextLabel}){
   /* Im Blaetterer (ChapterPager) ist dies nur noch eine SEITE: Kopf,
      Foto und Knopfleiste gehoeren dem Blaetterer und bleiben stehen;
      die Seite meldet ihm nur Titel, Vorspann und Icon. */
@@ -20485,16 +20485,18 @@ function RulesDetailLayout({icon,title,sub,visual,children,onBackToRules,onHome,
     <div style={{display:'flex',gap:10,marginTop:30}}>
       {onPrev?(
         <button onClick={()=>{buzz(6);onPrev();}}
-          style={{flex:1,padding:'14px 16px',borderRadius:999,...GLASS,
-            color:T.t1,fontSize:15,fontWeight:700,cursor:'pointer'}}>
-          ‹ Zurück
+          style={{flex:1,padding:prevLabel?'9px 16px':'14px 16px',borderRadius:999,...GLASS,
+            color:T.t1,fontSize:15,fontWeight:700,cursor:'pointer',minWidth:0}}>
+          {prevLabel?<><div style={{fontSize:11,fontWeight:500,color:T.t2}}>‹ Zurück</div>
+            <div style={{whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{prevLabel}</div></>:'‹ Zurück'}
         </button>
       ):<span style={{flex:1}}/>}
       {onNext?(
         <button onClick={()=>{buzz(6);onNext();}}
-          style={{flex:1,padding:'14px 16px',borderRadius:999,border:'none',
-            background:T.o,color:'#000',fontSize:15,fontWeight:800,cursor:'pointer'}}>
-          Weiter ›
+          style={{flex:1,padding:nextLabel?'9px 16px':'14px 16px',borderRadius:999,border:'none',
+            background:T.o,color:'#000',fontSize:15,fontWeight:800,cursor:'pointer',minWidth:0}}>
+          {nextLabel?<><div style={{fontSize:11,fontWeight:500,opacity:.7}}>Weiter ›</div>
+            <div style={{whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{nextLabel}</div></>:'Weiter ›'}
         </button>
       ):<span style={{flex:1}}/>}
     </div>
@@ -21129,77 +21131,98 @@ const RULES_COMPS={court:RulesCourt,aufschlag:RulesAufschlag,waende:RulesWaende,
 const JOURNEY_COMPS={ritmodna:JourneyRitmoDNA,angaben:JourneyAngaben,aufstellungen:JourneyAufstellungen,
   haende:JourneyHaende,schlagwahl:JourneySchlagwahl,schlaeger:JourneySchlaeger,baelle:JourneyBaelle};
 
-/* ── JourneySpielstileList — Overview of 6 styles ──────────────── */
-function JourneySpielstileList({onBack,onHome,onSelect}){
-  const order=['chico','toro','individuoso','muro','fantasma','motor','hysterica'];
-  const[imgErr,setImgErr]=useState({});
+/* ── Spielstile ───────────────────────────────────────────────
+   Uebersicht als SPEKTRUM: alle sieben Typen auf einer Karte zwischen
+   Abwehr und Angriff (x), Kopf und Bauch (y) — Lage aus
+   STYLE_GUIDE[id].pos, redaktionell gesetzt. Der eigene Typ
+   (profile.styleType) leuchtet orange. Darunter dieselben sieben als
+   Zeilen: die Karte ist das Bild, die Liste der sichere Weg fuer
+   Daumen und Screenreader.
+   Detail: drei Reiter je Typ (Der Typ / Mit X / Gegen X), Seiten des
+   Blaetterers (ChapterPager) wie Regelwerk und Journey. Inhalte aus
+   STYLE_GUIDE in padelStyles.js. */
+function StylePoster({id,w,r=8,style}){
+  const s=PADEL_STYLES[id],fn=STYLE_IMAGES[id];
+  const[err,setErr]=useState(false);
+  const box={width:w,aspectRatio:'422 / 486',borderRadius:r,display:'block',flexShrink:0,...style};
+  /* Ohne Poster (Hysterica): Karton in der Farbe der Poster, Zeichen
+     in der Akzentfarbe des Typs — so faellt die Luecke nicht auf. */
+  if(!fn||err) return(
+    <div aria-hidden="true" style={{...box,background:'#F1E9D8',color:s.accent,display:'flex',
+      alignItems:'center',justifyContent:'center',fontSize:w*.42,lineHeight:1}}>{s.symbol}</div>
+  );
+  return <img src={`${getAssetBase()}assets/${fn}`} alt="" draggable={false} onError={()=>setErr(true)}
+    style={{...box,objectFit:'cover'}}/>;
+}
+const firstName=n=>n.split(' / ')[0];
 
+function JourneySpielstileList({onBack,onHome,onSelect,myStyle}){
+  const me=myStyle&&PADEL_STYLES[myStyle]?myStyle:null;
+  const axis={position:'absolute',fontFamily:T.fontDisplay,fontSize:8,letterSpacing:1.6,color:T.t2,
+    textTransform:'uppercase',whiteSpace:'nowrap'};
   return(
     <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 18px)',position:'relative',overflow:'hidden'}}>
       <PhotoBackdrop/>
-      <div style={{padding:'0 22px 8px'}}>
-        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
-          <div style={{width:42,display:'flex',justifyContent:'center'}}><MaskIcon size={30} color={T.o}/></div>
-          <div style={{flex:1,minWidth:0}}>
-            <div style={{...HEAD_SERIF,fontSize:30,lineHeight:1.1,paddingBottom:2}}>
-              Die 6 Spielstile
-            </div>
-            <div style={{color:T.t3,fontSize:12,marginTop:2,fontWeight:500}}>
-              Jeder Padel-Typ — Stärken, Schwächen und Partner.
-            </div>
+      <ScreenHeader kicker="Journey" title="Spielstile."
+        subtitle="Wo stehst du? Sieben Typen zwischen Angriff und Abwehr, Kopf und Bauch."/>
+      <div style={{flex:1,padding:'0 22px',overflowY:'auto',WebkitOverflowScrolling:'touch'}}>
+        <div className="fu" style={{...GLASS,borderRadius:24,position:'relative',height:372}}>
+          <span aria-hidden="true" style={{position:'absolute',left:'50%',top:26,bottom:26,width:1,background:T.glassSep}}/>
+          <span aria-hidden="true" style={{position:'absolute',top:'50%',left:26,right:26,height:1,background:T.glassSep}}/>
+          <span aria-hidden="true" style={{...axis,left:'50%',top:9,transform:'translateX(-50%)'}}>Kopf</span>
+          <span aria-hidden="true" style={{...axis,left:'50%',bottom:9,transform:'translateX(-50%)'}}>Bauch</span>
+          <span aria-hidden="true" style={{...axis,left:11,top:'50%',transform:'translate(-50%,-50%) rotate(-90deg)'}}>Abwehr</span>
+          <span aria-hidden="true" style={{...axis,right:11,top:'50%',transform:'translate(50%,-50%) rotate(90deg)'}}>Angriff</span>
+          {/* Innenflaeche: die Typen sitzen in Prozent darin, mit Rand
+              fuer Poster und Namen. */}
+          <div style={{position:'absolute',left:46,right:46,top:40,bottom:58}}>
+            {STYLE_ORDER.map((id,i)=>{
+              const s=PADEL_STYLES[id],[x,y]=STYLE_GUIDE[id].pos,mine=id===me;
+              return(
+                <button key={id} onClick={()=>{buzz(6);onSelect(id);}} aria-label={`${s.name}, ${s.subtitle}`}
+                  className="fu" style={{position:'absolute',left:`${x}%`,top:`${y}%`,
+                    transform:'translate(-50%,-50%)',background:'none',border:'none',padding:4,cursor:'pointer',
+                    display:'flex',flexDirection:'column',alignItems:'center',gap:3,color:mine?T.o:T.t1,
+                    animationDelay:`${80+i*45}ms`,zIndex:mine?2:1}}>
+                  <StylePoster id={id} w={mine?50:42} r={8}
+                    style={mine?{boxShadow:`0 0 0 2px ${T.o}, 0 0 20px ${rgba('#FF7A1A',.5)}`}
+                      :{border:`1px solid ${T.glassLine}`}}/>
+                  <span style={{fontFamily:T.fontSerif,fontWeight:700,fontSize:12.5,whiteSpace:'nowrap',
+                    lineHeight:1.1}}>{firstName(s.name)}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
-      </div>
-
-      {/* Style cards */}
-      <div style={{flex:1,padding:'14px 22px 0',display:'flex',flexDirection:'column',gap:10,
-        overflowY:'auto',WebkitOverflowScrolling:'touch'}}>
-        {order.map((id,i)=>{
-          const s=PADEL_STYLES[id];
-          const fn=STYLE_IMAGES[id];
-          return(
-            <button key={id} onClick={()=>onSelect(id)} className="fu"
-              style={{...GLASS,borderRadius:16,
-                padding:0,display:'flex',alignItems:'stretch',gap:0,
-                cursor:'pointer',color:T.t1,textAlign:'left',overflow:'hidden',
-                animationDelay:`${i*40}ms`,transition:'border-color .15s'}}
-              onPointerDown={e=>e.currentTarget.style.borderColor=s.accent}
-              onPointerUp={e=>e.currentTarget.style.borderColor=T.border}
-              onPointerLeave={e=>e.currentTarget.style.borderColor=T.border}>
-              <div style={{width:96,flexShrink:0,background:s.accent,
-                position:'relative',overflow:'hidden'}}>
-                {imgErr[id]?(
-                  <div style={{width:'100%',height:'100%',display:'flex',
-                    alignItems:'center',justifyContent:'center',color:'white',
-                    fontSize:22,fontWeight:900}}>
-                    {s.symbol}
-                  </div>
-                ):(
-                  <img src={`${getAssetBase()}assets/${fn}`}
-                    onError={()=>setImgErr(e=>({...e,[id]:true}))}
-                    style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}
-                    alt={s.name}/>
-                )}
-              </div>
-              <div style={{flex:1,minWidth:0,padding:'14px 14px 14px 16px',
-                display:'flex',flexDirection:'column',justifyContent:'center'}}>
-                <div style={{display:'flex',alignItems:'baseline',gap:7,marginBottom:3}}>
-                  <div style={{color:s.accent,fontSize:16,fontWeight:900,letterSpacing:-.2}}>
-                    {s.name}
-                  </div>
-                  <div style={{color:T.t3,fontSize:10,fontWeight:600,letterSpacing:.5,
-                    textTransform:'uppercase'}}>{s.subtitle}</div>
-                </div>
-                <div style={{color:T.t2,fontSize:11,lineHeight:1.5,fontStyle:'italic'}}>
-                  „{s.tagline}"
-                </div>
-              </div>
-              <div style={{display:'flex',alignItems:'center',paddingRight:14,
-                color:T.t3,fontSize:20,fontWeight:600}}>›</div>
-            </button>
-          );
-        })}
+        <div className="txt" style={{color:T.t2,fontSize:13,fontStyle:'italic',margin:'10px 2px 0'}}>
+          {me?<>Orange markiert: dein Typ aus dem Quiz.</>:'Tippe einen Typ an.'}
+        </div>
+        <SectionRule>Alle sieben</SectionRule>
+        <div style={{...GLASS,borderRadius:20,padding:'2px 14px'}}>
+          {STYLE_ORDER.map((id,i)=>{
+            const s=PADEL_STYLES[id];
+            return(
+              <button key={id} onClick={()=>{buzz(6);onSelect(id);}}
+                style={{display:'flex',alignItems:'center',gap:12,width:'100%',padding:'10px 0',
+                  background:'none',border:'none',borderTop:i?`1px solid ${T.glassSep}`:'none',
+                  color:T.t1,textAlign:'left',cursor:'pointer'}}>
+                <span style={{...HEAD_SERIF,fontSize:22,color:T.o,width:30,flexShrink:0}}>0{i+1}</span>
+                <span style={{flex:1,minWidth:0}}>
+                  <span style={{display:'flex',alignItems:'center',gap:8}}>
+                    <span style={{fontFamily:T.fontSerif,fontWeight:700,fontSize:19}}>{s.name}</span>
+                    {id===me&&<span className="display" style={{fontSize:7.5,letterSpacing:1.4,color:'#000',
+                      background:T.o,padding:'3px 7px',borderRadius:999}}>Du</span>}
+                  </span>
+                  <span className="txt" style={{display:'block',color:T.t2,fontSize:12.5,fontStyle:'italic',
+                    marginTop:1}}>{s.subtitle} · „{s.tagline}“</span>
+                </span>
+                <span aria-hidden="true" style={{color:T.t2,fontSize:18}}>›</span>
+              </button>
+            );
+          })}
+        </div>
+        <div style={{height:130}}/>
       </div>
       <MatchBar onHome={onHome} rightButtons={[
         {icon:<JourneyIcon size={18}/>,onClick:onBack,label:'Zurück zur Journey'}
@@ -21208,150 +21231,150 @@ function JourneySpielstileList({onBack,onHome,onSelect}){
   );
 }
 
-/* ── JourneySpielstile — Detail via RulesDetailLayout ──────────── */
-function JourneySpielstile({styleId,onBack,onHome,onNext,onPrev,currentIdx,totalSections,onPartnerJump}){
-  const style=PADEL_STYLES[styleId];
-  const filename=STYLE_IMAGES[styleId];
-  const[imgErr,setImgErr]=useState(false);
-
-  if(!style) return null;
-
-  const hero=imgErr?(
-    <div style={{width:'100%',aspectRatio:'7/5',background:style.accent,
-      display:'flex',alignItems:'center',justifyContent:'center',
-      color:'white',fontSize:28,fontWeight:900,letterSpacing:1.5,borderRadius:8}}>
-      {style.name.toUpperCase()}
+/* Ein Regler der Charakter-Skalen: Punkt auf einer Haarlinie. */
+function StyleScale({l,r,v}){
+  return(
+    <div style={{marginTop:16}}>
+      <div className="display" style={{display:'flex',justifyContent:'space-between',color:T.t2,
+        fontSize:8,letterSpacing:1.6}}><span>{l}</span><span>{r}</span></div>
+      <div style={{position:'relative',height:16,marginTop:6}} role="img"
+        aria-label={`${l} bis ${r}: ${v<34?`eher ${l}`:v>66?`eher ${r}`:'dazwischen'}`}>
+        <span style={{position:'absolute',left:0,right:0,top:7,height:2,borderRadius:1,background:T.glassLine}}/>
+        <span style={{position:'absolute',left:`calc(${v}% - ${v*.16}px)`,top:0,width:16,height:16,borderRadius:'50%',
+          background:T.o,boxShadow:`0 0 14px ${rgba('#FF7A1A',.55)}`,
+          transition:'left .6s var(--ease-out-quint)'}}/>
+      </div>
     </div>
-  ):(
-    <img src={`${getAssetBase()}assets/${filename}`}
-      onError={()=>setImgErr(true)}
-      style={{width:'100%',height:'auto',aspectRatio:'7/5',
-        objectFit:'cover',display:'block',borderRadius:8}}
-      alt={style.name}/>
   );
+}
+/* Drei nummerierte Punkte: Zahl in der Antiqua, Titel, ein Satz. */
+function StyleTips({tips}){
+  return(
+    <div style={{...GLASS,borderRadius:20,padding:'4px 16px',marginTop:18}}>
+      {tips.map(([t,d],i)=>(
+        <div key={t} style={{display:'flex',gap:12,padding:'13px 0',borderTop:i?`1px solid ${T.glassSep}`:'none'}}>
+          <span style={{...HEAD_SERIF,fontSize:22,color:T.o,width:30,flexShrink:0}}>0{i+1}</span>
+          <div>
+            <div style={{fontFamily:T.fontSerif,fontWeight:700,fontSize:18,color:T.t1,lineHeight:1.2}}>{t}</div>
+            <div style={{color:T.t1,opacity:.74,fontSize:14,lineHeight:1.45,marginTop:3}}>{d}</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
+function JourneySpielstile({styleId,onBackToJourney,onHome,onNext,onPrev,currentIdx,totalSections,onPartnerJump,myStyle}){
+  const s=PADEL_STYLES[styleId],g=STYLE_GUIDE[styleId];
+  const[tab,setTab]=useState('typ');
+  if(!s||!g) return null;
+  /* Feste Woerter statt „Mit Individuoso": lange Namen liefen aus dem Reiter. */
+  const tabs=[['typ','Der Typ'],['mit','Als Partner'],['gegen','Als Gegner']];
+  const lead={...HEAD_SERIF,fontSize:29,lineHeight:1.12,marginTop:22};
+  const nb=d=>{const id=STYLE_ORDER[currentIdx+d];return id?PADEL_STYLES[id].name:undefined;};
+  const col=(title,items,c,dot)=>(
+    <div style={{padding:14,minWidth:0}}>
+      <div className="display" style={{color:c,fontSize:9.5,letterSpacing:1.8,marginBottom:10}}>{title}</div>
+      {items.map(t=>(
+        <div key={t} style={{position:'relative',paddingLeft:15,fontSize:14,lineHeight:1.4,marginBottom:8,
+          color:T.t1,opacity:.9}}>
+          <span aria-hidden="true" style={{position:'absolute',left:0,top:'.5em',width:6,height:6,
+            borderRadius:'50%',background:dot}}/>{t}
+        </div>
+      ))}
+    </div>
+  );
   return(
     <RulesDetailLayout
-      icon={<span style={{fontSize:28,fontWeight:900,lineHeight:1,color:style.accent}}>{style.symbol}</span>}
-      title={style.name}
-      sub={style.subtitle}
-      visual={hero}
-      onBackToRules={onBack}
-      onHome={onHome}
-      onNext={onNext}
-      onPrev={onPrev}
-      currentIdx={currentIdx}
-      totalSections={totalSections}
+      icon={<StylePoster id={styleId} w={38} r={6}/>}
+      title={s.name} sub={s.subtitle}
+      onBackToRules={onBackToJourney} onHome={onHome}
+      onNext={onNext} onPrev={onPrev} prevLabel={nb(-1)} nextLabel={nb(1)}
+      currentIdx={currentIdx} totalSections={totalSections}
       backIcon={<JourneyIcon size={18}/>} backLabel="Zurück zur Journey">
-
-      {/* Tagline */}
-      <div style={{color:style.accent,fontSize:16,fontWeight:600,fontStyle:'italic',
-        marginBottom:14,lineHeight:1.4}}>
-        „{style.tagline}"
+      <div role="tablist" style={{...GLASS,display:'flex',padding:4,borderRadius:999}}>
+        {tabs.map(([id,label])=>(
+          <button key={id} role="tab" aria-selected={tab===id} onClick={()=>{buzz(4);setTab(id);}}
+            style={{flex:1,minWidth:0,padding:'9px 4px',borderRadius:999,border:'none',cursor:'pointer',
+              fontSize:13.5,fontWeight:700,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',
+              background:tab===id?'#fff':'transparent',color:tab===id?'#000':T.t2,
+              transition:'background .2s ease,color .2s ease'}}>{label}</button>
+        ))}
       </div>
-
-      {/* Description */}
-      <div style={{color:T.t2,fontSize:16,lineHeight:1.6,marginBottom:18}}>
-        {style.desc}
-      </div>
-
-      {/* Strengths */}
-      <SectionTitle accent={style.accent}>Stärken</SectionTitle>
-      <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:16}}>
-        {style.strengths.map(s=>(
-          <div key={s} style={{display:'flex',gap:10,alignItems:'flex-start'}}>
-            <div style={{width:5,height:5,borderRadius:'50%',background:style.accent,
-              marginTop:7,flexShrink:0}}/>
-            <div style={{color:T.t1,fontSize:13,lineHeight:1.5}}>{s}</div>
+      <div key={tab} className="fi">
+      {tab==='typ'&&(<>
+        <div style={{...GLASS,borderRadius:22,padding:14,marginTop:18,display:'flex',gap:16,alignItems:'center'}}>
+          <StylePoster id={styleId} w={128} r={10}/>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{...HEAD_SERIF,fontSize:23,lineHeight:1.14}}>„{s.tagline}“</div>
+            <div style={{height:1,background:T.glassSep,margin:'12px 0 10px'}}/>
+            {s.kernwerte.map(k=>(
+              <div key={k} style={{display:'flex',alignItems:'center',gap:8,fontSize:13.5,color:T.t1,
+                opacity:.88,marginTop:5}}>
+                <span aria-hidden="true" style={{width:5,height:5,borderRadius:'50%',background:s.accent}}/>{k}
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
-
-      {/* Weaknesses */}
-      <SectionTitle accent={T.t3}>Schwächen</SectionTitle>
-      <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:16}}>
-        {style.weaknesses.map(w=>(
-          <div key={w} style={{display:'flex',gap:10,alignItems:'flex-start'}}>
-            <div style={{width:5,height:5,borderRadius:'50%',background:T.t4,
-              marginTop:7,flexShrink:0}}/>
-            <div style={{color:T.t2,fontSize:13,lineHeight:1.5}}>{w}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Kernwerte */}
-      <SectionTitle accent={style.accent}>Kernwerte</SectionTitle>
-      <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:16}}>
-        {style.kernwerte.map(k=>(
-          <div key={k} style={{padding:'5px 11px',background:style.accent,
-            borderRadius:25,color:'white',fontSize:11,fontWeight:700,letterSpacing:.5}}>
-            {k}
-          </div>
-        ))}
-      </div>
-
-      {/* Shots */}
-      <SectionTitle accent={style.accent}>Typische Shots</SectionTitle>
-      <div style={{display:'flex',gap:5,flexWrap:'wrap',marginBottom:18}}>
-        {style.shots.map(sh=>(
-          <div key={sh} style={{padding:'4px 10px',background:T.card,
-            border:`1px solid ${T.border}`,borderRadius:16,
-            color:T.t1,fontSize:11,fontWeight:500}}>{sh}</div>
-        ))}
-      </div>
-
-      {/* Partners */}
-      <SectionTitle accent={style.accent}>Passt gut zu</SectionTitle>
-      <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:18}}>
-        {style.partners.map(p=>{
-          const pStyle=PADEL_STYLES[p.id];
-          const pFile=STYLE_IMAGES[p.id];
-          return(
-            <PartnerCard key={p.id} pStyle={pStyle} pFile={pFile}
-              why={p.why}
-              onClick={()=>onPartnerJump&&onPartnerJump(p.id)}/>
-          );
-        })}
+        </div>
+        {styleId===myStyle&&(
+          <div className="txt" style={{color:T.o,fontSize:13,fontStyle:'italic',margin:'10px 2px 0'}}>
+            Das ist dein Typ aus dem Quiz.</div>
+        )}
+        <div style={lead}>{g.typ.lead}</div>
+        <div style={{color:T.t1,opacity:.86,fontSize:15,lineHeight:1.62,marginTop:10}}>{g.typ.text}</div>
+        <div style={{...GLASS,borderRadius:20,padding:'4px 16px 20px',marginTop:18}}>
+          {STYLE_SCALES.map(([l,r],i)=><StyleScale key={l} l={l} r={r} v={g.scales[i]}/>)}
+        </div>
+        <div style={{...GLASS,borderRadius:20,marginTop:12,display:'grid',
+          gridTemplateColumns:'minmax(0,1fr) 1px minmax(0,1fr)'}}>
+          {col('Stärken',g.typ.strengths,T.o,T.o)}
+          <span style={{background:T.glassSep}}/>
+          {col('Schwächen',g.typ.weaknesses,T.t2,'rgba(255,255,255,.4)')}
+        </div>
+        <RulesH>Lieblingsschläge</RulesH>
+        <div style={{display:'flex',flexWrap:'wrap',gap:7}}>
+          {g.typ.shots.map(c=>(
+            <span key={c} style={{...GLASS,boxShadow:'none',padding:'7px 13px',borderRadius:999,
+              fontSize:13,color:T.t1}}>{c}</span>
+          ))}
+        </div>
+        <div className="txt" style={{color:T.t2,fontSize:13.5,fontStyle:'italic',marginTop:12}}>
+          Seite: {g.side}</div>
+        <RulesH>Passt zu</RulesH>
+        <div style={{...GLASS,borderRadius:20,padding:'2px 14px'}}>
+          {g.mit.partners.map(([pid,why],i)=>(
+            <button key={pid} onClick={()=>{buzz(6);onPartnerJump&&onPartnerJump(pid);}}
+              style={{display:'flex',gap:12,alignItems:'center',width:'100%',padding:'12px 0',background:'none',
+                border:'none',borderTop:i?`1px solid ${T.glassSep}`:'none',color:T.t1,textAlign:'left',
+                cursor:'pointer'}}>
+              <StylePoster id={pid} w={44} r={7}/>
+              <span style={{flex:1,minWidth:0}}>
+                <span style={{display:'block',fontFamily:T.fontSerif,fontWeight:700,fontSize:18}}>
+                  {PADEL_STYLES[pid].name}</span>
+                <span style={{display:'block',color:T.t2,fontSize:13,lineHeight:1.4,marginTop:2}}>{why}</span>
+              </span>
+              <span aria-hidden="true" style={{color:T.t2,fontSize:18}}>›</span>
+            </button>
+          ))}
+        </div>
+      </>)}
+      {tab==='mit'&&(<>
+        <div style={lead}>{g.mit.lead}</div>
+        <div style={{color:T.t1,opacity:.86,fontSize:15,lineHeight:1.62,marginTop:10}}>{g.mit.text}</div>
+        <StyleTips tips={g.mit.tips}/>
+      </>)}
+      {tab==='gegen'&&(<>
+        <div style={lead}>{g.gegen.lead}</div>
+        <div style={{color:T.t1,opacity:.86,fontSize:15,lineHeight:1.62,marginTop:10}}>{g.gegen.text}</div>
+        <StyleTips tips={g.gegen.tips}/>
+      </>)}
       </div>
     </RulesDetailLayout>
   );
 }
-
-/* Partner card — extracted so onClick can be passed cleanly */
-function PartnerCard({pStyle,pFile,why,onClick}){
-  const[err,setErr]=useState(false);
-  return(
-    <button onClick={onClick}
-      style={{display:'flex',gap:12,alignItems:'center',
-        background:pStyle.card,border:`1px solid ${pStyle.accent}40`,
-        borderRadius:15,padding:10,cursor:'pointer',textAlign:'left',
-        color:'inherit'}}>
-      <div style={{width:56,height:40,borderRadius:6,overflow:'hidden',
-        flexShrink:0,background:pStyle.accent}}>
-        {err?(
-          <div style={{width:'100%',height:'100%',display:'flex',
-            alignItems:'center',justifyContent:'center',color:'white',
-            fontSize:18,fontWeight:800}}>{pStyle.symbol}</div>
-        ):(
-          <img src={`${getAssetBase()}assets/${pFile}`}
-            onError={()=>setErr(true)}
-            style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}
-            alt={pStyle.name}/>
-        )}
-      </div>
-      <div style={{flex:1,minWidth:0}}>
-        <div style={{display:'flex',alignItems:'baseline',gap:6,marginBottom:2}}>
-          <div style={{color:pStyle.accent,fontSize:13,fontWeight:800}}>
-            {pStyle.name}
-          </div>
-          <div style={{color:T.t3,fontSize:10}}>{pStyle.subtitle}</div>
-        </div>
-        <div style={{color:T.t2,fontSize:11,lineHeight:1.4}}>{why}</div>
-      </div>
-      <div style={{color:T.t3,fontSize:16}}>›</div>
-    </button>
-  );
-}
+/* Die Typen als Seiten des Blaetterers — auf Modul-Ebene, damit die
+   Komponenten ueber Renderings hinweg dieselben bleiben. */
+const STYLE_COMPS=Object.fromEntries(STYLE_ORDER.map(id=>[id,p=><JourneySpielstile styleId={id} {...p}/>]));
 
 function SectionTitle({children,accent}){
   return(
@@ -22969,22 +22992,15 @@ export default function App(){
       onBibel={()=>setScr('ritmo-bibel')}/>}
     {scr==='journey-spielstile'&&<JourneySpielstileList
       onBack={()=>setScr('journey-overview')}
-      onHome={goHome}
+      onHome={goHome} myStyle={profile.styleType}
       onSelect={(id)=>setScr(`journey-spielstil-${id}`)}/>}
     {scr.startsWith('journey-spielstil-')&&(()=>{
-      const id=scr.slice('journey-spielstil-'.length);
-      const order=['chico','toro','individuoso','muro','fantasma','motor','hysterica'];
-      const idx=order.indexOf(id);
+      const idx=STYLE_ORDER.indexOf(scr.slice('journey-spielstil-'.length));
       if(idx<0) return null;
-      return <JourneySpielstile
-        styleId={id}
-        currentIdx={idx}
-        totalSections={order.length}
-        onBack={()=>setScr('journey-spielstile')}
-        onHome={goHome}
-        onNext={idx<order.length-1?()=>setScr(`journey-spielstil-${order[idx+1]}`):null}
-        onPrev={idx>0?()=>setScr(`journey-spielstil-${order[idx-1]}`):null}
-        onPartnerJump={(pid)=>setScr(`journey-spielstil-${pid}`)}/>;
+      return <ChapterPager key="styles" ids={STYLE_ORDER} comps={STYLE_COMPS} idx={idx} unit="Spielstil"
+        onGo={i=>setScr(`journey-spielstil-${STYLE_ORDER[i]}`)}
+        onBack={()=>setScr('journey-spielstile')} onHome={goHome} {...J_BACK}
+        pageProps={{myStyle:profile.styleType,onPartnerJump:pid=>setScr(`journey-spielstil-${pid}`)}}/>;
     })()}
     {(()=>{
       const order=['ritmodna','angaben','aufstellungen','haende','schlagwahl','schlaeger','baelle'];

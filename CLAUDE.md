@@ -46,6 +46,8 @@ Pure / side-effect-free modules have been extracted from the original mega-file.
 | [src/whatsNew.js](src/whatsNew.js) | `RELEASES` (die Ausgaben des Update-Newsletters) + `unseenRelease(seen)`. | Inhalt/Daten; die Regeln fuer neue Ausgaben stehen im Dateikopf. |
 | [src/wallpapers.js](src/wallpapers.js) | `WALLPAPERS` (Profil-Hintergruende: Foto + Verlaeufe mit Korn), `wallpaperById`, `GRAIN_URL`. | Reine Daten; gezeichnet von `ProfileBackdrop` in App.jsx. |
 | [src/tactics3d.js](src/tactics3d.js) | Das 3D-Taktik-Board der Bibel (three.js): `PLAYS`, `WEATHERS`, `createBoard(canvas,opts)`, `webglOk()`. | Wird per `import()` erst beim Oeffnen geladen (eigener Chunk, ~142 kB gz). UI-Schale ist `TacticsBoard` in App.jsx. |
+| [src/stylePlays.js](src/stylePlays.js) | Die Spielzuege des Simulators: `STYLE_PLAYS` (je Spielstil eine feste Choreografie samt Konter-Ende), `scenesFor(bottom,top)`, `defaultTeams`. | Reine Daten, kein three.js. Siehe „Spielzug-Simulator“. |
+| [src/sim3d.js](src/sim3d.js) | Die Buehne des Simulators (three.js): `createSim(canvas,opts)`. | Per `import()` nachgeladen (~5 kB gz), teilt Texturen und Kugel-Shader mit rules3d.js. |
 | [src/rules3d.js](src/rules3d.js) | Die Regelwerk-Szenen in 3D (three.js), gelesen aus dem SVG der 2D-Szene: `createRuleScene(canvas,root,{id,reduced})`, `webglOk()`. | Per `import()` nachgeladen (eigener Chunk, ~10 kB gz plus three.js). Schalter `ritmo_rules3d`. Siehe „Regelwerk in 3D“. |
 | [src/scenes.jsx](src/scenes.jsx) | Die bewegten Grafiken der Bibel: `useSceneClock` (Zeitleiste, spielt nur im Bild), Bausteine (`Court`, `Orb`, `Ball`, `Tag`, `Steps`) und je Kapitel eine `Scene*`. | Siehe „Die Bibel“. Reine Darstellung, kein App-State. |
 | [src/skillDescriptions.js](src/skillDescriptions.js) | `SKILL_DESCRIPTIONS` — text for the RITMO DNA Skill tier card. | Translation-ready content. |
@@ -742,6 +744,50 @@ Kapitel (alle ausser Schlagarten).
   ~5–9 fps. `ritmo_rules_read=true` ueberspringt die Landing. Lange
   Laeufe mit vielen Kapiteln in einer Seite haengen SwiftShader auf —
   ein Kapitel je Browserstart.
+
+### Spielzug-Simulator (`StyleSim`, [src/stylePlays.js](src/stylePlays.js), [src/sim3d.js](src/sim3d.js))
+
+Journey → Spielstile → Karte „Wer gegen wen?“ (Route `style-sim`).
+**Nur ansehen**: man waehlt zwei Typen je Team (zwei Poster-Reihen),
+darunter stehen die fertigen Szenen dieser Paarung, ein Tipp spielt
+sie im Kino ab. Nichts wird gerechnet oder simuliert.
+
+- **Ein Spielzug je Spielstil** (`STYLE_PLAYS`): der typische Punkt
+  des Typs (Toro: Smash por tres, Muro: der Lob, Chico: die Chiquita,
+  Individuoso: der Aufbau, Fantasma: die Finte, Motor: der Konter,
+  Hysterica: der Lauf). Eine Paarung zeigt je vorkommendem Typ eine
+  Szene, also bis zu vier.
+- **Das Ende haengt vom Gegner ab**: steht drueben ein Typ aus
+  `counter.by`, ersetzt `counter.steps` die Schritte ab `from` (Muro
+  bringt Toros Smash zurueck, Motor laeuft Fantasmas Finte ab …), und
+  die Unterzeile der Szene sagt es schon in der Liste.
+- **Rollen statt Plaetze**: geschrieben wird aus Sicht des Helden
+  (H, P, G, g; Held bei z > 0). `scenesFor` setzt die Namen ein,
+  dreht die Szene um 180°, wenn der Held oben spielt, und stellt die
+  Gegner so, wie der Zug sie braucht (der Konter-Typ ist G). Die
+  Seiten eines Teams koennen deshalb von Szene zu Szene wechseln —
+  die Kugeln gleiten beim Start sichtbar auf ihre Plaetze.
+- **Ein Schritt** = Satz, Positionen am Ende, Wegpunkte des Balls
+  `[x, hoehe, z, bogen]` (Aufsetzer und Wand sind einfach Wegpunkte),
+  optional eine Zielzone. Die Fakten sind redaktionell gesetzt — wer
+  einen Zug aendert, schaut ihn sich an.
+- **EIN Canvas, zwei Ansichten**: Uebersicht von oben in einem Band
+  zwischen Auswahl und Liste, Kino tief hinter dem unteren Team. Das
+  Band ist ein Ausschnitt per `setViewOffset` (gemessen im DOM,
+  `setBand`), die Kamera faehrt dazwischen — kein zweiter Canvas, kein
+  Schnitt. Im Kino duerfen die vorderen Ecken aus dem Bild laufen,
+  sonst diktiert die Grundlinie vor der Kamera den Abstand.
+- **Die Typen sind Glaskugeln mit Karton-Scheibchen**: Posterfarbe,
+  darauf das Zeichen des Typs in seiner Akzentfarbe — auf Canvas
+  **selbst gezeichnet** (`symbol`), weil auf Glyphen wie dem Sechseck
+  nicht auf jedem Geraet Verlass ist. Unten orange, oben blau.
+- Die Wand zur Kamera traegt weder Rahmen noch Gitter — sie stuende
+  im Kino zwischen Zuschauer und Spiel.
+- Im Kino: Tipp pausiert, ✕ bricht ab, am Ende geht es von selbst
+  zurueck; gesehene Szenen tragen einen orangen Play-Ring. Die Wahl
+  der Teams liegt in `ritmo_sim_teams`. Reduzierte Bewegung: die
+  Schritte springen, statt zu fliegen.
+- Testen wie das Regelwerk in 3D (SwiftShader, ~5 fps).
 
 ### Das Taktik-Board (`TacticsBoard`, [src/tactics3d.js](src/tactics3d.js))
 

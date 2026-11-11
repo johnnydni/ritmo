@@ -39,7 +39,7 @@ export function webglOk(){
 }
 
 /* ── Texturen ─────────────────────────────────────────────────── */
-function canvasTex(w,h,draw,{repeat=null,srgb=true}={}){
+export function canvasTex(w,h,draw,{repeat=null,srgb=true}={}){
   const c=document.createElement('canvas');c.width=Math.max(2,Math.ceil(w));c.height=Math.max(2,Math.ceil(h));
   draw(c.getContext('2d'),c.width,c.height);
   const t=new THREE.CanvasTexture(c);
@@ -49,16 +49,16 @@ function canvasTex(w,h,draw,{repeat=null,srgb=true}={}){
   return t;
 }
 const rnd=(s=7)=>()=>(s=(s*16807)%2147483647)/2147483647;
-const turfTex=()=>canvasTex(256,256,(g,w,h)=>{
+export const turfTex=()=>canvasTex(256,256,(g,w,h)=>{
   g.fillStyle='#ffffff';g.fillRect(0,0,w,h);
   const r=rnd(3);
   for(let i=0;i<9000;i++){g.fillStyle=r()<.5?'rgba(255,255,255,.6)':'rgba(0,0,0,.16)';g.fillRect(r()*w,r()*h,1,1+r()*2);}
 },{repeat:[4,8]});
-const meshTex=()=>canvasTex(64,64,(g,w,h)=>{
+export const meshTex=()=>canvasTex(64,64,(g,w,h)=>{
   g.strokeStyle='#fff';g.lineWidth=3;g.beginPath();g.moveTo(0,0);g.lineTo(w,h);g.moveTo(w,0);g.lineTo(0,h);g.stroke();
 },{srgb:false});
-const netTex=()=>canvasTex(64,64,(g,w,h)=>{g.strokeStyle='#fff';g.lineWidth=5;g.strokeRect(0,0,w,h);},{srgb:false});
-const blobTex=()=>canvasTex(128,128,(g)=>{
+export const netTex=()=>canvasTex(64,64,(g,w,h)=>{g.strokeStyle='#fff';g.lineWidth=5;g.strokeRect(0,0,w,h);},{srgb:false});
+export const blobTex=()=>canvasTex(128,128,(g)=>{
   const gr=g.createRadialGradient(64,64,0,64,64,64);
   gr.addColorStop(0,'rgba(0,0,0,1)');gr.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=gr;g.fillRect(0,0,128,128);
 });
@@ -105,7 +105,7 @@ const circ=(cx,cy,rx,ry,n=48)=>Array.from({length:n},(_,i)=>{const a=i/n*Math.PI
 
 /* Flaches Band entlang Linienzuegen (Welt-Meter, xz) mit Fortschritt u
    und Strichmuster. Jedes Stueck bekommt Kappen, damit Ecken schliessen. */
-function ribbonGeo(lines,w,u=1,dash=null){
+export function ribbonGeo(lines,w,u=1,dash=null){
   const P=[];
   let total=0;lines.forEach(l=>{for(let i=1;i<l.length;i++)total+=Math.hypot(l[i][0]-l[i-1][0],l[i][1]-l[i-1][1]);});
   let left=total*u, dl=0, di=0, on=true;
@@ -145,7 +145,7 @@ function fillGeo(pts){
 
 /* Rand-Leuchten fuer die Glaskugeln: die Teamfarbe sitzt am Rand,
    wie die farbige Kontur des Orbs in 2D. */
-const rimMat=()=>new THREE.ShaderMaterial({
+export const rimMat=()=>new THREE.ShaderMaterial({
   uniforms:{col:{value:new THREE.Color()},op:{value:1}},
   transparent:true,depthWrite:false,
   vertexShader:`varying vec3 vN;varying vec3 vV;void main(){vec4 mv=modelViewMatrix*vec4(position,1.);

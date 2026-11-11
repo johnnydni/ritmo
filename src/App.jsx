@@ -61,6 +61,7 @@ import {
   MenuIcon,
 } from "./icons.jsx";
 import { PADEL_STYLES, PADEL_QUIZ, computeStyle, computeStyles, computeMatchTier, STYLE_IMAGES, STYLE_GUIDE, STYLE_ORDER, STYLE_SCALES } from "./padelStyles.js";
+import { scenesFor, defaultTeams } from './stylePlays.js';
 import { CUP_PIN, CUP_PHASES, CUP_ALERTS, CUP_WARN, initialCupState, cupLeaderboard, cupMatchTier,
   genCupKO, genCupCourageHF, genCupHF, genCupFinals, cupPlayerLabel, cupDuplicateNums } from "./dnaCup.js";
 import GlassSurface from "./GlassSurface.jsx";
@@ -21156,7 +21157,7 @@ function StylePoster({id,w,r=8,style}){
 }
 const firstName=n=>n.split(' / ')[0];
 
-function JourneySpielstileList({onBack,onHome,onSelect,myStyle}){
+function JourneySpielstileList({onBack,onHome,onSelect,onSim,myStyle}){
   const me=myStyle&&PADEL_STYLES[myStyle]?myStyle:null;
   const axis={position:'absolute',fontFamily:T.fontDisplay,fontSize:8,letterSpacing:1.6,color:T.t2,
     textTransform:'uppercase',whiteSpace:'nowrap'};
@@ -21198,6 +21199,18 @@ function JourneySpielstileList({onBack,onHome,onSelect,myStyle}){
         <div className="txt" style={{color:T.t2,fontSize:13,fontStyle:'italic',margin:'10px 2px 0'}}>
           {me?<>Orange markiert: dein Typ aus dem Quiz.</>:'Tippe einen Typ an.'}
         </div>
+        <button onClick={()=>{buzz(8);onSim();}} className="fu" style={{...GLASS,borderRadius:20,width:'100%',marginTop:18,
+          padding:'14px 16px',display:'flex',alignItems:'center',gap:14,color:T.t1,textAlign:'left',cursor:'pointer'}}>
+          <span aria-hidden="true" style={{width:42,height:42,borderRadius:'50%',background:T.o,color:'#000',flexShrink:0,
+            display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg></span>
+          <span style={{flex:1,minWidth:0}}>
+            <span className="display" style={{display:'block',color:T.o,fontSize:8,letterSpacing:1.8}}>Simulator</span>
+            <span style={{display:'block',fontFamily:T.fontSerif,fontWeight:700,fontSize:19,marginTop:3}}>Wer gegen wen?</span>
+            <span className="txt" style={{display:'block',color:T.t2,fontSize:12.5,marginTop:1}}>Sieh zu, wie die Typen mit- und gegeneinander spielen.</span>
+          </span>
+          <span aria-hidden="true" style={{color:T.t2,fontSize:18}}>›</span>
+        </button>
         <SectionRule>Alle sieben</SectionRule>
         <div style={{...GLASS,borderRadius:20,padding:'2px 14px'}}>
           {STYLE_ORDER.map((id,i)=>{
@@ -21227,6 +21240,156 @@ function JourneySpielstileList({onBack,onHome,onSelect,myStyle}){
       <MatchBar onHome={onHome} rightButtons={[
         {icon:<JourneyIcon size={18}/>,onClick:onBack,label:'Zurück zur Journey'}
       ]}/>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SPIELZUG-SIMULATOR (Journey → Spielstile). Nur ansehen: zwei Teams
+   aus den sieben Typen waehlen, darunter die fertigen Szenen dieser
+   Paarung; ein Tipp spielt sie im Kino ab. EIN Canvas fuer beides —
+   die Kamera faehrt von der Uebersicht hinter das untere Team.
+   Daten: stylePlays.js, Buehne: sim3d.js (per import()).
+═══════════════════════════════════════════════════════════════ */
+function StyleSim({onBack,onHome,myStyle}){
+  const cv=useRef(null),api=useRef(null),root=useRef(null),topRef=useRef(null),listRef=useRef(null),prog=useRef(null);
+  const[teams,setTeams]=useState(()=>{
+    const d=defaultTeams(myStyle),v=lsGet('ritmo_sim_teams',null);
+    const ok=a=>Array.isArray(a)&&a.length===2&&a[0]!==a[1]&&a.every(id=>PADEL_STYLES[id]);
+    return v&&ok(v.bottom)&&ok(v.top)?{bottom:v.bottom,top:v.top}:d;});
+  const[ready,setReady]=useState(false);
+  const[err,setErr]=useState(null);
+  const[kino,setKino]=useState(null);       // die laufende Szene
+  const[st,setSt]=useState({step:0,count:0,caption:'',paused:false});
+  const[seen,setSeen]=useState(()=>new Set());
+  const scenes=useMemo(()=>scenesFor(teams.bottom,teams.top),[teams]);
+  const names=useMemo(()=>Object.fromEntries(STYLE_ORDER.map(id=>[id,firstName(PADEL_STYLES[id].name)])),[]);
+
+  useEffect(()=>{
+    let dead=false;
+    Promise.all([import('./sim3d.js'),document.fonts?.ready]).then(([M])=>{
+      if(dead||!cv.current) return;
+      if(!M.webglOk()){setErr('Dein Gerät kann kein 3D (WebGL) darstellen.');return;}
+      try{
+        api.current=M.createSim(cv.current,{
+          reduced:!!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
+          styles:PADEL_STYLES,
+          onProgress:u=>{if(prog.current)prog.current.style.transform=`scaleX(${u})`;},
+          onState:s=>{
+            if(s.done){setSeen(o=>new Set(o).add(s.done));setKino(null);api.current?.setMode('idle');return;}
+            setSt(s);},
+        });
+        setReady(true);
+      }catch(e){setErr('Der Simulator ließ sich nicht laden.');}
+    }).catch(()=>{if(!dead)setErr('Der Simulator ließ sich nicht laden.');});
+    return()=>{dead=true;api.current?.dispose();api.current=null;};
+  },[]);
+  useEffect(()=>{lsSet('ritmo_sim_teams',teams);
+    if(ready) api.current?.setTeams([...teams.bottom,...teams.top],names);},[teams,ready]);
+  /* Das Band der Uebersicht: zwischen Auswahl und Szenenliste. Gemessen,
+     nicht geschaetzt — die Liste hat mal drei und mal vier Zeilen. */
+  useEffect(()=>{
+    if(!ready) return;
+    const m=()=>{const R=root.current,a=topRef.current,b=listRef.current;if(!R||!a||!b)return;
+      const r=R.getBoundingClientRect(),y0=a.getBoundingClientRect().bottom-r.top+10,y1=b.getBoundingClientRect().top-r.top-10;
+      api.current?.setBand([y0/r.height,Math.max(80,y1-y0)/r.height]);};
+    m();const ro=new ResizeObserver(m);ro.observe(root.current);ro.observe(listRef.current);
+    return()=>ro.disconnect();
+  },[ready,scenes.length]);
+
+  const pick=(k,id)=>{if(teams[k].includes(id))return;buzz(5);setTeams(t=>({...t,[k]:[t[k][1],id]}));};
+  const start=sc=>{if(!ready)return;buzz(8);setKino(sc);setSt({step:0,count:sc.steps.length,caption:'',paused:false});
+    api.current.setMode('kino');api.current.play(sc);};
+  const quit=e=>{e?.stopPropagation();buzz(5);api.current?.stop();api.current?.setMode('idle');setKino(null);};
+  const toggle=()=>{if(!kino)return;buzz(4);api.current?.pause(!st.paused);};
+
+  const row=(k,label,c)=>(
+    <div style={{marginTop:12}}>
+      <div className="display" style={{color:T.t2,fontSize:8,letterSpacing:1.8,marginBottom:6}}>{label}</div>
+      <div style={{display:'flex',justifyContent:'space-between'}}>
+        {STYLE_ORDER.map(id=>{const on=teams[k].includes(id);return(
+          <button key={id} onClick={()=>pick(k,id)} aria-pressed={on} aria-label={PADEL_STYLES[id].name}
+            style={{background:'none',border:'none',padding:0,cursor:'pointer',borderRadius:8,
+              opacity:on?1:.42,boxShadow:on?`0 0 0 2px ${c}`:'none',transition:'opacity .2s,box-shadow .2s'}}>
+            <StylePoster id={id} w={43} r={7}/>
+          </button>);})}
+      </div>
+    </div>);
+  const fade=on=>({opacity:on?1:0,pointerEvents:on?'auto':'none',transition:'opacity .45s var(--ease-ios)'});
+  const tn=k=>teams[k].map(id=>names[id]).join(' · ');
+  return(
+    <div ref={root} style={{height:'100%',...PHOTO_ROOT,position:'relative',overflow:'hidden'}}>
+      <PhotoBackdrop dim={.55}/>
+      <canvas ref={cv} aria-hidden="true" onClick={toggle}
+        style={{position:'absolute',inset:0,width:'100%',height:'100%',display:'block'}}/>
+      {(!ready||err)&&(
+        <div style={{position:'absolute',left:22,right:22,top:'46%',display:'flex',justifyContent:'center',
+          textAlign:'center',color:T.t2,fontSize:14}}>
+          {err||<LoadBar w={140} label="3D wird geladen"/>}
+        </div>)}
+
+      {/* ── Uebersicht: wer gegen wen, und was es zu sehen gibt ── */}
+      <div ref={topRef} style={{position:'absolute',left:0,right:0,top:0,padding:'calc(env(safe-area-inset-top,0px) + 30px) 22px 0',
+        ...fade(!kino)}}>
+        <div className="display" style={{color:T.o,fontSize:10,letterSpacing:2.4}}>Simulator</div>
+        <div style={{...HEAD_SERIF,fontSize:30,marginTop:8,color:T.t1}}>Wer gegen wen?</div>
+        {row('top','Team oben',T.blue)}
+        {row('bottom','Team unten',T.o)}
+      </div>
+      <div ref={listRef} style={{position:'absolute',left:22,right:22,
+        bottom:'calc(env(safe-area-inset-bottom,0px) + 92px)',...fade(!kino)}}>
+        <div style={{...GLASS,borderRadius:20,padding:'2px 14px'}}>
+          {scenes.map((sc,i)=>(
+            <button key={sc.id+sc.team} onClick={()=>start(sc)} disabled={!ready}
+              style={{display:'flex',alignItems:'center',gap:11,width:'100%',padding:'9px 0',background:'none',
+                border:'none',borderTop:i?`1px solid ${T.glassSep}`:'none',color:T.t1,textAlign:'left',cursor:'pointer'}}>
+              <StylePoster id={sc.hero} w={30} r={6}/>
+              <span style={{flex:1,minWidth:0}}>
+                <span style={{display:'block',fontFamily:T.fontSerif,fontWeight:700,fontSize:17,lineHeight:1.15}}>{sc.title}</span>
+                <span className="txt" style={{display:'block',color:T.t2,fontSize:12.5,marginTop:1,
+                  whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{sc.sub}</span>
+              </span>
+              <span aria-hidden="true" style={{width:30,height:30,borderRadius:'50%',flexShrink:0,display:'flex',
+                alignItems:'center',justifyContent:'center',border:`1px solid ${seen.has(sc.id)?T.o:T.glassLine}`,
+                color:seen.has(sc.id)?T.o:T.t1}}>
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>
+              </span>
+            </button>))}
+        </div>
+      </div>
+
+      {/* ── Kino: Balken oben und unten, ein Satz, sonst nichts ── */}
+      <div aria-hidden={!kino} style={{position:'absolute',inset:0,pointerEvents:'none',opacity:kino?1:0,
+        transition:'opacity .5s var(--ease-ios)'}}>
+        <div style={{position:'absolute',left:0,right:0,top:0,height:'calc(env(safe-area-inset-top,0px) + 96px)',
+          background:'linear-gradient(#000 55%,transparent)'}}/>
+        <div style={{position:'absolute',left:0,right:0,bottom:0,height:300,background:'linear-gradient(transparent,#000 46%)'}}/>
+        <div className="display" style={{position:'absolute',left:22,right:70,top:'calc(env(safe-area-inset-top,0px) + 34px)',
+          fontSize:8.5,letterSpacing:1.8,lineHeight:1.9,whiteSpace:'nowrap'}}>
+          <div style={{color:T.blue}}>{tn('top')}</div>
+          <div><span style={{color:T.t2,marginRight:8}}>gegen</span><span style={{color:T.o}}>{tn('bottom')}</span></div>
+        </div>
+        <div style={{position:'absolute',left:26,right:26,bottom:'calc(env(safe-area-inset-bottom,0px) + 44px)',textAlign:'center'}}>
+          <div key={kino?`${kino.id}-${st.caption?st.step:'t'}`:'x'} className="fu" aria-live="polite">
+            {kino&&!st.caption&&<div className="display" style={{color:T.o,fontSize:9,letterSpacing:2.2,marginBottom:10}}>
+              {names[kino.hero]}</div>}
+            <div style={{...HEAD_SERIF,fontSize:29,lineHeight:1.12,color:T.t1,minHeight:66,display:'flex',
+              alignItems:'flex-end',justifyContent:'center'}}>
+              <span>{st.caption||(kino?`${kino.title}.`:'')}</span></div>
+          </div>
+          <div className="txt" style={{color:T.t2,fontSize:13,fontStyle:'italic',marginTop:10}}>
+            {st.paused?'Pausiert · tippen spielt weiter':kino&&!st.caption?kino.sub:`Zug ${st.step+1} von ${st.count} · tippen pausiert`}</div>
+          <div style={{height:2,background:T.glassSep,borderRadius:1,marginTop:16,overflow:'hidden'}}>
+            <div ref={prog} style={{height:'100%',background:T.o,transformOrigin:'0 50%',transform:'scaleX(0)'}}/></div>
+        </div>
+      </div>
+      {kino&&<button onClick={quit} aria-label="Spielzug schließen" style={{position:'absolute',right:18,
+        top:'calc(env(safe-area-inset-top,0px) + 22px)',width:42,height:42,borderRadius:'50%',...GLASS,
+        display:'flex',alignItems:'center',justifyContent:'center',color:T.t1,cursor:'pointer',padding:0}}>
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+          <path d="M6 6l12 12M18 6L6 18"/></svg></button>}
+      {!kino&&<MatchBar onHome={onHome} rightButtons={[
+        {icon:<JourneyIcon size={18}/>,onClick:onBack,label:'Zurück zu den Spielstilen'}]}/>}
     </div>
   );
 }
@@ -22993,7 +23156,9 @@ export default function App(){
     {scr==='journey-spielstile'&&<JourneySpielstileList
       onBack={()=>setScr('journey-overview')}
       onHome={goHome} myStyle={profile.styleType}
+      onSim={()=>setScr('style-sim')}
       onSelect={(id)=>setScr(`journey-spielstil-${id}`)}/>}
+    {scr==='style-sim'&&<StyleSim onBack={()=>setScr('journey-spielstile')} onHome={goHome} myStyle={profile.styleType}/>}
     {scr.startsWith('journey-spielstil-')&&(()=>{
       const idx=STYLE_ORDER.indexOf(scr.slice('journey-spielstil-'.length));
       if(idx<0) return null;

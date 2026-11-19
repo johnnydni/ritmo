@@ -158,6 +158,58 @@ einer Kuer haengen.
 
 The participant's match view is a two-page swipe (`MatchPager`, scroll-snap — same mechanism as the Schnellstart strip in the Turnier hub): **Jetzt** shows the running match as a 2×2 grid (`MatchSlotGrid`), **Danach** shows the next match on a blue padel court (`PadelCourtBlue`, real 20 m × 10 m proportions) plus a Mit/Gegen readout. The pager sits outside the score-submission card on purpose so players who are sitting out still see what is coming.
 
+### Bildschirm-Anzeige (`TournamentDisplay`, `?display=PIN`)
+
+Fuer einen Bildschirm an der Anlage (Laptop am Beamer, Smart-TV,
+Tablet an der Wand): Courts mit Paarungen und Ergebnissen, die
+naechste Runde, Pausen, Tabelle, Restzeit und ein QR-Code zum
+Beitreten. **Nur lesen**, live aus derselben Mirror-Session wie
+„Live teilen“.
+
+- **Der Link** steht im Live-Sheet unter dem Reiter „Bildschirm“
+  (Kopieren / Öffnen). Er ist `?display=<PIN>` — dieselbe Session,
+  eine andere Adresse. Der alte Knopf „Monitor-Modus“ beim Beitreten
+  fuehrt jetzt auch dorthin; `TournamentMonitorView` ist geloescht.
+- **Ohne Konto, ohne Splash**: `App()` gibt fuer `?display=` per
+  frueher Rueckgabe nur die Anzeige aus (nach allen Hooks, vor
+  `APP_PAUSED`). Die PIN laeuft durch `normPin` und bleibt in der URL —
+  der Fernseher findet nach einem Neustart dieselbe Anzeige.
+- **Live und robust**: Realtime-Abo plus Abfrage alle 20 s, beim
+  Zurueckholen des Fensters und bei `online`. Ein Fernseher laeuft
+  Stunden; ein schlafender Websocket darf die Anzeige nicht einfrieren.
+  Scheitert eine Abfrage nach dem ersten Stand, bleibt der letzte
+  stehen und unten links steht „Verbindung wird gesucht …“.
+- **Die Uhr** kommt jede Sekunde vom Host (Publish-Loop). Dazwischen
+  zaehlt die Anzeige selbst, **hoechstens 3 s** ueber den letzten
+  Stand hinaus: schlaeft das Host-Telefon, steht die Uhr auch hier,
+  statt davonzulaufen.
+- **Jetzt / Danach im Wechsel** (14 s / 7 s, Fortschritt in der Pille),
+  nur wenn es eine Vorschau gibt (`nextPreview` der laufenden Runde,
+  also die `PREVIEWABLE_FORMATS`). Danach traegt Blau statt Orange.
+- **Karten sind Anzeigetafeln**: je Team eine Zeile, Namen
+  untereinander, Ergebnis rechts, Sieger orange. Nebeneinander
+  (Team | Stand | Team) wurden die Namen in schmalen Karten zu „M…“.
+  Raster: bis 3 Courts nebeneinander, 4 als 2×2, bis 9 in drei
+  Spalten; die Schrift schrumpft mit der Zeilenzahl (`dens`).
+- **Tabelle** wie beim Host aus den Runden *vor* der laufenden; passt
+  sie nicht in die Spalte, blaettert sie alle 8 s (gemessen per
+  ResizeObserver, nicht geschaetzt).
+- **Masse in Einheiten eines 1920×1080-Bilds** (`u`), skaliert auf die
+  Flaeche — jeder Bildschirm zeigt dasselbe Bild. Hochkant rutscht die
+  Tabelle unter die Courts, der QR-Code entfaellt.
+- **Endstand** als Titelseite (Sieger, `winLine`, Tabelle bis 16).
+  Dafuer schickt `endTournament` den Stand jetzt **sofort**: der
+  verzoegerte Publish-Loop haengt an `TournamentPlay` und war mit dem
+  Wechsel zum Endstand weg, bevor er feuerte — Spieler und Anzeige
+  sahen das Ende nie.
+- Bildschirm bleibt an (Wake Lock, beim Zurueckkommen neu geholt),
+  Mauszeiger und Vollbild-Knopf verschwinden nach 3 s, `F` schaltet
+  Vollbild.
+- Testen ohne Supabase: in Playwright per `addInitScript` ein
+  `window.supabase` mit `from().select().eq().maybeSingle()` und
+  `channel().on().subscribe()` unterschieben (`main.jsx` setzt ihn ohne
+  Schluessel nicht), `api.qrserver.com` per `route` beantworten.
+
 ### `MatchSlotGrid` — the standard way a match is drawn
 
 One match, one component: Team A left, Team B right, the net between, two rows of players (one when `court.single`). Used by the host's `TournamentCourtCard` in the running tournament *and* by the participant's live view, so both sides see the same picture.

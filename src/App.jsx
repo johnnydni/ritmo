@@ -11367,106 +11367,371 @@ function extractPinFromScan(text){
    3. Joinen → wartet auf Host-Freigabe (Realtime)
    4. Wenn Host startet (status='playing') → TournamentParticipantView
 ═══════════════════════════════════════════════════════════════ */
-/* ── TURNIER-MONITOR — read-only Anzeige für Tablet/Beamer an der
-   Anlage (Abfallprodukt von "Live teilen"): wechselt automatisch
-   alle 8 s zwischen aktueller Runde und Tabelle, live über die
-   Session-Subscription. Bewusst große Typo — wird aus Distanz
-   gelesen. */
-function TournamentMonitorView({session,pin}){
-  const ts=session.tournamentState||{};
-  const[view,setView]=useState('round');
+/* ═══════════════════════════════════════════════════════════════
+   TURNIER-ANZEIGE (?display=PIN) — fuer einen Bildschirm an der
+   Anlage: Laptop am Beamer, Smart-TV, Tablet an der Wand. Spieler
+   sehen von weitem, auf welchem Court sie stehen, was als Naechstes
+   kommt und wie die Tabelle aussieht.
+
+   - Laeuft OHNE Konto: `App()` gibt fuer ?display= per frueher
+     Rueckgabe nur diese Seite aus. Gelesen wird die Live-Session
+     (`ritmo_sessions`, oeffentlich per PIN), geschrieben nichts.
+   - Live per Realtime, dazu alle 20 s eine Abfrage und eine beim
+     Zurueckholen des Fensters — ein Fernseher laeuft Stunden, und
+     ein Websocket schlaeft dabei auch mal ein.
+   - Masse in Einheiten eines 1920×1080-Bilds (`u`), skaliert auf die
+     echte Flaeche: auf jedem Bildschirm steht dasselbe Bild. Hochkant
+     rutscht die Tabelle unter die Courts.
+   - Bildschirm bleibt an (Wake Lock), der Mauszeiger verschwindet
+     nach 3 s, F oder der Knopf oben rechts schaltet Vollbild.
+═══════════════════════════════════════════════════════════════ */
+const DSP_NOW_MS=14000, DSP_NEXT_MS=7000, DSP_PAGE_MS=8000;
+const dspSort=(lb,mode)=>lb.sort((a,b)=>mode==='wins'
+  ?b.totalWins-a.totalWins||b.totalPts-a.totalPts
+  :b.totalPts-a.totalPts||b.totalWins-a.totalWins);
+const dspTime=s=>`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+
+function TournamentDisplay({pin}){
+  const[session,setSession]=useState(undefined);   // undefined = laedt, null = kein Turnier
+  const[lost,setLost]=useState(false);
+  const has=useRef(false);
   useEffect(()=>{
-    const id=setInterval(()=>setView(v=>v==='round'?'board':'round'),8000);
-    return()=>clearInterval(id);
+    let alive=true;
+    const take=s=>{if(!alive)return;has.current=true;setSession(s);setLost(false);};
+    const pull=async()=>{
+      const s=await fetchOnlineTournament(pin);
+      if(!alive) return;
+      /* null heisst beim ersten Mal „gibt es nicht“, spaeter eher
+         „Netz weg“ — dann bleibt der letzte Stand stehen. */
+      if(s) take(s); else if(has.current) setLost(true); else setSession(null);
+    };
+    pull();
+    const unsub=subscribeToTournament(pin,take);
+    const iv=setInterval(pull,20000);
+    const vis=()=>{if(document.visibilityState==='visible')pull();};
+    document.addEventListener('visibilitychange',vis);
+    window.addEventListener('online',pull);
+    const off=()=>setLost(true);window.addEventListener('offline',off);
+    return()=>{alive=false;unsub();clearInterval(iv);document.removeEventListener('visibilitychange',vis);
+      window.removeEventListener('online',pull);window.removeEventListener('offline',off);};
+  },[pin]);
+
+  /* Bildschirm wach halten; der Lock faellt beim Wegschalten und wird
+     beim Zurueckkommen neu geholt. */
+  useEffect(()=>{
+    let lock=null;
+    const req=async()=>{try{if(document.visibilityState==='visible'&&navigator.wakeLock)
+      lock=await navigator.wakeLock.request('screen');}catch{}};
+    req();document.addEventListener('visibilitychange',req);
+    return()=>{document.removeEventListener('visibilitychange',req);try{lock?.release();}catch{}};
   },[]);
-  const round=ts.rounds?.[ts.current];
-  const playerById=id=>ts.players?.find(p=>p.id===id);
-  const team=ids=>(ids||[]).map(id=>playerById(id)?.name||'?').join(' & ');
-  const lbRounds=ts.finished?(ts.rounds||[]):(ts.rounds||[]).slice(0,ts.current);
-  const lb=(ts.players&&ts.rounds)
-    ?calcLeaderboard(ts.players,lbRounds,ts.winMode||'points',ts.pauseMode,ts.pausePts)
-      .sort((a,b)=>ts.winMode==='points'
-        ?b.totalPts-a.totalPts||b.totalWins-a.totalWins
-        :b.totalWins-a.totalWins||b.totalPts-a.totalPts)
-    :[];
-  return(
-    <div className="fi" style={{display:'flex',flexDirection:'column',gap:14}}>
-      <div style={{display:'flex',alignItems:'center',gap:10}}>
+
+  const[sz,setSz]=useState(()=>({w:window.innerWidth,h:window.innerHeight}));
+  useEffect(()=>{const r=()=>setSz({w:window.innerWidth,h:window.innerHeight});
+    window.addEventListener('resize',r);return()=>window.removeEventListener('resize',r);},[]);
+  const tall=sz.h>sz.w*1.05;
+  const k=tall?sz.w/1080:Math.min(sz.w/1920,sz.h/1080);
+  const u=n=>Math.round(n*k*10)/10;
+
+  /* Zeiger und Vollbild-Knopf nur, solange die Maus sich bewegt. */
+  const[idle,setIdle]=useState(false);
+  useEffect(()=>{
+    let t;const wake=()=>{setIdle(false);clearTimeout(t);t=setTimeout(()=>setIdle(true),3000);};
+    const key=e=>{if((e.key==='f'||e.key==='F')&&!e.metaKey&&!e.ctrlKey)fs();};
+    wake();window.addEventListener('mousemove',wake);window.addEventListener('touchstart',wake);
+    window.addEventListener('keydown',key);
+    return()=>{clearTimeout(t);window.removeEventListener('mousemove',wake);
+      window.removeEventListener('touchstart',wake);window.removeEventListener('keydown',key);};
+  },[]);
+  const fs=()=>{try{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();}catch{}};
+
+  const ts=session?.tournamentState;
+  /* Uhr: der Host schickt die Restzeit jede Sekunde. Dazwischen
+     zaehlt die Anzeige selbst weiter, aber hoechstens 3 s ueber den
+     letzten Stand hinaus — schlaeft das Host-Telefon, steht die Uhr
+     hier auch, statt davonzulaufen. */
+  const[now,setNow]=useState(Date.now());
+  useEffect(()=>{const id=setInterval(()=>setNow(Date.now()),500);return()=>clearInterval(id);},[]);
+  const tb=useRef({left:0,at:0});
+  useEffect(()=>{if(ts)tb.current={left:ts.timerSecsLeft??(ts.roundDurationMin||0)*60,at:Date.now()};},
+    [ts?.timerSecsLeft,ts?.timerRunning,ts?.current]);
+  const left=ts?.timerRunning?Math.max(0,tb.current.left-Math.min(3,Math.floor((now-tb.current.at)/1000))):tb.current.left;
+
+  const cur=ts?.current??0;
+  const round=ts?.rounds?.[cur];
+  const next=ts?.nextPreview?.forRound===cur?ts.nextPreview.round:null;
+  /* Jetzt / Danach im Wechsel — Jetzt doppelt so lang: wer seinen
+     Court sucht, soll nicht lange warten. Ohne Vorschau steht Jetzt. */
+  const[view,setView]=useState('now');
+  useEffect(()=>{
+    if(!next||ts?.finished){setView('now');return;}
+    const t=setTimeout(()=>setView(v=>v==='now'?'next':'now'),view==='now'?DSP_NOW_MS:DSP_NEXT_MS);
+    return()=>clearTimeout(t);
+  },[view,!!next,ts?.finished,cur]);
+  useEffect(()=>{setView('now');},[cur]);
+
+  const byId=id=>ts?.players?.find(p=>p.id===id);
+  const nm=id=>byId(id)?.name||'?';
+  const lb=useMemo(()=>ts?.players&&ts?.rounds
+    ?dspSort(calcLeaderboard(ts.players,ts.finished?ts.rounds:ts.rounds.slice(0,cur),
+      ts.winMode||'points',ts.pauseMode,ts.pausePts),ts.winMode):[],[ts,cur]);
+  const isWins=ts?.winMode==='wins';
+
+  /* Tabelle in Seiten, wenn sie nicht in die Spalte passt */
+  const listRef=useRef(null);
+  const[fit,setFit]=useState(12);
+  const rowH=u(66);
+  useEffect(()=>{const el=listRef.current;if(!el)return;
+    const m=()=>setFit(Math.max(3,Math.floor(el.clientHeight/rowH)));
+    m();const ro=new ResizeObserver(m);ro.observe(el);return()=>ro.disconnect();},[rowH,!!ts,ts?.finished]);
+  const pages=Math.max(1,Math.ceil(lb.length/fit));
+  const[page,setPage]=useState(0);
+  useEffect(()=>{if(pages<2){setPage(0);return;}
+    const t=setInterval(()=>setPage(p=>(p+1)%pages),DSP_PAGE_MS);return()=>clearInterval(t);},[pages]);
+  const pg=Math.min(page,pages-1);
+
+  const joinUrl=window.location.origin+(window.__BASE__||'/')+'?join='+pin;
+  const live=session&&session.status!=='ended';
+  const fmt=FORMATS[ts?.format]?.name||'Turnier';
+
+  const kick=(c=T.o,fs=15)=>({fontFamily:T.fontDisplay,color:c,fontSize:u(fs),letterSpacing:u(fs*.2),lineHeight:1});
+  const num={fontVariantNumeric:'tabular-nums',fontWeight:300,lineHeight:1};
+  const wrap=(children)=>(
+    <div style={{position:'fixed',inset:0,...PHOTO_ROOT,overflow:'hidden',color:T.t1,
+      cursor:idle?'none':'default',fontFamily:T.fontSans}}>
+      <PhotoBackdrop dim={.58}/>
+      {children}
+      <button onClick={fs} aria-label="Vollbild" style={{position:'absolute',top:u(4),right:u(6),
+        width:u(38),height:u(38),borderRadius:'50%',...GLASS,color:T.t1,cursor:'pointer',padding:0,
+        display:'flex',alignItems:'center',justifyContent:'center',opacity:idle?0:1,
+        transition:'opacity .4s',pointerEvents:idle?'none':'auto',zIndex:5}}>
+        <svg viewBox="0 0 24 24" width={u(17)} height={u(17)} fill="none" stroke="currentColor"
+          strokeWidth="1.5" strokeLinecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+      </button>
+      {lost&&<div style={{position:'absolute',left:u(40),bottom:u(28),display:'flex',alignItems:'center',
+        gap:u(10),...GLASS,borderRadius:999,padding:`${u(10)}px ${u(18)}px`,fontSize:u(17),color:T.t2,zIndex:5}}>
+        <span style={{width:u(10),height:u(10),borderRadius:'50%',background:T.yellow}}/>
+        Verbindung wird gesucht …</div>}
+    </div>);
+  const center=(kicker,title,sub)=>wrap(
+    <div style={{position:'absolute',inset:0,display:'flex',flexDirection:'column',alignItems:'center',
+      justifyContent:'center',textAlign:'center',padding:u(60)}}>
+      <img src={`${getAssetBase()}assets/ritmo-lettering.png`} alt="RITMO" draggable={false}
+        style={{height:u(44),marginBottom:u(60),opacity:.95}}/>
+      {kicker&&<div style={kick(T.o,17)}>{kicker}</div>}
+      <div style={{...HEAD_SERIF,fontSize:u(84),marginTop:u(22)}}>{title}</div>
+      {sub&&<div className="txt" style={{color:T.t2,fontSize:u(26),fontStyle:'italic',marginTop:u(22),
+        maxWidth:u(1100),lineHeight:1.4}}>{sub}</div>}
+    </div>);
+
+  if(session===undefined) return wrap(
+    <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+      <LoadBar w={u(300)} label="Turnier wird geladen"/></div>);
+  if(session===null) return center('Anzeige','Kein Turnier gefunden.',
+    `Unter dem Code ${pin.toUpperCase()} läuft nichts. Den Link gibt es im laufenden Turnier: Werkzeuge, Live teilen, Bildschirm.`);
+  if(!ts?.rounds) return center(session.name||'Turnier','Gleich geht’s los.',
+    'Sobald das Turnier startet, stehen hier die Courts.');
+
+  /* ── Endstand ── */
+  if(ts.finished){
+    const w=lb[0];
+    const cols=lb.length>8?2:1, per=Math.ceil(Math.min(lb.length,16)/cols);
+    return wrap(
+      <div style={{position:'absolute',inset:0,display:'flex',flexDirection:tall?'column':'row',
+        padding:`${u(70)}px ${u(80)}px`,gap:u(70),alignItems:tall?'stretch':'center'}}>
         <div style={{flex:1,minWidth:0}}>
-          <div style={{color:T.t1,fontSize:24,fontWeight:900,letterSpacing:-.5,
-            overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-            {ts.name||'Turnier'}
-          </div>
-          <div style={{color:T.t3,fontSize:13,fontWeight:600,marginTop:2}}>
-            {ts.finished?'Endstand':`Runde ${(ts.current??0)+1}`}
-          </div>
+          <img src={`${getAssetBase()}assets/ritmo-lettering.png`} alt="RITMO" draggable={false}
+            style={{height:u(36),marginBottom:u(70)}}/>
+          <div style={kick(T.o,17)}>Sieger</div>
+          <div style={{...HEAD_SERIF,fontSize:u((w?.name||'').length>7?150:190),marginTop:u(24),
+            whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
+            {w?.name||'–'}<span style={{color:T.o}}>.</span></div>
+          <div className="txt" style={{color:T.t2,fontSize:u(30),fontStyle:'italic',marginTop:u(26),lineHeight:1.35}}>
+            {winLine(ts.id??ts.name,w?.name)}</div>
+          <div style={{...kick(T.t3,13),marginTop:u(50)}}>Endstand</div>
+          <div style={{fontFamily:T.fontSerif,fontWeight:700,fontSize:u(34),marginTop:u(12)}}>{ts.name||fmt}</div>
         </div>
-        <div style={{display:'flex',alignItems:'center',gap:7,flexShrink:0}}>
-          <span className="court-live-dot" style={{width:9,height:9,borderRadius:'50%',
-            background:T.r,boxShadow:`0 0 8px ${T.r}aa`,display:'inline-block'}}/>
-          <span style={{color:T.r,fontSize:11,fontWeight:900,letterSpacing:1.3}}>LIVE</span>
+        <div style={{width:tall?'auto':u(cols*430),display:'grid',gridTemplateColumns:`repeat(${cols},1fr)`,
+          gap:`0 ${u(30)}px`,...GLASS,borderRadius:u(28),padding:`${u(14)}px ${u(26)}px`}}>
+          {lb.slice(0,16).map((p,i)=>(
+            <div key={p.id} style={{gridColumn:Math.floor(i/per)+1,gridRow:i%per+1,display:'flex',
+              alignItems:'center',gap:u(18),padding:`${u(14)}px 0`,
+              borderTop:i%per?`1px solid ${T.glassSep}`:'none'}}>
+              <span style={{...num,width:u(40),fontSize:u(32),textAlign:'center',
+                color:i<3?LB_MEDAL[i]:T.t3}}>{i+1}</span>
+              <span style={{flex:1,minWidth:0,fontSize:u(28),fontWeight:600,whiteSpace:'nowrap',
+                overflow:'hidden',textOverflow:'ellipsis'}}>{p.name}</span>
+              <span style={{...num,fontSize:u(36),color:i===0?T.o:T.t1}}>{isWins?p.totalWins:p.totalPts}</span>
+            </div>))}
+        </div>
+      </div>);
+  }
+
+  /* ── Laufend ── */
+  const show=view==='next'&&next?next:round;
+  const isNext=show===next&&view==='next';
+  const courts=show?.courts||[];
+  const n=Math.max(1,courts.length);
+  const cols=tall?(n>4?2:1):(n<=3?n:n===4?2:n<=9?3:4);
+  const rows=Math.ceil(n/cols);
+  /* Eine Karte ist eine kleine Anzeigetafel: je Team eine Zeile,
+     die Namen untereinander, das Ergebnis rechts daneben. Nebeneinander
+     (Team A | Stand | Team B) blieb in schmalen Karten fuer die Namen
+     nichts uebrig — aus „Mara“ wurde „M…“. */
+  const dens=(tall?(rows<=2?1.05:rows<=3?.85:.7):(rows<=1?1.15:rows===2?.9:rows===3?.7:.56))*(cols>=3?.92:1);
+  const nameFs=u(42*dens), scoreFs=u(84*dens);
+  const tState=ts.timerFinished?'up':ts.timerRunning?'run':'stop';
+  const accent=isNext?T.blue:T.o;
+
+  const side=(ids,sc,win,done)=>(
+    <div style={{flex:1,minHeight:0,display:'flex',alignItems:'center',gap:u(16)}}>
+      <div style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',gap:u(6*dens)}}>
+        {(ids||[]).map(id=>(
+          <div key={id} style={{fontSize:nameFs,fontWeight:600,lineHeight:1.08,whiteSpace:'nowrap',
+            overflow:'hidden',textOverflow:'ellipsis',color:win?T.o:T.t1}}>{nm(id)}</div>))}
+      </div>
+      {done&&<span style={{...num,fontSize:scoreFs,color:win?T.o:T.t1,flexShrink:0}}>{sc}</span>}
+    </div>);
+  const card=(c,ci)=>{
+    const done=!isNext&&!!c.done;
+    return(
+      <div key={c.id??ci} style={{...GLASS,borderRadius:u(28),padding:`${u(20*dens)}px ${u(28*dens)}px`,
+        display:'flex',flexDirection:'column',minWidth:0,minHeight:0,
+        boxShadow:done?`${GLASS.boxShadow}, inset 0 0 0 ${u(2)}px ${T.o}`:GLASS.boxShadow}}>
+        <div style={{display:'flex',alignItems:'center',gap:u(14),marginBottom:u(10*dens),flexShrink:0}}>
+          <span style={{fontFamily:T.fontSerif,fontWeight:700,fontSize:u(34*Math.max(.8,dens)),lineHeight:1,
+            whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',minWidth:0}}>{courtLabel(ts.courtNames,ci)}</span>
+          {c.single&&<span style={{...kick(T.t2,11),border:`1px solid ${T.glassLine}`,borderRadius:999,
+            padding:`${u(5)}px ${u(10)}px`,flexShrink:0}}>1v1</span>}
+          <span style={{flex:1}}/>
+          {!isNext&&<span style={{...kick(done?'#000':T.t2,12),background:done?T.o:'transparent',flexShrink:0,
+            border:done?'none':`1px solid ${T.glassLine}`,borderRadius:999,padding:`${u(7)}px ${u(14)}px`}}>
+            {done?'Fertig':'Läuft'}</span>}
+        </div>
+        {side(c.t1,c.s1,done&&c.s1>c.s2,done)}
+        <div style={{display:'flex',alignItems:'center',gap:u(14),margin:`${u(6*dens)}px 0`,flexShrink:0}}>
+          <span style={{fontFamily:T.fontSerif,fontStyle:'italic',fontSize:u(24*Math.max(.8,dens)),color:T.t3}}>gegen</span>
+          <span style={{flex:1,height:1,background:T.glassSep}}/>
+        </div>
+        {side(c.t2,c.s2,done&&c.s2>c.s1,done)}
+      </div>);
+  };
+  const sitOut=show?.sitOut||[];
+  const pill=(on,label,ms,key)=>(
+    <span key={key} style={{position:'relative',overflow:'hidden',borderRadius:999,padding:`${u(10)}px ${u(20)}px`,
+      background:on?'#fff':'transparent',color:on?'#000':T.t2,border:on?'none':`1px solid ${T.glassLine}`,
+      fontSize:u(18),fontWeight:700}}>
+      {label}
+      {on&&next&&<span key={`${view}-${cur}`} style={{position:'absolute',left:0,bottom:0,height:u(3),width:'100%',
+        background:accent,transformOrigin:'0 50%',animation:`dspBar ${ms}ms linear forwards`}}/>}
+    </span>);
+
+  const head=(
+    <div style={{display:'flex',alignItems:'flex-end',gap:u(40),marginBottom:u(30)}}>
+      <div style={{flex:1,minWidth:0}}>
+        <img src={`${getAssetBase()}assets/ritmo-lettering.png`} alt="RITMO" draggable={false}
+          style={{height:u(30),display:'block',marginBottom:u(26)}}/>
+        <div style={{display:'flex',alignItems:'center',gap:u(12)}}>
+          {live&&<span className="court-live-dot" style={{width:u(11),height:u(11),borderRadius:'50%',
+            background:T.r,boxShadow:`0 0 ${u(10)}px ${T.r}`}}/>}
+          <span style={kick(live?T.o:T.t3,15)}>{live?'Live':'Beendet'}</span>
+          <span style={kick(T.t3,15)}>·</span>
+          <span style={kick(T.t2,15)}>{fmt}</span>
+        </div>
+        <div style={{...HEAD_SERIF,fontSize:u(68),marginTop:u(14),whiteSpace:'nowrap',overflow:'hidden',
+          textOverflow:'ellipsis',paddingBottom:u(6)}}>{ts.name||fmt}<span style={{color:T.o}}>.</span></div>
+      </div>
+      <div style={{textAlign:'right',flexShrink:0}}>
+        <div style={kick(T.t3,13)}>Runde</div>
+        <div style={{...num,fontSize:u(88),marginTop:u(10)}}>{cur+1}</div>
+      </div>
+      {(ts.roundDurationMin||0)>0&&(
+        <div style={{flexShrink:0,...GLASS,borderRadius:u(28),padding:`${u(18)}px ${u(30)}px`,minWidth:u(250),
+          background:tState==='run'?'rgba(0,0,0,.55)':GLASS.background}}>
+          <div style={kick(tState==='up'?T.r:tState==='run'?T.o:T.t3,13)}>
+            {tState==='up'?'Zeit um':tState==='run'?'Restzeit':'Pausiert'}</div>
+          <div style={{...num,fontSize:u(88),marginTop:u(10),
+            color:tState==='up'?T.r:tState==='run'?T.o:T.t1}}>{dspTime(tState==='up'?0:left)}</div>
+        </div>)}
+    </div>);
+
+  const board=(
+    <div style={{...GLASS,borderRadius:u(28),padding:`${u(22)}px ${u(26)}px ${u(12)}px`,display:'flex',
+      flexDirection:'column',minHeight:0,flex:1}}>
+      <div style={{display:'flex',alignItems:'baseline',gap:u(12),marginBottom:u(8)}}>
+        <span style={{...HEAD_SERIF,fontSize:u(38)}}>Tabelle</span>
+        <span style={{flex:1}}/>
+        {pages>1&&<span style={{color:T.t3,fontSize:u(16),fontVariantNumeric:'tabular-nums'}}>
+          {pg*fit+1}–{Math.min(lb.length,(pg+1)*fit)} von {lb.length}</span>}
+      </div>
+      <div ref={listRef} style={{flex:1,minHeight:0,overflow:'hidden'}}>
+        <div key={pg} className="fi">
+          {lb.slice(pg*fit,(pg+1)*fit).map((p,j)=>{const i=pg*fit+j;return(
+            <div key={p.id} style={{height:rowH,display:'flex',alignItems:'center',gap:u(16),
+              borderTop:j?`1px solid ${T.glassSep}`:'none'}}>
+              <span style={{...num,width:u(36),textAlign:'center',fontSize:u(28),
+                color:i<3?LB_MEDAL[i]:T.t3}}>{i+1}</span>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:u(25),fontWeight:600,whiteSpace:'nowrap',overflow:'hidden',
+                  textOverflow:'ellipsis',lineHeight:1.15}}>{p.name}</div>
+                <div style={{color:T.t3,fontSize:u(15),marginTop:u(3),fontVariantNumeric:'tabular-nums'}}>
+                  {p.wins} S · {p.losses} N · {p.sitOut} P</div>
+              </div>
+              <span style={{...num,fontSize:u(36),color:i===0&&cur>0?T.o:T.t1}}>
+                {isWins?p.totalWins:p.totalPts}</span>
+            </div>);})}
         </div>
       </div>
+      <div style={{color:T.t3,fontSize:u(14),padding:`${u(8)}px 0 ${u(4)}px`,textAlign:'right'}}>
+        {isWins?'Siege':'Punkte'} · gewertet bis Runde {cur}</div>
+    </div>);
 
-      {view==='round'&&round&&(
-        <div style={{display:'flex',flexDirection:'column',gap:10}}>
-          {round.courts.map((c,ci)=>(
-            <div key={c.id} style={{background:T.card,
-              border:`1.5px solid ${c.done?T.o:T.border}`,
-              borderRadius:16,padding:'14px 16px'}}>
-              <div style={{color:T.o,fontSize:11,fontWeight:900,letterSpacing:1.3,
-                textTransform:'uppercase',marginBottom:8}}>
-                {courtLabel(ts.courtNames,ci)}{c.single?' — 1v1':''}
-              </div>
-              <div style={{display:'flex',alignItems:'center',gap:10}}>
-                <div style={{flex:1,minWidth:0,color:T.t1,fontSize:16,fontWeight:700,
-                  lineHeight:1.4}}>{team(c.t1)}</div>
-                <div style={{flexShrink:0,color:c.done?T.t1:T.t3,fontSize:22,
-                  fontWeight:900,fontVariantNumeric:'tabular-nums'}}>
-                  {c.done?`${c.s1} : ${c.s2}`:'– : –'}
-                </div>
-                <div style={{flex:1,minWidth:0,color:T.t1,fontSize:16,fontWeight:700,
-                  lineHeight:1.4,textAlign:'right'}}>{team(c.t2)}</div>
-              </div>
-            </div>
-          ))}
-          {round.sitOut?.length>0&&(
-            <div style={{color:T.t3,fontSize:13,textAlign:'center'}}>
-              Pause: {round.sitOut.map(id=>playerById(id)?.name||'?').join(', ')}
-            </div>
-          )}
+  const join=live&&(
+    <div style={{...GLASS,borderRadius:u(28),padding:u(22),display:'flex',alignItems:'center',gap:u(22),flexShrink:0}}>
+      <img src={`https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(joinUrl)}&size=300x300&bgcolor=ffffff&color=000000&margin=6`}
+        alt="" width={u(132)} height={u(132)} style={{borderRadius:u(14),background:'#fff',flexShrink:0}}/>
+      <div style={{minWidth:0}}>
+        <div style={kick(T.o,12)}>Aufs Handy</div>
+        <div style={{fontFamily:T.fontSerif,fontWeight:700,fontSize:u(26),marginTop:u(10),lineHeight:1.15}}>
+          Dein Match und Ergebnisse eintragen</div>
+        <div style={{color:T.t2,fontSize:u(17),marginTop:u(10)}}>QR scannen oder PIN{' '}
+          <span style={{color:T.t1,fontWeight:700,letterSpacing:u(3)}}>{pin.toUpperCase()}</span></div>
+      </div>
+    </div>);
+
+  return wrap(<>
+    <style>{`@keyframes dspBar{from{transform:scaleX(0)}to{transform:scaleX(1)}}`}</style>
+    <div style={{position:'absolute',inset:0,display:'flex',flexDirection:tall?'column':'row',
+      gap:u(36),padding:`${u(44)}px ${u(56)}px ${u(48)}px`}}>
+      <div style={{flex:1,minWidth:0,minHeight:0,display:'flex',flexDirection:'column'}}>
+        {head}
+        <div style={{display:'flex',alignItems:'center',gap:u(12),marginBottom:u(20)}}>
+          <span style={kick(accent,14)}>{isNext?'Danach':'Jetzt'}</span>
+          <span style={{color:T.t2,fontSize:u(20),marginLeft:u(6)}}>
+            {isNext?`Runde ${cur+2} · so geht es weiter`:`Runde ${cur+1} · wer spielt wo`}</span>
+          <span style={{flex:1}}/>
+          {next&&<>{pill(view==='now','Jetzt',DSP_NOW_MS,'a')}{pill(view==='next','Danach',DSP_NEXT_MS,'b')}</>}
         </div>
-      )}
-
-      {view==='board'&&(
-        <div style={{...GLASS,
-          borderRadius:16,padding:'6px 16px'}}>
-          {lb.length===0&&(
-            <div style={{color:T.t3,fontSize:13,textAlign:'center',padding:'16px 0'}}>
-              Noch keine abgeschlossene Runde.
-            </div>
-          )}
-          {lb.map((p,i)=>(
-            <div key={p.id} style={{display:'flex',alignItems:'center',gap:12,
-              padding:'11px 0',borderTop:i>0?`1px solid ${T.glassSep}`:'none'}}>
-              <span style={{width:28,color:i===0?T.o:T.t3,fontSize:16,
-                fontWeight:900,flexShrink:0}}>{i+1}</span>
-              <span style={{flex:1,minWidth:0,color:T.t1,fontSize:17,fontWeight:700,
-                overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.name}</span>
-              <span style={{color:T.o,fontSize:17,fontWeight:900,
-                fontVariantNumeric:'tabular-nums',flexShrink:0}}>
-                {ts.winMode==='wins'?`${p.totalWins} S`:`${p.totalPts} P`}
-              </span>
-            </div>
-          ))}
+        <div key={`${view}-${cur}`} className="fi" style={{flex:1,minHeight:0,display:'grid',
+          gridTemplateColumns:`repeat(${cols},minmax(0,1fr))`,gridTemplateRows:`repeat(${rows},minmax(0,1fr))`,
+          gap:u(22)}}>
+          {courts.map(card)}
         </div>
-      )}
-
-      <div style={{color:T.t3,fontSize:11,textAlign:'center',fontWeight:600}}>
-        Wechselt automatisch, Beitritt mit PIN {(pin||'').toUpperCase()}
+        {sitOut.length>0&&(
+          <div style={{display:'flex',alignItems:'center',gap:u(18),marginTop:u(20),...GLASS,borderRadius:999,
+            padding:`${u(14)}px ${u(26)}px`}}>
+            <span style={kick(T.blue,13)}>Pause</span>
+            <span style={{fontSize:u(26),fontWeight:600,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
+              {sitOut.map(nm).join('  ·  ')}</span>
+          </div>)}
+      </div>
+      <div style={{width:tall?'auto':u(500),height:tall?u(760):'auto',flexShrink:0,display:'flex',
+        flexDirection:tall?'row':'column',gap:u(24),minHeight:0}}>
+        {board}
+        {!tall&&join}
       </div>
     </div>
-  );
+  </>);
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -11969,21 +12234,16 @@ function JoinTournament({initialPin,profile,onHome,onJoin,onLeave,restored}){
     setStatus('input');
   };
 
-  // ── Monitor-Modus: read-only Anzeige (Tablet/Beamer) — kein
-  // Beitritt, nur PIN prüfen + Live-Subscription.
+  /* Bildschirm-Anzeige: kein Beitritt, nur PIN pruefen und auf die
+     eigene Seite (?display=) wechseln — sie laeuft auch ohne Konto. */
   const startMonitor=async()=>{
-    const p=(pin||'').trim().toLowerCase();
-    if(!p||p.length<4){setErr('Bitte PIN eingeben.');return;}
+    const p=normPin(pin);
+    if(!p){setErr('Bitte PIN eingeben.');return;}
     setErr('');
     const s=await fetchOnlineTournament(p);
     if(!s){setErr('Turnier nicht gefunden — PIN prüfen.');return;}
-    setPin(p);setSession(s);setStatus('monitor');
+    window.location.assign((window.__BASE__||'/')+'?display='+p);
   };
-  useEffect(()=>{
-    if(status!=='monitor') return;
-    const unsub=subscribeToTournament(pin,setSession);
-    return()=>unsub();
-  },[status,pin]);
 
   return(
     <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
@@ -12039,7 +12299,7 @@ function JoinTournament({initialPin,profile,onHome,onJoin,onLeave,restored}){
                 {err}
               </div>
             )}
-            {/* Monitor-Modus — read-only für Tablet/Beamer an der Anlage. */}
+            {/* Bildschirm-Anzeige — nur lesen, fuer Beamer/TV an der Anlage. */}
             <button onClick={startMonitor}
               style={{width:'100%',marginTop:14,padding:'12px 14px',
                 background:'transparent',border:`1px solid ${T.glassLine}`,borderRadius:999,
@@ -12051,7 +12311,7 @@ function JoinTournament({initialPin,profile,onHome,onJoin,onLeave,restored}){
                 <rect x="2" y="4" width="20" height="13" rx="2"/>
                 <path d="M8 21h8M12 17v4"/>
               </svg>
-              Monitor-Modus (nur Anzeige)
+              Als Bildschirm-Anzeige öffnen
             </button>
           </div>
         </>):null}
@@ -12113,15 +12373,6 @@ function JoinTournament({initialPin,profile,onHome,onJoin,onLeave,restored}){
             </div>
             <div style={{color:T.t2,fontSize:13,fontWeight:700}}>Verbinde …</div>
           </div>
-        )}
-
-        {status==='monitor'&&(
-          session?.tournamentState
-            ?<TournamentMonitorView session={session} pin={pin}/>
-            :<div style={{...GLASS,borderRadius:16,
-                padding:'24px 20px',textAlign:'center',color:T.t3,fontSize:13,lineHeight:1.6}}>
-                Verbunden — warte auf den Turnierstart …
-              </div>
         )}
 
         {status==='waiting'&&(
@@ -13747,11 +13998,15 @@ function SoundCueSheet({onClose}){
 function LiveShareSheet({pin,busy,err,onClose,onEnd}){
   const sheet=useSheetDrag(onClose);
   const[ask,setAsk]=useState(false);
-  const joinUrl=(()=>{
-    if(typeof window==='undefined'||!pin) return '';
-    const base=window.__BASE__||'/';
-    return window.location.origin+base+'?join='+pin;
-  })();
+  /* Zwei Wege aus derselben Session: Handys treten bei, ein
+     Bildschirm (Beamer, TV) zeigt nur an — unter eigener Adresse. */
+  const[tab,setTab]=useState('phone');
+  const[copied,setCopied]=useState(false);
+  const url=k=>(typeof window==='undefined'||!pin)?'':window.location.origin+(window.__BASE__||'/')+`?${k}=`+pin;
+  const joinUrl=url('join'),displayUrl=url('display');
+  const copy=async()=>{buzz(6);
+    try{await navigator.clipboard.writeText(displayUrl);setCopied(true);setTimeout(()=>setCopied(false),2200);}
+    catch{try{window.prompt('Link kopieren:',displayUrl);}catch{}}};
   const qrSrc=pin?`https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(joinUrl)}&size=220x220&bgcolor=ffffff&color=000000&margin=8`:null;
   return(
     <div onClick={onClose} style={{position:'fixed',inset:0,zIndex:300,
@@ -13771,9 +14026,19 @@ function LiveShareSheet({pin,busy,err,onClose,onEnd}){
           <div style={{fontFamily:T.fontSerif,color:T.t1,fontSize:24,fontWeight:700,lineHeight:1.15}}>Live teilen</div>
         </div>
         <div style={{color:T.t3,fontSize:12,lineHeight:1.55,marginBottom:14}}>
-          Spieler scannen den QR-Code und sehen Paarungen &amp; Tabelle live auf
-          ihrem Handy — Ergebnisse reichen sie direkt vom Court ein, du
-          bestätigst nur noch.
+          {tab==='phone'
+            ?<>Spieler scannen den QR-Code und sehen Paarungen &amp; Tabelle live auf
+              ihrem Handy — Ergebnisse reichen sie direkt vom Court ein, du
+              bestätigst nur noch.</>
+            :<>Eine eigene Adresse für einen Bildschirm an der Anlage: Courts, nächste
+              Runde, Tabelle und Restzeit — groß, live und ohne Anmeldung.</>}
+        </div>
+        <div role="tablist" style={{display:'flex',padding:4,borderRadius:999,...GLASS,marginBottom:14}}>
+          {[['phone','Handys'],['screen','Bildschirm']].map(([k,l])=>(
+            <button key={k} role="tab" aria-selected={tab===k} onClick={()=>{buzz(5);setTab(k);}}
+              style={{flex:1,padding:'9px 0',borderRadius:999,border:'none',cursor:'pointer',
+                background:tab===k?'#fff':'transparent',color:tab===k?'#000':T.t2,
+                fontSize:13.5,fontWeight:700}}>{l}</button>))}
         </div>
         {busy&&(
           <div style={{color:T.t3,fontSize:13,textAlign:'center',padding:'24px 0'}}>
@@ -13787,7 +14052,30 @@ function LiveShareSheet({pin,busy,err,onClose,onEnd}){
             {err}
           </div>
         )}
-        {pin&&(<>
+        {pin&&tab==='screen'&&(
+          <div style={{...GLASS,borderRadius:16,padding:'16px',marginBottom:14}}>
+            <div style={{fontFamily:T.fontDisplay,color:T.o,fontSize:10,letterSpacing:2.4,lineHeight:1}}>Anzeige</div>
+            <div style={{fontFamily:T.fontSerif,color:T.t1,fontSize:21,fontWeight:700,margin:'8px 0 12px'}}>
+              Link für den Bildschirm</div>
+            <div style={{background:'rgba(0,0,0,.35)',border:`1px solid ${T.glassLine}`,borderRadius:12,
+              padding:'11px 13px',color:T.t1,fontSize:13,wordBreak:'break-all',userSelect:'all',
+              fontVariantNumeric:'tabular-nums'}}>{displayUrl}</div>
+            <div style={{display:'flex',gap:10,marginTop:12}}>
+              <button onClick={copy} style={{flex:1,padding:'12px',borderRadius:999,border:'none',cursor:'pointer',
+                background:T.o,color:'#000',fontSize:14,fontWeight:700}}>{copied?'✓ Kopiert':'Link kopieren'}</button>
+              <button onClick={()=>{buzz(6);window.open(displayUrl,'_blank','noopener');}}
+                style={{flex:1,padding:'12px',borderRadius:999,cursor:'pointer',background:'transparent',
+                  border:`1px solid ${T.glassLine}`,color:T.t1,fontSize:14,fontWeight:700}}>Öffnen ›</button>
+            </div>
+            <div style={{color:T.t3,fontSize:11.5,lineHeight:1.6,marginTop:12}}>
+              Auf dem Laptop am Beamer oder im Browser des Fernsehers öffnen,
+              mit <span style={{color:T.t1,fontWeight:700}}>F</span> ins Vollbild. Die Anzeige
+              folgt dem Turnier auf diesem Handy von selbst — es muss dafür
+              nur offen bleiben.
+            </div>
+          </div>
+        )}
+        {pin&&tab==='phone'&&(<>
           <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:12,
             background:T.card2,border:`1px solid ${T.border}`,borderRadius:16,
             padding:'18px 16px',marginBottom:14}}>
@@ -13809,11 +14097,9 @@ function LiveShareSheet({pin,busy,err,onClose,onEnd}){
             <span style={{color:T.t1,fontWeight:700}}>So geht's für Spieler:</span>{' '}
             QR scannen (oder PIN unter „Turnier beitreten" eingeben) und sich
             in der Teilnehmerliste antippen — dann zeigt die Ansicht ihr Match.
-            <br/>
-            <span style={{color:T.t1,fontWeight:700}}>Monitor für die Anlage:</span>{' '}
-            Auf einem Tablet den PIN eingeben und „Monitor-Modus" wählen —
-            wechselt automatisch zwischen Runde und Tabelle.
           </div>
+        </>)}
+        {pin&&(<>
           {/* Live-Modus beenden — das Turnier läuft lokal weiter, nur
               die Übertragung endet. Mit Rückfrage, weil damit alle
               beigetretenen Handys aus der Live-Ansicht fallen und der
@@ -14259,6 +14545,10 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
 
   const endTournament=()=>{
     setTourney(t=>({...t,finished:true,timerRunning:false}));
+    /* Der Publish-Loop haengt an diesem Screen und waere mit dem
+       Wechsel zum Endstand weg, bevor er feuert — Spieler und die
+       Bildschirm-Anzeige saehen das Ende nie. */
+    if(isOnline) publishTournamentState(tourney.onlinePin,{...tourney,finished:true,timerRunning:false}).catch(()=>{});
     nav('tournament-leaderboard');
   };
 
@@ -22370,6 +22660,12 @@ export default function App(){
   // ?join=PIN aus der URL extrahieren (vom QR-Scan). Wird beim
   // Cold-Load gelesen und an JoinTournament als initialPin gegeben.
   // Sobald gelesen, säubern wir die URL via history.replaceState.
+  /* ?display=PIN: die Bildschirm-Anzeige eines Turniers. Bleibt in
+     der URL stehen — der Fernseher laedt sie nach einem Neustart
+     wieder genau so. */
+  const[displayPin]=useState(()=>{
+    try{return normPin(new URLSearchParams(window.location.search).get('display'));}catch{return null;}
+  });
   const[joinPinFromUrl,setJoinPinFromUrl]=useState(()=>{
     if(typeof window==='undefined') return null;
     try{
@@ -23004,6 +23300,12 @@ export default function App(){
      Eigener Merker statt scr: ein Effekt (Auth-Listener, Join-Link)
      darf scr umstellen, ohne den Splash abzuwuergen oder die Sperre
      zu umgehen. */
+  /* Bildschirm-Anzeige: ohne Splash, Login und Tab-Leiste. */
+  if(displayPin&&!APP_PAUSED) return(<>
+    <style>{CSS}</style>
+    <TournamentDisplay pin={displayPin}/>
+  </>);
+
   if(APP_PAUSED) return(<>
     <style>{CSS}</style>
     {pauseShown?<BetaPause/>:<Splash onDone={()=>setPauseShown(true)}/>}

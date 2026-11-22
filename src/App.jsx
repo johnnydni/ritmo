@@ -2345,6 +2345,40 @@ function GlassOrb({name='',label,size=28,ring}){
 /* Nummer eines Spielers = seine Stelle in der Turnierliste. Die id ist
    im Setup ein Zaehler mit Luecken, die Stelle nicht. */
 const pNum=(list,id)=>{const i=(list||[]).findIndex(p=>p.id===id);return i<0?null:i+1;};
+
+/* ── Feste Teams: Name und Foto je Paar ──────────────────────────
+   `tourney.teams[k]` = {name,photo} fuer das k-te Paar der Liste
+   (Plaetze 2k und 2k+1, wie fixedTeams). Gebunden an die POSITION,
+   nicht an einen Spieler: tauscht man Spieler zwischen Teams, bleibt
+   der Teamname beim Team. Das Foto ist eine JPEG-DataURL aus
+   processImageUpload — alles andere faellt weg (teamPhotoSrc). */
+const TEAM_NAME_MAX=22, TEAM_PHOTO_MAX=320;
+const teamPhotoSrc=p=>typeof p==='string'&&/^data:image\/jpeg;base64,/i.test(p)?p:null;
+const isTeamFmt=t=>!!FORMATS[t?.format]?.team;
+function teamInfo(t,id){
+  if(!isTeamFmt(t)) return null;
+  const pl=t.players||[], i=pl.findIndex(p=>p.id===id);
+  if(i<0) return null;
+  const k=i>>1, m=(t.teams||[])[k]||{}, two=[pl[2*k],pl[2*k+1]].filter(Boolean);
+  const names=two.map(p=>p.name||'?').join(' & '), nm=String(m.name||'').trim();
+  return {k,name:nm||names,named:!!nm,players:names,photo:teamPhotoSrc(m.photo),ids:two.map(p=>p.id),
+    initials:two.map(p=>((p.name||'?').trim()[0]||'?').toUpperCase()).join('')};
+}
+/* Tabelle je Team: beide Partner tragen dieselben Spiele, es zaehlt
+   der besser platzierte Eintrag des Paars. */
+const teamRows=(t,lb)=>{const seen=new Set();
+  return lb.filter(p=>{const ti=teamInfo(t,p.id);if(!ti||seen.has(ti.k))return false;seen.add(ti.k);return true;})
+    .map(p=>({...p,team:teamInfo(t,p.id)}));};
+/* Ohne Foto stehen die Initialen der beiden Spieler in der Kugel. */
+function TeamBadge({info,size=40}){
+  if(info?.photo) return <img src={info.photo} alt="" draggable={false} style={{width:size,height:size,
+    borderRadius:'50%',objectFit:'cover',flexShrink:0,border:`1px solid ${T.glassLine}`,
+    boxShadow:'0 3px 10px rgba(0,0,0,.3)'}}/>;
+  return <GlassOrb label={info?.initials||'?'} size={size}/>;
+}
+/* Live-Sitzungen bekommen die Teamnamen, aber keine Fotos: der Stand
+   geht im Sekundentakt raus (die Uhr), und ein Foto sind 20–30 kB. */
+const pubTourney=t=>t?.teams?{...t,teams:t.teams.map(m=>({name:m?.name||''}))}:t;
 function OrbStack({players=[],max=4,size=28}){
   const shown=players.slice(0,max), rest=players.length-shown.length;
   return(
@@ -8245,8 +8279,10 @@ function LbHead({withPauses=true,trail='PKT',lead='SPIELER',
 /* Eine Tabellenzeile. Die Wertung kommt als children herein —
    im laufenden Turnier ein Knopf (Punkte anpassen), sonst LbScore. */
 function LbRow({rank,name,suffix='',wins=0,losses=0,pauses=0,
-  withPauses=true,highlight=false,last=false,children}){
-  const sub=`${wins} S · ${losses} N`+(withPauses?` · ${pauses} P`:'');
+  withPauses=true,highlight=false,last=false,pre=null,lead='',children}){
+  /* pre: Bild vor dem Namen (Teamfoto), lead: Text vor „S · N · P“
+     (die Spieler eines benannten Teams). */
+  const sub=lead+`${wins} S · ${losses} N`+(withPauses?` · ${pauses} P`:'');
   return(
     <div style={{display:'flex',alignItems:'center',gap:12,padding:'12px 16px 12px 14px',
       borderBottom:last?'none':`1px solid ${T.glassSep}`,
@@ -8254,6 +8290,7 @@ function LbRow({rank,name,suffix='',wins=0,losses=0,pauses=0,
       <span style={{width:24,flexShrink:0,textAlign:'center',fontSize:24,fontWeight:300,
         lineHeight:1,fontVariantNumeric:'tabular-nums',
         color:rank<=3?LB_MEDAL[rank-1]:T.t3}}>{rank}</span>
+      {pre}
       <div style={{flex:1,minWidth:0}}>
         <div style={{color:T.t1,fontSize:16,fontWeight:600,overflow:'hidden',
           textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{name}{suffix}</div>
@@ -8769,8 +8806,35 @@ function CoverPicker({value,onChange,name}){
    die Karte zeigt dafuer ein Feld „+ Partner“ statt eines Fehlers.
 ═══════════════════════════════════════════════════════════════ */
 const isDefaultName=n=>/^Spieler\s*\d+$/i.test((n||'').trim());
+/* Das runde Teamfoto der Karte. Der Dateidialog haengt an einem
+   <label> — nur so liegt er sicher an der Nutzergeste. Das Bild laeuft
+   durch processImageUpload (Magic Bytes, Canvas, kein EXIF). */
+function TeamPhotoPick({photo,onPhoto,label}){
+  const pick=async e=>{const f=e.target.files?.[0];e.target.value='';if(!f)return;
+    try{onPhoto(await processImageUpload(f,TEAM_PHOTO_MAX));buzz(8);}
+    catch(err){alert(err?.message||'Bild konnte nicht geladen werden.');}};
+  return(
+    <div style={{position:'relative',width:56,height:56,flexShrink:0}}>
+      <label aria-label={photo?`Foto von ${label} ändern`:`Foto für ${label} wählen`}
+        style={{display:'block',width:56,height:56,borderRadius:'50%',cursor:'pointer',overflow:'hidden',
+          border:photo?`1.5px solid ${T.glassLine}`:`1.5px dashed ${T.glassLine}`,
+          display:'flex',alignItems:'center',justifyContent:'center'}}>
+        {photo
+          ?<img src={photo} alt="" draggable={false} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+          :<LineIcon name="kamera" size={22} color={T.t2}/>}
+        <input type="file" accept="image/*" onChange={pick} style={{display:'none'}}/>
+      </label>
+      {photo&&(
+        <button onClick={()=>{buzz(6);onPhoto(null);}} aria-label={`Foto von ${label} entfernen`}
+          style={{position:'absolute',right:-4,top:-4,width:22,height:22,borderRadius:'50%',padding:0,
+            background:T.bg,border:`1px solid ${T.glassLine}`,color:T.t2,fontSize:12,lineHeight:1,
+            cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>×</button>
+      )}
+    </div>
+  );
+}
 function TeamRoster({players,renamePlayer,addPlayer,addTeam,removeTeam,swapPlayers,
-  inputRefs,cls,extra}){
+  teams:meta=[],setTeamMeta,inputRefs,cls,extra}){
   const[sel,setSel]=useState(null);
   const teams=[];for(let i=0;i<players.length;i+=2)teams.push([players[i],players[i+1]]);
   const canDrop=teams.length>2;
@@ -8810,16 +8874,34 @@ function TeamRoster({players,renamePlayer,addPlayer,addTeam,removeTeam,swapPlaye
           <SwipeableRow disabled={!canDrop} onDelete={()=>removeTeam(t.filter(Boolean).map(p=>p.id))}>
             <div style={{...GLASS,borderRadius:18,padding:'12px 14px 8px',
               boxShadow:t.some(p=>p&&p.id===sel)?`${GLASS.boxShadow}, inset 0 0 0 1px ${T.o}`:GLASS.boxShadow}}>
-              <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:2}}>
-                <span style={{fontFamily:T.fontDisplay,color:T.o,fontSize:9.5,letterSpacing:1.8}}>Team</span>
-                <span style={{color:T.o,fontSize:13,fontWeight:700,fontVariantNumeric:'tabular-nums'}}>{ti+1}</span>
-                <span style={{flex:1}}/>
-                {canDrop&&(
-                  <button onClick={()=>{buzz(6);removeTeam(t.filter(Boolean).map(p=>p.id));}} aria-label={`Team ${ti+1} entfernen`}
-                    style={{width:28,height:28,borderRadius:'50%',background:'none',
-                      border:`1px solid ${T.glassLine}`,color:T.t3,fontSize:14,cursor:'pointer',
-                      display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1}}>×</button>
-                )}
+              {/* Variante A: Foto links, darueber das Ressort, daneben der
+                  Teamname in der Antiqua — beides freiwillig. */}
+              <div style={{display:'flex',alignItems:'center',gap:13,marginBottom:6}}>
+                <TeamPhotoPick photo={teamPhotoSrc(meta[ti]?.photo)} label={`Team ${ti+1}`}
+                  onPhoto={ph=>setTeamMeta?.(ti,{photo:ph})}/>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{display:'flex',alignItems:'center',gap:8}}>
+                    <span style={{fontFamily:T.fontDisplay,color:T.o,fontSize:9.5,letterSpacing:1.8}}>Team</span>
+                    <span style={{color:T.o,fontSize:13,fontWeight:700,fontVariantNumeric:'tabular-nums'}}>{ti+1}</span>
+                    <span style={{flex:1}}/>
+                    {canDrop&&(
+                      <button onClick={()=>{buzz(6);removeTeam(t.filter(Boolean).map(p=>p.id));}} aria-label={`Team ${ti+1} entfernen`}
+                        style={{width:26,height:26,borderRadius:'50%',background:'none',
+                          border:`1px solid ${T.glassLine}`,color:T.t3,fontSize:13,cursor:'pointer',
+                          display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1}}>×</button>
+                    )}
+                  </div>
+                  <input value={meta[ti]?.name||''} maxLength={TEAM_NAME_MAX}
+                    onChange={e=>setTeamMeta?.(ti,{name:e.target.value})}
+                    placeholder="Teamname (optional)" aria-label={`Name von Team ${ti+1}`}
+                    autoCapitalize="words" autoCorrect="off" spellCheck={false}
+                    onFocus={e=>{e.currentTarget.style.borderBottomColor=T.o;}}
+                    onBlur={e=>{e.currentTarget.style.borderBottomColor=T.glassLine;}}
+                    style={{width:'100%',minWidth:0,height:34,background:'none',border:'none',borderRadius:0,
+                      borderBottom:`1px solid ${T.glassLine}`,color:T.t1,fontFamily:T.fontSerif,fontSize:20,
+                      fontWeight:700,padding:'2px 0 3px',outline:'none',boxSizing:'border-box',
+                      transition:'border-color .18s'}}/>
+                </div>
               </div>
               {row(t[0],2*ti)}
               {t[1]?row(t[1],2*ti+1):(
@@ -8852,7 +8934,7 @@ function TeamRoster({players,renamePlayer,addPlayer,addTeam,removeTeam,swapPlaye
 function TournamentWizard({onClose,onFinish,canStart,entrance=true,
   format,setFormat,winMode,setWinMode,name,setName,cover,setCover,
   players,addPlayer,addPlayerNamed,addScannedPlayers,removePlayer,renamePlayer,setPlayerGroup,
-  addTeam,removeTeam,swapPlayers,
+  addTeam,removeTeam,swapPlayers,teams,setTeamMeta,
   numCourts,setNumCourts,maxCourts,courtNames,setCourtName,
   courtSingles,toggleCourtSingle,
   layout,layoutSel,setLayoutSel,moveCourtTo,rotateCourtAt,
@@ -9115,6 +9197,7 @@ function TournamentWizard({onClose,onFinish,canStart,entrance=true,
             {meta.team?(
               <TeamRoster players={players} renamePlayer={renamePlayer} addPlayer={addPlayer}
                 addTeam={addTeam} removeTeam={dropTeam} swapPlayers={swapPlayers}
+                teams={teams} setTeamMeta={setTeamMeta}
                 inputRefs={inputRefs} cls={id=>plOut(id)?'fly-out':plIn(id)?'fly-in':undefined}/>
             ):(<>
             {players.map((p,idx)=>(
@@ -9519,6 +9602,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
   // mode: 'lokal' = bestehender Flow (lokale Spielerliste).
   // 'online' = Host erstellt Session, Player joinen via PIN/QR.
   const[mode,setMode]=useState(seed?.mode||'lokal');
+  const[teams,setTeams]=useState(()=>Array.isArray(seed?.teams)?seed.teams:[]);
   const[players,setPlayers]=useState(seed?.players||[
     {id:0,name:'Spieler 1',color:PCOLS[0]},
     {id:1,name:'Spieler 2',color:PCOLS[1]},
@@ -9755,14 +9839,24 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
      in der Liste. Angelegt, entfernt und getauscht wird deshalb immer
      in der Liste selbst — fixedTeams liest dieselbe Reihenfolge. */
   const addTeam=()=>{const a=nextId.current++,b=nextId.current++;
+    const nk=Math.floor(players.length/2);setTeams(t=>{const o=[...t];o[nk]={};return o;});
     setPlayers(p=>[...p,{id:a,name:`Spieler ${p.length+1}`,color:PCOLS[a%PCOLS.length]},
       {id:b,name:`Spieler ${p.length+2}`,color:PCOLS[b%PCOLS.length]}]);};
-  const removeTeam=ids=>setPlayers(p=>p.filter(x=>!ids.includes(x.id)));
+  const removeTeam=ids=>{const k=Math.floor(players.findIndex(x=>x.id===ids[0])/2);
+    if(k>=0) setTeams(t=>t.filter((_,i)=>i!==k));
+    setPlayers(p=>p.filter(x=>!ids.includes(x.id)));};
+  const setTeamMeta=(k,patch)=>setTeams(t=>{const o=[...t];while(o.length<=k)o.push({});o[k]={...o[k],...patch};return o;});
+  /* Gespeichert wird je Team genau ein Eintrag — beschnitten und mit
+     geprueftem Foto, nur bei Team-Formaten. */
+  const teamsOut=()=>fmtMeta.team?Array.from({length:Math.ceil(players.length/2)},(_,k)=>({
+    name:String(teams[k]?.name||'').trim().slice(0,TEAM_NAME_MAX),photo:teamPhotoSrc(teams[k]?.photo)})):undefined;
   const swapPlayers=(a,b)=>setPlayers(p=>{const i=p.findIndex(x=>x.id===a),j=p.findIndex(x=>x.id===b);
     if(i<0||j<0) return p; const o=[...p];[o[i],o[j]]=[o[j],o[i]];return o;});
   /* Minus fuer Team-Formate: das letzte Paar (oder der Spieler ohne
      Partner) geht. */
-  const dropLastTeam=()=>setPlayers(p=>p.length<=4?p:p.slice(0,p.length%2?-1:-2));
+  const dropLastTeam=()=>{if(players.length<=4)return;
+    const n=players.length-(players.length%2?1:2);setTeams(t=>t.slice(0,Math.ceil(n/2)));
+    setPlayers(p=>p.slice(0,n));};
   const plusTeam=()=>players.length%2?addPlayer():addTeam();
   // Erster Buchstabe automatisch groß — autoCapitalize ist nur ein
   // Tastatur-Hint und greift beim schnellen Durchtippen mit Enter
@@ -9826,7 +9920,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
       // fällt weg, da es hier nicht mitgegeben wird).
       id:saved?.id,createdAt:saved?.createdAt,
       name:name.trim()||('Turnier '+new Date().toLocaleDateString('de-DE')),
-      cover,startTime,endTime,roundPrio,
+      cover,startTime,endTime,roundPrio,teams:teamsOut(),
       players,format,winMode,pauseMode,pausePts,
       numCourts,courtNames,courtSingles:singles,courtLayout:layout,
       roundDurationMin:roundDur,
@@ -10356,6 +10450,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
           {fmtMeta.team?(
             <TeamRoster players={players} renamePlayer={renamePlayer} addPlayer={addPlayer}
               addTeam={addTeam} removeTeam={removeTeam} swapPlayers={swapPlayers}
+              teams={teams} setTeamMeta={setTeamMeta}
               inputRefs={playerInputRefs} extra={p=>(
                 <button onClick={()=>setStylePickerFor(p.id)}
                   title="Spielstil wählen" aria-label="Spielstil wählen"
@@ -10527,7 +10622,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
           title:'Als Entwurf speichern',
           onClick:()=>onSaveDraft?.({
             id:saved?.id,createdAt:saved?.createdAt,
-            name:name.trim(),cover,startTime,endTime,roundPrio,
+            name:name.trim(),cover,startTime,endTime,roundPrio,teams:teamsOut(),
             players,format,winMode,pauseMode,pausePts,numCourts,roundDurationMin:roundDur,courtNames,courtSingles,
             courtLayout:layout,
           }),
@@ -10545,7 +10640,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
             // die aktuelle oder die nächste Runde wirksam werden.
             setEditScopePrompt({players,format,winMode,pauseMode,pausePts,numCourts,roundDurationMin:roundDur,
               name:name.trim(),cover,startTime,endTime,roundPrio,courtNames,courtSingles:singles,
-              courtLayout:layout});
+              courtLayout:layout,teams:teamsOut()});
             return;
           }
           if(mode==='online'){
@@ -10594,6 +10689,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
           addScannedPlayers={addScannedPlayers}
           removePlayer={removePlayer} renamePlayer={renamePlayer} setPlayerGroup={setPlayerGroup}
           addTeam={addTeam} removeTeam={removeTeam} swapPlayers={swapPlayers}
+          teams={teams} setTeamMeta={setTeamMeta}
           numCourts={numCourts} setNumCourts={setNumCourts} maxCourts={maxCourts}
           courtNames={courtNames} setCourtName={setCourtName}
           courtSingles={courtSingles} toggleCourtSingle={toggleCourtSingle}
@@ -12021,7 +12117,10 @@ function MatchSlotGrid({court,playerById,numOf,meName,net=null,avatar=52,innerA=
   /* Breite der Netzspalte. 32 reicht fuer eine Plakette; der
      Bestaetigen-Knopf im laufenden Turnier braucht mehr, weil man
      ihn trifft und nicht nur liest. */
-  netW=32,slotPad='14px 6px',heads=true}){
+  netW=32,slotPad='14px 6px',heads=true,
+  /* Feste Teams: [teamInfo A, teamInfo B] — dann EINE Reihe je Seite
+     mit Teamfoto, Teamname und den beiden Spielern klein darunter. */
+  teams=null}){
   const nm=id=>playerById?.(id)?.name||'?';
   const isMe=id=>meName&&nm(id).toLowerCase()===meName.toLowerCase();
   const slot=(id,pos)=>(
@@ -12041,7 +12140,20 @@ function MatchSlotGrid({court,playerById,numOf,meName,net=null,avatar=52,innerA=
     </div>
   );
   const t1=court.t1||[],t2=court.t2||[];
-  const rows=court.single?1:2;
+  const rows=teams?1:court.single?1:2;
+  const ell={maxWidth:'100%',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',textAlign:'center'};
+  const teamSlot=ti=>(
+    <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',
+      gap:6,padding:slotPad,minWidth:0,height:'100%'}}>
+      <TeamBadge info={ti} size={Math.round(avatar*1.4)}/>
+      {/* Zwei Zeilen statt Abschneiden: neben den Punktefeldern ist die
+          Spalte schmal, und „Die Wa…“ sagt nichts. */}
+      <div lang="de" style={{fontFamily:T.fontSerif,fontWeight:700,color:T.t1,lineHeight:1.12,hyphens:'auto',
+        fontSize:Math.max(...ti.name.split(/\s+/).map(w=>w.length))>8?12.5:15,
+        textAlign:'center',maxWidth:'100%',overflow:'hidden',overflowWrap:'anywhere',
+        display:'-webkit-box',WebkitLineClamp:3,WebkitBoxOrient:'vertical'}}>{ti.name}</div>
+      {ti.named&&<div style={{color:T.t3,fontSize:11.5,...ell}}>{ti.players}</div>}
+    </div>);
   const netItems=net==null?[]:(Array.isArray(net)?net.filter(Boolean):[net]);
   // Netz-Stueck. Was auf dem Netz sitzt (das VS), bekommt KEINEN Grund
   // untergelegt — --card2 ist im Glass-Theme halbtransparent, die Linie
@@ -12104,10 +12216,10 @@ function MatchSlotGrid({court,playerById,numOf,meName,net=null,avatar=52,innerA=
       {innerB&&asideCell(innerB,4)}
       {Array.from({length:rows}).map((_,r)=>(
         <Fragment key={r}>
-          <div style={{gridColumn:1,gridRow:r+2,
-            borderTop:r?`1px solid ${T.glassSep}`:'none'}}>{slot(t1[r],`a${r}`)}</div>
-          <div style={{gridColumn:5,gridRow:r+2,
-            borderTop:r?`1px solid ${T.glassSep}`:'none'}}>{slot(t2[r],`b${r}`)}</div>
+          <div style={{gridColumn:1,gridRow:r+2,minWidth:0,
+            borderTop:r?`1px solid ${T.glassSep}`:'none'}}>{teams?teamSlot(teams[0]):slot(t1[r],`a${r}`)}</div>
+          <div style={{gridColumn:5,gridRow:r+2,minWidth:0,
+            borderTop:r?`1px solid ${T.glassSep}`:'none'}}>{teams?teamSlot(teams[1]):slot(t2[r],`b${r}`)}</div>
         </Fragment>
       ))}
     </div>
@@ -12973,7 +13085,7 @@ function PtsSlider({value,min=0,max,onChange,color=T.o,ring=false,ticks=0,major=
   );
 }
 
-function TournamentCourtCard({court,courtIndex,courtName,playerById,numOf,onScoreChange,onConfirm,onEditLineup,scoreMax=40}){
+function TournamentCourtCard({court,courtIndex,courtName,playerById,numOf,onScoreChange,onConfirm,onEditLineup,scoreMax=40,teams=null}){
   // Score-Werte aus dem Court ziehen. null/undefined = noch nicht
   // eingegeben → Input rendert leer, damit Tippen "5" auch wirklich
   // "5" wird und nicht "05". Beim Abschluss zählt 0 als gültiger
@@ -13119,7 +13231,7 @@ function TournamentCourtCard({court,courtIndex,courtName,playerById,numOf,onScor
           court={court}
           playerById={playerById}
           numOf={numOf}
-          avatar={38} slotPad="8px 6px" heads={false}
+          avatar={38} slotPad="8px 6px" heads={false} teams={teams}
           innerA={scoreSlot('A',s1,s1Raw,v=>onScoreChange('s1',v))}
           innerB={scoreSlot('B',s2,s2Raw,v=>onScoreChange('s2',v))}
           netW={48}
@@ -14376,7 +14488,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
   //    debounced auf 500ms, damit Timer-Ticks die DB nicht fluten.
   useEffect(()=>{
     if(!isOnline) return;
-    const id=setTimeout(()=>{publishTournamentState(tourney.onlinePin,tourney).catch(()=>{});},500);
+    const id=setTimeout(()=>{publishTournamentState(tourney.onlinePin,pubTourney(tourney)).catch(()=>{});},500);
     return()=>clearTimeout(id);
   },[isOnline,tourney]);
 
@@ -14415,7 +14527,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
         numCourts:tourney.numCourts,roundDurationMin:tourney.roundDurationMin,
         mode:'mirror',status:'playing',allowLateJoin:true,
       });
-      await publishTournamentState(pin,tourney);
+      await publishTournamentState(pin,pubTourney(tourney));
       setTourney(t=>({...t,onlinePin:pin,isHost:true}));
     }catch(e){
       setLiveErr(e?.message||'Live-Session konnte nicht erstellt werden — Internetverbindung prüfen.');
@@ -14678,7 +14790,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
     /* Der Publish-Loop haengt an diesem Screen und waere mit dem
        Wechsel zum Endstand weg, bevor er feuert — Spieler und die
        Bildschirm-Anzeige saehen das Ende nie. */
-    if(isOnline) publishTournamentState(tourney.onlinePin,{...tourney,finished:true,timerRunning:false}).catch(()=>{});
+    if(isOnline) publishTournamentState(tourney.onlinePin,pubTourney({...tourney,finished:true,timerRunning:false})).catch(()=>{});
     nav('tournament-leaderboard');
   };
 
@@ -14707,6 +14819,10 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
   // Court/Leaderboard-Eintrag bekommen (sonst stale nach setTourney).
   const editLineupCourt=editLineupCourtId!=null?round.courts.find(c=>c.id===editLineupCourtId):null;
   const editPtsEntry=editPtsId!=null?sortedLb.find(p=>p.id===editPtsId):null;
+  /* Feste Teams: eine Zeile je Team. Eine Korrektur gilt dann fuer
+     beide Partner, sonst liefen ihre Werte auseinander. */
+  const boardRows=isTeamFmt(tourney)?teamRows(tourney,sortedLb):sortedLb;
+  const ptsIds=id=>teamInfo(tourney,id)?.ids||[id];
 
   const totalSecs=(tourney.roundDurationMin||10)*60;
 
@@ -15014,7 +15130,9 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
               numOf={id=>pNum(tourney.players,id)}
               onScoreChange={(field,val)=>updateScore(court.id,field,val)}
               onConfirm={()=>confirmCourt(court.id)}
-              onEditLineup={()=>setEditLineupCourtId(court.id)}/>
+              onEditLineup={()=>setEditLineupCourtId(court.id)}
+              teams={(()=>{const a=teamInfo(tourney,court.t1?.[0]),b=teamInfo(tourney,court.t2?.[0]);
+                return a&&b?[a,b]:null;})()}/>
             </div>
           ))}
           </div>
@@ -15062,12 +15180,14 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
           <div style={{...GLASS,borderRadius:16,
             overflow:'hidden',display:'flex',flexDirection:'column',maxHeight:'100%'}}>
             <div style={{overflowY:'auto',WebkitOverflowScrolling:'touch'}}>
-              {sortedLb.map((p,i)=>{
+              {boardRows.map((p,i)=>{
                 const adj=tourney.winMode==='wins'?p.adjWins:p.adjPts;
                 return(
-                <LbRow key={p.id} rank={i+1} name={p.name}
+                <LbRow key={p.id} rank={i+1} name={p.team?p.team.name:p.name}
+                  pre={p.team&&<TeamBadge info={p.team} size={34}/>}
+                  lead={p.team?.named?`${p.team.players} · `:''}
                   wins={p.wins} losses={p.losses} pauses={p.sitOut}
-                  last={i===sortedLb.length-1}>
+                  last={i===boardRows.length-1}>
                   {/* Die ganze Wertung ist der Knopf zum Anpassen — der Stift
                       allein war ein 12-px-Ziel. Er steht klein vor der Einheit,
                       neben der Zahl schob er sie aus der Flucht. */}
@@ -15306,7 +15426,7 @@ function TournamentPlay({tourney,setTourney,onHome,nav,ringId='ritmo',onEdit,onM
         <PointsEditModal
           entry={editPtsEntry}
           winMode={tourney.winMode}
-          onSave={(v)=>{savePlayerPoints(editPtsEntry.id,v);setEditPtsId(null);}}
+          onSave={(v)=>{ptsIds(editPtsEntry.id).forEach(id=>savePlayerPoints(id,v));setEditPtsId(null);}}
           onClose={()=>setEditPtsId(null)}/>
       )}
 
@@ -15359,13 +15479,16 @@ function TournamentLeaderboard({tourney,onHome,onNew,onSavePoints,onReopen}){
   };
   const lb=calcLeaderboard(tourney.players,tourney.rounds,tourney.winMode,tourney.pauseMode,tourney.pausePts);
   const sortedLb=lb.sort((a,b)=>tourney.winMode==='points'?b.totalPts-a.totalPts||b.totalWins-a.totalWins:b.totalWins-a.totalWins||b.totalPts-a.totalPts);
-  const winner=sortedLb[0];
+  /* Feste Teams: die Tabelle zaehlt Teams, und der Sieger ist ein Team. */
+  const rows=isTeamFmt(tourney)?teamRows(tourney,sortedLb):sortedLb;
+  const winner=rows[0];
+  const wName=winner?.team?winner.team.name:winner?.name;
   const[tableOpen,setTableOpen]=useState(false);
   // Die Schlagzeile ist der Name — so gross, wie er in die Zeile passt.
-  const nl=(winner?.name||'').length;
+  const nl=(wName||'').length;
   const nameFs=nl<=6?88:nl<=9?68:nl<=13?52:42;
   /* Statt einer Rechnung ein Spruch — derselbe wie im PDF (winLine). */
-  const story=winLine(tourney.id??tourney.name,winner?.name);
+  const story=winLine(tourney.id??tourney.name,wName);
   return(
     <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 18px)',position:'relative',overflow:'hidden'}}>
@@ -15400,7 +15523,13 @@ function TournamentLeaderboard({tourney,onHome,onNew,onSavePoints,onReopen}){
         <div className="display" style={{color:T.o,fontSize:12,letterSpacing:2.8,
           marginTop:44,flexShrink:0}}>Sieger</div>
         <div style={{...HEAD_SERIF,fontSize:nameFs,lineHeight:.95,letterSpacing:nameFs>60?-2:-1,
-          margin:'8px 0 0 -3px',overflowWrap:'anywhere',flexShrink:0}}>{winner?.name}.</div>
+          margin:'8px 0 0 -3px',overflowWrap:'anywhere',flexShrink:0}}>{wName}.</div>
+        {winner?.team&&(
+          <div style={{display:'flex',alignItems:'center',gap:12,marginTop:14,flexShrink:0}}>
+            <TeamBadge info={winner.team} size={52}/>
+            <span style={{color:T.t2,fontSize:14.5,fontWeight:600}}>{winner.team.players}</span>
+          </div>
+        )}
         <div className="txt" style={{color:T.t2,fontSize:15,fontStyle:'italic',lineHeight:1.45,
           marginTop:14,flexShrink:0}}>{story}</div>
 
@@ -15422,7 +15551,7 @@ function TournamentLeaderboard({tourney,onHome,onNew,onSavePoints,onReopen}){
               background:'none',border:'none',color:T.t1,cursor:'pointer',textAlign:'left'}}>
             <span style={{flex:1,fontFamily:T.fontSerif,fontSize:19,fontWeight:700}}>Ganze Tabelle</span>
             <span style={{display:'inline-flex'}}>
-              {sortedLb.slice(1,4).map((p,i)=>(
+              {rows.slice(1,4).map((p,i)=>(
                 <span key={p.id} style={{marginLeft:i?-7:0,display:'inline-flex'}}>
                   <GlassOrb label={i+2} size={24}/>
                 </span>
@@ -15447,10 +15576,12 @@ function TournamentLeaderboard({tourney,onHome,onNew,onSavePoints,onReopen}){
         {tableOpen&&(
           <div className="fu" style={{...GLASS,borderRadius:20,overflow:'hidden',flexShrink:0,marginTop:12}}>
             <div>
-              {sortedLb.map((p,i)=>(
-                <LbRow key={p.id} rank={i+1} name={p.name}
+              {rows.map((p,i)=>(
+                <LbRow key={p.id} rank={i+1} name={p.team?p.team.name:p.name}
+                  pre={p.team&&<TeamBadge info={p.team} size={34}/>}
+                  lead={p.team?.named?`${p.team.players} · `:''}
                   wins={p.wins} losses={p.losses} pauses={p.sitOut}
-                  last={i===sortedLb.length-1}>
+                  last={i===rows.length-1}>
                   {/* Wie im laufenden Turnier: die Wertung ist der Knopf zum
                       Anpassen — auch nach dem Abschluss. */}
                   <button onClick={()=>onSavePoints&&setEditPtsId(p.id)}
@@ -15505,7 +15636,7 @@ function TournamentLeaderboard({tourney,onHome,onNew,onSavePoints,onReopen}){
 
       {editPtsId!=null&&(()=>{const e=sortedLb.find(x=>x.id===editPtsId);return e&&(
         <PointsEditModal entry={e} winMode={tourney.winMode}
-          onSave={v=>{onSavePoints(editPtsId,v);setEditPtsId(null);}}
+          onSave={v=>{(teamInfo(tourney,editPtsId)?.ids||[editPtsId]).forEach(id=>onSavePoints(id,v));setEditPtsId(null);}}
           onClose={()=>setEditPtsId(null)}/>
       );})()}
 
@@ -23289,6 +23420,7 @@ export default function App(){
         courtLayout:updates.courtLayout,
         name:updates.name||prev.name,
         cover:'cover' in updates?updates.cover:prev.cover,
+        teams:'teams' in updates?updates.teams:prev.teams,
         pauseMode:updates.pauseMode??prev.pauseMode,
         pausePts:updates.pausePts??prev.pausePts,
         startTime:updates.startTime,

@@ -1656,6 +1656,28 @@ und tippte Namen um.
   Fly-in/-out ueber `cls`) und das Formular (mit dem Spielstil-Knopf
   ueber `extra`). Screenshot-Scan und „Zuletzt dabei“ fuellen die
   Teams der Reihe nach.
+- **Teamname und Teamfoto** (Variante „Avatar“): links auf der Karte
+  ein runder Fotoknopf (`TeamPhotoPick`, Dateidialog am `<label>`,
+  `processImageUpload` auf `TEAM_PHOTO_MAX` = 320 px, × entfernt),
+  daneben der Name in der Antiqua (`TEAM_NAME_MAX` = 22). Beides
+  freiwillig: ohne Name heisst das Team „Anna & Ben“, ohne Foto steht
+  eine Kugel mit den Initialen (`TeamBadge`).
+- **Gespeichert in `tourney.teams[k]` = `{name,photo}`, je
+  Paar-Position** — nicht am Spieler. Tauscht man Spieler zwischen
+  Teams, bleibt der Name beim Team. `addTeam`/`removeTeam`/
+  `dropLastTeam` halten das Array mit; `teamsOut()` schreibt beim
+  Start, im Entwurf und beim Bearbeiten genau einen Eintrag je Team
+  (Foto durch `teamPhotoSrc`, nur JPEG-DataURLs).
+- **Im Turnier** liest alles ueber `teamInfo(tourney,playerId)`:
+  die Court-Karte (`MatchSlotGrid` mit `teams` — eine Reihe je Seite
+  mit Foto, Name und den Spielern klein darunter; lange Namen brechen
+  auf bis zu drei Zeilen statt „Die Wa…“), die Tabelle und der
+  Endstand (eine Zeile je Team, `teamRows`; der Sieger ist das Team).
+  Eine Punktekorrektur gilt dort fuer beide Partner.
+- **Live-Sitzungen bekommen die Namen, nicht die Fotos**
+  (`pubTourney`): der Stand geht im Sekundentakt raus, ein Foto sind
+  20–30 kB. Bildschirm-Anzeige, Teilnehmeransicht und PDF zeigen
+  weiterhin die Spielernamen.
 
 ### `MinuteRuler` — die Rundendauer
 

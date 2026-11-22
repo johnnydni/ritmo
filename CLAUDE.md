@@ -1629,6 +1629,34 @@ Assistenten `PadelIntro` („Ping Pong? Tennis? Pickleball? Meh." →
 Aufgehen kein Formular durchblitzt, leistet allein `entrance=false`:
 der Assistent steht im selben Frame deckend da, ohne Blende.
 
+### Feste Teams als Karten (`TeamRoster`)
+
+Bei den Formaten mit festen Paaren (`FORMATS[f].team`: Team-Americano,
+Team-Mexicano, K.-o.) traegt man **Teams** ein, nicht eine lange
+Spielerliste. Vorher ergaben sich die Paare aus der Listen-Reihenfolge
+(1+2, 3+4, …), und wer ein Team aendern wollte, zaehlte in der Liste
+und tippte Namen um.
+
+- **Eine Karte je Team**: `TEAM` + Nummer, zwei Namen auf Linien.
+  „+ Team“ legt ein Paar an, × oder Wischen nimmt das ganze Paar raus
+  (ab mehr als zwei Teams). Der Zaehler oben, die Karte im Formular und
+  der Schnellzugriff zaehlen Teams statt Spieler.
+- **Tauschen**: erst eine Kugel antippen (orange Ring), dann die
+  zweite — die beiden Spieler wechseln die Plaetze, auch zwischen
+  Teams. Ein zweiter Tipp auf dieselbe Kugel hebt die Auswahl auf.
+- **Der Datensatz bleibt die flache Liste in Paaren.** `fixedTeams`,
+  die Auslosung, die Wertung und alte Turniere lesen dieselbe
+  Reihenfolge; `addTeam`/`removeTeam`/`swapPlayers` in
+  `TournamentSetup` arbeiten nur auf ihr. Nichts in tournament.js
+  wurde angefasst.
+- **Ungerade Zahl** (nach dem Wechsel von einem Einzelformat): die
+  letzte Karte zeigt „+ Partner“ statt eines zweiten Namens, „+ Team“
+  ist solange weg — sonst rutschten die Paare um eine Stelle.
+- Beide Wege nutzen denselben Baustein: der Assistent (Schritt 2, mit
+  Fly-in/-out ueber `cls`) und das Formular (mit dem Spielstil-Knopf
+  ueber `extra`). Screenshot-Scan und „Zuletzt dabei“ fuellen die
+  Teams der Reihe nach.
+
 ### `MinuteRuler` — die Rundendauer
 
 Eine waagerechte Skala mit Schnappraster, darunter Zeiger und Dauer als

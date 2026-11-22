@@ -8751,9 +8751,108 @@ function CoverPicker({value,onChange,name}){
   );
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   FESTE TEAMS ALS KARTEN (Team-Americano, Team-Mexicano, K.-o.)
+
+   Bei Formaten mit festen Paaren war die Eingabe eine lange
+   Spielerliste, und die Teams ergaben sich aus der Reihenfolge
+   (1+2, 3+4, …). Wer ein Team aendern wollte, musste in der Liste
+   zaehlen und Namen umtippen. Jetzt ist ein Team die Einheit: eine
+   Karte mit zwei Namen, „+ Team“ legt ein Paar an, Wischen oder ×
+   nimmt ein Paar raus, und zwei angetippte Kugeln tauschen ihre
+   Plaetze — auch zwischen zwei Teams.
+
+   Der Datensatz bleibt die flache Spielerliste in Paaren: daran
+   haengen fixedTeams, die Auslosung, die Wertung und alte Turniere.
+   Hier wird nur anders darauf geschaut. Bei ungerader Zahl (nach dem
+   Wechsel von einem Einzelformat) fehlt dem letzten Team ein Partner;
+   die Karte zeigt dafuer ein Feld „+ Partner“ statt eines Fehlers.
+═══════════════════════════════════════════════════════════════ */
+const isDefaultName=n=>/^Spieler\s*\d+$/i.test((n||'').trim());
+function TeamRoster({players,renamePlayer,addPlayer,addTeam,removeTeam,swapPlayers,
+  inputRefs,cls,extra}){
+  const[sel,setSel]=useState(null);
+  const teams=[];for(let i=0;i<players.length;i+=2)teams.push([players[i],players[i+1]]);
+  const canDrop=teams.length>2;
+  useEffect(()=>{if(sel!=null&&!players.some(p=>p.id===sel))setSel(null);},[players,sel]);
+  const tap=id=>{
+    if(sel==null){buzz(5);setSel(id);return;}
+    if(sel===id){buzz(4);setSel(null);return;}
+    buzz(10);swapPlayers(sel,id);setSel(null);
+  };
+  const row=(p,i,last)=>(
+    <div key={p.id} style={{display:'flex',alignItems:'center',gap:12,padding:'6px 0'}}>
+      <button onClick={()=>tap(p.id)} aria-pressed={sel===p.id}
+        aria-label={sel==null?`${p.name||'Spieler'} tauschen`:sel===p.id?'Auswahl aufheben':`Mit ${p.name||'Spieler'} tauschen`}
+        style={{background:'none',border:'none',padding:0,cursor:'pointer',borderRadius:'50%',
+          transition:'transform .2s var(--ease-out-soft)',transform:sel===p.id?'scale(1.08)':'none'}}>
+        <GlassOrb label={i+1} size={32} ring={sel===p.id?T.o:undefined}/>
+      </button>
+      <input ref={el=>{if(inputRefs)inputRefs.current[p.id]=el;}} value={p.name}
+        onChange={e=>renamePlayer(p.id,e.target.value)} maxLength={NAME_MAX}
+        placeholder="Name" autoCapitalize="words" autoCorrect="off" spellCheck={false}
+        enterKeyHint="next"
+        onFocus={e=>{e.currentTarget.style.borderBottomColor=T.o;
+          if(isDefaultName(p.name)) renamePlayer(p.id,''); else e.currentTarget.select();}}
+        onBlur={e=>{e.currentTarget.style.borderBottomColor=T.glassLine;}}
+        onKeyDown={e=>{if(e.key!=='Enter')return;e.preventDefault();
+          const nx=players[i+1];
+          if(nx) inputRefs?.current[nx.id]?.focus(); else e.currentTarget.blur();}}
+        style={{flex:1,minWidth:0,height:34,background:'none',border:'none',borderRadius:0,
+          borderBottom:`1px solid ${T.glassLine}`,color:T.t1,fontSize:17,fontWeight:600,
+          padding:'0 0 3px',outline:'none',boxSizing:'border-box',transition:'border-color .18s'}}/>
+      {extra?.(p)}
+    </div>);
+  return(
+    <div>
+      {teams.map((t,ti)=>(
+        <div key={t[0].id} className={cls?.(t[0].id)} style={{marginBottom:10}}>
+          <SwipeableRow disabled={!canDrop} onDelete={()=>removeTeam(t.filter(Boolean).map(p=>p.id))}>
+            <div style={{...GLASS,borderRadius:18,padding:'12px 14px 8px',
+              boxShadow:t.some(p=>p&&p.id===sel)?`${GLASS.boxShadow}, inset 0 0 0 1px ${T.o}`:GLASS.boxShadow}}>
+              <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:2}}>
+                <span style={{fontFamily:T.fontDisplay,color:T.o,fontSize:9.5,letterSpacing:1.8}}>Team</span>
+                <span style={{color:T.o,fontSize:13,fontWeight:700,fontVariantNumeric:'tabular-nums'}}>{ti+1}</span>
+                <span style={{flex:1}}/>
+                {canDrop&&(
+                  <button onClick={()=>{buzz(6);removeTeam(t.filter(Boolean).map(p=>p.id));}} aria-label={`Team ${ti+1} entfernen`}
+                    style={{width:28,height:28,borderRadius:'50%',background:'none',
+                      border:`1px solid ${T.glassLine}`,color:T.t3,fontSize:14,cursor:'pointer',
+                      display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1}}>×</button>
+                )}
+              </div>
+              {row(t[0],2*ti)}
+              {t[1]?row(t[1],2*ti+1):(
+                <button onClick={()=>{buzz(6);addPlayer();}}
+                  style={{width:'100%',margin:'6px 0 4px',padding:'10px',borderRadius:12,cursor:'pointer',
+                    background:'none',border:`1.5px dashed ${T.glassLine}`,color:T.o,fontSize:14,fontWeight:700}}>
+                  + Partner
+                </button>
+              )}
+            </div>
+          </SwipeableRow>
+        </div>
+      ))}
+      {players.length%2===0&&(
+        <button onClick={()=>{buzz(6);addTeam();}}
+          style={{width:'100%',padding:'13px',borderRadius:18,cursor:'pointer',background:'none',
+            border:`1.5px dashed ${T.glassLine}`,color:T.t1,fontSize:14.5,fontWeight:700}}>
+          + Team
+        </button>
+      )}
+      <div className="txt" style={{color:T.t3,fontSize:12,fontStyle:'italic',lineHeight:1.5,marginTop:10}}>
+        {sel!=null
+          ?'Jetzt die Kugel antippen, mit der getauscht wird.'
+          :'Zwei Kugeln antippen tauscht die Spieler — auch zwischen Teams.'}
+      </div>
+    </div>
+  );
+}
+
 function TournamentWizard({onClose,onFinish,canStart,entrance=true,
   format,setFormat,winMode,setWinMode,name,setName,cover,setCover,
   players,addPlayer,addPlayerNamed,addScannedPlayers,removePlayer,renamePlayer,setPlayerGroup,
+  addTeam,removeTeam,swapPlayers,
   numCourts,setNumCourts,maxCourts,courtNames,setCourtName,
   courtSingles,toggleCourtSingle,
   layout,layoutSel,setLayoutSel,moveCourtTo,rotateCourtAt,
@@ -8765,6 +8864,9 @@ function TournamentWizard({onClose,onFinish,canStart,entrance=true,
   const plIn=useFlyIn(players.map(p=>p.id),step);
   const[plOut,plGo]=useFlyOut();
   const dropPlayer=id=>{buzz(6);plGo(id,()=>removePlayer(id));};
+  /* Ein Team fliegt als Karte hinaus; die Karte haengt am ersten
+     Spieler des Paars. */
+  const dropTeam=ids=>{buzz(6);plGo(ids[0],()=>removeTeam(ids));};
   const ctIn=useFlyIn(Array.from({length:numCourts},(_,i)=>i),step);
   const[ctOut,ctGo]=useFlyOut();
   // Screenshot-Scan im Spieler-Schritt (gleiche Funktion wie im Formular).
@@ -8944,8 +9046,10 @@ function TournamentWizard({onClose,onFinish,canStart,entrance=true,
           </>)}
 
           {step===1&&(<>
-            <div style={stepTitle}>Wer spielt mit?</div>
-            <div style={stepSub}>Mindestens 4 Spieler — Enter springt zum nächsten Namen.</div>
+            <div style={stepTitle}>{meta.team?'Welche Teams spielen?':'Wer spielt mit?'}</div>
+            <div style={stepSub}>{meta.team
+              ?'Mindestens 2 Teams — die Paare bleiben das ganze Turnier zusammen.'
+              :'Mindestens 4 Spieler — Enter springt zum nächsten Namen.'}</div>
             {/* Anzahl zuerst, wie im Court-Schritt: erst sagen, wie viele
                 ihr seid, dann die Namen fuellen. Minus nimmt den letzten
                 Platz weg — der steht am Ende der Liste und ist damit der,
@@ -8955,7 +9059,8 @@ function TournamentWizard({onClose,onFinish,canStart,entrance=true,
               <button onClick={()=>{
                   const left=players.filter(p=>!plOut(p.id));
                   if(left.length<=4) return;
-                  dropPlayer(left[left.length-1].id);
+                  if(meta.team) dropTeam(left.slice(left.length%2?-1:-2).map(p=>p.id));
+                  else dropPlayer(left[left.length-1].id);
                 }}
                 disabled={players.length<=4}
                 aria-label="Einen Spieler weniger"
@@ -8963,12 +9068,13 @@ function TournamentWizard({onClose,onFinish,canStart,entrance=true,
                   opacity:players.length<=4?.4:1,
                   cursor:players.length<=4?'not-allowed':'pointer'}}>−</button>
               <div style={{textAlign:'center',minWidth:84}}>
-                <div style={{color:T.t1,fontSize:52,fontWeight:800,lineHeight:1,fontVariantNumeric:'tabular-nums',letterSpacing:-1}}>{players.length}</div>
+                <div style={{color:T.t1,fontSize:52,fontWeight:800,lineHeight:1,fontVariantNumeric:'tabular-nums',letterSpacing:-1}}>
+                  {meta.team?Math.ceil(players.length/2):players.length}</div>
                 <div style={{...HEAD_SERIF,fontSize:21
-                  ,marginTop:5}}>Spieler</div>
+                  ,marginTop:5}}>{meta.team?'Teams':'Spieler'}</div>
               </div>
-              <button onClick={()=>{buzz(6);addPlayer();}}
-                aria-label="Einen Spieler mehr"
+              <button onClick={()=>{buzz(6);meta.team&&players.length%2===0?addTeam():addPlayer();}}
+                aria-label={meta.team?'Ein Team mehr':'Einen Spieler mehr'}
                 style={{...stepBtn,width:52,height:52,borderRadius:'50%',fontSize:24}}>+</button>
               {/* Screenshot-Scan sitzt am rechten Rand statt als
                   Vollbreiten-Knopf unter der Liste: es ist eine zweite
@@ -8991,6 +9097,7 @@ function TournamentWizard({onClose,onFinish,canStart,entrance=true,
             <div style={{color:T.t3,fontSize:12,textAlign:'center',marginBottom:18}}>
               {players.length<4
                 ? 'Unter vier Spielern lässt sich keine Runde auslosen.'
+                : meta.team?'Zwei Teams pro Court — wie viele Courts ihr habt, kommt im nächsten Schritt.'
                 : 'Vier pro Court — wie viele Courts ihr habt, kommt im nächsten Schritt.'}
             </div>
             {histFree.length>0&&(<>
@@ -9005,6 +9112,11 @@ function TournamentWizard({onClose,onFinish,canStart,entrance=true,
                 ))}
               </div>
             </>)}
+            {meta.team?(
+              <TeamRoster players={players} renamePlayer={renamePlayer} addPlayer={addPlayer}
+                addTeam={addTeam} removeTeam={dropTeam} swapPlayers={swapPlayers}
+                inputRefs={inputRefs} cls={id=>plOut(id)?'fly-out':plIn(id)?'fly-in':undefined}/>
+            ):(<>
             {players.map((p,idx)=>(
               // Nach links wischen legt „Löschen" frei — unter 5 Spielern
               // inaktiv, weil das Turnier sonst unter die Mindestzahl fällt.
@@ -9063,6 +9175,7 @@ function TournamentWizard({onClose,onFinish,canStart,entrance=true,
                 fontSize:18,fontWeight:700,cursor:'pointer',display:'flex',
                 alignItems:'center',justifyContent:'center',lineHeight:1,
                 paddingBottom:2}}>+</button>
+            </>)}
             <input ref={scanFileRef} type="file" accept="image/*" multiple
               onChange={onScansPicked} style={{display:'none'}}/>
             {scanOpen&&(
@@ -9071,30 +9184,11 @@ function TournamentWizard({onClose,onFinish,canStart,entrance=true,
                 onAdd={addScannedPlayers}
                 onClose={closeScan}/>
             )}
-            {/* Team-Formate: feste Paare nach Listen-Reihenfolge */}
-            {meta.team&&wTeamOk&&(
-              <div style={{marginTop:14,display:'flex',flexDirection:'column',gap:6}}>
-                {Array.from({length:Math.floor(players.length/2)}).map((_,ti)=>(
-                  <div key={ti} style={{display:'flex',alignItems:'center',gap:8,padding:'8px 12px',
-                    borderRadius:11,background:T.glassHi,border:`1px solid ${T.glassLine}`}}>
-                    <span style={{color:T.o,fontSize:11,fontWeight:800,letterSpacing:.5,
-                      width:56,flexShrink:0}}>TEAM {ti+1}</span>
-                    <span style={{color:T.t1,fontSize:13,fontWeight:600,minWidth:0,
-                      overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                      {(players[2*ti]?.name||'?')} & {(players[2*ti+1]?.name||'?')}
-                    </span>
-                  </div>
-                ))}
-                <div style={{color:T.t3,fontSize:11,lineHeight:1.5}}>
-                  Feste Teams nach Listen-Reihenfolge — Liste ändern = Teams ändern.
-                </div>
-              </div>
-            )}
             {meta.team&&!wTeamOk&&(
               <div style={{marginTop:14,padding:'10px 14px',borderRadius:12,
                 background:'rgba(232,69,69,0.08)',border:'1px solid rgba(232,69,69,0.4)',
                 color:'#FF6B6B',fontSize:12,fontWeight:600,lineHeight:1.55}}>
-                {meta.name} braucht eine gerade Spielerzahl — aktuell {players.length}.
+                Team {Math.ceil(players.length/2)} fehlt noch ein Partner.
               </div>
             )}
             {/* Mixicano: Gruppen-Zähler + Anleitung */}
@@ -9657,6 +9751,19 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
     setPlayers(p=>[...p,{id,name:`Spieler ${p.length+1}`,color:PCOLS[id%PCOLS.length]}]);
   };
   const removePlayer=id=>setPlayers(p=>p.filter(x=>x.id!==id));
+  /* Feste Teams (TeamRoster): ein Team = zwei Plaetze hintereinander
+     in der Liste. Angelegt, entfernt und getauscht wird deshalb immer
+     in der Liste selbst — fixedTeams liest dieselbe Reihenfolge. */
+  const addTeam=()=>{const a=nextId.current++,b=nextId.current++;
+    setPlayers(p=>[...p,{id:a,name:`Spieler ${p.length+1}`,color:PCOLS[a%PCOLS.length]},
+      {id:b,name:`Spieler ${p.length+2}`,color:PCOLS[b%PCOLS.length]}]);};
+  const removeTeam=ids=>setPlayers(p=>p.filter(x=>!ids.includes(x.id)));
+  const swapPlayers=(a,b)=>setPlayers(p=>{const i=p.findIndex(x=>x.id===a),j=p.findIndex(x=>x.id===b);
+    if(i<0||j<0) return p; const o=[...p];[o[i],o[j]]=[o[j],o[i]];return o;});
+  /* Minus fuer Team-Formate: das letzte Paar (oder der Spieler ohne
+     Partner) geht. */
+  const dropLastTeam=()=>setPlayers(p=>p.length<=4?p:p.slice(0,p.length%2?-1:-2));
+  const plusTeam=()=>players.length%2?addPlayer():addTeam();
   // Erster Buchstabe automatisch groß — autoCapitalize ist nur ein
   // Tastatur-Hint und greift beim schnellen Durchtippen mit Enter
   // (Fokus-Sprung zum nächsten Spieler) nicht zuverlässig.
@@ -9752,7 +9859,8 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
             Wert, damit die Leiste auch ohne Tippen etwas sagt. */}
         <div style={{display:'flex',gap:10,flexShrink:0}}>
           {[
-            ...(mode==='lokal'?[{id:'spieler',lab:'Spieler',val:String(players.length),
+            ...(mode==='lokal'?[{id:'spieler',lab:fmtMeta.team?'Teams':'Spieler',
+              val:String(fmtMeta.team?Math.ceil(players.length/2):players.length),
               icon:<PeopleIcon size={20} color={T.t1}/>}]:[]),
             {id:'courts',lab:'Courts',val:String(numCourts),
               icon:<CourtsIcon size={20} color={T.t1}/>},
@@ -9785,7 +9893,13 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
                 die Rundenempfehlung stehen im Formular darunter: wer
                 zwischendurch schnell einen Spieler mehr braucht, will
                 nicht die halbe Konfiguration im Sheet haben. */}
-            {quick==='spieler'&&(
+            {quick==='spieler'&&fmtMeta.team&&(
+              <QuickStepper val={Math.ceil(players.length/2)} label="Teams"
+                onMinus={players.length>4?dropLastTeam:null}
+                onPlus={plusTeam}
+                hint={`${players.length} Spieler — zwei pro Team, zwei Teams pro Court.`}/>
+            )}
+            {quick==='spieler'&&!fmtMeta.team&&(
               <QuickStepper val={players.length} label="Spieler"
                 onMinus={players.length>4?()=>setPlayers(p=>p.slice(0,-1)):null}
                 onPlus={addPlayer}
@@ -9921,7 +10035,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
           </div>
           <div style={{color:T.t3,fontSize:12,lineHeight:1.6,marginTop:12,fontWeight:500}}>
             {fmtMeta.short}
-            {fmtMeta.team&&' Feste Teams nach Listen-Reihenfolge (1+2, 3+4, …) — gerade Spielerzahl nötig.'}
+            {fmtMeta.team&&' Feste Teams — unten trägst du sie als Paare ein.'}
             {fmtMeta.groups&&' Gruppen per A/B-Knopf neben den Namen zuweisen (z. B. Damen/Herren).'}
           </div>
           {/* Kurzregeln — wachsen in die Karte hinein statt in ein
@@ -10204,14 +10318,15 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
           padding:'18px 18px 8px',
           animation:cardHint?'cardHint 1.4s cubic-bezier(.3,0,.2,1) 1':undefined}}>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
-            <div style={{fontFamily:T.fontSerif,color:T.t1,fontSize:21,fontWeight:700}}>Spieler</div>
+            <div style={{fontFamily:T.fontSerif,color:T.t1,fontSize:21,fontWeight:700}}>{fmtMeta.team?'Teams':'Spieler'}</div>
             <div style={{display:'flex',alignItems:'center',gap:10}}>
-              <span style={{color:T.t3,fontSize:12,fontWeight:600}}>{players.length} Spieler</span>
+              <span style={{color:T.t3,fontSize:12,fontWeight:600}}>
+                {fmtMeta.team?`${Math.ceil(players.length/2)} Teams · `:''}{players.length} Spieler</span>
               {/* Minus = nur den ZULETZT hinzugefügten Spieler entfernen
                   (nicht die ganze Liste leeren). Spiegelt das „+" daneben.
                   Nur sichtbar, solange Spieler in der Liste sind. */}
               {players.length>0&&(
-                <button onClick={()=>setPlayers(p=>p.slice(0,-1))}
+                <button onClick={()=>fmtMeta.team?dropLastTeam():setPlayers(p=>p.slice(0,-1))}
                   title="Letzten Spieler entfernen"
                   aria-label="Letzten Spieler entfernen"
                   style={{width:30,height:30,borderRadius:'50%',
@@ -10225,7 +10340,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
                   onPointerUp={e=>e.currentTarget.style.opacity='1'}
                   onPointerLeave={e=>e.currentTarget.style.opacity='1'}>−</button>
               )}
-              <button onClick={addPlayer}
+              <button onClick={fmtMeta.team?plusTeam:addPlayer}
                 title="Spieler hinzufügen"
                 aria-label="Spieler hinzufügen"
                 style={{width:30,height:30,borderRadius:'50%',
@@ -10238,7 +10353,21 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
                 onPointerLeave={e=>e.currentTarget.style.opacity='1'}>+</button>
             </div>
           </div>
-          {players.map((p,i)=>(
+          {fmtMeta.team?(
+            <TeamRoster players={players} renamePlayer={renamePlayer} addPlayer={addPlayer}
+              addTeam={addTeam} removeTeam={removeTeam} swapPlayers={swapPlayers}
+              inputRefs={playerInputRefs} extra={p=>(
+                <button onClick={()=>setStylePickerFor(p.id)}
+                  title="Spielstil wählen" aria-label="Spielstil wählen"
+                  style={{width:34,height:34,borderRadius:'50%',flexShrink:0,padding:0,cursor:'pointer',
+                    background:p.style?rgba(PADEL_STYLES[p.style].accent,0.16):T.glassHi,
+                    border:`1.5px solid ${p.style?PADEL_STYLES[p.style].accent:T.border}`,
+                    display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  {p.style
+                    ?<ArchetypeGlyph type={p.style} active color={PADEL_STYLES[p.style].accent} size={20}/>
+                    :<DNAIcon size={16} color={T.t3}/>}
+                </button>)}/>
+          ):players.map((p,i)=>(
             // Nach links wischen legt „Löschen" frei — unter 5 Spielern
             // inaktiv, weil das Turnier sonst unter die Mindestzahl fällt.
             <SwipeableRow key={p.id} disabled={players.length<=4}
@@ -10331,7 +10460,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
           {!canStart&&(
             <div style={{color:T.r,fontSize:11,marginTop:10,paddingBottom:6,fontWeight:500}}>
               {players.length<4?'Mindestens 4 Spieler nötig'
-                :!teamOk?`${fmtMeta.name} braucht eine gerade Spielerzahl — aktuell ${players.length}.`
+                :!teamOk?`Team ${Math.ceil(players.length/2)} fehlt noch ein Partner.`
                 :`Mixicano braucht mind. 2 pro Gruppe (aktuell A ×${grpA}, B ×${grpB}).`}
             </div>
           )}
@@ -10464,6 +10593,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
           players={players} addPlayer={addPlayer} addPlayerNamed={addPlayerNamed}
           addScannedPlayers={addScannedPlayers}
           removePlayer={removePlayer} renamePlayer={renamePlayer} setPlayerGroup={setPlayerGroup}
+          addTeam={addTeam} removeTeam={removeTeam} swapPlayers={swapPlayers}
           numCourts={numCourts} setNumCourts={setNumCourts} maxCourts={maxCourts}
           courtNames={courtNames} setCourtName={setCourtName}
           courtSingles={courtSingles} toggleCourtSingle={toggleCourtSingle}

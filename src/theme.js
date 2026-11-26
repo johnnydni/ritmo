@@ -733,6 +733,10 @@ input[type="time"]::-webkit-date-and-time-value{text-align:center;margin:0;}
 input[type="time"]::-webkit-datetime-edit{padding:0;text-align:center;}
 
 @keyframes fadeIn{from{opacity:0}}
+/* Zaehler-Schiene (CountControl): waechst aus der Mitte auf, wenn der
+   Zaehler in den Schiebemodus geht. */
+.count-track{animation:countTrack .38s var(--ease-out-soft) backwards;transform-origin:50% 50%}
+@keyframes countTrack{from{opacity:0;scale:.15 1}}
 /* DNA Cup: PIN-Punkte schütteln bei falscher Eingabe. */
 @keyframes cupShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
 .cup-shake{animation:cupShake .3s ease;}

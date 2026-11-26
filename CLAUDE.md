@@ -1517,6 +1517,15 @@ abkuerzen.
   einzigen Bedienelement sagt der Wert selbst, worum es geht.
 - Ein deaktivierter Stepper-Knopf bleibt stehen, statt zu
   verschwinden — eine Reihe, die ihre Breite aendert, springt.
+- **Ab 5 wird der Zaehler zur Schiene** (`CountControl`, Spieler und
+  Teams — im Schnellzugriff und im Schritt 2 des Assistenten): die
+  Zahl rueckt nach oben, zwischen den kleiner werdenden Knoepfen
+  waechst ein `PtsSlider` mit einem Strich je Wert auf (`.count-track`).
+  Bis 4 reichen Minus/Plus; darueber waren es zwoelf Tipps bis 16.
+  Spieler 4–32, Teams 2–16 (ein groesserer Bestand verlaengert die
+  Schiene). Waehrend des Ziehens bleibt die Schiene stehen (`held`),
+  auch unter der Schwelle — sonst verschwaende sie unter dem Finger.
+  `setPlayerCount`/`setTeamCount` schneiden wie das Minus am Ende ab.
 - Im Online-Modus fehlen Spieler und Zeitfenster in der Leiste — dort
   gibt es beides im Formular auch nicht (Spieler joinen per PIN).
 - Am Body und zweilagiger Grund wie beim `PlayerScanSheet`, aus

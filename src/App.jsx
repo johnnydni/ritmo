@@ -8121,28 +8121,74 @@ function PlayerScanSheet({existing,onAdd,onClose,initialFiles=null}){
 /* Grosse Zahl, Minus, Plus — mehr braucht ein Schnellzugriff auf eine
    Anzahl nicht. Ein deaktivierter Knopf bleibt stehen, statt zu
    verschwinden: eine Reihe, die ihre Breite aendert, springt. */
-function QuickStepper({val,label,hint,onMinus,onPlus}){
+/* ═══════════════════════════════════════════════════════════════
+   ZAEHLER MIT SCHIENE (`CountControl`) — Spieler bzw. Teams.
+
+   Bis 4 reichen Minus und Plus. Darueber wird das Tippen muehsam
+   (von 4 auf 16 Spieler sind zwoelf Tipps), deshalb geht der Zaehler
+   in einen Schiebemodus: die Zahl steht oben, darunter waechst eine
+   Schiene mit einem Strich je Wert zwischen den nun kleineren Knoepfen
+   auf. Die Knoepfe bleiben fuer den einzelnen Schritt.
+
+   - Die Schiene ist der `PtsSlider` der Court-Karte (nativer
+     range-Input: Tastatur, Screenreader, Haptik-Tick je Wert).
+   - **Waehrend des Ziehens bleibt der Schiebemodus stehen** (`held`),
+     auch wenn der Wert unter die Schwelle faellt — sonst verschwaende
+     die Schiene unter dem Finger. Erst nach dem Loslassen geht es
+     zurueck auf die Knoepfe.
+   - `onSet` setzt die Zahl direkt; was dabei wegfaellt, ist immer das
+     Ende der Liste, wie beim Minus.
+═══════════════════════════════════════════════════════════════ */
+const COUNT_SLIDE_AT=4;
+function CountControl({val,min,max,onSet,onMinus,onPlus,label,labelEl,round=false,aside=null,major=4}){
+  const[held,setHeld]=useState(false);
+  useEffect(()=>{if(!held)return;const up=()=>setHeld(false);
+    window.addEventListener('pointerup',up);window.addEventListener('touchend',up);
+    return()=>{window.removeEventListener('pointerup',up);window.removeEventListener('touchend',up);};},[held]);
+  const slide=!!onSet&&(val>COUNT_SLIDE_AT||held);
+  const hi=Math.max(max,val);
+  const sz=slide?42:(round?52:56);
   const knopf=(on,fn,lab,zeichen)=>(
     <button onClick={on?()=>{buzz(6);fn();}:undefined} disabled={!on} aria-label={lab}
-      style={{width:56,height:56,borderRadius:18,flexShrink:0,
-        background:T.card2,border:`1px solid ${T.border}`,color:T.t1,
-        fontSize:26,fontWeight:800,cursor:on?'pointer':'not-allowed',
-        opacity:on?1:.35,display:'flex',alignItems:'center',justifyContent:'center'}}>
+      style={{width:sz,height:sz,borderRadius:round||slide?'50%':18,flexShrink:0,
+        background:round?T.glassHi:T.card2,border:`1px solid ${round?T.glassLine:T.border}`,color:T.t1,
+        fontSize:slide?20:24,fontWeight:800,cursor:on?'pointer':'not-allowed',
+        opacity:on?1:.35,display:'flex',alignItems:'center',justifyContent:'center',
+        transition:'width .32s var(--ease-out-soft), height .32s var(--ease-out-soft), border-radius .32s'}}>
       {zeichen}
     </button>
   );
+  const zahl=(
+    <div style={{textAlign:'center',minWidth:84}}>
+      <div style={{color:T.t1,fontSize:52,fontWeight:800,lineHeight:1,fontVariantNumeric:'tabular-nums',letterSpacing:-1}}>{val}</div>
+      {labelEl||<div style={{fontFamily:T.fontDisplay,color:T.t3,fontSize:10,letterSpacing:1.6,marginTop:7}}>{label.toUpperCase()}</div>}
+    </div>
+  );
+  return(
+    <div style={{position:'relative'}}>
+      {slide&&<div style={{display:'flex',justifyContent:'center',marginBottom:10}}>{zahl}</div>}
+      <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:slide?12:22}}>
+        {knopf((!onSet||val>min)&&!!onMinus,onMinus,'Einen weniger','−')}
+        {slide
+          ?<div className="count-track" style={{flex:1,minWidth:0}}
+             onPointerDown={()=>setHeld(true)} onTouchStart={()=>setHeld(true)}>
+             <PtsSlider value={val} min={min} max={hi} ticks={hi-min} major={major}
+               label={label} onChange={v=>onSet(v)}/>
+           </div>
+          :zahl}
+        {knopf((!onSet||val<hi)&&!!onPlus,onPlus,'Einen mehr','+')}
+      </div>
+      {aside&&<div style={{position:'absolute',right:0,top:slide?8:'50%',transform:slide?'none':'translateY(-50%)'}}>{aside}</div>}
+    </div>
+  );
+}
+
+function QuickStepper({val,label,hint,onMinus,onPlus,onSet,min=0,max=0}){
   return(
     <div>
-      <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:22,
-        padding:'6px 0 2px'}}>
-        {knopf(!!onMinus,onMinus,'Einen weniger','−')}
-        <div style={{textAlign:'center',minWidth:92}}>
-          <div style={{color:T.t1,fontSize:52,fontWeight:900,lineHeight:1,
-            fontVariantNumeric:'tabular-nums'}}>{val}</div>
-          <div style={{fontFamily:T.fontDisplay,color:T.t3,fontSize:10,
-            letterSpacing:1.6,marginTop:7}}>{label.toUpperCase()}</div>
-        </div>
-        {knopf(!!onPlus,onPlus,'Einen mehr','+')}
+      <div style={{padding:'6px 0 2px'}}>
+        <CountControl val={val} min={min} max={max} label={label}
+          onMinus={onMinus} onPlus={onPlus} onSet={onSet}/>
       </div>
       {hint&&(
         <div className="txt" style={{color:T.t3,fontSize:12.5,lineHeight:1.6,
@@ -8934,7 +8980,7 @@ function TeamRoster({players,renamePlayer,addPlayer,addTeam,removeTeam,swapPlaye
 function TournamentWizard({onClose,onFinish,canStart,entrance=true,
   format,setFormat,winMode,setWinMode,name,setName,cover,setCover,
   players,addPlayer,addPlayerNamed,addScannedPlayers,removePlayer,renamePlayer,setPlayerGroup,
-  addTeam,removeTeam,swapPlayers,teams,setTeamMeta,
+  addTeam,removeTeam,swapPlayers,teams,setTeamMeta,setPlayerCount,setTeamCount,
   numCourts,setNumCourts,maxCourts,courtNames,setCourtName,
   courtSingles,toggleCourtSingle,
   layout,layoutSel,setLayoutSel,moveCourtTo,rotateCourtAt,
@@ -9136,41 +9182,30 @@ function TournamentWizard({onClose,onFinish,canStart,entrance=true,
                 ihr seid, dann die Namen fuellen. Minus nimmt den letzten
                 Platz weg — der steht am Ende der Liste und ist damit der,
                 den man beim Verzaehlen zuletzt angelegt hat. */}
-            <div style={{position:'relative',display:'flex',alignItems:'center',
-              justifyContent:'center',gap:20,margin:'6px 0 14px'}}>
-              <button onClick={()=>{
+            <div style={{margin:'6px 0 14px'}}>
+              <CountControl round
+                val={meta.team?Math.ceil(players.length/2):players.length}
+                min={meta.team?2:4} max={meta.team?16:32}
+                label={meta.team?'Teams':'Spieler'}
+                labelEl={<div style={{...HEAD_SERIF,fontSize:21,marginTop:5}}>{meta.team?'Teams':'Spieler'}</div>}
+                onMinus={()=>{
                   const left=players.filter(p=>!plOut(p.id));
                   if(left.length<=4) return;
                   if(meta.team) dropTeam(left.slice(left.length%2?-1:-2).map(p=>p.id));
                   else dropPlayer(left[left.length-1].id);
                 }}
-                disabled={players.length<=4}
-                aria-label="Einen Spieler weniger"
-                style={{...stepBtn,width:52,height:52,borderRadius:'50%',fontSize:24,
-                  opacity:players.length<=4?.4:1,
-                  cursor:players.length<=4?'not-allowed':'pointer'}}>−</button>
-              <div style={{textAlign:'center',minWidth:84}}>
-                <div style={{color:T.t1,fontSize:52,fontWeight:800,lineHeight:1,fontVariantNumeric:'tabular-nums',letterSpacing:-1}}>
-                  {meta.team?Math.ceil(players.length/2):players.length}</div>
-                <div style={{...HEAD_SERIF,fontSize:21
-                  ,marginTop:5}}>{meta.team?'Teams':'Spieler'}</div>
-              </div>
-              <button onClick={()=>{buzz(6);meta.team&&players.length%2===0?addTeam():addPlayer();}}
-                aria-label={meta.team?'Ein Team mehr':'Einen Spieler mehr'}
-                style={{...stepBtn,width:52,height:52,borderRadius:'50%',fontSize:24}}>+</button>
-              {/* Screenshot-Scan sitzt am rechten Rand statt als
-                  Vollbreiten-Knopf unter der Liste: es ist eine zweite
-                  Art, Spieler hinzuzufuegen, und gehoert damit neben
-                  das Plus. Ohne Beschriftung — der Rahmen ums Bild ist
-                  dasselbe Zeichen wie in der Kamera-App, und die Zeile
-                  bleibt so eine Zeile. */}
-              <button onClick={pickScans}
-                title="Aus Screenshot übernehmen"
-                aria-label="Spieler aus Screenshot übernehmen"
-                style={{...stepBtn,position:'absolute',right:0,top:'50%',
-                  transform:'translateY(-50%)',width:46,height:46,borderRadius:15}}>
-                <ScanGlyph size={20}/>
-              </button>
+                onPlus={()=>{meta.team&&players.length%2===0?addTeam():addPlayer();}}
+                onSet={meta.team?setTeamCount:setPlayerCount}
+                /* Screenshot-Scan sitzt am rechten Rand statt als
+                   Vollbreiten-Knopf unter der Liste: eine zweite Art,
+                   Spieler hinzuzufuegen, also neben dem Plus. Im
+                   Schiebemodus rueckt er neben die Zahl. */
+                aside={<button onClick={pickScans}
+                  title="Aus Screenshot übernehmen"
+                  aria-label="Spieler aus Screenshot übernehmen"
+                  style={{...stepBtn,width:46,height:46,borderRadius:15}}>
+                  <ScanGlyph size={20}/>
+                </button>}/>
             </div>
             {/* Bewusst OHNE Pausen-Rechnung: wie viele pausieren, haengt
                 an der Court-Zahl aus dem naechsten Schritt (und an
@@ -9858,6 +9893,12 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
     const n=players.length-(players.length%2?1:2);setTeams(t=>t.slice(0,Math.ceil(n/2)));
     setPlayers(p=>p.slice(0,n));};
   const plusTeam=()=>players.length%2?addPlayer():addTeam();
+  /* Zahl direkt setzen (Schiene im Zaehler): was wegfaellt, ist das
+     Ende der Liste — wie beim Minus. */
+  const setPlayerCount=n=>{n=Math.max(4,n);setPlayers(p=>{if(n<=p.length)return p.slice(0,n);
+    const o=[...p];while(o.length<n){const id=nextId.current++;
+      o.push({id,name:`Spieler ${o.length+1}`,color:PCOLS[id%PCOLS.length]});}return o;});};
+  const setTeamCount=k=>{k=Math.max(2,k);setTeams(t=>t.slice(0,k));setPlayerCount(2*k);};
   // Erster Buchstabe automatisch groß — autoCapitalize ist nur ein
   // Tastatur-Hint und greift beim schnellen Durchtippen mit Enter
   // (Fokus-Sprung zum nächsten Spieler) nicht zuverlässig.
@@ -9990,13 +10031,13 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
             {quick==='spieler'&&fmtMeta.team&&(
               <QuickStepper val={Math.ceil(players.length/2)} label="Teams"
                 onMinus={players.length>4?dropLastTeam:null}
-                onPlus={plusTeam}
+                onPlus={plusTeam} onSet={setTeamCount} min={2} max={16}
                 hint={`${players.length} Spieler — zwei pro Team, zwei Teams pro Court.`}/>
             )}
             {quick==='spieler'&&!fmtMeta.team&&(
               <QuickStepper val={players.length} label="Spieler"
                 onMinus={players.length>4?()=>setPlayers(p=>p.slice(0,-1)):null}
-                onPlus={addPlayer}
+                onPlus={addPlayer} onSet={setPlayerCount} min={4} max={32}
                 hint={players.length<4
                   ?'Unter vier Spielern lässt sich keine Runde auslosen.'
                   :`Vier pro Court — bei ${numCourts} Court${numCourts>1?'s':''} spielen ${Math.min(players.length,numCourts*4)} gleichzeitig.`}/>
@@ -10690,6 +10731,7 @@ function TournamentSetup({nav,onHome,onStart,onSave,onSaveDraft,onCancelEdit,sav
           removePlayer={removePlayer} renamePlayer={renamePlayer} setPlayerGroup={setPlayerGroup}
           addTeam={addTeam} removeTeam={removeTeam} swapPlayers={swapPlayers}
           teams={teams} setTeamMeta={setTeamMeta}
+          setPlayerCount={setPlayerCount} setTeamCount={setTeamCount}
           numCourts={numCourts} setNumCourts={setNumCourts} maxCourts={maxCourts}
           courtNames={courtNames} setCourtName={setCourtName}
           courtSingles={courtSingles} toggleCourtSingle={toggleCourtSingle}

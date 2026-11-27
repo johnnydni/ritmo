@@ -1517,15 +1517,23 @@ abkuerzen.
   einzigen Bedienelement sagt der Wert selbst, worum es geht.
 - Ein deaktivierter Stepper-Knopf bleibt stehen, statt zu
   verschwinden — eine Reihe, die ihre Breite aendert, springt.
-- **Ab 5 wird der Zaehler zur Schiene** (`CountControl`, Spieler und
-  Teams — im Schnellzugriff und im Schritt 2 des Assistenten): die
-  Zahl rueckt nach oben, zwischen den kleiner werdenden Knoepfen
-  waechst ein `PtsSlider` mit einem Strich je Wert auf (`.count-track`).
-  Bis 4 reichen Minus/Plus; darueber waren es zwoelf Tipps bis 16.
+- **Der Zaehler traegt eine Skala** (`CountControl`, Spieler und
+  Teams — im Schnellzugriff und im Schritt 2 des Assistenten): hinter
+  Zahl und Minus/Plus laeuft ein Lineal links und rechts bis an die
+  Bildschirmkante (`bleed` = Seitenrand des Containers, 18 bzw. 22),
+  ein Strich je Wert, lang alle 4. Auf der Zeile ziehen schiebt die
+  Skala (nach links = mehr, `CC_STEP` 12 px je Wert, Haptik je Wert,
+  beim Loslassen schnappt sie ein); die Knoepfe bleiben fuer den
+  einzelnen Schritt. Die Mitte blendet per Maske aus, Werte jenseits
+  von min/max stehen gedimmt — die Skala endet nicht. Kein
+  Schiebemodus mehr ab 5: eine Schiene mit Daumen zwischen den
+  Knoepfen sah aus wie ein zweites Bedienelement, nicht wie eins.
+  `role="slider"` mit Pfeiltasten; `touch-action: pan-y`. Courts haben
+  kein `onSet` und damit keine Skala. Der Screenshot-Scan steht im
+  Assistenten als Pille unter dem Zaehler, nicht mehr rechts daneben.
   Spieler 4–32, Teams 2–16 (ein groesserer Bestand verlaengert die
-  Schiene). Waehrend des Ziehens bleibt die Schiene stehen (`held`),
-  auch unter der Schwelle — sonst verschwaende sie unter dem Finger.
-  `setPlayerCount`/`setTeamCount` schneiden wie das Minus am Ende ab.
+  Skala). `setPlayerCount`/`setTeamCount` schneiden wie das Minus am
+  Ende ab.
 - Im Online-Modus fehlen Spieler und Zeitfenster in der Leiste — dort
   gibt es beides im Formular auch nicht (Spieler joinen per PIN).
 - Am Body und zweilagiger Grund wie beim `PlayerScanSheet`, aus

@@ -8122,63 +8122,98 @@ function PlayerScanSheet({existing,onAdd,onClose,initialFiles=null}){
    Anzahl nicht. Ein deaktivierter Knopf bleibt stehen, statt zu
    verschwinden: eine Reihe, die ihre Breite aendert, springt. */
 /* ═══════════════════════════════════════════════════════════════
-   ZAEHLER MIT SCHIENE (`CountControl`) — Spieler bzw. Teams.
+   ZAEHLER MIT SKALA (`CountControl`) — Spieler bzw. Teams.
 
-   Bis 4 reichen Minus und Plus. Darueber wird das Tippen muehsam
-   (von 4 auf 16 Spieler sind zwoelf Tipps), deshalb geht der Zaehler
-   in einen Schiebemodus: die Zahl steht oben, darunter waechst eine
-   Schiene mit einem Strich je Wert zwischen den nun kleineren Knoepfen
-   auf. Die Knoepfe bleiben fuer den einzelnen Schritt.
+   Zahl in der Mitte, Minus und Plus daneben — und dahinter eine
+   Skala, die links und rechts aus dem Bild laeuft: ein Strich je
+   Wert, ein langer alle `major`. Keine Schiene mit Daumen, sondern
+   ein Lineal unter der Zahl: auf der Zeile ziehen schiebt die Skala,
+   der Strich unter der Mitte ist der Wert (von 4 auf 16 sind das
+   zwoelf Tipps oder ein Wisch).
 
-   - Die Schiene ist der `PtsSlider` der Court-Karte (nativer
-     range-Input: Tastatur, Screenreader, Haptik-Tick je Wert).
-   - **Waehrend des Ziehens bleibt der Schiebemodus stehen** (`held`),
-     auch wenn der Wert unter die Schwelle faellt — sonst verschwaende
-     die Schiene unter dem Finger. Erst nach dem Loslassen geht es
-     zurueck auf die Knoepfe.
+   - **Nahtlos**: die Skala reicht um `bleed` ueber den Rand des
+     Inhalts hinaus bis an die Bildschirmkante, die Mitte (Zahl und
+     Knoepfe) und die Raender blenden per Maske aus. Striche jenseits
+     von min/max stehen gedimmt da — die Skala endet nicht, sie wird
+     nur leiser.
+   - Ziehen nach links = mehr (wie ein Lineal, das man unter dem
+     Zeiger durchschiebt). Haptik-Tick je Wert, beim Loslassen
+     schnappt die Skala auf den Wert.
+   - `touch-action: pan-y`: senkrecht scrollt der Screen weiter, die
+     Knoepfe nehmen ihren Tipp wie bisher.
+   - Ohne `onSet` (Courts) gibt es keine Skala, nur Minus und Plus.
    - `onSet` setzt die Zahl direkt; was dabei wegfaellt, ist immer das
      Ende der Liste, wie beim Minus.
 ═══════════════════════════════════════════════════════════════ */
-const COUNT_SLIDE_AT=4;
-function CountControl({val,min,max,onSet,onMinus,onPlus,label,labelEl,round=false,aside=null,major=4}){
-  const[held,setHeld]=useState(false);
-  useEffect(()=>{if(!held)return;const up=()=>setHeld(false);
-    window.addEventListener('pointerup',up);window.addEventListener('touchend',up);
-    return()=>{window.removeEventListener('pointerup',up);window.removeEventListener('touchend',up);};},[held]);
-  const slide=!!onSet&&(val>COUNT_SLIDE_AT||held);
+const CC_STEP=12, CC_SPAN=40;
+function CountControl({val,min,max,onSet,onMinus,onPlus,label,labelEl,round=false,aside=null,major=4,bleed=18}){
   const hi=Math.max(max,val);
-  const sz=slide?42:(round?52:56);
+  const[drag,setDrag]=useState(null); // laufende Position waehrend des Ziehens
+  const g=useRef(null);
+  const sz=round?52:56;
+  const pos=drag??val;
+  const down=e=>{
+    if(!onSet||e.target.closest('button'))return;
+    g.current={x:e.clientX,from:val,last:val,id:e.pointerId,moved:false};
+  };
+  const move=e=>{
+    const s=g.current;if(!s||s.id!==e.pointerId)return;
+    const dx=e.clientX-s.x;
+    if(!s.moved){if(Math.abs(dx)<4)return;s.moved=true;e.currentTarget.setPointerCapture?.(e.pointerId);}
+    const p=Math.min(hi,Math.max(min,s.from-dx/CC_STEP));
+    setDrag(p);
+    const v=Math.round(p);
+    if(v!==s.last){s.last=v;buzz(3);onSet(v);}
+  };
+  const up=e=>{const s=g.current;if(!s||s.id!==e.pointerId)return;g.current=null;setDrag(null);};
+  const key=e=>{
+    if(!onSet)return;
+    const d=e.key==='ArrowRight'||e.key==='ArrowUp'?1:e.key==='ArrowLeft'||e.key==='ArrowDown'?-1:0;
+    if(!d)return;e.preventDefault();
+    const v=Math.min(hi,Math.max(min,val+d));if(v!==val){buzz(3);onSet(v);}
+  };
   const knopf=(on,fn,lab,zeichen)=>(
-    <button onClick={on?()=>{buzz(6);fn();}:undefined} disabled={!on} aria-label={lab}
-      style={{width:sz,height:sz,borderRadius:round||slide?'50%':18,flexShrink:0,
+    <button onClick={on?()=>{buzz(6);fn();}:undefined} disabled={!on} aria-label={lab} tabIndex={onSet?-1:0}
+      style={{width:sz,height:sz,borderRadius:round?'50%':18,flexShrink:0,position:'relative',
         background:round?T.glassHi:T.card2,border:`1px solid ${round?T.glassLine:T.border}`,color:T.t1,
-        fontSize:slide?20:24,fontWeight:800,cursor:on?'pointer':'not-allowed',
-        opacity:on?1:.35,display:'flex',alignItems:'center',justifyContent:'center',
-        transition:'width .32s var(--ease-out-soft), height .32s var(--ease-out-soft), border-radius .32s'}}>
+        fontSize:24,fontWeight:800,cursor:on?'pointer':'not-allowed',
+        opacity:on?1:.35,display:'flex',alignItems:'center',justifyContent:'center'}}>
       {zeichen}
     </button>
   );
-  const zahl=(
-    <div style={{textAlign:'center',minWidth:84}}>
-      <div style={{color:T.t1,fontSize:52,fontWeight:800,lineHeight:1,fontVariantNumeric:'tabular-nums',letterSpacing:-1}}>{val}</div>
-      {labelEl||<div style={{fontFamily:T.fontDisplay,color:T.t3,fontSize:10,letterSpacing:1.6,marginTop:7}}>{label.toUpperCase()}</div>}
-    </div>
-  );
+  const ticks=[];
+  if(onSet) for(let v=Math.floor(pos)-CC_SPAN;v<=Math.ceil(pos)+CC_SPAN;v++){
+    const big=v%major===0, inR=v>=min&&v<=hi;
+    ticks.push(<div key={v} style={{position:'absolute',left:v*CC_STEP-(big?1:.5),bottom:0,
+      width:big?2:1,height:big?30:18,borderRadius:1,background:T.t1,opacity:inR?(big?.9:.55):.16}}/>);
+  }
+  const half=42+22+sz+10; // Zahl, Luecke, Knopf, Luft: dort keine Striche
+  const mask=`linear-gradient(90deg, transparent 0, #000 22px, #000 calc(50% - ${half+14}px), transparent calc(50% - ${half}px), transparent calc(50% + ${half}px), #000 calc(50% + ${half+14}px), #000 calc(100% - 22px), transparent 100%)`;
   return(
-    <div style={{position:'relative'}}>
-      {slide&&<div style={{display:'flex',justifyContent:'center',marginBottom:10}}>{zahl}</div>}
-      <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:slide?12:22}}>
+    <div style={{position:'relative',margin:onSet?`0 -${bleed}px`:0,padding:onSet?`0 ${bleed}px`:0,
+        touchAction:'pan-y',cursor:onSet?(drag!=null?'grabbing':'grab'):undefined,userSelect:'none'}}
+      onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}
+      {...(onSet?{role:'slider',tabIndex:0,'aria-label':label,'aria-valuemin':min,'aria-valuemax':hi,
+        'aria-valuenow':val,onKeyDown:key}:{})}>
+      {onSet&&(
+        <div aria-hidden="true" style={{position:'absolute',inset:0,overflow:'hidden',pointerEvents:'none',
+          WebkitMaskImage:mask,maskImage:mask}}>
+          <div style={{position:'absolute',left:'50%',top:'50%',height:30,marginTop:-15,
+            transform:`translateX(${-pos*CC_STEP}px)`,
+            transition:drag!=null?'none':'transform .32s var(--ease-out-soft)'}}>
+            {ticks}
+          </div>
+        </div>
+      )}
+      <div style={{position:'relative',display:'flex',alignItems:'center',justifyContent:'center',gap:22}}>
         {knopf((!onSet||val>min)&&!!onMinus,onMinus,'Einen weniger','−')}
-        {slide
-          ?<div className="count-track" style={{flex:1,minWidth:0}}
-             onPointerDown={()=>setHeld(true)} onTouchStart={()=>setHeld(true)}>
-             <PtsSlider value={val} min={min} max={hi} ticks={hi-min} major={major}
-               label={label} onChange={v=>onSet(v)}/>
-           </div>
-          :zahl}
+        <div style={{textAlign:'center',minWidth:84}}>
+          <div style={{color:T.t1,fontSize:52,fontWeight:800,lineHeight:1,fontVariantNumeric:'tabular-nums',letterSpacing:-1}}>{val}</div>
+          {labelEl||<div style={{fontFamily:T.fontDisplay,color:T.t3,fontSize:10,letterSpacing:1.6,marginTop:7}}>{label.toUpperCase()}</div>}
+        </div>
         {knopf((!onSet||val<hi)&&!!onPlus,onPlus,'Einen mehr','+')}
       </div>
-      {aside&&<div style={{position:'absolute',right:0,top:slide?8:'50%',transform:slide?'none':'translateY(-50%)'}}>{aside}</div>}
+      {aside&&<div style={{position:'absolute',right:onSet?bleed:0,top:'50%',transform:'translateY(-50%)'}}>{aside}</div>}
     </div>
   );
 }
@@ -9183,7 +9218,7 @@ function TournamentWizard({onClose,onFinish,canStart,entrance=true,
                 Platz weg — der steht am Ende der Liste und ist damit der,
                 den man beim Verzaehlen zuletzt angelegt hat. */}
             <div style={{margin:'6px 0 14px'}}>
-              <CountControl round
+              <CountControl round bleed={22}
                 val={meta.team?Math.ceil(players.length/2):players.length}
                 min={meta.team?2:4} max={meta.team?16:32}
                 label={meta.team?'Teams':'Spieler'}
@@ -9196,16 +9231,7 @@ function TournamentWizard({onClose,onFinish,canStart,entrance=true,
                 }}
                 onPlus={()=>{meta.team&&players.length%2===0?addTeam():addPlayer();}}
                 onSet={meta.team?setTeamCount:setPlayerCount}
-                /* Screenshot-Scan sitzt am rechten Rand statt als
-                   Vollbreiten-Knopf unter der Liste: eine zweite Art,
-                   Spieler hinzuzufuegen, also neben dem Plus. Im
-                   Schiebemodus rueckt er neben die Zahl. */
-                aside={<button onClick={pickScans}
-                  title="Aus Screenshot übernehmen"
-                  aria-label="Spieler aus Screenshot übernehmen"
-                  style={{...stepBtn,width:46,height:46,borderRadius:15}}>
-                  <ScanGlyph size={20}/>
-                </button>}/>
+                />
             </div>
             {/* Bewusst OHNE Pausen-Rechnung: wie viele pausieren, haengt
                 an der Court-Zahl aus dem naechsten Schritt (und an
@@ -9216,6 +9242,16 @@ function TournamentWizard({onClose,onFinish,canStart,entrance=true,
                 ? 'Unter vier Spielern lässt sich keine Runde auslosen.'
                 : meta.team?'Zwei Teams pro Court — wie viele Courts ihr habt, kommt im nächsten Schritt.'
                 : 'Vier pro Court — wie viele Courts ihr habt, kommt im nächsten Schritt.'}
+            </div>
+            {/* Screenshot-Scan als Pille unter dem Zaehler: rechts neben
+                dem Plus stand er mitten in der Skala. */}
+            <div style={{display:'flex',justifyContent:'center',marginTop:-6,marginBottom:20}}>
+              <button onClick={pickScans} aria-label="Spieler aus Screenshot übernehmen"
+                style={{display:'flex',alignItems:'center',gap:8,padding:'8px 14px',borderRadius:999,
+                  background:T.glassHi,border:`1px solid ${T.glassLine}`,color:T.t1,fontSize:13,
+                  fontWeight:600,cursor:'pointer'}}>
+                <ScanGlyph size={16}/> Aus Screenshot übernehmen
+              </button>
             </div>
             {histFree.length>0&&(<>
               {labelRow(<PeopleIcon size={13}/>,'Zuletzt dabei')}

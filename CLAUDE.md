@@ -711,12 +711,29 @@ Neu gebaut als Magazin, nicht nur umgefaerbt.
   Schlaeger-URLs `?v=` (`RACKET_V` bzw. `?v=2` in der Szene) — wer die
   Dateien neu liefert, zaehlt hoch, und beim Deploy steigt `CACHE`
   (jetzt `ritmo-v7`).
-- **Das Regelwerk hat zehn Kapitel** (`RULES_CHAPTERS`, daraus auch
-  `RULES_ORDER` fuer das Blaettern in `App()`): Court & Ausrüstung,
-  Aufschlag, Wände & Ballwechsel, Zählweise, Americano, Mexicano,
-  Weitere Formate, Pausen & Wertung, Schlagarten, Fair Play. Jedes
-  Kapitel ist ein `RulesChapter` (Kopf aus der Liste, Szene oben,
-  Text darunter). „Weitere Formate“ liest **`FORMAT_RULES`** aus
+- **Regelwerk und Journey sind nach Frage getrennt.** Das Regelwerk
+  sagt, *was gilt*; die Journey, *wie du besser spielst*. Beide
+  Inhaltsverzeichnisse sind gruppiert (`group` am Kapitel, `WissenList`
+  setzt je Gruppe eine `SectionRule` und eine Glaskarte, die Nummern
+  laufen durch):
+  - **Regelwerk** (`RULES_CHAPTERS`, daraus `RULES_ORDER`): *Das Spiel*
+    — Court & Ausrüstung, Aufschlag, Wände & Ballwechsel, Zählweise,
+    Fair Play; *Turnierformate* — Americano, Mexicano, Weitere Formate,
+    Pausen & Wertung.
+  - **Journey** (`JOURNEY_CHAPTERS`, daraus `JOURNEY_ORDER` ohne
+    Spielstile, die eine eigene Unterseite sind): *Dein Spiel* — RITMO
+    DNA, Spielstile; *Technik* — Schlagarten, Schlagwahl; *Taktik* —
+    Aufschlag-Taktik, Aufstellungen, Hand-Seiten; *Ausrüstung* —
+    Schläger, Bälle.
+  - **Schlagarten** (`RulesGlossar`) stand im Regelwerk und ist in die
+    Journey gewandert: eine Technik, keine Regel — und direkt vor der
+    Schlagwahl, die auf sie aufbaut. Route jetzt `journey-glossar`.
+  - Wo ein Thema in beiden Teilen vorkommt, steht die Regel im
+    Regelwerk und die Anleitung in der Journey, mit Verweis statt
+    Wiederholung (Aufschlag ↔ Aufschlag-Taktik, Schläger & Ball im
+    Court-Kapitel ↔ Ausrüstung).
+  Jedes Regelwerk-Kapitel ist ein `RulesChapter` (Kopf aus der Liste,
+  Szene oben, Text darunter). „Weitere Formate“ liest **`FORMAT_RULES`** aus
   tournament.js — derselbe Text wie im Info-Aufklapper des
   Konfigurators; wer ein Format aendert, aendert beide auf einmal.
 - **Fakten nach FIP**, nicht nach Gefuehl: Aufschlaglinie 6,95 m vom

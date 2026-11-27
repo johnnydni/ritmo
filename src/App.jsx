@@ -21280,26 +21280,28 @@ function ShotArt({src,h=170,label,delay=0,dir='shots',ratio}){
 }
 
 /* ───── Rules — Übersicht ─────
-   Zehn Kapitel: erst der Platz und die Regeln des Spiels, dann die
-   Formate, wie RITMO sie spielt, zum Schluss Begriffe und Fair Play.
+   Das Regelwerk sagt, WAS GILT: erst das Spiel selbst (Platz,
+   Aufschlag, Wände, Zählweise, Fair Play), dann die Turnierformate,
+   wie RITMO sie spielt. Wie man besser spielt — Schlagarten,
+   Taktik, Material-Wahl — steht in der Journey. `group` setzt die
+   Zwischenueberschrift im Inhaltsverzeichnis (WissenList).
    Die Reihenfolge steht ein zweites Mal in App() (RULES_ORDER) —
    beide aus derselben Liste. */
 const RULES_CHAPTERS=[
-  {id:'court',     icon:<CourtsIcon size={24} color={T.t1}/>,title:'Court & Ausrüstung', sub:'Maße, Wände, Schläger, Ball'},
-  {id:'aufschlag', icon:<TargetIcon size={24} color={T.o}/>, title:'Aufschlag',          sub:'Ablauf, Let, zwei Versuche'},
-  {id:'waende',    icon:<LineIcon name="scan" size={24} color={T.t1}/>,title:'Wände & Ballwechsel',sub:'Erst Boden, dann Wand'},
-  {id:'zaehlung',  icon:<ScrollIcon size={24} color={T.o}/>, title:'Zählweise',          sub:'Einstand, Golden Point, Tiebreak'},
-  {id:'americano', icon:<TrophyIcon size={26}/>,             title:'Americano',          sub:'Wechselnde Partner, eigene Punkte'},
-  {id:'mexicano',  icon:<TargetIcon size={24} color={T.o}/>, title:'Mexicano',           sub:'Die Tabelle bestimmt die Paarung'},
-  {id:'formate',   icon:<TrophyIcon size={26}/>,             title:'Weitere Formate',    sub:'Teams, Mixed, King of the Court, K.-o.'},
-  {id:'rotation',  icon:<StopwatchIcon size={24} color={T.o}/>,title:'Pausen & Wertung', sub:'Wer aussetzt und was es dafür gibt'},
-  {id:'glossar',   icon:<BookIcon size={24}/>,               title:'Schlagarten',        sub:'Bandeja, Víbora, Smash & mehr'},
-  {id:'fairplay',  icon:<HandIcon size={24} color={T.o}/>,   title:'Fair Play',          sub:'Was auf dem Platz dazugehört'},
+  {id:'court',     group:'Das Spiel',     icon:<CourtsIcon size={24} color={T.t1}/>,title:'Court & Ausrüstung', sub:'Maße, Wände, was erlaubt ist'},
+  {id:'aufschlag', group:'Das Spiel',     icon:<TargetIcon size={24} color={T.o}/>, title:'Aufschlag',          sub:'Ablauf, Let, zwei Versuche'},
+  {id:'waende',    group:'Das Spiel',     icon:<LineIcon name="scan" size={24} color={T.t1}/>,title:'Wände & Ballwechsel',sub:'Erst Boden, dann Wand'},
+  {id:'zaehlung',  group:'Das Spiel',     icon:<ScrollIcon size={24} color={T.o}/>, title:'Zählweise',          sub:'Einstand, Golden Point, Tiebreak'},
+  {id:'fairplay',  group:'Das Spiel',     icon:<HandIcon size={24} color={T.o}/>,   title:'Fair Play',          sub:'Was auf dem Platz dazugehört'},
+  {id:'americano', group:'Turnierformate',icon:<TrophyIcon size={26}/>,             title:'Americano',          sub:'Wechselnde Partner, eigene Punkte'},
+  {id:'mexicano',  group:'Turnierformate',icon:<TargetIcon size={24} color={T.o}/>, title:'Mexicano',           sub:'Die Tabelle bestimmt die Paarung'},
+  {id:'formate',   group:'Turnierformate',icon:<TrophyIcon size={26}/>,             title:'Weitere Formate',    sub:'Teams, Mixed, King of the Court, K.-o.'},
+  {id:'rotation',  group:'Turnierformate',icon:<StopwatchIcon size={24} color={T.o}/>,title:'Pausen & Wertung', sub:'Wer aussetzt und was es dafür gibt'},
 ];
 const RULES_ORDER=RULES_CHAPTERS.map(c=>c.id);
 function Rules({onHome,onSelect,alreadyRead,onToggleRead,onBibel}){
   return(
-    <WissenList title="Regelwerk" subtitle="Padel-Regeln, Formate, Begriffe."
+    <WissenList title="Regelwerk" subtitle="Was auf dem Platz gilt — und wie die Turnierformate laufen."
       icon={<BookIcon size={32} color={T.t1}/>} sections={RULES_CHAPTERS} onSelect={onSelect}
       alreadyRead={alreadyRead} onToggleRead={onToggleRead} onHome={onHome} onBibel={onBibel}/>
   );
@@ -21313,6 +21315,11 @@ function Rules({onHome,onSelect,alreadyRead,onToggleRead,onBibel}){
    Die Kapitel-Icons fallen hier weg; sie stehen gross auf der
    Kapitelseite selbst. */
 function WissenList({title,subtitle,icon,sections,onSelect,alreadyRead,onToggleRead,onHome,onBibel}){
+  /* Gruppen in Reihenfolge des ersten Auftretens; die Nummern laufen
+     ueber alle Gruppen durch, wie die Kapitelseiten zaehlen. */
+  const groups=[];
+  sections.forEach((s,i)=>{let g=groups.find(x=>x.name===(s.group||''));
+    if(!g)groups.push(g={name:s.group||'',items:[]});g.items.push({s,i});});
   return(
     <div style={{height:'100%',...PHOTO_ROOT,display:'flex',flexDirection:'column',
       paddingTop:'calc(env(safe-area-inset-top,0px) + 18px)',position:'relative',overflow:'hidden'}}>
@@ -21320,13 +21327,15 @@ function WissenList({title,subtitle,icon,sections,onSelect,alreadyRead,onToggleR
       <ScreenHeader kicker="Bibel" title={title} subtitle={subtitle}
         right={onToggleRead?<QuestionToggle filled={alreadyRead} onClick={onToggleRead}/>:icon}/>
       <div style={{flex:1,padding:'0 22px 140px',overflowY:'auto',WebkitOverflowScrolling:'touch'}}>
-        <div className="fu" style={{...GLASS,borderRadius:22,overflow:'hidden'}}>
-          {sections.map((s,i)=>(
+        {groups.map((g,gi)=>(<div key={g.name||gi}>
+        {g.name&&<SectionRule>{g.name}</SectionRule>}
+        <div className="fu" style={{...GLASS,borderRadius:22,overflow:'hidden',animationDelay:`${gi*60}ms`}}>
+          {g.items.map(({s,i},k)=>(
             <button key={s.id} onClick={()=>{buzz(6);onSelect(s.id);}}
               style={{width:'100%',display:'flex',alignItems:'center',gap:16,
                 padding:'16px 18px',background:'none',border:'none',cursor:'pointer',
                 color:T.t1,textAlign:'left',transition:'background .15s',
-                borderTop:i?`1px solid ${T.glassSep}`:'none'}}
+                borderTop:k?`1px solid ${T.glassSep}`:'none'}}
               onPointerDown={e=>e.currentTarget.style.background=T.glassHi}
               onPointerUp={e=>e.currentTarget.style.background='none'}
               onPointerLeave={e=>e.currentTarget.style.background='none'}>
@@ -21343,6 +21352,7 @@ function WissenList({title,subtitle,icon,sections,onSelect,alreadyRead,onToggleR
             </button>
           ))}
         </div>
+        </div>))}
       </div>
       <MatchBar onHome={onHome}
         rightButtons={onBibel?[{icon:<BookIcon size={20} color={T.t1}/>,onClick:onBibel,
@@ -21455,6 +21465,7 @@ function RulesCourt(nav){
         'Die Schlaufe am Griff gehört ums Handgelenk — das ist Pflicht, kein Zubehör',
         'Der Ball sieht aus wie ein Tennisball, hat aber weniger Innendruck',
       ]}/>
+      <RulesP>Welche Schlägerform zu dir passt und was einen guten Ball ausmacht, steht in der Journey unter „Ausrüstung“.</RulesP>
       <RulesH>Gespielt wird</RulesH>
       <RulesP>Immer im Doppel, zwei gegen zwei. Die Seiten und wer aufschlägt, entscheidet vor dem Match das Los — Münze oder Schläger drehen.</RulesP>
     </RulesChapter>
@@ -21635,7 +21646,7 @@ function RulesRotation(nav){
   );
 }
 
-function RulesGlossar({onBackToRules,onHome,onNext,onPrev,currentIdx,totalSections}){
+function RulesGlossar({onBackToRules,onBackToJourney,onHome,onNext,onPrev,currentIdx,totalSections}){
   const shots=[
     {id:'smash',title:'Smash / Remate',art:['smash'],
       desc:'Kraftvoller Schlag aus der Luft. Treffpunkt direkt über dem Kopf, Trajektorie steil nach unten.',
@@ -21662,9 +21673,10 @@ function RulesGlossar({onBackToRules,onHome,onNext,onPrev,currentIdx,totalSectio
   return(
     <RulesDetailLayout icon={<BookIcon size={30}/>} title="Schlagarten"
       sub="Körperhaltung & Treffpunkt der wichtigsten Schläge"
-      onBackToRules={onBackToRules} onHome={onHome}
+      onBackToRules={onBackToJourney||onBackToRules} onHome={onHome}
       onNext={onNext} onPrev={onPrev}
-      currentIdx={currentIdx} totalSections={totalSections}>
+      currentIdx={currentIdx} totalSections={totalSections}
+      {...J_BACK}>
       <div style={{display:'flex',flexDirection:'column',gap:14}}>
         {shots.map((s,i)=>(
           <div key={s.id} className="fu"
@@ -21735,19 +21747,27 @@ function RulesFairPlay(nav){
    JOURNEY — Tipps & Tricks
 ═══════════════════════════════════════════════════════════════ */
 
+/* Die Journey sagt, WIE DU BESSER SPIELST: erst du selbst (DNA,
+   Spielstil), dann Technik, Taktik und Ausruestung. Die Regeln dazu
+   stehen im Regelwerk — die Kapitel verweisen hin, statt sie zu
+   wiederholen. Spielstile ist eine eigene Unterseite und blaettert
+   nicht mit (JOURNEY_ORDER). */
+const JOURNEY_CHAPTERS=[
+  {id:'ritmodna',     group:'Dein Spiel', icon:<DNAIcon size={24} color={T.o}/>,title:'RITMO DNA',     sub:'Stil, Chemie, Tier-Matching, Levels'},
+  {id:'spielstile',   group:'Dein Spiel', icon:<MaskIcon size={24} color={T.o}/>,title:'Spielstile',    sub:'Die sieben Padel-Typen'},
+  {id:'glossar',      group:'Technik',    icon:<BookIcon size={24}/>,title:'Schlagarten',   sub:'Bandeja, Víbora, Smash & mehr'},
+  {id:'schlagwahl',   group:'Technik',    icon:<TennisBallIcon size={24}/>,title:'Schlagwahl',    sub:'Wann welche Schlagart?'},
+  {id:'angaben',      group:'Taktik',     icon:<TargetIcon size={24} color={T.o}/>,title:'Aufschlag-Taktik',sub:'Wohin aufschlagen — und warum'},
+  {id:'aufstellungen',group:'Taktik',     icon:<PeopleIcon size={24} color={T.o}/>,title:'Aufstellungen', sub:'Netz, Hinten, Verteidigung, Angriff'},
+  {id:'haende',       group:'Taktik',     icon:<HandIcon size={24} color={T.o}/>,title:'Hand-Seiten',   sub:'Links-/Rechtshänder am Court'},
+  {id:'schlaeger',    group:'Ausrüstung', icon:<RacketMini size={24} color={T.o}/>,title:'Schläger',      sub:'Rund, Tropfen, Diamant — welcher passt'},
+  {id:'baelle',       group:'Ausrüstung', icon:<TennisBallIcon size={24}/>,title:'Bälle',         sub:'Tennis vs Padel — die Unterschiede'},
+];
+const JOURNEY_ORDER=JOURNEY_CHAPTERS.map(c=>c.id).filter(id=>id!=='spielstile');
 function Journey({onHome,onSelect,alreadyRead,onToggleRead,onBibel}){
-  const sections=[
-    {id:'ritmodna',     icon:<DNAIcon size={24} color={T.o}/>,title:'RITMO DNA',     sub:'Stil, Chemie, Tier-Matching, Levels'},
-    {id:'spielstile',   icon:<MaskIcon size={24} color={T.o}/>,title:'Spielstile',    sub:'Die 6 Padel-Personalities'},
-    {id:'angaben',      icon:<TargetIcon size={24} color={T.o}/>,title:'Aufschlag',     sub:'Reihenfolge, Position & Strategie'},
-    {id:'aufstellungen',icon:<PeopleIcon size={24} color={T.o}/>,title:'Aufstellungen', sub:'Netz, Hinten, Verteidigung, Angriff'},
-    {id:'haende',       icon:<HandIcon size={24} color={T.o}/>,title:'Hand-Seiten',   sub:'Links-/Rechtshänder am Court'},
-    {id:'schlagwahl',   icon:<TennisBallIcon size={24}/>,title:'Schlagwahl',    sub:'Wann welche Schlagart?'},
-    {id:'schlaeger',    icon:<RacketMini size={24} color={T.o}/>,title:'Schläger',      sub:'Rund, Tropfen, Diamant — Materialkunde'},
-    {id:'baelle',       icon:<TennisBallIcon size={24}/>,title:'Bälle',         sub:'Tennis vs Padel — die Unterschiede'},
-  ];
+  const sections=JOURNEY_CHAPTERS;
   return(
-    <WissenList title="Journey" subtitle="Tipps & Tricks für dein Padel-Spiel."
+    <WissenList title="Journey" subtitle="Wie du besser spielst — Technik, Taktik, Ausrüstung."
       icon={<JourneyIcon size={32} color={T.t1}/>} sections={sections} onSelect={onSelect}
       alreadyRead={alreadyRead} onToggleRead={onToggleRead} onHome={onHome} onBibel={onBibel}/>
   );
@@ -21757,8 +21777,8 @@ const J_BACK={backIcon:<JourneyIcon size={18}/>};
 /* Die Kapitel als Seiten des Blaetterers (ChapterPager). */
 const RULES_COMPS={court:RulesCourt,aufschlag:RulesAufschlag,waende:RulesWaende,
   zaehlung:RulesZaehlung,americano:RulesAmericano,mexicano:RulesMexicano,
-  formate:RulesFormate,rotation:RulesRotation,glossar:RulesGlossar,fairplay:RulesFairPlay};
-const JOURNEY_COMPS={ritmodna:JourneyRitmoDNA,angaben:JourneyAngaben,aufstellungen:JourneyAufstellungen,
+  formate:RulesFormate,rotation:RulesRotation,fairplay:RulesFairPlay};
+const JOURNEY_COMPS={ritmodna:JourneyRitmoDNA,glossar:RulesGlossar,angaben:JourneyAngaben,aufstellungen:JourneyAufstellungen,
   haende:JourneyHaende,schlagwahl:JourneySchlagwahl,schlaeger:JourneySchlaeger,baelle:JourneyBaelle};
 
 /* ── Spielstile ───────────────────────────────────────────────
@@ -22435,8 +22455,8 @@ function JourneyRitmoDNA({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalS
 
 function JourneyAngaben({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalSections}){
   return(
-    <RulesDetailLayout icon={<TargetIcon size={30} color={T.o}/>} title="Aufschlag"
-      sub="Reihenfolge, Position & Strategie"
+    <RulesDetailLayout icon={<TargetIcon size={30} color={T.o}/>} title="Aufschlag-Taktik"
+      sub="Wohin aufschlagen — und warum"
       visual={<SceneServe targets/>}
       onBackToRules={onBackToJourney} onHome={onHome}
       onNext={onNext} onPrev={onPrev}
@@ -22604,7 +22624,7 @@ function RacketShapes(){
 function JourneySchlaeger({onBackToJourney,onHome,onNext,onPrev,currentIdx,totalSections}){
   return(
     <RulesDetailLayout icon={<RacketMini size={30} color={T.o}/>} title="Schläger"
-      sub="Rund, Tropfen, Diamant — Materialkunde"
+      sub="Rund, Tropfen, Diamant — welcher passt"
       visual={<SceneRacket/>}
       onBackToRules={onBackToJourney} onHome={onHome}
       onNext={onNext} onPrev={onPrev}
@@ -23810,7 +23830,7 @@ export default function App(){
         pageProps={{myStyle:profile.styleType,onPartnerJump:pid=>setScr(`journey-spielstil-${pid}`)}}/>;
     })()}
     {(()=>{
-      const order=['ritmodna','angaben','aufstellungen','haende','schlagwahl','schlaeger','baelle'];
+      const order=JOURNEY_ORDER;
       const id=scr.startsWith('journey-')?scr.slice(8):null;
       if(id==='overview'||id==='spielstile'||!id||scr.startsWith('journey-spielstil-')) return null;
       const idx=id?order.indexOf(id):-1;

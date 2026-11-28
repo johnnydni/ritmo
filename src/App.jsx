@@ -65,6 +65,7 @@ import { scenesFor, defaultTeams } from './stylePlays.js';
 import { CUP_PIN, CUP_PHASES, CUP_ALERTS, CUP_WARN, initialCupState, cupLeaderboard, cupMatchTier,
   genCupKO, genCupCourageHF, genCupHF, genCupFinals, cupPlayerLabel, cupDuplicateNums } from "./dnaCup.js";
 import GlassSurface from "./GlassSurface.jsx";
+import { LiquidGlass } from "./liquidGlass.jsx";
 
 /* ═══════════════════════════════════════════════════════════════
    Theme/CSS, helpers, reducers, auth, audio and icons all live in
@@ -2485,7 +2486,7 @@ function PhotoBackdrop({dim=0}){
        ein schwarzer Balken unter der Tab-Leiste. Fixed entkommt dem
        overflow:hidden des Rahmens, die Ueberlaenge deckt die Luecke;
        wo es keine gibt, liegt sie unsichtbar unter dem Bildrand. */
-    <div aria-hidden="true" style={{position:'fixed',top:0,left:0,right:0,
+    <div aria-hidden="true" data-photo-backdrop="" data-key={`foto-${dim}`} style={{position:'fixed',top:0,left:0,right:0,
       bottom:'calc(-1 * (env(safe-area-inset-top,0px) + env(safe-area-inset-bottom,0px)))',
       zIndex:-1,overflow:'hidden',pointerEvents:'none'}}>
       <img src={`${getAssetBase()}assets/home-bg.jpg`} alt="" draggable={false}
@@ -2825,13 +2826,9 @@ function TabBar({active,onTab}){
   const goSearch=()=>{ if(!onSearch){ buzz(6); __navBlendArm=true; navPillBus.go('suche',null); } navStore.set(false); onTab('suche'); };
 
   const glass=(r)=>(<>
-    <GlassSurface width="100%" height="100%" borderRadius={r}
-      className="nav-glass" brightness={58} opacity={0.92} blur={11}
-      displace={0.6} distortionScale={-130} redOffset={0} greenOffset={8} blueOffset={16}
-      style={{position:'absolute',inset:0,pointerEvents:'none'}}/>
+    <LiquidGlass radius={r} bezel={r>=28?20:16} scale={r>=28?50:40}/>
     {/* Spiegelkante + Glanz (theme.js .lg-rim/.lg-spec) — in allen
         Browsern, auch dort, wo GlassSurface nur Milchglas kann. */}
-    <span className="lg-spec" aria-hidden="true" style={{borderRadius:r}}/>
     <span className="lg-rim" aria-hidden="true" style={{borderRadius:r}}/>
   </>);
   const searchBtn=(
@@ -2975,6 +2972,7 @@ function MatchBar({onHome,rightIcon,onRight,rightButtons,homeLabel='Zurück zur 
       onPointerDown={e=>!btn.disabled&&(e.currentTarget.style.opacity='.7')}
       onPointerUp={e=>e.currentTarget.style.opacity=btn.disabled?.5:1}
       onPointerLeave={e=>e.currentTarget.style.opacity=btn.disabled?.5:1}>
+      {!btn.plain&&!btn.hidden&&<LiquidGlass bezel={14} scale={34}/>}
       {btn.icon}
     </button>
   );
@@ -3028,6 +3026,7 @@ function MatchBar({onHome,rightIcon,onRight,rightButtons,homeLabel='Zurück zur 
         transition:btn.open
           ?'width .44s cubic-bezier(.22,1.08,.36,1),padding-left .44s cubic-bezier(.22,1.08,.36,1)'
           :'width .28s cubic-bezier(.4,0,.2,1),padding-left .28s cubic-bezier(.4,0,.2,1)'}}>
+        <LiquidGlass bezel={14} scale={34}/>
         {/* Im Fach traegt kein Knopf mehr seinen eigenen Kreis: eine
             48er Scheibe in einer 48er Kapsel stoesst oben und unten an
             deren Rand, und die beiden Konturen laufen ineinander — das
@@ -3077,6 +3076,7 @@ function MatchBar({onHome,rightIcon,onRight,rightButtons,homeLabel='Zurück zur 
         style={{...baseStyle,cursor:'pointer',
           transition:'opacity .2s',
           ...(homeHidden?{opacity:0,pointerEvents:'none'}:{})}}>
+        <LiquidGlass bezel={14} scale={34}/>
         <HomeIcon size={20}/>
       </button>
       {/* Ein Knopf in der MITTE (Platzkarte im Turnier): eine Pille mit
@@ -3095,6 +3095,7 @@ function MatchBar({onHome,rightIcon,onRight,rightButtons,homeLabel='Zurück zur 
                 pointerEvents:c.hidden?'none':'auto',cursor:'pointer',
                 opacity:c.hidden?0:1,transition:'opacity .2s,padding .25s',
                 ...(c.active?{background:T.t1,border:'none',color:'#000'}:{color:T.t1})}}>
+              {!c.active&&<LiquidGlass bezel={14} scale={34}/>}
               {c.icon}
               {!c.compact&&<span style={{fontSize:14,fontWeight:700}}>{c.label}</span>}
               {c.badge!=null&&(
@@ -3292,7 +3293,7 @@ function ProfileBackdrop({id}){
   const w=wallpaperById(id);
   if(w.id==='foto') return <PhotoBackdrop/>;
   return(
-    <div aria-hidden="true" style={{position:'fixed',top:0,left:0,right:0,
+    <div aria-hidden="true" data-photo-backdrop="" data-key={w.id} style={{position:'fixed',top:0,left:0,right:0,
       bottom:'calc(-1 * (env(safe-area-inset-top,0px) + env(safe-area-inset-bottom,0px)))',
       zIndex:-1,overflow:'hidden',pointerEvents:'none',background:w.bg}}>
       {w.grain>0&&<div style={{position:'absolute',inset:0,backgroundImage:GRAIN_URL,
@@ -3599,11 +3600,13 @@ function ProfileSub({profile,kicker,title,titleFs=52,onBack,onHome,children}){
       {onHome&&(
         <button onClick={onHome} aria-label="Zurück zur Startseite"
           className="glass-bar" style={{...FAB_BASE,left:22}}>
+          <LiquidGlass bezel={14} scale={34}/>
           <HomeIcon size={22}/>
         </button>
       )}
       <button onClick={onBack} aria-label="Zurück zum Profil"
         className="glass-bar" style={{...FAB_BASE,right:22}}>
+          <LiquidGlass bezel={14} scale={34}/>
         <PersonGlyph size={22}/>
       </button>
     </div>
@@ -4087,11 +4090,13 @@ function ProfileEdit({profile,setProfile,onBack,onHome,onResetStats}){
       {onHome&&(
         <button onClick={onHome} aria-label="Zurück zur Startseite"
           className="glass-bar" style={{...fabBase,left:22}}>
+          <LiquidGlass bezel={14} scale={34}/>
           <HomeIcon size={22}/>
         </button>
       )}
       <button onClick={onBack} aria-label="Zurück zum Profil"
         className="glass-bar" style={{...fabBase,right:22}}>
+          <LiquidGlass bezel={14} scale={34}/>
         <PersonGlyph size={22}/>
       </button>
     </div>
@@ -4847,10 +4852,11 @@ function GlassCircle({size=54,onClick,label,children,style}){
   return(
     <button onClick={onClick} aria-label={label}
       style={{position:'relative',width:size,height:size,borderRadius:'50%',
-        overflow:'hidden',background:'none',border:'1px solid rgba(255,255,255,.22)',
+        overflow:'hidden',background:'none',border:'none',
+        boxShadow:'0 6px 18px rgba(0,0,0,.22)',
         padding:0,color:T.t1,cursor:'pointer',display:'inline-flex',flexShrink:0,
         alignItems:'center',justifyContent:'center',...style}}>
-      <GlassSurface {...HOME_CARD_GLASS} borderRadius={999}/>
+      <LiquidGlass bezel={Math.round(size*.26)} scale={Math.round(size*.55)}/>
       <span style={{position:'relative',zIndex:1,display:'inline-flex'}}>{children}</span>
     </button>
   );
@@ -16634,6 +16640,7 @@ function SettingsSubLayout({title,desc,icon,onBack,onHome,children}){
       {onHome&&(
         <button onClick={onHome} aria-label="Zurück zur Startseite"
           className="glass-bar" style={{...fabBase,left:22}}>
+          <LiquidGlass bezel={14} scale={34}/>
           <HomeIcon size={22}/>
         </button>
       )}
@@ -16641,6 +16648,7 @@ function SettingsSubLayout({title,desc,icon,onBack,onHome,children}){
       {/* Floating Gear-FAB rechts → zurück zur Settings-Übersicht */}
       <button onClick={onBack} aria-label="Zurück zu Einstellungen"
         className="glass-bar" style={{...fabBase,right:22}}>
+          <LiquidGlass bezel={14} scale={34}/>
         <GearIcon size={22}/>
       </button>
     </div>
@@ -17646,6 +17654,7 @@ function RitmoPost({onHome,profile}){
       {/* Floating Home-FAB → zurück (links-unten), auf Navbar-Höhe */}
       <button onClick={onHome} aria-label="Zurück zu Home"
         className="glass-bar" style={{...FAB_BASE,left:22}}>
+          <LiquidGlass bezel={14} scale={34}/>
         <HomeIcon size={22}/>
       </button>
     </div>

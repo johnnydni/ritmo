@@ -1012,6 +1012,46 @@ button:disabled{cursor:not-allowed;opacity:.55;}
     inset 0 -1px 0 color-mix(in srgb, #000 18%, transparent);
 }
 
+/* ── Liquid Glass (src/liquidGlass.jsx) ──
+   .lg ist die Brechungs-Ebene, .lg-skin die Haut darueber: ein Hauch
+   Weiss, eine Spiegelkante (oben hell, unten schwaecher), Innenlicht
+   und ein schmaler Schatten innen unten — gewoelbtes Glas, kein Rand.
+   Wo .lg in einem .glass-bar steckt, traegt der Knopf selbst kein
+   Material mehr: ein backdrop-filter am Vorfahren wuerde zur
+   Backdrop-Wurzel, und die Brechung saehe nur noch ihn statt des
+   Fotos. Inhalte der Knoepfe ruecken ueber die Ebene. */
+.lg-skin{
+  background:
+    radial-gradient(120% 80% at 30% -20%, rgba(255,255,255,.18), transparent 55%),
+    rgba(255,255,255,.07);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.55),
+    inset 0 -1px 1px rgba(255,255,255,.16),
+    inset 0 0 0 .5px rgba(255,255,255,.32),
+    inset 0 -10px 18px -12px rgba(0,0,0,.35);
+}
+.lg-skin::before{
+  content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;
+  background:linear-gradient(140deg,rgba(255,255,255,.85),rgba(255,255,255,.08) 34%,rgba(255,255,255,0) 62%,rgba(255,255,255,.45));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;
+  mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0);
+}
+.glass-bar:has(> .lg){
+  background:transparent;-webkit-backdrop-filter:none;backdrop-filter:none;border:none;
+  box-shadow:0 8px 24px rgba(0,0,0,.22);
+}
+.glass-bar:has(> .lg){position:relative;}
+.glass-bar > :not(.lg){position:relative;}
+@media (prefers-reduced-transparency: reduce){
+  .lg-refract,.lg-frost{display:none;}
+  .lg-skin{background:rgba(28,28,30,.96);}
+}
+@media (prefers-contrast: more){
+  .lg-skin{background:rgba(255,255,255,.22);}
+  .lg-skin::before{padding:1.5px;}
+}
+
 /* ── GlassSurface (reactbits) — Liquid-Glass-Refraktion.
    Auf Chromium echte SVG-Displacement (--svg), sonst Blur-Fallback.
    Rim-Werte fix auf hell gehalten (passt zur dunklen App-Bar). */
@@ -1116,9 +1156,10 @@ button:disabled{cursor:not-allowed;opacity:.55;}
   position:absolute;left:0;right:0;bottom:0;
   height:calc(env(safe-area-inset-bottom,0px) + 104px);
   pointer-events:none;z-index:4;
-  -webkit-backdrop-filter:blur(14px) saturate(140%);
-  backdrop-filter:blur(14px) saturate(140%);
-  background:linear-gradient(to bottom,transparent 0%,rgba(0,0,0,.18) 60%,rgba(0,0,0,.34) 100%);
+  /* Kein Blur mehr: der Inhalt laeuft scharf unter das Liquid Glass
+     (sonst bricht das Glas nur noch Matsch) — nur ein sanftes
+     Abdunkeln zum Rand hin, wie die Scroll-Kante unter iOS 26. */
+  background:linear-gradient(to bottom,transparent 0%,rgba(0,0,0,.12) 60%,rgba(0,0,0,.24) 100%);
   -webkit-mask-image:linear-gradient(to bottom,transparent 0%,#000 55%);
   mask-image:linear-gradient(to bottom,transparent 0%,#000 55%);
 }

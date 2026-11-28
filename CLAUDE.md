@@ -394,9 +394,9 @@ Die Bausteine stehen in App.jsx direkt vor `ScreenHeader`:
   dasselbe fuer html/body/#root. Die Screens haengen direkt an
   `#root`, `100%` greift also.
 - **`BarBlur`** liegt unter Tab-Leiste und Knopfleiste (`.bar-blur`):
-  Unschaerfe mit Maskenverlauf plus ein Hauch Schwarz, bis unter den
-  Home-Indikator. Der Inhalt verschwimmt dort, statt hart an der
-  Leiste abzureissen.
+  nur noch ein sanftes Abdunkeln mit Maskenverlauf bis unter den
+  Home-Indikator — kein Blur mehr, siehe „Liquid Glass auf der
+  Steuerungsebene“.
 - **Glyphen weiss, nicht orange** (`T.t1`). Orange bleibt Status und
   Marke: Ressort, laufend, Akzent. `BookIcon`/`JourneyIcon`/`TrophyIcon`
   nehmen dafuer `color`.
@@ -444,6 +444,45 @@ Die Bausteine stehen in App.jsx direkt vor `ScreenHeader`:
   Schlagzeile stehen statt der Store-Pillen nur noch zwei weisse
   Zeichen (`PlayStoreGlyph`, `AppStoreLine` in icons.jsx, beide in
   `currentColor`) — eine Ankuendigung, kein Knopf.
+
+### Liquid Glass auf der Steuerungsebene (`LiquidGlass`, [src/liquidGlass.jsx](src/liquidGlass.jsx))
+
+Tab-Leiste (Kapsel, Suchkreis, eingeklappter Kreis), die Knoepfe der
+Knopfleiste (`MatchBar`: Home, Platzkarte/Pause, Werkzeug-Kapsel, die
+FABs der Unterseiten) und die runden Glasknoepfe (`GlassCircle`)
+tragen **Lichtbrechung am Rand**, nicht mehr nur Blur. Inhaltskarten
+bleiben klares `GLASS` — Glas gehoert auf das, was ueber dem Inhalt
+schwebt, nicht auf den Inhalt.
+
+- **Displacement-Map je Form** (`makeGlassMap`, Canvas → data:-URL,
+  2×, gecacht nach Masse): im Randband (`bezel`) wird nach innen
+  gesampelt — die Kante wirkt wie eine Linse. Dazu Mattierung
+  (`frost`) und drei Farbkanaele mit verschiedener Staerke
+  (chromatische Aberration). Darueber die Haut `.lg-skin` (theme.js):
+  Hauch Weiss, Spiegelkante, Innenlicht.
+- **Zwei Wege**: Chromium (`backdrop`) bricht per
+  `backdrop-filter:url(#…)` alles dahinter, auch scrollenden Inhalt.
+  WebKit — also **jedes iPhone, auch die installierte App** — und
+  Firefox koennen das nicht; dort (`clone`) liegt im Randband eine
+  Kopie der Foto-Ebene des Screens (`cloneNode` des Elements mit
+  `data-photo-backdrop`, gesetzt von `PhotoBackdrop` und
+  `ProfileBackdrop`) mit `filter:url(#…)`, die Mitte ist ein normaler
+  Backdrop-Blur. Gebrochen wird dort also das Foto; Inhalt, der unter
+  die Leiste scrollt, erscheint nur in der Mitte (mattiert). Ohne
+  Foto-Ebene bleibt Mattglas.
+- **Kein `backdrop-filter`, `filter`, `opacity<1` oder `mask` an einem
+  Vorfahren des Glases**: so ein Vorfahre wird zur Backdrop-Wurzel, und
+  die Brechung saehe nur noch ihn. Deshalb nimmt `.glass-bar:has(> .lg)`
+  dem Knopf sein eigenes Material.
+- **`BarBlur` blurt nicht mehr**, er dunkelt nur sanft ab: das Glas
+  soll scharfen Inhalt brechen, nicht Matsch.
+- Bedienungshilfen: reduzierte Transparenz → Brechung aus, Haut opak;
+  erhoehter Kontrast → hellere Haut, kraeftigere Kante.
+- Testen: `window.__LG_MODE='clone'` per `addInitScript` zeigt in
+  Chromium den iPhone-Weg. Sichtbar wird die Brechung nur ueber
+  Kontrast (Text, helle Kanten) — ueber dem dunklen Fotorand unten ist
+  sie bewusst leise.
+- `GlassSurface` (reactbits) traegt nur noch die Home-Karten.
 
 ### Raster und Abstaende
 
